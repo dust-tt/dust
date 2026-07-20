@@ -1,8 +1,8 @@
 import { ModelPickerContent } from "@app/components/assistant/conversation/input_bar/ModelPickerContent";
 import type {
+  MakerGroup,
   ModelPickerListState,
   ModelWithReasoningEffort,
-  ProviderGroup,
   Selection,
   SuggestedModelWithReasoningEffort,
   UserModelSelection,
@@ -16,7 +16,7 @@ import {
   resolveDefaultSelection,
   SUGGESTED_PINS,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { getModelProviderLogo } from "@app/components/providers/types";
+import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
@@ -24,10 +24,13 @@ import { useModels } from "@app/lib/swr/models";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
-import { getProviderDisplayName } from "@app/types/assistant/models/providers";
+import {
+  getModelMaker,
+  getModelMakerDisplayName,
+} from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
-  ModelProviderIdType,
+  ModelMakerIdType,
   ModelSelectionType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
@@ -75,10 +78,11 @@ export function InputBarModelPicker({
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
-  // On mobile there are no nested submenus: the "More models" providers expand
-  // inline below their name. This tracks the single provider currently expanded.
-  const [expandedProvider, setExpandedProvider] =
-    useState<ModelProviderIdType | null>(null);
+  // On mobile there are no nested submenus: the "More models" makers expand
+  // inline below their name. This tracks the single maker currently expanded.
+  const [expandedMaker, setExpandedMaker] = useState<ModelMakerIdType | null>(
+    null
+  );
 
   const commitSelection = (selection: UserModelSelection) => {
     const isSelectionAuto = selection.kind === "auto";
@@ -170,17 +174,17 @@ export function InputBarModelPicker({
     [models]
   );
 
-  const moreByProvider = useMemo<ProviderGroup[]>(() => {
-    const providers = new Map<
-      ModelProviderIdType,
+  const moreByMaker = useMemo<MakerGroup[]>(() => {
+    const makers = new Map<
+      ModelMakerIdType,
       Map<string, { model: ModelConfigurationType; efforts: ReasoningEffort[] }>
     >();
     for (const modelWithEffort of allModelsWithEfforts) {
-      const providerId = modelWithEffort.model.providerId;
-      let modelsMap = providers.get(providerId);
+      const makerId = getModelMaker(modelWithEffort.model);
+      let modelsMap = makers.get(makerId);
       if (!modelsMap) {
         modelsMap = new Map();
-        providers.set(providerId, modelsMap);
+        makers.set(makerId, modelsMap);
       }
       let entry = modelsMap.get(modelWithEffort.model.modelId);
       if (!entry) {
@@ -189,8 +193,8 @@ export function InputBarModelPicker({
       }
       entry.efforts.push(modelWithEffort.effort);
     }
-    return Array.from(providers.entries()).map(([providerId, modelsMap]) => ({
-      providerId,
+    return Array.from(makers.entries()).map(([makerId, modelsMap]) => ({
+      makerId,
       models: Array.from(modelsMap.values()),
     }));
   }, [allModelsWithEfforts]);
@@ -233,7 +237,7 @@ export function InputBarModelPicker({
         })
           .toLowerCase()
           .includes(q) ||
-        getProviderDisplayName(modelWithEffort.model.providerId)
+        getModelMakerDisplayName(getModelMaker(modelWithEffort.model))
           .toLowerCase()
           .includes(q)
     );
@@ -256,7 +260,7 @@ export function InputBarModelPicker({
 
   const hasResults = isSearching
     ? filteredAll.length > 0
-    : !!agentDefault || suggested.length > 0 || moreByProvider.length > 0;
+    : !!agentDefault || suggested.length > 0 || moreByMaker.length > 0;
 
   // Collapse the correlated list booleans + data arrays into a single state so
   // the picker content receives one flat, exhaustively-typed prop.
@@ -264,7 +268,7 @@ export function InputBarModelPicker({
     kind: "browse",
     agentDefault,
     suggested,
-    moreByProvider,
+    moreByMaker,
   };
   if (!showList) {
     listState = { kind: "hidden" };
@@ -284,7 +288,7 @@ export function InputBarModelPicker({
 
   const buttonIcon =
     isWidthConstrained && shown.kind !== "auto"
-      ? getModelProviderLogo(shown.model.providerId, isDark)
+      ? getModelMakerLogo(getModelMaker(shown.model), isDark)
       : undefined;
 
   const toggleAuto = () => {
@@ -309,7 +313,7 @@ export function InputBarModelPicker({
         if (open) {
           setSearch("");
           setExpanded(false);
-          setExpandedProvider(null);
+          setExpandedMaker(null);
         }
       }}
     >
@@ -343,11 +347,9 @@ export function InputBarModelPicker({
             ),
           });
         }}
-        expandedProvider={expandedProvider}
-        onToggleProvider={(providerId) =>
-          setExpandedProvider((current) =>
-            current === providerId ? null : providerId
-          )
+        expandedMaker={expandedMaker}
+        onToggleMaker={(makerId) =>
+          setExpandedMaker((current) => (current === makerId ? null : makerId))
         }
       />
     </DropdownMenu>

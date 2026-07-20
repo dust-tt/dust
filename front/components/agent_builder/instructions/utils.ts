@@ -5,10 +5,11 @@ import {
 import { GEMINI_3_1_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_MEDIUM_3_5_MODEL_ID } from "@app/types/assistant/models/mistral";
 import { GPT_5_6_TERRA_MODEL_ID } from "@app/types/assistant/models/openai";
+import { getModelMaker } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
   ModelIdType,
-  ModelProviderIdType,
+  ModelMakerIdType,
 } from "@app/types/assistant/models/types";
 
 export const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
@@ -54,8 +55,8 @@ export interface ModelCategories<
   T extends ModelConfigurationType = ModelConfigurationType,
 > {
   bestGeneralModels: T[];
-  providerGroups: Map<
-    ModelProviderIdType,
+  makerGroups: Map<
+    ModelMakerIdType,
     {
       recent: T[];
       older: T[];
@@ -70,9 +71,9 @@ export function getModelsCategorization<T extends ModelConfigurationType>(
   const { bestPerformingModelConfigs, otherModelConfigs } =
     categorizeModels(models);
 
-  // Group remaining models by provider and separate recent vs older
-  const providerGroups = new Map<
-    ModelProviderIdType,
+  // Group remaining models by maker (lab) and separate recent vs older
+  const makerGroups = new Map<
+    ModelMakerIdType,
     {
       recent: T[];
       older: T[];
@@ -80,11 +81,12 @@ export function getModelsCategorization<T extends ModelConfigurationType>(
   >();
 
   for (const model of otherModelConfigs) {
-    if (!providerGroups.has(model.providerId)) {
-      providerGroups.set(model.providerId, { recent: [], older: [] });
+    const makerId = getModelMaker(model);
+    if (!makerGroups.has(makerId)) {
+      makerGroups.set(makerId, { recent: [], older: [] });
     }
 
-    const group = providerGroups.get(model.providerId)!;
+    const group = makerGroups.get(makerId)!;
     if (model.isLatest) {
       group.recent.push(model);
     } else {
@@ -94,6 +96,6 @@ export function getModelsCategorization<T extends ModelConfigurationType>(
 
   return {
     bestGeneralModels: bestPerformingModelConfigs,
-    providerGroups,
+    makerGroups,
   };
 }

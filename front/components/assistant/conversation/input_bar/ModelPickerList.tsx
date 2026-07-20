@@ -5,12 +5,12 @@ import type {
   ModelWithReasoningEffort,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelWithReasoningEffortKey } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { getModelProviderLogo } from "@app/components/providers/types";
+import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { getProviderDisplayName } from "@app/types/assistant/models/providers";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { getModelMakerDisplayName } from "@app/types/assistant/models/providers";
+import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   ChevronDown,
@@ -31,18 +31,18 @@ interface ModelPickerListProps {
   listState: ModelPickerListState;
   selectedKey?: string;
   onSelectModel: (modelWithEffort: ModelWithReasoningEffort) => void;
-  // On width-constrained clients (mobile, extension) the "More models" providers
-  // expand inline; this tracks the single provider currently expanded.
-  expandedProvider: ModelProviderIdType | null;
-  onToggleProvider: (providerId: ModelProviderIdType) => void;
+  // On width-constrained clients (mobile, extension) the "More models" makers
+  // expand inline; this tracks the single maker currently expanded.
+  expandedMaker: ModelMakerIdType | null;
+  onToggleMaker: (makerId: ModelMakerIdType) => void;
 }
 
 export function ModelPickerList({
   listState,
   selectedKey,
   onSelectModel,
-  expandedProvider,
-  onToggleProvider,
+  expandedMaker,
+  onToggleMaker,
 }: ModelPickerListProps) {
   const { isDark } = useTheme();
   const isMobile = useIsMobile();
@@ -131,35 +131,35 @@ export function ModelPickerList({
               </DropdownMenuRadioGroup>
             </>
           )}
-          {listState.moreByProvider.length > 0 && (
+          {listState.moreByMaker.length > 0 && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel label="More models" />
-              {listState.moreByProvider.map((provider) =>
+              {listState.moreByMaker.map((maker) =>
                 expandProvidersInline ? (
-                  // On width-constrained clients (mobile, extension) the
-                  // provider expands inline below its name instead of opening a
-                  // nested submenu.
-                  <Fragment key={provider.providerId}>
+                  // On width-constrained clients (mobile, extension) the maker
+                  // expands inline below its name instead of opening a nested
+                  // submenu.
+                  <Fragment key={maker.makerId}>
                     <DropdownMenuItem
-                      label={getProviderDisplayName(provider.providerId)}
-                      icon={getModelProviderLogo(provider.providerId, isDark)}
+                      label={getModelMakerDisplayName(maker.makerId)}
+                      icon={getModelMakerLogo(maker.makerId, isDark)}
                       endComponent={
                         <Icon
                           visual={
-                            expandedProvider === provider.providerId
+                            expandedMaker === maker.makerId
                               ? ChevronDown
                               : ChevronRight
                           }
                           size="xs"
                         />
                       }
-                      onClick={() => onToggleProvider(provider.providerId)}
+                      onClick={() => onToggleMaker(maker.makerId)}
                       onSelect={(e) => e.preventDefault()}
                     />
-                    {expandedProvider === provider.providerId && (
+                    {expandedMaker === maker.makerId && (
                       <ModelPickerProviderSection
-                        provider={provider}
+                        maker={maker}
                         selectedKey={selectedKey}
                         isMobile={isMobile}
                         onSelect={onSelectModel}
@@ -167,14 +167,14 @@ export function ModelPickerList({
                     )}
                   </Fragment>
                 ) : (
-                  <DropdownMenuSub key={provider.providerId}>
+                  <DropdownMenuSub key={maker.makerId}>
                     <DropdownMenuSubTrigger
-                      label={getProviderDisplayName(provider.providerId)}
-                      icon={getModelProviderLogo(provider.providerId, isDark)}
+                      label={getModelMakerDisplayName(maker.makerId)}
+                      icon={getModelMakerLogo(maker.makerId, isDark)}
                     />
                     <DropdownMenuSubContent>
                       <ModelPickerProviderSection
-                        provider={provider}
+                        maker={maker}
                         selectedKey={selectedKey}
                         isMobile={isMobile}
                         onSelect={onSelectModel}

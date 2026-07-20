@@ -6,7 +6,7 @@ import type {
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { AUTO_TOOLTIP } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import {
   DropdownMenuContent,
   DropdownMenuItem,
@@ -25,10 +25,10 @@ interface ModelPickerContentProps {
   selectedKey?: string;
   onToggleAuto: () => void;
   onSelectModel: (modelWithEffort: ModelWithReasoningEffort) => void;
-  // On mobile the "More models" providers expand inline; this tracks the single
-  // provider currently expanded.
-  expandedProvider: ModelProviderIdType | null;
-  onToggleProvider: (providerId: ModelProviderIdType) => void;
+  // On mobile the "More models" makers expand inline; this tracks the single
+  // maker currently expanded.
+  expandedMaker: ModelMakerIdType | null;
+  onToggleMaker: (makerId: ModelMakerIdType) => void;
 }
 
 export function ModelPickerContent({
@@ -40,8 +40,8 @@ export function ModelPickerContent({
   selectedKey,
   onToggleAuto,
   onSelectModel,
-  expandedProvider,
-  onToggleProvider,
+  expandedMaker,
+  onToggleMaker,
 }: ModelPickerContentProps) {
   const isMobile = useIsMobile();
 
@@ -74,8 +74,8 @@ export function ModelPickerContent({
         listState={listState}
         selectedKey={selectedKey}
         onSelectModel={onSelectModel}
-        expandedProvider={expandedProvider}
-        onToggleProvider={onToggleProvider}
+        expandedMaker={expandedMaker}
+        onToggleMaker={onToggleMaker}
       />
     </DropdownMenuContent>
   );

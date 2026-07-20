@@ -1,5 +1,7 @@
 import type {
   ByokModelProviderIdType,
+  ModelConfigurationType,
+  ModelMakerIdType,
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
 import { z } from "zod";
@@ -52,6 +54,36 @@ export function getProviderDisplayName(
       return providerId;
   }
 }
+/**
+ * MODEL MAKERS IDS
+ */
+
+export const MODEL_MAKER_ONLY_IDS = ["zai", "moonshot", "minimax"] as const;
+
+export const MODEL_MAKER_IDS = [
+  ...MODEL_PROVIDER_IDS,
+  ...MODEL_MAKER_ONLY_IDS,
+] as const;
+
+// The maker of a model: its explicit `modelMaker` if set, otherwise the serving
+// provider (which for native providers is also the maker).
+export function getModelMaker(model: ModelConfigurationType): ModelMakerIdType {
+  return model.modelMaker ?? model.providerId;
+}
+
+export function getModelMakerDisplayName(makerId: ModelMakerIdType): string {
+  switch (makerId) {
+    case "zai":
+      return "Z.ai";
+    case "moonshot":
+      return "Moonshot AI";
+    case "minimax":
+      return "MiniMax";
+    default:
+      return getProviderDisplayName(makerId);
+  }
+}
+
 export const isModelProviderId = (
   providerId: string
 ): providerId is ModelProviderIdType =>

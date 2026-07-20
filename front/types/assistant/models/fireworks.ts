@@ -18,6 +18,7 @@ export const FIREWORKS_GLM_5P2_MODEL_ID =
   "accounts/fireworks/models/glm-5p2" as const;
 export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
+  modelMaker: "deepseek",
   modelId: FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
   displayName: "DeepSeek V3.2 (Fireworks)",
   contextSize: 163_800,
@@ -52,6 +53,7 @@ export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
 };
 export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
+  modelMaker: "deepseek",
   modelId: FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID,
   displayName: "DeepSeek V4 Pro (Fireworks)",
   contextSize: 1_000_000,
@@ -81,6 +83,7 @@ export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
 };
 export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
+  modelMaker: "moonshot",
   modelId: FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
   displayName: "Kimi K2 Instruct (Fireworks)",
   contextSize: 131_072,
@@ -108,6 +111,7 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
 };
 export const FIREWORKS_KIMI_K2P5_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
+  modelMaker: "moonshot",
   modelId: FIREWORKS_KIMI_K2P5_MODEL_ID,
   displayName: "Kimi K2.5 (Fireworks)",
   contextSize: 262_100,
@@ -141,6 +145,7 @@ export const FIREWORKS_KIMI_K2P5_MODEL_CONFIG: ModelConfigurationType = {
 // https://fireworks.ai/models/fireworks/kimi-k2p6
 export const FIREWORKS_KIMI_K2P6_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
+  modelMaker: "moonshot",
   modelId: FIREWORKS_KIMI_K2P6_MODEL_ID,
   displayName: "Kimi K2.6 (Fireworks)",
   contextSize: 262_000,
@@ -173,6 +178,7 @@ export const FIREWORKS_KIMI_K2P6_MODEL_CONFIG: ModelConfigurationType = {
 };
 export const FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
+  modelMaker: "minimax",
   modelId: FIREWORKS_MINIMAX_M2P5_MODEL_ID,
   displayName: "MiniMax M2.5 (Fireworks)",
   contextSize: 196_608,
@@ -206,6 +212,7 @@ export const FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG: ModelConfigurationType = {
 // https://fireworks.ai/models/fireworks/glm-5p2
 export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
+  modelMaker: "zai",
   modelId: FIREWORKS_GLM_5P2_MODEL_ID,
   displayName: "GLM-5.2 (Fireworks)",
   contextSize: 1_000_000,
@@ -235,6 +242,7 @@ export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
 };
 export const FIREWORKS_GLM_5_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
+  modelMaker: "zai",
   modelId: FIREWORKS_GLM_5_MODEL_ID,
   displayName: "GLM-5 (Fireworks)",
   contextSize: 202_752,

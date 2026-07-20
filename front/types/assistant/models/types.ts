@@ -10,12 +10,13 @@ import type { EMBEDDING_PROVIDER_IDS } from "./embedding";
 import type { SUPPORTED_MODEL_CONFIGS } from "./models";
 import { MODEL_IDS } from "./models";
 import type { BYOK_MODEL_PROVIDER_IDS } from "./providers";
-import { MODEL_PROVIDER_IDS } from "./providers";
+import { MODEL_MAKER_IDS, MODEL_PROVIDER_IDS } from "./providers";
 import { ORDERED_REASONING_EFFORTS } from "./reasoning";
 
 export type ModelIdType = (typeof MODEL_IDS)[number];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 export type ByokModelProviderIdType = (typeof BYOK_MODEL_PROVIDER_IDS)[number];
+export type ModelMakerIdType = (typeof MODEL_MAKER_IDS)[number];
 
 export const CUSTOM_THINKING_TYPES = ["auto", "enabled"] as const;
 export type CustomThinkingType = (typeof CUSTOM_THINKING_TYPES)[number];
@@ -72,6 +73,7 @@ const CustomAvailabilityConditionSchema = z.object({
 // This is the source of truth for the structure of ModelConfigurationType.
 export const ModelConfigurationSchema = z.object({
   providerId: z.string(),
+  modelMaker: z.enum(MODEL_MAKER_IDS).optional(),
   modelId: z.string(),
   displayName: z.string(),
   contextSize: z.number(),
