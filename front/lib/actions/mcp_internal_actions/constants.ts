@@ -3,7 +3,10 @@ import {
   type MCPToolStakeLevelType,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { ACTIVATION_RECOMMENDATIONS_SERVER } from "@app/lib/api/actions/servers/activation_recommendations/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
@@ -98,6 +101,7 @@ import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspa
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
   InternalMCPServerDefinitionType,
+  MCPToolType,
   MCPToolRetryPolicyType,
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
@@ -1519,6 +1523,8 @@ export function getInternalMCPServerMetadata(name: InternalMCPServerNameType) {
     serverInfo,
     tools: tools.map(({ schema, ...tool }) => ({
       ...tool,
+      // For the input schema we store a zod schema on the tool metadata, it's what's easier to use in the code because
+      // we can infer a type from it, but tool specifications expect a JSON schema.
       inputSchema: zodToJsonSchema(z.object(schema)) as JSONSchema,
     })),
   };
