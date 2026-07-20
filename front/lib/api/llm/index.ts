@@ -412,7 +412,7 @@ export function legacyModelIdToModel(modelId: string): Model | null {
 // Selects the endpoint best matching the current region for the given model,
 // shared by the stream and batch resolvers. The only thing that varies between
 // the two surfaces is which registry of endpoints we filter over.
-function selectPreferredEndpoint<T extends { region: Region }>(
+function selectPreferredEndpoint<T extends { region: Region; host: Host }>(
   auth: Authenticator,
   featureFlags: WhitelistableFeature[],
   llmParameters: LLMParameters,
