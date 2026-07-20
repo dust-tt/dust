@@ -6,17 +6,15 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 
 export type GetSkillsResponseBody = {
-  skills: Array<
-    SkillWithoutInstructionsAndToolsType & { isFavorite?: boolean }
-  >;
+  skills: (SkillWithoutInstructionsAndToolsType & {
+    isFavorite?: boolean;
+  })[];
 };
 
 export type GetSkillsWithRelationsResponseBody = {
-  skills: Array<
-    SkillWithoutInstructionsAndToolsWithRelationsType & {
-      isFavorite?: boolean;
-    }
-  >;
+  skills: (SkillWithoutInstructionsAndToolsWithRelationsType & {
+    isFavorite?: boolean;
+  })[];
 };
 
 export type PostSkillResponseBody = {
