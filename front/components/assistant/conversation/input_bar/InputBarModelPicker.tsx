@@ -315,13 +315,14 @@ export function InputBarModelPicker({
     >
       <DropdownMenuTrigger asChild>
         <Button
-          className="px-2"
+          className="px-2 border border-transparent hover:border-border-dark hover:bg-primary-100 dark:hover:border-white/10"
           variant="ghost-secondary"
           size={buttonSize}
           label={label}
           icon={buttonIcon}
           disabled={disabled}
           isSelect
+          isRounded
         />
       </DropdownMenuTrigger>
       <ModelPickerContent

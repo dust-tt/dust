@@ -485,6 +485,8 @@ export function CapabilitiesPicker({
             size={buttonSize}
             tooltip="Capabilities"
             disabled={disabled || isLoading}
+            isRounded
+            className="border border-transparent hover:border-border-dark hover:bg-primary-100 dark:hover:border-white/10"
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent

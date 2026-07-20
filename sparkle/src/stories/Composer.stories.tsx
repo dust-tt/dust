@@ -321,9 +321,11 @@ function ComposerDemo({
             type="button"
             aria-label={`Selected agent: ${selectedAgent.name}`}
             className={cn(
-              "box-border inline-flex h-7 items-center gap-1.5 rounded-lg px-2",
-              "heading-xs bg-muted-background text-primary-900",
-              "cursor-pointer transition-colors duration-200 hover:bg-hover"
+              "box-border inline-flex h-7 items-center gap-1.5 rounded-full px-2",
+              "heading-xs text-primary-900",
+              "border-[0.5px] border-border-dark bg-background dark:bg-[#3c3934]",
+              "shadow-[inset_2px_-2px_7px_0px_rgba(0,0,0,0.02),0px_0.5px_0.5px_0px_rgba(0,0,0,0.04)]",
+              "cursor-pointer transition-colors duration-200 hover:bg-primary-100"
             )}
           >
             <Avatar
@@ -339,6 +341,12 @@ function ComposerDemo({
             size="xs"
             icon={Robot}
             label="Agent"
+            isRounded
+            className={cn(
+              "border-[0.5px] border-border-dark bg-background dark:bg-[#3c3934]",
+              "shadow-[inset_2px_-2px_7px_0px_rgba(0,0,0,0.02),0px_0.5px_0.5px_0px_rgba(0,0,0,0.04)]",
+              "hover:bg-primary-100"
+            )}
           />
         )}
       </DropdownMenuTrigger>
