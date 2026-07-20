@@ -1,3 +1,5 @@
+import config from "@app/lib/api/config";
+import { applyContractStartSubscriptionSwap } from "@app/lib/api/metronome/process_webhook";
 import { cancelPendingContract } from "@app/lib/api/poke/cancel_pending_contract";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
@@ -53,6 +55,7 @@ import {
 } from "@app/lib/plans/stripe";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -906,6 +909,41 @@ async function stepPendingSubscription({
   }
 }
 
+// In environments without a Metronome webhook secret configured (e.g. local
+// dev), Metronome's `contract.start` event is never delivered, so an
+// immediate switch would otherwise leave the workspace with no Subscription
+// row at all — not even a pending one, since `stepPendingSubscription` only
+// stages one for future-dated starts. Replay the same transition
+// synchronously here instead. Production/staging always have the secret
+// configured and rely exclusively on the real webhook, since it also covers
+// re-deliveries and future-dated activations.
+async function stepImmediateSubscriptionSwapWithoutWebhook({
+  workspaceId,
+  metronomeCustomerId,
+  metronomeContractId,
+  alignedStart,
+}: PostProvisionCtx): Promise<string | null> {
+  if (config.getMetronomeWebhookSecret()) {
+    return null;
+  }
+  if (alignedStart.getTime() > Date.now()) {
+    return null;
+  }
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    return `dev_subscription_swap: workspace ${workspaceId} not found`;
+  }
+  const result = await applyContractStartSubscriptionSwap({
+    workspace,
+    contractId: metronomeContractId,
+    customerId: metronomeCustomerId,
+  });
+  if (result.isErr()) {
+    return `dev_subscription_swap: ${result.error.message}`;
+  }
+  return null;
+}
+
 // If the workspace is currently Stripe-billed, schedule the Stripe sub to
 // cancel at the swap moment so the two rails don't double-bill.
 // If the contract was backdated, alignedStart is already in the past and
@@ -1211,6 +1249,7 @@ export async function switchContract({
   warn(await stepSeatRemap(ctx));
   warn(await stepSeatSync(ctx));
   warn(await stepPendingSubscription(ctx));
+  warn(await stepImmediateSubscriptionSwapWithoutWebhook(ctx));
   warn(await stepStripeCancellation(ctx));
   warn(await stepScheduleContractEnd(ctx));
 

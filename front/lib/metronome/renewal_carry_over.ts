@@ -7,6 +7,7 @@ import {
 import {
   AWU_PRIORITY_PURCHASED_COMMIT,
   CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   FOREVER_ENDING_BEFORE,
 } from "@app/lib/metronome/constants";
 import type {
@@ -178,7 +179,15 @@ export async function carryOverContractBalancesOnRenewal({
       uniquenessKey: `carry:${toContractId}:${commit.id}`,
       applicableProductIds: commit.applicable_product_ids,
       applicableProductTags: commit.applicable_product_tags,
-      customFields: { [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: rawExpiry },
+      customFields: {
+        [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: rawExpiry,
+        ...(commit.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]
+          ? {
+              [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]:
+                commit.custom_fields[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY],
+            }
+          : {}),
+      },
     });
     if (regrant.isErr()) {
       return new Err(regrant.error);
@@ -214,7 +223,15 @@ export async function carryOverContractBalancesOnRenewal({
       name: credit.name ?? "Carried-over balance",
       uniquenessKey: `carry:${toContractId}:${credit.id}`,
       applicableProductTags: credit.applicable_product_tags,
-      customFields: { [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: rawExpiry },
+      customFields: {
+        [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: rawExpiry,
+        ...(credit.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]
+          ? {
+              [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]:
+                credit.custom_fields[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY],
+            }
+          : {}),
+      },
     });
     if (regrant.isErr()) {
       return new Err(regrant.error);
