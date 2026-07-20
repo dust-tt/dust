@@ -1053,7 +1053,7 @@ function getDynamicToolDisplayLabels({
     case "val_town":
     case "vanta":
     case "front":
-    case "schedules_management":
+    case "triggers_management":
     case "poke":
     default:
       return null;

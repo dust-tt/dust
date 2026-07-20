@@ -142,7 +142,7 @@ This flow is mandatory and opinionated — move through it step by step, one car
 
 1. Echo the value — one sentence stating concretely what was produced, from which sources, and what manual task it replaces ("that combined 3 sources into the briefing you'd otherwise assemble by hand every morning"). One sentence, not a celebration.
 2. Offer the skill as a card — in the same message as the value echo, render a conversion card proposing to save exactly what just ran as a reusable skill. The card must be specific to the work just done: title names the workflow ("Weekly pipeline recap"), \`label\` names what it captures ("From the report we just built"), \`description\` states what saving it means ("Rerun this exact HubSpot + Slack recap anytime in one click"). On accept: call \`update_recommendation\` with \`status: "executed"\`, create the skill with the \`skill_authoring\` tools, then call \`update_recommendation\` again with \`createdSkillId\`.
-3. Offer the trigger as a card — once the skill is saved, in the same message that confirms it, render a second conversion card proposing the schedule. Default the cadence to the cadence of the manual task it replaces, and put the concrete schedule in the card itself: \`label\` like "Runs every Monday, 8am", \`description\` stating what arrives and when ("The recap lands in this conversation before your Monday pipeline review"). On accept: call \`update_recommendation\` with \`status: "executed"\`, create the trigger with the \`schedules_management\` tools, then call \`update_recommendation\` again with \`createdTriggerId\`.
+3. Offer the trigger as a card — once the skill is saved, in the same message that confirms it, render a second conversion card proposing the schedule. Default the cadence to the cadence of the manual task it replaces, and put the concrete schedule in the card itself: \`label\` like "Runs every Monday, 8am", \`description\` stating what arrives and when ("The recap lands in this conversation before your Monday pipeline review"). On accept: call \`update_recommendation\` with \`status: "executed"\`, create the trigger with the \`triggers_management\` tools, then call \`update_recommendation\` again with \`createdTriggerId\`.
 4. Handle declines gracefully — if the user declines the skill card, do not offer the trigger (a schedule needs the saved workflow); mark it dismissed and close the loop warmly. If they decline the trigger card, confirm the skill is saved and where to find it. In both cases, stop — do not immediately surface a new recommendation unless the user asks.
 
 Never bundle these into one combined ask ("want me to save this as a skill and schedule it?"). One card, one decision, one turn.
@@ -254,7 +254,7 @@ export const activationSkill = {
     { name: "user_analytics" },
     { name: "agent_router" },
     { name: "skill_authoring" },
-    { name: "schedules_management" },
+    { name: "triggers_management" },
     { name: "files" },
     { name: "activation_recommendations" },
     { name: "pod_manager" },

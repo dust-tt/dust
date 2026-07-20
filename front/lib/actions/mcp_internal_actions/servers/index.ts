@@ -62,7 +62,6 @@ import { default as salesforceServer } from "@app/lib/api/actions/servers/salesf
 import { default as salesloftServer } from "@app/lib/api/actions/servers/salesloft";
 import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
 import { default as sandboxFunctionsServer } from "@app/lib/api/actions/servers/sandbox_functions";
-import { default as schedulesManagementServer } from "@app/lib/api/actions/servers/schedules_management";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
 import { default as skillAuthoringServer } from "@app/lib/api/actions/servers/skill_authoring";
 import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
@@ -74,6 +73,7 @@ import { default as soundStudio } from "@app/lib/api/actions/servers/sound_studi
 import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_generator";
 import { default as statuspageServer } from "@app/lib/api/actions/servers/statuspage";
 import { default as toolsetsServer } from "@app/lib/api/actions/servers/toolsets";
+import { default as triggersManagementServer } from "@app/lib/api/actions/servers/triggers_management";
 import { default as ukgReadyServer } from "@app/lib/api/actions/servers/ukg_ready";
 import { default as userAnalyticsServer } from "@app/lib/api/actions/servers/user_analytics";
 import { default as userMentionsServer } from "@app/lib/api/actions/servers/user_mentions";
@@ -253,8 +253,8 @@ export async function getInternalMCPServer(
       return skillManagementServer(auth, toolContext);
     case "skill_authoring":
       return skillAuthoringServer(auth, toolContext);
-    case "schedules_management":
-      return schedulesManagementServer(auth, toolContext);
+    case "triggers_management":
+      return triggersManagementServer(auth, toolContext);
     case "productboard":
       return productboardServer(auth, toolContext);
     case "pod_manager":
