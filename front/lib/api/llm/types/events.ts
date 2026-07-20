@@ -1,7 +1,9 @@
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import type { AgentMessagePhase } from "@app/types/assistant/agent_message_content";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type {
+  AgentMessagePhase,
+  AgentProviderPassthroughContentType,
+} from "@app/types/assistant/agent_message_content";
 
 export type Delta = {
   delta: string;
@@ -86,7 +88,7 @@ export interface ReasoningGeneratedEvent {
 // interpreting it.
 export interface ProviderPassthroughEvent {
   type: "provider_passthrough";
-  content: { provider: ModelProviderIdType; block: unknown };
+  content: AgentProviderPassthroughContentType["value"];
   metadata: LLMClientMetadata;
 }
 

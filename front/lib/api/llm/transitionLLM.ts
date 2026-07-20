@@ -55,7 +55,7 @@ import type {
   SystemTextMessage,
   ToolCallResultPart,
 } from "@app/lib/model_constructors/types/input/messages";
-import { NOOP_LAB } from "@app/lib/model_constructors/types/labs";
+import { GOOGLE_LAB, NOOP_LAB } from "@app/lib/model_constructors/types/labs";
 import { NOOP_MODEL } from "@app/lib/model_constructors/types/models";
 import type {
   ErrorType,
@@ -64,6 +64,7 @@ import type {
   TextEvent as NewTextEvent,
   ToolCallEvent as NewToolCallEvent,
   NonDeltaResponseEvent,
+  PassthroughLab,
 } from "@app/lib/model_constructors/types/output/events";
 import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
@@ -108,6 +109,45 @@ function mapReasoningEffort(
       return "high";
     default:
       assertNever(effort);
+  }
+}
+
+// The persisted passthrough `provider` uses the legacy provider-id vocabulary
+// (e.g. `google_ai_studio`), while BaseMessage carries the model's `Lab`. Only
+// `google_ai_studio` diverges (-> `google`); the rest are identical.
+function passthroughProviderToLab(
+  provider: AgentProviderPassthroughContentType["value"]["provider"]
+): PassthroughLab {
+  switch (provider) {
+    case "google_ai_studio":
+      return GOOGLE_LAB;
+    case "openai":
+    case "anthropic":
+    case "mistral":
+    case "deepseek":
+    case "noop":
+      return provider;
+    default:
+      assertNever(provider);
+  }
+}
+
+// Inverse of `passthroughProviderToLab`: maps a new-router `PassthroughLab` back
+// to the legacy provider-id vocabulary persisted on the passthrough content.
+function labToPassthroughProvider(
+  lab: PassthroughLab
+): AgentProviderPassthroughContentType["value"]["provider"] {
+  switch (lab) {
+    case "google":
+      return "google_ai_studio";
+    case "openai":
+    case "anthropic":
+    case "mistral":
+    case "deepseek":
+    case "noop":
+      return lab;
+    default:
+      assertNever(lab);
   }
 }
 
@@ -225,7 +265,7 @@ export function toBaseMessages(
                   role: "assistant",
                   type: "provider_passthrough",
                   content: {
-                    provider: c.value.provider,
+                    provider: passthroughProviderToLab(c.value.provider),
                     block: c.value.block,
                   },
                 },
@@ -539,7 +579,10 @@ export function convertToOldEvent(
     case "provider_passthrough":
       return {
         type: "provider_passthrough",
-        content: event.content,
+        content: {
+          provider: labToPassthroughProvider(event.content.provider),
+          block: event.content.block,
+        },
         metadata,
       };
 

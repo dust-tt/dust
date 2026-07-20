@@ -21,6 +21,7 @@ import {
   logToolSearchResult,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/tool_search_logging";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
+import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
 import type {
   ErrorEvent,
   ErrorType,
@@ -330,7 +331,7 @@ export function serverToolBlockToProviderPassthroughEvent(
 ): ProviderPassthroughEvent {
   return {
     type: "provider_passthrough",
-    content: { provider: metadata.lab, block },
+    content: { provider: ANTHROPIC_LAB, block },
     metadata,
   };
 }

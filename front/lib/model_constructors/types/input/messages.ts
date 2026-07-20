@@ -1,4 +1,4 @@
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type { PassthroughLab } from "@app/lib/model_constructors/types/output/events";
 
 const CACHE_OPTIONS = ["short", "long"] as const;
 export type CacheOption = (typeof CACHE_OPTIONS)[number];
@@ -73,7 +73,7 @@ export type BaseAssistantProviderPassthroughMessage = {
   role: "assistant";
   type: "provider_passthrough";
   content: {
-    provider: ModelProviderIdType;
+    provider: PassthroughLab;
     block: unknown;
   };
 };
