@@ -53,7 +53,6 @@ IMPORTANT: You must include both REASONING: and SCORE: labels. The score MUST ap
 1. **Correct Tool Usage**: Did the analyst call edit_skill with the right fields?
    - instructionEdits for instruction improvements and tool reference changes
    - Tool reference changes must add/remove inline <tool id="..." name="..."/> tags in instructionEdits content
-   - toolEdits should not be used in final edit_skill calls
 2. **Suggestion Quality**: Are the suggestions specific, actionable, and well-reasoned?
    - Does the analysis field explain WHY the change is needed?
    - Is the suggested content appropriate and well-written?

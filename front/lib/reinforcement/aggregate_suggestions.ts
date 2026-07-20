@@ -53,7 +53,7 @@ It is ok to simply call no tool if all suggestions are minor.
   aggregation_rules: `
 Start by grouping suggestions by skill, then within each skill group by topic:
 - For instruction edits, group by coherent theme within the skill (e.g. tone, tool usage, formatting). Suggestions that address different topics MUST be kept as separate suggestions — do NOT merge unrelated topics into one suggestion.
-- For inline tool reference changes, group by the target <tool> reference within each skill. Tool references are instruction edits, so NEVER output separate tool edits.
+- For inline tool reference changes, group by the target <tool> reference within each skill. Tool references are instruction edits.
 - For agent-facing description edits, create AT MOST ONE description-edit suggestion per skill. When multiple drafts target the description, merge them into a single coherent replacement. Max description size is ${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters.
 NEVER create more than one suggestion per (skill, topic) pair.
 
@@ -78,7 +78,6 @@ There may be situations where suggestions are co-dependent. For example, there m
 You are provided all of the attributes associated with a conversation suggestion. You MUST use these EXACT attributes to create the final suggestion.
 The exceptions are:
 - The "analysis", "title", and "sourceSuggestionIds" attributes; these MUST be newly authored for each final suggestion.
-- Legacy "toolEdits"; convert these into instruction edits that add or remove the corresponding inline <tool> tag. Do NOT include "toolEdits" in the final edit_skill call.
 
 For "analysis": Provide a user-facing explanation of why the suggestion is impactful and how many conversations support it. The end user does NOT care about the technical considerations behind your thought process.
 
@@ -105,13 +104,6 @@ function formatSuggestion(s: SkillSuggestionType): string {
           xml += `<instructionEdit targetBlockId="${escapeXml(e.targetBlockId)}" type="${escapeXml(e.type)}"><content>${escapeXml(e.content)}</content></instructionEdit>`;
         }
         xml += "</instructionEdits>";
-      }
-      if (s.suggestion.toolEdits?.length) {
-        xml += "<toolEdits>";
-        for (const t of s.suggestion.toolEdits) {
-          xml += `<toolEdit action="${escapeXml(t.action)}" toolId="${escapeXml(t.toolId)}"/>`;
-        }
-        xml += "</toolEdits>";
       }
       if (s.suggestion.agentFacingDescriptionEdit) {
         xml += `<agentFacingDescriptionEdit><content>${escapeXml(s.suggestion.agentFacingDescriptionEdit.content)}</content></agentFacingDescriptionEdit>`;

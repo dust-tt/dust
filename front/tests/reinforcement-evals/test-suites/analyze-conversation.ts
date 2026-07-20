@@ -265,12 +265,11 @@ Score 3 if the suggestion provides clear, actionable instructions that would pre
       judgeCriteria: `The analyst MUST call edit_skill with instructionEdits to suggest adding the Web Search tool
 as an inline <tool id="mcp_web_search" name="Web Search" /> reference in skill "skill_research". The suggestion should:
 - Discover available tools before authoring the inline <tool> reference
-- Add Web Search through an instruction edit; it MUST NOT include toolEdits
+- Add Web Search through an instruction edit
 - Include an analysis explaining that the skill's purpose requires web search for current information
 - Reference that the agent couldn't fulfill the user's core request without this capability
 
 Score 0 if no edit_skill with instructionEdits call is made.
-Score 0 if the suggestion uses toolEdits instead of an inline <tool> tag.
 Score 0-1 if edit_skill is called but with the wrong tool ID or wrong skill ID.
 Score 2 if the correct inline tool reference is suggested but the analysis is weak.
 Score 3 if the correct inline tool reference is suggested with a clear, well-reasoned analysis.`,
@@ -330,12 +329,11 @@ Score 3 if the correct inline tool reference is suggested with a clear, well-rea
       ],
       judgeCriteria: `The analyst MUST call edit_skill with instructionEdits to remove the inline Calendar tool
 reference (<tool id="mcp_calendar" name="Calendar" />) from skill "skill_code_review". The suggestion should:
-- Remove Calendar through an instruction edit; it MUST NOT include toolEdits
+- Remove Calendar through an instruction edit
 - Include an analysis explaining that Calendar is irrelevant to code review and caused confusion
 - Reference the failed tool call and user complaint
 
 Score 0 if no edit_skill with instructionEdits call is made.
-Score 0 if the suggestion uses toolEdits instead of removing the inline <tool> tag.
 Score 0-1 if edit_skill is called but it removes the wrong inline tool reference.
 Score 2 if the correct inline tool removal is suggested but the analysis is weak.
 Score 3 if the correct removal is suggested with a clear analysis referencing the confusion it caused.`,
@@ -380,12 +378,10 @@ Score 3 if the correct removal is suggested with a clear analysis referencing th
       ],
       judgeCriteria: `The analyst MUST call edit_skill with instructionEdits for skill "skill_bug_reporter".
 The instruction edit must add the JIRA capability as an inline <tool id="mcp_jira" name="JIRA" /> reference and update the surrounding instructions to use JIRA for filing bugs.
-The suggestion MUST NOT include toolEdits.
 
 The inline tool reference and instruction change are co-dependent and should be expressed together in the instruction edit.
 
 Score 0 if no edit_skill with instructionEdits call is made.
-Score 0 if the suggestion uses toolEdits instead of an inline <tool> tag.
 Score 1 if the inline JIRA tag is added but the instructions don't explain how to use it, or the analysis is weak.
 Score 2 if the JIRA tag and instructions are both present but the instruction/tool connection isn't explicit.
 Score 3 if the instruction edit clearly adds JIRA as an inline tool reference, tells the skill to file bugs through it, and explains the mismatch.`,
@@ -898,7 +894,7 @@ The analyst MUST call edit_skill with an agentFacingDescriptionEdit for skill "s
 - Stay focused on routing signals (when to use vs. not), not behavior (which lives in the instructions)
 
 Score 0 if no edit_skill call with agentFacingDescriptionEdit is made for skill_payment_resolver.
-Score 0 if the suggestion is bundled with instructionEdits or toolEdits — per the analysis prompt, description edits should be a standalone edit_skill call when the routing problem is the only issue (the instructions and tools here are correct).
+Score 0 if the suggestion is bundled with instructionEdits — per the analysis prompt, description edits should be a standalone edit_skill call when the routing problem is the only issue (the instructions and tools here are correct).
 Score 1 if a description edit is made but it does not narrow the scope (still vague) OR does not steer away from billing/address-style requests.
 Score 2 if the new description narrows the skill but the language is weak or does not call out what to skip.
 Score 3 if the new description clearly limits the skill to payment failures + chargebacks AND explicitly tells the agent not to use it for unrelated billing/account-management changes.`,

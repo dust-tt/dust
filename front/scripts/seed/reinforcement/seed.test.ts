@@ -155,13 +155,12 @@ describe("reinforcement seed script integration test", () => {
     });
     expect(withInlineToolReference).toBeDefined();
 
-    // Second suggestion has 2 instruction edits and no tool edits
+    // Second suggestion has 2 instruction edits
     const withOnlyInstructionEdits = skillSuggestions.find((s) => {
       const json = s.toJSON();
       return (
         json.suggestion.instructionEdits &&
-        json.suggestion.instructionEdits.length === 2 &&
-        (!json.suggestion.toolEdits || json.suggestion.toolEdits.length === 0)
+        json.suggestion.instructionEdits.length === 2
       );
     });
     expect(withOnlyInstructionEdits).toBeDefined();
