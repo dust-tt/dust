@@ -11,10 +11,11 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type {
-  ExtraConfigType,
-  OAuthConnectionType,
-  OAuthUseCase,
+import {
+  type ExtraConfigType,
+  isValidUrl,
+  type OAuthConnectionType,
+  type OAuthUseCase,
 } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
@@ -22,6 +23,15 @@ import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
+
+function hasValidClientCredentials(extraConfig: ExtraConfigType): boolean {
+  return !!(
+    extraConfig.client_id &&
+    extraConfig.client_secret &&
+    extraConfig.servicenow_instance_url &&
+    isValidUrl(extraConfig.servicenow_instance_url)
+  );
+}
 
 export class ServiceNowOAuthProvider implements BaseOAuthStrategyProvider {
   requiresWorkspaceConnectionForPersonalAuth = true;
@@ -72,12 +82,9 @@ export class ServiceNowOAuthProvider implements BaseOAuthStrategyProvider {
       if (extraConfig.mcp_server_id) {
         return true;
       }
+      return hasValidClientCredentials(extraConfig);
     } else if (useCase === "platform_actions") {
-      return !!(
-        extraConfig.client_id &&
-        extraConfig.client_secret &&
-        extraConfig.servicenow_instance_url
-      );
+      return hasValidClientCredentials(extraConfig);
     }
     return Object.keys(extraConfig).length === 0;
   }
@@ -188,12 +195,12 @@ export class ServiceNowOAuthProvider implements BaseOAuthStrategyProvider {
             "Failed to get connection metadata: " + connectionRes.error.message
           );
         }
-        const connection = connectionRes.value.connection;
+        const { connection } = connectionRes.value;
 
         return {
+          ...restConfig,
           client_id: connection.metadata.client_id,
           servicenow_instance_url: connection.metadata.servicenow_instance_url,
-          ...restConfig,
         };
       }
     }

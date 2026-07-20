@@ -45,7 +45,7 @@ impl ServicenowConnectionProvider {
     }
 }
 
-/// ServiceNow OAuth documentation: https://docs.servicenow.com/bundle/latest-release/page/administer/security/concept/c_OAuthApplications.html
+/// ServiceNow OAuth documentation: https://www.servicenow.com/docs/r/platform-security/authentication/c_OAuthApplications.html
 /// Note: ServiceNow OAuth requires an instance URL which should be stored in connection metadata.
 #[async_trait]
 impl Provider for ServicenowConnectionProvider {
