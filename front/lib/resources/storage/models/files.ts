@@ -178,6 +178,12 @@ ShareableFileModel.init(
       { fields: ["workspaceId", "fileId"], unique: true },
       { fields: ["workspaceId", "shareScope"], unique: false },
       { fields: ["token"], unique: true },
+      // Standalone index on the `fileId` foreign key. Without it, the
+      // `ON DELETE RESTRICT` referential-integrity check triggered when a
+      // `files` row is deleted sequentially scans `shareable_files` (the
+      // composite `(workspaceId, fileId)` index cannot serve a `fileId`-only
+      // lookup), which times out workspace deletions on large tables.
+      { fields: ["fileId"], concurrently: true },
     ],
   }
 );
