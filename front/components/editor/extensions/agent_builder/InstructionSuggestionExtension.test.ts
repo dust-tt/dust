@@ -519,12 +519,12 @@ describe("InstructionSuggestionExtension", () => {
       const dimmedDeletion = editor.view.dom.querySelector(
         ".suggestion-deletion"
       );
-      expect(dimmedDeletion?.className).toContain("bg-red-50");
+      expect(dimmedDeletion?.className).toContain("bg-warning-50");
 
       const dimmedAddition = editor.view.dom.querySelector(
         ".suggestion-addition"
       );
-      expect(dimmedAddition?.className).toContain("bg-blue-50");
+      expect(dimmedAddition?.className).toContain("bg-highlight-50");
 
       // Highlight the suggestion.
       editor.commands.setHighlightedSuggestion("deco-highlight");
@@ -532,12 +532,12 @@ describe("InstructionSuggestionExtension", () => {
       const highlightedDeletion = editor.view.dom.querySelector(
         ".suggestion-deletion"
       );
-      expect(highlightedDeletion?.className).toContain("bg-red-100");
+      expect(highlightedDeletion?.className).toContain("bg-warning-100");
 
       const highlightedAddition = editor.view.dom.querySelector(
         ".suggestion-addition"
       );
-      expect(highlightedAddition?.className).toContain("bg-blue-100");
+      expect(highlightedAddition?.className).toContain("bg-highlight-100");
     });
 
     it("should render multiple deletion/addition pairs for disjoint changes in one block", () => {
