@@ -474,6 +474,7 @@ export function useDetectSkillsFromRepo({
           if (signal.aborted) {
             return;
           }
+          setDetectedSkills([]);
           if (isAPIErrorResponse(err)) {
             setDetectError(err.error.message);
             setRepositoryNotFound(
@@ -501,6 +502,14 @@ export function useDetectSkillsFromRepo({
     [triggerDetect]
   );
 
+  const clearDetection = useCallback(() => {
+    lastDetectedUrl.current = null;
+    setDetectedSkills([]);
+    setDetectError(null);
+    setRepositoryNotFound(false);
+    setIsDetecting(false);
+  }, []);
+
   return {
     detectedSkills,
     isDetecting,
@@ -508,6 +517,7 @@ export function useDetectSkillsFromRepo({
     repositoryNotFound,
     triggerDetect,
     retryDetect,
+    clearDetection,
   };
 }
 

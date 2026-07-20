@@ -11,7 +11,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  GithubLogo,
+  GithubMonoLogo,
 } from "@dust-tt/sparkle";
 
 interface GitHubConnectionRowProps {
@@ -37,7 +37,7 @@ export function GitHubConnectionRow({
 
   return (
     <div className="flex items-center gap-3 rounded-xl border border-border p-3">
-      <Avatar icon={GithubLogo} size="sm" />
+      <Avatar icon={GithubMonoLogo} size="sm" />
       <div className="flex grow flex-col">
         <span className="heading-sm text-foreground">GitHub</span>
         <span className="text-sm text-muted-foreground">

@@ -39,6 +39,7 @@ export function ImportFromRepositoryTab({
     repositoryNotFound,
     triggerDetect,
     retryDetect,
+    clearDetection,
   } = useDetectSkillsFromRepo({ owner });
 
   const { connection, isConnectionLoading, mutateConnection } =
@@ -128,6 +129,8 @@ export function ImportFromRepositoryTab({
           repoUrlField.onChange(trimmed);
           if (trimmed && parseGitHubRepoUrl(trimmed).isOk()) {
             triggerDetect(trimmed);
+          } else {
+            clearDetection();
           }
         }}
         onBlur={repoUrlField.onBlur}
