@@ -7,6 +7,7 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import {
+  findCategoryFromNavigationHistory,
   findDataSourceViewFromNavigationHistory,
   findSpaceFromNavigationHistory,
   getLatestNodeFromNavigationHistory,
@@ -123,6 +124,11 @@ export const DataSourceBuilderSelector = ({
     [navigationHistory]
   );
 
+  const currentCategory = useMemo(
+    () => findCategoryFromNavigationHistory(navigationHistory),
+    [navigationHistory]
+  );
+
   // Automatically select the first space if there is only one
   useEffect(() => {
     if (filteredSpaces.length === 1) {
@@ -152,16 +158,20 @@ export const DataSourceBuilderSelector = ({
       parentId: undefined,
     };
 
-    if (searchScope === "node" && currentSpace) {
-      const dsv = dataSourceViews.filter(
-        (dsv) => dsv.spaceId === currentSpace.sId
-      );
-
-      if (currentDataSourceView) {
+    if (currentSpace) {
+      if (searchScope === "node" && currentDataSourceView) {
         filter.dataSourceViewIdsBySpaceId = {
           [currentSpace.sId]: [currentDataSourceView.sId],
         };
       } else {
+        // Restrict to the data source views of the currently browsed category
+        // (e.g. "Websites") so that search results aren't drowned in unrelated
+        // resource types (connectors, folders, etc.).
+        const dsv = dataSourceViews.filter(
+          (dsv) =>
+            dsv.spaceId === currentSpace.sId &&
+            (!currentCategory || dsv.category === currentCategory)
+        );
         filter.dataSourceViewIdsBySpaceId = {
           [currentSpace.sId]: dsv.map((dsv) => dsv.sId),
         };
@@ -182,6 +192,7 @@ export const DataSourceBuilderSelector = ({
 
     return filter;
   }, [
+    currentCategory,
     currentDataSourceView,
     currentNode,
     currentSpace,
@@ -253,13 +264,14 @@ export const DataSourceBuilderSelector = ({
 
   const breadcrumbItems: BreadcrumbsItem[] = useMemo(() => {
     if (shouldShowSearch && currentSpace) {
-      // When searching in space scope, show only up to space level
+      // Space-scope search still filters by currentCategory, so keep it in the breadcrumb.
       if (searchScope === "space") {
         const spaceIndex = navigationHistory.findIndex(
           (entry) => entry.type === "space"
         );
+        const lastIndex = currentCategory ? spaceIndex + 1 : spaceIndex;
         const spaceNavigation =
-          spaceIndex >= 0 ? navigationHistory.slice(0, spaceIndex + 1) : [];
+          spaceIndex >= 0 ? navigationHistory.slice(0, lastIndex + 1) : [];
 
         return spaceNavigation.map((entry, index) => ({
           ...getBreadcrumbConfig(entry),
@@ -288,6 +300,7 @@ export const DataSourceBuilderSelector = ({
     shouldShowSearch,
     currentSpace,
     searchScope,
+    currentCategory,
   ]);
 
   if (filteredSpaces.length === 0) {

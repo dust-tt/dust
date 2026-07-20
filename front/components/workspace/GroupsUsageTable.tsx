@@ -29,8 +29,9 @@ interface GroupCapCellProps {
   onSave: (group: GroupRowData, limit: GroupSpendLimit) => Promise<void>;
 }
 
-// Per-row editable cap cell. Empty input clears the cap (unlimited); a positive
-// integer sets it. Reverts to the current value when nothing is persisted.
+// Per-row editable cap cell. Empty input clears the cap (unlimited); 0 blocks
+// the group's pool access; a positive integer sets a custom limit. Reverts to
+// the current value when nothing is persisted.
 function GroupCapCell({ group, readOnly, onSave }: GroupCapCellProps) {
   const [isEditing, setIsEditing] = useState(false);
   const current = group.poolCapAwuCredits;
@@ -45,7 +46,7 @@ function GroupCapCell({ group, readOnly, onSave }: GroupCapCellProps) {
       return;
     }
     const parsed = Number(trimmed);
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed === current) {
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed === current) {
       return;
     }
     await onSave(group, { kind: "limited", awuCredits: parsed });

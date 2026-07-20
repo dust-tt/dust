@@ -358,13 +358,16 @@ export const createAgentMessages = async (
         // instead of an UPDATE. MessageModel's exclusivity constraint forces us to anchor the v+1
         // row with a new AgentMessageModel (status "cancelled", it never ran).
         const agentConfiguration = metadata.agentMessage.configuration;
-        const agentMessageRow = await AgentMessageModel.create({
-          status: "cancelled",
-          agentConfigurationId: agentConfiguration.sId,
-          agentConfigurationVersion: agentConfiguration.version,
-          workspaceId: owner.id,
-          skipToolsValidation: metadata.agentMessage.skipToolsValidation,
-        });
+        const agentMessageRow = await AgentMessageModel.create(
+          {
+            status: "cancelled",
+            agentConfigurationId: agentConfiguration.sId,
+            agentConfigurationVersion: agentConfiguration.version,
+            workspaceId: owner.id,
+            skipToolsValidation: metadata.agentMessage.skipToolsValidation,
+          },
+          { transaction }
+        );
         const messageRow = await MessageModel.create(
           {
             sId: generateRandomModelSId(),

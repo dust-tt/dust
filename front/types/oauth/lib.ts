@@ -230,7 +230,7 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "Freshworks Organization URL",
             value: undefined,
             helpMessage:
-              "Your Freshworks organization URL (e.g., yourcompany.myfreshworks.com).",
+              "Your Freshworks organization URL (e.g., yourcompany.myfreshservice.com).",
           },
           freshservice_domain: {
             label: "Freshservice Domain URL",
@@ -409,6 +409,15 @@ export function getProviderRequiredOAuthCredentialInputs({
             helpMessage: "The scope(s) to request (space separated list).",
             validator: isValidScope,
           },
+          resource: {
+            label: "OAuth Resource / Audience",
+            value: undefined,
+            helpMessage:
+              "The resource or audience identifier (RFC 8707) your MCP " +
+              "server expects in the access token. Required if your OAuth " +
+              "server issues audience-scoped tokens.",
+            validator: isValidOptionalResource,
+          },
           token_endpoint_auth_method: {
             label: "Token Endpoint Authentication Method",
             value: "client_secret_post",
@@ -566,6 +575,11 @@ export function isValidTokenEndpointAuthMethod(s: unknown): s is string {
     typeof s === "string" &&
     (s === "client_secret_post" || s === "client_secret_basic")
   );
+}
+
+export function isValidOptionalResource(s: unknown): s is string {
+  // Optional (RFC 8707): most OAuth servers do not require an audience/resource.
+  return typeof s === "string";
 }
 
 export function isValidSnowflakeAccount(s: unknown): s is string {

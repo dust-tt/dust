@@ -12,6 +12,9 @@ export const MAX_FILE_SIZE = 64 * 1024 * 1024; // 64 MB max original file size
 
 export const GOOGLE_DRIVE_TOOL_NAME = "google_drive" as const;
 
+export const GOOGLE_DRIVE_SCOPES =
+  "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly";
+
 const capabilitiesSchema = z
   .object({
     canEdit: z.boolean().optional(),
@@ -672,8 +675,7 @@ export function getGoogleDriveServerMetadata() {
       authorization: {
         provider: "google_drive",
         supported_use_cases: ["personal_actions", "platform_actions"],
-        scope:
-          "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly",
+        scope: GOOGLE_DRIVE_SCOPES,
       },
       icon: "DriveLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-drive",
@@ -685,10 +687,8 @@ export function getGoogleDriveServerMetadata() {
       displayLabels: t.displayLabels,
       toolCostCategory: t.toolCostCategory,
       freeUsage: t.freeUsage,
+      stake: t.stake,
     })),
-    tools_stakes: Object.fromEntries(
-      Object.values(ALL_TOOLS_METADATA).map((t) => [t.name, t.stake])
-    ),
   } as const satisfies ServerMetadata;
 }
 

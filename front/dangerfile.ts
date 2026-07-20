@@ -707,6 +707,7 @@ async function checkDiffFiles() {
     "front/lib/models/plan.ts",
     "front/lib/models/provider_credential.ts",
     "front/lib/resources/storage/models/group_memberships.ts",
+    "front/lib/resources/storage/models/group_permissions.ts",
     "front/lib/resources/storage/models/group_spaces.ts",
     "front/lib/resources/storage/models/groups.ts",
     "front/lib/resources/storage/models/keys.ts",

@@ -3,18 +3,18 @@ import {
   APIConnectionError,
   APIError,
 } from "@anthropic-ai/sdk";
-import type { MessageBatchResult } from "@anthropic-ai/sdk/resources/messages/batches";
+import type { BetaMessageBatchResult } from "@anthropic-ai/sdk/resources/beta/messages/batches";
 import type {
-  CacheCreation,
-  Message,
-  MessageDeltaUsage,
-  RawContentBlockDeltaEvent,
-  RawContentBlockStartEvent,
-  RawContentBlockStopEvent,
-  RawMessageDeltaEvent,
-  RawMessageStartEvent,
-  RawMessageStreamEvent,
-} from "@anthropic-ai/sdk/resources/messages/messages";
+  BetaCacheCreation,
+  BetaMessage,
+  BetaMessageDeltaUsage,
+  BetaRawContentBlockDeltaEvent,
+  BetaRawContentBlockStartEvent,
+  BetaRawContentBlockStopEvent,
+  BetaRawMessageDeltaEvent,
+  BetaRawMessageStartEvent,
+  BetaRawMessageStreamEvent,
+} from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import type { OutputEventConverters } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 import {
   accumulatedReasoningToReasoningEvent,
@@ -149,9 +149,9 @@ function makeStubConverters(): OutputEventConverters {
 
 // Yields the provided events as an async stream, optionally throwing at the end.
 async function* streamOf(
-  events: RawMessageStreamEvent[],
+  events: BetaRawMessageStreamEvent[],
   throwAtEnd?: unknown
-): AsyncGenerator<RawMessageStreamEvent> {
+): AsyncGenerator<BetaRawMessageStreamEvent> {
   for (const event of events) {
     yield event;
   }
@@ -277,7 +277,7 @@ describe("messageStartToResponseIdEvent", () => {
     const event = {
       type: "message_start",
       message: { id: "msg_123" },
-    } as RawMessageStartEvent;
+    } as BetaRawMessageStartEvent;
     expect(messageStartToResponseIdEvent(metadata, event)).toEqual({
       type: "response_id",
       content: { responseId: "msg_123" },
@@ -399,15 +399,16 @@ describe("invalidJsonToolCallToToolCallEvent", () => {
 
 describe("messageDeltaUsageToTokenUsageEvent", () => {
   it("splits cache creation by TTL when the breakdown is present", () => {
-    const usage: MessageDeltaUsage = {
+    const usage: BetaMessageDeltaUsage = {
       cache_creation_input_tokens: 10,
       cache_read_input_tokens: 20,
       input_tokens: 100,
+      iterations: null,
       output_tokens: 50,
       output_tokens_details: { thinking_tokens: 15 },
       server_tool_use: null,
     };
-    const cacheCreation: CacheCreation = {
+    const cacheCreation: BetaCacheCreation = {
       ephemeral_1h_input_tokens: 6,
       ephemeral_5m_input_tokens: 4,
     };
@@ -429,10 +430,11 @@ describe("messageDeltaUsageToTokenUsageEvent", () => {
   });
 
   it("reports the flat cache-creation total as cacheCreated when no breakdown is present", () => {
-    const usage: MessageDeltaUsage = {
+    const usage: BetaMessageDeltaUsage = {
       cache_creation_input_tokens: 10,
       cache_read_input_tokens: 20,
       input_tokens: 100,
+      iterations: null,
       output_tokens: 50,
       output_tokens_details: { thinking_tokens: 15 },
       server_tool_use: null,
@@ -453,10 +455,11 @@ describe("messageDeltaUsageToTokenUsageEvent", () => {
   });
 
   it("rolls reasoning into standardOutput when there is no breakdown", () => {
-    const usage: MessageDeltaUsage = {
+    const usage: BetaMessageDeltaUsage = {
       cache_creation_input_tokens: null,
       cache_read_input_tokens: null,
       input_tokens: null,
+      iterations: null,
       output_tokens: 40,
       output_tokens_details: null,
       server_tool_use: null,
@@ -597,7 +600,7 @@ describe("contentBlockStartToEvents", () => {
       type: "content_block_start",
       index: 0,
       content_block: { type: "text", text: "", citations: [] },
-    } as RawContentBlockStartEvent;
+    } as BetaRawContentBlockStartEvent;
     const [events, state] = contentBlockStartToEvents(
       event,
       null,
@@ -613,7 +616,7 @@ describe("contentBlockStartToEvents", () => {
       type: "content_block_start",
       index: 1,
       content_block: { type: "thinking", thinking: "", signature: "" },
-    } as RawContentBlockStartEvent;
+    } as BetaRawContentBlockStartEvent;
     const [events, state] = contentBlockStartToEvents(
       event,
       null,
@@ -635,7 +638,7 @@ describe("contentBlockStartToEvents", () => {
         name: "lookup",
         input: {},
       },
-    } as RawContentBlockStartEvent;
+    } as BetaRawContentBlockStartEvent;
     const [events, state] = contentBlockStartToEvents(
       event,
       null,
@@ -663,7 +666,7 @@ describe("contentBlockStartToEvents", () => {
       type: "content_block_start",
       index: 4,
       content_block: { type: "redacted_thinking", data: "xxx" },
-    } as RawContentBlockStartEvent;
+    } as BetaRawContentBlockStartEvent;
     const prior = { index: 0, accumulator: "abc", type: "text" as const };
     const [events, state] = contentBlockStartToEvents(
       event,
@@ -685,7 +688,7 @@ describe("contentBlockStartToEvents", () => {
         name: "tool_search_tool_bm25",
         input: {},
       },
-    } as RawContentBlockStartEvent;
+    } as BetaRawContentBlockStartEvent;
     const [events, state] = contentBlockStartToEvents(
       event,
       null,
@@ -716,7 +719,7 @@ describe("contentBlockStartToEvents", () => {
           ],
         },
       },
-    } as RawContentBlockStartEvent;
+    } as BetaRawContentBlockStartEvent;
     const [events, state] = contentBlockStartToEvents(
       event,
       null,
@@ -752,7 +755,7 @@ describe("contentBlockDeltaToEvents", () => {
       type: "content_block_delta",
       index: 0,
       delta: { type: "text_delta", text: "x" },
-    } as RawContentBlockDeltaEvent;
+    } as BetaRawContentBlockDeltaEvent;
     expect(
       contentBlockDeltaToEvents(event, null, metadata, realConverters)
     ).toEqual([[], null]);
@@ -763,7 +766,7 @@ describe("contentBlockDeltaToEvents", () => {
       type: "content_block_delta",
       index: 0,
       delta: { type: "text_delta", text: "lo" },
-    } as RawContentBlockDeltaEvent;
+    } as BetaRawContentBlockDeltaEvent;
     const state = { index: 0, accumulator: "hel", type: "text" as const };
     const [events, nextState] = contentBlockDeltaToEvents(
       event,
@@ -782,7 +785,7 @@ describe("contentBlockDeltaToEvents", () => {
       type: "content_block_delta",
       index: 0,
       delta: { type: "thinking_delta", thinking: "more" },
-    } as RawContentBlockDeltaEvent;
+    } as BetaRawContentBlockDeltaEvent;
     const state = {
       index: 0,
       accumulator: "think ",
@@ -805,7 +808,7 @@ describe("contentBlockDeltaToEvents", () => {
       type: "content_block_delta",
       index: 0,
       delta: { type: "input_json_delta", partial_json: '{"a":' },
-    } as RawContentBlockDeltaEvent;
+    } as BetaRawContentBlockDeltaEvent;
     const state = {
       index: 0,
       accumulator: "",
@@ -828,7 +831,7 @@ describe("contentBlockDeltaToEvents", () => {
       type: "content_block_delta",
       index: 0,
       delta: { type: "signature_delta", signature: "abc" },
-    } as RawContentBlockDeltaEvent;
+    } as BetaRawContentBlockDeltaEvent;
     const state = {
       index: 0,
       accumulator: "",
@@ -850,7 +853,7 @@ describe("contentBlockDeltaToEvents", () => {
       type: "content_block_delta",
       index: 0,
       delta: { type: "signature_delta", signature: "abc" },
-    } as RawContentBlockDeltaEvent;
+    } as BetaRawContentBlockDeltaEvent;
     const state = { index: 0, accumulator: "x", type: "text" as const };
     const [events, nextState] = contentBlockDeltaToEvents(
       event,
@@ -877,7 +880,7 @@ describe("contentBlockDeltaToEvents", () => {
           end_char_index: 1,
         },
       },
-    } as RawContentBlockDeltaEvent;
+    } as BetaRawContentBlockDeltaEvent;
     const state = { index: 0, accumulator: "x", type: "text" as const };
     const [events, nextState] = contentBlockDeltaToEvents(
       event,
@@ -894,7 +897,7 @@ describe("contentBlockStopToEvents", () => {
   const stopEvent = {
     type: "content_block_stop",
     index: 0,
-  } as RawContentBlockStopEvent;
+  } as BetaRawContentBlockStopEvent;
 
   it("returns no events when there is no open block", () => {
     expect(
@@ -1098,10 +1101,11 @@ describe("contentBlockStopToEvents", () => {
 });
 
 describe("messageDeltaToEvents", () => {
-  const usage: MessageDeltaUsage = {
+  const usage: BetaMessageDeltaUsage = {
     cache_creation_input_tokens: null,
     cache_read_input_tokens: null,
     input_tokens: null,
+    iterations: null,
     output_tokens: 5,
     output_tokens_details: null,
     server_tool_use: null,
@@ -1112,7 +1116,8 @@ describe("messageDeltaToEvents", () => {
       type: "message_delta",
       delta: { stop_reason: "end_turn", stop_sequence: null },
       usage,
-    } as RawMessageDeltaEvent;
+      context_management: null,
+    } as BetaRawMessageDeltaEvent;
     expect(messageDeltaToEvents(event, metadata, realConverters)).toEqual([
       [],
       usage,
@@ -1124,7 +1129,8 @@ describe("messageDeltaToEvents", () => {
       type: "message_delta",
       delta: { stop_reason: "max_tokens", stop_sequence: null },
       usage,
-    } as RawMessageDeltaEvent;
+      context_management: null,
+    } as BetaRawMessageDeltaEvent;
     const [events, forwardedUsage] = messageDeltaToEvents(
       event,
       metadata,
@@ -1140,7 +1146,8 @@ describe("messageDeltaToEvents", () => {
       type: "message_delta",
       delta: { stop_reason: null, stop_sequence: null },
       usage,
-    } as RawMessageDeltaEvent;
+      context_management: null,
+    } as BetaRawMessageDeltaEvent;
     expect(messageDeltaToEvents(event, metadata, realConverters)[0]).toEqual(
       []
     );
@@ -1148,10 +1155,11 @@ describe("messageDeltaToEvents", () => {
 });
 
 describe("rawOutputToEvents", () => {
-  const tokenUsage: MessageDeltaUsage = {
+  const tokenUsage: BetaMessageDeltaUsage = {
     cache_creation_input_tokens: 0,
     cache_read_input_tokens: 0,
     input_tokens: 3,
+    iterations: null,
     output_tokens: 2,
     output_tokens_details: null,
     server_tool_use: null,
@@ -1164,27 +1172,27 @@ describe("rawOutputToEvents", () => {
           {
             type: "message_start",
             message: { id: "msg_1" },
-          } as RawMessageStartEvent,
+          } as BetaRawMessageStartEvent,
           {
             type: "content_block_start",
             index: 0,
             content_block: { type: "text", text: "", citations: [] },
-          } as RawMessageStreamEvent,
+          } as BetaRawMessageStreamEvent,
           {
             type: "content_block_delta",
             index: 0,
             delta: { type: "text_delta", text: "Hi" },
-          } as RawMessageStreamEvent,
+          } as BetaRawMessageStreamEvent,
           {
             type: "content_block_stop",
             index: 0,
-          } as RawMessageStreamEvent,
+          } as BetaRawMessageStreamEvent,
           {
             type: "message_delta",
             delta: { stop_reason: "end_turn", stop_sequence: null },
             usage: tokenUsage,
-          } as RawMessageStreamEvent,
-          { type: "message_stop" } as RawMessageStreamEvent,
+          } as BetaRawMessageStreamEvent,
+          { type: "message_stop" } as BetaRawMessageStreamEvent,
         ]),
         metadata,
         realConverters
@@ -1227,7 +1235,7 @@ describe("rawOutputToEvents", () => {
                 output_tokens: 1,
               },
             },
-          } as RawMessageStartEvent,
+          } as BetaRawMessageStartEvent,
           {
             type: "message_delta",
             delta: { stop_reason: "end_turn", stop_sequence: null },
@@ -1239,8 +1247,8 @@ describe("rawOutputToEvents", () => {
               output_tokens_details: { thinking_tokens: 0 },
               server_tool_use: null,
             },
-          } as RawMessageStreamEvent,
-          { type: "message_stop" } as RawMessageStreamEvent,
+          } as BetaRawMessageStreamEvent,
+          { type: "message_stop" } as BetaRawMessageStreamEvent,
         ]),
         metadata,
         realConverters
@@ -1269,7 +1277,7 @@ describe("rawOutputToEvents", () => {
             {
               type: "message_start",
               message: { id: "msg_1" },
-            } as RawMessageStartEvent,
+            } as BetaRawMessageStartEvent,
           ],
           new APIError(429, {}, "slow down", undefined, null)
         ),
@@ -1295,12 +1303,12 @@ describe("rawOutputToEvents", () => {
                 name: "search",
                 input: {},
               },
-            } as RawMessageStreamEvent,
+            } as BetaRawMessageStreamEvent,
             {
               type: "content_block_delta",
               index: 0,
               delta: { type: "input_json_delta", partial_json: "{bad" },
-            } as RawMessageStreamEvent,
+            } as BetaRawMessageStreamEvent,
           ],
           new AnthropicError(INVALID_TOOL_JSON_MESSAGE)
         ),
@@ -1340,12 +1348,12 @@ describe("rawOutputToEvents", () => {
                 name: "search",
                 input: {},
               },
-            } as RawMessageStreamEvent,
+            } as BetaRawMessageStreamEvent,
             {
               type: "content_block_delta",
               index: 0,
               delta: { type: "input_json_delta", partial_json: "{bad" },
-            } as RawMessageStreamEvent,
+            } as BetaRawMessageStreamEvent,
           ],
           bareToolJsonParseError()
         ),
@@ -1375,7 +1383,7 @@ describe("rawOutputToEvents", () => {
             {
               type: "message_start",
               message: { id: "msg_1" },
-            } as RawMessageStartEvent,
+            } as BetaRawMessageStartEvent,
           ],
           bareToolJsonParseError()
         ),
@@ -1389,7 +1397,7 @@ describe("rawOutputToEvents", () => {
   it("omits the token_usage event when no message_delta carried usage", async () => {
     const events = await collect(
       rawOutputToEvents(
-        streamOf([{ type: "message_stop" } as RawMessageStreamEvent]),
+        streamOf([{ type: "message_stop" } as BetaRawMessageStreamEvent]),
         metadata,
         realConverters
       )
@@ -1399,7 +1407,7 @@ describe("rawOutputToEvents", () => {
 });
 
 describe("messageToEvents", () => {
-  function messageWith(overrides: Partial<Message>): Message {
+  function messageWith(overrides: Partial<BetaMessage>): BetaMessage {
     return {
       id: "msg_1",
       type: "message",
@@ -1417,7 +1425,7 @@ describe("messageToEvents", () => {
         server_tool_use: null,
       },
       ...overrides,
-    } as Message;
+    } as BetaMessage;
   }
 
   it("converts text, thinking and tool_use blocks in order", () => {
@@ -1427,7 +1435,7 @@ describe("messageToEvents", () => {
         { type: "thinking", thinking: "hmm", signature: "sig-1" },
         { type: "tool_use", id: "tu-1", name: "search", input: { q: "cats" } },
       ],
-    } as Partial<Message>);
+    } as Partial<BetaMessage>);
 
     const events = messageToEvents(message, metadata, realConverters);
     expect(events.map((e) => e.type)).toEqual([
@@ -1451,7 +1459,7 @@ describe("messageToEvents", () => {
         { type: "text", text: "hi", citations: [] },
         { type: "tool_use", id: "tu-1", name: "n", input: {} },
       ],
-    } as Partial<Message>);
+    } as Partial<BetaMessage>);
     const events = messageToEvents(message, metadata, realConverters);
     const success = events.find((e) => e.type === "success");
     expect(success).toMatchObject({
@@ -1475,7 +1483,7 @@ describe("messageToEvents", () => {
   it("skips block types that are not surfaced", () => {
     const message = messageWith({
       content: [{ type: "redacted_thinking", data: "xxx" }],
-    } as Partial<Message>);
+    } as Partial<BetaMessage>);
     const events = messageToEvents(message, metadata, realConverters);
     expect(events.map((e) => e.type)).toEqual([
       "response_id",
@@ -1501,7 +1509,7 @@ describe("messageToEvents", () => {
     };
     const message = messageWith({
       content: [serverToolUseBlock, toolSearchResultBlock],
-    } as Partial<Message>);
+    } as Partial<BetaMessage>);
     const events = messageToEvents(message, metadata, realConverters);
     expect(events.filter((e) => e.type === "provider_passthrough")).toEqual([
       {
@@ -1519,7 +1527,7 @@ describe("messageToEvents", () => {
 });
 
 describe("batchResultToEvents", () => {
-  function succeededResult(): MessageBatchResult {
+  function succeededResult(): BetaMessageBatchResult {
     const message = {
       id: "msg_1",
       type: "message",
@@ -1529,6 +1537,8 @@ describe("batchResultToEvents", () => {
       stop_reason: "end_turn",
       stop_sequence: null,
       container: null,
+      context_management: null,
+      diagnostics: null,
       stop_details: null,
       usage: {
         cache_creation: null,
@@ -1536,12 +1546,14 @@ describe("batchResultToEvents", () => {
         cache_read_input_tokens: 0,
         inference_geo: null,
         input_tokens: 1,
+        iterations: null,
         output_tokens: 1,
         output_tokens_details: null,
         server_tool_use: null,
         service_tier: null,
+        speed: null,
       },
-    } as Message;
+    } as BetaMessage;
     return { type: "succeeded", message };
   }
 
@@ -1566,7 +1578,7 @@ describe("batchResultToEvents", () => {
         type: "error",
         error: { type: "api_error", message: "upstream blew up" },
       },
-    } as MessageBatchResult;
+    } as BetaMessageBatchResult;
     const events = batchResultToEvents(result, metadata, realConverters);
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
@@ -1576,7 +1588,7 @@ describe("batchResultToEvents", () => {
   });
 
   it("maps a canceled result to a stream_error event", () => {
-    const result = { type: "canceled" } as MessageBatchResult;
+    const result = { type: "canceled" } as BetaMessageBatchResult;
     const events = batchResultToEvents(result, metadata, realConverters);
     expect(events[0]).toMatchObject({
       type: "error",
@@ -1585,7 +1597,7 @@ describe("batchResultToEvents", () => {
   });
 
   it("maps an expired result to a stream_error event", () => {
-    const result = { type: "expired" } as MessageBatchResult;
+    const result = { type: "expired" } as BetaMessageBatchResult;
     const events = batchResultToEvents(result, metadata, realConverters);
     expect(events[0]).toMatchObject({
       type: "error",

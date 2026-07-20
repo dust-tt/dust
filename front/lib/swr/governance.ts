@@ -1,57 +1,33 @@
-import type { GovernancePermission } from "@app/types/group_permissions";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type {
+  GetGovernancePermissionsResponseBody,
+  GovernancePermissionsByKey,
+} from "@app/types/api/governance";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
-const TEST_GOVERNANCE_PERMISSIONS: GovernancePermission[] = [
-  {
-    permissionType: "create",
-    resourceType: "agent",
-    configuration: { scope: "everyone" },
-  },
-  {
-    permissionType: "publish",
-    resourceType: "agent",
-    configuration: { scope: "everyone" },
-  },
-  {
-    permissionType: "create",
-    resourceType: "skill",
-    configuration: { scope: "everyone" },
-  },
-  {
-    permissionType: "publish",
-    resourceType: "skill",
-    configuration: { scope: "everyone" },
-  },
-  {
-    permissionType: "invite",
-    resourceType: "frame",
-    configuration: { scope: "admins_only" },
-  },
-  {
-    permissionType: "publish",
-    resourceType: "frame",
-    configuration: { scope: "admins_only" },
-  },
-  {
-    permissionType: "admin",
-    resourceType: "billing",
-    configuration: { scope: "admins_only" },
-  },
-  {
-    permissionType: "admin",
-    resourceType: "identity",
-    configuration: { scope: "admins_only" },
-  },
-];
+// Stable empty reference so the default doesn't create a new object on every render.
+const EMPTY_GOVERNANCE_PERMISSIONS: GovernancePermissionsByKey = {};
 
-export function useGovernancePermissions(owner: LightWorkspaceType): {
-  governancePermissions: GovernancePermission[];
-  isLoading: boolean;
-} {
-  const governancePermissions = TEST_GOVERNANCE_PERMISSIONS;
+export function useGovernancePermissions(
+  owner: LightWorkspaceType,
+  { disabled }: { disabled?: boolean } = {}
+) {
+  const { fetcher } = useFetcher();
+  const url = `/api/w/${owner.sId}/governance-permissions`;
+
+  const governanceFetcher: Fetcher<GetGovernancePermissionsResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, governanceFetcher, {
+    disabled,
+  });
 
   return {
-    governancePermissions,
-    isLoading: false,
+    governancePermissions:
+      data?.governancePermissions ?? EMPTY_GOVERNANCE_PERMISSIONS,
+    isLoading: !error && !data && !disabled,
+    isGovernancePermissionsError: !!error,
+    mutateGovernancePermissions: mutate,
   };
 }

@@ -12,6 +12,7 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useKeys } from "@app/lib/swr/apps";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useTags } from "@app/lib/swr/tags";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
 import {
@@ -29,7 +30,7 @@ import {
 import { useMemo, useState } from "react";
 
 const DIMENSION_FILTERS: DropdownMenuFilterOption<AnalyticsScopeDimension>[] = (
-  ["user", "agent", "origin", "api_key"] as const
+  ["user", "agent", "origin", "api_key", "tag"] as const
 ).map((dimension) => ({
   value: dimension,
   label: SCOPE_DIMENSION_LABEL[dimension],
@@ -70,6 +71,11 @@ export function AnalyticsFilterDropdown({
     disabled: !isOpen || dimension !== "api_key",
   });
 
+  const { tags, isTagsLoading } = useTags({
+    owner,
+    disabled: !isOpen || dimension !== "tag",
+  });
+
   const entities: AnalyticsEntityFilter[] = useMemo(() => {
     const search = searchText.toLowerCase();
     const matches = (name: string) => name.toLowerCase().includes(search);
@@ -93,11 +99,15 @@ export function AnalyticsFilterDropdown({
         return keys
           .filter((key) => matches(key.name))
           .map((key) => ({ id: key.name, name: key.name }));
+      case "tag":
+        return tags
+          .filter((tag) => matches(tag.name))
+          .map((tag) => ({ id: tag.sId, name: tag.name }));
       default:
         assertNeverAndIgnore(dimension);
         return [];
     }
-  }, [dimension, searchText, members, agentConfigurations, keys]);
+  }, [dimension, searchText, members, agentConfigurations, keys, tags]);
 
   const selectedIds = useMemo(
     () => new Set((filter[dimension] ?? []).map((entity) => entity.id)),
@@ -107,7 +117,8 @@ export function AnalyticsFilterDropdown({
   const isLoading =
     (dimension === "user" && isMembersLoading) ||
     (dimension === "agent" && isAgentConfigurationsLoading) ||
-    (dimension === "api_key" && isKeysLoading);
+    (dimension === "api_key" && isKeysLoading) ||
+    (dimension === "tag" && isTagsLoading);
 
   return (
     <DropdownMenu

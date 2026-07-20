@@ -146,7 +146,7 @@ export function SharedFramePage() {
   if (isShareMetadataLoading) {
     return (
       <div className="flex h-dvh w-full items-center justify-center">
-        <Spinner size="xl" />
+        <Spinner size="lg" />
       </div>
     );
   }

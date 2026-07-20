@@ -173,9 +173,10 @@ async function listAvailableTools(
     runAgentData
   );
 
-  const skillServers = await getSkillServers(auth, {
+  const { skillServers, systemSkillServers } = await getSkillServers(auth, {
     agentConfiguration,
-    skills: [...systemSkills, ...enabledSkills],
+    enabledSkills,
+    systemSkills,
   });
 
   const mcpActions = await tryListMCPTools(
@@ -189,6 +190,7 @@ async function listAvailableTools(
     {
       jitServers,
       skillServers,
+      systemSkillServers,
     }
   );
 

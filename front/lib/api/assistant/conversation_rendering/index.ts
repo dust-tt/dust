@@ -1,5 +1,19 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
+import type {
+  ConversationPruningStats,
+  ConversationRenderingMetricsCaller,
+} from "@app/lib/api/assistant/conversation_rendering/instrumentation";
+import {
+  emitConversationRenderingError,
+  emitConversationRenderingMetrics,
+} from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
+import type {
+  InteractionWithTokens,
+  MessageWithTokens,
+} from "@app/lib/api/assistant/conversation_rendering/pruning";
+import { sumInteractionTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
+import { ConversationWindowState } from "@app/lib/api/assistant/conversation_rendering/window_state";
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -23,30 +37,58 @@ import type { CredentialsType } from "@app/types/provider";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { MessageWithTokens } from "./pruning";
-import {
-  getInteractionTokenCount,
-  progressivelyPruneInteraction,
-  prunePreviousInteractions,
-} from "./pruning";
 
-// When previous interactions pruning is enabled, we'll attempt to fully preserve this number of
-// interactions. This value was originally at 1 and bumped at 3 with the introduction of
-// gracefully_stopped agent message and user message steering to don't prune tool outputs too
-// aggressively.
-export const PREVIOUS_INTERACTIONS_TO_PRESERVE = 3;
+export { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering/window_state";
 
 // Fixed number of tokens assumed for image contents
 const IMAGE_CONTENT_TOKEN_COUNT = 3100;
 export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
 
-// Target ceiling (as a fraction of contextSize) for triggering previous-interactions pruning,
-// picked to sit safely below the customer-facing compaction warning (~70% of contextSize) rather
-// than the real ceiling, which sits at 68-99% depending on the model and otherwise leaves pruning
-// doing nothing until compaction has already fired. Kept independent of generationTokensCount,
-// which also doubles as the actual max_tokens sent to the provider.
+// Proactive pruning target as a fraction of contextSize, picked to sit below the customer-facing
+// compaction warning (~70%) rather than the real ceiling (68-99% depending on model), which would
+// otherwise leave pruning inactive until compaction has already fired. Applies to the whole
+// conversation, current interaction included. No separate, looser budget for it.
 export const PRUNING_TARGET_CONTEXT_UTILIZATION = 0.6;
+
+/**
+ * Replays the conversation chronologically so cleanup decisions are deterministic for every
+ * interaction prefix. Old tool results are pruned before interactions are dropped. Soft drops
+ * preserve the latest three interactions. Hard-budget pressure can drop every previous
+ * interaction. The current interaction is never dropped and its latest tool result is never
+ * pruned.
+ */
+function pruneConversationToBudget(
+  interactions: InteractionWithTokens[],
+  {
+    pruningBudget,
+    budgetForInteractions,
+    logDetails,
+  }: {
+    pruningBudget: number;
+    budgetForInteractions: number;
+    logDetails: Record<string, unknown>;
+  }
+): Result<
+  {
+    interactions: InteractionWithTokens[];
+    prunedContext: boolean;
+    stats: ConversationPruningStats;
+  },
+  Error
+> {
+  const state = ConversationWindowState.empty({
+    pruningBudget,
+    budgetForInteractions,
+    logDetails,
+  });
+
+  for (const interaction of interactions) {
+    state.append(interaction);
+  }
+
+  return state.fit();
+}
 
 export async function renderConversationForModel(
   auth: Authenticator,
@@ -62,6 +104,7 @@ export async function renderConversationForModel(
     onMissingAction = "inject-placeholder",
     agentConfiguration,
     enabledSkills,
+    metricsCaller,
   }: {
     leadingMessages?: ModelMessageTypeMultiActionsWithoutContentFragment[];
     conversation: ConversationType;
@@ -75,6 +118,10 @@ export async function renderConversationForModel(
     enablePreviousInteractionsPruning?: boolean;
     agentConfiguration?: AgentLoopExecutionData["agentConfiguration"];
     enabledSkills: EnabledSkill[];
+    // Opt-in StatsD emission. This function has callers with very different budgets (Dust app
+    // history injection, reinforcement batches, scripts) whose renders would skew the pruning
+    // dashboards, so only callers that name themselves are measured.
+    metricsCaller?: ConversationRenderingMetricsCaller;
   }
 ): Promise<
   Result<
@@ -152,45 +199,19 @@ export async function renderConversationForModel(
 
   const interactions = groupMessagesIntoInteractions(messagesWithTokens);
 
-  // Previous interactions get first, fixed claim on the token budget, independent of how big this
-  // turn's own new content happens to be. This is what keeps their rendering stable across turns.
-  // The budget prunePreviousInteractions works against never depends on a live, per-turn
-  // quantity. The current interaction (this turn's own new content, never previously cached)
-  // absorbs whatever budget remains, with its own progressive-pruning safety net below.
+  // Hard ceiling shared by every interaction combined: previous history plus the current,
+  // still-in-progress turn.
   const budgetForInteractions = allowedTokenCount - baseTokens;
 
-  // See PRUNING_TARGET_CONTEXT_UTILIZATION for why this trigger exists. Kept separate from
-  // budgetForInteractions (the real ceiling, used below for the current interaction's own safety
-  // net) and only applied when positive: a small-context model with a large prompt or many tools
-  // can push baseTokens past the target on its own, and forcing that negative number would make
-  // prunePreviousInteractions redact its protected floor as routine behavior, not a rare last
-  // resort.
+  // Only applied when positive: a small-context model with a large prompt/tools footprint can
+  // push baseTokens past the target alone, and a negative value would make the floor prune by
+  // default instead of as a last resort.
   const pruningTargetCeiling =
     model.contextSize * PRUNING_TARGET_CONTEXT_UTILIZATION - baseTokens;
-  const previousInteractionsPruningBudget =
+  const pruningBudget =
     pruningTargetCeiling > 0
       ? Math.min(budgetForInteractions, pruningTargetCeiling)
       : budgetForInteractions;
-
-  const previousInteractions = prunePreviousInteractions(
-    interactions.slice(0, -1),
-    previousInteractionsPruningBudget,
-    PREVIOUS_INTERACTIONS_TO_PRESERVE
-  );
-  const previousInteractionsTokens = previousInteractions.reduce(
-    (sum, interaction) => sum + getInteractionTokenCount(interaction),
-    0
-  );
-
-  let currentInteraction = interactions[interactions.length - 1];
-  let currentInteractionTokens = getInteractionTokenCount(currentInteraction);
-
-  // Ideally, the current interaction gets whatever's left after previousInteractions. But
-  // previousInteractions is capped by construction (see prunePreviousInteractions), so this can
-  // only go negative in the rare case where even the (redacted) floor alone didn't fit. In that
-  // case we still only require the current interaction to fit the full fixed pool on its own,
-  // matching the pre-existing hard safety net below.
-  const currentBudget = budgetForInteractions - previousInteractionsTokens;
 
   const logDetails = {
     workspaceId: conversation.owner.sId,
@@ -214,60 +235,33 @@ export async function renderConversationForModel(
     pokeUrl: `https://poke.dust.tt/${conversation.owner.sId}/conversation/${conversation.sId}`,
   };
 
-  if (currentInteractionTokens > currentBudget) {
-    // The last interaction does not fit within its ideal share of the token budget.
-    // We apply progressive pruning to that interaction until it fits.
-    currentInteraction = progressivelyPruneInteraction(
-      currentInteraction,
-      currentBudget
-    );
-    if (currentInteraction.prunedContext) {
-      logger.warn(
-        {
-          ...logDetails,
-          currentInteractionTokens,
-          currentBudget,
-        },
-        "Last tool result was pruned to fit in context window."
-      );
+  const pruneRes = pruneConversationToBudget(interactions, {
+    pruningBudget,
+    budgetForInteractions,
+    logDetails,
+  });
+  if (pruneRes.isErr()) {
+    if (metricsCaller) {
+      emitConversationRenderingError({
+        kind: "context_overflow",
+        caller: metricsCaller,
+        providerId: model.providerId,
+        modelId: model.modelId,
+      });
     }
-    currentInteractionTokens = getInteractionTokenCount(currentInteraction);
-    // The hard requirement is only that the current interaction fits the full fixed pool on its
-    // own: previousInteractions can still be trimmed further below (oldest first) to make room.
-    if (currentInteractionTokens > budgetForInteractions) {
-      logger.error(
-        {
-          ...logDetails,
-          failureStage: "interaction_exceeds_after_pruning",
-          currentInteractionTokens,
-          budgetForInteractions,
-        },
-        "Render Conversation V2: No interactions fit in context window."
-      );
-      return new Err(
-        new Error("Context window exceeded: at least one message is required")
-      );
-    }
+    return pruneRes;
   }
+  const {
+    interactions: prunedInteractions,
+    prunedContext,
+    stats: pruningStats,
+  } = pruneRes.value;
+  const totalTokens = sumInteractionTokens(prunedInteractions);
 
-  const prunedInteractions = [...previousInteractions, currentInteraction];
-
-  // Select interactions that fit within token budget.
-  const selected: MessageWithTokens[] = [];
-  let tokensUsed = baseTokens;
-
-  // Go backward through interactions.
-  for (let i = prunedInteractions.length - 1; i >= 0; i--) {
-    const interaction = prunedInteractions[i];
-
-    const interactionTokens = getInteractionTokenCount(interaction);
-    if (tokensUsed + interactionTokens <= allowedTokenCount) {
-      tokensUsed += interactionTokens;
-      selected.unshift(...interaction.messages);
-    } else {
-      break;
-    }
-  }
+  const selected: MessageWithTokens[] = prunedInteractions.flatMap(
+    (interaction) => interaction.messages
+  );
+  const tokensUsed = baseTokens + totalTokens;
 
   // Merge content fragments into user messages.
   for (let i = selected.length - 1; i >= 0; i--) {
@@ -297,19 +291,29 @@ export async function renderConversationForModel(
     }
   }
 
+  // Only reachable when the conversation had no messages to begin with: pruning never drops the
+  // current interaction, and the merge above throws before it could empty one out. Not a context
+  // window problem, despite living downstream of the budget machinery.
   if (selected.length === 0) {
     logger.error(
       {
         ...logDetails,
-        failureStage: "no_interactions_selected",
+        failureStage: "no_messages_to_render",
         tokensUsed,
         budgetForInteractions,
-        selectedMessageCount: selected.length,
       },
-      "Render Conversation V2: No interactions fit in context window."
+      "Render Conversation V2: conversation has no messages to render."
     );
+    if (metricsCaller) {
+      emitConversationRenderingError({
+        kind: "no_messages",
+        caller: metricsCaller,
+        providerId: model.providerId,
+        modelId: model.modelId,
+      });
+    }
     return new Err(
-      new Error("Context window exceeded: at least one message is required")
+      new Error("Conversation contains no messages: at least one is required")
     );
   }
 
@@ -325,9 +329,18 @@ export async function renderConversationForModel(
         message.role !== "content_fragment"
     );
 
-  const prunedContext = currentInteraction.prunedContext ?? false;
-
   const pruneSelectAndFinalizeMs = Date.now() - stepStart;
+
+  if (metricsCaller) {
+    emitConversationRenderingMetrics({
+      stats: pruningStats,
+      caller: metricsCaller,
+      providerId: model.providerId,
+      modelId: model.modelId,
+      contextSize: model.contextSize,
+      tokensUsed,
+    });
+  }
 
   logger.info(
     {

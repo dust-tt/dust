@@ -93,7 +93,10 @@ const columns: ColumnDef<UserCreditRowData>[] = [
     meta: { sizeRatio: 13 },
     cell: (info: UserCreditInfo) => (
       <DataTable.CellContent>
-        <CreditsCell credits={info.row.original.credits} />
+        <CreditsCell
+          credits={info.row.original.credits}
+          messageCount={info.row.original.messageCount}
+        />
       </DataTable.CellContent>
     ),
   },

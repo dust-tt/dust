@@ -14,6 +14,68 @@ export const SELECT_SKILL_SLASH_COMMAND_ACTION = "select-skill";
 export const SELECT_TOOL_SLASH_COMMAND_ACTION = "select-tool";
 export const RUN_COMMAND_SLASH_COMMAND_ACTION = "run-command";
 export const INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION = "insert-knowledge-node";
+export const MAX_RENDERED_CAPABILITY_ITEMS = 50;
+
+export interface CapabilitySearchIndexItem {
+  normalizedDescription?: string;
+  sortGroup?: number;
+  sortName: string;
+}
+
+export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
+  items,
+  query,
+  limit = MAX_RENDERED_CAPABILITY_ITEMS,
+}: {
+  items: T[];
+  query: string;
+  limit?: number;
+}): T[] {
+  const normalizedQuery = query.trim().toLowerCase();
+  const matches: { item: T; titleMatches: boolean }[] = [];
+
+  for (const item of items) {
+    const titleMatches =
+      normalizedQuery.length === 0 || subFilter(normalizedQuery, item.sortName);
+    const descriptionMatches =
+      normalizedQuery.length > 0 &&
+      item.normalizedDescription !== undefined &&
+      subFilter(normalizedQuery, item.normalizedDescription);
+
+    if (titleMatches || descriptionMatches) {
+      matches.push({ item, titleMatches });
+    }
+  }
+
+  const sortedMatches = matches.toSorted((a, b) => {
+    const groupComparison = (a.item.sortGroup ?? 0) - (b.item.sortGroup ?? 0);
+    if (groupComparison !== 0) {
+      return groupComparison;
+    }
+
+    if (normalizedQuery.length === 0) {
+      return a.item.sortName.localeCompare(b.item.sortName);
+    }
+
+    if (a.titleMatches !== b.titleMatches) {
+      return a.titleMatches ? -1 : 1;
+    }
+
+    if (a.titleMatches) {
+      return (
+        compareForFuzzySort(
+          normalizedQuery,
+          a.item.sortName,
+          b.item.sortName
+        ) || a.item.sortName.localeCompare(b.item.sortName)
+      );
+    }
+
+    return a.item.sortName.localeCompare(b.item.sortName);
+  });
+
+  return sortedMatches.slice(0, limit).map(({ item }) => item);
+}
 
 export type SlashCommandSkillSuggestion = Pick<
   SkillWithoutInstructionsAndToolsType,
@@ -105,35 +167,6 @@ export function matchesSlashCommandCapabilityQuery({
   );
 }
 
-export function sortSlashCommandCapabilityMatches<
-  T extends { description?: string; sortName: string },
->({ items, normalizedQuery }: { items: T[]; normalizedQuery: string }): T[] {
-  return items.toSorted((a, b) => {
-    if (normalizedQuery.length === 0) {
-      return a.sortName.localeCompare(b.sortName);
-    }
-
-    const aTitleMatch = subFilter(normalizedQuery, a.sortName);
-    const bTitleMatch = subFilter(normalizedQuery, b.sortName);
-
-    // Title matches rank above description-only matches.
-    if (aTitleMatch !== bTitleMatch) {
-      return aTitleMatch ? -1 : 1;
-    }
-
-    // Within title matches, use fuzzy sort on the title.
-    if (aTitleMatch) {
-      return (
-        compareForFuzzySort(normalizedQuery, a.sortName, b.sortName) ||
-        a.sortName.localeCompare(b.sortName)
-      );
-    }
-
-    // Both are description-only matches: sort alphabetically by title.
-    return a.sortName.localeCompare(b.sortName);
-  });
-}
-
 export function getToolSlashCommandLabel(tool: SlashCommandToolSuggestion) {
   return tool.label ?? getMcpServerViewDisplayName(tool);
 }
@@ -151,9 +184,6 @@ export function getSkillSlashCommandItem(
     icon: () => React.createElement(getSkillAvatarIcon(skill)),
     id: skill.sId,
     label: skill.name,
-    tooltip: skill.userFacingDescription
-      ? { description: skill.userFacingDescription }
-      : undefined,
   };
 }
 

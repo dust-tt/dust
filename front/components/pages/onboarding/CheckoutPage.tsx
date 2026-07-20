@@ -456,7 +456,7 @@ export function CheckoutPage() {
   if (!isSessionRefreshing && isInitialLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
-        <Spinner size="xl" />
+        <Spinner size="lg" />
       </main>
     );
   }

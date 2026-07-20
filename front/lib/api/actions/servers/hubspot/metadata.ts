@@ -6,25 +6,15 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-const ALL_OBJECTS = ["contacts", "companies", "deals", "owners"] as const;
 const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
 
-const searchableObjectTypes = [
-  "contacts",
-  "companies",
-  "deals",
-  "tasks",
-  "notes",
-  "meetings",
-  "calls",
-  "emails",
-  "products",
-  "line_items",
-  "quotes",
-  "feedback_submissions",
-  "tickets",
-  "leads",
-] as const;
+const objectTypeSchema = z
+  .string()
+  .describe(
+    `The HubSpot object type: a standard object type name, or — for custom ` +
+      `objects — the object type ID (e.g. "2-12345") or fully-qualified name, ` +
+      `discoverable via list_custom_object_schemas.`
+  );
 
 const filterSchema = z.object({
   propertyName: z.string().describe("The name of the property to search by."),
@@ -70,13 +60,28 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     description:
       "List all available properties for a Hubspot object. When creatableOnly is true, returns only properties that can be modified through forms (excludes hidden, calculated, read-only and file upload fields).",
     schema: {
-      objectType: z.enum(ALL_OBJECTS),
+      objectType: objectTypeSchema,
       creatableOnly: z.boolean().optional(),
     },
     stake: "never_ask",
     displayLabels: {
       running: "Retrieving HubSpot object properties",
       done: "Retrieve HubSpot object properties",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  list_custom_object_schemas: {
+    description:
+      "List all custom object types (schemas) defined in the HubSpot account, " +
+      "with their type IDs, fully-qualified names, and properties. Use this to " +
+      "discover the object type to pass to search_crm_objects, get_object_properties, " +
+      "create_custom_object, and update_custom_object.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing HubSpot custom object schemas",
+      done: "List HubSpot custom object schemas",
     },
     toolCostCategory: "advanced",
     freeUsage: false,
@@ -179,7 +184,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   search_crm_objects: {
     description:
       "Search, filter, read, open, or retrieve HubSpot records: contacts, companies, deals, " +
-      "leads, tickets, and activity records (tasks, notes, meetings, calls, emails). " +
+      "leads, tickets, activity records (tasks, notes, meetings, calls, emails), and custom objects. " +
       "Filter by any property to: open or read a single contact, company, or deal record " +
       "by its id (hs_object_id EQ <id>); find a contact or company by email; " +
       "find contacts at a company; search deals by close date or amount; " +
@@ -190,7 +195,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       "get_object_properties first to discover the exact values. " +
       "For comprehensive user activity across all types, use get_user_activity.",
     schema: {
-      objectType: z.enum(searchableObjectTypes),
+      objectType: objectTypeSchema,
       filters: z
         .array(filterSchema)
         .optional()
@@ -215,7 +220,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     description:
       "Export CRM objects of a given type to CSV, with filters, property selection, and row limits. The resulting file is available for table queries.",
     schema: {
-      objectType: z.enum(searchableObjectTypes),
+      objectType: objectTypeSchema,
       propertiesToExport: z
         .array(z.string())
         .min(1)
@@ -714,6 +719,28 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
+  create_custom_object: {
+    description:
+      "Create a new custom object record in Hubspot, with optional associations. " +
+      "Use list_custom_object_schemas to find the object type and its properties.",
+    schema: {
+      objectType: objectTypeSchema,
+      properties: z
+        .record(z.string())
+        .describe("An object containing the properties for the custom object."),
+      associations: z
+        .array(associationSchema)
+        .optional()
+        .describe("Optional array of associations to create."),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Creating HubSpot custom object",
+      done: "Create HubSpot custom object",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
   create_association: {
     description:
       "Create an association between two existing HubSpot objects (e.g., associate a contact with a company). " +
@@ -805,6 +832,27 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
+  update_custom_object: {
+    description:
+      "Update properties of a HubSpot custom object record by ID. Use " +
+      "list_custom_object_schemas to find the object type and its properties.",
+    schema: {
+      objectType: objectTypeSchema,
+      objectId: z.string().describe("The ID of the custom object to update."),
+      properties: z
+        .record(z.string())
+        .describe(
+          "An object containing the properties to update with their new values."
+        ),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Updating HubSpot custom object",
+      done: "Update HubSpot custom object",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
   update_task: {
     description:
       "Update properties of a HubSpot task by ID (e.g., hs_task_subject, hs_task_body, hs_timestamp, hs_task_priority, hs_task_status). Set hs_task_status to COMPLETED to mark the task as done.",
@@ -892,8 +940,6 @@ export const HUBSPOT_SERVER = {
     displayLabels: t.displayLabels,
     toolCostCategory: t.toolCostCategory,
     freeUsage: t.freeUsage,
+    stake: t.stake,
   })),
-  tools_stakes: Object.fromEntries(
-    Object.values(HUBSPOT_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
 } as const satisfies ServerMetadata;

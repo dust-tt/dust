@@ -13,40 +13,38 @@ export const SANDBOX_FUNCTIONS_SERVER_NAME = "sandbox_functions" as const;
 export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
   list: {
     description:
-      "List the sandbox functions published in the current pod, with their " +
+      "List the pod functions published in the current pod, with their " +
       "slug and description. Use the get tool to retrieve a function's input " +
       "and output schemas.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing sandbox functions...",
-      done: "Listed sandbox functions",
+      running: "Listing pod functions...",
+      done: "Listed pod functions",
     },
     toolCostCategory: "advanced",
     freeUsage: false,
   },
   get: {
     description:
-      "Get a sandbox function's input and output JSON schemas by its slug.",
+      "Get a pod function's input and output JSON schemas by its slug.",
     schema: {
       slug: z
         .string()
         .min(1)
-        .describe(
-          "The slug of the sandbox function, as shown by the list tool."
-        ),
+        .describe("The slug of the pod function, as shown by the list tool."),
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting sandbox function...",
-      done: "Got sandbox function",
+      running: "Getting pod function...",
+      done: "Got pod function",
     },
     toolCostCategory: "basic",
     freeUsage: true,
   },
   publish: {
     description:
-      "Publish a sandbox function from a TypeScript source file in the current pod. The source " +
+      "Publish a pod function from a TypeScript source file in the current pod. The source " +
       "must default-export a `fetch(request: Request): Promise<Response>` handler and export a " +
       "`schema` with zod `input` and `output`. It is bundled on the pod sandbox (only `zod` is " +
       "available to import) and its input and output JSON schemas are extracted from the `schema` " +
@@ -75,15 +73,15 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Publishing sandbox function...",
-      done: "Published sandbox function",
+      running: "Publishing pod function...",
+      done: "Published pod function",
     },
     toolCostCategory: "basic",
     freeUsage: true,
   },
   call: {
     description:
-      "Call a sandbox function published in the current pod by its slug, passing its input " +
+      "Call a pod function published in the current pod by its slug, passing its input " +
       "payload, and get back the function's output. Use the get tool first to see the function's " +
       "input schema. Input is validated inside the sandbox.",
     schema: {
@@ -91,7 +89,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
         .string()
         .min(1)
         .describe(
-          "The slug of the sandbox function to call, as shown by the list tool."
+          "The slug of the pod function to call, as shown by the list tool."
         ),
       input: z
         .record(z.unknown())
@@ -102,8 +100,34 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Calling sandbox function...",
-      done: "Called sandbox function",
+      running: "Calling pod function...",
+      done: "Called pod function",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  inspect_invocations: {
+    description:
+      "Inspect the most recent invocations of a pod function in the current pod, including " +
+      "their inputs, results, and errors.",
+    schema: {
+      slug: z
+        .string()
+        .min(1)
+        .describe("The slug of the pod function, as shown by the list tool."),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(20)
+        .optional()
+        .default(5)
+        .describe("Maximum number of recent invocations to return."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Inspecting pod function invocations...",
+      done: "Inspected pod function invocations",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -147,8 +171,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
         .string()
         .min(1)
         .describe(
-          "One SQL statement (SELECT or INSERT/UPDATE/DELETE). Multiple statements are " +
-            "rejected."
+          "A SINGLE SQL statement (SELECT or INSERT/UPDATE/DELETE); multiple statements " +
+            "are rejected, issue one call per statement."
         ),
     },
     stake: "never_ask",
@@ -175,7 +199,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
             "files tools (e.g. `pod-<id>/databases/chat.db.ts`)."
         ),
     },
-    stake: "low",
+    stake: "never_ask",
     displayLabels: {
       running: "Reconciling pod database...",
       done: "Reconciled pod database",
@@ -190,7 +214,7 @@ export const SANDBOX_FUNCTIONS_SERVER = {
     name: SANDBOX_FUNCTIONS_SERVER_NAME,
     version: "1.0.0",
     description:
-      "Sandbox functions: schema-typed callables bundled and run on the pod's " +
+      "Pod functions: schema-typed callables bundled and run on the pod's " +
       "sandbox.",
     icon: "CommandLineIcon",
     authorization: null,
@@ -203,11 +227,6 @@ export const SANDBOX_FUNCTIONS_SERVER = {
     displayLabels: t.displayLabels,
     toolCostCategory: t.toolCostCategory,
     freeUsage: t.freeUsage,
+    stake: t.stake,
   })),
-  tools_stakes: Object.fromEntries(
-    Object.values(SANDBOX_FUNCTIONS_TOOLS_METADATA).map((t) => [
-      t.name,
-      t.stake,
-    ])
-  ),
 } as const satisfies ServerMetadata;

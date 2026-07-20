@@ -19,6 +19,7 @@ import type { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { RichMention } from "@app/types/assistant/mentions";
 import { toMentionType } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -33,6 +34,7 @@ interface PodPageContentProps {
   podUiPreferences: PodUiScopedPreferences;
   setPodUiPreferences: (value: PodUiScopedPreferences) => void;
   mutatePodInfo: () => Promise<unknown>;
+  clientSideMCPServerIds?: string[];
 }
 
 export function PodPageContent({
@@ -41,6 +43,7 @@ export function PodPageContent({
   podUiPreferences,
   setPodUiPreferences,
   mutatePodInfo,
+  clientSideMCPServerIds,
 }: PodPageContentProps) {
   const owner = useWorkspace();
   const { user } = useAuth();
@@ -96,7 +99,8 @@ export function PodPageContent({
       input: string,
       mentions: RichMention[],
       contentFragments: ContentFragmentsType,
-      selectedMCPServerViewIds?: string[]
+      selectedMCPServerViewIds?: string[],
+      modelSelection?: ModelSelectionType
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({
@@ -113,8 +117,10 @@ export function PodPageContent({
           input,
           mentions: mentions.map(toMentionType),
           contentFragments,
+          clientSideMCPServerIds,
           selectedMCPServerViewIds,
           richMentions: mentions,
+          modelSelection,
         },
         spaceId: podInfo.sId,
         // Navigate as soon as the conversation exists; the first message is posted
@@ -160,6 +166,7 @@ export function PodPageContent({
       router,
       mutateConversations,
       createConversationWithMessage,
+      clientSideMCPServerIds,
     ]
   );
 

@@ -8,6 +8,7 @@ import {
   PLAN_CODE_CUSTOM_FIELD_KEY,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -16,7 +17,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import Metronome, { ConflictError } from "@metronome/sdk";
+import Metronome, { BadRequestError, ConflictError } from "@metronome/sdk";
 import type { Commit, ContractV2, Credit, V1 } from "@metronome/sdk/resources";
 import type { ContractRetrieveRateScheduleResponse } from "@metronome/sdk/resources/v1/contracts/contracts";
 import type { ProductListResponse } from "@metronome/sdk/resources/v1/contracts/products";
@@ -27,6 +28,7 @@ import type {
 } from "@metronome/sdk/resources/v1/customers";
 import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
 import type { IncomingHttpHeaders } from "http";
+import chunk from "lodash/chunk";
 import { z } from "zod";
 import type {
   MetronomeBalance,
@@ -169,6 +171,24 @@ export async function ingestMetronomeEvents(
 // ---------------------------------------------------------------------------
 
 /**
+ * The Metronome ingest alias for a workspace. Normally just the workspace
+ * sId, so usage events with `customer_id: workspaceId` match the customer
+ * created with that alias.
+ *
+ * In dev environments, it's possible to override it and extend with a
+ * custom suffix.
+ */
+export function getMetronomeIngestAlias(workspaceId: string): string {
+  const devEnvName = config.getDevEnvName();
+  return devEnvName ? `${workspaceId}-${devEnvName}` : workspaceId;
+}
+
+export function getMetronomeCustomerName(workspaceName: string): string {
+  const devEnvName = config.getDevEnvName();
+  return devEnvName ? `${workspaceName} (${devEnvName})` : workspaceName;
+}
+
+/**
  * Resolves how to address the Stripe billing-provider delivery method on a
  * customer config. When the Metronome org has multiple Stripe
  * DIRECT_TO_BILLING_PROVIDER connections, Metronome rejects the bare
@@ -189,8 +209,8 @@ function stripeDeliveryMethod():
 
 /**
  * Create a customer in Metronome, linked to an existing Stripe customer.
- * The workspace sId is set as an ingest alias so that usage events
- * with `customer_id: workspaceId` are automatically matched.
+ * The workspace's ingest alias (see `getMetronomeIngestAlias`) is set so that
+ * usage events with a matching `customer_id` are automatically matched.
  *
  * Handles 409 conflict by extracting the existing customer's ID.
  */
@@ -207,8 +227,8 @@ export async function createMetronomeCustomer({
 }): Promise<Result<{ metronomeCustomerId: string }, Error>> {
   try {
     const response = await getMetronomeClient().v1.customers.create({
-      name: workspaceName,
-      ingest_aliases: [workspaceId],
+      name: getMetronomeCustomerName(workspaceName),
+      ingest_aliases: [getMetronomeIngestAlias(workspaceId)],
       ...(stripeCustomerId
         ? {
             customer_billing_provider_configurations: [
@@ -394,7 +414,7 @@ export async function ensureMetronomeStripeBillingConfig({
 }
 
 /**
- * Find a Metronome customer by ingest alias (workspace sId).
+ * Find a Metronome customer by ingest alias (see `getMetronomeIngestAlias`).
  * Returns the Metronome customer ID if found, null if not.
  */
 export async function findMetronomeCustomerByAlias(
@@ -402,7 +422,7 @@ export async function findMetronomeCustomerByAlias(
 ): Promise<Result<string | null, Error>> {
   try {
     const page = await getMetronomeClient().v1.customers.list({
-      ingest_alias: workspaceId,
+      ingest_alias: getMetronomeIngestAlias(workspaceId),
     });
     const first = page.data[0];
     return new Ok(first?.id ?? null);
@@ -1494,35 +1514,6 @@ export async function getMetronomeSeatActiveSince({
 }
 
 /**
- * Fetch the assigned seat IDs on a SEAT_BASED subscription at `coveringDate`
- * (defaults to now), via the (untyped) getSubscriptionSeatsHistory endpoint.
- */
-export async function getMetronomeSubscriptionAssignedSeatIds({
-  metronomeCustomerId,
-  contractId,
-  subscriptionId,
-  coveringDate,
-}: {
-  metronomeCustomerId: string;
-  contractId: string;
-  subscriptionId: string;
-  // Defaults to `now`. Pass a future date to read the assignments projected
-  // at that point in time.
-  coveringDate?: Date;
-}): Promise<Result<string[], Error>> {
-  const stateResult = await getMetronomeSubscriptionSeatState({
-    metronomeCustomerId,
-    contractId,
-    subscriptionId,
-    coveringDate,
-  });
-  if (stateResult.isErr()) {
-    return new Err(stateResult.error);
-  }
-  return new Ok(stateResult.value.assignedSeatIds);
-}
-
-/**
  * Add and/or remove specific seat IDs on one or two SEAT_BASED subscriptions
  * in a single contracts.edit call.
  *
@@ -1537,6 +1528,9 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
  * - `removeUnassignedSeats`: seats to remove from `fromSubscriptionId` (pool
  *   reconciliation — consuming a pre-purchased slot)
  */
+// Metronome rejects any single contracts.edit carrying more than 1000 seat IDs.
+const MAX_SEAT_IDS_PER_EDIT = 1000;
+
 export async function updateSubscriptionSeats({
   metronomeCustomerId,
   contractId,
@@ -1571,76 +1565,96 @@ export async function updateSubscriptionSeats({
 
   const scheduleTime = startingAt ?? floorToHourISO(new Date());
 
-  const fromSeatUpdates = {
-    ...(removeSeatIds.length > 0
-      ? {
-          remove_seat_ids: [
-            { seat_ids: removeSeatIds, starting_at: scheduleTime },
-          ],
-        }
-      : {}),
-    ...(addUnassignedSeats > 0
-      ? {
-          add_unassigned_seats: [
-            { quantity: addUnassignedSeats, starting_at: scheduleTime },
-          ],
-        }
-      : {}),
-    ...(removeUnassignedSeats > 0
-      ? {
-          remove_unassigned_seats: [
-            { quantity: removeUnassignedSeats, starting_at: scheduleTime },
-          ],
-        }
-      : {}),
-    ...(hasFromSeatIds
-      ? { add_seat_ids: [{ seat_ids: addSeatIds, starting_at: scheduleTime }] }
-      : {}),
-  };
+  // Metronome caps each edit at 1000 seat IDs, so chunk adds/removes. Unassigned
+  // deltas go on the final edit, after every add has drained the pool.
+  const addChunks =
+    addSeatIds.length > 0 ? chunk(addSeatIds, MAX_SEAT_IDS_PER_EDIT) : [];
+  const removeChunks =
+    removeSeatIds.length > 0 ? chunk(removeSeatIds, MAX_SEAT_IDS_PER_EDIT) : [];
+  const editCount = Math.max(addChunks.length, removeChunks.length, 1);
 
-  const updateSubscriptions = [
-    ...(Object.keys(fromSeatUpdates).length > 0
-      ? [{ subscription_id: fromSubscriptionId, seat_updates: fromSeatUpdates }]
-      : []),
-    ...(toSubscriptionId && addSeatIds.length > 0
-      ? [
-          {
-            subscription_id: toSubscriptionId,
-            seat_updates: {
-              add_seat_ids: [
-                { seat_ids: addSeatIds, starting_at: scheduleTime },
-              ],
+  for (let i = 0; i < editCount; i++) {
+    const isLastEdit = i === editCount - 1;
+    const addChunk = addChunks[i] ?? [];
+    const removeChunk = removeChunks[i] ?? [];
+
+    const fromSeatUpdates = {
+      ...(removeChunk.length > 0
+        ? {
+            remove_seat_ids: [
+              { seat_ids: removeChunk, starting_at: scheduleTime },
+            ],
+          }
+        : {}),
+      ...(isLastEdit && addUnassignedSeats > 0
+        ? {
+            add_unassigned_seats: [
+              { quantity: addUnassignedSeats, starting_at: scheduleTime },
+            ],
+          }
+        : {}),
+      ...(isLastEdit && removeUnassignedSeats > 0
+        ? {
+            remove_unassigned_seats: [
+              { quantity: removeUnassignedSeats, starting_at: scheduleTime },
+            ],
+          }
+        : {}),
+      ...(!toSubscriptionId && addChunk.length > 0
+        ? { add_seat_ids: [{ seat_ids: addChunk, starting_at: scheduleTime }] }
+        : {}),
+    };
+
+    const updateSubscriptions = [
+      ...(Object.keys(fromSeatUpdates).length > 0
+        ? [
+            {
+              subscription_id: fromSubscriptionId,
+              seat_updates: fromSeatUpdates,
             },
-          },
-        ]
-      : []),
-  ];
+          ]
+        : []),
+      ...(toSubscriptionId && addChunk.length > 0
+        ? [
+            {
+              subscription_id: toSubscriptionId,
+              seat_updates: {
+                add_seat_ids: [
+                  { seat_ids: addChunk, starting_at: scheduleTime },
+                ],
+              },
+            },
+          ]
+        : []),
+    ];
 
-  if (updateSubscriptions.length === 0) {
-    return new Ok(undefined);
+    if (updateSubscriptions.length === 0) {
+      continue;
+    }
+
+    try {
+      await getMetronomeClient().v2.contracts.edit({
+        customer_id: metronomeCustomerId,
+        contract_id: contractId,
+        update_subscriptions: updateSubscriptions,
+      });
+    } catch (err) {
+      const error = normalizeError(err);
+      logger.error(
+        {
+          error,
+          metronomeCustomerId,
+          contractId,
+          fromSubscriptionId,
+          toSubscriptionId,
+        },
+        "[Metronome] Failed to update subscription seats"
+      );
+      return new Err(error);
+    }
   }
 
-  try {
-    await getMetronomeClient().v2.contracts.edit({
-      customer_id: metronomeCustomerId,
-      contract_id: contractId,
-      update_subscriptions: updateSubscriptions,
-    });
-    return new Ok(undefined);
-  } catch (err) {
-    const error = normalizeError(err);
-    logger.error(
-      {
-        error,
-        metronomeCustomerId,
-        contractId,
-        fromSubscriptionId,
-        toSubscriptionId,
-      },
-      "[Metronome] Failed to update subscription seats"
-    );
-    return new Err(error);
-  }
+  return new Ok(undefined);
 }
 
 // ---------------------------------------------------------------------------
@@ -3632,23 +3646,36 @@ export async function adjustSeatCreditBalances({
   }
 }
 
+// Chunk size for the `seat_ids` filter on seatBalances/list. Unrelated to
+// MAX_SEAT_IDS_PER_EDIT (a different endpoint's documented cap) — kept at the
+// same size as the page `limit` below since that's the only size we've
+// confirmed behaves correctly.
+const MAX_SEAT_IDS_PER_SEAT_BALANCES_QUERY = 100;
+
 /**
  * List per-seat balances for a SEAT_BASED contract.
  * Uses a raw fetch because the Metronome SDK does not yet expose this endpoint.
  * Returns one entry per seat_id (user sId), with balance (remaining) and
  * starting_balance (full allocation for the period).
- * Pass `seatIds` to restrict the query to specific seats (no pagination needed).
+ *
+ * `seatIds` is mandatory: the unfiltered call (no `seat_ids`) has been
+ * observed in production to silently omit the large majority of seats on
+ * contracts with a few hundred+ seats — pagination itself terminates
+ * correctly (`next_page` legitimately goes null), the underlying list is
+ * just incomplete. Filtering by `seat_ids` reliably returns the seat's
+ * balance, so `seatIds` is chunked here and queried explicitly. Pass an
+ * empty array if there's nothing to look up — no request is made.
  */
 export async function listMetronomeSeatBalances({
   metronomeCustomerId,
   metronomeContractId,
   coveringDate = new Date(),
-  seatId,
+  seatIds,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
   coveringDate?: Date;
-  seatId?: string;
+  seatIds: string[];
 }): Promise<Result<MetronomeSeatBalance[], Error>> {
   if (!config.getMetronomeApiKey()) {
     return new Ok([]);
@@ -3659,31 +3686,224 @@ export async function listMetronomeSeatBalances({
       data?: unknown[];
       pagination?: {
         next_page?: string | null;
-        seats_available_for_next_page?: number | null;
       };
     };
-    const allBalances: MetronomeSeatBalance[] = [];
-    let nextPage: string | null | undefined = undefined;
-    do {
-      const page: SeatBalancesPage =
-        await getMetronomeClient().post<SeatBalancesPage>(
-          "/v1/contracts/seatBalances/list",
+
+    const fetchSeatIdsChunk = async (
+      seatIdsChunk: string[]
+    ): Promise<MetronomeSeatBalance[]> => {
+      const chunkBalances: MetronomeSeatBalance[] = [];
+      let nextPage: string | null | undefined = undefined;
+      do {
+        const page: SeatBalancesPage =
+          await getMetronomeClient().post<SeatBalancesPage>(
+            "/v1/contracts/seatBalances/list",
+            {
+              body: {
+                customer_id: metronomeCustomerId,
+                contract_id: metronomeContractId,
+                include_credits_and_commits: true,
+                covering_date: coveringDate.toISOString(),
+                limit: 100,
+                seat_ids: seatIdsChunk,
+                ...(nextPage ? { cursor: nextPage } : {}),
+              },
+            }
+          );
+        chunkBalances.push(...(page.data ?? []).filter(isMetronomeSeatBalance));
+        nextPage = page.pagination?.next_page ?? null;
+      } while (nextPage);
+      return chunkBalances;
+    };
+
+    // Single-seat fetch that never throws: any failure (an explicit
+    // rejection like "not found in contract subscriptions", or still no
+    // result) just means this seat_id is skipped, with a warning logged.
+    const fetchOneSeatId = async (
+      id: string
+    ): Promise<MetronomeSeatBalance[]> => {
+      try {
+        const result = await fetchSeatIdsChunk([id]);
+        if (result.length === 0) {
+          logger.warn(
+            { metronomeCustomerId, metronomeContractId, seatId: id },
+            "[Metronome] No seat balance found for seat_id — skipping"
+          );
+        }
+        return result;
+      } catch (err) {
+        logger.warn(
           {
-            body: {
-              customer_id: metronomeCustomerId,
-              contract_id: metronomeContractId,
-              include_credits_and_commits: true,
-              covering_date: coveringDate.toISOString(),
-              limit: 100,
-              ...(seatId ? { seat_ids: [seatId] } : {}),
-              ...(nextPage ? { cursor: nextPage } : {}),
-            },
-          }
+            metronomeCustomerId,
+            metronomeContractId,
+            seatId: id,
+            error: normalizeError(err),
+          },
+          "[Metronome] Seat balance not found for individual seat_id — skipping"
         );
-      allBalances.push(...(page.data ?? []).filter(isMetronomeSeatBalance));
-      const hasMore = (page.pagination?.seats_available_for_next_page ?? 0) > 0;
-      nextPage = hasMore ? page.pagination?.next_page : null;
-    } while (nextPage);
+        return [];
+      }
+    };
+
+    // When a batch fails, isolate the bad seat_id(s) by bisecting rather
+    // than querying every id individually. Metronome rejects a batch
+    // entirely if even one id in it isn't found on the contract, so with a
+    // large batch and only a handful of bad ids, halving repeatedly finds
+    // them in ~log2(N) rounds of (still-batched) calls instead of N
+    // individual single-id calls.
+    //
+    // The two halves are fetched sequentially, not concurrently: since
+    // failures here are always caught (down to `fetchOneSeatId`, which never
+    // throws), a failure that isn't actually about a specific bad seat_id
+    // (429, 5xx, a Metronome incident) would otherwise keep bisecting both
+    // halves in parallel all the way to single-id calls with no cap on how
+    // many are in flight at once. Sequential recursion keeps the same
+    // log2(N)-round efficiency when only a few ids are bad, while capping
+    // in-flight calls to one per chunk.
+    const fetchSeatIdsBisect = async (
+      ids: string[]
+    ): Promise<MetronomeSeatBalance[]> => {
+      if (ids.length <= 1) {
+        return ids.length === 1 ? fetchOneSeatId(ids[0]) : [];
+      }
+      try {
+        return await fetchSeatIdsChunk(ids);
+      } catch {
+        const mid = Math.floor(ids.length / 2);
+        const left = await fetchSeatIdsBisect(ids.slice(0, mid));
+        const right = await fetchSeatIdsBisect(ids.slice(mid));
+        return [...left, ...right];
+      }
+    };
+
+    // Metronome's 400 body names exactly one bad seat_id per rejection, even
+    // when several ids in the batch are bad (e.g. "400 Seat abc123de45 not
+    // found in contract subscriptions"). Rather than parsing that message
+    // with a format-specific regex, test our own candidate ids for
+    // membership in it — this only relies on Metronome naming the id
+    // verbatim somewhere in the body, not on the surrounding wording.
+    const extractNamedBadSeatId = (
+      err: unknown,
+      candidateIds: string[]
+    ): string | null => {
+      if (!(err instanceof BadRequestError)) {
+        return null;
+      }
+      const body = err.error;
+      const message =
+        typeof body === "object" &&
+        body !== null &&
+        "message" in body &&
+        typeof body.message === "string"
+          ? body.message
+          : err.message;
+      return candidateIds.find((id) => message.includes(id)) ?? null;
+    };
+
+    // A freshly-added or -removed seat_id not yet synced to Metronome is by
+    // far the most common cause of a chunk rejection, and it's almost always
+    // just one or two ids. Cap the number of named-id peel-off attempts so a
+    // batch with many bad ids (or a rejection that doesn't name one at all,
+    // e.g. a 429/5xx) falls back to bisection instead of looping uselessly.
+    const MAX_NAMED_BAD_ID_RETRIES = 6;
+
+    // Resiliently fetch one chunk (up to 100 seat_ids):
+    //  1. Try the whole chunk. Metronome rejects the *entire* batch with a
+    //     400 if any single seat_id in it isn't found on the contract (e.g.
+    //     a removed/reassigned seat) — it doesn't just omit the bad id.
+    //     Since the rejection names the bad id, retry once per named id,
+    //     removing it from the batch — this resolves the common "a handful
+    //     of ids are bad" case in ~(bad id count + 1) calls. If the id can't
+    //     be identified from the error, or too many are bad, fall back to
+    //     bisecting to isolate the bad id(s) instead of losing every seat in
+    //     the batch.
+    //  2. Separately, some ids can be missing from an otherwise-successful
+    //     response with no error at all — Metronome has been observed to
+    //     non-deterministically omit a valid, balance-holding seat. Those
+    //     are retried individually once; if still missing, they're skipped.
+    const fetchSeatIdsChunkResilient = async (
+      seatIdsChunk: string[]
+    ): Promise<MetronomeSeatBalance[]> => {
+      let balances: MetronomeSeatBalance[];
+      try {
+        balances = await fetchSeatIdsChunk(seatIdsChunk);
+      } catch (err) {
+        if (seatIdsChunk.length <= 1) {
+          throw err;
+        }
+
+        let remaining = seatIdsChunk;
+        let lastErr = err;
+        const namedBadIds: string[] = [];
+        for (let i = 0; i < MAX_NAMED_BAD_ID_RETRIES; i++) {
+          const badId = extractNamedBadSeatId(lastErr, remaining);
+          if (!badId) {
+            break;
+          }
+          namedBadIds.push(badId);
+          remaining = remaining.filter((id) => id !== badId);
+          if (remaining.length === 0) {
+            logger.warn(
+              {
+                metronomeCustomerId,
+                metronomeContractId,
+                seatIds: namedBadIds,
+              },
+              "[Metronome] Seat_id(s) not found in contract — skipping (batch fully excluded)"
+            );
+            return [];
+          }
+          try {
+            const retried = await fetchSeatIdsChunk(remaining);
+            logger.warn(
+              {
+                metronomeCustomerId,
+                metronomeContractId,
+                seatIds: namedBadIds,
+              },
+              "[Metronome] Seat_id(s) not found in contract — skipped after targeted retry"
+            );
+            return retried;
+          } catch (retryErr) {
+            lastErr = retryErr;
+          }
+        }
+
+        // `remaining` already excludes every id we positively identified as
+        // bad along the way (even if the loop above never landed on a clean
+        // success) — bisect that instead of the original chunk so we don't
+        // waste rounds rediscovering ids we've already confirmed.
+        logger.warn(
+          {
+            metronomeCustomerId,
+            metronomeContractId,
+            namedBadIds,
+            error: normalizeError(lastErr),
+          },
+          "[Metronome] Seat balances chunk failed — bisecting to isolate bad seat_ids"
+        );
+        return fetchSeatIdsBisect(remaining);
+      }
+
+      const foundIds = new Set(balances.map((b) => b.seat_id));
+      const missingIds = seatIdsChunk.filter((id) => !foundIds.has(id));
+      if (missingIds.length > 0) {
+        const retried = await concurrentExecutor(missingIds, fetchOneSeatId, {
+          concurrency: 8,
+        });
+        balances = balances.concat(retried.flat());
+      }
+      return balances;
+    };
+
+    const seatIdsChunks = chunk(seatIds, MAX_SEAT_IDS_PER_SEAT_BALANCES_QUERY);
+    const chunkResults = await concurrentExecutor(
+      seatIdsChunks,
+      fetchSeatIdsChunkResilient,
+      { concurrency: 4 }
+    );
+    const allBalances: MetronomeSeatBalance[] = chunkResults.flat();
+
     return new Ok(allBalances);
   } catch (err) {
     const error = normalizeError(err);

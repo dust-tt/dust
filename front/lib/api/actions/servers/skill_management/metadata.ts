@@ -46,10 +46,6 @@ export const SKILL_MANAGEMENT_SERVER = {
     displayLabels: SKILL_MANAGEMENT_TOOLS_METADATA[key].displayLabels,
     toolCostCategory: SKILL_MANAGEMENT_TOOLS_METADATA[key].toolCostCategory,
     freeUsage: SKILL_MANAGEMENT_TOOLS_METADATA[key].freeUsage,
+    stake: SKILL_MANAGEMENT_TOOLS_METADATA[key].stake,
   })),
-  tools_stakes: Object.fromEntries(
-    (
-      Object.keys(SKILL_MANAGEMENT_TOOLS_METADATA) as SkillManagementToolKey[]
-    ).map((key) => [key, SKILL_MANAGEMENT_TOOLS_METADATA[key].stake])
-  ),
 } as const satisfies ServerMetadata;

@@ -1,6 +1,7 @@
 import { FilePreviewDialog } from "@app/components/file_explorer/FilePreviewDialog";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import {
+  fetchFileIdFromPath,
   getFileDownloadUrl,
   getFilePathDownloadUrl,
   getFilePathViewUrl,
@@ -25,10 +26,12 @@ interface PreviewableFile {
 
 type FilePreviewContextType = {
   openFilePreview: (file: PreviewableFile) => void;
+  resolveFileIdFromPath: (filePath: string) => Promise<string | null>;
 };
 
 const FilePreviewContext = createContext<FilePreviewContextType>({
   openFilePreview: () => {},
+  resolveFileIdFromPath: () => Promise.resolve(null),
 });
 
 interface FilePreviewProviderProps {
@@ -83,13 +86,21 @@ export function FilePreviewProvider({
     [owner]
   );
 
+  const resolveFileIdFromPath = useCallback(
+    (filePath: string) => fetchFileIdFromPath({ owner, filePath }),
+    [owner]
+  );
+
   const handleDownload = useCallback(async () => {
     if (previewState?.downloadUrl) {
       window.open(previewState.downloadUrl, "_blank");
     }
   }, [previewState?.downloadUrl]);
 
-  const contextValue = useMemo(() => ({ openFilePreview }), [openFilePreview]);
+  const contextValue = useMemo(
+    () => ({ openFilePreview, resolveFileIdFromPath }),
+    [openFilePreview, resolveFileIdFromPath]
+  );
 
   return (
     <FilePreviewContext.Provider value={contextValue}>

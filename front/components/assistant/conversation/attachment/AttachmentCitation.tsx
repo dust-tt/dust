@@ -74,7 +74,7 @@ export function AttachmentCitation({
     "filePath" in attachmentCitation ? attachmentCitation.filePath : undefined;
 
   // Interactive content (spreadsheets etc.): open side panel instead of preview dialog.
-  // Only possible when we have a fileId (the side panel API requires it).
+  // Path-backed interactive citations are handled by PreviewableCitation below.
   if (
     fileId &&
     !isLoading &&

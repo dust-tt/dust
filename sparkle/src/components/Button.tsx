@@ -344,13 +344,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       return <Icon visual={visual} size={iconSize} className={extraClass} />;
     };
 
-    const content = (
+    const restingContent = (
       <>
-        {isLoading ? (
-          <Spinner size="xs" variant={spinnerVariantMap[normalizedVariant]} />
-        ) : (
-          icon && renderIcon(icon, iconShadow)
-        )}
+        {icon && renderIcon(icon, iconShadow)}
         {label && (
           <span className={cn(hasTextShadow && TEXT_SHADOW)}>{label}</span>
         )}
@@ -362,7 +358,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             isInButton={true}
           />
         )}
-        {!isLoading && iconRight && renderIcon(iconRight, iconShadow)}
+        {iconRight && renderIcon(iconRight, iconShadow)}
         {isSelect && (
           <Icon
             visual={ChevronDown}
@@ -373,6 +369,24 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           />
         )}
       </>
+    );
+
+    // Loading keeps the button at its resting size: the normal content stays
+    // in the layout but invisible, and a centered spinner overlays it.
+    const content = isLoading ? (
+      <>
+        <span className="absolute inset-0 flex items-center justify-center">
+          <Spinner size="xs" variant={spinnerVariantMap[normalizedVariant]} />
+        </span>
+        <span
+          aria-hidden="true"
+          className="invisible flex items-center gap-[inherit]"
+        >
+          {restingContent}
+        </span>
+      </>
+    ) : (
+      restingContent
     );
 
     const pointerEventProps = React.useMemo(() => {
@@ -405,6 +419,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           }),
           isPulsing && "animate-ring-pulse-soft",
           isRounded && "rounded-full",
+          isLoading && "relative",
           className
         )}
         aria-label={ariaLabel || tooltip || label}

@@ -16,6 +16,23 @@ export class GroupFactory {
     });
   }
 
+  static async regularManual(workspace: WorkspaceType, name: string) {
+    return GroupResource.makeNew({
+      name,
+      kind: "regular_manual",
+      workspaceId: workspace.id,
+    });
+  }
+
+  static async provisioned(workspace: WorkspaceType, name: string) {
+    return GroupResource.makeNew({
+      name,
+      kind: "provisioned",
+      workspaceId: workspace.id,
+      workOSGroupId: `workos-group-${name}`,
+    });
+  }
+
   static async withMembers(
     auth: Authenticator,
     group: GroupResource,

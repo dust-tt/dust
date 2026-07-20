@@ -1,5 +1,7 @@
 import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
+import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
@@ -41,9 +43,11 @@ export function BotToggle({
   connectorProvider: ConnectorProvider;
   name: string;
   description: string;
-  visual: React.ReactNode;
+  visual?: React.ReactNode;
   documentationUrl?: string;
 }) {
+  const { hasFeature } = useFeatureFlags();
+
   const { configValue } = useConnectorConfig({
     configKey: "botEnabled",
     dataSource: botDataSource ?? null,
@@ -121,6 +125,81 @@ export function BotToggle({
     setIsChangingBot(false);
   };
 
+  const handleReconnect = async () => {
+    if (!botDataSource) {
+      return;
+    }
+    const cRes = await setupOAuthConnection({
+      owner,
+      provider: oauth.provider,
+      useCase: oauth.useCase ?? "connection",
+      extraConfig: oauth.extraConfig,
+      regionInfo: regionContext.regionInfo,
+    });
+    if (!cRes.isOk()) {
+      sendNotification({
+        type: "error",
+        title: `Failed to reconnect ${name}.`,
+        description: `Could not reconnect the Dust ${name}.`,
+      });
+    } else {
+      const updateRes = await updateConnectorConnectionId(
+        cRes.value.connection_id,
+        oauth.extraConfig,
+        connectorProvider,
+        botDataSource,
+        owner
+      );
+
+      if (updateRes.error) {
+        sendNotification({
+          type: "error",
+          title: `Failed to update the ${name} connection`,
+          description: updateRes.error,
+        });
+      } else {
+        sendNotification({
+          type: "success",
+          title: `Successfully updated ${name} connection`,
+          description: "The connection was successfully updated.",
+        });
+      }
+    }
+  };
+
+  if (hasFeature("admin_governance")) {
+    return (
+      <GovernanceSettingRowLayout
+        label={name}
+        description={description}
+        action={
+          <div className="flex flex-row items-center gap-2">
+            {isBotEnabled && botDataSource && (
+              <Button
+                variant="outline"
+                label="Reconnect"
+                size="xs"
+                icon={RefreshCw02}
+                onClick={handleReconnect}
+              />
+            )}
+            <SliderToggle
+              selected={
+                // When changing and initially enabled, show disabled, and vice versa.
+                isBotEnabled !== isChangingBot
+              }
+              disabled={isChangingBot}
+              onClick={() => {
+                void toggleBot();
+              }}
+            />
+          </div>
+        }
+        documentationUrl={documentationUrl}
+      />
+    );
+  }
+
   return (
     <ContextItem
       title={name}
@@ -150,44 +229,7 @@ export function BotToggle({
               label="Reconnect"
               size="xs"
               icon={RefreshCw02}
-              onClick={async () => {
-                const cRes = await setupOAuthConnection({
-                  owner,
-                  provider: oauth.provider,
-                  useCase: oauth.useCase ?? "connection",
-                  extraConfig: oauth.extraConfig,
-                  regionInfo: regionContext.regionInfo,
-                });
-                if (!cRes.isOk()) {
-                  sendNotification({
-                    type: "error",
-                    title: `Failed to reconnect ${name}.`,
-                    description: `Could not reconnect the Dust ${name}.`,
-                  });
-                } else {
-                  const updateRes = await updateConnectorConnectionId(
-                    cRes.value.connection_id,
-                    oauth.extraConfig,
-                    connectorProvider,
-                    botDataSource,
-                    owner
-                  );
-
-                  if (updateRes.error) {
-                    sendNotification({
-                      type: "error",
-                      title: `Failed to update the ${name} connection`,
-                      description: updateRes.error,
-                    });
-                  } else {
-                    sendNotification({
-                      type: "success",
-                      title: `Successfully updated ${name} connection`,
-                      description: "The connection was successfully updated.",
-                    });
-                  }
-                }
-              }}
+              onClick={handleReconnect}
             />
           )}
           <SliderToggle

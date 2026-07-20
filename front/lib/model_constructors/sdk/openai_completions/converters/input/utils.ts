@@ -130,7 +130,6 @@ export function assistantToolCallRequestToMessage(
 ): ChatCompletionMessageParam {
   return {
     role: "assistant",
-    content: null,
     tool_calls: [
       {
         id: message.content.callId,

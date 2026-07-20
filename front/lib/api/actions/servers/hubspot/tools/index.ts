@@ -7,6 +7,7 @@ import {
   createCommunication,
   createCompany,
   createContact,
+  createCustomObject,
   createDeal,
   createLead,
   createMeeting,
@@ -26,6 +27,7 @@ import {
   getUserDetails,
   listAssociationLabels,
   listAssociations,
+  listCustomObjectSchemas,
   listEmailCampaigns,
   listEmailEvents,
   listMarketingEmails,
@@ -36,6 +38,7 @@ import {
   searchOwners,
   updateCompany,
   updateContact,
+  updateCustomObject,
   updateDeal,
   updateTask,
 } from "@app/lib/api/actions/servers/hubspot/client";
@@ -75,6 +78,27 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       return new Ok([
         { type: "text" as const, text: "Properties retrieved successfully" },
         { type: "text" as const, text: formattedText },
+      ]);
+    });
+  },
+
+  list_custom_object_schemas: async (_params, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const schemas = await listCustomObjectSchemas({ accessToken });
+      if (!schemas.length) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text: "No custom object schemas found in this HubSpot account.",
+          },
+        ]);
+      }
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Found ${schemas.length} custom object schema(s).`,
+        },
+        { type: "text" as const, text: JSON.stringify(schemas, null, 2) },
       ]);
     });
   },
@@ -695,6 +719,27 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  create_custom_object: async (
+    { objectType, properties, associations },
+    extra
+  ) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await createCustomObject({
+        accessToken,
+        objectType,
+        properties,
+        associations,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Custom object (${objectType}) created successfully.`,
+        },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
   create_association: async (
     {
       fromObjectType,
@@ -766,6 +811,24 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         properties,
       });
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  update_custom_object: async ({ objectType, objectId, properties }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await updateCustomObject({
+        accessToken,
+        objectType,
+        objectId,
+        properties,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Custom object (${objectType}) updated successfully.`,
+        },
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });

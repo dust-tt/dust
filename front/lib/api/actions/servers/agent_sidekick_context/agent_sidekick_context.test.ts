@@ -1780,6 +1780,39 @@ describe("agent_sidekick_context tools", () => {
       }
     });
 
+    it("returns error when suggesting an unsupported reasoning effort for the model", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_sidekick_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_model");
+      // claude-sonnet-4-6 does not support reasoningEffort "none".
+      const result = await tool.handler(
+        {
+          suggestion: {
+            modelId: "claude-sonnet-4-6",
+            reasoningEffort: "none",
+          },
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Invalid reasoning effort");
+        expect(result.error.message).toContain("none");
+        expect(result.error.message).toContain("claude-sonnet-4-6");
+      }
+    });
+
     it("returns error when suggesting a model not available in the UI", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 

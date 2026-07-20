@@ -664,6 +664,9 @@ const config = {
       "METRONOME_STRIPE_DELIVERY_METHOD_ID"
     );
   },
+  getDevEnvName: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DEV_ENV_NAME");
+  },
   getVertexAiProjectId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("VERTEX_AI_PROJECT_ID");
   },

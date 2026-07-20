@@ -1030,7 +1030,11 @@ export async function completeGarbageCollectionRun(
 ) {
   const redisKey = redisGarbageCollectorKey(connectorId);
   // Generate all the keys
-  const keysToDelete = [`${redisKey}-pages`, `${redisKey}-databases`];
+  const keysToDelete = [
+    `${redisKey}-pages`,
+    `${redisKey}-databases`,
+    `${redisKey}-batch-resume-state`,
+  ];
   for (let i = 0; i < nbOfBatches; i++) {
     keysToDelete.push(`${redisKey}-resources-not-seen-batch-${i}`);
   }
@@ -1056,6 +1060,56 @@ export async function completeGarbageCollectionRun(
   await notionConnectorState.update({
     lastGarbageCollectionFinishTime: new Date(),
   });
+}
+
+export type GarbageCollectionBatchResumeState = {
+  runTimestamp: number;
+  nbOfBatches: number;
+  nextBatchIndex: number;
+};
+
+// Stores where the batch-deletion phase stopped when the garbage collection workflow has to
+// continue-as-new before all batches are processed.
+export async function setGarbageCollectionBatchResumeState({
+  connectorId,
+  resumeState,
+}: {
+  connectorId: ModelId;
+  resumeState: GarbageCollectionBatchResumeState;
+}) {
+  const redisKey = redisGarbageCollectorKey(connectorId);
+  const redisCli = await redisClient({ origin: "notion_gc" });
+  await redisCli.set(
+    `${redisKey}-batch-resume-state`,
+    JSON.stringify(resumeState)
+  );
+}
+
+export async function getGarbageCollectionBatchResumeState({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<GarbageCollectionBatchResumeState | null> {
+  const redisKey = redisGarbageCollectorKey(connectorId);
+  const redisCli = await redisClient({ origin: "notion_gc" });
+
+  const rawState = await redisCli.get(`${redisKey}-batch-resume-state`);
+  if (!rawState) {
+    return null;
+  }
+
+  const resumeState = JSON.parse(rawState) as GarbageCollectionBatchResumeState;
+
+  // Stale state (eg the batches it points to were already processed and cleared): ignore it and
+  // let the run start from scratch.
+  const nextBatchExists = await redisCli.exists(
+    `${redisKey}-resources-not-seen-batch-${resumeState.nextBatchIndex}`
+  );
+  if (!nextBatchExists) {
+    return null;
+  }
+
+  return resumeState;
 }
 
 export async function deletionCrawlAddSignalsToRedis({

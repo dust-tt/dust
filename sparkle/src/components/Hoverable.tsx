@@ -18,13 +18,13 @@ export type HoverableVariantType = (typeof HOVERABLE_VARIANTS)[number];
 const hoverableVariants: Record<HoverableVariantType, string> = {
   invisible: cn("hover:text-highlight-light", "active:text-highlight-dark"),
   primary: cn(
-    "font-semibold",
+    "font-medium",
     "text-foreground",
     "hover:text-highlight-light",
     "active:text-highlight-dark"
   ),
   highlight: cn(
-    "font-semibold",
+    "font-medium",
     "text-highlight",
     "hover:text-highlight-light",
     "active:text-highlight-dark"

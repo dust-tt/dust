@@ -6,6 +6,7 @@ import {
   type RootCommand,
   renderRootCommand,
 } from "@app/lib/api/sandbox/root_command";
+import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import jwt from "jsonwebtoken";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -149,13 +150,17 @@ describe("sandbox egress helpers", () => {
   });
 
   function setup(sandbox: unknown) {
-    return setupEgressForwarder(auth, sandbox as never, { runtimeOwner });
+    return setupEgressForwarder(auth, sandbox as SandboxResource, {
+      runtimeOwner,
+      egressPolicyOwnerId: "conversation-id",
+    });
   }
 
   function ensure(sandbox: unknown, opts: { wokeFromSleep: boolean }) {
-    return ensureSandboxEgressOnExec(auth, sandbox as never, {
+    return ensureSandboxEgressOnExec(auth, sandbox as SandboxResource, {
       ...opts,
       runtimeOwner,
+      egressPolicyOwnerId: "conversation-id",
     });
   }
 

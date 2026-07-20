@@ -8,12 +8,12 @@ import {
   findSeatCreditSegmentForPeriod,
   getMetronomeContractById,
   getMetronomeSeatActiveSince,
-  getMetronomeSubscriptionAssignedSeatIds,
   getMetronomeSubscriptionSeatState,
   listCustomerPerUserCreditBalances,
   listCustomerPerUserCreditUserIds,
   listMetronomeSeatBalances,
   revokePerUserCustomerCredit,
+  type SubscriptionSeatState,
   updateSubscriptionQuantity,
   updateSubscriptionSeats,
 } from "@app/lib/metronome/client";
@@ -59,6 +59,7 @@ import {
   isPaidSeatType,
   SEAT_TYPE_ORDER,
 } from "@app/types/memberships";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -538,12 +539,6 @@ export async function remapMembershipSeatTypesForContract({
     return new Ok(undefined);
   }
 
-  const [users, seatLimits] = await Promise.all([
-    UserResource.fetchByModelIds(memberships.map((m) => m.userId)),
-    WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
-  ]);
-  const userByModelId = new Map(users.map((u) => [u.id, u]));
-
   // Apply immediately when the contract already started — either the operator
   // swapped at the current hour, or backdated the start to the past. Scheduling
   // a seat change at a past timestamp would retroactively close the current row
@@ -552,6 +547,25 @@ export async function remapMembershipSeatTypesForContract({
   // the only case that schedules.
   const applyImmediately =
     swapAt === "current-hour" || startingAt.getTime() <= Date.now();
+
+  // When scheduling (not applying immediately), a member already correctly
+  // scheduled from a previous call must be detected here: `scheduleSeatChange`
+  // never touches the *active* row's `seatType` (it only closes that row and
+  // creates a separate future-dated one), so comparing against the active
+  // row alone can never see a prior schedule — every not-yet-migrated member
+  // would otherwise be re-scheduled (a full destroy+update+create) on every
+  // single call to this function, for as long as their change stays pending.
+  const [users, seatLimits, scheduledByUserId] = await Promise.all([
+    UserResource.fetchByModelIds(memberships.map((m) => m.userId)),
+    WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
+    applyImmediately
+      ? Promise.resolve(new Map<ModelId, MembershipResource>())
+      : MembershipResource.getScheduledMembershipsByUserIdInWorkspace({
+          workspace,
+          userIds: memberships.map((m) => m.userId),
+        }),
+  ]);
+  const userByModelId = new Map(users.map((u) => [u.id, u]));
 
   const remapTargets = memberships.flatMap((membership) => {
     const user = userByModelId.get(membership.userId);
@@ -593,7 +607,12 @@ export async function remapMembershipSeatTypesForContract({
     { membership, user, baseTarget },
   ] of remapTargets.entries()) {
     const target = promotedTargets[index];
-    if (target === membership.seatType) {
+    const existingSchedule = scheduledByUserId.get(membership.userId);
+    const alreadyScheduled =
+      !applyImmediately &&
+      existingSchedule?.seatType === target &&
+      existingSchedule.startAt.getTime() === startingAt.getTime();
+    if (target === membership.seatType || alreadyScheduled) {
       logger.info(
         {
           workspaceId: workspace.sId,
@@ -601,6 +620,7 @@ export async function remapMembershipSeatTypesForContract({
           userId: user.sId,
           currentSeatType: membership.seatType,
           target,
+          alreadyScheduled,
         },
         "[Metronome][remap] No seat-type change for membership"
       );
@@ -685,11 +705,13 @@ async function grantFreeSeatCredits({
   metronomeCustomerId,
   workspaceId,
   userIds,
+  alreadyAssignedFreeUserIds,
   startingAt,
 }: {
   metronomeCustomerId: string;
   workspaceId: string;
   userIds: string[];
+  alreadyAssignedFreeUserIds: Set<string>;
   startingAt: Date;
 }): Promise<void> {
   if (userIds.length === 0) {
@@ -749,14 +771,20 @@ async function grantFreeSeatCredits({
     { concurrency: 4 }
   );
 
-  // Ensure the per-user credit-balance alerts for EVERY current free user, not
-  // just the ones granted above — they drive each user's low-balance / capped
-  // transitions as they deplete the credit (the seat-balance alert can't, since
-  // this isn't a seat balance). Idempotent upsert run each sync, so users
-  // granted before this existed are backfilled. Best-effort: a failure is
-  // logged and retried next sync.
+  // Ensure the per-user credit-balance alerts for newly-free users — they
+  // drive each user's low-balance / capped transitions as they deplete the
+  // credit (the seat-balance alert can't, since this isn't a seat balance).
+  // Scoped to users Metronome doesn't already show as assigned to the free
+  // subscription: checking every current free user on every sync (this runs
+  // on every membership change) doesn't scale, and — like the ex-free-seat
+  // revoke check — a user whose alert setup was missed here is low-stakes and
+  // self-corrects (e.g. the next time their seat type actually changes).
+  // Best-effort: a failure is logged but not retried until the next sync.
+  const newlyFreeUserIds = userIds.filter(
+    (userId) => !alreadyAssignedFreeUserIds.has(userId)
+  );
   await concurrentExecutor(
-    userIds,
+    newlyFreeUserIds,
     async (userId) => {
       const alertResult = await upsertPerUserCreditBalanceAlerts({
         metronomeCustomerId,
@@ -1045,6 +1073,7 @@ async function emptyOriginSeatCreditsForTransfers({
   recurringCreditIdBySeatType,
   allocationBySeatType,
   desiredSeatByUser,
+  seatStateBySubscriptionId,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -1053,10 +1082,52 @@ async function emptyOriginSeatCreditsForTransfers({
   recurringCreditIdBySeatType: Map<MembershipSeatType, string>;
   allocationBySeatType: Map<MembershipSeatType, number>;
   desiredSeatByUser: Map<string, MembershipSeatType>;
+  // Metronome's current ("now") seat state per subscription, fetched once by
+  // the caller and shared with its immediate-base reconcile pass instead of
+  // querying Metronome twice for the same data.
+  seatStateBySubscriptionId: Map<string, SubscriptionSeatState>;
 }): Promise<SeatCreditTransfer[]> {
+  // Metronome's current seat assignment per user (old state, before sync).
+  const metronomeSeatByUser = new Map<string, MembershipSeatType>();
+  for (const [seatType, subscriptionId] of subscriptionIdBySeatType) {
+    const state = seatStateBySubscriptionId.get(subscriptionId);
+    if (!state) {
+      continue;
+    }
+    for (const userSId of state.assignedSeatIds) {
+      metronomeSeatByUser.set(userSId, seatType);
+    }
+  }
+
+  // A real transfer candidate is a user whose seat type is actually changing
+  // between two types that both carry a recurring credit (pro/max and their
+  // _yearly variants — see `getSeatCreditNameForSeatType`). Balances are only
+  // needed to know how much to carry over for a CONFIRMED transfer, so if
+  // there are no candidates at all, skip that (expensive, bulk) fetch
+  // entirely instead of always fetching the whole eligible population.
+  const transferCandidateUserIds = [...metronomeSeatByUser.entries()].flatMap(
+    ([userSId, oldSeatType]) => {
+      const newSeatType = desiredSeatByUser.get(userSId);
+      return newSeatType &&
+        newSeatType !== oldSeatType &&
+        getSeatCreditNameForSeatType(oldSeatType) &&
+        getSeatCreditNameForSeatType(newSeatType)
+        ? [userSId]
+        : [];
+    }
+  );
+  if (transferCandidateUserIds.length === 0) {
+    logger.info(
+      { workspaceId, contractId },
+      "[Metronome] No seat-type transfer candidates — skipping balance fetch"
+    );
+    return [];
+  }
+
   const balancesRes = await listMetronomeSeatBalances({
     metronomeCustomerId,
     metronomeContractId: contractId,
+    seatIds: transferCandidateUserIds,
   });
   if (balancesRes.isErr()) {
     logger.error(
@@ -1071,26 +1142,6 @@ async function emptyOriginSeatCreditsForTransfers({
     const awu = seat.balances.find((b) => b.credit_type_id === awuCreditTypeId);
     if (awu) {
       balanceByUser.set(seat.seat_id, awu.balance);
-    }
-  }
-
-  // Metronome's current seat assignment per user (old state, before sync).
-  const metronomeSeatByUser = new Map<string, MembershipSeatType>();
-  for (const [seatType, subscriptionId] of subscriptionIdBySeatType) {
-    const assignedRes = await getMetronomeSubscriptionAssignedSeatIds({
-      metronomeCustomerId,
-      contractId,
-      subscriptionId,
-    });
-    if (assignedRes.isErr()) {
-      logger.error(
-        { workspaceId, contractId, seatType, error: assignedRes.error },
-        "[Metronome] Failed to read assigned seats for credit transfer — skipping tier"
-      );
-      continue;
-    }
-    for (const userSId of assignedRes.value) {
-      metronomeSeatByUser.set(userSId, seatType);
     }
   }
 
@@ -1256,11 +1307,14 @@ async function carryConsumptionToNewSeatCredits({
     }
 
     // Read the seat's current balance on the new credit at the adjustment time,
-    // then compute the delta to reach `allocation − consumed`.
+    // then compute the delta to reach `allocation − consumed`. Queried by
+    // explicit seatIds: an unfiltered call silently omits most seats on
+    // contracts with a few hundred+ seats.
     const balancesRes = await listMetronomeSeatBalances({
       metronomeCustomerId,
       metronomeContractId: contractId,
       coveringDate: timestamp,
+      seatIds: [t.userSId],
     });
     if (balancesRes.isErr()) {
       logger.error(
@@ -1322,6 +1376,30 @@ async function carryConsumptionToNewSeatCredits({
   }
 }
 
+// Summary of the work `syncSeatCount` actually did, surfaced up to the poke
+// plugin so an operator can see what happened without digging through logs.
+export type SyncSeatCountSummary = {
+  seatSubscriptionCount: number;
+  distinctTimestampCount: number;
+  reconcileSegmentCallCount: number;
+  transferCount: number;
+  freeUserCount: number;
+  didMutateSeatData: boolean;
+  durationMs: number;
+};
+
+function emptySyncSeatCountSummary(startedAt: number): SyncSeatCountSummary {
+  return {
+    seatSubscriptionCount: 0,
+    distinctTimestampCount: 0,
+    reconcileSegmentCallCount: 0,
+    transferCount: 0,
+    freeUserCount: 0,
+    didMutateSeatData: false,
+    durationMs: Date.now() - startedAt,
+  };
+}
+
 export async function syncSeatCount({
   metronomeCustomerId,
   contractId,
@@ -1330,6 +1408,7 @@ export async function syncSeatCount({
   startingAt,
   contract,
   assumeEmptySeats,
+  forceFreeCreditRevokeCheck,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -1344,8 +1423,19 @@ export async function syncSeatCount({
   // empty. Only safe for a freshly provisioned contract (no prior assignments)
   // — passed by switchContract when the contract was newly created.
   assumeEmptySeats?: boolean;
-}): Promise<Result<undefined, Error>> {
+  // Run the (expensive) ex-free-seat credit revoke check unconditionally,
+  // instead of only when Metronome's "free" seat assignment list shows
+  // someone moved away from free. Used by the poke "Sync Metronome Seat
+  // Count" plugin, where an operator explicitly asked for a thorough pass —
+  // not by the debounced/automatic sync, which relies on the cheap gate.
+  forceFreeCreditRevokeCheck?: boolean;
+}): Promise<Result<SyncSeatCountSummary, Error>> {
   let didMutateSeatData = false;
+  const syncStartedAt = Date.now();
+  logger.info(
+    { workspaceId: workspace.sId, contractId, planCode, startingAt },
+    "[Metronome] syncSeatCount starting"
+  );
 
   try {
     let resolvedContract: CachedContract;
@@ -1363,7 +1453,11 @@ export async function syncSeatCount({
     }
 
     if (!(await hasContractSeatSubscription(resolvedContract))) {
-      return new Ok(undefined);
+      logger.info(
+        { workspaceId: workspace.sId, contractId },
+        "[Metronome] syncSeatCount skipped — contract has no seat subscription"
+      );
+      return new Ok(emptySyncSeatCountSummary(syncStartedAt));
     }
 
     const productSeatTypes = await getProductSeatTypes();
@@ -1390,14 +1484,18 @@ export async function syncSeatCount({
     // transitions: each row has `startAt > now` and represents the seat
     // type the user will be on from `startAt` forward. The companion "current"
     // row (with `endAt = startAt`) still appears in `getActiveMemberships`.
-    const [{ memberships: activeMemberships }, futureMemberships, seatLimits] =
-      await Promise.all([
-        MembershipResource.getActiveMemberships({ workspace }),
-        MembershipResource.getScheduledFutureMemberships({ workspace }),
-        // Per-seat-type min/max configuration (only `minSeats` today). Used to
-        // clamp the count sent to Metronome up to the configured floor.
-        WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
-      ]);
+    const [
+      { memberships: activeMemberships },
+      futureMemberships,
+      seatLimitSchedule,
+    ] = await Promise.all([
+      MembershipResource.getActiveMemberships({ workspace }),
+      MembershipResource.getScheduledFutureMemberships({ workspace }),
+      // Per-seat-type min/max configuration over time: the active segment plus
+      // any scheduled-future changes. Used to clamp the count sent to Metronome
+      // up to the configured floor at each effective moment.
+      WorkspaceSeatLimitResource.fetchScheduleByWorkspace({ workspace }),
+    ]);
 
     // TODO(pricing): Remove this + planCode param once we have no more shadow legacy contracts
     const legacy = !isCreditPricedPlanPrefix(planCode);
@@ -1418,25 +1516,46 @@ export async function syncSeatCount({
     }
 
     type ScheduledChange = {
-      userSId: string;
+      userId: string;
       newSeatType: MembershipSeatType;
       at: Date;
     };
     const scheduledChanges: ScheduledChange[] = [];
     for (const m of futureMemberships) {
-      const userSId = m.user?.sId;
+      const userId = m.user?.sId;
       // Same `firstUsedAt` filter as the current-seat map above: a scheduled
       // change carries the current row's `firstUsedAt` (see `scheduleSeatChange`),
       // so provisioned-but-never-used members (SCIM on enterprise contracts) are
       // scheduled by contract switches / migrations yet must stay uncounted, just
       // like Stripe. Without this the future segment would re-introduce them.
-      if (userSId && m.firstUsedAt !== null) {
+      if (userId && m.firstUsedAt !== null) {
         scheduledChanges.push({
-          userSId,
+          userId,
           newSeatType: m.seatType,
           at: m.startAt,
         });
       }
+    }
+
+    // Grouped by user so `seatTypeAt` below doesn't rescan every scheduled
+    // change in the workspace for every user at every timestamp — with
+    // `seatSubscriptions.length * effectiveTimestampsMs.length` calls each
+    // walking all `users`, an unindexed scan over all `scheduledChanges` made
+    // the whole reconcile loop O(subs * timestamps * users * scheduledChanges),
+    // quadratic in workspace size whenever most users have a pending change
+    // (e.g. mid-migration). Sorted ascending per user so `seatTypeAt` can walk
+    // forward and stop at the first change past `tMs`.
+    const scheduledChangesByUserId = new Map<string, ScheduledChange[]>();
+    for (const change of scheduledChanges) {
+      const existing = scheduledChangesByUserId.get(change.userId);
+      if (existing) {
+        existing.push(change);
+      } else {
+        scheduledChangesByUserId.set(change.userId, [change]);
+      }
+    }
+    for (const changes of scheduledChangesByUserId.values()) {
+      changes.sort((a, b) => a.at.getTime() - b.at.getTime());
     }
 
     // Surface memberships whose seat type has no matching entitled subscription
@@ -1478,19 +1597,74 @@ export async function syncSeatCount({
     // remap at the contract start); deduping prevents reconciling that segment
     // twice, which would double-apply the unassigned-seat floor.
     const baseMs = startingAt ? Date.parse(startingAt) : Date.now();
+    const nowMs = Date.now();
+    // Scheduled seat-limit (commitment) change moments: every future segment
+    // start is an effective date where the committed floor changes, so Metronome
+    // must be programmed with the new quantity from that instant — even if no
+    // membership changes at the same moment.
+    const seatLimitChangeMs: number[] = [];
+    for (const segments of seatLimitSchedule.values()) {
+      for (const seg of segments) {
+        if (seg.startAt.getTime() > nowMs) {
+          seatLimitChangeMs.push(seg.startAt.getTime());
+        }
+      }
+    }
     const effectiveTimestampsMs = Array.from(
-      new Set([baseMs, ...scheduledChanges.map((c) => c.at.getTime())])
+      new Set([
+        baseMs,
+        ...scheduledChanges.map((c) => c.at.getTime()),
+        ...seatLimitChangeMs,
+      ])
     ).sort((a, b) => a - b);
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        contractId,
+        seatSubscriptionCount: seatSubscriptions.length,
+        scheduledChangeCount: scheduledChanges.length,
+        distinctTimestampCount: effectiveTimestampsMs.length,
+        expectedSegmentReconcileCalls:
+          seatSubscriptions.length * effectiveTimestampsMs.length,
+      },
+      "[Metronome] Reconcile plan computed"
+    );
+
+    // The seat limit (min/max) effective for `seatType` at `tMs`, walking its
+    // scheduled segments. Undefined when no limit applies at that moment.
+    const seatLimitAt = (
+      seatType: MembershipSeatType,
+      tMs: number
+    ): SeatLimit | undefined => {
+      const segments = seatLimitSchedule.get(seatType);
+      if (!segments) {
+        return undefined;
+      }
+      for (const seg of segments) {
+        if (
+          seg.startAt.getTime() <= tMs &&
+          (seg.endAt === null || seg.endAt.getTime() > tMs)
+        ) {
+          return { minSeats: seg.minSeats, maxSeats: seg.maxSeats };
+        }
+      }
+      return undefined;
+    };
 
     // Compute the desired seat type per user at a given timestamp, by walking
-    // scheduled changes from earliest up to (and including) `tMs`.
+    // that user's own scheduled changes (ascending) from earliest up to (and
+    // including) `tMs`.
     const seatTypeAt = (
       userSId: string,
       tMs: number
     ): MembershipSeatType | undefined => {
       let seatType = currentSeatByUserSId.get(userSId);
-      for (const c of scheduledChanges) {
-        if (c.userSId === userSId && c.at.getTime() <= tMs) {
+      const changes = scheduledChangesByUserId.get(userSId);
+      if (changes) {
+        for (const c of changes) {
+          if (c.at.getTime() > tMs) {
+            break;
+          }
           seatType = c.newSeatType;
         }
       }
@@ -1503,7 +1677,7 @@ export async function syncSeatCount({
     // themselves onto it.
     const allUserSIds = new Set<string>([
       ...currentSeatByUserSId.keys(),
-      ...scheduledChanges.map((c) => c.userSId),
+      ...scheduledChanges.map((c) => c.userId),
     ]);
     const desiredSIdsAt = (
       subSeatType: MembershipSeatType,
@@ -1567,7 +1741,54 @@ export async function syncSeatCount({
       );
     }
     let pendingCreditTransfers: SeatCreditTransfer[] = [];
+    // Per-subscription "now" seat state, fetched once here and reused by the
+    // transfer prep below, the immediate-base reconcile pass, and the
+    // free-seat revoke check further down — otherwise each would separately
+    // query Metronome for the exact same data.
+    const seatStateBySubscriptionId = new Map<string, SubscriptionSeatState>();
     if (!startingAt) {
+      const seatStateStartedAt = Date.now();
+      // Free isn't in `subscriptionIdBySeatType` (no recurring credit — see
+      // `getSeatCreditNameForSeatType`), but its assignment list is still
+      // useful below to cheaply detect who moved away from a free seat.
+      const freeSubscriptionId = seatSubscriptions.find(
+        ({ seatType }) => seatType === "free"
+      )?.sub.id;
+      const subscriptionIdsToFetch = [
+        ...subscriptionIdBySeatType,
+        ...(freeSubscriptionId ? [["free", freeSubscriptionId] as const] : []),
+      ];
+      for (const [seatType, subscriptionId] of subscriptionIdsToFetch) {
+        const stateRes = await getMetronomeSubscriptionSeatState({
+          metronomeCustomerId,
+          contractId,
+          subscriptionId,
+        });
+        if (stateRes.isErr()) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              contractId,
+              seatType,
+              error: stateRes.error,
+            },
+            "[Metronome] Failed to read current seat state — skipping tier for credit transfer"
+          );
+          continue;
+        }
+        seatStateBySubscriptionId.set(subscriptionId, stateRes.value);
+      }
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          contractId,
+          subscriptionCount: seatStateBySubscriptionId.size,
+          durationMs: Date.now() - seatStateStartedAt,
+        },
+        "[Metronome] Current seat state fetched"
+      );
+
+      const transfersStartedAt = Date.now();
       pendingCreditTransfers = await emptyOriginSeatCreditsForTransfers({
         metronomeCustomerId,
         contractId,
@@ -1576,21 +1797,35 @@ export async function syncSeatCount({
         recurringCreditIdBySeatType,
         allocationBySeatType,
         desiredSeatByUser: currentSeatByUserSId,
+        seatStateBySubscriptionId,
       });
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          contractId,
+          transferCount: pendingCreditTransfers.length,
+          durationMs: Date.now() - transfersStartedAt,
+        },
+        "[Metronome] emptyOriginSeatCreditsForTransfers done"
+      );
       didMutateSeatData =
         didMutateSeatData || pendingCreditTransfers.length > 0;
     }
 
+    const reconcileLoopStartedAt = Date.now();
+    let reconcileSegmentCallCount = 0;
     for (const { sub, seatType } of seatSubscriptions) {
       const subscriptionId = sub.id!;
       const quantityMode = sub.quantity_management_mode ?? "QUANTITY_ONLY";
-      const seatLimit = seatLimits.get(seatType);
 
       if (quantityMode === "SEAT_BASED") {
-        // One reconcile per distinct effective moment. `desiredSIds` is
-        // evaluated at the SAME moment the segment is written to — so a future
-        // contract start reflects the membership state at the start (post-remap)
-        // rather than "now".
+        // One reconcile per distinct effective moment. `desiredSIds` and the
+        // seat limit are BOTH evaluated at the SAME moment the segment is
+        // written to — so a future contract start reflects the membership state
+        // at the start (post-remap), and a scheduled commitment change reflects
+        // the floor active from that instant. A commitment change that leaves
+        // membership unchanged therefore only moves the *unassigned* seats (the
+        // floor top-up), since the assigned real users stay the same.
         for (const tMs of effectiveTimestampsMs) {
           const isImmediateBase = tMs === baseMs && !startingAt;
           // Immediate base sync: let Metronome default to "now" for both the
@@ -1600,64 +1835,106 @@ export async function syncSeatCount({
             ? undefined
             : new Date(tMs).toISOString();
           const coveringDate = isImmediateBase ? undefined : new Date(tMs);
+          const segmentStartedAt = Date.now();
           const result = await reconcileSeatBasedSegment({
             metronomeCustomerId,
             contractId,
             subscriptionId,
             seatType,
             desiredSIds: desiredSIdsAt(seatType, tMs),
-            seatLimit,
+            seatLimit: seatLimitAt(seatType, tMs),
             startingAt: segmentStartingAt,
             coveringDate,
             workspaceId: workspace.sId,
             assumeEmptySeats,
+            cachedSeatState: isImmediateBase
+              ? seatStateBySubscriptionId.get(subscriptionId)
+              : undefined,
           });
+          reconcileSegmentCallCount++;
+          logger.info(
+            {
+              workspaceId: workspace.sId,
+              contractId,
+              subscriptionId,
+              seatType,
+              tMs,
+              durationMs: Date.now() - segmentStartedAt,
+            },
+            "[Metronome] reconcileSeatBasedSegment call done"
+          );
           if (result.isErr()) {
             return new Err(result.error);
           }
           didMutateSeatData = didMutateSeatData || result.value;
         }
       } else {
-        // QUANTITY_ONLY: only sync the "now" total. Scheduled changes within
-        // a quantity-only seat tier are not modeled — they're rare in practice
-        // (free / unlimited tiers) and Metronome doesn't bill them per-seat.
-        const actualQuantity = desiredSIdsAt(seatType, Date.now()).length;
-        // Clamp up to the configured billing floor: below `minSeats` we still
-        // bill the floor. `maxSeats` is deliberately NOT applied here — it is
-        // an assignment-time cap, and billing must always reflect the actual
-        // assigned count so members holding a seat are never unbilled.
-        const quantity = clampSeatCountToMin(actualQuantity, seatLimit);
-        logger.info(
-          {
-            workspaceId: workspace.sId,
+        // QUANTITY_ONLY: send the total for "now" plus a future-dated total at
+        // every effective moment where it changes (a scheduled commitment or
+        // membership change). Consecutive equal quantities are skipped so we
+        // only write real transitions. `maxSeats` is deliberately NOT applied
+        // here — it is an assignment-time cap, and billing must always reflect
+        // the actual assigned count so members holding a seat are never
+        // unbilled.
+        let lastQuantity: number | undefined;
+        for (const tMs of effectiveTimestampsMs) {
+          const isImmediateBase = tMs === baseMs && !startingAt;
+          const segmentStartingAt = isImmediateBase
+            ? startingAt
+            : new Date(tMs).toISOString();
+          const actualQuantity = desiredSIdsAt(seatType, tMs).length;
+          // Clamp up to the configured billing floor: below `minSeats` we still
+          // bill the floor.
+          const quantity = clampSeatCountToMin(
+            actualQuantity,
+            seatLimitAt(seatType, tMs)
+          );
+          if (quantity === lastQuantity) {
+            continue;
+          }
+          lastQuantity = quantity;
+          logger.info(
+            {
+              workspaceId: workspace.sId,
+              contractId,
+              subscriptionId,
+              seatType,
+              actualQuantity,
+              quantity,
+              startingAt: segmentStartingAt,
+            },
+            quantity !== actualQuantity
+              ? "[Metronome] Updating seat quantity (clamped up to configured min)"
+              : "[Metronome] Updating seat quantity"
+          );
+          const updateResult = await updateSubscriptionQuantity({
+            metronomeCustomerId,
             contractId,
             subscriptionId,
-            seatType,
-            actualQuantity,
             quantity,
-            minSeats: seatLimit?.minSeats,
-          },
-          quantity !== actualQuantity
-            ? "[Metronome] Updating seat quantity (clamped up to configured min)"
-            : "[Metronome] Updating seat quantity"
-        );
-        const updateResult = await updateSubscriptionQuantity({
-          metronomeCustomerId,
-          contractId,
-          subscriptionId,
-          quantity,
-          startingAt,
-        });
-        if (updateResult.isErr()) {
-          return new Err(updateResult.error);
+            startingAt: segmentStartingAt,
+          });
+          if (updateResult.isErr()) {
+            return new Err(updateResult.error);
+          }
+          didMutateSeatData = true;
         }
-        didMutateSeatData = true;
       }
     }
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        contractId,
+        reconcileSegmentCallCount,
+        durationMs: Date.now() - reconcileLoopStartedAt,
+      },
+      "[Metronome] Seat-subscription reconcile loop done"
+    );
 
     // New seats are now assigned, so their credits exist: carry the consumed
     // AWU emptied from the origin seats onto them (see above).
     if (pendingCreditTransfers.length > 0) {
+      const carryStartedAt = Date.now();
       await carryConsumptionToNewSeatCredits({
         metronomeCustomerId,
         contractId,
@@ -1667,29 +1944,131 @@ export async function syncSeatCount({
         recurringCreditIdBySeatType,
         allocationBySeatType,
       });
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          contractId,
+          transferCount: pendingCreditTransfers.length,
+          durationMs: Date.now() - carryStartedAt,
+        },
+        "[Metronome] carryConsumptionToNewSeatCredits done"
+      );
     }
 
     // Per-user AWU grant/revoke for free members. Driven off DB membership
-    // state (`desiredSIdsAt`), NOT off a Metronome free-seat subscription: free
-    // seats are never billed and may not be an entitled SEAT_BASED subscription
-    // on the contract, so this runs independently of the seat-subscription loop
+    // state, NOT off a Metronome free-seat subscription: free seats are never
+    // billed and may not be an entitled SEAT_BASED subscription on the
+    // contract, so this runs independently of the seat-subscription loop
     // above. Best-effort and idempotent. Grant deduped by the grant's uniqueness
     // key; revoke archives the credit + drops alerts for users who left the free
     // seat (the uniqueness key stays claimed, so they can't re-claim).
-    const currentFreeUserIds = new Set(desiredSIdsAt("free", baseMs));
-    await grantFreeSeatCredits({
-      metronomeCustomerId,
-      workspaceId: workspace.sId,
-      userIds: [...currentFreeUserIds],
-      startingAt: new Date(baseMs),
-    });
-    await revokeFreeSeatCreditsForExFreeUsers({
-      metronomeCustomerId,
-      workspaceId: workspace.sId,
-      currentFreeUserIds,
-    });
+    //
+    // Skipped entirely on a legacy contract: `free` is a CP/AWU-era seat type
+    // that a legacy contract never entitles (see `canAssignFreeSeat`), and the
+    // invariant that no membership on a legacy contract ever has
+    // `seatType === "free"` holds — so there is nothing to grant, alert, or
+    // revoke here, and no need to even compute `currentFreeUserIds`.
+    const freeSeatStartedAt = Date.now();
+    let currentFreeUserIds = new Set<string>();
+    if (legacy) {
+      logger.info(
+        { workspaceId: workspace.sId, contractId },
+        "[Metronome] Legacy contract — skipping free-seat credit grant/revoke entirely"
+      );
+    } else {
+      // Computed directly from `seatTypeAt`, NOT via `desiredSIdsAt`:
+      // `desiredSIdsAt` folds every user in on a legacy contract (`|| legacy`,
+      // for billing "none"/legacy Platform Seat members under the one
+      // "workspace" subscription) — irrelevant here since this whole branch
+      // is skipped when `legacy` is true, but kept explicit for clarity.
+      currentFreeUserIds = new Set(
+        [...allUserSIds].filter(
+          (userId) => seatTypeAt(userId, baseMs) === "free"
+        )
+      );
 
-    return new Ok(undefined);
+      // Metronome's actual "free" subscription assignment (already fetched
+      // above, alongside every other subscription's "now" state) — used to
+      // scope both the alert-upsert step below and the revoke check further
+      // down to only the users who actually changed, instead of reprocessing
+      // everyone free on every single sync. Undefined when the contract
+      // doesn't have "free" entitled, or this is the pending-contract
+      // pre-provision pass (no live state to compare against yet).
+      const freeSubscriptionId = seatSubscriptions.find(
+        ({ seatType }) => seatType === "free"
+      )?.sub.id;
+      const freeSeatState = freeSubscriptionId
+        ? seatStateBySubscriptionId.get(freeSubscriptionId)
+        : undefined;
+      const alreadyAssignedFreeUserIds = new Set(
+        freeSeatState?.assignedSeatIds ?? []
+      );
+
+      await grantFreeSeatCredits({
+        metronomeCustomerId,
+        workspaceId: workspace.sId,
+        userIds: [...currentFreeUserIds],
+        alreadyAssignedFreeUserIds,
+        startingAt: new Date(baseMs),
+      });
+
+      // Revoking a stale free-seat credit is low-stakes (a user can only ever
+      // have earned one by actually holding a free seat) — unlike the grant, it
+      // isn't worth an unconditional Metronome credit-listing call on every
+      // sync (this runs on every membership change). Instead, use the "free"
+      // subscription's already-fetched seat assignment (Metronome's actual
+      // current state) to see who's assigned to free there but no longer
+      // desired as free in our DB, and only call the (expensive) revoke check
+      // when that set is non-empty. If we don't have that data (contract
+      // doesn't have "free" entitled, or this is the pending-contract
+      // pre-provision pass), skip the check entirely rather than falling back
+      // to the always-expensive path.
+      const movedAwayFromFree = freeSeatState
+        ? freeSeatState.assignedSeatIds.filter(
+            (id) => !currentFreeUserIds.has(id)
+          )
+        : [];
+      if (movedAwayFromFree.length > 0 || forceFreeCreditRevokeCheck) {
+        logger.info(
+          {
+            workspaceId: workspace.sId,
+            contractId,
+            forceFreeCreditRevokeCheck,
+          },
+          "[Metronome] Running ex-free-seat credit revoke check"
+        );
+        await revokeFreeSeatCreditsForExFreeUsers({
+          metronomeCustomerId,
+          workspaceId: workspace.sId,
+          currentFreeUserIds,
+        });
+      } else {
+        logger.info(
+          { workspaceId: workspace.sId, contractId },
+          "[Metronome] No users moved away from a free seat — skipping free-credit revoke check"
+        );
+      }
+    }
+    const summary: SyncSeatCountSummary = {
+      seatSubscriptionCount: seatSubscriptions.length,
+      distinctTimestampCount: effectiveTimestampsMs.length,
+      reconcileSegmentCallCount,
+      transferCount: pendingCreditTransfers.length,
+      freeUserCount: currentFreeUserIds.size,
+      didMutateSeatData,
+      durationMs: Date.now() - syncStartedAt,
+    };
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        contractId,
+        ...summary,
+        freeSeatDurationMs: Date.now() - freeSeatStartedAt,
+      },
+      "[Metronome] syncSeatCount done"
+    );
+
+    return new Ok(summary);
   } finally {
     if (didMutateSeatData) {
       await invalidateCachedSeatDataByUserId({
@@ -1734,6 +2113,7 @@ async function reconcileSeatBasedSegment({
   coveringDate,
   workspaceId,
   assumeEmptySeats,
+  cachedSeatState,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -1749,12 +2129,19 @@ async function reconcileSeatBasedSegment({
   // timestamp) — set by switchContract when the contract was newly created
   // (not recovered).
   assumeEmptySeats?: boolean;
+  // Reuse a seat state already fetched for this exact subscription + moment
+  // (e.g. by `emptyOriginSeatCreditsForTransfers`'s "now" read) instead of
+  // querying Metronome again for the same data.
+  cachedSeatState?: SubscriptionSeatState;
 }): Promise<Result<boolean, Error>> {
   let assignedSeatIds: string[];
   let currentUnassigned: number;
   if (assumeEmptySeats) {
     assignedSeatIds = [];
     currentUnassigned = 0;
+  } else if (cachedSeatState) {
+    assignedSeatIds = cachedSeatState.assignedSeatIds;
+    currentUnassigned = cachedSeatState.unassignedSeats;
   } else {
     const currentResult = await getMetronomeSubscriptionSeatState({
       metronomeCustomerId,
@@ -1927,15 +2314,15 @@ export async function buildSeatDataByUserId({
         return new Ok(null);
       }
 
-      const seatIdsResult = await getMetronomeSubscriptionAssignedSeatIds({
+      const seatStateResult = await getMetronomeSubscriptionSeatState({
         metronomeCustomerId,
         contractId,
         subscriptionId: sub.id,
       });
-      if (seatIdsResult.isErr()) {
+      if (seatStateResult.isErr()) {
         logger.warn(
           {
-            error: seatIdsResult.error,
+            error: seatStateResult.error,
             metronomeCustomerId,
             contractId,
             subscriptionId: sub.id,
@@ -1943,14 +2330,15 @@ export async function buildSeatDataByUserId({
           },
           "[Metronome] Failed to fetch seat IDs"
         );
-        return new Err(seatIdsResult.error);
+        return new Err(seatStateResult.error);
       }
+      const assignedSeatIds = seatStateResult.value.assignedSeatIds;
 
       const freq = sub.subscription_rate.billing_frequency;
       const nextCreditResetAt =
         sub.billing_periods?.current?.ending_before ?? null;
       return new Ok({
-        seatIds: seatIdsResult.value,
+        seatIds: assignedSeatIds,
         awuAllocation,
         billingFrequency: freq === "MONTHLY" || freq === "ANNUAL" ? freq : null,
         nextCreditResetAt,

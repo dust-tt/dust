@@ -4,7 +4,11 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
 
-export const SANDBOX_FUNCTION_INVOCATION_STATUSES = ["created"] as const;
+export const SANDBOX_FUNCTION_INVOCATION_STATUSES = [
+  "created",
+  "errored",
+  "succeeded",
+] as const;
 
 export type SandboxFunctionInvocationStatus =
   (typeof SANDBOX_FUNCTION_INVOCATION_STATUSES)[number];
@@ -83,9 +87,6 @@ export function isSandboxFunctionInvocationTerminalEvent(
 
 export type PostSandboxFunctionInvocationRequestBody = {
   input?: unknown;
-  context?: {
-    frameFileId?: string;
-  };
 };
 
 export type PostSandboxFunctionInvocationResponseBody = {

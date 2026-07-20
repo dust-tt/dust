@@ -165,11 +165,7 @@ export const RUN_AGENT_SERVER = {
       },
       toolCostCategory: "basic",
       freeUsage: false,
+      stake: "never_ask",
     },
   ],
-  // Default stake for dynamically created run_agent tools.
-  // The actual tool name is dynamic, but all run_agent tools have the same stake.
-  tools_stakes: {
-    [RUN_AGENT_PLACEHOLDER_TOOL_NAME]: "never_ask",
-  },
 } as const satisfies ServerMetadata;

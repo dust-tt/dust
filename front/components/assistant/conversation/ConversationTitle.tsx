@@ -9,7 +9,6 @@ import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useAppRouter } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
@@ -44,7 +43,6 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     workspaceId: owner.sId,
     spaceId: conversation?.spaceId ?? null,
   });
-  const router = useAppRouter();
   const isMobile = useIsMobile();
 
   const [showRenameDialog, setShowRenameDialog] = useState(false);
@@ -76,11 +74,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     breadcrumbItems.push({
       icon: isMobile ? undefined : ArrowLeft,
       label: spaceInfo.name,
-      onClick: () => {
-        void router.push(getPodRoute(owner.sId, spaceId), undefined, {
-          shallow: true,
-        });
-      },
+      href: getPodRoute(owner.sId, spaceId),
     });
   }
 

@@ -38,7 +38,7 @@ const meta = {
     },
     variant: {
       control: { type: "select" },
-      options: ["primary", "highlight", "warning", "outline", "ghost"],
+      options: ["primary", "highlight", "warning", "info", "outline", "ghost"],
     },
     isInButton: {
       control: "boolean",
@@ -72,6 +72,28 @@ export const Warning: Story = {
 export const Outline: Story = {
   args: { variant: "outline" },
   tags: ["ai-generated", "needs-work"],
+};
+
+export const Info: Story = {
+  args: { variant: "info" },
+  tags: ["ai-generated", "needs-work"],
+};
+
+// Every variant as a gradient pill, across the three sizes.
+export const AllVariants: Story = {
+  render: () => (
+    <div className="flex flex-col gap-3">
+      {(
+        ["primary", "highlight", "warning", "info", "outline", "ghost"] as const
+      ).map((variant) => (
+        <div key={variant} className="flex items-center gap-2">
+          <Counter value={1} size="xs" variant={variant} />
+          <Counter value={42} size="sm" variant={variant} />
+          <Counter value={128} size="md" variant={variant} />
+        </div>
+      ))}
+    </div>
+  ),
 };
 
 // All three counter sizes side by side.

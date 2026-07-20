@@ -7,6 +7,7 @@ import type {
 import { getModelWithReasoningEffortKey } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useClientType } from "@app/lib/context/clientType";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
@@ -30,8 +31,8 @@ interface ModelPickerListProps {
   listState: ModelPickerListState;
   selectedKey?: string;
   onSelectModel: (modelWithEffort: ModelWithReasoningEffort) => void;
-  // On mobile the "More models" providers expand inline; this tracks the single
-  // provider currently expanded.
+  // On width-constrained clients (mobile, extension) the "More models" providers
+  // expand inline; this tracks the single provider currently expanded.
   expandedProvider: ModelProviderIdType | null;
   onToggleProvider: (providerId: ModelProviderIdType) => void;
 }
@@ -45,6 +46,9 @@ export function ModelPickerList({
 }: ModelPickerListProps) {
   const { isDark } = useTheme();
   const isMobile = useIsMobile();
+  const clientType = useClientType();
+
+  const expandProvidersInline = isMobile || clientType === "extension";
 
   switch (listState.kind) {
     case "hidden":
@@ -132,10 +136,10 @@ export function ModelPickerList({
               <DropdownMenuSeparator />
               <DropdownMenuLabel label="More models" />
               {listState.moreByProvider.map((provider) =>
-                isMobile ? (
-                  // On mobile the provider expands inline below its name
-                  // instead of opening a nested submenu (which is awkward to
-                  // reach on touch).
+                expandProvidersInline ? (
+                  // On width-constrained clients (mobile, extension) the
+                  // provider expands inline below its name instead of opening a
+                  // nested submenu.
                   <Fragment key={provider.providerId}>
                     <DropdownMenuItem
                       label={getProviderDisplayName(provider.providerId)}

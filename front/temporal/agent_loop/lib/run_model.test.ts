@@ -425,10 +425,9 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     ]);
 
     const { specifications, missingReplayedToolNames } =
-      buildSpecificationsWithReplayPlaceholders(
-        baseSpecifications,
-        conversation
-      );
+      buildSpecificationsWithReplayPlaceholders(baseSpecifications, {
+        modelConversation: conversation,
+      });
 
     expect(specifications).toEqual(baseSpecifications);
     expect(missingReplayedToolNames).toEqual([]);
@@ -444,7 +443,7 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
 
     const { specifications } = buildSpecificationsWithReplayPlaceholders(
       baseSpecifications,
-      conversation
+      { modelConversation: conversation }
     );
 
     expect(specifications[0].eager).toBe(true);
@@ -457,16 +456,30 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     ]);
 
     const { specifications, missingReplayedToolNames } =
-      buildSpecificationsWithReplayPlaceholders(
-        baseSpecifications,
-        conversation
-      );
+      buildSpecificationsWithReplayPlaceholders(baseSpecifications, {
+        modelConversation: conversation,
+      });
 
     expect(missingReplayedToolNames).toEqual(["removed_tool"]);
     expect(specifications).toHaveLength(2);
     const placeholder = specifications[1];
     expect(placeholder.name).toBe("removed_tool");
     expect(placeholder.eager).toBeUndefined();
+  });
+
+  it("does not append placeholders for calls handled by the missing action catcher", () => {
+    const conversation = makeConversation([
+      assistantMessageWithFunctionCalls(["hallucinated_tool"]),
+    ]);
+
+    const { specifications, missingReplayedToolNames } =
+      buildSpecificationsWithReplayPlaceholders([], {
+        modelConversation: conversation,
+        missingActionCatcherFunctionCallIds: new Set(["call_0"]),
+      });
+
+    expect(missingReplayedToolNames).toEqual([]);
+    expect(specifications).toEqual([]);
   });
 
   it("sorts replay placeholders with the current tool specifications", () => {
@@ -479,10 +492,9 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     ]);
 
     const { specifications, missingReplayedToolNames } =
-      buildSpecificationsWithReplayPlaceholders(
-        baseSpecifications,
-        conversation
-      );
+      buildSpecificationsWithReplayPlaceholders(baseSpecifications, {
+        modelConversation: conversation,
+      });
 
     expect(missingReplayedToolNames).toEqual(["middle_tool"]);
     expect(specifications.map((s) => s.name)).toEqual([
@@ -499,10 +511,9 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     ]);
 
     const { specifications, missingReplayedToolNames } =
-      buildSpecificationsWithReplayPlaceholders(
-        baseSpecifications,
-        conversation
-      );
+      buildSpecificationsWithReplayPlaceholders(baseSpecifications, {
+        modelConversation: conversation,
+      });
 
     expect(missingReplayedToolNames).toEqual(["removed_tool"]);
     expect(specifications.map((s) => s.name)).toEqual([
@@ -521,10 +532,9 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     ]);
 
     const { specifications, missingReplayedToolNames } =
-      buildSpecificationsWithReplayPlaceholders(
-        baseSpecifications,
-        conversation
-      );
+      buildSpecificationsWithReplayPlaceholders(baseSpecifications, {
+        modelConversation: conversation,
+      });
 
     expect(missingReplayedToolNames).toEqual([]);
     expect(specifications).toEqual(baseSpecifications);
@@ -537,7 +547,9 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     ]);
 
     const { specifications, missingReplayedToolNames } =
-      buildSpecificationsWithReplayPlaceholders([], conversation);
+      buildSpecificationsWithReplayPlaceholders([], {
+        modelConversation: conversation,
+      });
 
     expect(missingReplayedToolNames).toEqual(["removed_tool"]);
     expect(specifications).toHaveLength(1);

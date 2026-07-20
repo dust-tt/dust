@@ -1,6 +1,7 @@
 import { STATIC_MODEL_SUPPORTED_REASONING_EFFORTS } from "@app/lib/api/assistant/token_pricing/static_model_reasoning_efforts";
 import type { StaticModelIdType } from "@app/types/assistant/models/models";
 import type {
+  ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
   ReasoningEffortSupport,
@@ -19,7 +20,7 @@ export function isModelsTierName(value: unknown): value is ModelsTierName {
 }
 
 export type ModelTierSelection = {
-  modelId: StaticModelIdType;
+  modelId: ModelIdType;
   providerId: ModelProviderIdType;
   reasoningEffort: ReasoningEffort;
 };
@@ -168,14 +169,14 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     high: "cost_efficient",
   },
   o1: {
-    none: "balanced",
+    none: "premium",
   },
   "o1-mini": {
-    none: "balanced",
+    none: "premium",
   },
   o3: {
-    medium: "balanced",
-    high: "balanced",
+    medium: "premium",
+    high: "premium",
   },
   "o3-mini": {
     medium: "balanced",
@@ -193,12 +194,12 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   "claude-4-sonnet-20250514": {
     light: "cost_efficient",
     medium: "balanced",
-    high: "balanced",
+    high: "premium",
   },
   "claude-sonnet-4-5-20250929": {
     light: "cost_efficient",
     medium: "balanced",
-    high: "balanced",
+    high: "premium",
   },
   "claude-opus-4-5-20251101": {
     light: "premium",
@@ -228,12 +229,12 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   "claude-sonnet-5": {
     light: "cost_efficient",
     medium: "balanced",
-    high: "balanced",
+    high: "premium",
   },
   "claude-sonnet-4-6": {
     light: "cost_efficient",
     medium: "balanced",
-    high: "balanced",
+    high: "premium",
   },
   "claude-3-opus-20240229": {
     light: "premium",
@@ -284,13 +285,13 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   },
   "gemini-2.5-pro": {
     light: "balanced",
-    medium: "balanced",
-    high: "balanced",
+    medium: "premium",
+    high: "premium",
   },
   "gemini-3-pro-preview": {
     light: "balanced",
-    medium: "balanced",
-    high: "balanced",
+    medium: "premium",
+    high: "premium",
   },
   "gemini-3.1-flash-lite": {
     none: "cost_efficient",
@@ -320,10 +321,10 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     high: "premium",
   },
   "deepseek-chat": {
-    none: "balanced",
+    none: "cost_efficient",
   },
   "accounts/fireworks/models/deepseek-v3p2": {
-    none: "balanced",
+    none: "cost_efficient",
   },
   "accounts/fireworks/models/deepseek-v4-pro": {
     none: "balanced",
@@ -344,14 +345,14 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     high: "balanced",
   },
   "accounts/fireworks/models/minimax-m2p5": {
-    light: "balanced",
-    medium: "balanced",
-    high: "balanced",
+    light: "cost_efficient",
+    medium: "cost_efficient",
+    high: "cost_efficient",
   },
   "accounts/fireworks/models/glm-5": {
-    light: "balanced",
-    medium: "balanced",
-    high: "balanced",
+    light: "cost_efficient",
+    medium: "cost_efficient",
+    high: "cost_efficient",
   },
   "accounts/fireworks/models/glm-5p2": {
     light: "balanced",

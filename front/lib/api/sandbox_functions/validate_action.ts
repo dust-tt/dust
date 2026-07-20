@@ -8,14 +8,14 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import logger from "@app/logger/logger";
-import { launchSandboxFunctionToolWorkflow } from "@app/temporal/agent_loop/client";
+import { launchSandboxFunctionToolWorkflow } from "@app/temporal/sandbox_functions/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export class SandboxFunctionActionValidationError extends Error {
   constructor(
-    readonly type: "action_not_found" | "action_not_blocked",
+    readonly type: "action_not_found" | "action_not_blocked" | "unauthorized",
     message: string
   ) {
     super(message);
@@ -65,6 +65,17 @@ export async function validateSandboxFunctionAction(
       new SandboxFunctionActionValidationError(
         "action_not_found",
         "Action not found."
+      )
+    );
+  }
+
+  // Only the invocation's initiating user may approve or reject its tools. Strict equality also
+  // rejects a null initiating user (userless origins have no legitimate interactive approver).
+  if (invocation.userId !== auth.user()?.id) {
+    return new Err(
+      new SandboxFunctionActionValidationError(
+        "unauthorized",
+        "Only the user who initiated the invocation can validate its tools."
       )
     );
   }
@@ -144,17 +155,18 @@ export async function validateSandboxFunctionAction(
   );
 
   if (approvalState !== "rejected") {
-    try {
-      await launchSandboxFunctionToolWorkflow(auth, { action });
-    } catch (err) {
+    const launchResult = await launchSandboxFunctionToolWorkflow(auth, {
+      action,
+    });
+    if (launchResult.isErr()) {
       // The action is already `running`; a failed launch would otherwise leave the poll hanging
       // until token expiry with no workflow. Compensate to a terminal `errored` (CAS-guarded so a
-      // workflow that did start and already moved the status is not clobbered), then rethrow.
+      // workflow that did start and already moved the status is not clobbered), then propagate.
       await action.updateStatusFromExpected(auth, {
         status: "errored",
         expectedStatus: "running",
       });
-      throw err;
+      throw launchResult.error;
     }
   }
 

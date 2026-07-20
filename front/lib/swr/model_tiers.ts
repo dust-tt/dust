@@ -171,6 +171,11 @@ export function useUserAllowedModelTierMutations({
         }
 
         await mutateUserAllowedModelTiers();
+        sendNotification({
+          type: "success",
+          title: "Model tier updated",
+          description: "The model tier for the user has been updated.",
+        });
         return true;
       } catch (e) {
         sendNotification({
@@ -210,6 +215,11 @@ export function useUserAllowedModelTierMutations({
         }
 
         await mutateUserAllowedModelTiers();
+        sendNotification({
+          type: "success",
+          title: "Model tier override cleared",
+          description: "The user now inherits the model tier.",
+        });
         return true;
       } catch (e) {
         sendNotification({
@@ -268,6 +278,11 @@ export function useGroupAllowedModelTierMutations({
         }
 
         await mutateGroupAllowedModelTiers();
+        sendNotification({
+          type: "success",
+          title: "Model tier updated",
+          description: "The model tier for the group has been updated.",
+        });
         return true;
       } catch (e) {
         sendNotification({
@@ -307,6 +322,11 @@ export function useGroupAllowedModelTierMutations({
         }
 
         await mutateGroupAllowedModelTiers();
+        sendNotification({
+          type: "success",
+          title: "Model tier cleared",
+          description: "The group now inherits the model tier.",
+        });
         return true;
       } catch (e) {
         sendNotification({
@@ -365,6 +385,11 @@ export function useWorkspaceAllowedModelTierMutations({
         }
 
         await mutateWorkspaceAllowedModelTiers();
+        sendNotification({
+          type: "success",
+          title: "Model tier updated",
+          description: "The model tier for the workspace has been updated.",
+        });
         return true;
       } catch (e) {
         sendNotification({

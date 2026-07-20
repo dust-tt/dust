@@ -1,3 +1,8 @@
+import {
+  createActivationTrigger,
+  emitActivationEvent,
+  getOrCreateActivationWebhookSourceView,
+} from "@app/lib/api/activation/trigger";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import { createPlugin } from "@app/lib/api/poke/types";
@@ -12,6 +17,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { activationSkill } from "@app/lib/resources/skill/code_defined/global/activation";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -36,15 +42,6 @@ function activationPodNameForCreator(
 
   const label = hasNameCollision ? creator.email : creatorFullName;
   return `${label}${ACTIVATION_POD_NAME_PREFIX}`;
-}
-
-function parseUserIds(rawUserIds: string): string[] {
-  const ids = rawUserIds
-    .split(",")
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0);
-
-  return [...new Set(ids)];
 }
 
 async function markPodAsActivation(
@@ -153,15 +150,39 @@ export const joinActivationPodPlugin = createPlugin({
     id: "join-activation-pod",
     name: "Join Activation Pod",
     description:
-      "Create an Activation Pod and add one or more workspace members to it as editors.",
+      "Create an Activation Pod with a chosen editor and optional additional members.",
     resourceTypes: ["workspaces"],
     args: {
-      userIds: {
-        type: "string",
-        label: "User ID(s)",
+      editorUserId: {
+        type: "enum",
+        label: "Pod editor",
         description:
-          "Comma-separated sId(s) of the workspace member(s) to add to the " +
+          "Search by name or email. This member becomes the Pod editor, and " +
+          "the Pod is named after them by default.",
+        // Options are loaded from the workspace member search API as the user
+        // types; no static values are needed.
+        async: true,
+        values: [],
+        multiple: false,
+        serverSideSearch: true,
+      },
+      memberUserIds: {
+        type: "enum",
+        label: "Additional members",
+        description:
+          "Optional. Search and select more workspace members to add to the " +
           "Activation Pod as members.",
+        async: true,
+        values: [],
+        multiple: true,
+        serverSideSearch: true,
+      },
+      podName: {
+        type: "string",
+        label: "Pod name",
+        description:
+          "Optional. Name for the Activation Pod. Defaults to " +
+          `"<creator>${ACTIVATION_POD_NAME_PREFIX}" if left blank.`,
       },
       defaultSkillIds: {
         type: "enum",
@@ -188,6 +209,7 @@ export const joinActivationPodPlugin = createPlugin({
       globalSpaceOnly: true,
       withInstructions: false,
       withTools: false,
+      withFileAttachments: false,
     });
 
     return new Ok({
@@ -203,18 +225,35 @@ export const joinActivationPodPlugin = createPlugin({
   execute: async (
     auth,
     _resource,
-    { userIds, defaultSkillIds, agentsMdInstructions }
-  ) => {
-    const requestedUserIds = parseUserIds(userIds);
-    if (requestedUserIds.length === 0) {
-      return new Err(new Error("At least one user ID is required."));
+    {
+      editorUserId,
+      memberUserIds,
+      podName: podNameInput,
+      defaultSkillIds,
+      agentsMdInstructions,
     }
+  ) => {
+    const editorId = editorUserId?.[0]?.trim();
+    if (!editorId) {
+      return new Err(new Error("A Pod editor is required."));
+    }
+
+    // Additional members, deduped and never including the editor (who is added
+    // separately as the Pod creator/editor).
+    const memberIds = [
+      ...new Set(
+        (memberUserIds ?? [])
+          .map((id) => id.trim())
+          .filter((id) => id.length > 0 && id !== editorId)
+      ),
+    ];
 
     const selectedSkillIds = defaultSkillIds ?? [];
     const agentsMd = agentsMdInstructions ?? "";
 
     const workspace = auth.getNonNullableWorkspace();
 
+    const requestedUserIds = [editorId, ...memberIds];
     const users = await UserResource.fetchByIds(requestedUserIds);
     const foundUserIds = new Set(users.map((u) => u.sId));
     const missingUserIds = requestedUserIds.filter(
@@ -241,8 +280,18 @@ export const joinActivationPodPlugin = createPlugin({
       );
     }
 
-    const [creator, ...otherUsers] = users;
-    const podName = activationPodNameForCreator(creator, otherUsers);
+    // The editor is the Pod creator (added as editor on creation and used for
+    // naming); everyone else is added as a member.
+    const creator = users.find((u) => u.sId === editorId);
+    if (!creator) {
+      return new Err(new Error(`Pod editor not found: ${editorId}.`));
+    }
+    const otherUsers = users.filter((u) => u.sId !== editorId);
+    const trimmedPodName = podNameInput?.trim();
+    const podName =
+      trimmedPodName && trimmedPodName.length > 0
+        ? trimmedPodName
+        : activationPodNameForCreator(creator, otherUsers);
     const podLink = (space: SpaceResource) =>
       `/poke/${workspace.sId}/spaces/${space.sId}`;
 
@@ -282,6 +331,13 @@ export const joinActivationPodPlugin = createPlugin({
       return activationResult;
     }
 
+    // Star the pod for every member so it surfaces in their sidebar.
+    await UserProjectPreferencesResource.setStarredForUsers(auth, {
+      spaceModelId: pod.id,
+      userModelIds: users.map((u) => u.id),
+      isStarred: true,
+    });
+
     const skillsResult = await setPodDefaultSkills(auth, pod, selectedSkillIds);
     if (skillsResult.isErr()) {
       return skillsResult;
@@ -290,6 +346,52 @@ export const joinActivationPodPlugin = createPlugin({
     const agentsMdResult = await setPodAgentsMd(auth, pod, creator, agentsMd);
     if (agentsMdResult.isErr()) {
       return agentsMdResult;
+    }
+
+    // Provision the shared activation webhook and create the user-owned trigger
+    // that fires the activation conversation.
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const podMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      creator.sId,
+      workspace.sId
+    );
+
+    const podViewResult = await getOrCreateActivationWebhookSourceView(
+      adminAuth,
+      pod
+    );
+    if (podViewResult.isErr()) {
+      return new Err(
+        new Error(
+          `Failed to get or create Activation Pod webhook view: ${podViewResult.error.message}`
+        )
+      );
+    }
+
+    const triggerResult = await createActivationTrigger(podMemberAuth, {
+      pod,
+      creator,
+      podView: podViewResult.value,
+    });
+    if (triggerResult.isErr()) {
+      return new Err(
+        new Error(
+          `Failed to create Activation Pod trigger: ${triggerResult.error.message}`
+        )
+      );
+    }
+
+    // Fire the activation event so the trigger kicks off the initial conversation
+    // as soon as the pod is provisioned.
+    const emitResult = await emitActivationEvent(adminAuth, pod);
+    if (emitResult.isErr()) {
+      return new Err(
+        new Error(
+          `Failed to emit Activation Pod event: ${emitResult.error.message}`
+        )
+      );
     }
 
     joinActivationPodLogger.info(
@@ -308,9 +410,11 @@ export const joinActivationPodPlugin = createPlugin({
     return new Ok({
       display: "textWithLink",
       value:
-        `Created Activation Pod with 1 editor and ${otherUsers.length} member(s).` +
+        `Created Activation Pod "${podName}" with ${creator.fullName()} as editor ` +
+        `and ${otherUsers.length} additional member(s).` +
         formatDefaultSkillsSuffix(skillsResult.value.skillNames) +
-        formatAgentsMdSuffix(agentsMdResult.value.written),
+        formatAgentsMdSuffix(agentsMdResult.value.written) +
+        " Triggered the activation conversation.",
       link: podLink(pod),
       linkText: "Open Pod in Poke",
     });

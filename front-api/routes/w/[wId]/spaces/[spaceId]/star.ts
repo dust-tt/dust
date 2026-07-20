@@ -35,7 +35,10 @@ app.post(
       isStarred: starred,
     });
 
-    return ctx.json(pref.toJSON());
+    return ctx.json({
+      ...pref.toJSON(),
+      userId: auth.getNonNullableUser().sId,
+    });
   }
 );
 

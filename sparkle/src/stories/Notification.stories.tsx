@@ -49,6 +49,11 @@ export const Inline = () => {
         description="Some information"
       />
       <NotificationContent
+        type="warning"
+        title="Warning"
+        description="Something needs your attention"
+      />
+      <NotificationContent
         type="hello"
         title="You have a message"
         description="A friendly notification"
@@ -75,6 +80,11 @@ export const InlineLongText = () => {
         type="info"
         title="A new version of the app is available with performance improvements"
         description="This release includes faster load times, updated dependencies, and bug fixes. We recommend updating when convenient. The update will be applied automatically on your next session."
+      />
+      <NotificationContent
+        type="warning"
+        title="Your storage is nearly full and uploads may fail soon"
+        description="You have used 94% of your 10 GB quota. Remove old files or upgrade your plan to avoid disruption to your workflow and prevent data loss."
       />
       <NotificationContent
         type="hello"
@@ -127,6 +137,16 @@ const NotificationExample = () => {
           })
         }
         label="Show Info"
+      />
+      <Button
+        onClick={() =>
+          sendNotification({
+            title: "Warning",
+            description: "Something needs your attention",
+            type: "warning",
+          })
+        }
+        label="Show Warning"
       />
       <Button
         onClick={() =>

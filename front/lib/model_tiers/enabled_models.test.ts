@@ -9,7 +9,14 @@ import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 import { beforeEach, describe, expect, it } from "vitest";
+
+const CUSTOM_MODEL_CONFIG = {
+  ...CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  // unsafe "as", because those are generated at runtime.
+  modelId: "my-custom-model-from-eap" as ModelIdType,
+};
 
 describe("withModelSelectability", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
@@ -92,7 +99,7 @@ describe("withModelSelectability", () => {
     expect(model.defaultReasoningEffort).toBe("light");
   });
 
-  it("keeps all reasoning efforts when the user's tier cap includes them", async () => {
+  it("keeps reasoning efforts up to the user's tier cap and drops premium ones", async () => {
     await FeatureFlagFactory.basic(adminAuth, "models_picker");
     const auth = await userAuthForTierCap("balanced");
 
@@ -100,12 +107,14 @@ describe("withModelSelectability", () => {
       models: [CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG],
     });
 
+    // Under a balanced cap, Sonnet 4.6's light (cost_efficient) and medium
+    // (balanced) efforts remain, but high (premium) is dropped.
     expect(model.isSelectable).toBe(true);
     expect(model.supportedReasoningEfforts).toEqual({
       none: false,
       light: true,
       medium: true,
-      high: true,
+      high: false,
     });
     expect(model.defaultReasoningEffort).toBe("medium");
   });
@@ -125,5 +134,18 @@ describe("withModelSelectability", () => {
       medium: false,
       high: false,
     });
+  });
+
+  it("keeps custom (non-tiered) models selectable when models_picker is enabled and the user is tier-capped", async () => {
+    await FeatureFlagFactory.basic(adminAuth, "models_picker");
+    const auth = await userAuthForTierCap("cost_efficient");
+
+    const [model] = await withModelSelectability(auth, {
+      models: [CUSTOM_MODEL_CONFIG],
+    });
+    expect(model.isSelectable).toBe(true);
+    expect(model.supportedReasoningEfforts).toEqual(
+      CUSTOM_MODEL_CONFIG.supportedReasoningEfforts
+    );
   });
 });

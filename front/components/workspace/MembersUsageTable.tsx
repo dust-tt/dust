@@ -386,8 +386,12 @@ export function AwuUsageBar({
       <div className="flex justify-between text-xs tabular-nums text-foreground">
         <span>
           {isFreeWithBalance
-            ? formatCredits(lifetimeConsumed! + overage)
-            : formatCredits(consumed)}
+            ? formatCredits(Math.min(lifetimeConsumed! + overage, allowance))
+            : formatCredits(
+                effectiveLimit !== null
+                  ? Math.min(consumed, effectiveLimit)
+                  : consumed
+              )}
         </span>
         {isPending ? (
           <Spinner size="xs" />

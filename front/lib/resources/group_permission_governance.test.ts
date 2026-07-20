@@ -9,7 +9,7 @@ import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it } from "vitest";
 
 // A concrete capability used across the governance-state tests.
-const CAPABILITY = { permissionType: "create", resourceType: "agent" } as const;
+const CAPABILITY = { grantType: "create", resourceType: "agent" } as const;
 
 describe("GroupPermissionResource — governance state (reads)", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
@@ -35,10 +35,10 @@ describe("GroupPermissionResource — governance state (reads)", () => {
   const stateOf = async (capability: typeof CAPABILITY) =>
     (
       await GroupPermissionResource.getCapabilitiesState(auth, [capability])
-    ).get(`${capability.permissionType}:${capability.resourceType}`);
+    ).get(`${capability.grantType}:${capability.resourceType}`);
 
   it("reports disabled when there is no -1 row", async () => {
-    expect(await stateOf(CAPABILITY)).toEqual({ scope: "disabled" });
+    expect(await stateOf(CAPABILITY)).toEqual({ scope: "admins_only" });
   });
 
   it("reports everyone when the global group holds the -1 row", async () => {
@@ -65,15 +65,15 @@ describe("GroupPermissionResource — governance state (reads)", () => {
 
   it("resolves multiple capabilities in one call", async () => {
     const everyoneCap = {
-      permissionType: "publish",
+      grantType: "publish",
       resourceType: "agent",
     } as const;
     const groupsCap = {
-      permissionType: "create",
+      grantType: "create",
       resourceType: "skill",
     } as const;
     const disabledCap = {
-      permissionType: "admin",
+      grantType: "admin",
       resourceType: "billing",
     } as const;
     await GroupPermissionResource.grantTypeWide(auth, {
@@ -91,7 +91,7 @@ describe("GroupPermissionResource — governance state (reads)", () => {
       disabledCap,
     ]);
     expect(states.get("publish:agent")).toEqual({ scope: "everyone" });
-    expect(states.get("admin:billing")).toEqual({ scope: "disabled" });
+    expect(states.get("admin:billing")).toEqual({ scope: "admins_only" });
     const groupsState = states.get("create:skill");
     assert(groupsState?.scope === "groups", "expected groups scope");
     expect(groupsState.groups.map((g) => g.id)).toEqual([groupA.id]);
@@ -157,7 +157,7 @@ describe("GroupPermissionResource — governance state (reads)", () => {
       });
       await GroupPermissionResource.disable(auth, CAPABILITY, { transaction });
 
-      expect(await stateOf(CAPABILITY)).toEqual({ scope: "disabled" });
+      expect(await stateOf(CAPABILITY)).toEqual({ scope: "admins_only" });
     });
 
     it("setGroups([]) disables the capability", async () => {
@@ -168,7 +168,7 @@ describe("GroupPermissionResource — governance state (reads)", () => {
         transaction,
       });
 
-      expect(await stateOf(CAPABILITY)).toEqual({ scope: "disabled" });
+      expect(await stateOf(CAPABILITY)).toEqual({ scope: "admins_only" });
     });
 
     it("setGroups rejects the system group", async () => {

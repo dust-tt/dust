@@ -1,31 +1,27 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
-import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
-import {
-  inputConfigSchema,
-  temperatureSchema,
-} from "@app/lib/model_constructors/types/input/configuration";
+import { anthropicBaseConfigSchema } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
+import { temperatureSchema } from "@app/lib/model_constructors/types/input/configuration";
 import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 
 import { z } from "zod";
 
-const CONTEXT_SIZE = 250_000;
+// Real model spec. The Dust product cap (250k) is applied in the llms layer.
+const CONTEXT_SIZE = 1_000_000;
 const DEFAULT_REASONING_EFFORT = "high";
-const MAX_OUTPUT_TOKENS = 64_000;
+const MAX_OUTPUT_TOKENS = 128_000;
 
-const baseConfig = inputConfigSchema.extend({
-  cacheKey: z.undefined(),
-});
+const baseConfig = anthropicBaseConfigSchema;
 
 const configSchema = z.union([
   baseConfig.extend({
     reasoning: z
       .object({
-        effort: z.enum(ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS),
+        effort: z.enum(["low", "medium", "high", "maximal"]),
       })
       .default({ effort: DEFAULT_REASONING_EFFORT }),
     forceTool: z.undefined(),
     // Reasoning requires temperature=1.
-    temperature: temperatureSchema.optional().transform(() => 1 as const),
+    temperature: z.literal(1).optional().default(1),
   }),
   baseConfig.extend({
     reasoning: z.object({ effort: z.literal("none") }),
@@ -54,8 +50,10 @@ export function WithAnthropicClaudeSonnetFourDotSixConfig<
       unknown
     > = configSchema;
 
-    static readonly contextSize = CONTEXT_SIZE;
-    static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
+    // Typed as `number` (not the literal) so the Dust layer can cap it.
+    static readonly contextSize: number = CONTEXT_SIZE;
+    // Typed as `number` (not the literal) so the Dust layer can cap it.
+    static readonly maxOutputTokens: number = MAX_OUTPUT_TOKENS;
   }
 
   return AnthropicClaudeSonnetFourDotSix;

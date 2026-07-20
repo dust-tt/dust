@@ -14,9 +14,9 @@ import type {
   ModelConfigurationType,
   ReasoningEffortSupport,
 } from "@app/types/assistant/models/types";
-import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
+import { getMaximumReasoningEffort } from "@app/types/assistant/models/types";
 
-function isTieredModelId(
+function isStaticModel(
   modelId: string
 ): modelId is keyof typeof STATIC_MODEL_TIERS {
   return modelId in STATIC_MODEL_TIERS;
@@ -26,10 +26,12 @@ function restrictModelConfigToAllowedTiers(
   model: ModelConfigurationType,
   allowedTierNamesSet: Set<ModelsTierName>
 ): EnabledModelConfigurationType {
-  if (!isTieredModelId(model.modelId)) {
+  if (!isStaticModel(model.modelId)) {
+    // Models outside the tier table are models added dynamically (as we
+    // have a type guard for all models), so it is expected that we allow them.
     return {
       ...model,
-      isSelectable: false,
+      isSelectable: true,
     };
   }
 
@@ -55,7 +57,7 @@ function restrictModelConfigToAllowedTiers(
     model.defaultReasoningEffort
   ]
     ? model.defaultReasoningEffort
-    : getMinimumReasoningEffort(supportedReasoningEfforts);
+    : getMaximumReasoningEffort(supportedReasoningEfforts);
 
   return {
     ...model,

@@ -2,7 +2,7 @@ import {
   computeMessagesWithToolOutputContent,
   TOOL_OUTPUT_FETCH_BATCH_SIZE,
 } from "@app/lib/api/assistant/conversation/fetch";
-import type { Interaction } from "@app/lib/api/assistant/conversation_rendering/pruning";
+import type { Interaction } from "@app/lib/api/assistant/conversation/interactions";
 import { describe, expect, it } from "vitest";
 
 // Builds n interactions, each a user message followed by an agent message. Agent message ids are

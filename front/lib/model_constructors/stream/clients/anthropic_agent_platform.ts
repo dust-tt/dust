@@ -1,8 +1,10 @@
 import type {
+  BetaMessageStreamParams,
+  BetaRawMessageStreamEvent,
+} from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import type {
   MessageCreateParamsNonStreaming,
-  MessageCreateParamsStreaming,
   Model,
-  RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import AnthropicVertex from "@anthropic-ai/vertex-sdk";
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
@@ -47,7 +49,7 @@ export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputC
   WithAnthropicAIOutputConverter(
     StreamEndpoint<
       MessageCreateParamsNonStreaming,
-      RawMessageStreamEvent,
+      BetaRawMessageStreamEvent,
       AnthropicInputConfig
     >
   )
@@ -84,12 +86,9 @@ export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputC
 
   async *streamRaw(
     input: MessageCreateParamsNonStreaming
-  ): AsyncGenerator<RawMessageStreamEvent> {
-    const streamingInput: MessageCreateParamsStreaming = {
-      ...input,
-      stream: true,
-    };
-    const stream = this.client.messages.stream(streamingInput);
+  ): AsyncGenerator<BetaRawMessageStreamEvent> {
+    const streamingInput: BetaMessageStreamParams = { ...input };
+    const stream = this.client.beta.messages.stream(streamingInput);
 
     // SDK mutates/reuses events; deep-copy.
     for await (const event of stream) {
@@ -98,7 +97,7 @@ export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputC
   }
 
   async *rawStreamOutputToEvents(
-    stream: AsyncGenerator<RawMessageStreamEvent>
+    stream: AsyncGenerator<BetaRawMessageStreamEvent>
   ): AsyncGenerator<ModelResponseEvent> {
     yield* rawOutputToEvents(stream, this.metadata(), this);
   }

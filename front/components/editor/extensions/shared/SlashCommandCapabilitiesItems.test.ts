@@ -4,10 +4,11 @@ import { describe, expect, it } from "vitest";
 import {
   getSkillSlashCommandItem,
   getToolSlashCommandItem,
+  MAX_RENDERED_CAPABILITY_ITEMS,
   matchesSlashCommandCapabilityQuery,
   type SlashCommandSkillSuggestion,
   type SlashCommandToolSuggestion,
-  sortSlashCommandCapabilityMatches,
+  searchCapabilityIndex,
 } from "./SlashCommandCapabilitiesItems";
 
 function toolSuggestion({
@@ -109,49 +110,92 @@ describe("matchesSlashCommandCapabilityQuery", () => {
   });
 });
 
-describe("sortSlashCommandCapabilityMatches", () => {
+describe("searchCapabilityIndex ranking", () => {
   it("sorts capabilities alphabetically when no query is provided", () => {
-    const result = sortSlashCommandCapabilityMatches({
-      normalizedQuery: "",
+    const result = searchCapabilityIndex({
       items: [
         { id: "z", sortName: "zendesk" },
         { id: "a", sortName: "asana" },
       ],
+      query: "",
     });
 
     expect(result.map((item) => item.id)).toEqual(["a", "z"]);
   });
 
   it("breaks fuzzy ties alphabetically when a query is provided", () => {
-    const result = sortSlashCommandCapabilityMatches({
-      normalizedQuery: "test",
+    const result = searchCapabilityIndex({
       items: [
         { id: "testlonger", sortName: "testlonger" },
         { id: "longtest", sortName: "longtest" },
       ],
+      query: "test",
     });
 
     expect(result.map((item) => item.id)).toEqual(["longtest", "testlonger"]);
   });
 
   it("ranks title matches above description-only matches", () => {
-    const result = sortSlashCommandCapabilityMatches({
-      normalizedQuery: "docs",
+    const result = searchCapabilityIndex({
       items: [
         {
           id: "desc-only",
+          normalizedDescription: "search and retrieve docs",
           sortName: "linear",
-          description: "Search and retrieve docs",
         },
         {
           id: "title-match",
+          normalizedDescription: "view files",
           sortName: "docs viewer",
-          description: "View files",
         },
       ],
+      query: "docs",
     });
 
     expect(result.map((item) => item.id)).toEqual(["title-match", "desc-only"]);
+  });
+});
+
+describe("searchCapabilityIndex", () => {
+  it("returns only the first ranked result window", () => {
+    const result = searchCapabilityIndex({
+      items: Array.from(
+        { length: MAX_RENDERED_CAPABILITY_ITEMS + 10 },
+        (_, index) => ({
+          id: index,
+          sortName: `capability ${index.toString().padStart(2, "0")}`,
+        })
+      ),
+      query: "",
+    });
+
+    expect(result).toHaveLength(MAX_RENDERED_CAPABILITY_ITEMS);
+    expect(result[0]?.id).toBe(0);
+    expect(result.at(-1)?.id).toBe(MAX_RENDERED_CAPABILITY_ITEMS - 1);
+  });
+
+  it("searches normalized descriptions and preserves group ordering", () => {
+    const result = searchCapabilityIndex({
+      items: [
+        {
+          id: "uninstalled-title-match",
+          normalizedDescription: "create an issue",
+          sortGroup: 1,
+          sortName: "linear docs",
+        },
+        {
+          id: "installed-description-match",
+          normalizedDescription: "search docs",
+          sortName: "search",
+        },
+      ],
+      query: "docs",
+    });
+
+    expect(result.map((item) => item.id)).toEqual([
+      "installed-description-match",
+      "uninstalled-title-match",
+    ]);
   });
 });
 
@@ -174,10 +218,8 @@ describe("getSkillSlashCommandItem", () => {
       hasDetails: true,
       id: "skill_create_memo",
       label: "Create memo",
-      tooltip: {
-        description: "Draft structured memos.",
-      },
     });
+    expect(item.tooltip).toBeUndefined();
   });
 });
 

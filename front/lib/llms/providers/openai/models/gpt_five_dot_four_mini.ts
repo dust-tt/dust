@@ -1,3 +1,5 @@
+import { dropTemperatureWhenReasoning } from "@app/lib/llms/stream/types/configuration";
+
 export function WithDustGptFiveDotFourMiniConfig<
   TBase extends abstract new (
     ...args: any[]
@@ -9,6 +11,8 @@ export function WithDustGptFiveDotFourMiniConfig<
       "OpenAI's faster, cost-efficient GPT-5.4 for well-defined tasks (400k context).";
     static readonly defaultReasoningEffort = "none";
     static readonly byok = true;
+    // The Responses API rejects an explicit temperature while reasoning is on.
+    static readonly parseConfig = dropTemperatureWhenReasoning;
   }
 
   return DustGptFiveDotFourMini;

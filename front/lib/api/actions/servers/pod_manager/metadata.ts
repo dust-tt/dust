@@ -22,6 +22,7 @@ export const UPDATE_MEMBERS_TOOL_NAME = "update_members" as const;
 export const LIST_MEMBERS_TOOL_NAME = "list_members" as const;
 export const SEMANTIC_SEARCH_TOOL_NAME = "semantic_search" as const;
 export const EDIT_INFORMATION_TOOL_NAME = "edit_information" as const;
+export const SET_PINNED_FRAME_TOOL_NAME = "set_pinned_frame" as const;
 export const MOVE_CONVERSATION_TOOL_NAME = "move_conversation" as const;
 
 export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
@@ -81,9 +82,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   [EDIT_INFORMATION_TOOL_NAME]: {
     description:
-      "Edit Pod information: title, description, access, and/or pinned frame. " +
+      "Edit Pod information: title, description, and/or access. " +
       "Provide at least one field to update. Descriptions must be plain text only (no markdown, HTML, or formatting). " +
-      "The pinned frame must be an existing Pod file path under `pod/` (use null to unpin). " +
       "Access can be set to open or restricted; open Pods are subject to workspace policy.",
     schema: {
       title: z.string().optional().describe("New Pod title"),
@@ -99,13 +99,6 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Pod access. restricted = limited to invited members; open = all workspace members can join. Open Pods are subject to workspace policy."
         ),
-      pinnedFramePath: z
-        .string()
-        .nullable()
-        .optional()
-        .describe(
-          `Path to a Pod file to pin as the Pod banner frame (e.g. ${SCOPED_PREFIX_POD}<id>/banner.html). Pass null to unpin.`
-        ),
       dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
@@ -118,6 +111,33 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Editing Pod information",
       done: "Edit Pod information",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  [SET_PINNED_FRAME_TOOL_NAME]: {
+    description:
+      "Set or clear the Pod banner frame — the frame pinned to the top of the Pod. " +
+      "The pinned frame must be an existing Pod file path under `pod/` (pass null to unpin).",
+    schema: {
+      pinnedFramePath: z
+        .string()
+        .nullable()
+        .describe(
+          `Path to a Pod file to pin as the Pod banner frame (e.g. ${SCOPED_PREFIX_POD}<id>/banner.html). Pass null to unpin.`
+        ),
+      dustPod: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
+      ]
+        .optional()
+        .describe(
+          "Optional Pod to update, will fallback to the conversation's Pod."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Updating pinned frame",
+      done: "Update pinned frame",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -550,8 +570,6 @@ export const POD_MANAGER_SERVER = {
     displayLabels: t.displayLabels,
     toolCostCategory: t.toolCostCategory,
     freeUsage: t.freeUsage,
+    stake: t.stake,
   })),
-  tools_stakes: Object.fromEntries(
-    Object.values(POD_MANAGER_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
 } as const satisfies ServerMetadata;

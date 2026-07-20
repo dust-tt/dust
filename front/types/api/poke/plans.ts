@@ -23,6 +23,7 @@ export const PlanTypeSchema = z.object({
       }),
     }),
     connections: z.object({
+      count: z.number(),
       isConfluenceAllowed: z.boolean(),
       isSlackAllowed: z.boolean(),
       isNotionAllowed: z.boolean(),

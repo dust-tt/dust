@@ -17,6 +17,7 @@ import {
   GPT_5_5_MODEL_ID,
   GPT_5_NANO_MODEL_ID,
 } from "@app/types/assistant/models/openai";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import { GROK_4_FAST_REASONING_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 import { describe, expect, it } from "vitest";
@@ -72,6 +73,16 @@ describe("token_pricing/tiers", () => {
     ).toBe("premium");
   });
 
+  it("classifies generated custom models as premium", () => {
+    // Custom models are generated from GCS at build time and are therefore not
+    // present in the checked-in CUSTOM_MODEL_IDS fixture.
+    const customModelId = "my-custom-model-from-eap" as ModelIdType;
+
+    expect(ModelsTierResource.getTierForModel(customModelId, "high")).toBe(
+      "premium"
+    );
+  });
+
   it("classifies sonnet with light reasoning as cost efficient", () => {
     expect(
       ModelsTierResource.getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "light")
@@ -82,6 +93,12 @@ describe("token_pricing/tiers", () => {
     expect(
       ModelsTierResource.getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "medium")
     ).toBe("balanced");
+  });
+
+  it("classifies sonnet with high reasoning as premium", () => {
+    expect(
+      ModelsTierResource.getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "high")
+    ).toBe("premium");
   });
 
   it("classifies large non-sonnet models with light reasoning as premium", () => {

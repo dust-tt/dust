@@ -122,6 +122,9 @@ import {
   InfoCircle,
   InteractiveImageGrid,
   Link01,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
   RefreshCw02,
   Stop,
   Tooltip,
@@ -147,48 +150,54 @@ import { mutate } from "swr";
 
 const RUN_AGENT_TOOL_NAME = "run_agent";
 
+// Popover (not Tooltip) so the "Learn more" link inside stays reachable.
 function PrunedContextChip() {
   return (
-    <Tooltip
-      label={
-        <div className="flex flex-col gap-2 py-2">
-          <div className="font-semibold">
-            This conversation reached its size limit
-          </div>
-          <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground">
-            <p>
-              Dust had to trim part of the tool output used to generate this
-              message to fit the model&apos;s context window. This usually
-              happens when a search or other tool returns more data than the
-              model can process at once.
-            </p>
-            <p>
-              For best accuracy, start a fresh conversation or narrow the
-              request.
-            </p>
-            <p>
-              <a
-                href={CONTEXT_WINDOW_DOC_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-foreground"
-              >
-                Learn more
-              </a>
-            </p>
-          </div>
+    <PopoverRoot>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="cursor-pointer rounded-lg border-0 bg-transparent p-0 outline-hidden ring-offset-background transition focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
+          aria-label="Context limit reached. Open details."
+        >
+          <Chip
+            label="Context limit reached"
+            size="xs"
+            color="primary"
+            icon={InfoCircle}
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="flex w-[min(24rem,calc(100vw-1.5rem))] flex-col gap-2"
+      >
+        <div className="font-semibold">
+          This conversation reached its size limit
         </div>
-      }
-      className="max-w-sm"
-      trigger={
-        <Chip
-          label="Context limit reached"
-          size="xs"
-          color="primary"
-          icon={InfoCircle}
-        />
-      }
-    />
+        <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground">
+          <p>
+            Dust had to trim part of the tool output used to generate this
+            message to fit the model&apos;s context window. This usually happens
+            when a search or other tool returns more data than the model can
+            process at once.
+          </p>
+          <p>
+            For best accuracy, start a fresh conversation or narrow the request.
+          </p>
+          <p>
+            <a
+              href={CONTEXT_WINDOW_DOC_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              Learn more
+            </a>
+          </p>
+        </div>
+      </PopoverContent>
+    </PopoverRoot>
   );
 }
 
@@ -310,14 +319,14 @@ export function AgentMessage({
   });
   const refreshedAgentMessage =
     refreshedMessage?.type === "agent_message" ? refreshedMessage : null;
-  const { creditCostItem, isCreditPriced } = useCreditCostMenuItem({
+  const creditCostItem = useCreditCostMenuItem({
     credits: refreshedAgentMessage?.costCredits ?? agentMessage.costCredits,
     subAgentCredits:
       refreshedAgentMessage?.subAgentCostCredits ??
       agentMessage.subAgentCostCredits,
   });
-  // On a credit-priced plan, keep the cost section visible while the fetch is
-  // in flight (showing a loader) rather than popping it in once it resolves.
+  // Keep the cost section visible while the fetch is in flight (showing a
+  // loader) rather than popping it in once it resolves.
   const isCreditCostLoading = needsCostFetch && isMessageLoading;
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
@@ -954,7 +963,7 @@ export function AgentMessage({
               // post-event). Revalidate the authoritative value once per
               // completion so the total (e.g. summed across an `ask_user`
               // resume) is correct without a page refresh.
-              if (isCreditPriced && pendingCostRevalidationRef.current) {
+              if (pendingCostRevalidationRef.current) {
                 pendingCostRevalidationRef.current = false;
                 void mutateMessage();
               }
@@ -970,7 +979,7 @@ export function AgentMessage({
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {isCreditPriced && (creditCostItem || isCreditCostLoading) && (
+            {(creditCostItem || isCreditCostLoading) && (
               <>
                 {creditCostItem ? (
                   <DropdownMenuItem {...creditCostItem} />

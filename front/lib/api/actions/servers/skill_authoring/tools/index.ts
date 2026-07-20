@@ -235,6 +235,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
         onlyCustom: false,
         withInstructions: false,
         withTools: false,
+        withFileAttachments: false,
       });
       skills =
         resolvedFilter === "writable"

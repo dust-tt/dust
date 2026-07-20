@@ -40,6 +40,14 @@ export const batchUpdateSeatsPlugin = createPlugin({
         label: "Emails",
         description: "One email per line.",
       },
+      immediate: {
+        type: "boolean",
+        label: "Apply immediately",
+        description:
+          "When checked, apply the seat change right now instead of " +
+          "deferring a downgrade to the seat's next billing-period renewal.",
+        default: true,
+      },
     },
     requiredRoles: ["support"],
   },
@@ -52,6 +60,7 @@ export const batchUpdateSeatsPlugin = createPlugin({
     if (!seatType || !isMembershipSeatType(seatType)) {
       return new Err(new Error("Please select a seat type."));
     }
+    const { immediate } = args;
 
     // One email per line; trim, lowercase and dedupe.
     const emails = Array.from(
@@ -112,6 +121,8 @@ export const batchUpdateSeatsPlugin = createPlugin({
           workspace,
           newSeatType: seatType,
           author,
+          immediate,
+          allowReturningMemberFreeSeat: true,
         });
         if (res.isErr()) {
           return { email, status: "failed" as const, error: res.error.type };

@@ -11,6 +11,9 @@ import { AgentPlatformEuropeClaudeSonnetFiveStream } from "@app/lib/model_constr
 import { AgentPlatformEuropeClaudeSonnetFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_sonnet_four_dot_six";
 import { AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_1_flash_lite";
 import { AgentPlatformEuropeGeminiThreeDotFiveFlashStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_5_flash";
+import { AgentPlatformGlobalGeminiThreeDotOneFlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_global_gemini_3_1_flash_lite";
+import { AgentPlatformGlobalGeminiThreeDotOneProStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_global_gemini_3_1_pro";
+import { AgentPlatformGlobalGeminiThreeDotFiveFlashStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_global_gemini_3_5_flash";
 import { AnthropicGlobalClaudeFableFiveStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_fable_five";
 import { AnthropicGlobalClaudeHaikuFourDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_haiku_four_dot_five";
 import { AnthropicGlobalClaudeOpusFourDotEightStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_eight";
@@ -22,7 +25,9 @@ import { FireworksGlobalDeepSeekV4ProStream } from "@app/lib/model_constructors/
 import { FireworksGlobalGlmFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_glm_five_dot_two";
 import { FireworksGlobalKimiK2Dot5Stream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_kimi_k2_dot_five";
 import { FireworksGlobalKimiK2Dot6Stream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_kimi_k2_dot_six";
+import { GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_flash_lite";
 import { GoogleAiStudioGlobalGeminiThreeDotOneProStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
+import { GoogleAiStudioGlobalGeminiThreeDotFiveFlashStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_5_flash";
 import { MistralEuropeCodestralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_codestral";
 import { MistralEuropeMistralLargeStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_large";
 import { MistralEuropeMistralMedium35Stream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_medium_3_5";
@@ -34,6 +39,9 @@ import { OpenAIResponsesEuropeGptFiveDotFourStream } from "@app/lib/model_constr
 import { OpenAIResponsesEuropeGptFiveDotFourMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_four_mini";
 import { OpenAIResponsesEuropeGptFiveDotFourNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_four_nano";
 import { OpenAIResponsesEuropeGptFiveDotOneStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_one";
+import { OpenAIResponsesEuropeGptFiveDotSixLunaStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_six_luna";
+import { OpenAIResponsesEuropeGptFiveDotSixSolStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_six_sol";
+import { OpenAIResponsesEuropeGptFiveDotSixTerraStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_six_terra";
 import { OpenAIResponsesEuropeGptFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_two";
 import { OpenAIResponsesEuropeGptFiveMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_mini";
 import { OpenAIResponsesEuropeGptFiveNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_nano";
@@ -43,6 +51,9 @@ import { OpenAIResponsesGlobalGptFiveDotFourStream } from "@app/lib/model_constr
 import { OpenAIResponsesGlobalGptFiveDotFourMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_four_mini";
 import { OpenAIResponsesGlobalGptFiveDotFourNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_four_nano";
 import { OpenAIResponsesGlobalGptFiveDotOneStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_one";
+import { OpenAIResponsesGlobalGptFiveDotSixLunaStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_six_luna";
+import { OpenAIResponsesGlobalGptFiveDotSixSolStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_six_sol";
+import { OpenAIResponsesGlobalGptFiveDotSixTerraStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_six_terra";
 import { OpenAIResponsesGlobalGptFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_two";
 import { OpenAIResponsesGlobalGptFiveMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_mini";
 import { OpenAIResponsesGlobalGptFiveNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_nano";
@@ -54,6 +65,9 @@ import { AgentPlatformEuropeClaudeSonnetFiveStreamSetup } from "@app/lib/model_c
 import { AgentPlatformEuropeClaudeSonnetFourDotSixStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_eu_claude_sonnet_four_dot_six.test";
 import { AgentPlatformEuropeGeminiThreeDotOneFlashLiteStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_eu_gemini_3_1_flash_lite.test";
 import { AgentPlatformEuropeGeminiThreeDotFiveFlashStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_eu_gemini_3_5_flash.test";
+import { AgentPlatformGlobalGeminiThreeDotOneFlashLiteStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_global_gemini_3_1_flash_lite.test";
+import { AgentPlatformGlobalGeminiThreeDotOneProStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_global_gemini_3_1_pro.test";
+import { AgentPlatformGlobalGeminiThreeDotFiveFlashStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_global_gemini_3_5_flash.test";
 import { AnthropicGlobalClaudeFableFiveStreamSetup } from "@app/lib/model_constructors/test/endpoints/anthropic_claude_fable_five.test";
 import { AnthropicGlobalClaudeHaikuFourDotFiveStreamSetup } from "@app/lib/model_constructors/test/endpoints/anthropic_claude_haiku_four_dot_five.test";
 import { AnthropicGlobalClaudeOpusFourDotEightStreamSetup } from "@app/lib/model_constructors/test/endpoints/anthropic_claude_opus_four_dot_eight.test";
@@ -65,7 +79,9 @@ import { FireworksGlobalDeepSeekV4ProStreamSetup } from "@app/lib/model_construc
 import { FireworksGlobalGlmFiveDotTwoStreamSetup } from "@app/lib/model_constructors/test/endpoints/fireworks_global_glm_five_dot_two.test";
 import { FireworksGlobalKimiK2Dot5StreamSetup } from "@app/lib/model_constructors/test/endpoints/fireworks_global_kimi_k2_dot_five.test";
 import { FireworksGlobalKimiK2Dot6StreamSetup } from "@app/lib/model_constructors/test/endpoints/fireworks_global_kimi_k2_dot_six.test";
+import { GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStreamSetup } from "@app/lib/model_constructors/test/endpoints/google_ai_studio_global_gemini_3_1_flash_lite.test";
 import { GoogleAiStudioGlobalGeminiThreeDotOneProStreamSetup } from "@app/lib/model_constructors/test/endpoints/google_ai_studio_global_gemini_3_1_pro.test";
+import { GoogleAiStudioGlobalGeminiThreeDotFiveFlashStreamSetup } from "@app/lib/model_constructors/test/endpoints/google_ai_studio_global_gemini_3_5_flash.test";
 import { MistralEuropeCodestralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_eu_codestral.test";
 import { MistralEuropeMistralLargeStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_eu_mistral_large.test";
 import { MistralEuropeMistralMedium35StreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_eu_mistral_medium_3_5.test";
@@ -77,6 +93,9 @@ import { OpenAIResponsesEuropeGptFiveDotFourStreamSetup } from "@app/lib/model_c
 import { OpenAIResponsesEuropeGptFiveDotFourMiniStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_eu_gpt_five_dot_four_mini.test";
 import { OpenAIResponsesEuropeGptFiveDotFourNanoStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_eu_gpt_five_dot_four_nano.test";
 import { OpenAIResponsesEuropeGptFiveDotOneStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_eu_gpt_five_dot_one.test";
+import { OpenAIResponsesEuropeGptFiveDotSixLunaStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_eu_gpt_five_dot_six_luna.test";
+import { OpenAIResponsesEuropeGptFiveDotSixSolStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_eu_gpt_five_dot_six_sol.test";
+import { OpenAIResponsesEuropeGptFiveDotSixTerraStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_eu_gpt_five_dot_six_terra.test";
 import { OpenAIResponsesEuropeGptFiveDotTwoStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_eu_gpt_five_dot_two.test";
 import { OpenAIResponsesEuropeGptFiveMiniStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_eu_gpt_five_mini.test";
 import { OpenAIResponsesEuropeGptFiveNanoStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_eu_gpt_five_nano.test";
@@ -86,6 +105,9 @@ import { OpenAIResponsesGlobalGptFiveDotFourStreamSetup } from "@app/lib/model_c
 import { OpenAIResponsesGlobalGptFiveDotFourMiniStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_global_gpt_five_dot_four_mini.test";
 import { OpenAIResponsesGlobalGptFiveDotFourNanoStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_global_gpt_five_dot_four_nano.test";
 import { OpenAIResponsesGlobalGptFiveDotOneStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_global_gpt_five_dot_one.test";
+import { OpenAIResponsesGlobalGptFiveDotSixLunaStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_global_gpt_five_dot_six_luna.test";
+import { OpenAIResponsesGlobalGptFiveDotSixSolStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_global_gpt_five_dot_six_sol.test";
+import { OpenAIResponsesGlobalGptFiveDotSixTerraStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_global_gpt_five_dot_six_terra.test";
 import { OpenAIResponsesGlobalGptFiveDotTwoStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_global_gpt_five_dot_two.test";
 import { OpenAIResponsesGlobalGptFiveMiniStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_global_gpt_five_mini.test";
 import { OpenAIResponsesGlobalGptFiveNanoStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_global_gpt_five_nano.test";
@@ -108,6 +130,12 @@ export const STREAM_ENDPOINT_SETUPS = {
     AgentPlatformEuropeGeminiThreeDotFiveFlashStreamSetup,
   [AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream.id]:
     AgentPlatformEuropeGeminiThreeDotOneFlashLiteStreamSetup,
+  [AgentPlatformGlobalGeminiThreeDotFiveFlashStream.id]:
+    AgentPlatformGlobalGeminiThreeDotFiveFlashStreamSetup,
+  [AgentPlatformGlobalGeminiThreeDotOneFlashLiteStream.id]:
+    AgentPlatformGlobalGeminiThreeDotOneFlashLiteStreamSetup,
+  [AgentPlatformGlobalGeminiThreeDotOneProStream.id]:
+    AgentPlatformGlobalGeminiThreeDotOneProStreamSetup,
   [AnthropicGlobalClaudeFableFiveStream.id]:
     AnthropicGlobalClaudeFableFiveStreamSetup,
   [AnthropicGlobalClaudeHaikuFourDotFiveStream.id]:
@@ -128,8 +156,12 @@ export const STREAM_ENDPOINT_SETUPS = {
     FireworksGlobalGlmFiveDotTwoStreamSetup,
   [FireworksGlobalKimiK2Dot5Stream.id]: FireworksGlobalKimiK2Dot5StreamSetup,
   [FireworksGlobalKimiK2Dot6Stream.id]: FireworksGlobalKimiK2Dot6StreamSetup,
+  [GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream.id]:
+    GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStreamSetup,
   [GoogleAiStudioGlobalGeminiThreeDotOneProStream.id]:
     GoogleAiStudioGlobalGeminiThreeDotOneProStreamSetup,
+  [GoogleAiStudioGlobalGeminiThreeDotFiveFlashStream.id]:
+    GoogleAiStudioGlobalGeminiThreeDotFiveFlashStreamSetup,
   [MistralEuropeCodestralStream.id]: MistralEuropeCodestralStreamSetup,
   [MistralEuropeMistralLargeStream.id]: MistralEuropeMistralLargeStreamSetup,
   [MistralEuropeMistralMedium35Stream.id]:
@@ -146,6 +178,12 @@ export const STREAM_ENDPOINT_SETUPS = {
     OpenAIResponsesEuropeGptFiveDotFourStreamSetup,
   [OpenAIResponsesEuropeGptFiveDotOneStream.id]:
     OpenAIResponsesEuropeGptFiveDotOneStreamSetup,
+  [OpenAIResponsesEuropeGptFiveDotSixLunaStream.id]:
+    OpenAIResponsesEuropeGptFiveDotSixLunaStreamSetup,
+  [OpenAIResponsesEuropeGptFiveDotSixSolStream.id]:
+    OpenAIResponsesEuropeGptFiveDotSixSolStreamSetup,
+  [OpenAIResponsesEuropeGptFiveDotSixTerraStream.id]:
+    OpenAIResponsesEuropeGptFiveDotSixTerraStreamSetup,
   [OpenAIResponsesEuropeGptFiveDotTwoStream.id]:
     OpenAIResponsesEuropeGptFiveDotTwoStreamSetup,
   [OpenAIResponsesEuropeGptFiveMiniStream.id]:
@@ -164,6 +202,12 @@ export const STREAM_ENDPOINT_SETUPS = {
     OpenAIResponsesGlobalGptFiveDotFourStreamSetup,
   [OpenAIResponsesGlobalGptFiveDotOneStream.id]:
     OpenAIResponsesGlobalGptFiveDotOneStreamSetup,
+  [OpenAIResponsesGlobalGptFiveDotSixLunaStream.id]:
+    OpenAIResponsesGlobalGptFiveDotSixLunaStreamSetup,
+  [OpenAIResponsesGlobalGptFiveDotSixSolStream.id]:
+    OpenAIResponsesGlobalGptFiveDotSixSolStreamSetup,
+  [OpenAIResponsesGlobalGptFiveDotSixTerraStream.id]:
+    OpenAIResponsesGlobalGptFiveDotSixTerraStreamSetup,
   [OpenAIResponsesGlobalGptFiveDotTwoStream.id]:
     OpenAIResponsesGlobalGptFiveDotTwoStreamSetup,
   [OpenAIResponsesGlobalGptFiveMiniStream.id]:

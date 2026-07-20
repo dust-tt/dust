@@ -8,7 +8,7 @@ const {
   mockBatchFetchUsedBySkills,
   mockFetchByName,
   mockFetchByIds,
-  mockGetFileAttachments,
+  mockHasFiles,
   mockListForAgentLoop,
   mockLoadSkillFilesToConversation,
 } = vi.hoisted(() => ({
@@ -16,7 +16,7 @@ const {
   mockBatchFetchUsedBySkills: vi.fn(),
   mockFetchByName: vi.fn(),
   mockFetchByIds: vi.fn(),
-  mockGetFileAttachments: vi.fn(),
+  mockHasFiles: vi.fn(),
   mockListForAgentLoop: vi.fn(),
   mockLoadSkillFilesToConversation: vi.fn(),
 }));
@@ -69,7 +69,7 @@ describe("skill_management enable_skill tool", () => {
   } = { content: [], sId: "conversation-id" };
   const skill = {
     enableForAgent: mockEnableForAgent,
-    getFileAttachments: mockGetFileAttachments,
+    hasFiles: mockHasFiles,
     name: "commit",
     sId: "skill-id",
   };
@@ -91,7 +91,7 @@ describe("skill_management enable_skill tool", () => {
     mockFetchByName.mockResolvedValue(null);
     mockFetchByIds.mockResolvedValue([]);
     mockEnableForAgent.mockResolvedValue({ wasAlreadyEnabled: false });
-    mockGetFileAttachments.mockReturnValue([{ fileName: "SKILL.md" }]);
+    mockHasFiles.mockReturnValue(true);
     mockLoadSkillFilesToConversation.mockResolvedValue(
       new Ok({
         loadedPaths: ["conversation-conversation-id/skills/commit/SKILL.md"],
@@ -156,7 +156,7 @@ describe("skill_management enable_skill tool", () => {
   });
 
   it("skips file loading when the skill has no attachments", async () => {
-    mockGetFileAttachments.mockReturnValue([]);
+    mockHasFiles.mockReturnValue(false);
 
     const result = await getTool().handler(
       { skillName: "commit" },

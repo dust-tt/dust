@@ -107,6 +107,26 @@ const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<
   KnownModelLLMId | (string & {})
 >;
 
+// Flexible so the SDK does not need updating when new efforts are added; the
+// server re-validates against the concrete set and rejects unknown values.
+// copied from reasoning.ts to avoid circular dependency
+const ReasoningEffortSchema = FlexibleEnumSchema<
+  "none" | "light" | "medium" | "high"
+>();
+
+// Explicit per-message model + reasoning-effort selection. Providing it makes
+// the mentioned agent(s) run this model instead of their configured one, when
+// it is available to the workspace (otherwise the server falls back). Uses the
+// flexible enums above so unknown-but-syntactically-valid values reach the
+// server, which validates them and returns a 400 on truly unknown ids.
+export const PublicModelSelectionSchema = z.object({
+  providerId: ModelProviderIdSchema,
+  modelId: ModelLLMIdSchema,
+  reasoningEffort: ReasoningEffortSchema.optional(),
+});
+
+export type PublicModelSelection = z.infer<typeof PublicModelSelectionSchema>;
+
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
 
 const ConnectorsAPIErrorTypeSchema = FlexibleEnumSchema<
@@ -700,6 +720,7 @@ export type RetrievalDocumentPublicType = z.infer<
 >;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
+  | "activation_scheduler"
   | "activation_skill"
   | "advanced_notion_management"
   | "allow_sso"
@@ -721,7 +742,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disallow_agent_creation_to_users"
   | "discord_bot"
   | "dummy_feature_for_flag_testing"
-  | "dust_agent_gpt_5_5_default"
+  | "dust_agent_gpt_5_6_luna_default"
   | "dust_agent_sonnet_5_default"
   | "dust_internal_global_agents"
   | "fireworks_new_model_feature"
@@ -742,6 +763,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_usage_mcp"
   | "power_bi_mcp"
   | "reinforced_agents"
+  | "render_search_results_as_markdown"
   | "self_improvement_beta_tester"
   | "legacy_billing"
   | "plan_mode"
@@ -2318,6 +2340,9 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
       clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
     agenticMessageData: AgenticMessageDataSchema.optional(),
+    // Optional per-message model + reasoning-effort override applied to the
+    // mentioned agent(s). Omitted means each agent runs its configured model.
+    modelSelection: PublicModelSelectionSchema.optional(),
   }),
   z
     .object({
@@ -2418,6 +2443,10 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
           mentions: z.array(MentionSchema),
           context: UserMessageContextSchema,
           agenticMessageData: AgenticMessageDataSchema.optional(),
+          // Optional per-message model + reasoning-effort override applied to
+          // the mentioned agent(s). Omitted means each agent runs its
+          // configured model.
+          modelSelection: PublicModelSelectionSchema.optional(),
         }),
         z
           .object({

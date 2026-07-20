@@ -7,7 +7,7 @@ import * as React from "react";
 
 export const radioStyles = cva(
   cn(
-    "h-5 w-5 aspect-square rounded-full border transition duration-200 ease-in-out motion-reduce:transition-none active:scale-95",
+    "h-5 w-5 aspect-square rounded-full border transition duration-100 ease-out motion-reduce:transition-none active:scale-95",
     "border-border-dark",
     "bg-background",
     "text-foreground",
@@ -18,7 +18,12 @@ export const radioStyles = cva(
 );
 
 export const radioIndicatorStyles = cva(
-  "h-3 w-3 bg-primary flex items-center justify-center rounded-full"
+  cn(
+    "h-3 w-3 bg-primary flex items-center justify-center rounded-full",
+    // Quick pop-in on select; deselecting unmounts instantly, which is fine —
+    // exits may be faster than entrances, and this is a high-frequency control.
+    "animate-in fade-in-0 zoom-in-90 duration-150 ease-enter motion-reduce:animate-none"
+  )
 );
 
 const RadioGroup = React.forwardRef<

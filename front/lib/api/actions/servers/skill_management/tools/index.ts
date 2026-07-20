@@ -144,10 +144,11 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       ]);
     }
 
-    // Copy the skill's file attachments into the conversation file system so they are visible to
-    // both the files tools and the sandbox (when one exists).
+    // Copy the skill's files into the conversation file system so they are visible to both the
+    // files tools and the sandbox (when one exists). Covers both custom-skill attachments and
+    // code-defined skill files.
     let fileMessage: string | null = null;
-    if (skill.getFileAttachments().length > 0) {
+    if (skill.hasFiles()) {
       const fileLoadResult = await loadSkillFilesToConversation(auth, {
         skill,
         conversation,

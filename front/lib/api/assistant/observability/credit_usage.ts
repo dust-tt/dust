@@ -246,6 +246,7 @@ export async function fetchCreditUsage(
     agentIds,
     userIds,
     apiKeyNames,
+    agentTagIds,
   }: {
     startDate: string;
     endDate: string;
@@ -255,6 +256,7 @@ export async function fetchCreditUsage(
     agentIds?: string[];
     userIds?: string[];
     apiKeyNames?: string[];
+    agentTagIds?: string[];
   }
 ): Promise<Result<CreditUsageResult, ElasticsearchError>> {
   const aggregations: Record<string, estypes.AggregationsAggregationContainer> =
@@ -277,6 +279,7 @@ export async function fetchCreditUsage(
     agentIds,
     userIds,
     apiKeyNames,
+    agentTagIds,
     extraFilters:
       // api_key buckets missing values under "Not API" instead of dropping
       // them, so the rows keep summing to the total.
@@ -336,6 +339,7 @@ export async function fetchCreditTimeseries(
     agentIds,
     userIds,
     apiKeyNames,
+    agentTagIds,
     fillWindow,
   }: {
     startDate: string;
@@ -346,6 +350,7 @@ export async function fetchCreditTimeseries(
     agentIds?: string[];
     userIds?: string[];
     apiKeyNames?: string[];
+    agentTagIds?: string[];
     fillWindow?: boolean;
   }
 ): Promise<Result<CreditTimeseriesPoint[], ElasticsearchError>> {
@@ -356,6 +361,7 @@ export async function fetchCreditTimeseries(
     agentIds,
     userIds,
     apiKeyNames,
+    agentTagIds,
   });
 
   const result = await searchAnalytics<never, CreditTimeseriesAggs>(query, {
@@ -407,6 +413,7 @@ export async function fetchCreditTimeseriesByUsageType(
     agentIds,
     userIds,
     apiKeyNames,
+    agentTagIds,
     fillWindow,
   }: {
     startDate: string;
@@ -417,6 +424,7 @@ export async function fetchCreditTimeseriesByUsageType(
     agentIds?: string[];
     userIds?: string[];
     apiKeyNames?: string[];
+    agentTagIds?: string[];
     fillWindow?: boolean;
   }
 ): Promise<Result<CreditUsageTypePoint[], ElasticsearchError>> {
@@ -427,6 +435,7 @@ export async function fetchCreditTimeseriesByUsageType(
     agentIds,
     userIds,
     apiKeyNames,
+    agentTagIds,
   });
 
   const programmaticFilter = getProgrammaticUsageFilterClause();
@@ -491,6 +500,7 @@ export async function fetchCreditTimeseriesBreakdown(
     agentIds,
     userIds,
     apiKeyNames,
+    agentTagIds,
     fillWindow,
   }: {
     startDate: string;
@@ -503,6 +513,7 @@ export async function fetchCreditTimeseriesBreakdown(
     agentIds?: string[];
     userIds?: string[];
     apiKeyNames?: string[];
+    agentTagIds?: string[];
     fillWindow?: boolean;
   }
 ): Promise<Result<CreditTimeseriesBreakdown, ElasticsearchError>> {
@@ -515,6 +526,7 @@ export async function fetchCreditTimeseriesBreakdown(
     agentIds,
     userIds,
     apiKeyNames,
+    agentTagIds,
   });
   if (ranking.isErr()) {
     return ranking;
@@ -536,6 +548,7 @@ export async function fetchCreditTimeseriesBreakdown(
     agentIds,
     userIds,
     apiKeyNames,
+    agentTagIds,
   });
 
   const result = await searchAnalytics<never, CreditTimeseriesBreakdownAggs>(

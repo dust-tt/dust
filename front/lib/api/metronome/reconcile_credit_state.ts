@@ -56,6 +56,7 @@ import type {
 import {
   computeUserNearLimit,
   expectedUserCreditState,
+  hasMetronomeSeatBalance,
   normalizeToPoolLimitSeatType,
 } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
@@ -502,12 +503,82 @@ export async function reconcileWorkspaceUserCreditStates({
   }
   const workspaceId = workspace.sId;
 
-  // These return our `Result` type: handle their errors with early returns
-  // rather than throw + catch (ERR1).
-  const seatBalancesResult = await listMetronomeSeatBalances({
-    metronomeCustomerId,
-    metronomeContractId,
-  });
+  // The seat-allowance cache (contract) and the DB queries can genuinely
+  // throw, so they stay wrapped — the ERR1-authorised case. None of these
+  // three depend on each other's results, so they run concurrently instead
+  // of one round trip at a time.
+  let seatAllowances: Partial<Record<NormalizedPoolLimitSeatType, number>>;
+  let defaultPoolCapAwuCredits: number;
+  let memberships: MembershipResource[];
+  try {
+    const [seatAllowancesResult, creditUsageConfig, membershipsResult] =
+      await Promise.all([
+        getSeatAllowancesByNormalizedSeatType(workspaceId),
+        CreditUsageConfigurationResource.fetchByWorkspaceModelId(workspace.id),
+        MembershipResource.getActiveMemberships({ workspace }),
+      ]);
+    seatAllowances = seatAllowancesResult;
+    defaultPoolCapAwuCredits = creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
+    memberships = membershipsResult.memberships;
+  } catch (err) {
+    logger.error(
+      { workspaceId, err: normalizeError(err) },
+      "[ReconcileCreditState] Failed to load cap thresholds or memberships"
+    );
+    return;
+  }
+
+  // Per-user usage and seat balances are both scoped to the active members'
+  // user ids (an unfiltered seatBalances query silently omits most seats on
+  // contracts with a few hundred+ seats), so load memberships first.
+  const memberUserIds = memberships
+    .map((m) => m.user?.sId)
+    .filter((sId): sId is string => sId !== undefined);
+  // Only pro/max (and their _yearly variants) carry an individual Metronome
+  // seat balance — querying free/none/workspace members too would just
+  // waste calls on ids Metronome will report as not found.
+  const seatBalanceEligibleUserIds = memberships.flatMap((m) =>
+    m.user?.sId && hasMetronomeSeatBalance(m.seatType) ? [m.user.sId] : []
+  );
+
+  // These four reads are all independent (each scoped to the member list
+  // resolved above, none depends on another's result), so they run
+  // concurrently. Results return our `Result` type: handled with early
+  // returns below rather than throw + catch (ERR1).
+  const [
+    seatBalancesResult,
+    perUserCreditBalancesResult,
+    usageResult,
+    groupCapByUserModelId,
+  ] = await Promise.all([
+    listMetronomeSeatBalances({
+      metronomeCustomerId,
+      metronomeContractId,
+      seatIds: seatBalanceEligibleUserIds,
+    }),
+    // Free seats hold a per-user contract credit, not a seat balance, so
+    // they're absent from `listMetronomeSeatBalances`. Read their balances
+    // separately so a free user with credit remaining lands on `user_seat`
+    // (not `on_pool`) and is moved to `capped` once exhausted. A read
+    // failure leaves the map empty — free users then fall back to the
+    // seat-balance path (null) as before.
+    listCustomerPerUserCreditBalances({
+      metronomeCustomerId,
+      contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
+    }),
+    fetchPerUserAwuUsage({
+      workspaceId,
+      metronomeCustomerId,
+      userIds: memberUserIds,
+    }),
+    // Max group cap (pool-only) per member, fetched once to avoid an N+1.
+    // Users with no capped group are absent (they fall back to the
+    // workspace default).
+    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: memberships.map((m) => m.userId),
+    }),
+  ]);
   if (seatBalancesResult.isErr()) {
     logger.error(
       { workspaceId, err: seatBalancesResult.error },
@@ -517,15 +588,6 @@ export async function reconcileWorkspaceUserCreditStates({
   }
   const seatBalances = seatBalancesResult.value;
 
-  // Free seats hold a per-user contract credit, not a seat balance, so they're
-  // absent from `listMetronomeSeatBalances`. Read their balances separately so a
-  // free user with credit remaining lands on `user_seat` (not `on_pool`) and is
-  // moved to `capped` once exhausted. A read failure leaves the map empty —
-  // free users then fall back to the seat-balance path (null) as before.
-  const perUserCreditBalancesResult = await listCustomerPerUserCreditBalances({
-    metronomeCustomerId,
-    contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
-  });
   if (perUserCreditBalancesResult.isErr()) {
     logger.warn(
       { workspaceId, err: perUserCreditBalancesResult.error },
@@ -536,42 +598,6 @@ export async function reconcileWorkspaceUserCreditStates({
     ? perUserCreditBalancesResult.value
     : new Map<string, { balanceAwu: number; startingBalanceAwu: number }>();
 
-  // The seat-allowance cache (contract) and the DB queries can genuinely
-  // throw, so they stay wrapped — the ERR1-authorised case. The per-user
-  // overrides come from the memberships and the workspace default from the
-  // credit-usage configuration (both pool-only values); the seat allowances
-  // are needed to derive the total thresholds.
-  let seatAllowances: Partial<Record<NormalizedPoolLimitSeatType, number>>;
-  let defaultPoolCapAwuCredits: number;
-  let memberships: MembershipResource[];
-  try {
-    seatAllowances = await getSeatAllowancesByNormalizedSeatType(workspaceId);
-    const creditUsageConfig =
-      await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
-        workspace.id
-      );
-    defaultPoolCapAwuCredits = creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
-    ({ memberships } = await MembershipResource.getActiveMemberships({
-      workspace,
-    }));
-  } catch (err) {
-    logger.error(
-      { workspaceId, err: normalizeError(err) },
-      "[ReconcileCreditState] Failed to load cap thresholds or memberships"
-    );
-    return;
-  }
-
-  // Per-user usage is scoped to the active members' user ids (an unfiltered
-  // query is capped server-side and omits users), so load memberships first.
-  const memberUserIds = memberships
-    .map((m) => m.user?.sId)
-    .filter((sId): sId is string => sId !== undefined);
-  const usageResult = await fetchPerUserAwuUsage({
-    workspaceId,
-    metronomeCustomerId,
-    userIds: memberUserIds,
-  });
   if (usageResult.isErr()) {
     logger.error(
       { workspaceId, err: usageResult.error },
@@ -580,14 +606,6 @@ export async function reconcileWorkspaceUserCreditStates({
     return;
   }
   const usageByUser = usageResult.value;
-
-  // Max group cap (pool-only) per member, fetched once to avoid an N+1. Users
-  // with no capped group are absent (they fall back to the workspace default).
-  const groupCapByUserModelId =
-    await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
-      workspace,
-      userModelIds: memberships.map((m) => m.userId),
-    });
 
   // One UPDATE per drifting membership. Bounded by the workspace's seat count
   // and gated on the `continue` above, so steady-state writes are ~zero; even

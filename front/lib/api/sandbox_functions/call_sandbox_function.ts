@@ -25,9 +25,8 @@ const resultEnvelopeSchema = z.discriminatedUnion("ok", [
   }),
 ]);
 
-// Safety ceiling on waiting for the result event (delivered over the stream, not invoke()'s
-// return). Under blocking exec it is already in history when we subscribe, so this rarely bites.
-const CALL_RESULT_WAIT_TIMEOUT_MS = 2 * 60 * 1_000;
+// Safety ceiling on waiting for the result event delivered over the invocation stream.
+const CALL_RESULT_WAIT_TIMEOUT_MS = 3 * 60 * 1_000;
 
 export type SandboxFunctionCallOutcome =
   | { ok: true; status: number; output: string }
@@ -61,7 +60,8 @@ export async function callSandboxFunction(
   if (invocationResult.isErr()) {
     return invocationResult;
   }
-  const { sId: invocationId } = invocationResult.value;
+  const invocation = invocationResult.value;
+  const { sId: invocationId } = invocation;
 
   for await (const { data } of getSandboxFunctionInvocationEvents({
     invocationId,
@@ -80,7 +80,7 @@ export async function callSandboxFunction(
     const parsed = resultEnvelopeSchema.safeParse(data.result);
     if (!parsed.success) {
       return new Err(
-        new Error("Sandbox function returned an unexpected result envelope.")
+        new Error("Pod function returned an unexpected result envelope.")
       );
     }
     if (!parsed.data.ok) {
@@ -101,7 +101,5 @@ export async function callSandboxFunction(
     });
   }
 
-  return new Err(
-    new Error("Sandbox function did not return a result in time.")
-  );
+  return new Err(new Error("Pod function did not return a result in time."));
 }

@@ -105,7 +105,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   onAttachmentsPickerOpenChange,
 }: InputBarButtonsProps) {
   const router = useAppRouter();
-  const isMobile = useIsMobile();
+  const isWidthConstrained = useIsMobile() || clientType === "extension";
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -146,13 +146,14 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             aria-disabled={isInputDisabled}
             className={cn(
               "inline-flex box-border items-center rounded-lg h-7 heading-xs px-2 gap-1.5 bg-muted-background border-border text-primary-900 transition-colors duration-200",
+              isWidthConstrained && "pl-1",
               isInputDisabled
                 ? "opacity-50 pointer-events-none"
                 : "cursor-pointer hover:bg-hover"
             )}
           >
             <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
-            {!isMobile && (
+            {!isWidthConstrained && (
               <span className="grow truncate notranslate">
                 {selectedAgent.label}
               </span>
@@ -184,7 +185,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             variant="ghost-secondary"
             size={buttonSize}
             icon={Robot}
-            label="Agent"
+            label={!isWidthConstrained ? "Agent" : undefined}
             disabled={isInputDisabled}
             className={cn(disableAgentSelector && "bg-primary-150")}
           />

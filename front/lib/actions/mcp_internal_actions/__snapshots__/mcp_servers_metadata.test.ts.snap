@@ -985,6 +985,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
+    "create_custom_object": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
     "create_deal": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
@@ -1069,6 +1073,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
+    "list_custom_object_schemas": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
     "list_email_campaigns": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
@@ -1102,6 +1110,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
     "update_contact": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_custom_object": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -1311,7 +1323,15 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
+    "create_folder": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
     "get_file_content": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_item_from_url": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -1778,6 +1798,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "set_pinned_frame": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "update_members": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -2025,6 +2049,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
     "get": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "inspect_invocations": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
@@ -2494,6 +2522,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "basic",
     },
+    "get_top_agent_tags": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
     "get_top_agents": {
       "freeUsage": false,
       "toolCostCategory": "basic",
@@ -2836,6 +2868,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "create_communication": "high",
     "create_company": "high",
     "create_contact": "high",
+    "create_custom_object": "high",
     "create_deal": "high",
     "create_lead": "high",
     "create_meeting": "high",
@@ -2857,6 +2890,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_user_activity": "never_ask",
     "list_association_labels": "never_ask",
     "list_associations": "never_ask",
+    "list_custom_object_schemas": "never_ask",
     "list_email_campaigns": "never_ask",
     "list_email_events": "never_ask",
     "list_marketing_emails": "never_ask",
@@ -2866,6 +2900,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "search_owners": "never_ask",
     "update_company": "high",
     "update_contact": "high",
+    "update_custom_object": "high",
     "update_deal": "high",
     "update_task": "high",
   },
@@ -2928,7 +2963,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "microsoft_drive": {
     "copy_file": "never_ask",
+    "create_folder": "low",
     "get_file_content": "never_ask",
+    "get_item_from_url": "never_ask",
     "list_drive_items": "never_ask",
     "rename_drive_item": "low",
     "search_drive_items": "never_ask",
@@ -3059,6 +3096,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "remove_content_node": "low",
     "retrieve_recent_documents": "never_ask",
     "semantic_search": "never_ask",
+    "set_pinned_frame": "never_ask",
     "update_members": "low",
   },
   "pod_tasks": {
@@ -3135,9 +3173,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "call": "low",
     "db_list": "never_ask",
     "db_query": "never_ask",
-    "db_reconcile": "low",
+    "db_reconcile": "never_ask",
     "db_schema": "never_ask",
     "get": "never_ask",
+    "inspect_invocations": "never_ask",
     "list": "never_ask",
     "publish": "low",
   },
@@ -3286,6 +3325,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_credit_timeseries": "never_ask",
     "get_credit_usage": "never_ask",
     "get_source_breakdown": "never_ask",
+    "get_top_agent_tags": "never_ask",
     "get_top_agents": "never_ask",
     "get_top_skills": "never_ask",
     "get_top_tools": "never_ask",

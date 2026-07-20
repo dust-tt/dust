@@ -19,6 +19,7 @@ import {
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useClientType } from "@app/lib/context/clientType";
 import { useModels } from "@app/lib/swr/models";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
@@ -63,6 +64,8 @@ export function InputBarModelPicker({
   const hasModelsPicker = hasFeature("models_picker");
   const { isDark } = useTheme();
   const isMobile = useIsMobile();
+  const clientType = useClientType();
+  const isWidthConstrained = isMobile || clientType === "extension";
 
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -275,12 +278,12 @@ export function InputBarModelPicker({
 
   const auto = showAuto ? { isOn: isAutoOn } : null;
 
-  const label = isMobile
+  const label = isWidthConstrained
     ? "Model"
     : `Model: ${getModelWithReasoningEffortLabel(shown)}`;
 
   const buttonIcon =
-    isMobile && shown.kind !== "auto"
+    isWidthConstrained && shown.kind !== "auto"
       ? getModelProviderLogo(shown.model.providerId, isDark)
       : undefined;
 
@@ -312,6 +315,7 @@ export function InputBarModelPicker({
     >
       <DropdownMenuTrigger asChild>
         <Button
+          className="px-2"
           variant="ghost-secondary"
           size={buttonSize}
           label={label}

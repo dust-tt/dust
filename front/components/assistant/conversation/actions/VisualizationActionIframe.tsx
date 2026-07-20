@@ -249,12 +249,13 @@ function SandboxFunctionInvocation({
       blockedActionCard = null;
   }
 
-  // Covers the frame while the tool is blocked on user input; positioned within the component's
-  // relative root, same layering approach as the loading spinner overlay. Cards are keyed by the
-  // delivery eventId so consecutive events of the same type never reuse local card state.
+  // Overlays the frame while the tool is blocked on user input. Cards are keyed by the delivery
+  // eventId so consecutive events of the same type never reuse local card state.
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center overflow-auto bg-panel-background p-4">
-      <div className="w-full max-w-xl">{blockedActionCard}</div>
+    <div className="absolute inset-0 z-10 flex items-center justify-center overflow-auto bg-muted-foreground/75 p-4 dark:bg-muted-background/75">
+      <div className="flex w-full max-w-xl justify-center">
+        {blockedActionCard}
+      </div>
     </div>
   );
 }
@@ -481,7 +482,6 @@ export function CodeDrawer({
 interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
   conversationId: string | null;
-  frameFileId?: string;
   isEditable?: boolean;
   isInDrawer?: boolean;
   isPublic?: boolean;
@@ -565,7 +565,6 @@ export const VisualizationActionIframe = forwardRef<
   const {
     agentConfigurationId,
     conversationId,
-    frameFileId,
     isEditable = false,
     isInDrawer = false,
     isPublic = false,
@@ -624,14 +623,11 @@ export const VisualizationActionIframe = forwardRef<
     ): Promise<Result<SandboxFunctionInvocationType, Error>> => {
       try {
         if (isPublic) {
-          throw new Error(
-            "Sandbox functions are not supported in shared frames."
-          );
+          throw new Error("Pod functions are not supported in shared frames.");
         }
 
         const body: PostSandboxFunctionInvocationRequestBody = {
           input,
-          context: frameFileId ? { frameFileId } : undefined,
         };
 
         const encodedFunctionIdOrSlug = encodeURIComponent(functionIdOrSlug);
@@ -659,7 +655,7 @@ export const VisualizationActionIframe = forwardRef<
         return new Err(normalizeError(error));
       }
     },
-    [frameFileId, isPublic, workspaceId]
+    [isPublic, workspaceId]
   );
 
   useVisualizationDataHandler({
@@ -853,7 +849,7 @@ export const VisualizationActionIframe = forwardRef<
       </div>
       {showSpinner && (
         <div className="absolute inset-0 flex items-center justify-center bg-panel-background">
-          <Spinner size="xl" variant="color" />
+          <Spinner size="lg" />
         </div>
       )}
     </div>

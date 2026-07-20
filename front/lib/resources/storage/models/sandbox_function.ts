@@ -1,7 +1,11 @@
 import { frontSequelize } from "@app/lib/resources/storage";
-import { DataTypes } from "@app/lib/resources/storage/data_types";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { SandboxFunctionInvocationStatus } from "@app/types/api/sandbox_functions";
@@ -51,9 +55,13 @@ export class SandboxFunctionInvocationModel extends WorkspaceAwareModel<SandboxF
   declare updatedAt: CreationOptional<Date>;
 
   declare sandboxFunctionId: ForeignKey<SandboxFunctionModel["id"]>;
+  // Human who triggered the invocation. Null for non-human origins (API key, scheduled/bot runs).
+  declare userId: ForeignKey<UserModel["id"]> | null;
   declare status: SandboxFunctionInvocationStatus;
+  declare gcsPath: string;
 
   declare sandboxFunction: NonAttribute<SandboxFunctionModel>;
+  declare user: NonAttribute<UserModel> | null;
 }
 
 SandboxFunctionModel.init(
@@ -167,12 +175,20 @@ SandboxFunctionInvocationModel.init(
       type: DataTypes.BIGINT,
       allowNull: false,
     },
+    userId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
     status: {
       type: DataTypes.STRING(64),
       allowNull: false,
       validate: {
         isIn: [SANDBOX_FUNCTION_INVOCATION_STATUSES],
       },
+    },
+    gcsPath: {
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
+      allowNull: false,
     },
   },
   {
@@ -181,6 +197,10 @@ SandboxFunctionInvocationModel.init(
     indexes: [
       {
         fields: ["sandboxFunctionId"],
+        concurrently: true,
+      },
+      {
+        fields: ["userId"],
         concurrently: true,
       },
     ],
@@ -196,4 +216,14 @@ SandboxFunctionInvocationModel.belongsTo(SandboxFunctionModel, {
 SandboxFunctionModel.hasMany(SandboxFunctionInvocationModel, {
   foreignKey: { name: "sandboxFunctionId", allowNull: false },
   as: "invocations",
+});
+
+SandboxFunctionInvocationModel.belongsTo(UserModel, {
+  foreignKey: { name: "userId", allowNull: true },
+  onDelete: "SET NULL",
+  as: "user",
+});
+
+UserModel.hasMany(SandboxFunctionInvocationModel, {
+  foreignKey: { name: "userId", allowNull: true },
 });

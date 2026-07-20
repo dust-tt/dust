@@ -62,6 +62,9 @@ function limitReadableStream(
   });
 
   limited.on("error", () => stream.destroy());
+  // pipe() does not forward source errors (e.g. a fetch abort mid-stream);
+  // left unforwarded they throw as uncaught exceptions.
+  stream.on("error", (err) => limited.destroy(err));
 
   return {
     stream: stream.pipe(limited),
@@ -177,14 +180,24 @@ export async function uploadFileFromUrlToFileSystem(
     }
   }
 
-  const sourceStream = Readable.fromWeb(response.body);
-  const { stream: limitedStream, getBytesRead } = limitReadableStream(
-    sourceStream,
-    maxBytes
-  );
+  let sourceStream: Readable;
+  let getBytesRead: () => number;
+  let writeResult: Awaited<ReturnType<typeof dustFs.write>>;
+  try {
+    sourceStream = Readable.fromWeb(response.body);
+    const limited = limitReadableStream(sourceStream, maxBytes);
+    getBytesRead = limited.getBytesRead;
+    writeResult = await dustFs.write(path, limited.stream, finalContentType);
+  } catch {
+    return new Err({ message: `Failed to fetch URL: ${sanitizedUrl}` });
+  }
 
-  const writeResult = await dustFs.write(path, limitedStream, finalContentType);
   if (writeResult.isErr()) {
+    // A source failure (abort, network reset) surfaces through the write
+    // pipeline; report it as a fetch failure rather than a write one.
+    if (sourceStream.errored) {
+      return new Err({ message: `Failed to fetch URL: ${sanitizedUrl}` });
+    }
     const err = writeResult.error;
     switch (err.code) {
       case "legacy_path":

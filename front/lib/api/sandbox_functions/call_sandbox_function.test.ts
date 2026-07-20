@@ -10,7 +10,7 @@ import type { SandboxFunctionInvocationEvent } from "@app/types/api/sandbox_func
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
   const actual =
@@ -20,7 +20,21 @@ vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
   return { ...actual, getSandboxFunctionInvocationEvents: vi.fn() };
 });
 
+vi.mock("@app/temporal/sandbox_functions/client", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@app/temporal/sandbox_functions/client")
+    >();
+  return {
+    ...actual,
+    launchSandboxFunctionInvocationWorkflow: vi.fn(
+      async () => new Ok(undefined)
+    ),
+  };
+});
+
 import { getSandboxFunctionInvocationEvents } from "@app/lib/api/sandbox_functions/events";
+import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
 
 const inputSchema: JSONSchema = {
   type: "object",
@@ -89,19 +103,15 @@ async function setup(): Promise<{
   const space = await SpaceFactory.project(workspace);
   const fn = await makeFunction(authenticator, space);
   const invocationId = "sfi_test";
-  vi.spyOn(fn, "invoke").mockResolvedValue(
-    new Ok({
-      sId: invocationId,
-      functionId: fn.sId,
-      status: "created",
-      createdAt: new Date(0).toISOString(),
-    })
-  );
   return { auth: authenticator, fn, invocationId };
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("callSandboxFunction", () => {
@@ -274,10 +284,10 @@ describe("callSandboxFunction", () => {
     });
   });
 
-  it("propagates an Err from invoke()", async () => {
+  it("propagates an Err from the workflow launch", async () => {
     const { auth, fn } = await setup();
-    vi.spyOn(fn, "invoke").mockResolvedValue(
-      new Err(new Error("sandbox unavailable"))
+    vi.mocked(launchSandboxFunctionInvocationWorkflow).mockResolvedValueOnce(
+      new Err(new Error("temporal unavailable"))
     );
 
     const result = await callSandboxFunction(auth, fn, { name: "x" });

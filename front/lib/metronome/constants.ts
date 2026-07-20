@@ -27,6 +27,7 @@ const DEV_PRODUCT_SEAT_SUBSCRIPTION_CREDITS =
   "92f3466b-2423-4f2a-a8d1-0f6e9f7f0140";
 const DEV_PRODUCT_SEAT_SUBSCRIPTION_COMMIT =
   "475eb7dd-5043-49bc-96eb-1b08f94fda51";
+const DEV_PRODUCT_PLATFORM_FEE = "11e635e1-0fb9-44e1-9499-690d5ee27ace";
 
 // --- PROD (production) — TODO: update after running setup script in production ---
 
@@ -52,6 +53,7 @@ const PROD_PRODUCT_SEAT_SUBSCRIPTION_CREDITS =
   "03faa744-c1ab-4b94-aaf1-5fdaec89e11a";
 const PROD_PRODUCT_SEAT_SUBSCRIPTION_COMMIT =
   "5cdb49e6-0a92-4a55-9c92-c8913b2df0d5";
+const PROD_PRODUCT_PLATFORM_FEE = "704ea5b4-6680-4618-a154-b2343d78a1e2";
 
 // --- Credit type IDs (stable across envs unless noted) ---
 
@@ -287,6 +289,8 @@ export const getProductExcessCreditsId = () =>
   devOrProd(DEV_PRODUCT_EXCESS_CREDITS, PROD_PRODUCT_EXCESS_CREDITS);
 export const getProductPrepaidCommitId = () =>
   devOrProd(DEV_PRODUCT_PREPAID_COMMIT, PROD_PRODUCT_PREPAID_COMMIT);
+export const getProductPlatformFeeId = () =>
+  devOrProd(DEV_PRODUCT_PLATFORM_FEE, PROD_PRODUCT_PLATFORM_FEE);
 export const getProductSeatSubscriptionCreditsId = () =>
   devOrProd(
     DEV_PRODUCT_SEAT_SUBSCRIPTION_CREDITS,

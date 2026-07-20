@@ -15,6 +15,7 @@ import { EventError } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
+  LLMStreamMetadata,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
@@ -24,6 +25,7 @@ import {
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
 import type { Authenticator } from "@app/lib/auth";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch/configuration";
 import type {
   BatchEndpoint,
@@ -31,7 +33,6 @@ import type {
   BatchStatus,
 } from "@app/lib/model_constructors/batch/endpoint";
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
-import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import type { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { NoopRequest } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
 import { NoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
@@ -54,7 +55,12 @@ import type {
   ToolCallEvent as NewToolCallEvent,
   NonDeltaResponseEvent,
 } from "@app/lib/model_constructors/types/output/events";
+import {
+  AGENT_PLATFORM_API,
+  OPENAI_RESPONSES_API,
+} from "@app/lib/model_constructors/types/provider_apis";
 import { NOOP_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type {
   AgentFunctionCallContentType,
@@ -230,6 +236,47 @@ export function toBaseMessages(
   }
 }
 
+// Places the Anthropic user-message cache breakpoints, matching the legacy
+// router. Returns a new array; does not mutate its input.
+//   - Equipped-skills prefix: always. When the first message is the
+//     `name: "system"` user block (the stable per agent+workspace skills list),
+//     its last content block is cached for cross-conversation reuse. Mirrors the
+//     legacy `isFirst && message.name === "system"` breakpoint. `toBaseMessages`
+//     emits one BaseMessage per user content item, so messages[0]'s last block
+//     sits at index (content.length - 1).
+//   - Conversation tail: only when `explicitTailBreakpoint` is set — i.e. on
+//     surfaces without the request-level automatic cache_control (Vertex/
+//     agent-platform). The last user message is cached, mirroring legacy's
+//     Vertex-only `isLast` marker. On the Anthropic API (and batch) the tail is
+//     left to the top-level automatic cache, keeping within the 4-slot budget.
+export function withMessageCacheBreakpoints(
+  baseMessages: BaseMessage[],
+  firstMessage: ModelMessageTypeMultiActionsWithoutContentFragment | undefined,
+  { explicitTailBreakpoint }: { explicitTailBreakpoint: boolean }
+): BaseMessage[] {
+  const result = [...baseMessages];
+
+  if (firstMessage?.role === "user" && firstMessage.name === "system") {
+    const skillsBlockIndex = firstMessage.content.length - 1;
+    const skillsBlock = result[skillsBlockIndex];
+    if (skillsBlock?.role === "user") {
+      result[skillsBlockIndex] = { ...skillsBlock, cache: "short" };
+    }
+  }
+
+  if (explicitTailBreakpoint) {
+    for (let i = result.length - 1; i >= 0; i--) {
+      const msg = result[i];
+      if (msg.role === "user") {
+        result[i] = { ...msg, cache: "short" };
+        break;
+      }
+    }
+  }
+
+  return result;
+}
+
 // The new router nests reasoning replay state under `metadata.content`: OpenAI
 // uses `id` + `encryptedContent`, Anthropic/Gemini use `signature`. Persist it in
 // the legacy top-level shape (`id` / `encrypted_content`) the replay path reads,
@@ -341,12 +388,19 @@ export function convertToOldEvent(
   metadata: LLMClientMetadata
 ): LLMEvent {
   switch (event.type) {
-    case "response_id":
+    case "response_id": {
+      const cacheMissReason = event.metadata.content?.cacheMissReason;
       return {
         type: "interaction_id",
-        content: { modelInteractionId: event.content.responseId },
+        content: {
+          modelInteractionId: event.content.responseId,
+          cacheMissReason: isCacheMissReason(cacheMissReason)
+            ? cacheMissReason
+            : undefined,
+        },
         metadata,
       };
+    }
 
     case "text_delta":
       return {
@@ -530,23 +584,26 @@ function convertBatchEventsToOld(
 abstract class BaseTransition extends LLM {
   // Builds the provider-agnostic conversation payload (system + messages) shared
   // by both the streaming and batch surfaces.
-  protected buildPayload(streamParameters: LLMStreamParameters): Payload {
+  //
+  // `explicitTailBreakpoint` mirrors legacy's Vertex-only `isLast` marker: set it
+  // for surfaces that lack the request-level automatic `cache_control`
+  // (agent-platform/Vertex), so the conversation tail still gets a breakpoint.
+  // On the Anthropic API (and batch) it stays false — the tail is covered by the
+  // top-level automatic cache there, and adding one here would exceed the 4-slot
+  // breakpoint budget.
+  protected buildPayload(
+    streamParameters: LLMStreamParameters,
+    {
+      explicitTailBreakpoint = false,
+    }: { explicitTailBreakpoint?: boolean } = {}
+  ): Payload {
     const { conversation, prompt } = streamParameters;
 
-    const baseMessages = conversation.messages.flatMap(toBaseMessages);
-
-    // Cache breakpoint on the last user-role message so the conversation
-    // prefix is reused across turns. Mirrors the legacy cache_control:
-    // ephemeral marker on the last user content block, and the request-level
-    // cache_control that acted as a default trailing breakpoint for
-    // tool-result turns.
-    for (let i = baseMessages.length - 1; i >= 0; i--) {
-      const msg = baseMessages[i];
-      if (msg.role === "user") {
-        baseMessages[i] = { ...msg, cache: "short" };
-        break;
-      }
-    }
+    const baseMessages = withMessageCacheBreakpoints(
+      conversation.messages.flatMap(toBaseMessages),
+      conversation.messages[0],
+      { explicitTailBreakpoint }
+    );
 
     const { instructions, sharedContext, ephemeralContext } =
       normalizePrompt(prompt);
@@ -593,12 +650,26 @@ abstract class BaseTransition extends LLM {
   // own `configSchema` (stream and batch own theirs independently).
   protected buildConfig(
     streamParameters: LLMStreamParameters,
-    configSchema: BaseEndpointConfiguration["configSchema"]
+    configSchema: BaseEndpointConfiguration["configSchema"],
+    // Per-endpoint adjustment applied before schema validation (defaults to
+    // identity). Some schemas reject provider-invalid combinations (e.g.
+    // Anthropic requires temperature=1 with thinking), so the fix must land
+    // before `parse`, not after.
+    parseConfig: (config: InputConfig) => InputConfig = (config) => config,
+    // Prompt cache key, forwarded only by surfaces whose config schema accepts
+    // it (OpenAI Responses). Left undefined elsewhere so the provider schemas
+    // that guard `cacheKey` to `undefined` still parse.
+    cacheKey?: string
   ): InputConfig {
-    const { specifications, forceToolCall, disableToolUse, toolSearchEnabled } =
-      streamParameters;
+    const {
+      specifications,
+      forceToolCall,
+      disableToolUse,
+      toolSearchEnabled,
+      previousMessageId,
+    } = streamParameters;
 
-    return configSchema.parse({
+    const config: InputConfig = {
       tools: specifications as ToolSpecification[],
       temperature: this.temperature ?? undefined,
       reasoning: {
@@ -614,6 +685,14 @@ abstract class BaseTransition extends LLM {
         this.responseFormat,
         this.metadata.clientId
       ),
+      cacheKey,
+    };
+
+    return configSchema.parse({
+      ...parseConfig(config),
+      // Prompt-cache diagnostics opt-in. Kept only by the Anthropic (direct)
+      // config schema; other surfaces' schemas strip this unknown key.
+      previousMessageId,
     });
   }
 }
@@ -624,13 +703,15 @@ abstract class BaseTransition extends LLM {
  */
 export class StreamEndpointTransition extends BaseTransition {
   private model: StreamEndpoint;
+  private endpointConstructor: DustStreamEndpointConstructor;
 
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters,
-    modelConstructor: StreamEndpointConstructor
+    modelConstructor: DustStreamEndpointConstructor
   ) {
     super(auth, modelConstructor.providerId, llmParameters);
+    this.endpointConstructor = modelConstructor;
     this.model = new modelConstructor(llmParameters.credentials);
 
     const { api, region } = this.model.metadata();
@@ -641,10 +722,27 @@ export class StreamEndpointTransition extends BaseTransition {
     };
   }
 
-  protected buildStreamRequestPayload(streamParameters: LLMStreamParameters) {
+  protected buildStreamRequestPayload(
+    streamParameters: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
+  ) {
+    const { api } = this.model.metadata();
+    // Agent-platform (Vertex) has no request-level automatic cache_control, so it
+    // needs an explicit breakpoint on the conversation tail (legacy's isLast).
+    const explicitTailBreakpoint = api === AGENT_PLATFORM_API;
+    // Only OpenAI Responses consumes a prompt cache key (as `prompt_cache_key`);
+    // legacy sent the conversationId. Other surfaces guard `cacheKey` to
+    // undefined, so leave it unset for them.
+    const cacheKey =
+      api === OPENAI_RESPONSES_API ? metadata?.conversationId : undefined;
     return this.model.buildRequestPayload(
-      this.buildPayload(streamParameters),
-      this.buildConfig(streamParameters, this.model.constructor.configSchema)
+      this.buildPayload(streamParameters, { explicitTailBreakpoint }),
+      this.buildConfig(
+        streamParameters,
+        this.model.constructor.configSchema,
+        this.endpointConstructor.parseConfig,
+        cacheKey
+      )
     );
   }
 
@@ -677,7 +775,7 @@ export class NoopStreamTransition extends StreamEndpointTransition {
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters,
-    modelConstructor: StreamEndpointConstructor
+    modelConstructor: DustStreamEndpointConstructor
   ) {
     super(auth, llmParameters, modelConstructor);
     this.noopMetaData = llmParameters.metaData;

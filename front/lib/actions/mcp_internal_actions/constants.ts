@@ -122,8 +122,6 @@ export const PROCESS_TOOL_NAME = "extract_information_from_documents";
 export const WEBSEARCH_TOOL_NAME = "websearch";
 export const WEBBROWSER_TOOL_NAME = "webbrowser";
 
-export const CREATE_AGENT_TOOL_NAME = "create_agent";
-
 export const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
 export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
 export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
@@ -136,8 +134,6 @@ export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
 export const SKILL_AUTHORING_SERVER_NAME = "skill_authoring";
 
 export const GENERATE_IMAGE_TOOL_NAME = "generate_image";
-// Kept for backward compatibility with existing actions in conversations.
-export const EDIT_IMAGE_TOOL_NAME = "edit_image";
 
 export const SEARCH_SERVER_NAME = "search";
 
@@ -608,13 +604,6 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      search_in_files: "never_ask",
-      search_drive_items: "never_ask",
-      update_word_document: "high",
-      get_file_content: "never_ask",
-      upload_file: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -626,15 +615,6 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      search_messages_content: "never_ask",
-      list_teams: "never_ask",
-      list_users: "never_ask",
-      list_channels: "never_ask",
-      list_chats: "never_ask",
-      list_messages: "never_ask",
-      post_message: "medium",
-    },
     tools_arguments_requiring_approval: {
       post_message: ["channelId"],
     },
@@ -672,11 +652,6 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("http_client_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      send_request: "low",
-      websearch: "never_ask",
-      webbrowser: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1175,7 +1150,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   exa_people_and_company: {
     id: 1036,
-    availability: "manual",
+    availability: "auto",
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: ({ featureFlags }) =>
@@ -1283,7 +1258,6 @@ type InternalMCPServerEntryWithMetadata<K extends InternalMCPServerNameType> =
   InternalMCPServerEntryCommon & {
     metadata: ServerMetadata<K>;
     serverInfo?: InternalMCPServerDefinitionType & { name: K };
-    tools_stakes?: Record<string, MCPToolStakeLevelType>;
   };
 
 type InternalMCPServerEntryWithoutMetadata<
@@ -1291,7 +1265,6 @@ type InternalMCPServerEntryWithoutMetadata<
 > = InternalMCPServerEntryCommon & {
   metadata?: undefined;
   serverInfo: InternalMCPServerDefinitionType & { name: K };
-  tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
 };
 
 type InternalMCPServerEntryBase<K extends InternalMCPServerNameType> =
@@ -1370,7 +1343,7 @@ export function allowsMultipleInstancesOfInternalMCPServerById(
   if (r.isErr()) {
     return false;
   }
-  return !!INTERNAL_MCP_SERVERS[r.value.name].allowMultipleInstances;
+  return INTERNAL_MCP_SERVERS[r.value.name].allowMultipleInstances;
 }
 
 export function getInternalMCPServerNameAndWorkspaceId(sId: string): Result<
@@ -1467,14 +1440,6 @@ export function getInternalMCPServerDisplayedAs(
     return undefined;
   }
   return server.metadata.serverInfo.displayedAs;
-}
-
-export function getInternalMCPServerToolStakes(
-  name: InternalMCPServerNameType
-): Record<string, MCPToolStakeLevelType> {
-  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-
-  return server.metadata.tools_stakes;
 }
 
 export function getInternalMCPServerToolArgumentsRequiringApproval(

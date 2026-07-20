@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-const MIN_AWU_CREDITS = 1;
+const MIN_AWU_CREDITS = 0;
 const MAX_AWU_CREDITS = 1_000_000;
 
 type SpendLimitKind = "default" | "override";

@@ -188,7 +188,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
 
   return (
     <section className="space-y-4">
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex flex-col items-start justify-between gap-2 sm:flex-row">
         <div className="space-y-1">
           <h3 className="heading-lg font-semibold text-foreground">
             {SKILL_INVOCATION_LABEL}

@@ -350,6 +350,7 @@ const InputBarContainer = ({
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const clientType = useClientType();
+  const isWidthConstrained = isMobile || clientType === "extension";
   const shouldEnableSlashSuggestion = actions.includes("capabilities");
 
   const [selectedNode, setSelectedNode] =
@@ -1610,7 +1611,7 @@ const InputBarContainer = ({
             )}
           </BubbleMenu>
           <div
-            className={cn("flex w-full flex-col", "py-1.5 md:pb-2")}
+            className={cn("mt-auto flex w-full flex-col", "pt-1.5 pb-2")}
             style={{
               transition: `padding ${COLLAPSE_TRANSITION}`,
             }}
@@ -1641,10 +1642,15 @@ const InputBarContainer = ({
                 </React.Fragment>
               ))}
             </div>
-            <div className="relative flex min-h-8 w-full items-center justify-between">
+            <div className="flex min-h-7 w-full items-center">
               <div className={cn("flex w-full items-center px-2")}>
                 {!isRecording && (
-                  <div className="flex items-center gap-1">
+                  <div
+                    className={cn(
+                      "flex items-center",
+                      isWidthConstrained ? "gap-0.5" : "gap-1"
+                    )}
+                  >
                     <InputBarButtons
                       actions={actions}
                       allAgents={allAgents}
@@ -1685,201 +1691,217 @@ const InputBarContainer = ({
                   </div>
                 )}
                 <div className="grow" />
-                <div className="flex items-center gap-2 md:gap-1" />
-              </div>
-            </div>
-          </div>
-          <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
-            {clientType === "extension" && (
-              <>
-                <div ref={plusButtonRef}>
-                  <DropdownMenu
-                    open={isCaptureDropdownOpen}
-                    onOpenChange={setIsCaptureDropdownOpen}
-                  >
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost-secondary"
-                        icon={Plus}
-                        size={buttonSize}
-                        disabled={disableInput}
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                <div
+                  className={cn(
+                    "flex items-center",
+                    isWidthConstrained ? "gap-1" : "gap-1.5"
+                  )}
+                >
+                  {clientType === "extension" && (
+                    <>
+                      <div ref={plusButtonRef}>
+                        <DropdownMenu
+                          open={isCaptureDropdownOpen}
+                          onOpenChange={setIsCaptureDropdownOpen}
+                        >
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost-secondary"
+                              icon={Plus}
+                              size={buttonSize}
+                              disabled={disableInput}
+                            />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {actions.includes("attachment") && (
+                              <DropdownMenuItem
+                                icon={Attachment01}
+                                label="Attach knowledge"
+                                onClick={() => {
+                                  setIsCaptureDropdownOpen(false);
+                                  setShowKnowledgePicker(true);
+                                }}
+                              />
+                            )}
+                            {captureActions && (
+                              <>
+                                <DropdownMenuItem
+                                  icon={Globe01}
+                                  label="Attach page content"
+                                  disabled={
+                                    disableInput ||
+                                    captureActions.isCapturing ||
+                                    fileUploaderService.isProcessingFiles
+                                  }
+                                  onClick={() =>
+                                    captureActions.onCapture("text")
+                                  }
+                                  endComponent={
+                                    <DropdownMenuShortcut
+                                      shortcut={pageShortcut}
+                                      className="text-xs text-faint"
+                                    />
+                                  }
+                                />
+                                <DropdownMenuItem
+                                  icon={Camera01}
+                                  label="Take screenshot"
+                                  disabled={
+                                    disableInput ||
+                                    captureActions.isCapturing ||
+                                    fileUploaderService.isProcessingFiles
+                                  }
+                                  onClick={() =>
+                                    captureActions.onCapture("screenshot")
+                                  }
+                                  endComponent={
+                                    <DropdownMenuShortcut
+                                      shortcut={screenshotShortcut}
+                                      className="text-xs text-faint"
+                                    />
+                                  }
+                                />
+                                {captureActions.onSavePageToPod && (
+                                  <DropdownMenuItem
+                                    icon={FilePlus03}
+                                    label="Save page to Pod"
+                                    disabled={
+                                      disableInput ||
+                                      captureActions.isCapturing ||
+                                      captureActions.isSavingPageToPod ||
+                                      fileUploaderService.isProcessingFiles
+                                    }
+                                    onClick={() => {
+                                      void captureActions.onSavePageToPod?.();
+                                    }}
+                                  />
+                                )}
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                       {actions.includes("attachment") && (
-                        <DropdownMenuItem
-                          icon={Attachment01}
-                          label="Attach knowledge"
-                          onClick={() => {
-                            setIsCaptureDropdownOpen(false);
-                            setShowKnowledgePicker(true);
+                        <InputBarAttachmentsPicker
+                          fileUploaderService={fileUploaderService}
+                          owner={owner}
+                          isLoading={false}
+                          onNodeSelect={onNodeSelect}
+                          onNodeUnselect={onNodeUnselect}
+                          attachedNodes={attachedNodes}
+                          buttonSize={buttonSize}
+                          toolFileUpload={{
+                            useCase: "conversation",
+                            useCaseMetadata: {
+                              conversationId: conversation?.sId,
+                            },
                           }}
+                          spaceId={space?.sId}
+                          type="dropdown"
+                          onFileChange={() => setShowKnowledgePicker(false)}
+                          externalOpen={showKnowledgePicker}
+                          onExternalOpenChange={setShowKnowledgePicker}
+                          anchorRef={plusButtonRef}
+                          disabled={disableInput}
                         />
                       )}
-                      {captureActions && (
-                        <>
-                          <DropdownMenuItem
-                            icon={Globe01}
-                            label="Attach page content"
-                            disabled={
-                              disableInput ||
-                              captureActions.isCapturing ||
-                              fileUploaderService.isProcessingFiles
-                            }
-                            onClick={() => captureActions.onCapture("text")}
-                            endComponent={
-                              <DropdownMenuShortcut
-                                shortcut={pageShortcut}
-                                className="text-xs text-faint"
-                              />
-                            }
-                          />
-                          <DropdownMenuItem
-                            icon={Camera01}
-                            label="Take screenshot"
-                            disabled={
-                              disableInput ||
-                              captureActions.isCapturing ||
-                              fileUploaderService.isProcessingFiles
-                            }
-                            onClick={() =>
-                              captureActions.onCapture("screenshot")
-                            }
-                            endComponent={
-                              <DropdownMenuShortcut
-                                shortcut={screenshotShortcut}
-                                className="text-xs text-faint"
-                              />
-                            }
-                          />
-                          {captureActions.onSavePageToPod && (
-                            <DropdownMenuItem
-                              icon={FilePlus03}
-                              label="Save page to Pod"
-                              disabled={
-                                disableInput ||
-                                captureActions.isCapturing ||
-                                captureActions.isSavingPageToPod ||
-                                fileUploaderService.isProcessingFiles
-                              }
-                              onClick={() => {
-                                void captureActions.onSavePageToPod?.();
-                              }}
-                            />
-                          )}
-                        </>
+                    </>
+                  )}
+                  <div
+                    className={cn(
+                      "flex items-center",
+                      isWidthConstrained ? "gap-0.5" : "gap-1"
+                    )}
+                  >
+                    {conversation && (
+                      <ContextUsageIndicator
+                        buttonSize={buttonSize}
+                        owner={owner}
+                        conversationId={conversation?.sId}
+                      />
+                    )}
+                    {!subscription.plan.isByok &&
+                      owner.metadata?.allowVoiceTranscription !== false &&
+                      actions.includes("voice") &&
+                      !isCompact && (
+                        <VoicePicker
+                          status={activeVoiceService.status}
+                          level={activeVoiceService.level}
+                          elapsedSeconds={activeVoiceService.elapsedSeconds}
+                          onRecordStart={activeVoiceService.startRecording}
+                          onRecordStop={activeVoiceService.stopRecording}
+                          size={buttonSize}
+                          showStopLabel={!isWidthConstrained}
+                          disabled={disableInput}
+                        />
                       )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  </div>
+                  <TooltipProvider>
+                    <TooltipRoot
+                      open={isBlockTooltipOpen && submitBlockMessage !== null}
+                    >
+                      <TooltipTrigger
+                        asChild
+                        onPointerEnter={() => {
+                          if (submitBlockMessage) {
+                            setIsBlockTooltipOpen(true);
+                          }
+                        }}
+                        onPointerLeave={() => {
+                          if (blockTooltipTimerRef.current) {
+                            clearTimeout(blockTooltipTimerRef.current);
+                            blockTooltipTimerRef.current = null;
+                          }
+                          setIsBlockTooltipOpen(false);
+                        }}
+                      >
+                        <Button
+                          size={buttonSize}
+                          isLoading={
+                            isSubmitting &&
+                            activeVoiceService.status !== "transcribing"
+                          }
+                          icon={ArrowUp}
+                          variant={
+                            isSubmitBlocked ? "ghost-secondary" : "highlight"
+                          }
+                          disabled={isSubmitDisabled}
+                          className="rounded-full"
+                          onClick={async (
+                            e: React.MouseEvent<HTMLButtonElement>
+                          ) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (disableAutoFocus) {
+                              editorService.blur();
+                              // wait a bit for the keyboard to be closed on mobile
+                              if (isMobile) {
+                                editorService.setLoading(true);
+                                await new Promise((resolve) =>
+                                  setTimeout(resolve, 500)
+                                );
+                                editorService.setLoading(false);
+                              }
+                            }
+                            onEnterKeyDownWithShake(
+                              editorService.isEmpty() && !canSubmitEmpty,
+                              editorService.getMarkdownAndMentions(),
+                              () => {
+                                editorService.clearEditor();
+                              },
+                              editorService.setLoading
+                            );
+                          }}
+                        />
+                      </TooltipTrigger>
+                      {submitBlockMessage && (
+                        <TooltipContent>{submitBlockMessage}</TooltipContent>
+                      )}
+                    </TooltipRoot>
+                  </TooltipProvider>
                 </div>
-                {actions.includes("attachment") && (
-                  <InputBarAttachmentsPicker
-                    fileUploaderService={fileUploaderService}
-                    owner={owner}
-                    isLoading={false}
-                    onNodeSelect={onNodeSelect}
-                    onNodeUnselect={onNodeUnselect}
-                    attachedNodes={attachedNodes}
-                    buttonSize={buttonSize}
-                    toolFileUpload={{
-                      useCase: "conversation",
-                      useCaseMetadata: {
-                        conversationId: conversation?.sId,
-                      },
-                    }}
-                    spaceId={space?.sId}
-                    type="dropdown"
-                    onFileChange={() => setShowKnowledgePicker(false)}
-                    externalOpen={showKnowledgePicker}
-                    onExternalOpenChange={setShowKnowledgePicker}
-                    anchorRef={plusButtonRef}
-                    disabled={disableInput}
-                  />
-                )}
-              </>
-            )}
-            <div className="flex items-center gap-1">
-              {conversation && (
-                <ContextUsageIndicator
-                  buttonSize={buttonSize}
-                  owner={owner}
-                  conversationId={conversation?.sId}
-                />
-              )}
-              {!subscription.plan.isByok &&
-                owner.metadata?.allowVoiceTranscription !== false &&
-                actions.includes("voice") &&
-                !isCompact && (
-                  <VoicePicker
-                    status={activeVoiceService.status}
-                    level={activeVoiceService.level}
-                    elapsedSeconds={activeVoiceService.elapsedSeconds}
-                    onRecordStart={activeVoiceService.startRecording}
-                    onRecordStop={activeVoiceService.stopRecording}
-                    size={buttonSize}
-                    showStopLabel={!isMobile}
-                    disabled={disableInput}
-                  />
-                )}
+              </div>
             </div>
-            <TooltipProvider>
-              <TooltipRoot
-                open={isBlockTooltipOpen && submitBlockMessage !== null}
-              >
-                <TooltipTrigger
-                  asChild
-                  onPointerEnter={() => {
-                    if (submitBlockMessage) {
-                      setIsBlockTooltipOpen(true);
-                    }
-                  }}
-                  onPointerLeave={() => {
-                    if (blockTooltipTimerRef.current) {
-                      clearTimeout(blockTooltipTimerRef.current);
-                      blockTooltipTimerRef.current = null;
-                    }
-                    setIsBlockTooltipOpen(false);
-                  }}
-                >
-                  <Button
-                    size={buttonSize}
-                    isLoading={
-                      isSubmitting &&
-                      activeVoiceService.status !== "transcribing"
-                    }
-                    icon={ArrowUp}
-                    variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}
-                    disabled={isSubmitDisabled}
-                    onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (disableAutoFocus) {
-                        editorService.blur();
-                        // wait a bit for the keyboard to be closed on mobile
-                        if (isMobile) {
-                          editorService.setLoading(true);
-                          await new Promise((resolve) =>
-                            setTimeout(resolve, 500)
-                          );
-                          editorService.setLoading(false);
-                        }
-                      }
-                      onEnterKeyDownWithShake(
-                        editorService.isEmpty() && !canSubmitEmpty,
-                        editorService.getMarkdownAndMentions(),
-                        () => {
-                          editorService.clearEditor();
-                        },
-                        editorService.setLoading
-                      );
-                    }}
-                  />
-                </TooltipTrigger>
-                {submitBlockMessage && (
-                  <TooltipContent>{submitBlockMessage}</TooltipContent>
-                )}
-              </TooltipRoot>
-            </TooltipProvider>
           </div>
         </div>
       </div>
