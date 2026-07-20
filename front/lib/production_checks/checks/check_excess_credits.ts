@@ -11,7 +11,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import { QueryTypes } from "sequelize";
 
-const EXCESS_ABSOLUTE_THRESHOLD_MICRO_USD = 10_000_000;
+const EXCESS_ABSOLUTE_THRESHOLD_MICRO_USD = 100_000_000;
 const EXCESS_CREDITS_LOOKBACK_DAYS = 15;
 const EXCESS_CREDITS_LOOKBACK_MS =
   EXCESS_CREDITS_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
