@@ -1,7 +1,9 @@
 import { dropReasoning } from "@app/lib/llms/stream/types/configuration";
 
 export function WithDustMistralSmallConfig<
-  TBase extends abstract new (...args: any[]) => object,
+  TBase extends abstract new (
+    ...args: any[]
+  ) => object,
 >(Base: TBase) {
   abstract class DustMistralSmall extends Base {
     static readonly displayName = "Mistral Small";

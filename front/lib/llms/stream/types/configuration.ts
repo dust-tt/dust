@@ -30,7 +30,7 @@ export type DustStreamEndpointConfiguration<C extends InputConfig> =
 // specific value (e.g. Anthropic's temperature=1) re-apply it via their schema
 // default. Temperature is preserved when reasoning is off.
 export function dropTemperatureWhenReasoning<C extends InputConfig>(
-  config: C,
+  config: C
 ): C {
   const effort = config.reasoning?.effort;
   if (effort && effort !== "none") {

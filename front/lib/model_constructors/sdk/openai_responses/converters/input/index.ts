@@ -64,8 +64,13 @@ export function WithOpenAIResponsesInputConverter<
       config: InputConfig
     ): ResponseCreateParamsNonStreaming {
       const { conversation } = payload;
-      const { tools = [], temperature, reasoning, outputFormat, cacheKey } =
-        config;
+      const {
+        tools = [],
+        temperature,
+        reasoning,
+        outputFormat,
+        cacheKey,
+      } = config;
 
       const reasoningConfig = reasoningToOpenAIResponsesReasoning(reasoning);
 
