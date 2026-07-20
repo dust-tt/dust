@@ -440,13 +440,18 @@ async fn migrate_shadow_embedder(
             .result
             .into_iter()
             .map(|r| {
-                qdrant::PointStruct::new(
-                    r.id.unwrap(),
-                    vectors_output_to_vectors(r.vectors.unwrap()),
+                let id =
+                    r.id.ok_or_else(|| anyhow!("expected an id on scrolled point"))?;
+                let vectors = r
+                    .vectors
+                    .ok_or_else(|| anyhow!("expected vectors on scrolled point"))?;
+                Ok(qdrant::PointStruct::new(
+                    id,
+                    vectors_output_to_vectors(vectors)?,
                     Payload::from(r.payload),
-                )
+                ))
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
 
         // Empty upserts trigger errors.
         if count > 0 {
