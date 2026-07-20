@@ -293,23 +293,21 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
               specific needs before saving.
             </ContentMessage>
           )}
-          <div className="space-y-10">
-            <SkillBuilderAgentFacingDescriptionSection />
-            <SkillBuilderInstructionsSection />
-            <SkillBuilderRequestedSpacesSection
-              initialRequestedSpaceIds={skill?.requestedSpaceIds}
-            />
-            <SkillBuilderFilesSection />
-            <SkillBuilderSettingsOrComparisonFooter
-              skill={skill}
-              hasSelfImprovingSkills={hasSelfImprovingSkills}
-              isEditorGateVisible={isAdminNonEditor}
-              isAddingSelfAsEditor={isAddingSelfAsEditor}
-              onAddSelfAsEditor={() => {
-                void handleAddSelfAsEditor();
-              }}
-            />
-          </div>
+          <SkillBuilderAgentFacingDescriptionSection />
+          <SkillBuilderInstructionsSection />
+          <SkillBuilderRequestedSpacesSection
+            initialRequestedSpaceIds={skill?.requestedSpaceIds}
+          />
+          <SkillBuilderFilesSection />
+          <SkillBuilderSettingsOrComparisonFooter
+            skill={skill}
+            hasSelfImprovingSkills={hasSelfImprovingSkills}
+            isEditorGateVisible={isAdminNonEditor}
+            isAddingSelfAsEditor={isAddingSelfAsEditor}
+            onAddSelfAsEditor={() => {
+              void handleAddSelfAsEditor();
+            }}
+          />
         </div>
       </ScrollArea>
       <BarFooter
