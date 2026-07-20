@@ -1689,6 +1689,7 @@ describe("SkillResource", () => {
             conversation,
             userMessage,
           },
+          effectiveSpaceIds: agentConfiguration.requestedSpaceIds,
           onlyActive: true,
         }
       );

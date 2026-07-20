@@ -15,7 +15,6 @@ import {
   SkillResource,
 } from "@app/lib/resources/skill/skill_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
 
@@ -72,11 +71,11 @@ function skillMCPServerConfigToServerSideConfig(
 export async function getSkillServers(
   auth: Authenticator,
   {
-    agentConfiguration,
+    effectiveSpaceIds,
     enabledSkills,
     systemSkills,
   }: {
-    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    effectiveSpaceIds: string[];
     enabledSkills: SkillResource[];
     systemSkills: SkillResource[];
   }
@@ -86,7 +85,7 @@ export async function getSkillServers(
   if (skills.some((skill) => skill.inheritsAgentConfigurationDataSources)) {
     inheritedDataSourceViews = await DataSourceViewResource.listBySpaceIds(
       auth,
-      agentConfiguration.requestedSpaceIds,
+      effectiveSpaceIds,
       { includeGlobalSpace: true }
     );
   }
@@ -313,16 +312,14 @@ export async function resolveSkillMCPServers(
     conversation: ConversationType;
   }
 ): Promise<ResolvedSkillMCPServers> {
-  const { enabledSkills, systemSkills } = await SkillResource.listForAgentLoop(
-    auth,
-    {
+  const { effectiveSpaceIds, enabledSkills, systemSkills } =
+    await SkillResource.listForAgentLoop(auth, {
       agentConfiguration,
       conversation,
-    }
-  );
+    });
 
   return getSkillServers(auth, {
-    agentConfiguration,
+    effectiveSpaceIds,
     enabledSkills,
     systemSkills,
   });
