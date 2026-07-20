@@ -1,15 +1,21 @@
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import type { CapabilityState } from "@app/lib/resources/group_permission_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import type { GovernancePermissionsByKey } from "@app/types/api/governance";
 import type {
   CapabilitySpec,
+  GovernancePermission,
   GovernancePermissionConfiguration,
 } from "@app/types/group_permissions";
 import {
   capabilityKey,
   GOVERNANCE_CAPABILITIES,
 } from "@app/types/group_permissions";
+import { isManageableGroupKind } from "@app/types/groups";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 
@@ -25,6 +31,24 @@ const ADMIN_CAPABILITIES: CapabilitySpec[] = [
   ...BUSINESS_ADMIN_CAPABILITIES,
   ...GOVERNANCE_CAPABILITIES.billingAndSecurity,
 ];
+
+// The capabilities the caller's role is allowed to see and manage. Admins get everything; business
+// admins get every domain except billing/identity; no other role manages any governance capability.
+function capabilitiesForRole(auth: Authenticator): CapabilitySpec[] {
+  const role = auth.role();
+  switch (role) {
+    case "admin":
+      return ADMIN_CAPABILITIES;
+    case "business_admin":
+      return BUSINESS_ADMIN_CAPABILITIES;
+    case "builder":
+    case "user":
+    case "none":
+      return [];
+    default:
+      return assertNever(role);
+  }
+}
 
 function toConfiguration(
   state: CapabilityState
@@ -46,9 +70,7 @@ function toConfiguration(
 export async function getWorkspaceGovernancePermissions(
   auth: Authenticator
 ): Promise<GovernancePermissionsByKey> {
-  const capabilities = auth.isAdmin()
-    ? ADMIN_CAPABILITIES
-    : BUSINESS_ADMIN_CAPABILITIES;
+  const capabilities = capabilitiesForRole(auth);
 
   const stateByKey = await GroupPermissionResource.getCapabilitiesState(
     auth,
@@ -69,4 +91,90 @@ export async function getWorkspaceGovernancePermissions(
   }
 
   return permissionsByKey;
+}
+
+// Write side of the Governance page: apply one capability's target configuration. The three scopes
+// are mutually exclusive, so each maps to a single resource transition that clears the others.
+export async function setWorkspaceGovernancePermission(
+  auth: Authenticator,
+  { grantType, resourceType, configuration }: GovernancePermission
+): Promise<
+  Result<
+    GovernancePermission,
+    DustError<"group_not_found" | "invalid_id" | "unauthorized">
+  >
+> {
+  const capability: CapabilitySpec = { grantType, resourceType };
+
+  const canManage = capabilitiesForRole(auth).some(
+    (c) => c.grantType === grantType && c.resourceType === resourceType
+  );
+  if (!canManage) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        "You cannot manage this governance permission."
+      )
+    );
+  }
+
+  switch (configuration.scope) {
+    case "admins_only":
+      await GroupPermissionResource.disable(auth, capability);
+      break;
+
+    case "everyone":
+      await GroupPermissionResource.setForEverybody(auth, capability);
+      break;
+
+    case "groups": {
+      // "Groups" with no groups selected grants the capability to nobody specific, which is
+      // equivalent to admins_only.
+      if (configuration.groupIds.length === 0) {
+        await GroupPermissionResource.disable(auth, capability);
+        break;
+      }
+      const groupsRes = await GroupResource.fetchByIds(
+        auth,
+        configuration.groupIds
+      );
+      if (groupsRes.isErr()) {
+        return groupsRes;
+      }
+      // Only user-managed groups can be granted a governance capability; system/global and other
+      // internal kinds are never assignable here.
+      if (
+        !groupsRes.value.every((group) => isManageableGroupKind(group.kind))
+      ) {
+        return new Err(
+          new DustError(
+            "invalid_id",
+            "The groups configuration references groups that cannot be managed."
+          )
+        );
+      }
+      await GroupPermissionResource.setGroups(
+        auth,
+        capability,
+        groupsRes.value
+      );
+      break;
+    }
+
+    default:
+      assertNever(configuration);
+  }
+
+  const key = capabilityKey(capability);
+  const stateByKey = await GroupPermissionResource.getCapabilitiesState(auth, [
+    capability,
+  ]);
+  const state = stateByKey.get(key);
+  assert(state, `Missing capability state for ${key}.`);
+
+  return new Ok({
+    grantType,
+    resourceType,
+    configuration: toConfiguration(state),
+  });
 }
