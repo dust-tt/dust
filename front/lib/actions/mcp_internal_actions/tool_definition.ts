@@ -26,8 +26,12 @@ export type ToolHandlerExtra = RequestHandlerExtra<
 
 export type ToolHandlerResult = Result<CallToolResult["content"], MCPError>;
 
-export type ToolHandlers<ToolsList extends readonly ToolMeta[]> = {
-  [ToolName in ToolsList[number]["name"]]: (
+export type ToolHandlers<
+  ToolsList extends readonly ToolMeta[],
+  // Keep tool names as a separate generic so that generic consumers don't widen them to strings.
+  ToolNames extends string = ToolsList[number]["name"],
+> = {
+  [ToolName in ToolNames]: (
     // Type the params with the type inferred from the zod schema (z.ZodObject because it's a zod shape, not a schema).
     params: z.infer<
       z.ZodObject<Extract<ToolsList[number], { name: ToolName }>["schema"]>
