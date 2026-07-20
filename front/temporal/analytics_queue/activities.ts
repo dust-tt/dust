@@ -43,6 +43,7 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -249,6 +250,15 @@ export async function storeAgentAnalytics(
       apiKeyName = keyResource.name;
     }
   }
+  // Space the conversation lives in (pod usage analytics). The sId is derived
+  // from the model id, no fetch needed.
+  const spaceId = conversationRow.spaceId
+    ? SpaceResource.modelIdToSId({
+        id: conversationRow.spaceId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      })
+    : null;
+
   // Build the complete analytics document.
   const document: AgentMessageAnalyticsData = {
     agent_id: agentAgentMessageRow.agentConfigurationId,
@@ -256,6 +266,7 @@ export async function storeAgentAnalytics(
     agent_tag_ids: agentTagIds,
     ancestor_message_ids: ancestorMessageIds,
     conversation_id: conversationRow.sId,
+    space_id: spaceId,
     cost,
     context_origin: contextOrigin,
     latency_ms: agentAgentMessageRow.modelInteractionDurationMs ?? 0,

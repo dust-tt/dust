@@ -57,6 +57,9 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   agent_tag_ids: string[];
   ancestor_message_ids: string[];
   conversation_id: string;
+  // sId of the space the conversation lives in (any kind), null when the
+  // conversation is not attached to a space.
+  space_id: string | null;
   cost: AgentMessageAnalyticsCost;
   feedbacks: AgentMessageAnalyticsFeedback[];
   context_origin: UserMessageOrigin | null;
