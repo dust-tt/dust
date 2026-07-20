@@ -1,7 +1,6 @@
 import {
   type InputConfig,
   inputConfigSchema,
-  temperatureSchema,
 } from "@app/lib/model_constructors/types/input/configuration";
 import { GPT_5_MINI_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 
@@ -12,12 +11,7 @@ const CONTEXT_SIZE = 400_000;
 const MAX_OUTPUT_TOKENS = 128_000;
 const DEFAULT_REASONING_EFFORT = "medium";
 
-// gpt-5-mini accepts minimal/low/medium/high. It has no "none"; we accept it
-// and map it to the nearest supported effort ("minimal"). "xhigh" and the
-// universal "maximal" (mapped to "xhigh") remain unsupported and surface as an
-// input configuration error.
 const GPT_5_MINI_REASONING_EFFORTS = [
-  "none",
   "minimal",
   "low",
   "medium",
@@ -29,11 +23,8 @@ const GPT_5_MINI_REASONING_EFFORTS = [
 const configSchema = inputConfigSchema.extend({
   reasoning: z
     .object({ effort: z.enum(GPT_5_MINI_REASONING_EFFORTS) })
-    .default({ effort: DEFAULT_REASONING_EFFORT })
-    .transform(({ effort }) => ({
-      effort: effort === "none" ? "minimal" : effort,
-    })),
-  temperature: temperatureSchema.optional().transform(() => undefined),
+    .default({ effort: DEFAULT_REASONING_EFFORT }),
+  temperature: z.undefined(),
 });
 
 // Mixin carrying shared config; runtime base differs per surface.

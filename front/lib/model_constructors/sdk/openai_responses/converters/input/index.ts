@@ -64,13 +64,20 @@ export function WithOpenAIResponsesInputConverter<
       config: InputConfig
     ): ResponseCreateParamsNonStreaming {
       const { conversation } = payload;
-      const { tools = [], temperature, reasoning, outputFormat } = config;
+      const {
+        tools = [],
+        temperature,
+        reasoning,
+        outputFormat,
+        cacheKey,
+      } = config;
 
       const reasoningConfig = reasoningToOpenAIResponsesReasoning(reasoning);
 
       return {
         model: this.constructor.modelId,
         max_output_tokens: this.constructor.maxOutputTokens,
+        ...(cacheKey ? { prompt_cache_key: cacheKey } : {}),
         input: [
           ...this.systemMessagesToInputItems(conversation.system),
           ...this.conversationToInput(conversation),

@@ -32,6 +32,14 @@ import type { CacheMissReason } from "@app/lib/model_constructors/utils/cache_mi
 // https://platform.claude.com/docs/en/build-with-claude/cache-diagnostics
 const CACHE_DIAGNOSTICS_BETA_HEADER = "cache-diagnosis-2026-04-07";
 
+// The request we build for the stream: the base non-beta params plus the beta
+// Messages API extras we attach (cache-diagnostics beta header + `diagnostics`
+// opt-in). Kept on the built payload rather than added in `streamRaw` so the
+// request we construct reflects exactly what we send (and what the debug dump
+// records). Non-beta params are assignable to the beta stream params.
+type AnthropicStreamRequest = MessageCreateParamsNonStreaming &
+  Pick<BetaMessageStreamParams, "betas" | "diagnostics">;
+
 // Extract the cache-miss reason from a message_start (null when nothing to
 // compare or the background comparison is still pending).
 function toCacheMissReason(message: BetaMessage): CacheMissReason | undefined {
@@ -52,7 +60,7 @@ function toCacheMissReason(message: BetaMessage): CacheMissReason | undefined {
 export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
   WithAnthropicAIOutputConverter(
     StreamEndpoint<
-      MessageCreateParamsNonStreaming,
+      AnthropicStreamRequest,
       BetaRawMessageStreamEvent,
       AnthropicInputConfig
     >
@@ -81,11 +89,23 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
   async buildRequestPayload(
     payload: Payload,
     config: AnthropicInputConfig
-  ): Promise<MessageCreateParamsNonStreaming> {
-    // `diagnostics` and the beta header live on the beta Messages API, so they
-    // are attached in `streamRaw` from this opt-in rather than in the payload.
+  ): Promise<AnthropicStreamRequest> {
     this.previousMessageId = config.previousMessageId;
-    return super.buildRequestPayload(payload, config);
+    return {
+      ...(await super.buildRequestPayload(payload, config)),
+      // Top-level automatic caching: auto-places the last cache breakpoint at
+      // the tail of the request so the growing conversation prefix is reused.
+      cache_control: { type: "ephemeral" },
+      // Cache-diagnostics opt-in (Claude API only): the beta header and its
+      // `diagnostics` body are attached here, not in `streamRaw`, so the built
+      // payload reflects exactly what we send.
+      ...(this.cacheDiagnosticsEnabled
+        ? {
+            betas: [CACHE_DIAGNOSTICS_BETA_HEADER],
+            diagnostics: { previous_message_id: this.previousMessageId },
+          }
+        : {}),
+    };
   }
 
   // Cache diagnostics opt-in is tri-state: `undefined` = off; `null`/string =
@@ -95,23 +115,11 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
   }
 
   async *streamRaw(
-    input: MessageCreateParamsNonStreaming
+    input: AnthropicStreamRequest
   ): AsyncGenerator<BetaRawMessageStreamEvent> {
     this.lastCacheMissReason = undefined;
 
-    // `buildRequestPayload` is shared with batch and omits `stream`; the beta
-    // `.stream()` opts in. Non-beta payloads are assignable to the beta params.
-    const streamingInput: BetaMessageStreamParams = {
-      ...input,
-      cache_control: { type: "ephemeral" },
-      ...(this.cacheDiagnosticsEnabled
-        ? {
-            betas: [CACHE_DIAGNOSTICS_BETA_HEADER],
-            diagnostics: { previous_message_id: this.previousMessageId },
-          }
-        : {}),
-    };
-    const stream = this.client.beta.messages.stream(streamingInput);
+    const stream = this.client.beta.messages.stream(input);
 
     for await (const event of stream) {
       if (event.type === "message_start") {

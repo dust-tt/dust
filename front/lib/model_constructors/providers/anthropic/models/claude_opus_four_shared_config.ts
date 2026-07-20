@@ -1,27 +1,27 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
+import { anthropicBaseConfigSchema } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
-import {
-  inputConfigSchema,
-  temperatureSchema,
-} from "@app/lib/model_constructors/types/input/configuration";
 import type { ModelId } from "@app/lib/model_constructors/types/model_ids";
 
 import { z } from "zod";
 
-// Shared input contract for the Claude Opus 4.x models (4.6, 4.7, 4.8): same
-// context window, output cap, reasoning efforts, and temperature handling.
-export const OPUS_CONTEXT_SIZE = 250_000;
-export const OPUS_MAX_OUTPUT_TOKENS = 64_000;
+// Shared input contract for Claude Opus 4.7 and 4.8 — identical config: same
+// context window, output cap, the full reasoning-effort set (incl. `xhigh`/
+// `max`), and no caller-supplied temperature (non-default temperature/top_p/
+// top_k are rejected with a 400 on Opus 4.7+). Opus 4.6 differs on both axes
+// (no `xhigh`, and it accepts a temperature), so it has its own config in
+// `claude_opus_four_dot_six.ts` rather than sharing this one.
+// Real model spec. The Dust product cap (250k) is applied in the llms layer.
+const OPUS_CONTEXT_SIZE = 1_000_000;
+const OPUS_MAX_OUTPUT_TOKENS = 128_000;
 
 const DEFAULT_REASONING_EFFORT = "high";
 
-const baseConfig = inputConfigSchema.extend({
-  cacheKey: z.undefined(),
-  // Opus rejects any explicit temperature !== 1.
-  temperature: temperatureSchema.optional().transform(() => 1 as const),
+const baseConfig = anthropicBaseConfigSchema.extend({
+  temperature: z.undefined(),
 });
 
-export const opusConfigSchema = z.union([
+const opusConfigSchema = z.union([
   baseConfig.extend({
     reasoning: z
       .object({
@@ -37,12 +37,10 @@ export const opusConfigSchema = z.union([
 
 export type AnthropicOpusInputConfig = z.infer<typeof opusConfigSchema>;
 
-// Builds the config mixin shared by every Claude Opus 4.x model. The models
-// only differ by `modelId`; everything else (schema, context window, output
-// cap) is identical, so each model file is a one-line binding of this factory.
-export function makeAnthropicOpusConfigMixin<const M extends ModelId>(
-  modelId: M
-) {
+// Builds the config mixin shared by Claude Opus 4.7 and 4.8. The models differ
+// only by `modelId`; everything else (schema, context window, output cap) is
+// identical, so each model file is a one-line binding of this factory.
+export function withAnthropicOpusConfig<const M extends ModelId>(modelId: M) {
   return function WithAnthropicOpusConfig<
     TBase extends abstract new (
       ...args: any[]
@@ -61,8 +59,10 @@ export function makeAnthropicOpusConfigMixin<const M extends ModelId>(
         unknown
       > = opusConfigSchema;
 
-      static readonly contextSize = OPUS_CONTEXT_SIZE;
-      static readonly maxOutputTokens = OPUS_MAX_OUTPUT_TOKENS;
+      // Typed as `number` (not the literal) so the Dust layer can cap it.
+      static readonly contextSize: number = OPUS_CONTEXT_SIZE;
+      // Typed as `number` (not the literal) so the Dust layer can cap it.
+      static readonly maxOutputTokens: number = OPUS_MAX_OUTPUT_TOKENS;
     }
 
     return AnthropicClaudeOpus;

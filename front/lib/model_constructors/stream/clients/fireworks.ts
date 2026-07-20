@@ -6,13 +6,13 @@ import { WithOpenAICompletionsInputConverter } from "@app/lib/model_constructors
 import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_completions/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
+import type { Payload } from "@app/lib/model_constructors/types/input/messages";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { FIREWORKS_API } from "@app/lib/model_constructors/types/provider_apis";
 import { FIREWORKS_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
 import OpenAI from "openai";
 import type {
   ChatCompletionChunk,
-  ChatCompletionCreateParamsNonStreaming,
   ChatCompletionCreateParamsStreaming,
 } from "openai/resources/chat/completions";
 
@@ -20,7 +20,7 @@ const FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1";
 
 export abstract class FireworksStream extends WithOpenAICompletionsInputConverter(
   StreamEndpoint<
-    ChatCompletionCreateParamsNonStreaming,
+    ChatCompletionCreateParamsStreaming,
     ChatCompletionChunk,
     FireworksInputConfig
   >
@@ -40,16 +40,23 @@ export abstract class FireworksStream extends WithOpenAICompletionsInputConverte
     });
   }
 
-  async *streamRaw(
-    input: ChatCompletionCreateParamsNonStreaming
-  ): AsyncGenerator<ChatCompletionChunk> {
-    // `buildRequestPayload` is shared with batch and omits `stream`; opt in here.
-    const streamingInput: ChatCompletionCreateParamsStreaming = {
-      ...input,
+  // Fireworks always streams, so opt into `stream`/`stream_options` here rather
+  // than in `streamRaw`, keeping the request payload self-contained.
+  override buildRequestPayload(
+    payload: Payload,
+    config: FireworksInputConfig
+  ): ChatCompletionCreateParamsStreaming {
+    return {
+      ...super.buildRequestPayload(payload, config),
       stream: true,
       stream_options: { include_usage: true },
     };
-    const stream = await this.client.chat.completions.create(streamingInput);
+  }
+
+  async *streamRaw(
+    input: ChatCompletionCreateParamsStreaming
+  ): AsyncGenerator<ChatCompletionChunk> {
+    const stream = await this.client.chat.completions.create(input);
 
     for await (const event of stream) {
       yield event;

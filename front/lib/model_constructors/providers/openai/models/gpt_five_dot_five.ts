@@ -22,7 +22,7 @@ const configSchema = z.union([
       .object({ effort: z.enum(GPT_5_5_REASONING_EFFORTS) })
       .default({ effort: DEFAULT_REASONING_EFFORT }),
     // The Responses API rejects an explicit temperature while reasoning is on.
-    temperature: temperatureSchema.optional().transform(() => undefined),
+    temperature: z.undefined(),
   }),
   inputConfigSchema.extend({
     reasoning: z.object({ effort: z.literal("none") }),

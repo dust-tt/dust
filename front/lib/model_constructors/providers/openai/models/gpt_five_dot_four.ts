@@ -8,14 +8,14 @@ import { GPT_5_4_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 import { z } from "zod";
 
 // https://developers.openai.com/api/docs/models/gpt-5.4
-const CONTEXT_SIZE = 1_000_000;
+const CONTEXT_SIZE = 1_050_000;
 const MAX_OUTPUT_TOKENS = 128_000;
 const DEFAULT_REASONING_EFFORT = "none";
 
-// gpt-5.4 accepts none/low/medium/high (matching the legacy router). "minimal",
-// "xhigh" and the universal "maximal" are unsupported and surface as an input
+// gpt-5.4 accepts none/low/medium/high/xhigh. "minimal" and the top "max" tier
+// (Dust's universal "maximal") are unsupported and surface as an input
 // configuration error.
-const GPT_5_4_REASONING_EFFORTS = ["low", "medium", "high"] as const;
+const GPT_5_4_REASONING_EFFORTS = ["low", "medium", "high", "xhigh"] as const;
 
 const configSchema = z.union([
   // Reasoning off is the default; the Responses API then allows a temperature.
@@ -28,7 +28,7 @@ const configSchema = z.union([
   // Reasoning on: the Responses API rejects an explicit temperature.
   inputConfigSchema.extend({
     reasoning: z.object({ effort: z.enum(GPT_5_4_REASONING_EFFORTS) }),
-    temperature: temperatureSchema.optional().transform(() => undefined),
+    temperature: z.undefined(),
   }),
 ]);
 

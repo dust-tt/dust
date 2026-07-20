@@ -2,10 +2,12 @@ import {
   convertToOldEvent,
   reasoningContentToLegacyMetadata,
   toBaseMessages,
+  withMessageCacheBreakpoints,
 } from "@app/lib/api/llm/transitionLLM";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { assistantReasoningMessageToInputItems } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
+import type { BaseMessage } from "@app/lib/model_constructors/types/input/messages";
 import type { ProviderPassthroughEvent } from "@app/lib/model_constructors/types/output/events";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
@@ -78,6 +80,76 @@ describe("toBaseMessages", () => {
         content: { provider: "anthropic", block: serverToolUseBlock },
       },
     ]);
+  });
+});
+
+describe("withMessageCacheBreakpoints", () => {
+  const cacheOf = (m: BaseMessage) => ("cache" in m ? m.cache : undefined);
+
+  const equippedSkillsMessage: ModelMessageTypeMultiActionsWithoutContentFragment =
+    {
+      role: "user",
+      name: "system",
+      content: [{ type: "text", text: "equipped skills" }],
+    };
+
+  const messages: BaseMessage[] = [
+    { role: "user", type: "text", content: { value: "equipped skills" } },
+    { role: "assistant", type: "text", content: { value: "hello" } },
+    { role: "user", type: "text", content: { value: "latest turn" } },
+  ];
+
+  it("caches the equipped-skills block and, on the Anthropic API, leaves the tail to the top-level cache", () => {
+    const result = withMessageCacheBreakpoints(
+      messages,
+      equippedSkillsMessage,
+      {
+        explicitTailBreakpoint: false,
+      }
+    );
+
+    expect(cacheOf(result[0])).toBe("short");
+    expect(cacheOf(result[1])).toBeUndefined();
+    expect(cacheOf(result[2])).toBeUndefined();
+  });
+
+  it("also caches the last user message when an explicit tail breakpoint is required (Vertex/agent-platform)", () => {
+    const result = withMessageCacheBreakpoints(
+      messages,
+      equippedSkillsMessage,
+      {
+        explicitTailBreakpoint: true,
+      }
+    );
+
+    expect(cacheOf(result[0])).toBe("short");
+    expect(cacheOf(result[2])).toBe("short");
+  });
+
+  it("skips the equipped-skills breakpoint when the first message is not the name:system block", () => {
+    const firstUserTurn: ModelMessageTypeMultiActionsWithoutContentFragment = {
+      role: "user",
+      name: "user",
+      content: [{ type: "text", text: "hi" }],
+    };
+
+    const result = withMessageCacheBreakpoints(messages, firstUserTurn, {
+      explicitTailBreakpoint: false,
+    });
+
+    expect(result.every((m) => cacheOf(m) === undefined)).toBe(true);
+  });
+
+  it("does not mutate the input array", () => {
+    const input: BaseMessage[] = [
+      { role: "user", type: "text", content: { value: "equipped skills" } },
+    ];
+
+    withMessageCacheBreakpoints(input, equippedSkillsMessage, {
+      explicitTailBreakpoint: true,
+    });
+
+    expect(cacheOf(input[0])).toBeUndefined();
   });
 });
 
