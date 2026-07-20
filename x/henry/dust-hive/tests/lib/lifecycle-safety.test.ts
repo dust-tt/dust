@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Environment } from "../../src/lib/environment";
+import { directoryExists } from "../../src/lib/fs";
 import { getDeleteBlockReason } from "../../src/lib/lifecycle";
 import {
   getActiveLifecycleActivityLease,
@@ -12,6 +13,7 @@ import type { LifecyclePolicy } from "../../src/lib/lifecycle-config";
 import { acquireLifecycleLock } from "../../src/lib/lifecycle-lock";
 import { getEnvDir } from "../../src/lib/paths";
 import { calculatePorts } from "../../src/lib/ports";
+import { removeWorktree } from "../../src/lib/worktree";
 
 const cleanupPaths: string[] = [];
 
@@ -23,6 +25,12 @@ function createDeferred(): { promise: Promise<void>; resolve: () => void } {
     resolve = resolvePromise;
   });
   return { promise, resolve };
+}
+
+async function runGit(cwd: string, args: string[]): Promise<void> {
+  const proc = Bun.spawn(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe" });
+  const stderr = await new Response(proc.stderr).text();
+  expect(await proc.exited, stderr).toBe(0);
 }
 
 afterEach(async () => {
@@ -138,5 +146,24 @@ describe("lifecycle safety", () => {
         policy
       )
     ).toBeNull();
+  });
+
+  it("refuses a non-forced worktree removal when changes appear", async () => {
+    const repoPath = await mkdtemp(join(tmpdir(), "dust-hive-remove-safety-"));
+    const worktreePath = `${repoPath}-worktree`;
+    cleanupPaths.push(repoPath, worktreePath);
+    await runGit(repoPath, ["init", "--quiet"]);
+    await runGit(repoPath, ["config", "user.email", "hive-test@example.com"]);
+    await runGit(repoPath, ["config", "user.name", "Hive Test"]);
+    await writeFile(join(repoPath, "README.md"), "initial\n");
+    await runGit(repoPath, ["add", "README.md"]);
+    await runGit(repoPath, ["commit", "--quiet", "-m", "Initial commit"]);
+    await runGit(repoPath, ["worktree", "add", "--quiet", "-b", "safety", worktreePath]);
+    await writeFile(join(worktreePath, "work-in-progress.ts"), "export const value = 1;\n");
+
+    await expect(removeWorktree(repoPath, worktreePath, { force: false })).rejects.toThrow(
+      "Failed to remove worktree"
+    );
+    expect(await directoryExists(worktreePath)).toBe(true);
   });
 });

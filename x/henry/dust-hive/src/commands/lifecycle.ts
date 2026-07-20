@@ -1,7 +1,7 @@
 import { requireEnvironment } from "../lib/commands";
 import { getEnvironment } from "../lib/environment";
 import { loadLifecycleState, runLifecycleSweep } from "../lib/lifecycle";
-import { touchLifecycleActivity } from "../lib/lifecycle-activity";
+import { touchLifecycleActivityUnderLock } from "../lib/lifecycle-activity";
 import {
   DEFAULT_LIFECYCLE_PROFILE,
   formatDurationSeconds,
@@ -15,7 +15,9 @@ import {
   getLifecycleDaemonPid,
   startLifecycleDaemon,
   stopLifecycleDaemon,
+  stopLifecycleDaemonIfUnused,
 } from "../lib/lifecycle-daemon";
+import { acquireLifecycleConfigLock, acquireLifecycleLock } from "../lib/lifecycle-lock";
 import { logger } from "../lib/logger";
 import { LIFECYCLE_CONFIG_PATH, LIFECYCLE_LOG_PATH } from "../lib/paths";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
@@ -60,28 +62,41 @@ export async function lifecycleEnableCommand(
   if (!envResult.ok) {
     return envResult;
   }
-  const configResult = await loadLifecycleConfig();
-  if (!configResult.ok) {
-    return configResult;
-  }
-  const profile = options.profile ?? DEFAULT_LIFECYCLE_PROFILE;
-  if (!configResult.value.profiles[profile]) {
-    return Err(new CommandError(`Unknown lifecycle profile '${profile}'`));
-  }
   const overridesResult = await buildOverrides(options);
   if (!overridesResult.ok) {
     return overridesResult;
   }
+  const profile = options.profile ?? DEFAULT_LIFECYCLE_PROFILE;
   const overrides = overridesResult.value;
   const enrollment = {
     profile,
     ...(Object.keys(overrides).length > 0 ? { overrides } : {}),
   };
-  await saveLifecycleConfig({
-    ...configResult.value,
-    environments: { ...configResult.value.environments, [envResult.value.name]: enrollment },
-  });
-  await touchLifecycleActivity(envResult.value.name, "command");
+  const lock = await acquireLifecycleLock(envResult.value.name, { wait: true });
+  if (!lock) {
+    return Err(new CommandError(`Could not acquire lifecycle lock for '${envResult.value.name}'`));
+  }
+  try {
+    const configLock = await acquireLifecycleConfigLock();
+    try {
+      const configResult = await loadLifecycleConfig();
+      if (!configResult.ok) {
+        return configResult;
+      }
+      if (!configResult.value.profiles[profile]) {
+        return Err(new CommandError(`Unknown lifecycle profile '${profile}'`));
+      }
+      await touchLifecycleActivityUnderLock(envResult.value.name, "command");
+      await saveLifecycleConfig({
+        ...configResult.value,
+        environments: { ...configResult.value.environments, [envResult.value.name]: enrollment },
+      });
+    } finally {
+      await configLock.release();
+    }
+  } finally {
+    await lock.release();
+  }
 
   const daemonResult = await startLifecycleDaemon();
   if (!daemonResult.ok) {
@@ -99,18 +114,38 @@ export async function lifecycleDisableCommand(nameArg: string | undefined): Prom
   if (!envResult.ok) {
     return envResult;
   }
-  const configResult = await loadLifecycleConfig();
-  if (!configResult.ok) {
-    return configResult;
+  const lock = await acquireLifecycleLock(envResult.value.name, { wait: true });
+  if (!lock) {
+    return Err(new CommandError(`Could not acquire lifecycle lock for '${envResult.value.name}'`));
   }
-  const { [envResult.value.name]: removed, ...environments } = configResult.value.environments;
+  let removed = false;
+  let environmentCount = 0;
+  try {
+    const configLock = await acquireLifecycleConfigLock();
+    try {
+      const configResult = await loadLifecycleConfig();
+      if (!configResult.ok) {
+        return configResult;
+      }
+      const { [envResult.value.name]: currentEnrollment, ...environments } =
+        configResult.value.environments;
+      removed = currentEnrollment !== undefined;
+      environmentCount = Object.keys(environments).length;
+      if (removed) {
+        await saveLifecycleConfig({ ...configResult.value, environments });
+      }
+    } finally {
+      await configLock.release();
+    }
+  } finally {
+    await lock.release();
+  }
   if (!removed) {
     logger.info(`Lifecycle management is not enabled for '${envResult.value.name}'`);
     return Ok(undefined);
   }
-  await saveLifecycleConfig({ ...configResult.value, environments });
-  if (Object.keys(environments).length === 0) {
-    await stopLifecycleDaemon();
+  if (environmentCount === 0) {
+    await stopLifecycleDaemonIfUnused();
   }
   logger.success(`Lifecycle management disabled for '${envResult.value.name}'`);
   return Ok(undefined);
@@ -181,8 +216,12 @@ export async function lifecycleStatusCommand(name?: string): Promise<Result<void
   return Ok(undefined);
 }
 
-export async function lifecycleRunOnceCommand(dryRun: boolean): Promise<Result<void>> {
-  return runLifecycleSweep({ dryRun });
+export function getLifecycleRunOnceOptions(dryRun?: boolean): { dryRun?: boolean } {
+  return dryRun === undefined ? {} : { dryRun };
+}
+
+export async function lifecycleRunOnceCommand(dryRun?: boolean): Promise<Result<void>> {
+  return runLifecycleSweep(getLifecycleRunOnceOptions(dryRun));
 }
 
 export async function lifecycleStartCommand(): Promise<Result<void>> {

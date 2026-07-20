@@ -2,7 +2,11 @@ import { mkdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { isErrnoException } from "./errors";
-import { getLifecycleLockPath } from "./paths";
+import {
+  getLifecycleLockPath,
+  LIFECYCLE_CONFIG_LOCK_PATH,
+  LIFECYCLE_DAEMON_LOCK_PATH,
+} from "./paths";
 import { isProcessRunning } from "./process";
 
 const LOCK_OWNER_FILE = "owner.json";
@@ -50,11 +54,10 @@ async function removeAbandonedLock(lockPath: string): Promise<boolean> {
   }
 }
 
-export async function acquireLifecycleLock(
-  envName: string,
+async function acquireLock(
+  lockPath: string,
   options: { wait?: boolean } = {}
 ): Promise<LifecycleLock | null> {
-  const lockPath = getLifecycleLockPath(envName);
   const token = crypto.randomUUID();
 
   while (true) {
@@ -94,4 +97,27 @@ export async function acquireLifecycleLock(
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
   }
+}
+
+export async function acquireLifecycleLock(
+  envName: string,
+  options: { wait?: boolean } = {}
+): Promise<LifecycleLock | null> {
+  return acquireLock(getLifecycleLockPath(envName), options);
+}
+
+export async function acquireLifecycleConfigLock(): Promise<LifecycleLock> {
+  const lock = await acquireLock(LIFECYCLE_CONFIG_LOCK_PATH, { wait: true });
+  if (!lock) {
+    throw new Error("Could not acquire lifecycle config lock");
+  }
+  return lock;
+}
+
+export async function acquireLifecycleDaemonLock(): Promise<LifecycleLock> {
+  const lock = await acquireLock(LIFECYCLE_DAEMON_LOCK_PATH, { wait: true });
+  if (!lock) {
+    throw new Error("Could not acquire lifecycle daemon lock");
+  }
+  return lock;
 }

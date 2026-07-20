@@ -22,6 +22,14 @@ async function writeActivityMarker(envName: string, kind: LifecycleActivityKind)
   await Bun.write(getLifecycleActivityPath(envName, kind), new Date().toISOString());
 }
 
+// Call only while holding the environment's lifecycle lock.
+export async function touchLifecycleActivityUnderLock(
+  envName: string,
+  kind: LifecycleActivityKind
+): Promise<void> {
+  await writeActivityMarker(envName, kind);
+}
+
 export async function touchLifecycleActivity(
   envName: string,
   kind: LifecycleActivityKind

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { getLifecycleRunOnceOptions } from "../../src/commands/lifecycle";
 import { getEligibleLifecycleTransition, type LifecycleState } from "../../src/lib/lifecycle";
 import type { LifecyclePolicy } from "../../src/lib/lifecycle-config";
 
@@ -64,5 +65,12 @@ describe("lifecycle transitions", () => {
         Date.parse("2026-01-02T00:00:00.000Z")
       )
     ).toBeNull();
+  });
+});
+
+describe("lifecycle sweep options", () => {
+  it("leaves configured dry-run mode authoritative when the flag is absent", () => {
+    expect(getLifecycleRunOnceOptions()).toEqual({});
+    expect(getLifecycleRunOnceOptions(true)).toEqual({ dryRun: true });
   });
 });

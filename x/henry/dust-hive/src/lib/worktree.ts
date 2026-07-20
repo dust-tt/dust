@@ -160,20 +160,31 @@ export async function createWorktreeFromExistingBranch(
 }
 
 // Remove a git worktree
-export async function removeWorktree(repoRoot: string, worktreePath: string): Promise<void> {
+export async function removeWorktree(
+  repoRoot: string,
+  worktreePath: string,
+  options: { force?: boolean } = { force: true }
+): Promise<void> {
   // If repoRoot doesn't exist, the worktree is orphaned - just check if worktreePath exists
   const repoExists = await directoryExists(repoRoot);
   if (!repoExists) {
     // Can't run git commands without a valid repo, but worktree dir may still exist
     const worktreeExists = await directoryExists(worktreePath);
     if (worktreeExists) {
+      if (options.force === false) {
+        throw new Error(`Cannot safely remove worktree because repo root '${repoRoot}' is missing`);
+      }
       logger.warn(`Repo root '${repoRoot}' no longer exists, removing worktree directory directly`);
       await Bun.spawn(["rm", "-rf", worktreePath]).exited;
     }
     return;
   }
 
-  const proc = Bun.spawn(["git", "worktree", "remove", worktreePath, "--force"], {
+  const args = ["git", "worktree", "remove", worktreePath];
+  if (options.force !== false) {
+    args.push("--force");
+  }
+  const proc = Bun.spawn(args, {
     cwd: repoRoot,
     stdout: "pipe",
     stderr: "pipe",

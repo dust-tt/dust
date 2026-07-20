@@ -307,7 +307,7 @@ cli
           await prepareAndRun(lifecycleStatusCommand(name), { ensureLifecycleDaemon: false });
           return;
         case "run-once":
-          await prepareAndRun(lifecycleRunOnceCommand(Boolean(options.dryRun)), {
+          await prepareAndRun(lifecycleRunOnceCommand(options.dryRun), {
             ensureLifecycleDaemon: false,
           });
           return;

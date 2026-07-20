@@ -2,6 +2,7 @@ import { open, rename, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { isErrnoException } from "./errors";
 import { loadLifecycleConfig } from "./lifecycle-config";
+import { acquireLifecycleDaemonLock } from "./lifecycle-lock";
 import { logger } from "./logger";
 import { LIFECYCLE_LOG_PATH, LIFECYCLE_PID_PATH } from "./paths";
 import { getProcessCommand } from "./platform";
@@ -50,36 +51,41 @@ async function rotateLifecycleLog(maxSizeBytes = 10 * 1024 * 1024): Promise<void
 }
 
 export async function startLifecycleDaemon(): Promise<Result<number>> {
-  const existingPid = await getLifecycleDaemonPid();
-  if (existingPid !== null) {
-    return Ok(existingPid);
-  }
+  const daemonLock = await acquireLifecycleDaemonLock();
+  try {
+    const existingPid = await getLifecycleDaemonPid();
+    if (existingPid !== null) {
+      return Ok(existingPid);
+    }
 
-  const configResult = await loadLifecycleConfig();
-  if (!configResult.ok) {
-    return configResult;
-  }
-  if (Object.keys(configResult.value.environments).length === 0) {
-    return Err(new CommandError("No environments have lifecycle management enabled"));
-  }
+    const configResult = await loadLifecycleConfig();
+    if (!configResult.ok) {
+      return configResult;
+    }
+    if (Object.keys(configResult.value.environments).length === 0) {
+      return Err(new CommandError("No environments have lifecycle management enabled"));
+    }
 
-  await rotateLifecycleLog();
-  const logHandle = await open(LIFECYCLE_LOG_PATH, "a");
-  const daemonPath = join(dirname(import.meta.path), "..", "lifecycle-daemon.ts");
-  const proc = Bun.spawn(["bun", "run", daemonPath], {
-    stdout: logHandle.fd,
-    stderr: logHandle.fd,
-    detached: true,
-  });
-  await logHandle.close();
-  proc.unref();
+    await rotateLifecycleLog();
+    const logHandle = await open(LIFECYCLE_LOG_PATH, "a");
+    const daemonPath = join(dirname(import.meta.path), "..", "lifecycle-daemon.ts");
+    const proc = Bun.spawn(["bun", "run", daemonPath], {
+      stdout: logHandle.fd,
+      stderr: logHandle.fd,
+      detached: true,
+    });
+    await logHandle.close();
+    proc.unref();
 
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  if (!isProcessRunning(proc.pid)) {
-    return Err(new CommandError(`Lifecycle daemon failed to start. See ${LIFECYCLE_LOG_PATH}`));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    if (!isProcessRunning(proc.pid)) {
+      return Err(new CommandError(`Lifecycle daemon failed to start. See ${LIFECYCLE_LOG_PATH}`));
+    }
+    await Bun.write(LIFECYCLE_PID_PATH, String(proc.pid));
+    return Ok(proc.pid);
+  } finally {
+    await daemonLock.release();
   }
-  await Bun.write(LIFECYCLE_PID_PATH, String(proc.pid));
-  return Ok(proc.pid);
 }
 
 export async function ensureLifecycleDaemonRunning(): Promise<void> {
@@ -94,11 +100,35 @@ export async function ensureLifecycleDaemonRunning(): Promise<void> {
 }
 
 export async function stopLifecycleDaemon(): Promise<boolean> {
-  const pid = await getLifecycleDaemonPid();
-  if (pid === null) {
-    return false;
+  const daemonLock = await acquireLifecycleDaemonLock();
+  try {
+    const pid = await getLifecycleDaemonPid();
+    if (pid === null) {
+      return false;
+    }
+    await killProcess(pid, "SIGTERM");
+    await cleanupLifecyclePidFile();
+    return true;
+  } finally {
+    await daemonLock.release();
   }
-  await killProcess(pid, "SIGTERM");
-  await cleanupLifecyclePidFile();
-  return true;
+}
+
+export async function stopLifecycleDaemonIfUnused(): Promise<boolean> {
+  const daemonLock = await acquireLifecycleDaemonLock();
+  try {
+    const configResult = await loadLifecycleConfig();
+    if (!configResult.ok || Object.keys(configResult.value.environments).length > 0) {
+      return false;
+    }
+    const pid = await getLifecycleDaemonPid();
+    if (pid === null) {
+      return false;
+    }
+    await killProcess(pid, "SIGTERM");
+    await cleanupLifecyclePidFile();
+    return true;
+  } finally {
+    await daemonLock.release();
+  }
 }

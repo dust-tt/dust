@@ -5,14 +5,12 @@ import { stopEnvironment } from "../commands/stop";
 import { type Environment, getEnvironment, getEnvironmentWorktreeDir } from "./environment";
 import { getActiveLifecycleActivityLease, getLatestLifecycleActivity } from "./lifecycle-activity";
 import {
-  type LifecycleConfig,
-  type LifecycleEnrollment,
   type LifecyclePolicy,
   loadLifecycleConfig,
   resolveLifecyclePolicy,
   saveLifecycleConfig,
 } from "./lifecycle-config";
-import { acquireLifecycleLock } from "./lifecycle-lock";
+import { acquireLifecycleConfigLock, acquireLifecycleLock } from "./lifecycle-lock";
 import { getSourceFingerprint } from "./lifecycle-source";
 import { logger } from "./logger";
 import { getConfiguredMultiplexer, getSessionName } from "./multiplexer";
@@ -190,16 +188,21 @@ export async function getDeleteBlockReason(
 }
 
 async function removeEnrollment(envName: string): Promise<void> {
-  const configResult = await loadLifecycleConfig();
-  if (!configResult.ok) {
-    logger.warn(configResult.error.message);
-    return;
+  const configLock = await acquireLifecycleConfigLock();
+  try {
+    const configResult = await loadLifecycleConfig();
+    if (!configResult.ok) {
+      logger.warn(configResult.error.message);
+      return;
+    }
+    const { [envName]: removed, ...environments } = configResult.value.environments;
+    if (!removed) {
+      return;
+    }
+    await saveLifecycleConfig({ ...configResult.value, environments });
+  } finally {
+    await configLock.release();
   }
-  const { [envName]: removed, ...environments } = configResult.value.environments;
-  if (!removed) {
-    return;
-  }
-  await saveLifecycleConfig({ ...configResult.value, environments });
 }
 
 async function applyTransition(
@@ -232,10 +235,40 @@ async function applyTransition(
   }
 }
 
+interface LifecycleContext {
+  policy: LifecyclePolicy;
+  dryRun: boolean;
+  signature: string;
+}
+
+async function loadLifecycleContext(
+  envName: string,
+  dryRunOverride: boolean | undefined
+): Promise<Result<LifecycleContext | null, CommandError>> {
+  const configResult = await loadLifecycleConfig();
+  if (!configResult.ok) {
+    return configResult;
+  }
+  const enrollment = configResult.value.environments[envName];
+  if (!enrollment) {
+    return Ok(null);
+  }
+  const policyResult = resolveLifecyclePolicy(configResult.value, enrollment);
+  if (!policyResult.ok) {
+    return policyResult;
+  }
+  const dryRun = dryRunOverride ?? configResult.value.dryRun;
+  return Ok({
+    policy: policyResult.value,
+    dryRun,
+    signature: JSON.stringify({ enrollment, policy: policyResult.value, dryRun }),
+  });
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: lifecycle orchestration keeps safety checks adjacent to actions
 async function runEnvironmentLifecycle(
   env: Environment,
-  policy: LifecyclePolicy,
-  dryRun: boolean
+  dryRunOverride: boolean | undefined
 ): Promise<Result<void, CommandError>> {
   const lock = await acquireLifecycleLock(env.name);
   if (!lock) {
@@ -243,6 +276,11 @@ async function runEnvironmentLifecycle(
   }
 
   try {
+    const contextResult = await loadLifecycleContext(env.name, dryRunOverride);
+    if (!contextResult.ok || contextResult.value === null) {
+      return contextResult.ok ? Ok(undefined) : contextResult;
+    }
+    const { policy, dryRun, signature } = contextResult.value;
     const stateInfo = await getStateInfo(env);
     if (stateInfo.warnings.length > 0) {
       return Err(
@@ -267,6 +305,15 @@ async function runEnvironmentLifecycle(
     // Close the observation gap before stopping processes or removing resources.
     state = await observeActivity(env, policy, stateInfo.state, state, new Date());
     if (!getEligibleLifecycleTransition(state, policy, Date.now())) {
+      await saveLifecycleState(env.name, { ...state, blockedReason: null });
+      return Ok(undefined);
+    }
+
+    const latestContextResult = await loadLifecycleContext(env.name, dryRunOverride);
+    if (!latestContextResult.ok || latestContextResult.value === null) {
+      return latestContextResult.ok ? Ok(undefined) : latestContextResult;
+    }
+    if (latestContextResult.value.signature !== signature) {
       await saveLifecycleState(env.name, { ...state, blockedReason: null });
       return Ok(undefined);
     }
@@ -314,9 +361,7 @@ async function runEnvironmentLifecycle(
 
 async function runEnrolledEnvironment(
   envName: string,
-  enrollment: LifecycleEnrollment,
-  config: LifecycleConfig,
-  dryRun: boolean
+  dryRunOverride: boolean | undefined
 ): Promise<Result<void, CommandError>> {
   const env = await getEnvironment(envName);
   if (!env) {
@@ -324,11 +369,7 @@ async function runEnrolledEnvironment(
     logger.warn(`[lifecycle] ${envName}: removed enrollment for missing environment`);
     return Ok(undefined);
   }
-  const policyResult = resolveLifecyclePolicy(config, enrollment);
-  if (!policyResult.ok) {
-    return policyResult;
-  }
-  return runEnvironmentLifecycle(env, policyResult.value, dryRun);
+  return runEnvironmentLifecycle(env, dryRunOverride);
 }
 
 export async function runLifecycleSweep(options: { dryRun?: boolean } = {}): Promise<Result<void>> {
@@ -336,14 +377,12 @@ export async function runLifecycleSweep(options: { dryRun?: boolean } = {}): Pro
   if (!configResult.ok) {
     return configResult;
   }
-  const config = configResult.value;
-  const dryRun = options.dryRun ?? config.dryRun;
   const failures: string[] = [];
 
-  for (const [envName, enrollment] of Object.entries(config.environments)) {
+  for (const envName of Object.keys(configResult.value.environments)) {
     // One broken environment must not prevent resource reclamation for the others.
     try {
-      const result = await runEnrolledEnvironment(envName, enrollment, config, dryRun);
+      const result = await runEnrolledEnvironment(envName, options.dryRun);
       if (!result.ok) {
         failures.push(`${envName}: ${result.error.message}`);
       }

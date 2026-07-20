@@ -192,14 +192,15 @@ async function cleanupDocker(envName: string): Promise<void> {
 async function cleanupGitResources(
   env: Environment,
   plan: DestroyPlan,
-  settings: Settings
+  settings: Settings,
+  force: boolean
 ): Promise<void> {
   if (plan.keepWorktree) {
     await removeDirenvIntegration(env.name, plan.worktreePath);
     logger.info(`Keeping worktree: ${plan.worktreePath}`);
   } else {
     logger.step("Removing git worktree...");
-    await removeWorktree(env.metadata.repoRoot, plan.worktreePath);
+    await removeWorktree(env.metadata.repoRoot, plan.worktreePath, { force });
     logger.success("Git worktree removed");
   }
 
@@ -258,7 +259,17 @@ export async function destroySingleEnvironment(
     logger.warn(`Could not drop test database: ${testDbResult.error}`);
   }
 
-  await cleanupGitResources(env, plan, settings);
+  // Cleanup can take long enough for an editor or agent to modify the worktree.
+  // Re-check at the removal boundary; non-forced git removal closes the remaining race.
+  const finalSafeResult = await ensureWorktreeCanBeRemoved(
+    env,
+    plan.worktreePath,
+    options,
+    plan.keepWorktree
+  );
+  if (!finalSafeResult.ok) return finalSafeResult;
+
+  await cleanupGitResources(env, plan, settings, options.force);
 
   // Remove environment directory
   logger.step("Removing environment config...");

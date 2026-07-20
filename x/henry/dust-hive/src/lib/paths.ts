@@ -29,6 +29,8 @@ export const ACTIVITY_PATH = join(DUST_HIVE_HOME, "activity.json");
 
 // Opt-in environment lifecycle management
 export const LIFECYCLE_CONFIG_PATH = join(DUST_HIVE_HOME, "lifecycle.json");
+export const LIFECYCLE_CONFIG_LOCK_PATH = join(DUST_HIVE_HOME, "lifecycle-config.lock");
+export const LIFECYCLE_DAEMON_LOCK_PATH = join(DUST_HIVE_HOME, "lifecycle-daemon.lock");
 export const LIFECYCLE_PID_PATH = join(DUST_HIVE_HOME, "lifecycle.pid");
 export const LIFECYCLE_LOG_PATH = join(DUST_HIVE_HOME, "lifecycle.log");
 
