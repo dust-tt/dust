@@ -14,6 +14,7 @@ import {
   getCategoryFromContentType,
   getFileExplorerSearchResultTitle,
   getSingularFileCategoryLabelForContentType,
+  isFilePreviewableContentType,
 } from "@app/components/file_explorer/utils";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
@@ -43,6 +44,7 @@ export type ViewMode = "grid" | "list";
 export type FileExplorerItemProps = {
   /** Merged onto the interactive surface (e.g. grab cursor while dragging). */
   containerClassName?: string;
+  downloadOnOpen?: boolean;
   extraMenuItems?: FileExplorerMenuAction[];
   /** When set, replaces default hover / background (e.g. drop-target highlight). */
   surfaceClassName?: string;
@@ -61,6 +63,7 @@ export type FileExplorerItemProps = {
 export function FileExplorerItem(props: FileExplorerItemProps) {
   const {
     containerClassName,
+    downloadOnOpen = false,
     extraMenuItems,
     onDownload,
     onOpen,
@@ -89,11 +92,10 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const handleDownload = async (e: React.MouseEvent) => {
-    if (!onDownload) {
+  const runDownload = async () => {
+    if (!onDownload || isDownloading) {
       return;
     }
-    e.stopPropagation();
     setIsDownloading(true);
     try {
       await onDownload();
@@ -102,6 +104,22 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
       setMenuOpen(false);
     }
   };
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await runDownload();
+  };
+
+  const handleOpen = () => {
+    if (downloadOnOpen) {
+      void runDownload();
+      return;
+    }
+    onOpen();
+  };
+
+  const displayedThumbnailContent =
+    downloadOnOpen && isDownloading ? <Spinner size="sm" /> : thumbnailContent;
 
   const hasMenu = onDownload || (extraMenuItems && extraMenuItems.length > 0);
 
@@ -181,10 +199,11 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
           containerClassName,
           surfaceClassName ?? "hover:bg-muted-background"
         )}
-        onClick={onOpen}
+        aria-busy={downloadOnOpen && isDownloading}
+        onClick={handleOpen}
       >
         <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-          {thumbnailContent}
+          {displayedThumbnailContent}
         </div>
         {info}
         {menu}
@@ -201,9 +220,10 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
           surfaceClassName ?? "bg-muted-background hover:brightness-95",
           props.kind === "icon" && "p-4"
         )}
-        onClick={onOpen}
+        aria-busy={downloadOnOpen && isDownloading}
+        onClick={handleOpen}
       >
-        {thumbnailContent}
+        {displayedThumbnailContent}
       </div>
       <div className="flex items-start justify-between gap-0.5">
         {info}
@@ -366,6 +386,7 @@ export function FileExplorerFileCard({
   extraMenuItems,
 }: FileExplorerFileCardProps) {
   const subtitle = getFileSubtitle(entry, viewMode);
+  const downloadOnOpen = !isFilePreviewableContentType(entry.contentType);
   const title =
     searchFolderPath !== undefined
       ? getFileExplorerSearchResultTitle(entry, searchFolderPath)
@@ -393,6 +414,7 @@ export function FileExplorerFileCard({
         title={title}
         subtitle={subtitle}
         containerClassName={dragContainerClassName}
+        downloadOnOpen={downloadOnOpen}
         onOpen={() => onOpen(entry)}
         onDownload={() => onDownload(entry)}
         extraMenuItems={extraMenuItems}
@@ -405,6 +427,7 @@ export function FileExplorerFileCard({
         title={title}
         subtitle={subtitle}
         containerClassName={dragContainerClassName}
+        downloadOnOpen={downloadOnOpen}
         onOpen={() => onOpen(entry)}
         onDownload={() => onDownload(entry)}
         extraMenuItems={extraMenuItems}

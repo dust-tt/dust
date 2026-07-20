@@ -1,5 +1,5 @@
 import type { FilePanelCategory } from "@app/components/file_explorer/types";
-import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
+import { getCategoryFromContentType } from "@app/components/file_explorer/utils";
 import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
@@ -28,28 +28,7 @@ export function getFilePanelCategory(
       : "frame";
   }
 
-  const previewConfig = getFilePreviewConfig(item.contentType);
-
-  switch (previewConfig.category) {
-    case "pdf":
-      return "pdf";
-    case "image":
-      return "image";
-    case "audio":
-      return "audio";
-    case "delimited":
-      return "table";
-    case "code":
-    case "viewer":
-    case "markdown":
-      return "document";
-    case "frame":
-      return "frame";
-    case "unsupported":
-      return "other";
-    default:
-      return "other";
-  }
+  return getCategoryFromContentType(item.contentType);
 }
 
 export function conversationAttachmentToRow(

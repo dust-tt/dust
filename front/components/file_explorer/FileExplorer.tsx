@@ -252,10 +252,6 @@ export function FileExplorer({
     if (onOpenInPanel?.(entry)) {
       return;
     }
-    if (!isFilePreviewableContentType(entry.contentType)) {
-      void onFileDownload(entry);
-      return;
-    }
     setPreviewFile(entry);
     setShowPreviewSheet(true);
   };
