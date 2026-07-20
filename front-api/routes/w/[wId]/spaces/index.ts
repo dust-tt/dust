@@ -14,12 +14,7 @@ import type {
 } from "@app/types/api/spaces";
 import { PostSpaceRequestBodySchema } from "@app/types/api/spaces";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import {
-  type PodType,
-  SPACE_KINDS,
-  type SpaceKind,
-  type SpaceType,
-} from "@app/types/space";
+import { type PodType, SPACE_KINDS, type SpaceType } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -44,8 +39,6 @@ const GetSpacesQuerySchema = z.object({
   role: z.string().optional(),
   kind: z.union([z.enum(SPACE_KINDS), z.array(z.enum(SPACE_KINDS))]).optional(),
 });
-
-const ADMIN_SPACE_KINDS = new Set<SpaceKind>(["system", "global", "regular"]);
 
 /**
  * @swagger
@@ -171,13 +164,12 @@ app.get(
 
     let spaces: SpaceResource[] = [];
     if (role === "admin") {
-      const adminKinds = kinds?.filter((kind) => ADMIN_SPACE_KINDS.has(kind));
-      spaces =
-        adminKinds?.length === 0
-          ? []
-          : await SpaceResource.listWorkspaceSpaces(auth, {
-              kinds: adminKinds,
-            });
+      if (kind === "system") {
+        const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+        spaces = systemSpace ? [systemSpace] : [];
+      } else {
+        spaces = await SpaceResource.listWorkspaceSpaces(auth);
+      }
     } else {
       spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth, {
         kinds,

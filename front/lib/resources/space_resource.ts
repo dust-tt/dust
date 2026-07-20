@@ -238,7 +238,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       includeConversationsSpace?: boolean;
       includeProjectSpaces?: boolean;
       includeDeleted?: boolean;
-      kinds?: SpaceKind[];
     },
     t?: Transaction
   ): Promise<SpaceResource[]> {
@@ -248,7 +247,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         includeDeleted: options?.includeDeleted,
         where: {
           kind: {
-            [Op.in]: options?.kinds ?? [
+            [Op.in]: [
               "system",
               "global",
               "regular",

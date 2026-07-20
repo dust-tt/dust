@@ -54,7 +54,6 @@ export function useSpaces({
 }) {
   const { fetcher } = useFetcher();
   const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
-  const kindsKey = kinds === "all" ? kinds : kinds.toSorted().join(",");
   const queryParams =
     kinds === "all"
       ? ""
@@ -77,7 +76,7 @@ export function useSpaces({
     );
     // Serialize the kinds array to a string to avoid unnecessary re-renders
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.spaces, kindsKey]);
+  }, [data?.spaces, kinds === "all" ? kinds : kinds.toSorted().join(",")]);
 
   return {
     spaces,
