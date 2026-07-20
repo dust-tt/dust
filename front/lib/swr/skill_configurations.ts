@@ -100,18 +100,16 @@ export function useSkills({
   disabled,
   status,
   globalSpaceOnly,
-  availability,
-  bypassEditorVisibility,
+  podSpaceId,
+  isDefault,
   swrOptions,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
-  availability?: SkillAvailability | SkillAvailability[];
-  // Admin-only: bypass the editor-visibility rule and also list unpublished
-  // (editors-only) skills the caller does not edit.
-  bypassEditorVisibility?: boolean;
+  podSpaceId?: string | null;
+  isDefault?: boolean;
   swrOptions?: SWRConfiguration;
 }): {
   skills: SkillWithoutInstructionsAndToolsType[];
@@ -128,16 +126,11 @@ export function useSkills({
   if (globalSpaceOnly) {
     queryParams.set("globalSpaceOnly", "true");
   }
-  if (availability) {
-    const availabilities = Array.isArray(availability)
-      ? availability
-      : [availability];
-    for (const value of availabilities) {
-      queryParams.append("availability", value);
-    }
+  if (podSpaceId) {
+    queryParams.set("podSpaceId", podSpaceId);
   }
-  if (bypassEditorVisibility) {
-    queryParams.set("bypassEditorVisibility", "true");
+  if (isDefault) {
+    queryParams.set("isDefault", "true");
   }
   const queryString = queryParams.toString();
 

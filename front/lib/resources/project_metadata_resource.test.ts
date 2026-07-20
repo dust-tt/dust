@@ -179,7 +179,7 @@ describe("ProjectMetadataResource", () => {
       expect(afterClear!.defaultSkillsIds).toBeNull();
     });
 
-    it("drops skills that are not usable in the global space", async () => {
+    it("drops skills restricted to a space other than this Pod", async () => {
       const { workspace: skillWorkspace, authenticator } =
         await createResourceTest({ role: "admin" });
       const space = await SpaceFactory.project(skillWorkspace);
@@ -209,6 +209,40 @@ describe("ProjectMetadataResource", () => {
         space
       );
       expect(reloaded!.defaultSkillIds).toEqual([globalSkill.sId]);
+    });
+
+    it("keeps skills restricted to this Pod's own space", async () => {
+      const { workspace: skillWorkspace, authenticator } =
+        await createResourceTest({ role: "admin" });
+      const space = await SpaceFactory.project(skillWorkspace);
+
+      const globalSkill = await SkillFactory.create(authenticator, {
+        name: "global",
+      });
+      // A skill scoped to the Pod's own space — usable by exactly the Pod members.
+      const podScopedSkill = await SkillFactory.create(authenticator, {
+        name: "pod-scoped",
+        requestedSpaceIds: [space.id],
+      });
+
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+
+      await metadata.setDefaultSkills(authenticator, [
+        globalSkill,
+        podScopedSkill,
+      ]);
+
+      const reloaded = await ProjectMetadataResource.fetchBySpace(
+        authenticator,
+        space
+      );
+      expect([...reloaded!.defaultSkillIds].sort()).toEqual(
+        [globalSkill.sId, podScopedSkill.sId].sort()
+      );
     });
 
     it("de-duplicates skills", async () => {

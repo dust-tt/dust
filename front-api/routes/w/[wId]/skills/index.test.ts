@@ -443,6 +443,40 @@ describe("GET /api/w/:wId/skills", () => {
     expect(globalNames).not.toContain("Member Restricted Skill");
   });
 
+  it("with podSpaceId returns global skills + skills restricted to that Pod only", async () => {
+    const { workspace, user, auth } = await setupTest("admin");
+
+    await SpaceFactory.defaults(auth);
+
+    await SkillFactory.create(auth, { name: "Global Skill" });
+
+    // Skill restricted to the Pod itself — should show for that Pod. The caller
+    // is the Pod editor so they can read it.
+    const pod = await SpaceFactory.project(workspace, user.id);
+    await SkillFactory.create(auth, {
+      name: "Pod Skill",
+      requestedSpaceIds: [pod.id],
+    });
+
+    // Skill restricted to a different space the caller can access — should be
+    // excluded when scoping to the Pod, even though it is otherwise visible.
+    const otherSpace = await SpaceFactory.regular(workspace);
+    await otherSpace.addMembers(auth, { userIds: [user.sId] });
+    await SkillFactory.create(auth, {
+      name: "Other Space Skill",
+      requestedSpaceIds: [otherSpace.id],
+    });
+
+    const res = await getSkills(workspace, { podSpaceId: pod.sId });
+    expect(res.status).toBe(200);
+    const names = (await res.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(names).toContain("Global Skill");
+    expect(names).toContain("Pod Skill");
+    expect(names).not.toContain("Other Space Skill");
+  });
+
   it("should not return instructions or tools in skill list", async () => {
     const { workspace, auth, user } = await setupTest();
 

@@ -1435,6 +1435,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       status = "active",
       limit,
       globalSpaceOnly,
+      podSpaceId,
       onlyCustom,
       availability,
       updatedAfter,
@@ -1446,6 +1447,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       status?: SkillStatus | SkillStatus[];
       limit?: number;
       globalSpaceOnly?: boolean;
+      // When set, restricts results to skills usable inside that Pod: skills whose
+      // requested spaces are all either the global space or the Pod's own space.
+      podSpaceId?: ModelId;
       onlyCustom?: boolean;
       availability?: SkillAvailability | SkillAvailability[];
       updatedAfter?: Date;
@@ -1469,10 +1473,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withFileAttachments,
     });
 
-    if (globalSpaceOnly) {
+    // Scope to the global space (globalSpaceOnly) and/or a specific Pod's space
+    // (podSpaceId). A skill is kept only when every one of its requested spaces is
+    // in the allowed set, so Pod-restricted skills from other Pods are excluded.
+    if (globalSpaceOnly || podSpaceId !== undefined) {
       const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+      const allowedSpaceIds = new Set<ModelId>([globalSpace.id]);
+      if (podSpaceId !== undefined) {
+        allowedSpaceIds.add(podSpaceId);
+      }
       return skills.filter((skill) =>
-        skill.requestedSpaceIds.every((id) => id === globalSpace.id)
+        skill.requestedSpaceIds.every((id) => allowedSpaceIds.has(id))
       );
     }
 

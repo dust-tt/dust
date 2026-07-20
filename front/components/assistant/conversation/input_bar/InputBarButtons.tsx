@@ -110,6 +110,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
   const isPod = space ? isProjectType(space) : false;
+  const podSpaceId = conversation?.spaceId ?? (isPod ? space?.sId : undefined);
   const defaultAgentUnavailableLabel = isPod
     ? "This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
     : "This conversation's default agent isn't available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error.";
@@ -203,6 +204,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       onOpenChange={onCapabilitiesPickerOpenChange}
       buttonSize={buttonSize}
       disabled={isInputDisabled}
+      podSpaceId={podSpaceId}
     />
   );
   const attachmentButton = actions.includes("attachment") &&

@@ -214,6 +214,30 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     ).toEqual([]);
   });
 
+  it("persists a skill restricted to this Pod as a default skill", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "pod_default_skills");
+
+    // Make the caller the Pod editor so they can read/administrate it.
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    // A skill restricted to this Pod's own space — usable by exactly the Pod.
+    const podScopedSkill = await SkillFactory.create(auth, {
+      name: "Pod Scoped Skill",
+      requestedSpaceIds: [projectSpace.id],
+    });
+
+    const response = await patchMetadata(workspace, projectSpace.sId, {
+      defaultSkillIds: [podScopedSkill.sId],
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).projectMetadata.defaultSkillIds).toEqual([
+      podScopedSkill.sId,
+    ]);
+  });
+
   it("rejects unknown default skill ids", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",

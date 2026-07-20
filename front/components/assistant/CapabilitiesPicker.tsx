@@ -169,6 +169,7 @@ interface CapabilitiesPickerProps {
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
   onOpenChange?: (open: boolean) => void;
+  podSpaceId?: string | null;
 }
 
 export function CapabilitiesPicker({
@@ -181,6 +182,7 @@ export function CapabilitiesPicker({
   disabled = false,
   buttonSize = "xs",
   onOpenChange,
+  podSpaceId,
 }: CapabilitiesPickerProps) {
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
@@ -258,6 +260,7 @@ export function CapabilitiesPicker({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
+    podSpaceId,
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
 

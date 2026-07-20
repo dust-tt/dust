@@ -9,6 +9,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   GetSkillsResponseBody,
@@ -134,10 +135,11 @@ app.get(
     const onlyCustom = ctx.req.query("onlyCustom");
     // @deprecated Use availability instead. Kept while old clients still send it.
     const isDefault = ctx.req.query("isDefault");
-    const bypassEditorVisibility =
-      ctx.req.query("bypassEditorVisibility") === "true";
-    // Repeatable: ?availability=workspace_users&availability=users_and_agents.
-    const availabilityParams = ctx.req.queries("availability");
+    const podSpaceSId = ctx.req.query("podSpaceId");
+    const podSpaceId =
+      podSpaceSId !== undefined
+        ? (getResourceIdFromSId(podSpaceSId) ?? undefined)
+        : undefined;
 
     const statusValidation = SkillStatusSchema.safeParse(status);
     if (!statusValidation.success) {
@@ -184,6 +186,7 @@ app.get(
     const allSkills = await SkillResource.listByWorkspace(auth, {
       status: skillStatus,
       globalSpaceOnly: globalSpaceOnly === "true",
+      podSpaceId,
       onlyCustom: onlyCustom === "true",
       availability,
       withInstructions: false,
