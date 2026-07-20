@@ -86,6 +86,18 @@ export function isModel(value: string): value is Model {
   return (MODELS as readonly string[]).includes(value);
 }
 
+// Older models reject explicit prompt cache breakpoints.
+// https://developers.openai.com/api/docs/guides/prompt-caching#prompt-cache-breakpoints
+const OPENAI_EXPLICIT_PROMPT_CACHING_MODELS: readonly Model[] = [
+  GPT_5_6_SOL,
+  GPT_5_6_TERRA,
+  GPT_5_6_LUNA,
+];
+
+export function supportsOpenAIExplicitPromptCaching(model: Model): boolean {
+  return OPENAI_EXPLICIT_PROMPT_CACHING_MODELS.includes(model);
+}
+
 export const ORDERED_LARGE_MODELS = [
   CLAUDE_FABLE_5,
   CLAUDE_OPUS_4_8,

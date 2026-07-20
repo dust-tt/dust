@@ -125,11 +125,21 @@ function toAssistantInputItem(
 }
 
 function toUserInputMessage(
-  message: UserMessageTypeModel
+  message: UserMessageTypeModel,
+  { cacheBreakpoint }: { cacheBreakpoint: boolean }
 ): ResponseInputItem.Message {
+  const lastContentIndex = message.content.length - 1;
   return {
     role: "user",
-    content: message.content.map(toInputContent),
+    content: message.content.map((content, index) => {
+      const inputContent = toInputContent(content);
+      return cacheBreakpoint && index === lastContentIndex
+        ? {
+            ...inputContent,
+            prompt_cache_breakpoint: { mode: "explicit" },
+          }
+        : inputContent;
+    }),
   };
 }
 
@@ -150,7 +160,8 @@ function toToolCallOutputItem(
 export function toInput(
   prompt: string,
   conversation: ModelConversationTypeMultiActions,
-  promptRole: "system" | "developer" = "developer"
+  promptRole: "system" | "developer" = "developer",
+  { cacheBreakpointOnLeadingMessage = false } = {}
 ): ResponseInput {
   const inputs: ResponseInput = [];
   inputs.push({
@@ -158,10 +169,17 @@ export function toInput(
     content: [{ type: "input_text", text: prompt }],
   });
 
-  for (const message of conversation.messages) {
+  for (const [index, message] of conversation.messages.entries()) {
     switch (message.role) {
       case "user":
-        inputs.push(toUserInputMessage(message));
+        inputs.push(
+          toUserInputMessage(message, {
+            cacheBreakpoint:
+              cacheBreakpointOnLeadingMessage &&
+              index === 0 &&
+              message.name === "system",
+          })
+        );
         break;
       case "assistant":
         const assistantItems = compact(

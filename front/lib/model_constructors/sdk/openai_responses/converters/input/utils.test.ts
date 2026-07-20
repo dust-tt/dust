@@ -4,13 +4,20 @@ import {
   assistantTextMessageToInputItem,
   assistantToolCallRequestToInputItem,
   toolSpecsToOpenAITools,
+  userTextMessageToInputItem,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
+import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   BaseAssistantProviderPassthroughMessage,
   BaseAssistantReasoningMessage,
   BaseAssistantTextMessage,
   BaseAssistantToolCallRequestMessage,
+  BaseUserTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
+import {
+  GPT_5_4,
+  GPT_5_6_SOL,
+} from "@app/lib/model_constructors/types/models";
 import { describe, expect, it } from "vitest";
 
 describe("assistantTextMessageToInputItem", () => {
@@ -37,6 +44,43 @@ describe("assistantTextMessageToInputItem", () => {
     expect(assistantTextMessageToInputItem(message)).toEqual({
       role: "assistant",
       content: "no phase here",
+    });
+  });
+});
+
+describe("prompt cache breakpoints", () => {
+  const message: BaseUserTextMessage = {
+    role: "user",
+    type: "text",
+    content: { value: "Available skills" },
+    cache: "short",
+  };
+  const metadata: EndpointMetadata = {
+    lab: "openai",
+    host: "openai-responses",
+    region: "us",
+    model: GPT_5_6_SOL,
+  };
+
+  it("serializes a cache marker when explicit prompt caching is supported", () => {
+    expect(userTextMessageToInputItem(message, metadata)).toEqual({
+      role: "user",
+      content: [
+        {
+          type: "input_text",
+          text: "Available skills",
+          prompt_cache_breakpoint: { mode: "explicit" },
+        },
+      ],
+    });
+  });
+
+  it("does not serialize a cache marker for older models", () => {
+    expect(
+      userTextMessageToInputItem(message, { ...metadata, model: GPT_5_4 })
+    ).toEqual({
+      role: "user",
+      content: [{ type: "input_text", text: "Available skills" }],
     });
   });
 });

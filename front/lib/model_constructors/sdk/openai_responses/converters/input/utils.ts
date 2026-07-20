@@ -2,6 +2,7 @@ import {
   OPENAI_TOOL_SEARCH_TOOL,
   parseOpenAIToolSearchItem,
 } from "@app/lib/api/llm/clients/openai/utils/tool_search_passthrough";
+import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   OutputFormat,
   Reasoning,
@@ -21,6 +22,7 @@ import type {
   BaseUserTextMessage,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
+import { supportsOpenAIExplicitPromptCaching } from "@app/lib/model_constructors/types/models";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   FunctionTool,
@@ -68,11 +70,21 @@ export function systemMessageToInputItem(
 }
 
 export function userTextMessageToInputItem(
-  message: BaseUserTextMessage
+  message: BaseUserTextMessage,
+  metadata: EndpointMetadata
 ): ResponseInputItem {
   return {
     role: "user",
-    content: [{ type: "input_text", text: message.content.value }],
+    content: [
+      {
+        type: "input_text",
+        text: message.content.value,
+        // OpenAI uses the request-wide TTL; the message cache value opts this block in.
+        ...(message.cache && supportsOpenAIExplicitPromptCaching(metadata.model)
+          ? { prompt_cache_breakpoint: { mode: "explicit" } }
+          : {}),
+      },
+    ],
   };
 }
 

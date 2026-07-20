@@ -15,6 +15,39 @@ describe("toInput", () => {
 
       expect(messages).toEqual(inputMessages);
     });
+
+    it("adds a cache breakpoint to the leading equipped-skills message", () => {
+      const messages = toInput(
+        "You are a helpful assistant.",
+        {
+          messages: [
+            {
+              role: "user",
+              name: "system",
+              content: [
+                { type: "text", text: "Available" },
+                { type: "text", text: "skills" },
+              ],
+            },
+            ...conversationMessages,
+          ],
+        },
+        "developer",
+        { cacheBreakpointOnLeadingMessage: true }
+      );
+
+      expect(messages[1]).toEqual({
+        role: "user",
+        content: [
+          { type: "input_text", text: "Available" },
+          {
+            type: "input_text",
+            text: "skills",
+            prompt_cache_breakpoint: { mode: "explicit" },
+          },
+        ],
+      });
+    });
   });
 
   it("replays OpenAI tool-search items and skips other providers", () => {
