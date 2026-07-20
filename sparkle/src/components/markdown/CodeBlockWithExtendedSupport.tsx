@@ -166,6 +166,8 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
   const graphId = `mermaid-${React.useId().replaceAll(":", "")}`;
 
   useEffect(() => {
+    let cancelled = false;
+
     const renderMermaid = async () => {
       if (!graphRef.current) {
         return;
@@ -275,11 +277,17 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
       });
 
       const { bindFunctions, svg } = await mermaid.render(graphId, chart);
+      if (cancelled || !graphRef.current) {
+        return;
+      }
       graphRef.current.innerHTML = svg;
       bindFunctions?.(graphRef.current);
     };
 
     void renderMermaid();
+    return () => {
+      cancelled = true;
+    };
   }, [chart, graphId]);
 
   return (
