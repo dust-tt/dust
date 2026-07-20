@@ -39,7 +39,6 @@ import {
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-import { isAdmin } from "@app/types/user";
 import {
   BarFooter,
   BarHeader,
@@ -97,16 +96,11 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 
   const hasPendingSuggestions = suggestions.length > 0;
 
-  const isAdminExistingSkill = !!skill && isAdmin(owner);
   const isCurrentUserEditor = editors.some((editor) => editor.sId === user.sId);
-  const isAdminNonEditor =
-    isAdminExistingSkill &&
-    !isEditorsLoading &&
-    !isEditorsError &&
-    !isCurrentUserEditor;
+  const isNonEditor =
+    !!skill && !isEditorsLoading && !isEditorsError && !isCurrentUserEditor;
   const isEditorLocked =
-    isAdminExistingSkill &&
-    (isEditorsLoading || isEditorsError || !isCurrentUserEditor);
+    !!skill && (isEditorsLoading || isEditorsError || !isCurrentUserEditor);
 
   const defaultValues = useMemo(() => {
     if (skill) {
@@ -265,14 +259,14 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 
       <ScrollArea className="flex-1">
         <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
-          {isAdminExistingSkill && isEditorsError ? (
+          {isEditorLocked && isEditorsError ? (
             <BuilderEditorLoadErrorMessage
               builderType="skill"
               onRetry={() => {
                 void mutateEditors();
               }}
             />
-          ) : isAdminNonEditor ? (
+          ) : isNonEditor ? (
             <BuilderEditorGateMessage
               builderType="skill"
               isLoading={isAddingSelfAsEditor}
@@ -302,7 +296,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
             hasSelfImprovingSkills={hasSelfImprovingSkills}
-            isEditorGateVisible={isAdminNonEditor}
+            isEditorGateVisible={isNonEditor}
             isAddingSelfAsEditor={isAddingSelfAsEditor}
             onAddSelfAsEditor={() => {
               void handleAddSelfAsEditor();
