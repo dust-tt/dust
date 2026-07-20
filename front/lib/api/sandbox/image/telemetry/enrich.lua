@@ -3,7 +3,13 @@ function enrich_message(tag, timestamp, record)
     local command = record["command"]
     local pid = record["pid"]
     local exit_code = record["exit_code"]
-    local msg = record["msg"] or record["message"]
+    local structured_fields = record["fields"]
+    local structured_message = nil
+    if type(structured_fields) == "table" then
+        structured_message = structured_fields["message"]
+    end
+    local msg = record["msg"] or record["message"] or structured_message or
+        record["log"]
     local data = record["data"]
     local tool = record["tool"]
     local profile = record["profile"]
@@ -38,6 +44,21 @@ function enrich_message(tag, timestamp, record)
         record["status"] = litestream_level_map[litestream_level] or "warn"
     end
 
+    -- dsbx uses tracing-subscriber's JSON formatter. Its message is nested in
+    -- `fields`, while the severity is the top-level `level` value.
+    local forwarder_level = nil
+    if tag == "sandbox.egress_forwarder" then
+        forwarder_level = record["level"]
+        local forwarder_level_map = {
+            ERROR = "error",
+            WARN = "warn",
+            INFO = "info",
+            DEBUG = "debug",
+            TRACE = "debug"
+        }
+        record["status"] = forwarder_level_map[forwarder_level] or "warn"
+    end
+
     local severity_map = {
         process_start = "info",
         process_exit = "info",
@@ -46,7 +67,8 @@ function enrich_message(tag, timestamp, record)
         error = "error",
         warning = "warn"
     }
-    if not gcsfuse_severity and tag ~= "sandbox.litestream" then
+    if not gcsfuse_severity and tag ~= "sandbox.litestream" and
+        tag ~= "sandbox.egress_forwarder" then
         record["status"] = severity_map[event_type] or "info"
     end
 
@@ -84,6 +106,10 @@ function enrich_message(tag, timestamp, record)
         record["message"] = string.format("[gcsfuse:%s] %s", gcsfuse_severity, msg)
     elseif litestream_level and msg then
         record["message"] = string.format("[litestream:%s] %s", litestream_level, msg)
+    elseif forwarder_level and msg then
+        record["message"] = string.format("[egress-forwarder:%s] %s", forwarder_level, msg)
+    elseif tag == "sandbox.egress_forwarder" and msg then
+        record["message"] = string.format("[egress-forwarder] %s", msg)
     elseif msg then
         record["message"] = msg
     elseif command then

@@ -96,7 +96,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.54",
+      tag: "0.8.55",
     });
   });
 
@@ -449,6 +449,30 @@ describe("sandbox image registry", () => {
     expect(litestreamConfig).toContain("watch: true");
     expect(litestreamConfig).toContain("type: file");
     expect(litestreamConfig).toContain("path: /pod-state/replica");
+  });
+
+  test("collects structured egress forwarder logs", () => {
+    const copyOperations = getCopyOperations(getDustBaseImageOperations());
+    const fluentBitConfig = getCopiedContent(
+      copyOperations,
+      "/etc/fluent-bit/fluent-bit.conf"
+    );
+    const enrichmentScript = getCopiedContent(
+      copyOperations,
+      "/etc/fluent-bit/enrich.lua"
+    );
+
+    expect(fluentBitConfig).toContain(
+      "path              /tmp/dust-forwarder.log"
+    );
+    expect(fluentBitConfig).toContain(
+      "tag               sandbox.egress_forwarder"
+    );
+    expect(fluentBitConfig).toContain("parser            json");
+    expect(fluentBitConfig).toContain("source egress_forwarder");
+    expect(fluentBitConfig).toContain("exclude       level ^INFO$");
+    expect(enrichmentScript).toContain('structured_fields["message"]');
+    expect(enrichmentScript).toContain('tag == "sandbox.egress_forwarder"');
   });
 
   test("pins drizzle packages and vendors @dust/pod", () => {
