@@ -16,6 +16,7 @@ import {
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { getConversationFileMountSignedUrl } from "@app/lib/api/files/gcs_mount/files";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS } from "@app/lib/file_storage/signed_url_cache";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   replaceMentionsWithAt,
@@ -73,7 +74,9 @@ async function getDustFileSystemDownloadUrl(
     return fsResult;
   }
 
-  return fsResult.value.getDownloadUrl(filePath);
+  return fsResult.value.getDownloadUrl(filePath, {
+    expiresInMs: MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS,
+  });
 }
 
 /**

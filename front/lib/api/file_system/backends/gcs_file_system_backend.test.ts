@@ -681,6 +681,19 @@ describe("GCSFileSystemBackend.getDownloadUrl", () => {
     );
   });
 
+  it("uses a custom expiration when requested", async () => {
+    const expirationDelayMs = 15 * 60 * 1000;
+
+    await makeBackend().getDownloadUrl(`conversation-${CONV_ID}/report.pdf`, {
+      expiresInMs: expirationDelayMs,
+    });
+
+    expect(getSignedUrlMock).toHaveBeenCalledWith(
+      `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/report.pdf`,
+      { expirationDelayMs }
+    );
+  });
+
   it("returns Err(invalid_path) for an unrecognised scoped path", async () => {
     const result = await makeBackend().getDownloadUrl("unknown/file.pdf");
     expect(result.isErr()).toBe(true);
