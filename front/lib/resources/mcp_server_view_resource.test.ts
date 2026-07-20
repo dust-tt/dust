@@ -4,6 +4,7 @@ import { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
@@ -372,6 +373,77 @@ describe("MCPServerViewResource", () => {
       const resultIds = results.map((v) => v.id).sort();
       const expectedIds = [view1.id, view2.id].sort();
       expect(resultIds).toEqual(expectedIds);
+    });
+  });
+
+  describe("internal MCP server resolution", () => {
+    it("resolves auto server views without fetching the system space", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const { globalSpace } = await SpaceFactory.defaults(auth);
+      const internalServer = await InternalMCPServerInMemoryResource.makeNew(
+        auth,
+        {
+          name: "image_generation",
+          useCase: null,
+        }
+      );
+      const globalView = await MCPServerViewFactory.create(
+        workspace,
+        internalServer.id,
+        globalSpace
+      );
+      const systemSpaceFetch = vi.spyOn(
+        SpaceResource,
+        "fetchWorkspaceSystemSpace"
+      );
+
+      try {
+        const fetchedView = await MCPServerViewResource.fetchById(
+          auth,
+          globalView.sId
+        );
+
+        expect(fetchedView?.sId).toBe(globalView.sId);
+        expect(systemSpaceFetch).not.toHaveBeenCalled();
+      } finally {
+        systemSpaceFetch.mockRestore();
+      }
+    });
+
+    it("only resolves manual servers with a live system-space view", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      await SpaceFactory.defaults(auth);
+      const regularSpace = await SpaceFactory.regular(workspace);
+      const internalServer = await InternalMCPServerInMemoryResource.makeNew(
+        auth,
+        {
+          name: "github",
+          useCase: null,
+        }
+      );
+      const regularView = await MCPServerViewFactory.create(
+        workspace,
+        internalServer.id,
+        regularSpace
+      );
+
+      expect(
+        await MCPServerViewResource.fetchById(auth, regularView.sId)
+      ).not.toBeNull();
+
+      const systemView =
+        await MCPServerViewResource.getMCPServerViewForSystemSpace(
+          auth,
+          internalServer.id
+        );
+      expect(systemView).not.toBeNull();
+      await systemView?.hardDelete(auth);
+
+      expect(
+        await MCPServerViewResource.fetchById(auth, regularView.sId)
+      ).toBeNull();
     });
   });
 
