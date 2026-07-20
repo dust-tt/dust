@@ -1,6 +1,40 @@
-import { assistantReasoningMessageToInputItems } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
-import type { BaseAssistantReasoningMessage } from "@app/lib/model_constructors/types/input/messages";
+import {
+  assistantReasoningMessageToInputItems,
+  assistantTextMessageToInputItem,
+} from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
+import type {
+  BaseAssistantReasoningMessage,
+  BaseAssistantTextMessage,
+} from "@app/lib/model_constructors/types/input/messages";
 import { describe, expect, it } from "vitest";
+
+describe("assistantTextMessageToInputItem", () => {
+  it("resends the phase when present", () => {
+    const message: BaseAssistantTextMessage = {
+      role: "assistant",
+      type: "text",
+      content: { value: "here is the answer" },
+      phase: "final_answer",
+    };
+    expect(assistantTextMessageToInputItem(message)).toEqual({
+      role: "assistant",
+      content: "here is the answer",
+      phase: "final_answer",
+    });
+  });
+
+  it("omits the phase key when absent", () => {
+    const message: BaseAssistantTextMessage = {
+      role: "assistant",
+      type: "text",
+      content: { value: "no phase here" },
+    };
+    expect(assistantTextMessageToInputItem(message)).toEqual({
+      role: "assistant",
+      content: "no phase here",
+    });
+  });
+});
 
 describe("assistantReasoningMessageToInputItems", () => {
   it("returns an empty array when there is no signature", () => {

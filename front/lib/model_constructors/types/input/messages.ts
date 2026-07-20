@@ -1,4 +1,5 @@
 import type { PassthroughLab } from "@app/lib/model_constructors/types/output/events";
+import type { Phase } from "@app/lib/model_constructors/types/phases";
 
 const CACHE_OPTIONS = ["short", "long"] as const;
 export type CacheOption = (typeof CACHE_OPTIONS)[number];
@@ -44,6 +45,10 @@ export type BaseAssistantTextMessage = {
   role: "assistant";
   type: "text";
   content: { value: string };
+  // Responses API commentary/final_answer phase, resent verbatim on replay
+  // (OpenAI recommends preserving it; dropping it degrades quality on
+  // gpt-5.3-codex and beyond).
+  phase?: Phase;
 };
 
 export type BaseAssistantReasoningMessage = {
