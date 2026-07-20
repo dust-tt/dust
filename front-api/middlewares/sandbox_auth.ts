@@ -4,8 +4,13 @@ import {
   isSandboxFunctionInvocationTokenPayload,
   verifySandboxExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
-import { Authenticator, getAuthTokenKind } from "@app/lib/auth";
+import {
+  Authenticator,
+  getAuthTokenKind,
+  getFeatureFlags,
+} from "@app/lib/auth";
 import { getClientIp } from "@app/lib/utils/request";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { SandboxCtx } from "@front-api/middlewares/ctx";
 import type { Context, MiddlewareHandler } from "hono";
 import { createMiddleware } from "hono/factory";
@@ -107,6 +112,19 @@ export function sandboxAuth({
       return apiError(ctx, authRes.error);
     }
     const auth = authRes.value;
+
+    if (claimsKind === "action") {
+      const featureFlags = await getFeatureFlags(auth);
+      if (!isComputerFeatureEnabled(featureFlags)) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Computer is disabled for this workspace.",
+          },
+        });
+      }
+    }
 
     const ip = getClientIp({ headers: readHeaders(ctx) });
     if (ip !== "internal") {

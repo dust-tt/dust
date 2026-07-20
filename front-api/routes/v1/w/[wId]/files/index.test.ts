@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
@@ -92,7 +93,7 @@ describe("POST /api/v1/w/[wId]/files", () => {
     expect(response.status).toBe(200);
   });
 
-  it("accepts and stamps raw sandbox CSV uploads", async () => {
+  it("accepts and stamps raw sandbox CSV uploads when Computer is enabled", async () => {
     const { workspace, key, auth } = await createPublicApiMockRequest({
       method: "POST",
     });
@@ -109,6 +110,22 @@ describe("POST /api/v1/w/[wId]/files", () => {
     const file = await FileResource.fetchById(auth, data.file.sId);
     expect(file?.useCaseMetadata?.skipFileProcessing).toBe(true);
     expect(file?.useCaseMetadata?.skipDataSourceIndexing).toBe(true);
+  });
+
+  it("keeps the 50 MB CSV limit when disable_computer_feature is enabled", async () => {
+    const { workspace, key, auth } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
+    const response = await postFile(workspace, key, {
+      contentType: "text/csv",
+      fileName: "large.csv",
+      fileSize: 60 * 1024 * 1024,
+      useCase: "conversation",
+    });
+
+    expect(response.status).toBe(400);
   });
 
   it("does not raise the CSV limit for upsert_table system-key uploads", async () => {

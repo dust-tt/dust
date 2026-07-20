@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -133,7 +134,7 @@ describe("createSandboxTools", () => {
     expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
   });
 
-  it("includes add_egress_domain when metadata is enabled", async () => {
+  it("includes add_egress_domain when Computer and metadata are enabled", async () => {
     const { workspace, user } = await createResourceTest({});
     await WorkspaceResource.updateMetadata(workspace.id, {
       sandboxAllowAgentEgressRequests: true,
@@ -146,6 +147,22 @@ describe("createSandboxTools", () => {
     const tools = await createSandboxTools(auth);
 
     expect(tools.map((tool) => tool.name)).toContain("add_egress_domain");
+  });
+
+  it("omits add_egress_domain when Computer is disabled", async () => {
+    const { workspace, user } = await createResourceTest({});
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      sandboxAllowAgentEgressRequests: true,
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
+    const tools = await createSandboxTools(auth);
+
+    expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
   });
 
   it("omits add_egress_domain when metadata is off", async () => {
@@ -162,7 +179,7 @@ describe("createSandboxTools", () => {
 });
 
 describe("buildDescribeToolsetOutput", () => {
-  it("includes dsbx in the manifest", async () => {
+  it("mirrors dsbx manifest filtering", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
     const visibleResult = await buildDescribeToolsetOutput(
@@ -177,6 +194,21 @@ describe("buildDescribeToolsetOutput", () => {
     }
 
     expect(visibleResult.value[0].text).toContain("name: dsbx");
+  });
+
+  it("hides dsbx manifest entry when Computer is disabled", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
+    const result = await buildDescribeToolsetOutput(auth, "openai", "yaml");
+    expect(result.isOk()).toBe(true);
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value[0].text).not.toContain("name: dsbx");
   });
 });
 

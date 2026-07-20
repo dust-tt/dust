@@ -1,3 +1,4 @@
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
@@ -31,12 +32,18 @@ vi.mock("@app/lib/api/sandbox/egress_policy", () => ({
 
 async function setupTest({
   role = "admin",
+  disableComputerFeature = false,
 }: {
   role?: MembershipRoleType;
+  disableComputerFeature?: boolean;
 } = {}) {
   const { workspace, auth, ...rest } = await createPrivateApiMockRequest({
     role,
   });
+
+  if (disableComputerFeature) {
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+  }
 
   return { workspace, auth, ...rest };
 }
@@ -70,7 +77,7 @@ describe("GET/PUT /api/w/:wId/sandbox/egress-policy", () => {
     );
   });
 
-  it("returns the workspace egress policy to workspace admins", async () => {
+  it("returns the workspace egress policy to workspace admins with Computer enabled", async () => {
     const { workspace } = await setupTest();
 
     const response = await getPolicy(workspace.sId);
@@ -136,6 +143,19 @@ describe("GET/PUT /api/w/:wId/sandbox/egress-policy", () => {
     expect(response.status).toBe(400);
     expect(mockWriteWorkspacePolicy).not.toHaveBeenCalled();
     expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
+  it("rejects workspaces with Computer disabled", async () => {
+    const { workspace } = await setupTest({ disableComputerFeature: true });
+
+    const response = await getPolicy(workspace.sId);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: {
+        type: "feature_flag_not_found",
+      },
+    });
   });
 
   it("rejects non-admin users", async () => {

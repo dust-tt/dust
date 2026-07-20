@@ -1,4 +1,5 @@
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
@@ -20,12 +21,18 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
 
 async function setupTest({
   role = "admin",
+  disableComputerFeature = false,
 }: {
   role?: MembershipRoleType;
+  disableComputerFeature?: boolean;
 } = {}) {
   const { workspace, auth, ...rest } = await createPrivateApiMockRequest({
     role,
   });
+
+  if (disableComputerFeature) {
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+  }
 
   return { workspace, auth, ...rest };
 }
@@ -55,6 +62,17 @@ describe("GET/POST /api/w/:wId/sandbox/env-vars", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({
       error: { type: "workspace_auth_error" },
+    });
+  });
+
+  it("returns 403 when Computer is disabled", async () => {
+    const { workspace } = await setupTest({ disableComputerFeature: true });
+
+    const response = await listEnvVars(workspace.sId);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "feature_flag_not_found" },
     });
   });
 

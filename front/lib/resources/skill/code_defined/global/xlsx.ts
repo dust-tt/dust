@@ -1,4 +1,7 @@
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
 const XLSX_SKILL_INSTRUCTIONS = `# Spreadsheets (.xlsx, .xlsm, .csv, .tsv)
 
@@ -134,4 +137,9 @@ export const xlsxSkill = {
   mcpServers: [{ name: "sandbox" }],
   version: 2,
   icon: "ActionTableIcon",
+  isRestricted: async (auth: Authenticator) => {
+    const flags = await getFeatureFlags(auth);
+
+    return !isComputerFeatureEnabled(flags);
+  },
 } as const satisfies GlobalSkillDefinition;
