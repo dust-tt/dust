@@ -4,10 +4,7 @@ import {
   frameFileEditRejectedError,
 } from "@app/lib/api/actions/servers/files/tools/utils";
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
-import {
-  isInteractiveContentType,
-  stripMimeParameters,
-} from "@app/types/files";
+import { isInteractiveContentType, normalizeMimeType } from "@app/types/files";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { mcpError, mcpJsonResponse } from "../response";
@@ -61,8 +58,8 @@ export function registerFilesCreateTool(server: McpServer) {
       }
       const dustFs = fsResult.value;
 
-      const incomingMimeType = stripMimeParameters(content_type);
-      if (isInteractiveContentType(incomingMimeType)) {
+      const normalizedContentType = normalizeMimeType(content_type);
+      if (isInteractiveContentType(normalizedContentType)) {
         return mcpError(frameFileCreateRejectedError().message);
       }
 
@@ -70,7 +67,7 @@ export function registerFilesCreateTool(server: McpServer) {
       const exists = statResult.isOk() && statResult.value !== null;
 
       if (statResult.isOk() && statResult.value !== null) {
-        const existingMimeType = stripMimeParameters(
+        const existingMimeType = normalizeMimeType(
           statResult.value.contentType
         );
         if (isInteractiveContentType(existingMimeType)) {
@@ -78,7 +75,11 @@ export function registerFilesCreateTool(server: McpServer) {
         }
       }
 
-      const writeResult = await dustFs.write(path, contentBuffer, content_type);
+      const writeResult = await dustFs.write(
+        path,
+        contentBuffer,
+        normalizedContentType
+      );
       if (writeResult.isErr()) {
         const err = writeResult.error;
         switch (err.code) {
@@ -96,9 +97,9 @@ export function registerFilesCreateTool(server: McpServer) {
       const verb = exists ? "Updated" : "Created";
 
       return mcpJsonResponse({
-        message: `${verb} \`${path}\` (${content_type}, ${sizeKb} KB)`,
+        message: `${verb} \`${path}\` (${normalizedContentType}, ${sizeKb} KB)`,
         path,
-        contentType: content_type,
+        contentType: normalizedContentType,
       });
     }
   );

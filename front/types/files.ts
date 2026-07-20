@@ -1024,6 +1024,14 @@ export function stripMimeParameters(contentType: string): string {
   return contentType.split(";")[0];
 }
 
+/**
+ * MIME types are case-insensitive per RFC 2045. Use this at every upload and
+ * serving boundary so mixed-case values like TEXT/HTML cannot bypass content-type safety gating.
+ */
+export function normalizeMimeType(contentType: string): string {
+  return stripMimeParameters(contentType).toLowerCase();
+}
+
 export function stripFileExtension(fileName: string): string {
   return fileName.replace(/\.[^.]+$/, "");
 }
