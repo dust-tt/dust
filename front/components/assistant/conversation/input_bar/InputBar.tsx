@@ -485,9 +485,9 @@ export const InputBar = React.memo(function InputBar({
                 "w-full rounded-[40px] [corner-shape:squircle]",
                 "border bg-background",
                 isFloating
-                  ? "max-md:border-border max-md:has-[.tiptap:focus]:border-border-dark"
-                  : "border-border has-[.tiptap:focus]:border-border-dark",
-                "transition-colors duration-200 ease-emphasized",
+                  ? "max-md:border-border max-md:has-[.tiptap:focus]:border-border-dark max-md:dark:has-[.tiptap:focus]:border-stone-750"
+                  : "border-border has-[.tiptap:focus]:border-border-dark dark:has-[.tiptap:focus]:border-stone-750",
+                "transition-colors duration-100 ease-emphasized",
                 isFloating &&
                   classNames(
                     "md:border-white/90",

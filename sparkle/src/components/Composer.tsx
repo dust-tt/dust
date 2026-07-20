@@ -44,7 +44,10 @@ export function Composer({
         ],
         variant === "flat" && [
           "border bg-background",
-          isFocused ? "border-border-dark" : "border-border",
+          "transition-colors duration-100 ease-emphasized",
+          isFocused
+            ? "border-border-dark dark:border-stone-750"
+            : "border-border",
         ],
         className
       ),
