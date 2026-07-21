@@ -12,7 +12,9 @@ import { compile } from "mathjs";
 
 const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
 
-export const COMMON_UTILITIES_TOOL_HANDLERS = {
+export const COMMON_UTILITIES_TOOL_HANDLERS: ToolHandlers<
+  typeof COMMON_UTILITIES_TOOLS_METADATA
+> = {
   generate_random_number: async ({ max }, _extra) => {
     const upperBound = max ?? RANDOM_INTEGER_DEFAULT_MAX;
     const value = Math.floor(Math.random() * upperBound) + 1;
@@ -134,4 +136,4 @@ export const COMMON_UTILITIES_TOOL_HANDLERS = {
       },
     ]);
   },
-} satisfies ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA>;
+};
