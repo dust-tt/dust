@@ -9,7 +9,7 @@ export function makeColumnsForProjectPodFunction(): ColumnDef<PokePodFunction>[]
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Slug" />
       ),
-      cell: ({ row }) =>row.original.slug,
+      cell: ({ row }) => row.original.slug,
     },
     {
       accessorKey: "description",
@@ -23,7 +23,7 @@ export function makeColumnsForProjectPodFunction(): ColumnDef<PokePodFunction>[]
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="sId" />
       ),
-      cell: ({ row }) => row.original.sId
+      cell: ({ row }) => row.original.sId,
     },
   ];
 }

@@ -15,8 +15,7 @@ export function usePokeProjectPodFunction({
   projectId,
 }: UsePokeProjectPodFunctionProps) {
   const { fetcher } = useFetcher();
-  const podFunctionFetcher: Fetcher<PokeListProjectPodFunctions> =
-    fetcher;
+  const podFunctionFetcher: Fetcher<PokeListProjectPodFunctions> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/projects/${projectId}/pod-functions`,
     podFunctionFetcher,
@@ -25,8 +24,7 @@ export function usePokeProjectPodFunction({
 
   return {
     data:
-      data?.items ??
-      emptyArray<PokeListProjectPodFunctions["items"][number]>(),
+      data?.items ?? emptyArray<PokeListProjectPodFunctions["items"][number]>(),
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,

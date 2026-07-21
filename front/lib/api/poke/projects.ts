@@ -44,4 +44,3 @@ export type PokePodFunction = {
 export type PokeListProjectPodFunctions = {
   items: PokePodFunction[];
 };
-

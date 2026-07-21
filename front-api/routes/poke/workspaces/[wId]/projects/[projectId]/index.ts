@@ -1,9 +1,9 @@
 import { pokeApp } from "@front-api/middlewares/ctx";
 
 import connectorKnowledge from "./connector-knowledge";
+import podFunctions from "./pod-functions";
 import tasks from "./tasks";
 import tasksWorkflow from "./tasks-workflow";
-import podFunctions from "./pod-functions";
 
 const app = pokeApp();
 
