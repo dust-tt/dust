@@ -2613,45 +2613,23 @@ export class GroupResource extends BaseResource<GroupModel> {
     user: UserResource;
     isBuilder: boolean;
   }): Promise<void> {
-    let group = await GroupModel.findOne({
+    const existingGroup = await GroupModel.findOne({
       where: { workspaceId: workspace.id, name: MANUAL_BUILDERS_GROUP_NAME },
     });
 
-    if (!group) {
-      if (!isBuilder) {
-        return;
-      }
-      try {
-        await GroupResource.makeNew(
-          {
-            name: MANUAL_BUILDERS_GROUP_NAME,
-            kind: "regular_manual",
-            workspaceId: workspace.id,
-          },
-          { memberIds: [user.id] }
-        );
-        return;
-      } catch (err) {
-        // Two concurrent membership writes can race on the group creation; the
-        // (workspaceId, name) unique index makes the loser land here. Fall through to the
-        // membership sync against the winner's group.
-        if (!(err instanceof UniqueConstraintError)) {
-          throw err;
-        }
-        group = await GroupModel.findOne({
-          where: {
-            workspaceId: workspace.id,
-            name: MANUAL_BUILDERS_GROUP_NAME,
-          },
-        });
-        assert(group, "Builders group missing after unique constraint error");
-      }
+    if (!existingGroup && !isBuilder) {
+      // Nothing to revoke from a group that doesn't exist yet.
+      return;
     }
+
+    const groupId = existingGroup
+      ? existingGroup.id
+      : (await GroupResource.fetchOrCreateManualBuildersGroup(workspace)).id;
 
     const now = new Date();
     // Served by the (userId, groupId) index.
     const activeMembershipWhere = {
-      groupId: group.id,
+      groupId,
       userId: user.id,
       workspaceId: workspace.id,
       status: "active",
@@ -2667,7 +2645,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         return;
       }
       await GroupMembershipModel.create({
-        groupId: group.id,
+        groupId,
         userId: user.id,
         workspaceId: workspace.id,
         startAt: now,
@@ -2688,6 +2666,43 @@ export class GroupResource extends BaseResource<GroupModel> {
     await GroupResource.batchInvalidateGroupIdsCacheForUsers([
       [{ user: { id: user.id }, workspace: { id: workspace.id } }],
     ]);
+  }
+
+  /**
+   * Fetches the workspace's manual "Builders" group (MANUAL_BUILDERS_GROUP_NAME), creating it
+   * empty if it doesn't exist yet. Governance capability seeding may need to grant a capability
+   * to this group before any builder-role member has ever been synced into it — normally the
+   * group is created lazily by `syncBuilderGroupMembership` on the first such sync.
+   */
+  static async fetchOrCreateManualBuildersGroup(
+    workspace: LightWorkspaceType
+  ): Promise<GroupResource> {
+    const existing = await GroupModel.findOne({
+      where: { workspaceId: workspace.id, name: MANUAL_BUILDERS_GROUP_NAME },
+    });
+    if (existing) {
+      return new this(GroupModel, existing.get());
+    }
+
+    try {
+      return await GroupResource.makeNew({
+        name: MANUAL_BUILDERS_GROUP_NAME,
+        kind: "regular_manual",
+        workspaceId: workspace.id,
+      });
+    } catch (err) {
+      // Two concurrent callers can race on the group creation (this method, or a concurrent
+      // syncBuilderGroupMembership call); the (workspaceId, name) unique index makes the loser
+      // land here. Fall through to the winner's group.
+      if (!(err instanceof UniqueConstraintError)) {
+        throw err;
+      }
+      const winner = await GroupModel.findOne({
+        where: { workspaceId: workspace.id, name: MANUAL_BUILDERS_GROUP_NAME },
+      });
+      assert(winner, "Builders group missing after unique constraint error");
+      return new this(GroupModel, winner.get());
+    }
   }
 
   /**
