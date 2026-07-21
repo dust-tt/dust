@@ -31,7 +31,8 @@ describe("updateConversationRequirementsForSkills", () => {
     const userJson = auth.getNonNullableUser().toJSON();
 
     for (const space of [projectSpace, anotherProjectSpace]) {
-      const group = space.groups.find((g) => g.isRegularAuto());
+      const groups = await space.fetchGroups(internalAdminAuth);
+      const group = groups.find((g) => g.isRegularAuto());
       if (group) {
         const addRes = await group.dangerouslyAddMember(internalAdminAuth, {
           user: userJson,

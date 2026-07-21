@@ -263,9 +263,12 @@ export const suggestionsOfMentions = async (
   // This aims to prioritize them in the suggestions
   if (spaceId) {
     const conversationSpace = await SpaceResource.fetchById(auth, spaceId);
+    const conversationGroups = conversationSpace
+      ? await conversationSpace.fetchGroups(auth)
+      : [];
 
     const allMembers = await concurrentExecutor(
-      conversationSpace?.groups.filter((g) => g.kind !== "global") ?? [],
+      conversationGroups.filter((g) => g.kind !== "global"),
       (group) => group.getActiveMembers(auth),
       { concurrency: 8 }
     );

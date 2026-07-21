@@ -652,10 +652,14 @@ describe("retryAgentMessage", () => {
       const user = auth.getNonNullableUser();
       const userJson = user.toJSON();
 
-      const projectSpaceGroup = projectSpace.groups.find((g) =>
+      const projectSpaceGroups =
+        await projectSpace.fetchGroups(internalAdminAuth);
+      const anotherProjectSpaceGroups =
+        await anotherProjectSpace.fetchGroups(internalAdminAuth);
+      const projectSpaceGroup = projectSpaceGroups.find((g) =>
         g.isRegularAuto()
       );
-      const anotherProjectSpaceGroup = anotherProjectSpace.groups.find((g) =>
+      const anotherProjectSpaceGroup = anotherProjectSpaceGroups.find((g) =>
         g.isRegularAuto()
       );
 
@@ -2357,7 +2361,9 @@ describe("postUserMessage", () => {
       );
 
       // Add member user to the project space group
-      const projectSpaceGroup = projectSpace.groups.find((g) =>
+      const projectSpaceGroups =
+        await projectSpace.fetchGroups(internalAdminAuth);
+      const projectSpaceGroup = projectSpaceGroups.find((g) =>
         g.isRegularAuto()
       );
       if (projectSpaceGroup) {
@@ -2731,10 +2737,14 @@ describe("postUserMessage", () => {
       );
       const user = auth.getNonNullableUser();
 
-      const projectSpaceGroup = projectSpace.groups.find((g) =>
+      const projectSpaceGroups =
+        await projectSpace.fetchGroups(internalAdminAuth);
+      const anotherProjectSpaceGroups =
+        await anotherProjectSpace.fetchGroups(internalAdminAuth);
+      const projectSpaceGroup = projectSpaceGroups.find((g) =>
         g.isRegularAuto()
       );
-      const anotherProjectSpaceGroup = anotherProjectSpace.groups.find((g) =>
+      const anotherProjectSpaceGroup = anotherProjectSpaceGroups.find((g) =>
         g.isRegularAuto()
       );
 
@@ -3690,11 +3700,12 @@ describe("postNewContentFragment", () => {
 
     // SpaceFactory.project creates a group and associates it with the space
     // We need to add the user to those groups
-    // The groups are available on space.groups
-    const projectSpaceGroup = projectSpace.groups.find((g) =>
-      g.isRegularAuto()
-    );
-    const anotherProjectSpaceGroup = anotherProjectSpace.groups.find((g) =>
+    const projectSpaceGroups =
+      await projectSpace.fetchGroups(internalAdminAuth);
+    const anotherProjectSpaceGroups =
+      await anotherProjectSpace.fetchGroups(internalAdminAuth);
+    const projectSpaceGroup = projectSpaceGroups.find((g) => g.isRegularAuto());
+    const anotherProjectSpaceGroup = anotherProjectSpaceGroups.find((g) =>
       g.isRegularAuto()
     );
 

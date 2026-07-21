@@ -90,8 +90,9 @@ describe("createSpaceAndGroup", () => {
         expect(space.isRegularAndRestricted()).toBe(true);
 
         // Verify the space has a group
-        expect(space.groups.length).toBeGreaterThan(0);
-        const spaceGroup = space.groups.find((g) =>
+        const groups = await space.fetchGroups(adminAuth);
+        expect(groups.length).toBeGreaterThan(0);
+        const spaceGroup = groups.find((g) =>
           g.name.startsWith("Group for space Test Regular Space")
         );
         expect(spaceGroup).toBeDefined();
@@ -117,7 +118,8 @@ describe("createSpaceAndGroup", () => {
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        const memberGroup = result.value.groups.find((g) =>
+        const groups = await result.value.fetchGroups(adminAuth);
+        const memberGroup = groups.find((g) =>
           g.name.startsWith("Group for space Kind Check Space")
         );
         expect(memberGroup).toBeDefined();
@@ -1027,7 +1029,8 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const spaceGroup = space.groups.find((g) => !g.isGlobal());
+        const groups = await space.fetchGroups(adminAuth);
+        const spaceGroup = groups.find((g) => !g.isGlobal());
         expect(spaceGroup).toBeDefined();
 
         // Create an active API key for the space group
@@ -1062,7 +1065,8 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const spaceGroup = space.groups.find((g) => !g.isGlobal());
+        const groups = await space.fetchGroups(adminAuth);
+        const spaceGroup = groups.find((g) => !g.isGlobal());
         expect(spaceGroup).toBeDefined();
 
         // Create an active API key for the space group
@@ -1092,7 +1096,8 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const spaceGroup = space.groups.find((g) => !g.isGlobal());
+        const groups = await space.fetchGroups(adminAuth);
+        const spaceGroup = groups.find((g) => !g.isGlobal());
         expect(spaceGroup).toBeDefined();
 
         // Create a disabled API key for the space group

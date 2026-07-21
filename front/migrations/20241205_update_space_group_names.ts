@@ -29,7 +29,8 @@ makeScript(
           const auth = await Authenticator.internalAdminForWorkspace(w.sId);
           const pods = await SpaceResource.listProjectSpaces(auth);
           for (const pod of pods) {
-            const regularGroups = pod.groups.filter((g) => g.isRegularAuto());
+            const groups = await pod.fetchGroups(auth);
+            const regularGroups = groups.filter((g) => g.isRegularAuto());
             if (regularGroups.length === 1) {
               const group = regularGroups[0];
               const newName = `${pod.isProject() ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${pod.name}`;
@@ -42,7 +43,7 @@ makeScript(
               }
             }
 
-            const spaceEditorsGroups = pod.groups.filter(
+            const spaceEditorsGroups = groups.filter(
               (g) => g.kind === "space_editors"
             );
             if (spaceEditorsGroups.length === 1) {

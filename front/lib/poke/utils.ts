@@ -14,15 +14,20 @@ import type {
   PokeSpaceType,
 } from "@app/types/poke";
 
-export function spaceToPokeJSON(space: SpaceResource): PokeSpaceType {
+export async function spaceToPokeJSON(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<PokeSpaceType> {
+  const groups = await space.fetchGroups(auth);
   return {
     id: space.id,
     ...space.toJSON(),
-    groups: space.groups.map((group) => group.toJSON()),
+    groups: groups.map((group) => group.toJSON()),
   };
 }
 
 export async function dataSourceToPokeJSON(
+  auth: Authenticator,
   dataSource: DataSourceResource
 ): Promise<PokeDataSourceType> {
   const workspace = await WorkspaceResource.fetchByModelId(
@@ -40,11 +45,12 @@ export async function dataSourceToPokeJSON(
         ? getDisplayNameForDataSource(dataSource.toJSON())
         : `folder (${dataSource.name})`),
     type: "Data Source",
-    space: spaceToPokeJSON(dataSource.space),
+    space: await spaceToPokeJSON(auth, dataSource.space),
   };
 }
 
 export async function dataSourceViewToPokeJSON(
+  auth: Authenticator,
   dataSourceView: DataSourceViewResource
 ): Promise<PokeDataSourceViewType> {
   const workspace = await WorkspaceResource.fetchByModelId(
@@ -53,7 +59,7 @@ export async function dataSourceViewToPokeJSON(
 
   return {
     ...dataSourceView.toJSON(),
-    dataSource: await dataSourceToPokeJSON(dataSourceView.dataSource),
+    dataSource: await dataSourceToPokeJSON(auth, dataSourceView.dataSource),
     link: workspace
       ? `${config.getPokeAppUrl()}/${workspace.sId}/spaces/${dataSourceView.space.sId}/data_source_views/${dataSourceView.sId}`
       : null,
@@ -63,7 +69,7 @@ export async function dataSourceViewToPokeJSON(
         ? getDisplayNameForDataSource(dataSourceView.dataSource.toJSON())
         : `folder (${dataSourceView.dataSource.name})`),
     type: "Data Source View",
-    space: spaceToPokeJSON(dataSourceView.space),
+    space: await spaceToPokeJSON(auth, dataSourceView.space),
   };
 }
 
@@ -111,7 +117,7 @@ export async function mcpServerViewToPokeJSON(
     name: json.name ?? json.server.name,
     customName: json.name,
     type: "MCP Server View",
-    space: spaceToPokeJSON(mcpServerView.space),
+    space: await spaceToPokeJSON(auth, mcpServerView.space),
     connections: connections,
   };
 }

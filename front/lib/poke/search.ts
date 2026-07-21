@@ -207,7 +207,7 @@ async function searchPokeDataSourcesByDustAPIProjectId(
     return [];
   }
 
-  return [await dataSourceToPokeJSON(dataSource)];
+  return [await dataSourceToPokeJSON(auth, dataSource)];
 }
 
 async function searchByPhoneNumber(
@@ -285,7 +285,7 @@ async function searchPokeResourcesBySId(
         return [];
       }
 
-      return [await dataSourceViewToPokeJSON(dataSourceView)];
+      return [await dataSourceViewToPokeJSON(auth, dataSourceView)];
 
     case "data_source":
       const dataSource = await DataSourceResource.fetchByNameOrId(auth, sId);
@@ -293,7 +293,7 @@ async function searchPokeResourcesBySId(
         return [];
       }
 
-      return [await dataSourceToPokeJSON(dataSource)];
+      return [await dataSourceToPokeJSON(auth, dataSource)];
 
     default:
       return [];
