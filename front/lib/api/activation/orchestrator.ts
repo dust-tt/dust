@@ -74,7 +74,6 @@ export async function determineEligibleActivationUsers(
   }
 
   const activationResult = await evaluateActivation(auth, {
-    workspaceId,
     userIds: [...userSIds],
     asOf,
   });

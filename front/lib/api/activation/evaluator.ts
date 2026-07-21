@@ -2,7 +2,6 @@ import { fetchUserDayCells } from "@app/lib/api/activation/queries/user_day_cell
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import assert from "assert";
 import moment from "moment-timezone";
 
 // A user is ACTIVATED when, over the trailing TRAILING_WINDOW_DAYS days, they
@@ -96,27 +95,19 @@ export function computeActivationFromCells(
 export async function evaluateActivation(
   auth: Authenticator,
   {
-    workspaceId,
     userIds,
     asOf = new Date(),
   }: {
-    workspaceId: string;
     userIds: string[];
     asOf?: Date;
   }
 ): Promise<Result<Map<string, ActivationResult>, Error>> {
-  // The ES query is scoped by workspace_id; guard that it matches the caller's
-  // authenticated workspace so a mismatched auth can't read another workspace.
-  assert(
-    auth.getNonNullableWorkspace().sId === workspaceId,
-    "evaluateActivation: workspaceId must match the authenticated workspace"
-  );
-
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const windowEnd = asOf;
   const windowStart = moment
     .utc(asOf)
     .subtract(TRAILING_WINDOW_DAYS, "days")
-    .toISOString();
-  const windowEnd = moment.utc(asOf).toISOString();
+    .toDate();
 
   const factsResult = await fetchUserDayCells({
     workspaceId,

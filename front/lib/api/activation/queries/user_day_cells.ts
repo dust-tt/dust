@@ -12,9 +12,9 @@ import type { estypes } from "@elastic/elasticsearch";
 // ---------------------------------------------------------------------------
 //
 // One composite aggregation over agent_message_analytics_2 returning, per
-// (user, day): whether the user was a DAU, and whether they had an HVUC signal.
-// An HVUC signal = ≥1 succeeded tool call that is either advanced-cost, a frame
-// touch (interactive_content), or run_agent.
+// (user, day): whether the user was a daily active user, and whether they had a
+// high-value use case signal (≥1 succeeded tool call that is either
+// advanced-cost, a frame touch (interactive_content), or run_agent).
 
 const FRAME_SERVER_NAME = "interactive_content";
 const RUN_AGENT_SERVER_NAME = "run_agent";
@@ -22,13 +22,13 @@ const TRIGGERED_ORIGIN: UserMessageOrigin = "triggered";
 
 // Programmatic origins are dropped from the query entirely
 const PROGRAMMATIC_ORIGINS: UserMessageOrigin[] = (
-  Object.keys(USAGE_ORIGINS_CLASSIFICATION) as UserMessageOrigin[]
+  Object.keys(USAGE_ORIGINS_CLASSIFICATION) as (keyof typeof USAGE_ORIGINS_CLASSIFICATION)[]
 ).filter((origin) => USAGE_ORIGINS_CLASSIFICATION[origin] === "programmatic");
 
-// Origins that make a day count as a DAU day: human-initiated organic ("user")
-// origins, with `triggered` deliberately EXCLUDED.
+// Origins that make a day count as a daily active user day: human-initiated
+// organic ("user") origins, with `triggered` deliberately EXCLUDED.
 const DAU_ORIGINS: UserMessageOrigin[] = (
-  Object.keys(USAGE_ORIGINS_CLASSIFICATION) as UserMessageOrigin[]
+  Object.keys(USAGE_ORIGINS_CLASSIFICATION) as (keyof typeof USAGE_ORIGINS_CLASSIFICATION)[]
 ).filter(
   (origin) =>
     USAGE_ORIGINS_CLASSIFICATION[origin] === "user" &&
@@ -105,8 +105,8 @@ export async function fetchUserDayCells({
 }: {
   workspaceId: string;
   userIds: string[];
-  windowStart: string;
-  windowEnd: string;
+  windowStart: Date;
+  windowEnd: Date;
 }): Promise<Result<Map<string, UserDayFact[]>, Error>> {
   const uniqueUserIds = [...new Set(userIds)];
 
@@ -131,7 +131,14 @@ export async function fetchUserDayCells({
       filter: [
         { term: { workspace_id: workspaceId } },
         { terms: { user_id: uniqueUserIds } },
-        { range: { timestamp: { gte: windowStart, lt: windowEnd } } },
+        {
+          range: {
+            timestamp: {
+              gte: windowStart.toISOString(),
+              lt: windowEnd.toISOString(),
+            },
+          },
+        },
         { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
       ],
       must_not: [
