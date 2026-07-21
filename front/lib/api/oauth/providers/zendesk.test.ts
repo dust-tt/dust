@@ -115,6 +115,27 @@ describe("ZendeskOAuthProvider.getUpdatedExtraConfig", () => {
     expect(updated.mcp_server_id).toBeUndefined();
   });
 
+  it("throws when the workspace connection has no subdomain", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const provider = new ZendeskOAuthProvider();
+
+    mocks.getWorkspaceOAuthConnectionIdForMCPServer.mockResolvedValue(
+      new Ok("con_workspace")
+    );
+    mocks.getConnectionMetadata.mockResolvedValue(
+      new Ok({
+        connection: makeConnection({}),
+      })
+    );
+
+    await expect(
+      provider.getUpdatedExtraConfig(authenticator, {
+        useCase: "personal_actions",
+        extraConfig: { mcp_server_id: "srv_123" },
+      })
+    ).rejects.toThrow(/missing a subdomain/);
+  });
+
   it("leaves config unchanged for personal actions without an mcp_server_id", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const provider = new ZendeskOAuthProvider();

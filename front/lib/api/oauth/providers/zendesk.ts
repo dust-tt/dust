@@ -127,12 +127,18 @@ export class ZendeskOAuthProvider implements BaseOAuthStrategyProvider {
           );
         }
         const connection = connectionRes.value.connection;
+        const { zendesk_subdomain } = connection.metadata;
+
+        if (!zendesk_subdomain) {
+          throw new Error(
+            "Zendesk workspace connection is missing a subdomain; " +
+              "cannot set up a personal connection."
+          );
+        }
 
         return {
           ...restConfig,
-          ...(connection.metadata.zendesk_subdomain && {
-            zendesk_subdomain: connection.metadata.zendesk_subdomain,
-          }),
+          zendesk_subdomain,
         };
       }
       case "connection":
