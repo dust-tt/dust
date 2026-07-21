@@ -363,8 +363,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     });
   }
 
-  // Read grants for the given groups, optionally narrowed by verb / type / resource. The
-  // (workspaceId, resourceType, resourceId) index backs type/resource-scoped reads.
+  // Read grants for the given groups, optionally narrowed by grant type / resource type /
+  // resource. The (workspaceId, resourceType, resourceId) index backs type/resource-scoped reads.
   static async listForGroups(
     auth: Authenticator,
     { groupModelIds, grantType, resourceType, resourceId }: ListForGroupsSpec
@@ -426,7 +426,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
   // Grant a permission for the whole resource type (resourceId = -1). Single-group convenience over
   // grantTypeWideForGroups. Dedicated, explicitly named so a defaulted -1 can never silently reach
-  // `grant`. Idempotent. Used for type-level verbs (e.g. "create") and governance capabilities.
+  // `grant`. Idempotent. Used for type-level grant types (e.g. "create") and governance
+  // capabilities.
   static async grantTypeWide(
     auth: Authenticator,
     { group, grantType, resourceType, transaction }: TypeWideGrantSpec
