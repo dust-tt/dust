@@ -311,7 +311,9 @@ function _getDustLikeGlobalAgent(
     }
 
     if (!auth.isUpgraded()) {
-      return getSmallWhitelistedModel(auth, excludeProviders);
+      return getSmallWhitelistedModel(auth, excludeProviders, {
+        featureFlags,
+      });
     }
 
     if (isPreferredModelConfigurationAvailable) {
@@ -319,7 +321,7 @@ function _getDustLikeGlobalAgent(
       return preferredModelConfiguration;
     }
 
-    return getLargeWhitelistedModel(auth, excludeProviders);
+    return getLargeWhitelistedModel(auth, excludeProviders, { featureFlags });
   })();
 
   const model: AgentModelConfigurationType = modelConfiguration

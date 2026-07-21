@@ -378,7 +378,9 @@ function getModelConfig(
   }
 
   // Otherwise we use whatever the default large model is, using the default reasoning effort.
-  const modelConfiguration = getLargeWhitelistedModel(auth, excludeProviders);
+  const modelConfiguration = getLargeWhitelistedModel(auth, excludeProviders, {
+    featureFlags,
+  });
   if (!modelConfiguration) {
     return null;
   }

@@ -19,6 +19,7 @@ import type {
 } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConnectorProvider } from "@app/types/data_source";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 function _getManagedDataSourceAgent(
   auth: Authenticator,
@@ -32,6 +33,7 @@ function _getManagedDataSourceAgent(
     pictureUrl,
     preFetchedDataSources,
     searchMCPServerView,
+    featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     connectorProvider: ConnectorProvider;
@@ -42,11 +44,12 @@ function _getManagedDataSourceAgent(
     pictureUrl: string;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     searchMCPServerView: MCPServerViewResource | null;
+    featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
   const modelConfiguration = auth.isUpgraded()
-    ? getLargeWhitelistedModel(auth)
-    : getSmallWhitelistedModel(auth);
+    ? getLargeWhitelistedModel(auth, undefined, { featureFlags })
+    : getSmallWhitelistedModel(auth, undefined, { featureFlags });
 
   const model: AgentModelConfigurationType = modelConfiguration
     ? {
@@ -155,10 +158,12 @@ export function _getGoogleDriveGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
+    featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+    featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
   const agentId = GLOBAL_AGENTS_SID.GOOGLE_DRIVE;
@@ -176,6 +181,7 @@ export function _getGoogleDriveGlobalAgent(
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
+    featureFlags,
   });
 }
 
@@ -185,10 +191,12 @@ export function _getSlackGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
+    featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+    featureFlags: WhitelistableFeature[];
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.SLACK;
@@ -206,6 +214,7 @@ export function _getSlackGlobalAgent(
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
+    featureFlags,
   });
 }
 
@@ -215,10 +224,12 @@ export function _getGithubGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
+    featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+    featureFlags: WhitelistableFeature[];
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.GITHUB;
@@ -236,6 +247,7 @@ export function _getGithubGlobalAgent(
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
+    featureFlags,
   });
 }
 
@@ -245,10 +257,12 @@ export function _getNotionGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
+    featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+    featureFlags: WhitelistableFeature[];
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.NOTION;
@@ -266,6 +280,7 @@ export function _getNotionGlobalAgent(
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
+    featureFlags,
   });
 }
 
@@ -275,10 +290,12 @@ export function _getIntercomGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
+    featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+    featureFlags: WhitelistableFeature[];
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.INTERCOM;
@@ -296,5 +313,6 @@ export function _getIntercomGlobalAgent(
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
+    featureFlags,
   });
 }

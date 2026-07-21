@@ -18,12 +18,15 @@ import type {
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export function _getHelperGlobalAgent({
   auth,
+  featureFlags,
   mcpServerViews,
 }: {
   auth: Authenticator;
+  featureFlags: WhitelistableFeature[];
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let prompt = `<primary_goal>
@@ -62,8 +65,8 @@ The user you're interacting with is granted with the role ${role}. Their name is
   }
 
   const modelConfiguration = auth.isUpgraded()
-    ? getLargeWhitelistedModel(auth)
-    : getSmallWhitelistedModel(auth);
+    ? getLargeWhitelistedModel(auth, undefined, { featureFlags })
+    : getSmallWhitelistedModel(auth, undefined, { featureFlags });
 
   const model: AgentModelConfigurationType = modelConfiguration
     ? {
