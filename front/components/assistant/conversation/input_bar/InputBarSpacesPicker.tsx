@@ -110,11 +110,7 @@ export function InputBarSpacesPicker({
           </>
         }
       >
-        <DropdownMenuCheckboxItem
-          label="Agent's existing knowledge"
-          checked
-          disabled
-        />
+        <DropdownMenuCheckboxItem label="Agent's Spaces" checked disabled />
         <DropdownMenuSeparator />
         <DropdownMenuLabel label="Additional Spaces" />
         {isLoading ? (
