@@ -31,10 +31,6 @@ import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
-type SkillListItemResponseType = GetSkillsResponseBody["skills"][number];
-type SkillListItemWithRelationsResponseType =
-  GetSkillsWithRelationsResponseBody["skills"][number];
-
 async function setupTest(role: MembershipRoleType = "builder") {
   return createPrivateApiMockRequest({ role });
 }
@@ -554,9 +550,10 @@ describe("GET /api/w/:wId/skills", () => {
 
     expect(response.status).toBe(200);
 
-    const skillWithoutInstructionsAndTools = (
-      await response.json()
-    ).skills.find((s: SkillListItemResponseType) => s.sId === skill.sId);
+    const responseBody: GetSkillsResponseBody = await response.json();
+    const skillWithoutInstructionsAndTools = responseBody.skills.find(
+      (s) => s.sId === skill.sId
+    );
 
     expect(skillWithoutInstructionsAndTools).toMatchObject({
       sId: skill.sId,
@@ -619,17 +616,18 @@ describe("GET /api/w/:wId/skills", () => {
 
     const response = await getSkills(workspace);
     expect(response.status).toBe(200);
-    const listedSkill = (await response.json()).skills.find(
-      (s: SkillListItemResponseType) => s.sId === skill.sId
-    );
+    const responseBody: GetSkillsResponseBody = await response.json();
+    const listedSkill = responseBody.skills.find((s) => s.sId === skill.sId);
     expect(listedSkill).not.toHaveProperty("isFavorite");
 
     const relationsResponse = await getSkills(workspace, {
       withRelations: "true",
     });
     expect(relationsResponse.status).toBe(200);
-    const relationsSkill = (await relationsResponse.json()).skills.find(
-      (s: SkillListItemWithRelationsResponseType) => s.sId === skill.sId
+    const relationsResponseBody: GetSkillsWithRelationsResponseBody =
+      await relationsResponse.json();
+    const relationsSkill = relationsResponseBody.skills.find(
+      (s) => s.sId === skill.sId
     );
     expect(relationsSkill).not.toHaveProperty("isFavorite");
 
@@ -656,8 +654,9 @@ describe("GET /api/w/:wId/skills", () => {
 
     const firstResponse = await getSkills(workspace);
     expect(firstResponse.status).toBe(200);
-    const firstSkill = (await firstResponse.json()).skills.find(
-      (s: SkillListItemResponseType) => s.sId === skill.sId
+    const firstResponseBody: GetSkillsResponseBody = await firstResponse.json();
+    const firstSkill = firstResponseBody.skills.find(
+      (s) => s.sId === skill.sId
     );
     expect(firstSkill?.isFavorite).toBe(false);
 
@@ -666,8 +665,10 @@ describe("GET /api/w/:wId/skills", () => {
 
     const secondResponse = await getSkills(workspace);
     expect(secondResponse.status).toBe(200);
-    const secondSkill = (await secondResponse.json()).skills.find(
-      (s: SkillListItemResponseType) => s.sId === skill.sId
+    const secondResponseBody: GetSkillsResponseBody =
+      await secondResponse.json();
+    const secondSkill = secondResponseBody.skills.find(
+      (s) => s.sId === skill.sId
     );
     expect(secondSkill?.isFavorite).toBe(true);
 
@@ -675,8 +676,10 @@ describe("GET /api/w/:wId/skills", () => {
       withRelations: "true",
     });
     expect(relationsResponse.status).toBe(200);
-    const relationsSkill = (await relationsResponse.json()).skills.find(
-      (s: SkillListItemWithRelationsResponseType) => s.sId === skill.sId
+    const relationsResponseBody: GetSkillsWithRelationsResponseBody =
+      await relationsResponse.json();
+    const relationsSkill = relationsResponseBody.skills.find(
+      (s) => s.sId === skill.sId
     );
     expect(relationsSkill?.isFavorite).toBe(true);
 
@@ -685,8 +688,9 @@ describe("GET /api/w/:wId/skills", () => {
 
     const thirdResponse = await getSkills(workspace);
     expect(thirdResponse.status).toBe(200);
-    const thirdSkill = (await thirdResponse.json()).skills.find(
-      (s: SkillListItemResponseType) => s.sId === skill.sId
+    const thirdResponseBody: GetSkillsResponseBody = await thirdResponse.json();
+    const thirdSkill = thirdResponseBody.skills.find(
+      (s) => s.sId === skill.sId
     );
     expect(thirdSkill?.isFavorite).toBe(false);
   });
@@ -700,9 +704,8 @@ describe("GET /api/w/:wId/skills", () => {
 
     const response = await getSkills(workspace);
     expect(response.status).toBe(200);
-    const framesSkill = (await response.json()).skills.find(
-      (s: SkillListItemResponseType) => s.sId === "frames"
-    );
+    const responseBody: GetSkillsResponseBody = await response.json();
+    const framesSkill = responseBody.skills.find((s) => s.sId === "frames");
     expect(framesSkill?.isFavorite).toBe(true);
   });
 
