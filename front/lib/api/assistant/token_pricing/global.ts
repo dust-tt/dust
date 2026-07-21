@@ -1,7 +1,7 @@
 import type { StaticModelIdType } from "@app/types/assistant/models/models";
 
 // All pricing are in USD per million tokens (equivalent to micro-USD per token).
-export type PricingEntry = {
+type TokenPricingRates = {
   input: number;
   output: number;
   // Cache write rate. For providers that bill by cache retention duration, this is the short-lived
@@ -9,6 +9,12 @@ export type PricingEntry = {
   cache_creation_input_tokens?: number;
   long_cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
+};
+
+export type PricingEntry = TokenPricingRates & {
+  long_context?: TokenPricingRates & {
+    prompt_token_threshold: number;
+  };
 };
 
 // Pricing for current models (USD per million tokens - equivalent to micro-USD per token)
@@ -388,6 +394,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 2.0,
     output: 6.0,
     cache_read_input_tokens: 0.3,
+    long_context: {
+      prompt_token_threshold: 200_000,
+      input: 4.0,
+      output: 12.0,
+      cache_read_input_tokens: 0.6,
+    },
   },
   "grok-4-latest": {
     input: 1.25,

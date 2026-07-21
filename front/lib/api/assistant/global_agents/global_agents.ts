@@ -177,6 +177,7 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.HELPER:
       agentConfiguration = _getHelperGlobalAgent({
         auth,
+        featureFlags,
         mcpServerViews,
       });
       break;
@@ -340,6 +341,7 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.GOOGLE_DRIVE:
@@ -347,6 +349,7 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.NOTION:
@@ -354,6 +357,7 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.GITHUB:
@@ -361,6 +365,7 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.INTERCOM:
@@ -368,6 +373,7 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST:
@@ -919,7 +925,7 @@ function getGlobalAgent({
       agentConfiguration = _getReinforcementGlobalAgent();
       break;
     case GLOBAL_AGENTS_SID.ANALYST:
-      agentConfiguration = _getAnalystGlobalAgent({ auth });
+      agentConfiguration = _getAnalystGlobalAgent({ auth, featureFlags });
       break;
     case GLOBAL_AGENTS_SID.NOOP:
       agentConfiguration = _getNoopAgent();

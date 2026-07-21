@@ -12,11 +12,14 @@ import type {
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export function _getAnalystGlobalAgent({
   auth,
+  featureFlags,
 }: {
   auth: Authenticator;
+  featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType {
   const prompt = `<primary_goal>
 You are @analyst, an analytics assistant for workspace admins. You help admins understand how their Dust workspace is being used by answering questions with data retrieved through your tools.
@@ -31,8 +34,8 @@ You are @analyst, an analytics assistant for workspace admins. You help admins u
 </guidelines>`;
 
   const modelConfiguration = auth.isUpgraded()
-    ? getLargeWhitelistedModel(auth)
-    : getSmallWhitelistedModel(auth);
+    ? getLargeWhitelistedModel(auth, undefined, { featureFlags })
+    : getSmallWhitelistedModel(auth, undefined, { featureFlags });
 
   const model: AgentModelConfigurationType = modelConfiguration
     ? {

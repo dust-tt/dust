@@ -342,8 +342,8 @@ export function _getSidekickGlobalAgent(
     : isFirstTurn
       ? (selectEnabledModel(auth, [CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG], {
           featureFlags,
-        }) ?? getSmallWhitelistedModel(auth))
-      : getLargeWhitelistedModel(auth);
+        }) ?? getSmallWhitelistedModel(auth, undefined, { featureFlags }))
+      : getLargeWhitelistedModel(auth, undefined, { featureFlags });
   const model = modelConfiguration
     ? {
         providerId: modelConfiguration.providerId,
