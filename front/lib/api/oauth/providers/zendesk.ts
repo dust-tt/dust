@@ -14,6 +14,7 @@ import type {
   OAuthUseCase,
 } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ParsedUrlQuery } from "querystring";
 
 export class ZendeskOAuthProvider implements BaseOAuthStrategyProvider {
@@ -64,13 +65,25 @@ export class ZendeskOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
-    if (useCase === "personal_actions") {
-      // If we have an mcp_server_id it means the admin already set up the
-      // workspace connection, so we inherit the Zendesk subdomain from it.
-      if (extraConfig.mcp_server_id) {
-        return true;
-      }
+    switch (useCase) {
+      case "personal_actions":
+        // If we have an mcp_server_id it means the admin already set up the
+        // workspace connection, so we inherit the Zendesk subdomain from it.
+        if (extraConfig.mcp_server_id) {
+          return true;
+        }
+        break;
+      case "connection":
+      case "labs_transcripts":
+      case "platform_actions":
+      case "bot":
+      case "webhooks":
+        break;
+      default:
+        assertNever(useCase);
     }
+
+    // Otherwise the config must be exactly a valid Zendesk subdomain.
     if (Object.keys(extraConfig).length !== 1) {
       return false;
     }
@@ -87,12 +100,17 @@ export class ZendeskOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<ExtraConfigType> {
-    if (useCase === "personal_actions") {
-      // For personal actions we inherit the Zendesk subdomain from the existing
-      // workspace connection (set up by the admin) identified by mcp_server_id.
-      const { mcp_server_id, ...restConfig } = extraConfig;
+    switch (useCase) {
+      case "personal_actions": {
+        // For personal actions we inherit the Zendesk subdomain from the
+        // existing workspace connection (set up by the admin) identified by
+        // mcp_server_id.
+        const { mcp_server_id, ...restConfig } = extraConfig;
 
-      if (mcp_server_id) {
+        if (!mcp_server_id) {
+          return extraConfig;
+        }
+
         const oauthConnectionIdRes =
           await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcp_server_id);
         if (oauthConnectionIdRes.isErr()) {
@@ -117,8 +135,14 @@ export class ZendeskOAuthProvider implements BaseOAuthStrategyProvider {
           }),
         };
       }
+      case "connection":
+      case "labs_transcripts":
+      case "platform_actions":
+      case "bot":
+      case "webhooks":
+        return extraConfig;
+      default:
+        assertNever(useCase);
     }
-
-    return extraConfig;
   }
 }
