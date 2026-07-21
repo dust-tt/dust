@@ -194,8 +194,16 @@ describe("MCPServerViewResource", () => {
       // - User is NOT in any group for restrictedSpace
 
       // Add user to the group that accesses accessibleSpace
-      const [accessibleGroup] =
-        await accessibleSpace.fetchGroupResources(adminAuth);
+      const accessibleGroupReference = accessibleSpace.groups.find((group) =>
+        group.isRegularAuto()
+      );
+      if (!accessibleGroupReference) {
+        throw new Error("Expected a regular group on the accessible space");
+      }
+      const [accessibleGroup] = await accessibleSpace.fetchGroupResources(
+        adminAuth,
+        { groupReferences: [accessibleGroupReference] }
+      );
       const addMemberResult = await accessibleGroup.dangerouslyAddMember(
         adminAuth,
         {
@@ -353,8 +361,21 @@ describe("MCPServerViewResource", () => {
       await MembershipFactory.associate(workspace, user, { role: "user" });
 
       // Add user to both groups
-      const [group1] = await space1.fetchGroupResources(adminAuth);
-      const [group2] = await space2.fetchGroupResources(adminAuth);
+      const group1Reference = space1.groups.find((group) =>
+        group.isRegularAuto()
+      );
+      const group2Reference = space2.groups.find((group) =>
+        group.isRegularAuto()
+      );
+      if (!group1Reference || !group2Reference) {
+        throw new Error("Expected regular groups on both spaces");
+      }
+      const [group1] = await space1.fetchGroupResources(adminAuth, {
+        groupReferences: [group1Reference],
+      });
+      const [group2] = await space2.fetchGroupResources(adminAuth, {
+        groupReferences: [group2Reference],
+      });
       await group1.dangerouslyAddMember(adminAuth, {
         user: user.toJSON(),
       });

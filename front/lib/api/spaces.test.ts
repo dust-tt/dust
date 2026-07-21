@@ -28,6 +28,17 @@ import { Err, Ok } from "@app/types/shared/result";
 import { SPACE_KINDS } from "@app/types/space";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+async function fetchNonGlobalGroup(space: SpaceResource, auth: Authenticator) {
+  const groupReference = space.groups.find((group) => !group.isGlobal());
+  if (!groupReference) {
+    return null;
+  }
+  const [group] = await space.fetchGroupResources(auth, {
+    groupReferences: [groupReference],
+  });
+  return group;
+}
+
 describe("createSpaceAndGroup", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let adminAuth: Authenticator;
@@ -1029,8 +1040,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const groups = await space.fetchGroupResources(adminAuth);
-        const spaceGroup = groups.find((g) => !g.isGlobal());
+        const spaceGroup = await fetchNonGlobalGroup(space, adminAuth);
         expect(spaceGroup).toBeDefined();
 
         // Create an active API key for the space group
@@ -1065,8 +1075,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const groups = await space.fetchGroupResources(adminAuth);
-        const spaceGroup = groups.find((g) => !g.isGlobal());
+        const spaceGroup = await fetchNonGlobalGroup(space, adminAuth);
         expect(spaceGroup).toBeDefined();
 
         // Create an active API key for the space group
@@ -1096,8 +1105,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const groups = await space.fetchGroupResources(adminAuth);
-        const spaceGroup = groups.find((g) => !g.isGlobal());
+        const spaceGroup = await fetchNonGlobalGroup(space, adminAuth);
         expect(spaceGroup).toBeDefined();
 
         // Create a disabled API key for the space group

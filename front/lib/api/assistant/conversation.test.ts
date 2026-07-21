@@ -106,6 +106,20 @@ const TEST_CREDIT_EXPIRATION_DELAY_MS =
   TEST_CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
 const TEST_DAILY_USAGE_TTL_SECONDS = 60 * 60;
 
+async function fetchRegularAutoGroup(
+  space: SpaceResource,
+  auth: Authenticator
+) {
+  const groupReference = space.groups.find((group) => group.isRegularAuto());
+  if (!groupReference) {
+    return null;
+  }
+  const [group] = await space.fetchGroupResources(auth, {
+    groupReferences: [groupReference],
+  });
+  return group;
+}
+
 async function createActiveProgrammaticCredit(
   auth: Authenticator
 ): Promise<void> {
@@ -652,15 +666,13 @@ describe("retryAgentMessage", () => {
       const user = auth.getNonNullableUser();
       const userJson = user.toJSON();
 
-      const projectSpaceGroups =
-        await projectSpace.fetchGroupResources(internalAdminAuth);
-      const anotherProjectSpaceGroups =
-        await anotherProjectSpace.fetchGroupResources(internalAdminAuth);
-      const projectSpaceGroup = projectSpaceGroups.find((g) =>
-        g.isRegularAuto()
+      const projectSpaceGroup = await fetchRegularAutoGroup(
+        projectSpace,
+        internalAdminAuth
       );
-      const anotherProjectSpaceGroup = anotherProjectSpaceGroups.find((g) =>
-        g.isRegularAuto()
+      const anotherProjectSpaceGroup = await fetchRegularAutoGroup(
+        anotherProjectSpace,
+        internalAdminAuth
       );
 
       if (projectSpaceGroup) {
@@ -2361,10 +2373,9 @@ describe("postUserMessage", () => {
       );
 
       // Add member user to the project space group
-      const projectSpaceGroups =
-        await projectSpace.fetchGroupResources(internalAdminAuth);
-      const projectSpaceGroup = projectSpaceGroups.find((g) =>
-        g.isRegularAuto()
+      const projectSpaceGroup = await fetchRegularAutoGroup(
+        projectSpace,
+        internalAdminAuth
       );
       if (projectSpaceGroup) {
         const addRes = await projectSpaceGroup.dangerouslyAddMember(
@@ -2737,15 +2748,13 @@ describe("postUserMessage", () => {
       );
       const user = auth.getNonNullableUser();
 
-      const projectSpaceGroups =
-        await projectSpace.fetchGroupResources(internalAdminAuth);
-      const anotherProjectSpaceGroups =
-        await anotherProjectSpace.fetchGroupResources(internalAdminAuth);
-      const projectSpaceGroup = projectSpaceGroups.find((g) =>
-        g.isRegularAuto()
+      const projectSpaceGroup = await fetchRegularAutoGroup(
+        projectSpace,
+        internalAdminAuth
       );
-      const anotherProjectSpaceGroup = anotherProjectSpaceGroups.find((g) =>
-        g.isRegularAuto()
+      const anotherProjectSpaceGroup = await fetchRegularAutoGroup(
+        anotherProjectSpace,
+        internalAdminAuth
       );
 
       if (projectSpaceGroup) {
@@ -3700,13 +3709,13 @@ describe("postNewContentFragment", () => {
 
     // SpaceFactory.project creates a group and associates it with the space
     // We need to add the user to those groups
-    const projectSpaceGroups =
-      await projectSpace.fetchGroupResources(internalAdminAuth);
-    const anotherProjectSpaceGroups =
-      await anotherProjectSpace.fetchGroupResources(internalAdminAuth);
-    const projectSpaceGroup = projectSpaceGroups.find((g) => g.isRegularAuto());
-    const anotherProjectSpaceGroup = anotherProjectSpaceGroups.find((g) =>
-      g.isRegularAuto()
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
+    );
+    const anotherProjectSpaceGroup = await fetchRegularAutoGroup(
+      anotherProjectSpace,
+      internalAdminAuth
     );
 
     if (projectSpaceGroup) {

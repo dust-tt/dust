@@ -1411,8 +1411,12 @@ describe("SpaceResource", () => {
 
     it("should return project spaces only for members", async () => {
       const projectSpace = await SpaceFactory.project(workspace);
-      const projectGroups = await projectSpace.fetchGroupResources(adminAuth);
-      const projectGroup = projectGroups.find((g) => g.isRegularAuto());
+      const projectGroupReference = projectSpace.groups.find((group) =>
+        group.isRegularAuto()
+      );
+      const [projectGroup] = await projectSpace.fetchGroupResources(adminAuth, {
+        groupReferences: projectGroupReference ? [projectGroupReference] : [],
+      });
 
       // User is not a member, should not see it
       const userSpaces =

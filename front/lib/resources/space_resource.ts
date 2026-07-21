@@ -656,7 +656,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     options: { hardDelete: boolean; transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     const { hardDelete, transaction } = options;
-    const groups = await this.fetchGroupResources(auth, { transaction });
+    const groupReferences = this.groups.filter(
+      (group) => !group.isProvisioned()
+    );
+    const groups = await this.fetchGroupResources(auth, {
+      groupReferences,
+      transaction,
+    });
 
     await GroupSpaceModel.destroy({
       where: {
@@ -672,10 +678,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await concurrentExecutor(
       groups,
       async (group) => {
-        // Provisioned groups are not tied to any space, we don't delete them.
-        if (group.kind === "provisioned") {
-          return;
-        }
         // As the model allows it, ensure the group is not associated with any other space.
         const count = await GroupSpaceModel.count({
           where: {

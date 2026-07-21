@@ -404,13 +404,14 @@ export async function hardDeleteSpace(
 
   await withTransaction(async (t) => {
     // Delete all spaces groups.
-    const groups = await space.fetchGroupResources(auth, { transaction: t });
+    const groupReferences = space.groups.filter(
+      (group) => !space.isRegular() || !group.isGlobal()
+    );
+    const groups = await space.fetchGroupResources(auth, {
+      groupReferences,
+      transaction: t,
+    });
     for (const group of groups) {
-      // Skip deleting global groups for regular spaces.
-      if (space.isRegular() && group.isGlobal()) {
-        continue;
-      }
-
       const res = await group.delete(auth, { transaction: t });
       if (res.isErr()) {
         throw res.error;
