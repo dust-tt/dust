@@ -10,7 +10,6 @@ import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_
 import type {
   SkillEditSuggestionType,
   SkillInstructionEditItemType,
-  SkillToolEditItemType,
 } from "@app/types/suggestions/skill_suggestion";
 
 /**
@@ -37,17 +36,6 @@ export function instructionEditSetsConflict(
 }
 
 /**
- * Returns true if two sets of tool edits target the same tool ID.
- */
-export function toolEditSetsConflict(
-  editsA: SkillToolEditItemType[],
-  editsB: SkillToolEditItemType[]
-): boolean {
-  const toolIdsA = new Set(editsA.map((e) => e.toolId));
-  return editsB.some((e) => toolIdsA.has(e.toolId));
-}
-
-/**
  * Returns true if a single suggestion's edits are internally inconsistent.
  */
 export function hasSuggestionSelfConflict(
@@ -55,7 +43,6 @@ export function hasSuggestionSelfConflict(
   instructionsHtml: string | null
 ): boolean {
   const instructionEdits = suggestion.instructionEdits ?? [];
-  const toolEdits = suggestion.toolEdits ?? [];
 
   // O(n²) acceptable: instructionEdits is bounded by LLM output (< 20 elements per suggestion).
   // Precompute descendant map once to avoid repeated HTML parsing across all pair checks.
@@ -79,11 +66,6 @@ export function hasSuggestionSelfConflict(
         return true;
       }
     }
-  }
-
-  const toolIds = toolEdits.map((e) => e.toolId);
-  if (new Set(toolIds).size < toolIds.length) {
-    return true;
   }
 
   return false;
@@ -112,7 +94,6 @@ export async function pruneConflictingSkillEditSuggestions(
   }
 
   const newInstructionEdits = newSuggestion.suggestion.instructionEdits ?? [];
-  const newToolEdits = newSuggestion.suggestion.toolEdits ?? [];
   const newHasAgentFacingDescriptionEdit =
     newSuggestion.suggestion.agentFacingDescriptionEdit !== undefined;
 
@@ -156,7 +137,6 @@ export async function pruneConflictingSkillEditSuggestions(
         skill.instructionsHtml,
         descendantMap
       ) ||
-      toolEditSetsConflict(newToolEdits, existing.suggestion.toolEdits ?? []) ||
       (newHasAgentFacingDescriptionEdit &&
         existingHasAgentFacingDescriptionEdit)
     );
@@ -186,23 +166,12 @@ export async function pruneOutdatedSkillEditSuggestions(
     return;
   }
 
-  const currentToolIds = new Set(skill.mcpServerViews.map((v) => v.sId));
   const currentBlockIds = skill.instructionsHtml
     ? getAllBlockIds(skill.instructionsHtml)
     : new Set<string>();
 
   const outdated = pending.filter((p) => {
-    const { instructionEdits, toolEdits } = p.suggestion;
-
-    for (const edit of toolEdits ?? []) {
-      const cannotApply =
-        edit.action === "add"
-          ? currentToolIds.has(edit.toolId)
-          : !currentToolIds.has(edit.toolId);
-      if (cannotApply) {
-        return true;
-      }
-    }
+    const { instructionEdits } = p.suggestion;
 
     // We do not do a diff check to determine if the content of a specific instruction block has changed.
     // Taking this simplification as it is a low impact edge case.

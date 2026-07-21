@@ -54,7 +54,6 @@ export interface SkillSuggestionAsset {
       content: string;
       type: "replace";
     }[];
-    toolEdits?: { action: "add" | "remove"; toolId: string }[];
   };
 }
 

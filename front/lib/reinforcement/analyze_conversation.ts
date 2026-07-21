@@ -111,7 +111,7 @@ ONLY make suggestions that will affect the skill behavior. NEVER suggest cosmeti
 - Only suggest adding a tool if there is clear evidence from the conversation that the skill needed a capability it did not have.
 - Only suggest removing a tool if there is clear evidence the tool is causing confusion or is unused and cluttering the skill configuration.
 - When suggesting a tool addition, ensure the tool exists in the workspace by checking available tools first.
-- Suggest tool additions by creating an instruction edit that embeds a self-closing <tool> tag in the relevant instruction block. Suggest tool removals by creating an instruction edit that removes the obsolete <tool> tag and related usage instructions. NEVER use separate tool edits.
+- Suggest tool additions by creating an instruction edit that embeds a self-closing <tool> tag in the relevant instruction block. Suggest tool removals by creating an instruction edit that removes the obsolete <tool> tag and related usage instructions.
 - When the conversation involves a tool call that failed or produced unexpected results, call describe_mcp for the relevant MCP to understand the full list of available tools and their correct usage before suggesting instruction changes.`,
 
   agent_facing_description_guidance: `The agent-facing description (\`<agentFacingDescription>\` in the skill context) is what the agent reads to decide WHEN to enable the skill. It is NOT the skill's behavior — that lives in \`<instructions>\`.

@@ -4,7 +4,6 @@ import {
   instructionEditSetsConflict,
   pruneConflictingSkillEditSuggestions,
   pruneOutdatedSkillEditSuggestions,
-  toolEditSetsConflict,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -34,13 +33,6 @@ function makeInstructionEdit(targetBlockId: string): {
     content: `<p>Content for ${targetBlockId}</p>`,
     type: "replace",
   };
-}
-
-function makeToolEdit(
-  toolId: string,
-  action: "add" | "remove" = "add"
-): { toolId: string; action: "add" | "remove" } {
-  return { toolId, action };
 }
 
 const EMPTY_DESCENDANT_MAP = new Map<string, Set<string>>();
@@ -183,46 +175,11 @@ describe("instructionEditSetsConflict", () => {
   });
 });
 
-describe("toolEditSetsConflict", () => {
-  it("returns false when sets target different tool IDs", () => {
-    expect(
-      toolEditSetsConflict(
-        [makeToolEdit("tool-search")],
-        [makeToolEdit("tool-calendar")]
-      )
-    ).toBe(false);
-  });
-
-  it("conflicts when sets share a tool ID", () => {
-    expect(
-      toolEditSetsConflict(
-        [makeToolEdit("tool-search", "add")],
-        [makeToolEdit("tool-search", "remove")]
-      )
-    ).toBe(true);
-  });
-
-  it("conflicts when both sets add the same tool ID", () => {
-    expect(
-      toolEditSetsConflict(
-        [makeToolEdit("tool-search", "add")],
-        [makeToolEdit("tool-search", "add")]
-      )
-    ).toBe(true);
-  });
-
-  it("returns false when either set is empty", () => {
-    expect(toolEditSetsConflict([], [makeToolEdit("tool-search")])).toBe(false);
-    expect(toolEditSetsConflict([makeToolEdit("tool-search")], [])).toBe(false);
-  });
-});
-
 function makeSuggestion(
   overrides: Partial<SkillEditSuggestionType> = {}
 ): SkillEditSuggestionType {
   return {
     instructionEdits: [],
-    toolEdits: [],
     ...overrides,
   } as SkillEditSuggestionType;
 }
@@ -282,32 +239,6 @@ describe("hasSuggestionSelfConflict", () => {
         HIERARCHY_HTML
       )
     ).toBe(true);
-  });
-
-  it("conflicts when two tool edits target the same tool ID", () => {
-    expect(
-      hasSuggestionSelfConflict(
-        makeSuggestion({
-          toolEdits: [
-            makeToolEdit("tool-search", "add"),
-            makeToolEdit("tool-search", "remove"),
-          ],
-        }),
-        null
-      )
-    ).toBe(true);
-  });
-
-  it("returns false for mixed non-conflicting instruction and tool edits", () => {
-    expect(
-      hasSuggestionSelfConflict(
-        makeSuggestion({
-          instructionEdits: [makeInstructionEdit("para-1")],
-          toolEdits: [makeToolEdit("tool-search")],
-        }),
-        HIERARCHY_HTML
-      )
-    ).toBe(false);
   });
 });
 
@@ -466,16 +397,16 @@ describe("pruneConflictingSkillEditSuggestions — agentFacingDescriptionEdit", 
     expect(newerRefetched?.state).toBe("pending");
   });
 
-  it("a new description-edit suggestion does NOT outdate a tool-only suggestion", async () => {
+  it("a new description-edit suggestion does NOT outdate an instruction-only suggestion", async () => {
     const skill = await SkillFactory.create(authenticator, {
       instructionsHtml: '<p data-block-id="block-1">Content.</p>',
     });
-    const toolOnly = await SkillSuggestionFactory.createEdit(
+    const instructionOnly = await SkillSuggestionFactory.createEdit(
       authenticator,
       skill,
       {
         suggestion: {
-          toolEdits: [{ action: "add", toolId: "tool-search" }],
+          instructionEdits: [makeInstructionEdit("block-1")],
         },
       }
     );
@@ -493,7 +424,7 @@ describe("pruneConflictingSkillEditSuggestions — agentFacingDescriptionEdit", 
 
     const refetched = await SkillSuggestionResource.fetchById(
       authenticator,
-      toolOnly.sId
+      instructionOnly.sId
     );
     expect(refetched?.state).toBe("pending");
   });
