@@ -162,6 +162,36 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(prompt1).toEqual(prompt2);
   });
 
+  it("should generate identical system prompts when only the model ID changes", () => {
+    const model = agentLoopModel(agentConfig1, modelConfig);
+    const alternativeModel = getSupportedModelConfigs().find(
+      (candidate) =>
+        candidate.providerId === model.providerId &&
+        candidate.modelId !== model.modelId
+    );
+    if (!alternativeModel) {
+      throw new Error("Expected another model from the same provider.");
+    }
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: withoutModel(agentConfig1),
+      model,
+      hasAvailableActions: true,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const prompt1 = constructPromptMultiActions(authenticator1, params);
+    const prompt2 = constructPromptMultiActions(authenticator1, {
+      ...params,
+      model: { ...model, modelId: alternativeModel.modelId },
+    });
+
+    expect(prompt1).toEqual(prompt2);
+  });
+
   it("should generate identical prompts with different conversation metadata from the same workspace", () => {
     // Same workspace, same agent, but different conversation metadata
     const baseParams = {
