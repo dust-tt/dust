@@ -45,7 +45,7 @@ import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type {
-    ConcreteResourceType,
+  ConcreteResourceType,
   GrantVerb,
   WorkspacePermissions,
 } from "@app/types/group_permissions";
