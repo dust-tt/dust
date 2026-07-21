@@ -15,7 +15,7 @@ export function WithDustMistralMedium35Config<
     static readonly byok = true;
     // Mistral rejects an explicit temperature on this model; drop it (matches
     // the legacy client's REASONING_OVERWRITES and the schema's undefined temp).
-    static readonly parseConfig = dropTemperature;
+    static readonly configParsers = [dropTemperature];
   }
 
   return DustMistralMedium35;

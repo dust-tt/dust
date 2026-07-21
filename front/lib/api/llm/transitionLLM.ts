@@ -729,11 +729,13 @@ abstract class BaseTransition extends LLM {
   protected buildConfig(
     streamParameters: LLMStreamParameters,
     configSchema: BaseEndpointConfiguration["configSchema"],
-    // Per-endpoint adjustment applied before schema validation (defaults to
-    // identity). Some schemas reject provider-invalid combinations (e.g.
-    // Anthropic requires temperature=1 with thinking), so the fix must land
+    // Per-endpoint adjustments applied in order before schema validation
+    // (defaults to identity). Some schemas reject provider-invalid combinations
+    // (e.g. Anthropic requires temperature=1 with thinking), so the fix must land
     // before `parse`, not after.
-    parseConfig: (config: InputConfig) => InputConfig = (config) => config,
+    configParsers: Array<(config: InputConfig) => InputConfig> = [
+      (config) => config,
+    ],
     // Prompt cache key, forwarded only by surfaces whose config schema accepts
     // it (OpenAI Responses). Left undefined elsewhere so the provider schemas
     // that guard `cacheKey` to `undefined` still parse.
@@ -766,8 +768,13 @@ abstract class BaseTransition extends LLM {
       cacheKey,
     };
 
+    const parsedConfig = configParsers.reduce(
+      (acc, parser) => parser(acc),
+      config
+    );
+
     return configSchema.parse({
-      ...parseConfig(config),
+      ...parsedConfig,
       // Prompt-cache diagnostics opt-in. Kept only by the Anthropic (direct)
       // config schema; other surfaces' schemas strip this unknown key.
       previousMessageId,
@@ -818,7 +825,7 @@ export class StreamEndpointTransition extends BaseTransition {
       this.buildConfig(
         streamParameters,
         this.model.constructor.configSchema,
-        this.endpointConstructor.parseConfig,
+        this.endpointConstructor.configParsers,
         cacheKey
       )
     );

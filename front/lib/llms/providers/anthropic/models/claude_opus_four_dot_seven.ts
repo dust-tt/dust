@@ -16,7 +16,7 @@ export function WithDustClaudeOpusFourDotSevenConfig<
     static readonly maxOutputTokens = 64_000;
     static readonly byok = true;
     // Anthropic rejects an explicit temperature for this model.
-    static readonly parseConfig = dropTemperature;
+    static readonly configParsers = [dropTemperature];
   }
 
   return DustClaudeOpusFourDotSeven;
