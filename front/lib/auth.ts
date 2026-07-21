@@ -16,8 +16,11 @@ import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
-import type { ConcreteResourceType } from "@app/lib/resources/group_permission_registry";
-import { grantTypesForVerb } from "@app/lib/resources/group_permission_registry";
+import {
+  allWorkspacePermissions,
+  grantTypesForVerb,
+  workspacePermissionsFromGrants,
+} from "@app/lib/resources/group_permission_registry";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
@@ -41,7 +44,11 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
-import type { GrantVerb } from "@app/types/group_permissions";
+import type {
+    ConcreteResourceType,
+  GrantVerb,
+  WorkspacePermissions,
+} from "@app/types/group_permissions";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { GroupKind } from "@app/types/groups";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
@@ -1137,6 +1144,27 @@ export class Authenticator {
         (grant.resourceType === resourceType || grant.resourceType === "*") &&
         (grant.grantType === "*" || grantTypes.includes(grant.grantType))
     );
+  }
+
+  /**
+   * All workspace-level (type-wide) verbs the caller holds, grouped by resource type. This is the
+   * batch companion to hasWorkspacePermission: it expands every type-wide (-1) grant on the
+   * caller's groups into the verbs it confers. Admins hold every type-level capability by default,
+   * and "*" grants expand to all type-level verbs of the matched resource type(s), mirroring
+   * hasWorkspacePermission's semantics.
+   */
+  async getWorkspacePermissions(): Promise<WorkspacePermissions> {
+    // Admins bypass grants entirely: every type-level capability is theirs by default.
+    if (this.isAdmin()) {
+      return allWorkspacePermissions();
+    }
+
+    const grants = await GroupPermissionResource.listForGroups(this, {
+      groupModelIds: this._groupModelIds,
+      resourceId: WHOLE_TYPE_RESOURCE_ID,
+    });
+
+    return workspacePermissionsFromGrants(grants);
   }
 
   isSystemKey(): boolean {

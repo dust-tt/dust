@@ -1,9 +1,16 @@
 import type {
+  CapabilitySpec,
+  ConcreteResourceType,
   GrantType,
   GrantVerb,
   GroupPermissionResourceType,
+  WorkspacePermissions,
 } from "@app/types/group_permissions";
-import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
+import {
+  GROUP_PERMISSION_RESOURCE_TYPES,
+  isConcreteResourceType,
+  WHOLE_TYPE_RESOURCE_ID,
+} from "@app/types/group_permissions";
 import assert from "assert";
 
 /**
@@ -23,9 +30,6 @@ import assert from "assert";
  * The `"*"` wildcards in the vocabulary are intentionally not part of this registry: a wildcard
  * grant applies to the whole type (or all types) and is only ever a type-level (`-1`) grant.
  */
-
-// Concrete (non-wildcard) vocabulary — the registry describes these.
-export type ConcreteResourceType = Exclude<GroupPermissionResourceType, "*">;
 
 export type ConcreteGrantType = Exclude<GrantType, "*">;
 
@@ -137,4 +141,96 @@ export function grantTypesForVerb(
     const role = roles[grantType];
     return !!role && role.verbs.includes(verb) && role.levels.includes(level);
   });
+}
+
+function typeLevelVerbsForGrant(
+  grantType: ConcreteGrantType,
+  resourceType: ConcreteResourceType
+): GrantVerb[] {
+  const role = ROLE_REGISTRY[resourceType][grantType];
+  if (!role || !role.levels.includes("type")) {
+    return [];
+  }
+  return role.verbs;
+}
+
+function allTypeLevelVerbsForResource(
+  resourceType: ConcreteResourceType
+): GrantVerb[] {
+  const verbs = new Set<GrantVerb>();
+  const roles = Object.values(ROLE_REGISTRY[resourceType]);
+  for (const role of roles) {
+    if (role.levels.includes("type")) {
+      for (const verb of role.verbs) {
+        verbs.add(verb);
+      }
+    }
+  }
+  return [...verbs];
+}
+
+function emptyWorkspacePermissions(): WorkspacePermissions {
+  return {
+    space: [],
+    agent: [],
+    skill: [],
+    frame: [],
+    billing: [],
+    identity: [],
+    audit_log: [],
+    models_tier: [],
+  };
+}
+
+// Every type-level verb on every resource type — an admin's implicit full access.
+export function allWorkspacePermissions(): WorkspacePermissions {
+  const permissions = emptyWorkspacePermissions();
+  for (const resourceType of GROUP_PERMISSION_RESOURCE_TYPES) {
+    if (!isConcreteResourceType(resourceType)) {
+      continue;
+    }
+    permissions[resourceType] = allTypeLevelVerbsForResource(resourceType);
+  }
+  return permissions;
+}
+
+// The workspace-level verbs a caller's type-wide (-1) grants confer, grouped by resource type. A
+// "*" grantType fans out to every type-level verb of the resource; a "*" resourceType fans out to
+// every concrete resource type.
+export function workspacePermissionsFromGrants(
+  grants: CapabilitySpec[]
+): WorkspacePermissions {
+  const verbsByResource: Record<ConcreteResourceType, Set<GrantVerb>> = {
+    space: new Set(),
+    agent: new Set(),
+    skill: new Set(),
+    frame: new Set(),
+    billing: new Set(),
+    identity: new Set(),
+    audit_log: new Set(),
+    models_tier: new Set(),
+  };
+
+  for (const { grantType, resourceType } of grants) {
+    const resources =
+      resourceType === "*"
+        ? GROUP_PERMISSION_RESOURCE_TYPES.filter(isConcreteResourceType)
+        : [resourceType];
+
+    for (const resource of resources) {
+      const verbs =
+        grantType === "*"
+          ? allTypeLevelVerbsForResource(resource)
+          : typeLevelVerbsForGrant(grantType, resource);
+      verbs.forEach((verb) => verbsByResource[resource].add(verb));
+    }
+  }
+
+  const permissions = emptyWorkspacePermissions();
+  for (const resource of GROUP_PERMISSION_RESOURCE_TYPES.filter(
+    isConcreteResourceType
+  )) {
+    permissions[resource] = [...verbsByResource[resource]];
+  }
+  return permissions;
 }
