@@ -128,6 +128,8 @@ function toUserInputMessage(
   message: UserMessageTypeModel,
   { cacheBreakpoint }: { cacheBreakpoint: boolean }
 ): ResponseInputItem.Message {
+  // A breakpoint caches the prefix through the marked content block. Put it on
+  // the last block so every part of the equipped-skills message is included.
   const lastContentIndex = message.content.length - 1;
   return {
     role: "user",
@@ -174,6 +176,9 @@ export function toInput(
       case "user":
         inputs.push(
           toUserInputMessage(message, {
+            // The injected equipped-skills list is represented as the first
+            // user message with `name: "system"`. Regular user messages must
+            // not receive this cross-conversation breakpoint.
             cacheBreakpoint:
               cacheBreakpointOnLeadingMessage &&
               index === 0 &&

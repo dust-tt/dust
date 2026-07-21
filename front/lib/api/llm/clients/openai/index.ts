@@ -113,6 +113,8 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     return {
       model: this.modelId,
       input: toInput(promptText, conversation, "developer", {
+        // Match Anthropic's equipped-skills breakpoint, but only for OpenAI
+        // models that accept explicit prompt cache breakpoints.
         cacheBreakpointOnLeadingMessage: supportsOpenAIExplicitPromptCaching(
           this.modelId
         ),
