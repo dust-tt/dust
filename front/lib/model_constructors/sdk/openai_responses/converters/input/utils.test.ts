@@ -72,6 +72,21 @@ describe("prompt cache breakpoints", () => {
     });
   });
 
+  it("maps long cache opt-in to the request-wide breakpoint", () => {
+    expect(
+      userTextMessageToInputItem({ ...message, cache: "long" }, metadata)
+    ).toEqual({
+      role: "user",
+      content: [
+        {
+          type: "input_text",
+          text: "Available skills",
+          prompt_cache_breakpoint: { mode: "explicit" },
+        },
+      ],
+    });
+  });
+
   it("does not serialize a cache marker for older models", () => {
     expect(
       userTextMessageToInputItem(message, { ...metadata, model: GPT_5_4 })

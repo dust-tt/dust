@@ -20,6 +20,7 @@ import type {
   BaseUserImageMessage,
   BaseUserMessage,
   BaseUserTextMessage,
+  CacheOption,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import { supportsOpenAIExplicitPromptCaching } from "@app/lib/model_constructors/types/models";
@@ -28,6 +29,7 @@ import type {
   FunctionTool,
   ResponseFormatTextJSONSchemaConfig,
   ResponseInputItem,
+  ResponseInputText,
   Tool,
   ToolChoiceFunction,
 } from "openai/resources/responses/responses";
@@ -57,6 +59,32 @@ export interface MessageItemConverters {
   ): ResponseInputItem[];
 }
 
+// -- Small, reusable building blocks --
+
+type PromptCacheBreakpoint = NonNullable<
+  ResponseInputText["prompt_cache_breakpoint"]
+>;
+
+// Spreadable fragment adding an explicit breakpoint only when the message opts
+// in and the model supports it. OpenAI applies one request-wide TTL, so both
+// cache durations map to the same wire representation.
+export function promptCacheBreakpointFor(
+  cache: CacheOption | undefined,
+  metadata: EndpointMetadata
+): { prompt_cache_breakpoint: PromptCacheBreakpoint } | Record<string, never> {
+  switch (cache) {
+    case "short":
+    case "long":
+      return supportsOpenAIExplicitPromptCaching(metadata.model)
+        ? { prompt_cache_breakpoint: { mode: "explicit" } }
+        : {};
+    case undefined:
+      return {};
+    default:
+      return assertNever(cache);
+  }
+}
+
 // -- Leaf converters: one Responses input item per message --
 
 // OpenAI uses the "developer" role for the system prompt on reasoning models.
@@ -79,10 +107,7 @@ export function userTextMessageToInputItem(
       {
         type: "input_text",
         text: message.content.value,
-        // OpenAI uses the request-wide TTL; the message cache value opts this block in.
-        ...(message.cache && supportsOpenAIExplicitPromptCaching(metadata.model)
-          ? { prompt_cache_breakpoint: { mode: "explicit" } }
-          : {}),
+        ...promptCacheBreakpointFor(message.cache, metadata),
       },
     ],
   };
