@@ -38,7 +38,7 @@ export function InputBarSpacesPicker({
 }: InputBarSpacesPickerProps) {
   const selectedSpaceIdsSet = useMemo(
     () => new Set(selectedSpaceIds),
-    [selectedSpaceIds],
+    [selectedSpaceIds]
   );
   const [searchText, setSearchText] = useState("");
   const filteredSpaces = useMemo(() => {
@@ -48,7 +48,7 @@ export function InputBarSpacesPicker({
     }
 
     return spaces.filter((space) =>
-      space.name.toLowerCase().includes(normalizedSearchText),
+      space.name.toLowerCase().includes(normalizedSearchText)
     );
   }, [searchText, spaces]);
 
@@ -66,7 +66,7 @@ export function InputBarSpacesPicker({
       onSelectedSpaceIdsChange(
         selectedSpaceIdsSet.has(spaceId)
           ? selectedSpaceIds
-          : [...selectedSpaceIds, spaceId],
+          : [...selectedSpaceIds, spaceId]
       );
       return;
     }
