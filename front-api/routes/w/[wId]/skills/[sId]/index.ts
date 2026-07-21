@@ -120,8 +120,9 @@ app.get(
 
     const withRelations = ctx.req.query("withRelations");
 
+    const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
     let favoriteState: { isFavorite?: boolean } = {};
-    if (await hasFeatureFlag(auth, "skill_favorites")) {
+    if (hasSkillFavorites) {
       const isFavorite = await skill.isFavoriteForCurrentUser(auth);
       favoriteState = { isFavorite };
     }

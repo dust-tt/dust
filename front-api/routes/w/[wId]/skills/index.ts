@@ -189,13 +189,12 @@ app.get(
       withFileAttachments: false,
     });
     const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
-    const favoriteSkillIds = hasSkillFavorites
-      ? new Set(
-          (await SkillResource.listFavoritesForCurrentUser(auth)).map(
-            (skill) => skill.sId
-          )
-        )
-      : new Set<string>();
+    let favoriteSkillIds = new Set<string>();
+    if (hasSkillFavorites) {
+      const favoriteSkills =
+        await SkillResource.listFavoritesForCurrentUser(auth);
+      favoriteSkillIds = new Set(favoriteSkills.map((skill) => skill.sId));
+    }
 
     const canCreateSkill = await auth.hasWorkspacePermission("create", "skill");
 
