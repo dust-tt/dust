@@ -1559,7 +1559,8 @@ export function getInternalMCPServerMetadata(name: InternalMCPServerNameType) {
 
   return {
     serverInfo,
-    tools: tools.map(({ schema, ...tool }) => ({
+    // We drop the `isAvailableForContext` callback here as it's not metadata that is useful in ToolDefinition.
+    tools: tools.map(({ schema, isAvailableForContext: _, ...tool }) => ({
       ...tool,
       // For the input schema we store a zod schema on the tool metadata, it's what's easier to use in the code because
       // we can infer a type from it, but tool specifications expect a JSON schema.
