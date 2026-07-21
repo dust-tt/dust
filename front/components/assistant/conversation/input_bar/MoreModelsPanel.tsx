@@ -15,7 +15,6 @@ import {
   ChevronDown,
   ChevronRight,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
   DropdownMenuSearchbar,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -31,6 +30,13 @@ interface MoreModelsPanelProps {
   filteredModels: ModelWithReasoningEffort[];
   moreByMaker: MakerGroup[];
   selectedKey?: string;
+  // The model line that carries the "(Default)" marker, when the default is a
+  // non-tier model surfaced here.
+  defaultModelKey?: string;
+  // The selected model's check turns into a clickable X on hover to revert to
+  // the default.
+  canRevert: boolean;
+  onRevert: () => void;
   // The maker of the current selection, when it lives in the "More models"
   // list: its provider row shows a check so the path to the model is visible.
   selectedMakerId: ModelMakerIdType | null;
@@ -52,6 +58,9 @@ export function MoreModelsPanel({
   filteredModels,
   moreByMaker,
   selectedKey,
+  defaultModelKey,
+  canRevert,
+  onRevert,
   selectedMakerId,
   onSelectModel,
   isMobile,
@@ -76,20 +85,22 @@ export function MoreModelsPanel({
 
       {isSearching ? (
         filteredModels.length > 0 ? (
-          <DropdownMenuRadioGroup value={selectedKey}>
-            {filteredModels.map((modelWithEffort) => (
-              <ModelPickerLineItem
-                key={getModelWithReasoningEffortKey(
-                  modelWithEffort.model.providerId,
-                  modelWithEffort.model.modelId,
-                  modelWithEffort.effort
-                )}
-                modelWithEffort={modelWithEffort}
-                isMobile={isMobile}
-                onSelect={onSelectModel}
-              />
-            ))}
-          </DropdownMenuRadioGroup>
+          filteredModels.map((modelWithEffort) => (
+            <ModelPickerLineItem
+              key={getModelWithReasoningEffortKey(
+                modelWithEffort.model.providerId,
+                modelWithEffort.model.modelId,
+                modelWithEffort.effort
+              )}
+              modelWithEffort={modelWithEffort}
+              isMobile={isMobile}
+              selectedKey={selectedKey}
+              defaultModelKey={defaultModelKey}
+              canRevert={canRevert}
+              onRevert={onRevert}
+              onSelect={onSelectModel}
+            />
+          ))
         ) : (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
             No models found
@@ -124,6 +135,9 @@ export function MoreModelsPanel({
                 <ModelPickerProviderSection
                   maker={maker}
                   selectedKey={selectedKey}
+                  defaultModelKey={defaultModelKey}
+                  canRevert={canRevert}
+                  onRevert={onRevert}
                   isMobile={isMobile}
                   onSelect={onSelectModel}
                 />
@@ -140,6 +154,9 @@ export function MoreModelsPanel({
                 <ModelPickerProviderSection
                   maker={maker}
                   selectedKey={selectedKey}
+                  defaultModelKey={defaultModelKey}
+                  canRevert={canRevert}
+                  onRevert={onRevert}
                   isMobile={isMobile}
                   onSelect={onSelectModel}
                 />

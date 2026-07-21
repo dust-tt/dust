@@ -11,11 +11,11 @@ import {
   AUTO_TOOLTIP,
   REASONING_EFFORT_INFO,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import { RevertToDefaultIndicator } from "@app/components/assistant/conversation/input_bar/RevertToDefaultIndicator";
 import { useClientType } from "@app/lib/context/clientType";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import {
-  Check,
   ChevronDown,
   ChevronRight,
   DropdownMenuContent,
@@ -36,6 +36,15 @@ interface ModelPickerContentProps {
   selectedTierId: ModelTierId | null;
   onSelectTier: (resolved: ResolvedTier) => void;
   onSelectModel: (modelWithEffort: ModelWithReasoningEffort) => void;
+  // Whether the current selection differs from the default, i.e. there is
+  // something to revert. The selected row's check turns into a clickable X on
+  // hover when true.
+  canRevert: boolean;
+  onRevert: () => void;
+  // The tier / model line that carries the "(Default)" marker (whichever the
+  // selection would revert to).
+  defaultTierId: ModelTierId | null;
+  defaultModelKey?: string;
   // "More models" panel:
   search: string;
   onSearchChange: (value: string) => void;
@@ -59,6 +68,10 @@ export function ModelPickerContent({
   selectedTierId,
   onSelectTier,
   onSelectModel,
+  canRevert,
+  onRevert,
+  defaultTierId,
+  defaultModelKey,
   search,
   onSearchChange,
   filteredModels,
@@ -80,6 +93,9 @@ export function ModelPickerContent({
       filteredModels={filteredModels}
       moreByMaker={listState.kind === "ready" ? listState.moreByMaker : []}
       selectedKey={selectedKey}
+      defaultModelKey={defaultModelKey}
+      canRevert={canRevert}
+      onRevert={onRevert}
       selectedMakerId={selectedMakerId}
       onSelectModel={onSelectModel}
       isMobile={isMobile}
@@ -111,6 +127,9 @@ export function ModelPickerContent({
               resolved={resolved}
               isMobile={isMobile}
               selected={resolved.tier.id === selectedTierId}
+              isDefault={resolved.tier.id === defaultTierId}
+              canRevert={canRevert}
+              onRevert={onRevert}
               onSelect={onSelectTier}
             />
           ))}
@@ -121,11 +140,15 @@ export function ModelPickerContent({
               {expandProvidersInline ? (
                 <>
                   <DropdownMenuItem
+                    className="group/model-row"
                     label="More models"
                     endComponent={
                       <span className="flex items-center gap-2">
                         {moreModelsSelected && (
-                          <Icon visual={Check} size="xs" />
+                          <RevertToDefaultIndicator
+                            canRevert={canRevert}
+                            onRevert={onRevert}
+                          />
                         )}
                         <Icon
                           visual={
@@ -145,6 +168,8 @@ export function ModelPickerContent({
                   <ModelPickerSubTrigger
                     label="More models"
                     checked={moreModelsSelected}
+                    canRevert={canRevert}
+                    onRevert={onRevert}
                   />
                   <DropdownMenuSubContent className="w-72">
                     {morePanel}
@@ -163,10 +188,21 @@ interface TierRowProps {
   resolved: ResolvedTier;
   isMobile: boolean;
   selected: boolean;
+  isDefault: boolean;
+  canRevert: boolean;
+  onRevert: () => void;
   onSelect: (resolved: ResolvedTier) => void;
 }
 
-function TierRow({ resolved, isMobile, selected, onSelect }: TierRowProps) {
+function TierRow({
+  resolved,
+  isMobile,
+  selected,
+  isDefault,
+  canRevert,
+  onRevert,
+  onSelect,
+}: TierRowProps) {
   const { tier, modelWithEffort } = resolved;
   return (
     <ModelPickerRowTooltip
@@ -191,14 +227,20 @@ function TierRow({ resolved, isMobile, selected, onSelect }: TierRowProps) {
       }
     >
       <DropdownMenuItem
+        className="group/model-row"
         icon={tier.icon}
         label={tier.name}
         endComponent={
           <span className="flex items-center gap-2">
             <span className="text-xs font-normal text-muted-foreground dark:text-muted-foreground-night">
-              {tier.subtitle}
+              {isDefault ? "(Default)" : tier.subtitle}
             </span>
-            {selected && <Icon visual={Check} size="xs" />}
+            {selected && (
+              <RevertToDefaultIndicator
+                canRevert={canRevert}
+                onRevert={onRevert}
+              />
+            )}
           </span>
         }
         onClick={() => onSelect(resolved)}

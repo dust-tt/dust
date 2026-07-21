@@ -198,6 +198,27 @@ export function getModelWithReasoningEffortLabel(
   }
 }
 
+// A stable identity for a selection, used to compare the shown selection against
+// the default (to know whether there is anything to revert) and to mark the
+// default row. "auto" collapses to a single sentinel; models/agent defaults use
+// their model + effort key.
+export function getSelectionIdentityKey(selection: LabelSelection): string {
+  switch (selection.kind) {
+    case "auto":
+      return "auto";
+    case "agent":
+    case "model":
+      return getModelWithReasoningEffortKey(
+        selection.model.providerId,
+        selection.model.modelId,
+        selection.effort
+      );
+    default:
+      assertNeverAndIgnore(selection);
+      return "";
+  }
+}
+
 // Returns the tier a selection corresponds to, or null when it is not one of
 // the tiers. An "auto" selection maps to the Standard tier; a concrete "model"
 // selection maps to Quick/Deep when it matches their pins. An "agent" default
