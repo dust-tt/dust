@@ -9,10 +9,10 @@ import {
   ContentMessage,
   createSelectionColumn,
   DataTable,
+  DataTableLoadingSkeleton,
   InfoCircle,
   PuzzlePiece01,
   ScrollableDataTable,
-  Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo } from "react";
@@ -141,11 +141,7 @@ export function DetectedSkillsList({
           {detectError}
         </ContentMessage>
       )}
-      {isDetecting && (
-        <div className="flex items-center justify-center py-4">
-          <Spinner size="md" />
-        </div>
-      )}
+      {isDetecting && <DataTableLoadingSkeleton rows={3} />}
       {rows.length > 0 && (
         <ScrollableDataTable<SkillRowData>
           data={rows}
