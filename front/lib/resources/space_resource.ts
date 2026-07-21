@@ -60,7 +60,7 @@ export interface SpaceResource extends ReadonlyAttributesType<SpaceModel> {}
  */
 export class SpaceGroupReference {
   constructor(
-    readonly id: ModelId,
+    readonly groupId: ModelId,
     readonly groupKind: GroupKind,
     readonly groupSpaceKind: GroupSpaceKind,
     readonly workspaceId: ModelId
@@ -77,7 +77,7 @@ export class SpaceGroupReference {
 
   get groupSId(): string {
     return GroupResource.modelIdToSId({
-      id: this.id,
+      id: this.groupId,
       workspaceId: this.workspaceId,
     });
   }
@@ -266,13 +266,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const groups = await GroupResource.fetchByModelIds(
       auth,
-      groupReferences.map((group) => group.id),
+      groupReferences.map((group) => group.groupId),
       { transaction }
     );
     const groupsById = new Map(groups.map((group) => [group.id, group]));
 
     return groupReferences.map((group) => {
-      const resource = groupsById.get(group.id);
+      const resource = groupsById.get(group.groupId);
       assert(resource, `Group ${group.groupSId} not found.`);
       return resource;
     });
@@ -1084,7 +1084,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   ) {
     await GroupSpaceModel.destroy({
       where: {
-        groupId: groupReference.id,
+        groupId: groupReference.groupId,
         vaultId: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
@@ -1443,7 +1443,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           if (group.isGlobal()) {
             return true;
           }
-          if (auth.hasGroupByModelId(group.id)) {
+          if (auth.hasGroupByModelId(group.groupId)) {
             return true;
           }
         }
@@ -1454,7 +1454,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           if (group.isGlobal()) {
             continue;
           }
-          if (auth.hasGroupByModelId(group.id)) {
+          if (auth.hasGroupByModelId(group.groupId)) {
             return true;
           }
         }
@@ -1500,7 +1500,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           workspaceId: this.workspaceId,
           roles: [{ role: "admin", permissions: ["admin", "write"] }],
           groups: this.groups.map((group) => ({
-            id: group.id,
+            id: group.groupId,
             permissions: ["read", "write"],
           })),
         },
@@ -1517,7 +1517,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             { role: "builder", permissions: ["read", "write"] },
           ],
           groups: this.groups.map((group) => ({
-            id: group.id,
+            id: group.groupId,
             permissions: ["read"],
           })),
         },
@@ -1546,7 +1546,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           groups: this.groups.reduce((acc, group) => {
             if (groupFilter(group)) {
               acc.push({
-                id: group.id,
+                id: group.groupId,
                 permissions: ["read"],
               });
             }
@@ -1569,13 +1569,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               if (group.groupSpaceKind === "project_editor") {
                 // Project editors get admin permissions
                 acc.push({
-                  id: group.id,
+                  id: group.groupId,
                   permissions: ["admin", "read", "write"],
                 });
               } else {
                 // Members get read permissions in restricted projects (the unrestricted case is handled by the roles above)
                 acc.push({
-                  id: group.id,
+                  id: group.groupId,
                   permissions: ["read", "write"],
                 });
               }
@@ -1594,7 +1594,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         groups: this.groups.reduce((acc, group) => {
           if (groupFilter(group)) {
             acc.push({
-              id: group.id,
+              id: group.groupId,
               permissions: ["read", "write"],
             });
           }
@@ -1847,13 +1847,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       );
       manualGroupReferencesBySpaceModelId.set(space.id, groupReferences);
       groupReferences.forEach((group) =>
-        allGroupReferences.set(group.id, group)
+        allGroupReferences.set(group.groupId, group)
       );
     }
 
     const allGroups = await GroupResource.fetchByModelIds(
       auth,
-      [...allGroupReferences.values()].map((group) => group.id)
+      [...allGroupReferences.values()].map((group) => group.groupId)
     );
 
     // Single query for the active memberships across every group.
@@ -1875,7 +1875,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       const groups = manualGroupReferencesBySpaceModelId.get(space.id) ?? [];
       const byId = new Map<ModelId, UserResource>();
       for (const group of groups) {
-        for (const userModelId of userModelIdsByGroupModelId[group.id] ?? []) {
+        for (const userModelId of userModelIdsByGroupModelId[group.groupId] ??
+          []) {
           const user = usersByModelId.get(userModelId);
           if (user && !byId.has(user.id)) {
             byId.set(user.id, user);
