@@ -3,7 +3,7 @@ import { pokeApp } from "@front-api/middlewares/ctx";
 import connectorKnowledge from "./connector-knowledge";
 import tasks from "./tasks";
 import tasksWorkflow from "./tasks-workflow";
-import podFunctions from "@front-api/routes/poke/workspaces/[wId]/projects/[projectId]/pod-functions";
+import podFunctions from "./pod-functions";
 
 const app = pokeApp();
 
