@@ -25,11 +25,13 @@ import assert from "assert";
  */
 
 // Concrete (non-wildcard) vocabulary — the registry describes these.
-type ConcreteResourceType = Exclude<GroupPermissionResourceType, "*">;
+export type ConcreteResourceType = Exclude<GroupPermissionResourceType, "*">;
+
+export type ConcreteGrantType = Exclude<GrantType, "*">;
 
 // A grant applies either to a specific resource instance (resourceId > 0) or to the whole type
 // (resourceId = -1). A role declares the levels at which it can be granted.
-type GrantLevel = "instance" | "type";
+export type GrantLevel = "instance" | "type";
 
 interface RoleDefinition {
   verbs: GrantVerb[];
@@ -38,7 +40,7 @@ interface RoleDefinition {
 
 export const ROLE_REGISTRY: Record<
   ConcreteResourceType,
-  Record<string, RoleDefinition>
+  Partial<Record<ConcreteGrantType, RoleDefinition>>
 > = {
   space: {
     reader: { verbs: ["read"], levels: ["instance"] },
@@ -119,4 +121,20 @@ export function assertValidGrant({
     role.levels.includes("instance"),
     `Grant type "${grantType}" on "${resourceType}" is type-level and requires resourceId = ${WHOLE_TYPE_RESOURCE_ID}.`
   );
+}
+
+// Roles for `resourceType` whose verbs include `verb` at the given level — the verb→role expansion
+// `hasWorkspacePermission` needs to turn a capability question into stored grant types.
+export function grantTypesForVerb(
+  resourceType: ConcreteResourceType,
+  verb: GrantVerb,
+  level: GrantLevel
+): ConcreteGrantType[] {
+  const roles = ROLE_REGISTRY[resourceType];
+  // Object.keys() widens back to `string[]`; the cast is safe because ROLE_REGISTRY's declared
+  // type guarantees these keys are exactly ConcreteGrantType.
+  return (Object.keys(roles) as ConcreteGrantType[]).filter((grantType) => {
+    const role = roles[grantType];
+    return !!role && role.verbs.includes(verb) && role.levels.includes(level);
+  });
 }

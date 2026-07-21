@@ -16,7 +16,8 @@ import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
-import { assertValidGrant } from "@app/lib/resources/group_permission_registry";
+import type { ConcreteResourceType } from "@app/lib/resources/group_permission_registry";
+import { grantTypesForVerb } from "@app/lib/resources/group_permission_registry";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
@@ -40,10 +41,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
-import type {
-  GrantType as GroupGrantType,
-  GroupPermissionResourceType,
-} from "@app/types/group_permissions";
+import type { GrantVerb } from "@app/types/group_permissions";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { GroupKind } from "@app/types/groups";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
@@ -1102,24 +1100,25 @@ export class Authenticator {
   }
 
   /**
-   * Whether the caller holds a workspace-level capability. A capability is a
-   * (grantType, resourceType) pair whose grants live on the type-wide (-1) group_permissions
-   * rows. Admins bypass unconditionally (billing/security are admin-by-default). Otherwise we look
-   * for a -1 grant on any of the caller's groups; "*" grants match any grant type / resource type.
+   * Whether the caller holds a workspace-level capability. A capability is asked as a verb (e.g.
+   * "create"), expanded via the registry into the stored grant types (role names) that imply it, and
+   * checked against the type-wide (-1) group_permissions rows. Admins bypass unconditionally
+   * (billing/security are admin-by-default). Otherwise we look for a -1 grant on any of the caller's
+   * groups; "*" grants match any grant type / resource type.
    *
    * Cold path: a query per check is fine — no caching yet (pending auth-resolution decision).
    */
   async hasWorkspacePermission(
-    grantType: GroupGrantType,
-    resourceType: GroupPermissionResourceType
+    verb: GrantVerb,
+    resourceType: ConcreteResourceType
   ): Promise<boolean> {
-    // Reject invalid capability queries (e.g. write/billing) up front, so a "*" grant can't satisfy
+    // Reject invalid capability queries (e.g. create/billing) up front, so a "*" grant can't satisfy
     // a pair the registry forbids, and so callers fail fast on a programmer error.
-    assertValidGrant({
-      grantType,
-      resourceType,
-      resourceId: WHOLE_TYPE_RESOURCE_ID,
-    });
+    const grantTypes = grantTypesForVerb(resourceType, verb, "type");
+    assert(
+      grantTypes.length > 0,
+      `Verb "${verb}" is not allowed (no type-level role grants it) on resource type "${resourceType}".`
+    );
 
     if (this.isAdmin()) {
       return true;
@@ -1136,7 +1135,7 @@ export class Authenticator {
     return grants.some(
       (grant) =>
         (grant.resourceType === resourceType || grant.resourceType === "*") &&
-        (grant.grantType === grantType || grant.grantType === "*")
+        (grant.grantType === "*" || grantTypes.includes(grant.grantType))
     );
   }
 
