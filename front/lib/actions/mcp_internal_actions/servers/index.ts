@@ -1,9 +1,9 @@
 import {
   ADVANCED_SEARCH_SWITCH,
-  getInternalMCPServerInfo,
   type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
+  ServerMetadata,
   ToolHandlers,
   ToolMeta,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -126,21 +126,20 @@ function createServer<
 >(
   auth: Authenticator,
   {
-    serverName,
-    toolMetadata,
+    serverMetadata,
     toolHandlers,
+    toolContext,
   }: {
-    serverName: InternalMCPServerNameType;
-    toolMetadata: T;
+    serverMetadata: ServerMetadata & { tools: T };
     toolHandlers: ToolHandlers<T, ToolName>;
-  },
-  toolContext?: ToolContext
+    toolContext: ToolContext | undefined;
+  }
 ) {
-  const serverInfo = getInternalMCPServerInfo(serverName);
+  const { serverInfo, tools } = serverMetadata;
 
   const server = new McpServer(serverInfo);
 
-  for (const tool of toolMetadata) {
+  for (const tool of tools) {
     if (tool.isAvailableForContext?.({ auth, toolContext }) === false) {
       continue;
     }
@@ -154,7 +153,7 @@ function createServer<
         handler: toolHandlers[tool.name],
       },
       {
-        monitoringName: serverName,
+        monitoringName: serverInfo.name,
       }
     );
   }
