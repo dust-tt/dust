@@ -1698,11 +1698,28 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       [conversation.spaceId]
     );
 
-    return this.fetchByIds(auth, projectMetadata?.defaultSkillIds ?? [], {
-      agentLoopData,
-      effectiveSpaceIds,
-      onlyActive: true,
-    });
+    const skills = await this.fetchByIds(
+      auth,
+      projectMetadata?.defaultSkillIds ?? [],
+      {
+        agentLoopData,
+        effectiveSpaceIds,
+        onlyActive: true,
+      }
+    );
+
+    if (!projectMetadata) {
+      return skills;
+    }
+
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    const allowedSpaceIds = new Set<ModelId>([
+      globalSpace.id,
+      projectMetadata.spaceId,
+    ]);
+    return skills.filter((skill) =>
+      skill.requestedSpaceIds.every((id) => allowedSpaceIds.has(id))
+    );
   }
 
   static async listForAgentLoop(
