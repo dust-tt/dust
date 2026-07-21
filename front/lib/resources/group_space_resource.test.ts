@@ -52,6 +52,7 @@ describe("GroupSpaceMemberResource", () => {
       expect(groupSpaceMember.vaultId).toBe(regularSpace.id);
       expect(groupSpaceMember.workspaceId).toBe(workspace.id);
       expect(groupSpaceMember.kind).toBe("member");
+      expect(groupSpaceMember.groupKind).toBe("regular_auto");
     });
   });
 
@@ -171,6 +172,7 @@ describe("GroupSpaceEditorResource", () => {
 
       expect(groupSpaceEditor).toBeInstanceOf(GroupSpaceEditorResource);
       expect(groupSpaceEditor.kind).toBe("project_editor");
+      expect(groupSpaceEditor.groupKind).toBe("provisioned");
     });
   });
 
@@ -235,6 +237,7 @@ describe("GroupSpaceEditorResource", () => {
       // Create a GroupSpaceModel with a non-editor group
       await GroupSpaceModel.create({
         groupId: regularGroup.id,
+        groupKind: regularGroup.kind,
         vaultId: projectSpace.id,
         workspaceId: workspace.id,
         kind: "project_editor",
@@ -328,6 +331,7 @@ describe("GroupSpaceViewerResource", () => {
       expect(result?.groupId).toBe(globalGroup.id);
       expect(result?.vaultId).toBe(projectSpace.id);
       expect(result?.kind).toBe("project_viewer");
+      expect(result?.groupKind).toBe("global");
     });
 
     it("should throw an assertion error when space is not a project space", async () => {
@@ -355,6 +359,7 @@ describe("GroupSpaceViewerResource", () => {
       // Create a GroupSpaceModel with a non-global group
       await GroupSpaceModel.create({
         groupId: regularGroup.id,
+        groupKind: regularGroup.kind,
         vaultId: projectSpace.id,
         workspaceId: workspace.id,
         kind: "project_viewer",

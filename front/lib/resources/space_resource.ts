@@ -85,6 +85,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         await GroupSpaceModel.create(
           {
             groupId: memberGroup.id,
+            groupKind: memberGroup.kind,
             vaultId: space.id,
             workspaceId: space.workspaceId,
             kind: "member",
@@ -101,6 +102,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           await GroupSpaceModel.create(
             {
               groupId: editorGroup.id,
+              groupKind: editorGroup.kind,
               vaultId: space.id,
               workspaceId: space.workspaceId,
               kind: "project_editor",

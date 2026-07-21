@@ -175,6 +175,7 @@ makeScript(
       await GroupSpaceModel.create(
         {
           groupId: memberGroup.id,
+          groupKind: memberGroup.kind,
           vaultId: globalSpace.id,
           workspaceId: workspace.id,
           kind: "member",
@@ -197,6 +198,7 @@ makeScript(
           await GroupSpaceModel.create(
             {
               groupId: group.id,
+              groupKind: group.kind,
               vaultId: globalSpace.id,
               workspaceId: workspace.id,
               kind: "member",
