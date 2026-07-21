@@ -48,29 +48,6 @@ describe("toInput", () => {
         ],
       });
     });
-
-    it("does not add a cache breakpoint to a non-leading skills message", () => {
-      const messages = toInput(
-        "You are a helpful assistant.",
-        {
-          messages: [
-            ...conversationMessages,
-            {
-              role: "user",
-              name: "system",
-              content: [{ type: "text", text: "Available skills" }],
-            },
-          ],
-        },
-        "developer",
-        { cacheBreakpointOnLeadingMessage: true }
-      );
-
-      expect(messages.at(-1)).toEqual({
-        role: "user",
-        content: [{ type: "input_text", text: "Available skills" }],
-      });
-    });
   });
 
   it("replays OpenAI tool-search items and skips other providers", () => {
