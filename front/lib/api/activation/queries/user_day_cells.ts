@@ -22,13 +22,17 @@ const TRIGGERED_ORIGIN: UserMessageOrigin = "triggered";
 
 // Programmatic origins are dropped from the query entirely
 const PROGRAMMATIC_ORIGINS: UserMessageOrigin[] = (
-  Object.keys(USAGE_ORIGINS_CLASSIFICATION) as (keyof typeof USAGE_ORIGINS_CLASSIFICATION)[]
+  Object.keys(
+    USAGE_ORIGINS_CLASSIFICATION
+  ) as (keyof typeof USAGE_ORIGINS_CLASSIFICATION)[]
 ).filter((origin) => USAGE_ORIGINS_CLASSIFICATION[origin] === "programmatic");
 
 // Origins that make a day count as a daily active user day: human-initiated
 // organic ("user") origins, with `triggered` deliberately EXCLUDED.
 const DAU_ORIGINS: UserMessageOrigin[] = (
-  Object.keys(USAGE_ORIGINS_CLASSIFICATION) as (keyof typeof USAGE_ORIGINS_CLASSIFICATION)[]
+  Object.keys(
+    USAGE_ORIGINS_CLASSIFICATION
+  ) as (keyof typeof USAGE_ORIGINS_CLASSIFICATION)[]
 ).filter(
   (origin) =>
     USAGE_ORIGINS_CLASSIFICATION[origin] === "user" &&
