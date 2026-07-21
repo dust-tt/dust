@@ -9,6 +9,7 @@ interface DropzoneContainerProps {
   description: string;
   title: string;
   disabled?: boolean;
+  className?: string;
 }
 
 export function DropzoneContainer({
@@ -16,6 +17,7 @@ export function DropzoneContainer({
   description,
   title,
   disabled,
+  className,
 }: DropzoneContainerProps) {
   const isMobile = useIsMobile();
   const { setDroppedFiles } = useFileDrop();
@@ -61,7 +63,7 @@ export function DropzoneContainer({
         "flex w-full flex-col items-center",
         isMobile
           ? MOBILE_DOCUMENT_SCROLL_CLASSES.dropzoneContainer
-          : "min-h-0 h-panel"
+          : (className ?? "min-h-0 h-panel")
       )}
       onPaste={onPaste}
     >

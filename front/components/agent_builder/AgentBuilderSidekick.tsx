@@ -5,12 +5,14 @@ import { BlockedActionsProvider } from "@app/components/assistant/conversation/B
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
+import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import {
   getSidekickSuggestionPlugin,
   sidekickSuggestionDirective,
 } from "@app/components/markdown/suggestion/SidekickSuggestionDirective";
+import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -113,15 +115,25 @@ function SidekickContent({
             </div>
           )}
           {user && (
-            <ConversationViewer
-              owner={owner}
-              user={user}
-              conversationId={conversation.sId}
-              agentBuilderContext={agentBuilderContext}
-              additionalMarkdownComponents={additionalMarkdownComponents}
-              additionalMarkdownPlugins={additionalMarkdownPlugins}
-              key={conversation.sId}
-            />
+            <FileDropProvider>
+              <DropzoneContainer
+                title="Attach files to Sidekick"
+                description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
+                // `relative` scopes the DropzoneOverlay to this panel (else it
+                // covers a far ancestor); `h-full` sizes it to the panel height.
+                className="relative min-h-0 h-full"
+              >
+                <ConversationViewer
+                  owner={owner}
+                  user={user}
+                  conversationId={conversation.sId}
+                  agentBuilderContext={agentBuilderContext}
+                  additionalMarkdownComponents={additionalMarkdownComponents}
+                  additionalMarkdownPlugins={additionalMarkdownPlugins}
+                  key={conversation.sId}
+                />
+              </DropzoneContainer>
+            </FileDropProvider>
           )}
         </div>
       </div>
