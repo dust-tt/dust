@@ -25,7 +25,7 @@ function isMembersManagementType(
 
 interface RestrictedAccessBodyProps {
   isManual: boolean;
-  planAllowsSCIM: boolean;
+  scimEnabled: boolean;
   managementType: MembersManagementType;
   owner: LightWorkspaceType;
   selectedMembers: SearchMemberType[];
@@ -38,7 +38,7 @@ interface RestrictedAccessBodyProps {
 
 export function RestrictedAccessBody({
   isManual,
-  planAllowsSCIM,
+  scimEnabled,
   managementType,
   owner,
   selectedMembers,
@@ -75,7 +75,7 @@ export function RestrictedAccessBody({
   };
 
   const handleManagementTypeChange = async (newManagementType: string) => {
-    if (!isMembersManagementType(newManagementType) || !planAllowsSCIM) {
+    if (!isMembersManagementType(newManagementType) || !scimEnabled) {
       return;
     }
 
@@ -120,7 +120,7 @@ export function RestrictedAccessBody({
 
   return (
     <>
-      {planAllowsSCIM && (
+      {scimEnabled && (
         <div className="flex flex-row items-center justify-between">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

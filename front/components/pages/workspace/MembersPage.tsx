@@ -6,6 +6,7 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
+import { isSCIMEnabled } from "@app/lib/plans/scim";
 import {
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
@@ -23,7 +24,7 @@ import {
 } from "@dust-tt/sparkle";
 
 export function MembersPage() {
-  const { hasFeature } = useFeatureFlags();
+  const { featureFlags, hasFeature } = useFeatureFlags();
   const isAdminGovernanceEnabled = hasFeature("admin_governance");
 
   const owner = useWorkspace();
@@ -43,7 +44,7 @@ export function MembersPage() {
 
   const hasVerifiedDomains = verifiedDomains.length > 0;
   const isProvisioningEnabled =
-    plan.limits.users.isSCIMAllowed && hasVerifiedDomains;
+    isSCIMEnabled(plan, featureFlags) && hasVerifiedDomains;
   const isManualInvitationsEnabled =
     owner.metadata?.disableManualInvitations !== true;
 

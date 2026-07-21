@@ -8,6 +8,8 @@ import {
   generateWorkOSAdminPortalUrl,
   getWorkOSOrganizationDSyncDirectories,
 } from "@app/lib/api/workos/organization";
+import { getFeatureFlags } from "@app/lib/auth";
+import { isSCIMEnabled } from "@app/lib/plans/scim";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -33,7 +35,8 @@ async function checkAccess(ctx: Context) {
   }
 
   const plan = auth.getNonNullablePlan();
-  if (!plan.limits.users.isSCIMAllowed) {
+  const featureFlags = await getFeatureFlags(auth);
+  if (!isSCIMEnabled(plan, featureFlags)) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {

@@ -3,7 +3,8 @@ import type { SearchMemberType } from "@app/components/members/MemberSelectionTa
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { isSCIMEnabled } from "@app/lib/plans/scim";
 import { useAppRouter } from "@app/lib/platform";
 import { useGroups } from "@app/lib/swr/groups";
 import {
@@ -68,14 +69,15 @@ export function CreateOrEditSpaceModal({
     useState<MembersManagementType>("manual");
   const [isDirty, setIsDirty] = useState(false);
 
-  const planAllowsSCIM = plan.limits.users.isSCIMAllowed;
+  const { featureFlags } = useFeatureFlags();
+  const scimEnabled = isSCIMEnabled(plan, featureFlags);
   const { user } = useAuth();
 
   useEffect(() => {
-    if (!planAllowsSCIM) {
+    if (!scimEnabled) {
       setManagementType("manual");
     }
-  }, [planAllowsSCIM]);
+  }, [scimEnabled]);
 
   const doCreate = useCreateSpace({ owner });
   const doUpdate = useUpdateSpace({ owner });
@@ -92,7 +94,7 @@ export function CreateOrEditSpaceModal({
   const { groups } = useGroups({
     owner,
     kinds: ["provisioned"],
-    disabled: !planAllowsSCIM,
+    disabled: !scimEnabled,
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -109,7 +111,7 @@ export function CreateOrEditSpaceModal({
 
       // Initialize selected groups based on space's groupIds (only if workos feature is enabled)
       if (
-        planAllowsSCIM &&
+        scimEnabled &&
         spaceInfo?.groupIds &&
         spaceInfo.groupIds.length > 0 &&
         groups
@@ -147,7 +149,7 @@ export function CreateOrEditSpaceModal({
     defaultRestricted,
     groups,
     isOpen,
-    planAllowsSCIM,
+    scimEnabled,
     setSpaceName,
     spaceInfo,
     user,
@@ -196,7 +198,7 @@ export function CreateOrEditSpaceModal({
     setIsSaving(true);
 
     if (space) {
-      if (planAllowsSCIM && managementType === "group") {
+      if (scimEnabled && managementType === "group") {
         await doUpdate(space, {
           isRestricted,
           groupIds: selectedGroups.map((group) => group.sId),
@@ -219,7 +221,7 @@ export function CreateOrEditSpaceModal({
     } else if (!space) {
       let createdSpace;
 
-      if (planAllowsSCIM && managementType === "group") {
+      if (scimEnabled && managementType === "group") {
         createdSpace = await doCreate({
           name: trimmedName,
           isRestricted,
@@ -258,7 +260,7 @@ export function CreateOrEditSpaceModal({
     spaceName,
     managementType,
     selectedGroups,
-    planAllowsSCIM,
+    scimEnabled,
   ]);
 
   const onDelete = useCallback(async () => {
@@ -307,7 +309,7 @@ export function CreateOrEditSpaceModal({
     isDirty,
     spaceName,
   ]);
-  const isManual = !planAllowsSCIM || managementType === "manual";
+  const isManual = !scimEnabled || managementType === "manual";
 
   const handleNameChange = useCallback((value: string) => {
     setSpaceName(value);
@@ -359,7 +361,7 @@ export function CreateOrEditSpaceModal({
             {isRestricted && (
               <RestrictedAccessBody
                 isManual={isManual}
-                planAllowsSCIM={planAllowsSCIM}
+                scimEnabled={scimEnabled}
                 managementType={managementType}
                 owner={owner}
                 selectedMembers={selectedMembers}

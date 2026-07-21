@@ -723,6 +723,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "activation_scheduler"
   | "activation_skill"
   | "advanced_notion_management"
+  | "allow_scim"
   | "allow_sso"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"

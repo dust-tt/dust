@@ -1,7 +1,8 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { GroupDialog } from "@app/components/groups/GroupDialog";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { isSCIMEnabled } from "@app/lib/plans/scim";
 import { useAppRouter } from "@app/lib/platform";
 import { useDeleteGroup, useGroups } from "@app/lib/swr/groups";
 import {
@@ -137,7 +138,8 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
 
   const router = useAppRouter();
   const { subscription } = useAuth();
-  const isScimAllowed = subscription.plan.limits.users.isSCIMAllowed;
+  const { featureFlags } = useFeatureFlags();
+  const isScimAllowed = isSCIMEnabled(subscription.plan, featureFlags);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editedGroupId, setEditedGroupId] = useState<string | null>(null);
