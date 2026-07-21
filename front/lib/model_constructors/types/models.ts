@@ -1,3 +1,5 @@
+import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+
 export const GPT_5_6_SOL = "gpt-5.6-sol" as const;
 export const GPT_5_6_TERRA = "gpt-5.6-terra" as const;
 export const GPT_5_6_LUNA = "gpt-5.6-luna" as const;
@@ -94,8 +96,12 @@ const OPENAI_EXPLICIT_PROMPT_CACHING_MODELS: readonly Model[] = [
   GPT_5_6_LUNA,
 ];
 
-export function supportsOpenAIExplicitPromptCaching(model: Model): boolean {
-  return OPENAI_EXPLICIT_PROMPT_CACHING_MODELS.includes(model);
+export function supportsOpenAIExplicitPromptCaching(
+  model: OpenAIWhitelistedModelId | Model
+): boolean {
+  return OPENAI_EXPLICIT_PROMPT_CACHING_MODELS.some(
+    (supportedModel) => supportedModel === model
+  );
 }
 
 export const ORDERED_LARGE_MODELS = [
