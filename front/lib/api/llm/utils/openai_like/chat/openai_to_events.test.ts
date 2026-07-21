@@ -13,7 +13,7 @@ const metadata = {
 type ChunkDelta = ChatCompletionChunk["choices"][number]["delta"];
 type ChunkFinishReason =
   ChatCompletionChunk["choices"][number]["finish_reason"];
-type ChunkUsage = ChatCompletionChunk["usage"];
+type ChunkUsage = NonNullable<ChatCompletionChunk["usage"]>;
 
 function makeChunk({
   delta,
@@ -394,6 +394,39 @@ describe("streamLLMEvents", () => {
         outputTokens: 4,
         totalTokens: 7,
         cachedTokens: undefined,
+      },
+      metadata,
+    });
+  });
+
+  it("splits standard input, cache reads, and cache writes", async () => {
+    const result = [];
+    const usage: ChunkUsage = {
+      prompt_tokens: 2006,
+      completion_tokens: 300,
+      total_tokens: 2306,
+      prompt_tokens_details: {
+        cached_tokens: 1200,
+        cache_write_tokens: 720,
+      },
+    };
+
+    for await (const event of streamLLMEvents(
+      createAsyncGenerator([makeUsageChunk(usage)]),
+      metadata
+    )) {
+      result.push(event);
+    }
+
+    expect(result.find((event) => event.type === "token_usage")).toEqual({
+      type: "token_usage",
+      content: {
+        inputTokens: 2006,
+        outputTokens: 300,
+        totalTokens: 2306,
+        cachedTokens: 1200,
+        cacheCreationTokens: 720,
+        uncachedInputTokens: 86,
       },
       metadata,
     });

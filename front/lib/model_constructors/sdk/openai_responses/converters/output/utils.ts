@@ -196,18 +196,19 @@ export function usageToTokenUsageEvent(
   usage: ResponseUsage
 ): TokenUsageEvent {
   const cacheHit = usage.input_tokens_details?.cached_tokens ?? 0;
+  const cacheCreated = usage.input_tokens_details?.cache_write_tokens ?? 0;
   const reasoning = usage.output_tokens_details?.reasoning_tokens ?? 0;
   return {
     type: "token_usage",
     content: {
-      // OpenAI prompt caching has no separate creation cost, nor per-TTL
-      // buckets.
-      cacheCreated: 0,
+      // OpenAI reports a flat cache write total without TTL buckets.
+      cacheCreated,
       longCacheCreated: 0,
       shortCacheCreated: 0,
       cacheHit,
-      // input_tokens includes cached; subtract to get the uncached portion.
-      standardInput: usage.input_tokens - cacheHit,
+      // input_tokens includes cache reads and writes. Subtract both to get
+      // standard input.
+      standardInput: Math.max(0, usage.input_tokens - cacheHit - cacheCreated),
       standardOutput: usage.output_tokens - reasoning,
       reasoning,
     },

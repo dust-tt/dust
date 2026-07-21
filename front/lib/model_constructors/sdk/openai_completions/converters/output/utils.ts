@@ -39,17 +39,22 @@ function usageToTokenUsageEvent(
   usage: ChatCompletionChunk["usage"]
 ): TokenUsageEvent {
   const cacheHit = usage?.prompt_tokens_details?.cached_tokens ?? 0;
+  const cacheCreated = usage?.prompt_tokens_details?.cache_write_tokens ?? 0;
   const reasoning = usage?.completion_tokens_details?.reasoning_tokens ?? 0;
   return {
     type: "token_usage",
     content: {
-      // OpenAI-style prompt caching has no separate creation cost or TTL buckets.
-      cacheCreated: 0,
+      // OpenAI usage reports a flat cache write total without TTL buckets.
+      cacheCreated,
       longCacheCreated: 0,
       shortCacheCreated: 0,
       cacheHit,
-      // prompt_tokens includes cached; subtract to get the uncached portion.
-      standardInput: (usage?.prompt_tokens ?? 0) - cacheHit,
+      // prompt_tokens includes cache reads and writes. Subtract both to get
+      // standard input.
+      standardInput: Math.max(
+        0,
+        (usage?.prompt_tokens ?? 0) - cacheHit - cacheCreated
+      ),
       standardOutput: (usage?.completion_tokens ?? 0) - reasoning,
       reasoning,
     },
