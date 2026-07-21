@@ -24,8 +24,18 @@ app.post("/", async (ctx): HandlerResult<PostPendingAgentResponseBody> => {
     });
   }
 
-  const { sId } = await createPendingAgentConfiguration(auth);
-  return ctx.json({ sId });
+  const pendingAgentRes = await createPendingAgentConfiguration(auth);
+  if (pendingAgentRes.isErr()) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "assistant_saving_error",
+        message: `Error creating agent: ${pendingAgentRes.error.message}`,
+      },
+    });
+  }
+
+  return ctx.json({ sId: pendingAgentRes.value.sId });
 });
 
 export default app;
