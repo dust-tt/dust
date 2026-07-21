@@ -12,7 +12,7 @@ export function WithDustGptFiveDotFourNanoConfig<
     static readonly defaultReasoningEffort = "none";
     static readonly byok = true;
     // The Responses API rejects an explicit temperature while reasoning is on.
-    static readonly parseConfig = dropTemperatureWhenReasoning;
+    static readonly configParsers = [dropTemperatureWhenReasoning];
   }
 
   return DustGptFiveDotFourNano;

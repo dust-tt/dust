@@ -15,17 +15,18 @@ export type DustStreamEndpointConfiguration<C extends InputConfig> =
     // Behavior
     defaultReasoningEffort: ReasoningEffortOf<C>;
 
-    // Adjusts the config before it is validated by the endpoint's schema.
-    // Omitted means identity; override per endpoint for provider quirks — e.g.
-    // dropping a non-default temperature when reasoning is active, which some
-    // schemas reject outright (Anthropic requires temperature=1 with thinking).
-    parseConfig?: (config: InputConfig) => InputConfig;
+    // Parsers applied in order to the config before it is validated by the
+    // endpoint's schema. Omitted means identity; override per endpoint for
+    // provider quirks — e.g. dropping a non-default temperature when reasoning is
+    // active, which some schemas reject outright (Anthropic requires
+    // temperature=1 with thinking).
+    configParsers?: Array<(config: InputConfig) => InputConfig>;
 
     // Filter
     endpointFilter: Where<WorkspaceConfig>;
   };
 
-// `parseConfig` helper: some providers reject any explicit temperature while
+// `configParsers` helper: some providers reject any explicit temperature while
 // reasoning is active, so drop it when reasoning is on. Providers that require a
 // specific value (e.g. Anthropic's temperature=1) re-apply it via their schema
 // default. Temperature is preserved when reasoning is off.
@@ -39,14 +40,30 @@ export function dropTemperatureWhenReasoning<C extends InputConfig>(
   return config;
 }
 
-// `parseConfig` helper: some models reject an explicit temperature outright,
+// `configParsers` helper: Anthropic rejects an explicit temperature=1 while
+// thinking is disabled ("temperature may only be set to 1 when thinking is
+// enabled or in adaptive mode"). When reasoning is off, drop a temperature of
+// exactly 1 so we fall back to the provider default; other values pass through.
+// Used by Opus 4.6, which — unlike 4.7/4.8 — accepts a caller-supplied
+// temperature.
+export function dropTemperatureOfOneWhenReasoningIsNone<C extends InputConfig>(
+  config: C
+): C {
+  if (config.reasoning?.effort !== "none" || config.temperature !== 1) {
+    return config;
+  }
+
+  return { ...config, temperature: undefined };
+}
+
+// `configParsers` helper: some models reject an explicit temperature outright,
 // regardless of reasoning effort (e.g. the OpenAI gpt-5 / gpt-5-mini / gpt-5-nano
 // / gpt-5.1 Responses models). Always drop it.
 export function dropTemperature<C extends InputConfig>(config: C): C {
   return { ...config, temperature: undefined };
 }
 
-// `parseConfig` helper: non-reasoning models reject `reasoning_effort`, so drop
+// `configParsers` helper: non-reasoning models reject `reasoning_effort`, so drop
 // the reasoning field before validation (their schemas require it undefined).
 export function dropReasoning<C extends InputConfig>(config: C): C {
   return { ...config, reasoning: undefined };

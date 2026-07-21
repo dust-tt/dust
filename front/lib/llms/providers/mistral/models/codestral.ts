@@ -15,7 +15,7 @@ export function WithDustMistralCodestralConfig<
     static readonly maxOutputTokens = 2_048;
     static readonly byok = true;
     // Non-reasoning model: drop the reasoning effort the schema rejects.
-    static readonly parseConfig = dropReasoning;
+    static readonly configParsers = [dropReasoning];
   }
 
   return DustMistralCodestral;

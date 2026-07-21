@@ -1,3 +1,5 @@
+import { dropTemperatureOfOneWhenReasoningIsNone } from "@app/lib/llms/stream/types/configuration";
+
 export function WithDustClaudeOpusFourDotSixConfig<
   TBase extends abstract new (
     ...args: any[]
@@ -13,6 +15,9 @@ export function WithDustClaudeOpusFourDotSixConfig<
     // Dust caps output at 64k; the model itself supports 128k.
     static readonly maxOutputTokens = 64_000;
     static readonly byok = true;
+    // Opus 4.6 accepts a caller-supplied temperature, but Anthropic rejects
+    // temperature=1 while thinking is disabled; drop it in that case only.
+    static readonly configParsers = [dropTemperatureOfOneWhenReasoningIsNone];
   }
 
   return DustClaudeOpusFourDotSix;

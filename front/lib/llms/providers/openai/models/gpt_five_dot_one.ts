@@ -12,7 +12,7 @@ export function WithDustGptFiveDotOneConfig<
     static readonly defaultReasoningEffort = "none";
     static readonly byok = true;
     // The Responses API rejects an explicit temperature for this model.
-    static readonly parseConfig = dropTemperature;
+    static readonly configParsers = [dropTemperature];
   }
 
   return DustGptFiveDotOne;

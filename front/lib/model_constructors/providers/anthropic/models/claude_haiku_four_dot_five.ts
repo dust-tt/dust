@@ -25,7 +25,7 @@ const configSchema = z.union([
   }),
   baseConfig.extend({
     reasoning: z.object({ effort: z.literal("none") }),
-    temperature: temperatureSchema.optional().default(1),
+    temperature: temperatureSchema.optional(),
   }),
 ]);
 
