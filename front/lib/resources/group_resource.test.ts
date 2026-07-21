@@ -74,6 +74,7 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   BUILDER_GROUP_NAME,
   GroupResource,
+  MANUAL_BUILDERS_GROUP_NAME,
 } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -870,7 +871,7 @@ describe("GroupResource", () => {
   });
 
   describe("syncBuilderGroupMembership", () => {
-    it("creates a regular_auto dust-builders group with the user when they become a builder", async () => {
+    it("creates a regular_manual Builders group with the user when they become a builder", async () => {
       await GroupResource.syncBuilderGroupMembership({
         workspace,
         user,
@@ -879,10 +880,10 @@ describe("GroupResource", () => {
 
       const group = await GroupResource.fetchByName(
         authenticator,
-        BUILDER_GROUP_NAME
+        MANUAL_BUILDERS_GROUP_NAME
       );
       expect(group).not.toBeNull();
-      expect(group?.kind).toBe("regular_auto");
+      expect(group?.kind).toBe("regular_manual");
 
       const members = await group?.getActiveMembers(authenticator);
       expect(members?.map((m) => m.id)).toEqual([user.id]);
@@ -897,16 +898,16 @@ describe("GroupResource", () => {
 
       const group = await GroupResource.fetchByName(
         authenticator,
-        BUILDER_GROUP_NAME
+        MANUAL_BUILDERS_GROUP_NAME
       );
       expect(group).toBeNull();
     });
 
     it("adds then removes the user as the builder role comes and goes", async () => {
       const group = await GroupResource.makeNew({
-        name: BUILDER_GROUP_NAME,
+        name: MANUAL_BUILDERS_GROUP_NAME,
         workspaceId: workspace.id,
-        kind: "regular_auto",
+        kind: "regular_manual",
       });
 
       await GroupResource.syncBuilderGroupMembership({
@@ -940,7 +941,7 @@ describe("GroupResource", () => {
 
       const group = await GroupResource.fetchByName(
         authenticator,
-        BUILDER_GROUP_NAME
+        MANUAL_BUILDERS_GROUP_NAME
       );
       const membershipCount = await GroupMembershipModel.count({
         where: {
@@ -965,8 +966,26 @@ describe("GroupResource", () => {
       expect(members).toEqual([]);
     });
 
-    it("leaves provisioned dust-builders groups untouched", async () => {
+    it("leaves a provisioned group squatting the name untouched", async () => {
       const group = await GroupResource.makeNew({
+        name: MANUAL_BUILDERS_GROUP_NAME,
+        workspaceId: workspace.id,
+        kind: "provisioned",
+        workOSGroupId: "workos-group-builders",
+      });
+
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+      });
+
+      const members = await group.getActiveMembers(authenticator);
+      expect(members).toEqual([]);
+    });
+
+    it("coexists with a provisioned dust-builders group", async () => {
+      const provisionedGroup = await GroupResource.makeNew({
         name: BUILDER_GROUP_NAME,
         workspaceId: workspace.id,
         kind: "provisioned",
@@ -979,8 +998,17 @@ describe("GroupResource", () => {
         isBuilder: true,
       });
 
-      const members = await group.getActiveMembers(authenticator);
-      expect(members).toEqual([]);
+      const manualGroup = await GroupResource.fetchByName(
+        authenticator,
+        MANUAL_BUILDERS_GROUP_NAME
+      );
+      expect(manualGroup?.kind).toBe("regular_manual");
+      const members = await manualGroup?.getActiveMembers(authenticator);
+      expect(members?.map((m) => m.id)).toEqual([user.id]);
+
+      const provisionedMembers =
+        await provisionedGroup.getActiveMembers(authenticator);
+      expect(provisionedMembers).toEqual([]);
     });
   });
 });

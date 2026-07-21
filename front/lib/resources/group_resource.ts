@@ -57,6 +57,10 @@ import { col, fn, Op, QueryTypes, UniqueConstraintError } from "sequelize";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const BUILDER_GROUP_NAME = "dust-builders";
+// User-facing name of the manual builders group synced from the builder role (see
+// syncBuilderGroupMembership). Distinct from BUILDER_GROUP_NAME: workspaces provisioning
+// builders via SCIM keep their "dust-builders" IdP group alongside this one.
+export const MANUAL_BUILDERS_GROUP_NAME = "Builders";
 
 /**
  * ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -2581,18 +2585,20 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Transitional — builder role deprecation, see
    * https://github.com/dust-tt/tasks/issues/9459.
    *
-   * Keeps a per-workspace "dust-builders" group in sync with the `builder` role so that when
-   * the role is removed, the group can be granted the builders' governance capabilities
-   * (create agents / skills) and former builders keep their rights. Until then the role is
-   * the source of truth: the group is created lazily with kind `regular_auto`, which keeps it
-   * out of user-facing group management. Once the role is removed, membership will be managed
-   * through the members UI in place of role assignment — no new "dust-builders" groups are
-   * meant to be created past that point.
+   * Keeps a per-workspace "Builders" group (`regular_manual`) in sync with the `builder`
+   * role so that when the role is removed, the group can be granted the builders' governance
+   * capabilities (create agents / skills) and former builders keep their rights. Until then
+   * the role is the source of truth: the group is created lazily and manual edits may be
+   * undone by the sync. Once the role is removed, the sync goes away and the group becomes
+   * fully admin-managed.
+   *
+   * The group is deliberately independent from SCIM provisioning: provisioned
+   * "dust-builders" groups proved unreliable (drifted membership, stale groups after
+   * deprovisioning). Workspaces provisioning builders get both groups — IdP changes flow
+   * through role assignment, which keeps this group in sync automatically.
    *
    * Idempotent ensure-state semantics: after the call, the user's active membership in the
-   * group matches `isBuilder`. Workspaces where "dust-builders" is a provisioned group are
-   * skipped: the IdP group is then synced via SCIM and is itself what grants the builder
-   * role.
+   * group matches `isBuilder`.
    *
    * Callers must invoke this after every membership write that can involve the builder role
    * (role change, membership creation, revocation) — see the `lib/api/membership.ts`
@@ -2608,7 +2614,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     isBuilder: boolean;
   }): Promise<void> {
     let group = await GroupModel.findOne({
-      where: { workspaceId: workspace.id, name: BUILDER_GROUP_NAME },
+      where: { workspaceId: workspace.id, name: MANUAL_BUILDERS_GROUP_NAME },
     });
 
     if (!group) {
@@ -2618,8 +2624,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       try {
         await GroupResource.makeNew(
           {
-            name: BUILDER_GROUP_NAME,
-            kind: "regular_auto",
+            name: MANUAL_BUILDERS_GROUP_NAME,
+            kind: "regular_manual",
             workspaceId: workspace.id,
           },
           { memberIds: [user.id] }
@@ -2633,16 +2639,22 @@ export class GroupResource extends BaseResource<GroupModel> {
           throw err;
         }
         group = await GroupModel.findOne({
-          where: { workspaceId: workspace.id, name: BUILDER_GROUP_NAME },
+          where: {
+            workspaceId: workspace.id,
+            name: MANUAL_BUILDERS_GROUP_NAME,
+          },
         });
-        assert(
-          group,
-          "dust-builders group missing after unique constraint error"
-        );
+        assert(group, "Builders group missing after unique constraint error");
       }
     }
 
     if (group.kind === "provisioned") {
+      // An IdP group squats the name: never mutate provisioned membership. The nightly
+      // consistency check will surface the blocked sync.
+      logger.warn(
+        { workspaceId: workspace.id, groupId: group.id },
+        "Builders group name taken by a provisioned group; skipping builder group sync"
+      );
       return;
     }
 

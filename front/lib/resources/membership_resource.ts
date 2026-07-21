@@ -1193,7 +1193,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   // Use `revokeAndTrackMembership` from `@app/lib/api/membership` instead which
-  // handles tracking, usage updates and the dust-builders group sync (builder
+  // handles tracking, usage updates and the builders group sync (builder
   // role deprecation).
   static async revokeMembership({
     user,
