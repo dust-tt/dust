@@ -2,6 +2,7 @@ import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/t
 import {
   OPENAI_PROVIDER_ID,
   overwriteLLMParameters,
+  supportsOpenAIExplicitPromptCaching,
 } from "@app/lib/api/llm/clients/openai/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import type {
@@ -32,7 +33,6 @@ import {
   streamLLMEvents,
 } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
-import { supportsOpenAIExplicitPromptCaching } from "@app/lib/model_constructors/types/models";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

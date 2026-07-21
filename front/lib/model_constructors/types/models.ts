@@ -1,5 +1,3 @@
-import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
-
 export const GPT_5_6_SOL = "gpt-5.6-sol" as const;
 export const GPT_5_6_TERRA = "gpt-5.6-terra" as const;
 export const GPT_5_6_LUNA = "gpt-5.6-luna" as const;
@@ -86,22 +84,6 @@ export type Model = (typeof MODELS)[number];
 
 export function isModel(value: string): value is Model {
   return (MODELS as readonly string[]).includes(value);
-}
-
-// Models older than 5.6 do not support explicit cache breakpoints.
-// https://developers.openai.com/api/docs/guides/prompt-caching#prompt-cache-breakpoints
-const OPENAI_EXPLICIT_PROMPT_CACHING_MODELS: readonly Model[] = [
-  GPT_5_6_SOL,
-  GPT_5_6_TERRA,
-  GPT_5_6_LUNA,
-];
-
-export function supportsOpenAIExplicitPromptCaching(
-  model: OpenAIWhitelistedModelId | Model
-): boolean {
-  return OPENAI_EXPLICIT_PROMPT_CACHING_MODELS.some(
-    (supportedModel) => supportedModel === model
-  );
 }
 
 export const ORDERED_LARGE_MODELS = [

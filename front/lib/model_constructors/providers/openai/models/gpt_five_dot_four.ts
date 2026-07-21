@@ -45,6 +45,11 @@ export function WithOpenAIGptFiveDotFourConfig<
 
     static readonly contextSize = CONTEXT_SIZE;
     static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
+
+    // This model rejects explicit prompt cache breakpoints, which are only
+    // supported starting with GPT-5.6.
+    // https://developers.openai.com/api/docs/guides/prompt-caching#prompt-cache-breakpoints
+    promptCacheBreakpointFor = () => ({});
   }
 
   return OpenAIGptFiveDotFour;

@@ -4,9 +4,9 @@ import {
   assistantTextMessageToInputItem,
   assistantToolCallRequestToInputItem,
   toolSpecsToOpenAITools,
-  userTextMessageToInputItem,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
-import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
+import { OpenAIGptFiveDotFourGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_four_global_openai_responses";
+import { OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_sol_global_openai_responses";
 import type {
   BaseAssistantProviderPassthroughMessage,
   BaseAssistantReasoningMessage,
@@ -14,7 +14,6 @@ import type {
   BaseAssistantToolCallRequestMessage,
   BaseUserTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
-import { GPT_5_4, GPT_5_6_SOL } from "@app/lib/model_constructors/types/models";
 import { describe, expect, it } from "vitest";
 
 describe("assistantTextMessageToInputItem", () => {
@@ -52,57 +51,77 @@ describe("prompt cache breakpoints", () => {
     content: { value: "Available skills" },
     cache: "short",
   };
-  const metadata: EndpointMetadata = {
-    lab: "openai",
-    host: "openai-responses",
-    region: "us",
-    model: GPT_5_6_SOL,
-  };
-
-  it("serializes a cache marker when explicit prompt caching is supported", () => {
-    expect(userTextMessageToInputItem(message, metadata)).toEqual({
-      role: "user",
-      content: [
-        {
-          type: "input_text",
-          text: "Available skills",
-          prompt_cache_breakpoint: { mode: "explicit" },
-        },
-      ],
+  const supportedEndpoint =
+    new OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream({
+      OPENAI_API_KEY: "",
     });
+  const unsupportedEndpoint =
+    new OpenAIGptFiveDotFourGlobalOpenAIResponsesStream({
+      OPENAI_API_KEY: "",
+    });
+  const conversationWith = (userMessage: BaseUserTextMessage) => ({
+    system: [],
+    messages: [userMessage],
+  });
+
+  it("serializes a cache marker with the default endpoint converter", () => {
+    expect(
+      supportedEndpoint.conversationToInput(conversationWith(message))
+    ).toEqual([
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: "Available skills",
+            prompt_cache_breakpoint: { mode: "explicit" },
+          },
+        ],
+      },
+    ]);
   });
 
   it("maps long cache opt-in to the request-wide breakpoint", () => {
     expect(
-      userTextMessageToInputItem({ ...message, cache: "long" }, metadata)
-    ).toEqual({
-      role: "user",
-      content: [
-        {
-          type: "input_text",
-          text: "Available skills",
-          prompt_cache_breakpoint: { mode: "explicit" },
-        },
-      ],
-    });
+      supportedEndpoint.conversationToInput(
+        conversationWith({ ...message, cache: "long" })
+      )
+    ).toEqual([
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: "Available skills",
+            prompt_cache_breakpoint: { mode: "explicit" },
+          },
+        ],
+      },
+    ]);
   });
 
-  it("does not serialize a cache marker for older models", () => {
+  it("uses the endpoint override for models without explicit caching", () => {
     expect(
-      userTextMessageToInputItem(message, { ...metadata, model: GPT_5_4 })
-    ).toEqual({
-      role: "user",
-      content: [{ type: "input_text", text: "Available skills" }],
-    });
+      unsupportedEndpoint.conversationToInput(conversationWith(message))
+    ).toEqual([
+      {
+        role: "user",
+        content: [{ type: "input_text", text: "Available skills" }],
+      },
+    ]);
   });
 
   it("does not serialize a cache marker when the message has not opted in", () => {
     expect(
-      userTextMessageToInputItem({ ...message, cache: undefined }, metadata)
-    ).toEqual({
-      role: "user",
-      content: [{ type: "input_text", text: "Available skills" }],
-    });
+      supportedEndpoint.conversationToInput(
+        conversationWith({ ...message, cache: undefined })
+      )
+    ).toEqual([
+      {
+        role: "user",
+        content: [{ type: "input_text", text: "Available skills" }],
+      },
+    ]);
   });
 });
 

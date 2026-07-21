@@ -2,7 +2,6 @@ import {
   OPENAI_TOOL_SEARCH_TOOL,
   parseOpenAIToolSearchItem,
 } from "@app/lib/api/llm/clients/openai/utils/tool_search_passthrough";
-import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   OutputFormat,
   Reasoning,
@@ -23,7 +22,6 @@ import type {
   CacheOption,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
-import { supportsOpenAIExplicitPromptCaching } from "@app/lib/model_constructors/types/models";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   FunctionTool,
@@ -35,12 +33,19 @@ import type {
 } from "openai/resources/responses/responses";
 import type { Reasoning as OpenAIReasoning } from "openai/resources/shared";
 
+type PromptCacheBreakpoint =
+  | {
+      prompt_cache_breakpoint: NonNullable<
+        ResponseInputText["prompt_cache_breakpoint"]
+      >;
+    }
+  | Record<string, never>;
+
 // The per-message leaf converters. Composites below take an object satisfying
 // this interface (`this`), so overriding one leaf on an endpoint changes how
 // every composite uses it.
 export interface MessageItemConverters {
   systemMessageToInputItem(message: SystemTextMessage): ResponseInputItem;
-  userTextMessageToInputItem(message: BaseUserTextMessage): ResponseInputItem;
   userImageMessageToInputItem(message: BaseUserImageMessage): ResponseInputItem;
   toolCallResultMessageToInputItem(
     message: BaseToolCallResultMessage
@@ -57,6 +62,9 @@ export interface MessageItemConverters {
   assistantProviderPassthroughMessageToInputItems(
     message: BaseAssistantProviderPassthroughMessage
   ): ResponseInputItem[];
+  promptCacheBreakpointFor(
+    cache: CacheOption | undefined
+  ): PromptCacheBreakpoint;
 }
 
 // -- Small, reusable building blocks --
@@ -65,24 +73,15 @@ export interface MessageItemConverters {
 // in and the model supports it. OpenAI applies one request-wide TTL, so both
 // cache durations map to the same wire representation.
 export function promptCacheBreakpointFor(
-  cache: CacheOption | undefined,
-  metadata: EndpointMetadata
-):
-  | {
-      prompt_cache_breakpoint: NonNullable<
-        ResponseInputText["prompt_cache_breakpoint"]
-      >;
-    }
-  | Record<string, never> {
+  cache: CacheOption | undefined
+): PromptCacheBreakpoint {
   switch (cache) {
     case "short":
     case "long":
-      return supportsOpenAIExplicitPromptCaching(metadata.model)
-        ? // Link to the doc: https://developers.openai.com/api/docs/guides/prompt-caching
-          // We can create up to 4 new cache writes (i.e. 4 cache breakpoints).
-          // We can't control the TTL, it's set to 30min (they may change this in the future).
-          { prompt_cache_breakpoint: { mode: "explicit" } }
-        : {};
+      // Link to the doc: https://developers.openai.com/api/docs/guides/prompt-caching
+      // We can create up to 4 new cache writes (i.e. 4 cache breakpoints).
+      // We can't control the TTL, it's set to 30min (they may change this in the future).
+      return { prompt_cache_breakpoint: { mode: "explicit" } };
     case undefined:
       return {};
     default:
@@ -104,7 +103,7 @@ export function systemMessageToInputItem(
 
 export function userTextMessageToInputItem(
   message: BaseUserTextMessage,
-  metadata: EndpointMetadata
+  converters: MessageItemConverters
 ): ResponseInputItem {
   return {
     role: "user",
@@ -112,7 +111,7 @@ export function userTextMessageToInputItem(
       {
         type: "input_text",
         text: message.content.value,
-        ...promptCacheBreakpointFor(message.cache, metadata),
+        ...converters.promptCacheBreakpointFor(message.cache),
       },
     ],
   };
@@ -217,7 +216,7 @@ export function userMessageToInputItems(
 ): ResponseInputItem[] {
   switch (message.type) {
     case "text":
-      return [converters.userTextMessageToInputItem(message)];
+      return [userTextMessageToInputItem(message, converters)];
     case "image_url":
       return [converters.userImageMessageToInputItem(message)];
     case "tool_call_result":
