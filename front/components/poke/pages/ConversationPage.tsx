@@ -1024,59 +1024,61 @@ export function ConversationPage() {
               workspace: owner,
             }}
           />
-          <div className="flex space-x-2">
-            {langfuseUiBaseUrl && (
+          <div className="flex flex-col items-start gap-2">
+            <div className="flex flex-wrap gap-2">
+              {langfuseUiBaseUrl && (
+                <Button
+                  href={`${langfuseUiBaseUrl}/traces?filter=metadata%3BstringObject%3BconversationId%3B%3D%3B${conversationId}`}
+                  label="Langfuse Traces"
+                  variant="primary"
+                  size="xs"
+                  target="_blank"
+                />
+              )}
               <Button
-                href={`${langfuseUiBaseUrl}/traces?filter=metadata%3BstringObject%3BconversationId%3B%3D%3B${conversationId}`}
-                label="Langfuse Traces"
+                href={`http://go/trace-conversation/${conversation.sId}`}
+                label="Trace Conversation"
                 variant="primary"
                 size="xs"
                 target="_blank"
               />
-            )}
-            <Button
-              href={`http://go/trace-conversation/${conversation.sId}`}
-              label="Trace Conversation"
-              variant="primary"
-              size="xs"
-              target="_blank"
-            />
-            <Button
-              href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=%60conversationId%60%3D"${conversationId}"`}
-              label="Temporal Workflows"
-              variant="primary"
-              size="xs"
-              target="_blank"
-            />
-            <Button
-              href={getDatadogSandboxLogsUrl(conversationId)}
-              label="Sandbox Logs"
-              variant="primary"
-              size="xs"
-              target="_blank"
-            />
-            <Button
-              href={`/poke/${owner.sId}/data_sources/${conversationDataSourceId}`}
-              label="Conversation DS"
-              variant="primary"
-              size="xs"
-              target="_blank"
-              disabled={!conversationDataSourceId}
-            />
-            <Button
-              label={useMarkdown ? "Plain Text" : "Preview Markdown"}
-              variant="outline"
-              size="xs"
-              icon={useMarkdown ? DocumentTextIcon : CodeBracketIcon}
-              onClick={() => setUseMarkdown(!useMarkdown)}
-            />
-            <Button
-              label="Self-improving skills test"
-              variant="primary"
-              size="xs"
-              onClick={() => void copyTestCase()}
-              disabled={isTestCaseLoading}
-            />
+              <Button
+                href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=%60conversationId%60%3D"${conversationId}"`}
+                label="Temporal Workflows"
+                variant="primary"
+                size="xs"
+                target="_blank"
+              />
+              <Button
+                href={getDatadogSandboxLogsUrl(conversationId)}
+                label="Sandbox Logs"
+                variant="primary"
+                size="xs"
+                target="_blank"
+              />
+              <Button
+                href={`/poke/${owner.sId}/data_sources/${conversationDataSourceId}`}
+                label="Conversation DS"
+                variant="primary"
+                size="xs"
+                target="_blank"
+                disabled={!conversationDataSourceId}
+              />
+              <Button
+                label={useMarkdown ? "Plain Text" : "Preview Markdown"}
+                variant="outline"
+                size="xs"
+                icon={useMarkdown ? DocumentTextIcon : CodeBracketIcon}
+                onClick={() => setUseMarkdown(!useMarkdown)}
+              />
+              <Button
+                label="Self-improving skills test"
+                variant="primary"
+                size="xs"
+                onClick={() => void copyTestCase()}
+                disabled={isTestCaseLoading}
+              />
+            </div>
             <div
               role="group"
               aria-label="Render conversation controls"
