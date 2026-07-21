@@ -167,7 +167,7 @@ export const ZENDESK_SERVER = {
       "Access and manage support tickets, help center, and customer interactions.",
     authorization: {
       provider: "zendesk" as const,
-      supported_use_cases: ["platform_actions"] as const,
+      supported_use_cases: ["platform_actions", "personal_actions"] as const,
     },
     icon: "ZendeskLogo",
     documentationUrl: null,
