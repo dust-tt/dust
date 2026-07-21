@@ -15,6 +15,7 @@ import {
   getModelWithReasoningEffortKey,
   getModelWithReasoningEffortLabel,
   getSelectableReasoningEfforts,
+  getSelectionIdentityKey,
   resolveDefaultSelection,
   resolveTiers,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
@@ -150,6 +151,38 @@ export function InputBarModelPicker({
       ),
     });
   };
+
+  // The selection we revert to: the agent default (or Auto), ignoring any user
+  // or sticky override. Reverting clears both, landing back here.
+  const pureDefaultSelection = useMemo(
+    () =>
+      resolveDefaultSelection({
+        agentModel,
+        lastRequestedModel,
+        sessionSticky: null,
+        models,
+      }),
+    [agentModel, lastRequestedModel, models]
+  );
+
+  // There is something to revert whenever the shown selection differs from the
+  // default.
+  const canRevert =
+    getSelectionIdentityKey(shown) !==
+    getSelectionIdentityKey(pureDefaultSelection);
+
+  const revertToDefault = () => {
+    setUserOverride(null);
+    setStickyModelOverride(undefined);
+  };
+
+  // Which rows carry the "(Default)" marker. When the default maps to a tier we
+  // mark that tier; otherwise we mark its model line in "More models".
+  const defaultTier = getMatchingTier(pureDefaultSelection);
+  const defaultModelKey =
+    !defaultTier && pureDefaultSelection.kind !== "auto"
+      ? getSelectionIdentityKey(pureDefaultSelection)
+      : undefined;
 
   // Keep the parent's send-time selection in sync. `onSelectionChange` only
   // stashes the value in a parent ref, so this triggers no parent re-render.
@@ -297,6 +330,10 @@ export function InputBarModelPicker({
         selectedTierId={matchingTier?.id ?? null}
         onSelectTier={selectTier}
         onSelectModel={selectModel}
+        canRevert={canRevert}
+        onRevert={revertToDefault}
+        defaultTierId={defaultTier?.id ?? null}
+        defaultModelKey={defaultModelKey}
         search={search}
         onSearchChange={setSearch}
         filteredModels={filteredModels}

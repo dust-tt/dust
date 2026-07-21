@@ -4,15 +4,15 @@ import type {
   ModelWithReasoningEffort,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelWithReasoningEffortKey } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import {
-  DropdownMenuRadioGroup,
-  DropdownMenuSeparator,
-} from "@dust-tt/sparkle";
+import { DropdownMenuSeparator } from "@dust-tt/sparkle";
 import { Fragment } from "react";
 
 interface ModelPickerProviderSectionProps {
   maker: MakerGroup;
   selectedKey?: string;
+  defaultModelKey?: string;
+  canRevert: boolean;
+  onRevert: () => void;
   isMobile: boolean;
   onSelect: (modelWithEffort: ModelWithReasoningEffort) => void;
 }
@@ -24,6 +24,9 @@ interface ModelPickerProviderSectionProps {
 export function ModelPickerProviderSection({
   maker,
   selectedKey,
+  defaultModelKey,
+  canRevert,
+  onRevert,
   isMobile,
   onSelect,
 }: ModelPickerProviderSectionProps) {
@@ -32,23 +35,25 @@ export function ModelPickerProviderSection({
       {maker.models.map((entry, index) => (
         <Fragment key={entry.model.modelId}>
           {index > 0 && <DropdownMenuSeparator />}
-          <DropdownMenuRadioGroup value={selectedKey}>
-            {entry.efforts.map((effort) => {
-              const modelWithEffort = { model: entry.model, effort };
-              return (
-                <ModelPickerLineItem
-                  key={getModelWithReasoningEffortKey(
-                    entry.model.providerId,
-                    entry.model.modelId,
-                    effort
-                  )}
-                  modelWithEffort={modelWithEffort}
-                  isMobile={isMobile}
-                  onSelect={onSelect}
-                />
-              );
-            })}
-          </DropdownMenuRadioGroup>
+          {entry.efforts.map((effort) => {
+            const modelWithEffort = { model: entry.model, effort };
+            return (
+              <ModelPickerLineItem
+                key={getModelWithReasoningEffortKey(
+                  entry.model.providerId,
+                  entry.model.modelId,
+                  effort
+                )}
+                modelWithEffort={modelWithEffort}
+                isMobile={isMobile}
+                selectedKey={selectedKey}
+                defaultModelKey={defaultModelKey}
+                canRevert={canRevert}
+                onRevert={onRevert}
+                onSelect={onSelect}
+              />
+            );
+          })}
         </Fragment>
       ))}
     </>

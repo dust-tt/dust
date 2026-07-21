@@ -4,20 +4,31 @@ import {
   getModelWithReasoningEffortKey,
   REASONING_EFFORT_INFO,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { Chip, DropdownMenuRadioItem } from "@dust-tt/sparkle";
+import { RevertToDefaultIndicator } from "@app/components/assistant/conversation/input_bar/RevertToDefaultIndicator";
+import { Chip, DropdownMenuItem } from "@dust-tt/sparkle";
 import capitalize from "lodash/capitalize";
 
 interface ModelPickerLineItemProps {
   modelWithEffort: ModelWithReasoningEffort;
   isMobile: boolean;
+  selectedKey?: string;
+  defaultModelKey?: string;
+  canRevert: boolean;
+  onRevert: () => void;
   onSelect: (modelWithEffort: ModelWithReasoningEffort) => void;
   recommendation?: string;
 }
 
-// A single selectable model/effort row, wrapped in its hover tooltip.
+// A single selectable model/effort row, wrapped in its hover tooltip. The
+// current selection is marked with a check that turns into a clickable X on row
+// hover to revert to the default; the default model carries a "(Default)" label.
 export function ModelPickerLineItem({
   modelWithEffort,
   isMobile,
+  selectedKey,
+  defaultModelKey,
+  canRevert,
+  onRevert,
   onSelect,
   recommendation,
 }: ModelPickerLineItemProps) {
@@ -26,6 +37,8 @@ export function ModelPickerLineItem({
     modelWithEffort.model.modelId,
     modelWithEffort.effort
   );
+  const selected = key === selectedKey;
+  const isDefault = key === defaultModelKey;
   const info = REASONING_EFFORT_INFO[modelWithEffort.effort];
 
   return (
@@ -48,19 +61,32 @@ export function ModelPickerLineItem({
         </div>
       }
     >
-      <DropdownMenuRadioItem
-        value={key}
+      <DropdownMenuItem
+        className="group/model-row"
         onClick={() => onSelect(modelWithEffort)}
       >
-        <span className="flex grow items-center gap-2">
+        <span className="flex w-full items-center gap-2">
           <span className="line-clamp-1">
             {modelWithEffort.model.displayName}
           </span>
           {modelWithEffort.effort !== "none" && (
             <Chip size="mini" label={capitalize(modelWithEffort.effort)} />
           )}
+          {isDefault && (
+            <span className="text-xs font-normal text-muted-foreground dark:text-muted-foreground-night">
+              (Default)
+            </span>
+          )}
+          <span className="ml-auto flex items-center">
+            {selected && (
+              <RevertToDefaultIndicator
+                canRevert={canRevert}
+                onRevert={onRevert}
+              />
+            )}
+          </span>
         </span>
-      </DropdownMenuRadioItem>
+      </DropdownMenuItem>
     </ModelPickerRowTooltip>
   );
 }
