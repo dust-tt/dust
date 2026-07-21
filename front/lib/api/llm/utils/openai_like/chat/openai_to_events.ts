@@ -43,13 +43,27 @@ export async function* streamLLMEvents(
     }
 
     if (chunk.usage && !hasYieldedTokenUsage) {
+      const cachedTokens = chunk.usage.prompt_tokens_details?.cached_tokens;
+      const cacheCreationTokens =
+        chunk.usage.prompt_tokens_details?.cache_write_tokens;
+      const hasCacheDetails =
+        cachedTokens !== undefined || cacheCreationTokens !== undefined;
       const tokenUsageEvent: LLMEvent = {
         type: "token_usage",
         content: {
           inputTokens: chunk.usage.prompt_tokens,
           outputTokens: chunk.usage.completion_tokens,
           totalTokens: chunk.usage.total_tokens,
-          cachedTokens: chunk.usage.prompt_tokens_details?.cached_tokens,
+          cachedTokens,
+          cacheCreationTokens,
+          uncachedInputTokens: hasCacheDetails
+            ? Math.max(
+                0,
+                chunk.usage.prompt_tokens -
+                  (cachedTokens ?? 0) -
+                  (cacheCreationTokens ?? 0)
+              )
+            : undefined,
         },
         metadata,
       };

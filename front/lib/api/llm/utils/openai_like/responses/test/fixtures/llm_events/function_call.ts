@@ -98,6 +98,8 @@ export const functionCallLLMEvents: LLMEvent[] = [
     content: {
       inputTokens: 1391,
       cachedTokens: 0,
+      cacheCreationTokens: 0,
+      uncachedInputTokens: 1391,
       reasoningTokens: 0,
       outputTokens: 74,
       totalTokens: 1465,
