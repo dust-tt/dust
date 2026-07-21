@@ -12,34 +12,65 @@ import type {
 } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { Star01, Star03, Star04 } from "@dust-tt/sparkle";
 import capitalize from "lodash/capitalize";
+import type { ComponentType } from "react";
 
-export const SUGGESTED_PINS: {
-  providerId: ModelProviderIdType;
-  modelId: string;
-  effort: ReasoningEffort;
-  recommendation: string;
-}[] = [
+export type ModelTierId = "quick" | "standard" | "deep";
+
+// What a tier sends: either "Auto" (Dust selects the model — the Standard tier)
+// or a hardcoded model + reasoning-effort combo.
+type TierSelection =
+  | { kind: "auto" }
+  | {
+      kind: "model";
+      providerId: ModelProviderIdType;
+      modelId: string;
+      effort: ReasoningEffort;
+    };
+
+export interface ModelTier {
+  id: ModelTierId;
+  name: string;
+  subtitle: string;
+  icon: ComponentType;
+  selection: TierSelection;
+}
+
+// The tiers are the primary picks. Order matters: it is the order shown in the
+// picker. "Standard" behaves like the old "Auto" option (Dust selects the
+// model) and is the fallback when nothing else is resolved.
+export const MODEL_TIERS: ModelTier[] = [
   {
-    providerId: "anthropic",
-    modelId: CLAUDE_SONNET_4_6_MODEL_ID,
-    effort: "light",
-    recommendation:
-      "Quick answers. Recommended for easy retrieval, light analysis or general questions.",
+    id: "quick",
+    name: "Quick",
+    subtitle: "Simple tasks",
+    icon: Star04,
+    selection: {
+      kind: "model",
+      providerId: "anthropic",
+      modelId: CLAUDE_SONNET_4_6_MODEL_ID,
+      effort: "light",
+    },
   },
   {
-    providerId: "anthropic",
-    modelId: CLAUDE_SONNET_4_6_MODEL_ID,
-    effort: "medium",
-    recommendation:
-      "Everyday tasks. Recommended for multi-step tasks, Frames, analysis.",
+    id: "standard",
+    name: "Standard",
+    subtitle: "Everyday tasks",
+    icon: Star01,
+    selection: { kind: "auto" },
   },
   {
-    providerId: "openai",
-    modelId: GPT_5_6_TERRA_MODEL_ID,
-    effort: "high",
-    recommendation:
-      "Hard problems. Recommended for high quality retrieval, complex analysis and Frames",
+    id: "deep",
+    name: "Deep",
+    subtitle: "Heavy tasks",
+    icon: Star03,
+    selection: {
+      kind: "model",
+      providerId: "openai",
+      modelId: GPT_5_6_TERRA_MODEL_ID,
+      effort: "high",
+    },
   },
 ];
 
@@ -71,9 +102,13 @@ export interface ModelWithReasoningEffort {
   effort: ReasoningEffort;
 }
 
-export interface SuggestedModelWithReasoningEffort
-  extends ModelWithReasoningEffort {
-  recommendation: string;
+// A tier resolved against the workspace's actually-available models.
+export interface ResolvedTier {
+  tier: ModelTier;
+  toSend: ModelSelectionType;
+  // The resolved model + effort for a concrete tier (used for its tooltip);
+  // null for the "Auto" (Standard) tier.
+  modelWithEffort: ModelWithReasoningEffort | null;
 }
 
 export interface MakerGroup {
@@ -106,19 +141,17 @@ export function buildModelSelection(
   };
 }
 
-// The list body is a small state machine: hidden while Auto is on, then a
-// loading / empty / search-results / browse view depending on the models
-// query and the search input. Modeling it as a single discriminated union
+// The list body is a small state machine: a loading / empty / ready view
+// depending on the models query. Modeling it as a single discriminated union
 // keeps the picker's props flat instead of a fistful of correlated booleans.
+// Search over every model happens inside the "More models" panel, so it is not
+// part of this top-level state.
 export type ModelPickerListState =
-  | { kind: "hidden" }
   | { kind: "loading" }
   | { kind: "empty" }
-  | { kind: "search"; models: ModelWithReasoningEffort[] }
   | {
-      kind: "browse";
-      agentDefault: ModelWithReasoningEffort | null;
-      suggested: SuggestedModelWithReasoningEffort[];
+      kind: "ready";
+      tiers: ResolvedTier[];
       moreByMaker: MakerGroup[];
     };
 
@@ -165,6 +198,34 @@ export function getModelWithReasoningEffortLabel(
   }
 }
 
+// Returns the tier a selection corresponds to, or null when it is not one of
+// the tiers. An "auto" selection maps to the Standard tier; a concrete "model"
+// selection maps to Quick/Deep when it matches their pins. An "agent" default
+// never maps to a tier — it is surfaced through the "More models" path instead.
+export function getMatchingTier(selection: LabelSelection): ModelTier | null {
+  switch (selection.kind) {
+    case "auto":
+      return MODEL_TIERS.find((tier) => tier.selection.kind === "auto") ?? null;
+    case "model": {
+      const { model, effort } = selection;
+      return (
+        MODEL_TIERS.find(
+          (tier) =>
+            tier.selection.kind === "model" &&
+            tier.selection.providerId === model.providerId &&
+            tier.selection.modelId === model.modelId &&
+            tier.selection.effort === effort
+        ) ?? null
+      );
+    }
+    case "agent":
+      return null;
+    default:
+      assertNeverAndIgnore(selection);
+      return null;
+  }
+}
+
 function findAvailableModel(
   models: ModelConfigurationType[],
   selection: { providerId: string; modelId: string }
@@ -173,6 +234,34 @@ function findAvailableModel(
     (m) =>
       m.providerId === selection.providerId && m.modelId === selection.modelId
   );
+}
+
+// Resolve the tiers against the workspace's actual models. The Auto (Standard)
+// tier is always available; a concrete tier is dropped when its model is
+// unavailable or does not support the tier effort.
+export function resolveTiers(models: ModelConfigurationType[]): ResolvedTier[] {
+  return MODEL_TIERS.flatMap((tier): ResolvedTier[] => {
+    if (tier.selection.kind === "auto") {
+      return [{ tier, toSend: AUTO_MODEL_SELECTION, modelWithEffort: null }];
+    }
+    const { providerId, modelId, effort } = tier.selection;
+    const model = findAvailableModel(models, { providerId, modelId });
+    if (
+      !model ||
+      !getAvailableReasoningEfforts(model.supportedReasoningEfforts).includes(
+        effort
+      )
+    ) {
+      return [];
+    }
+    return [
+      {
+        tier,
+        toSend: buildModelSelection(model, effort),
+        modelWithEffort: { model, effort },
+      },
+    ];
+  });
 }
 
 function findAgentModel(
@@ -236,14 +325,17 @@ export function resolveDefaultSelection({
   const agentDefaultModel = agentModel
     ? findAgentModel(models, agentModel)
     : undefined;
-  if (!agentDefaultModel || agentDefaultModel.modelId === AUTO_MODEL_ID) {
-    return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
+  if (agentDefaultModel && agentDefaultModel.modelId !== AUTO_MODEL_ID) {
+    return {
+      kind: "agent",
+      model: agentDefaultModel,
+      effort:
+        agentModel?.reasoningEffort ?? agentDefaultModel.defaultReasoningEffort,
+      toSend: undefined,
+    };
   }
-  return {
-    kind: "agent",
-    model: agentDefaultModel,
-    effort:
-      agentModel?.reasoningEffort ?? agentDefaultModel.defaultReasoningEffort,
-    toSend: undefined,
-  };
+
+  // No agent default (or the agent default is "Auto"): fall back to the
+  // Standard tier, which sends "Auto".
+  return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
 }

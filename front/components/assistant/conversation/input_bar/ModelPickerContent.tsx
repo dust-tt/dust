@@ -1,82 +1,208 @@
-import { ModelPickerList } from "@app/components/assistant/conversation/input_bar/ModelPickerList";
 import { ModelPickerRowTooltip } from "@app/components/assistant/conversation/input_bar/ModelPickerRowTooltip";
+import { ModelPickerSubTrigger } from "@app/components/assistant/conversation/input_bar/ModelPickerSubTrigger";
+import { MoreModelsPanel } from "@app/components/assistant/conversation/input_bar/MoreModelsPanel";
 import type {
   ModelPickerListState,
+  ModelTierId,
   ModelWithReasoningEffort,
+  ResolvedTier,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { AUTO_TOOLTIP } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import {
+  AUTO_TOOLTIP,
+  REASONING_EFFORT_INFO,
+} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import { useClientType } from "@app/lib/context/clientType";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import {
+  Check,
+  ChevronDown,
+  ChevronRight,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSearchbar,
-  SliderToggle,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  Icon,
+  Spinner,
 } from "@dust-tt/sparkle";
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
+  listState: ModelPickerListState;
+  selectedKey?: string;
+  // The tier that matches the current selection (null when the selection lives
+  // in the "More models" list).
+  selectedTierId: ModelTierId | null;
+  onSelectTier: (resolved: ResolvedTier) => void;
+  onSelectModel: (modelWithEffort: ModelWithReasoningEffort) => void;
+  // "More models" panel:
   search: string;
   onSearchChange: (value: string) => void;
-  listState: ModelPickerListState;
-  // The Auto row: null hides it entirely (e.g. while searching), otherwise
-  // `isOn` drives the toggle state.
-  auto: { isOn: boolean } | null;
-  selectedKey?: string;
-  onToggleAuto: () => void;
-  onSelectModel: (modelWithEffort: ModelWithReasoningEffort) => void;
-  // On mobile the "More models" makers expand inline; this tracks the single
-  // maker currently expanded.
+  filteredModels: ModelWithReasoningEffort[];
+  // True when the current selection is a concrete model reached through "More
+  // models" (rather than a tier): the "More models" row shows a check.
+  moreModelsSelected: boolean;
+  selectedMakerId: ModelMakerIdType | null;
   expandedMaker: ModelMakerIdType | null;
   onToggleMaker: (makerId: ModelMakerIdType) => void;
+  // On width-constrained clients (mobile, extension) the "More models" section
+  // expands inline rather than opening a nested submenu.
+  isMoreModelsExpanded: boolean;
+  onToggleMoreModels: () => void;
 }
 
 export function ModelPickerContent({
   side,
+  listState,
+  selectedKey,
+  selectedTierId,
+  onSelectTier,
+  onSelectModel,
   search,
   onSearchChange,
-  listState,
-  auto,
-  selectedKey,
-  onToggleAuto,
-  onSelectModel,
+  filteredModels,
+  moreModelsSelected,
+  selectedMakerId,
   expandedMaker,
   onToggleMaker,
+  isMoreModelsExpanded,
+  onToggleMoreModels,
 }: ModelPickerContentProps) {
   const isMobile = useIsMobile();
+  const clientType = useClientType();
+  const expandProvidersInline = isMobile || clientType === "extension";
+
+  const morePanel = (
+    <MoreModelsPanel
+      search={search}
+      onSearchChange={onSearchChange}
+      filteredModels={filteredModels}
+      moreByMaker={listState.kind === "ready" ? listState.moreByMaker : []}
+      selectedKey={selectedKey}
+      selectedMakerId={selectedMakerId}
+      onSelectModel={onSelectModel}
+      isMobile={isMobile}
+      expandProvidersInline={expandProvidersInline}
+      expandedMaker={expandedMaker}
+      onToggleMaker={onToggleMaker}
+    />
+  );
 
   return (
     <DropdownMenuContent className="w-72" align="start" side={side}>
-      {auto && (
-        <ModelPickerRowTooltip description={AUTO_TOOLTIP} isMobile={isMobile}>
-          <DropdownMenuItem
-            label="Auto"
-            endComponent={<SliderToggle selected={auto.isOn} />}
-            onClick={onToggleAuto}
-            onSelect={(e) => e.preventDefault()}
-          />
-        </ModelPickerRowTooltip>
-      )}
-
-      {!auto?.isOn && (
-        <div className="sticky top-0 z-10 bg-overlay-background pt-2">
-          <DropdownMenuSearchbar
-            autoFocus={!isMobile}
-            name="search-models"
-            placeholder="Search models"
-            value={search}
-            onChange={onSearchChange}
-          />
+      {listState.kind === "loading" && (
+        <div className="flex h-20 items-center justify-center">
+          <Spinner size="sm" />
         </div>
       )}
 
-      <ModelPickerList
-        listState={listState}
-        selectedKey={selectedKey}
-        onSelectModel={onSelectModel}
-        expandedMaker={expandedMaker}
-        onToggleMaker={onToggleMaker}
-      />
+      {listState.kind === "empty" && (
+        <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          No models found
+        </div>
+      )}
+
+      {listState.kind === "ready" && (
+        <>
+          {listState.tiers.map((resolved) => (
+            <TierRow
+              key={resolved.tier.id}
+              resolved={resolved}
+              isMobile={isMobile}
+              selected={resolved.tier.id === selectedTierId}
+              onSelect={onSelectTier}
+            />
+          ))}
+
+          {listState.moreByMaker.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              {expandProvidersInline ? (
+                <>
+                  <DropdownMenuItem
+                    label="More models"
+                    endComponent={
+                      <span className="flex items-center gap-2">
+                        {moreModelsSelected && (
+                          <Icon visual={Check} size="xs" />
+                        )}
+                        <Icon
+                          visual={
+                            isMoreModelsExpanded ? ChevronDown : ChevronRight
+                          }
+                          size="xs"
+                        />
+                      </span>
+                    }
+                    onClick={onToggleMoreModels}
+                    onSelect={(e) => e.preventDefault()}
+                  />
+                  {isMoreModelsExpanded && morePanel}
+                </>
+              ) : (
+                <DropdownMenuSub>
+                  <ModelPickerSubTrigger
+                    label="More models"
+                    checked={moreModelsSelected}
+                  />
+                  <DropdownMenuSubContent className="w-72">
+                    {morePanel}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
+            </>
+          )}
+        </>
+      )}
     </DropdownMenuContent>
+  );
+}
+
+interface TierRowProps {
+  resolved: ResolvedTier;
+  isMobile: boolean;
+  selected: boolean;
+  onSelect: (resolved: ResolvedTier) => void;
+}
+
+function TierRow({ resolved, isMobile, selected, onSelect }: TierRowProps) {
+  const { tier, modelWithEffort } = resolved;
+  return (
+    <ModelPickerRowTooltip
+      description={modelWithEffort ? "" : AUTO_TOOLTIP}
+      isMobile={isMobile}
+      media={
+        modelWithEffort ? (
+          <div className="flex flex-col gap-3 text-sm">
+            <div>
+              <div className="font-medium text-foreground dark:text-foreground-night">
+                {modelWithEffort.model.displayName}
+              </div>
+              <div className="text-muted-foreground dark:text-muted-foreground-night">
+                {modelWithEffort.model.shortDescription}
+              </div>
+            </div>
+            <div className="text-muted-foreground dark:text-muted-foreground-night">
+              {REASONING_EFFORT_INFO[modelWithEffort.effort].reasoning}
+            </div>
+          </div>
+        ) : undefined
+      }
+    >
+      <DropdownMenuItem
+        icon={tier.icon}
+        label={tier.name}
+        endComponent={
+          <span className="flex items-center gap-2">
+            <span className="text-xs font-normal text-muted-foreground dark:text-muted-foreground-night">
+              {tier.subtitle}
+            </span>
+            {selected && <Icon visual={Check} size="xs" />}
+          </span>
+        }
+        onClick={() => onSelect(resolved)}
+      />
+    </ModelPickerRowTooltip>
   );
 }
