@@ -81,6 +81,51 @@ describe("prompt cache breakpoints", () => {
     ]);
   });
 
+  it("only serializes a cache marker on the leading equipped-skills message", () => {
+    expect(
+      supportedEndpoint.conversationToInput({
+        system: [],
+        messages: [
+          message,
+          {
+            role: "assistant",
+            type: "text",
+            content: { value: "How can I help?" },
+          },
+          {
+            role: "user",
+            type: "text",
+            content: { value: "Use the web search skill." },
+          },
+        ],
+      })
+    ).toEqual([
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: "Available skills",
+            prompt_cache_breakpoint: { mode: "explicit" },
+          },
+        ],
+      },
+      {
+        role: "assistant",
+        content: "How can I help?",
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: "Use the web search skill.",
+          },
+        ],
+      },
+    ]);
+  });
+
   it("maps long cache opt-in to the request-wide breakpoint", () => {
     expect(
       supportedEndpoint.conversationToInput(
