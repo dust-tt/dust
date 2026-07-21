@@ -33,6 +33,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Defer non-default (cold) MCP tools via Anthropic's tool search tool so mid-run tool additions append inline instead of mutating the cached prefix",
     stage: "dust_only",
   },
+  openai_tool_search: {
+    description:
+      "Defer non-eager tools through OpenAI tool search until the model discovers them",
+    stage: "dust_only",
+  },
   checkpointed_conversation_window: {
     description:
       "Use checkpoint-buffered tool-result pruning without dropping complete interactions",

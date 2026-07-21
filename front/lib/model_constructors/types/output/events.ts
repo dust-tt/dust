@@ -43,6 +43,7 @@ export type ToolCallContent = {
   id: string;
   name: string;
   arguments: Record<string, unknown>;
+  namespace?: string;
 };
 export interface ToolCallEvent {
   type: "tool_call";

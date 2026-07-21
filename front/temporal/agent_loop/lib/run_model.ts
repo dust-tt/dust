@@ -42,6 +42,7 @@ import {
   parseAnthropicToolSearchBlock,
   TOOL_SEARCH_SERVER_TOOL_NAMES,
 } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
+import { OPENAI_PROVIDER_ID } from "@app/lib/api/llm/clients/openai/types";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -191,6 +192,8 @@ function getReplayedToolNames(
             content.type === "provider_passthrough" &&
             content.value.provider === ANTHROPIC_PROVIDER_ID
           ) {
+            // OpenAI keeps loaded definitions in the replayed tool_search_output
+            // item. Anthropic requires referenced tools in the current request.
             const block = parseAnthropicToolSearchBlock(content.value.block);
 
             if (
@@ -625,14 +628,18 @@ export async function runModel(
   ]);
 
   // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
-  // deferred behind tool search is an Anthropic-specific policy applied in the
-  // Anthropic client, gated on `toolSearchEnabled` (threaded through below).
+  // deferred behind tool search is a provider-specific policy applied in each
+  // supporting client, gated on `toolSearchEnabled` (threaded through below).
   // Gated on model.supportsToolSearch too: unsupported models reject the
   // request outright if deferred tools are included, so the feature flag alone
   // is not enough to decide this.
+  const toolSearchFeatureEnabled =
+    (model.providerId === ANTHROPIC_PROVIDER_ID &&
+      featureFlags.includes("anthropic_tool_search")) ||
+    (model.providerId === OPENAI_PROVIDER_ID &&
+      featureFlags.includes("openai_tool_search"));
   const toolSearchEnabled =
-    featureFlags.includes("anthropic_tool_search") &&
-    !!model.supportsToolSearch;
+    toolSearchFeatureEnabled && !!model.supportsToolSearch;
   const baseSpecifications: AgentActionSpecification[] =
     buildBaseSpecifications(availableActions, agentConfiguration);
 

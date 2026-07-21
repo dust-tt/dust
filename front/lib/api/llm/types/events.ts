@@ -63,6 +63,7 @@ export interface ToolCall {
   id: string;
   name: string;
   arguments: Record<string, unknown>;
+  namespace?: string;
 }
 
 export interface ToolCallEvent {

@@ -1,3 +1,5 @@
+import { OPENAI_PROVIDER_ID } from "@app/lib/api/llm/clients/openai/types";
+import { logOpenAIToolSearchItem } from "@app/lib/api/llm/clients/openai/utils/tool_search_logging";
 import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
@@ -112,6 +114,7 @@ function itemToEvents(
         })
       );
     }
+
     case "function_call": {
       return [
         {
@@ -120,11 +123,13 @@ function itemToEvents(
             id: item.call_id,
             name: item.name,
             arguments: parseToolArguments(item.arguments, item.name),
+            namespace: item.namespace,
           },
           metadata,
         },
       ];
     }
+
     case "reasoning":
       const encrypted_content = item.encrypted_content ?? undefined;
       // OpenAI sometimes sends multiple summary blocks in a single reasoning item.
@@ -143,6 +148,26 @@ function itemToEvents(
           metadata: { ...metadata, id: item.id, encrypted_content },
         },
       ];
+
+    case "tool_search_call":
+    case "tool_search_output": {
+      logOpenAIToolSearchItem(item, {
+        tags: [
+          `client_id:${metadata.clientId}`,
+          `inference_provider:${metadata.inferenceProvider}`,
+          `model_id:${metadata.modelId}`,
+        ],
+        logFields: metadata,
+      });
+      return [
+        {
+          type: "provider_passthrough",
+          content: { provider: OPENAI_PROVIDER_ID, block: item },
+          metadata,
+        },
+      ];
+    }
+
     default:
       throw new EventError(
         {

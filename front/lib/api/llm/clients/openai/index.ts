@@ -24,8 +24,8 @@ import {
   toInput,
   toReasoning,
   toResponseFormat,
-  toTool,
   toToolOption,
+  toToolsParam,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import {
   responseToLLMEvents,
@@ -99,7 +99,13 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     streamParameters: LLMStreamParameters,
     metadata?: LLMStreamMetadata
   ): ResponseCreateParamsBase {
-    const { conversation, prompt, specifications } = streamParameters;
+    const {
+      conversation,
+      prompt,
+      specifications,
+      forceToolCall,
+      toolSearchEnabled,
+    } = streamParameters;
     const promptText = systemPromptToText(prompt);
     const reasoning = toReasoning(this.modelId, this.reasoningEffort);
 
@@ -108,7 +114,10 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
       input: toInput(promptText, conversation),
       temperature: this.temperature ?? undefined,
       reasoning,
-      tools: specifications.map(toTool),
+      tools: toToolsParam(specifications, {
+        forceToolCall,
+        toolSearchEnabled: toolSearchEnabled ?? false,
+      }),
       text: {
         format: toResponseFormat(this.responseFormat, OPENAI_PROVIDER_ID),
       },

@@ -151,8 +151,8 @@ export type ExclusiveToolChoiceParameters =
 
 interface LLMStreamParametersBase {
   conversation: ModelConversationTypeMultiActions;
-  // When true, the Anthropic clients defer non-eager tools behind tool search.
-  // Other provider clients ignore it.
+  // When true, supporting provider clients defer non-eager tools behind tool
+  // search.
   toolSearchEnabled?: boolean;
   prompt: SystemPromptInput;
   specifications: AgentActionSpecification[];
