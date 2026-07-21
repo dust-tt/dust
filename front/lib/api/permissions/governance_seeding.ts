@@ -11,7 +11,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
  *
  * - `seedWorkspaceCapabilities`, called once from workspace provisioning (dust-tt/tasks#9454), to
  *   set a fresh workspace's default state.
- * - `migrations/20260721_backfill_create_agent_capability.ts`, which backfills existing
+ * - `migrations/20260721_backfill_governance_capabilities.ts`, which backfills existing
  *   workspaces from their current legacy state (feature flags, roles, etc).
  *
  * A capability seeder is defined once here; both call sites drive it identically — a fresh
@@ -33,7 +33,6 @@ export interface CapabilitySeeder {
 
 export const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
   {
-    // dust-tt/tasks#9463 — replaces the isBuilder()-gated create-agent check.
     capability: { grantType: "create", resourceType: "agent" },
     resolveTarget: async (auth) => {
       const disallowsUserCreation =
@@ -43,6 +42,10 @@ export const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
         );
       return disallowsUserCreation ? "builders" : "everyone";
     },
+  },
+  {
+    capability: { grantType: "create", resourceType: "skill" },
+    resolveTarget: async (_auth) => "builders",
   },
 ];
 
