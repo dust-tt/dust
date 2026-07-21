@@ -20,8 +20,7 @@ async function loadSkill(
   ctx: Context,
   sId: string
 ): Promise<
-  | { skill: SkillResource; sId: string }
-  | (Response & TypedResponse<APIErrorResponse>)
+  { skill: SkillResource } | (Response & TypedResponse<APIErrorResponse>)
 > {
   const auth = ctx.get("auth");
 
@@ -36,7 +35,7 @@ async function loadSkill(
     });
   }
 
-  return { skill, sId };
+  return { skill };
 }
 
 /** @ignoreswagger */
