@@ -23,7 +23,6 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  ButtonGroup,
   Check,
   ChevronDown,
   Chip,
@@ -1071,14 +1070,18 @@ export function ConversationPage() {
               icon={useMarkdown ? DocumentTextIcon : CodeBracketIcon}
               onClick={() => setUseMarkdown(!useMarkdown)}
             />
-            <ButtonGroup>
-              <Button
-                label="Self-improving skills test"
-                variant="primary"
-                size="xs"
-                onClick={() => void copyTestCase()}
-                disabled={isTestCaseLoading}
-              />
+            <Button
+              label="Self-improving skills test"
+              variant="primary"
+              size="xs"
+              onClick={() => void copyTestCase()}
+              disabled={isTestCaseLoading}
+            />
+            <div
+              role="group"
+              aria-label="Render conversation controls"
+              className="inline-flex items-center gap-2 rounded-md border border-separator bg-muted-background p-1"
+            >
               <Button
                 label="Render Conversation"
                 variant="primary"
@@ -1092,46 +1095,47 @@ export function ConversationPage() {
                 }}
                 disabled={isRendering}
               />
-            </ButtonGroup>
-            {isRendering && <Spinner size="xs" />}
-            {showRenderControls && (
-              <div className="ml-2 flex items-center space-x-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      label={
-                        selectedAgentId
-                          ? `Agent: ${
-                              agents.find((a) => a.sId === selectedAgentId)
-                                ?.name ?? selectedAgentId
-                            }`
-                          : "Select Agent"
-                      }
-                      variant="outline"
-                      size="xs"
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {agents.map((a) => (
-                      <DropdownMenuItem
-                        key={a.sId}
-                        onClick={() => setSelectedAgentId(a.sId)}
-                      >
-                        {a.name} ({a.sId})
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Input
-                  placeholder="Context size override"
-                  value={contextSizeOverride}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setContextSizeOverride(e.target.value)
-                  }
-                  className="h-7 w-44"
-                />
-              </div>
-            )}
+              {showRenderControls && (
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        label={
+                          selectedAgentId
+                            ? `Agent: ${
+                                agents.find((a) => a.sId === selectedAgentId)
+                                  ?.name ?? selectedAgentId
+                              }`
+                            : "Select Agent"
+                        }
+                        variant="outline"
+                        size="xs"
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {agents.map((a) => (
+                        <DropdownMenuItem
+                          key={a.sId}
+                          onClick={() => setSelectedAgentId(a.sId)}
+                        >
+                          {a.name} ({a.sId})
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Input
+                    aria-label="Context size override"
+                    placeholder="Context size override"
+                    value={contextSizeOverride}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setContextSizeOverride(e.target.value)
+                    }
+                    className="h-7 w-44"
+                  />
+                </>
+              )}
+              {isRendering && <Spinner size="xs" />}
+            </div>
           </div>
           {(renderError !== null || renderResult !== null) && (
             <div className="mt-2 rounded-md border p-2">
