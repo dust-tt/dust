@@ -52,11 +52,17 @@ import { Op, Sequelize } from "sequelize";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SpaceResource extends ReadonlyAttributesType<SpaceModel> {}
 
+/**
+ * Lightweight representation of a group_vaults join row. It carries enough
+ * data to enforce space permissions without fetching the full group and adding
+ * a second join. This is slated to be superseded by the upcoming
+ * GroupPermission model.
+ */
 export class SpaceGroupReference {
   constructor(
     readonly id: ModelId,
-    readonly kind: GroupKind,
-    readonly relationshipKind: GroupSpaceKind,
+    readonly groupKind: GroupKind,
+    readonly kind: GroupSpaceKind,
     readonly workspaceId: ModelId
   ) {}
 
@@ -77,15 +83,15 @@ export class SpaceGroupReference {
   }
 
   isGlobal(): boolean {
-    return this.kind === "global";
+    return this.groupKind === "global";
   }
 
   isRegularAuto(): boolean {
-    return this.kind === "regular_auto";
+    return this.groupKind === "regular_auto";
   }
 
   isProvisioned(): boolean {
-    return this.kind === "provisioned";
+    return this.groupKind === "provisioned";
   }
 }
 
@@ -656,6 +662,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     options: { hardDelete: boolean; transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     const { hardDelete, transaction } = options;
+    // Provisioned groups are not tied to any space, we don't delete them.
     const groupReferences = this.groups.filter(
       (group) => !group.isProvisioned()
     );
@@ -790,8 +797,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     if (this.isRegular() || this.isProject()) {
       // For regular spaces that only have a single group, update
       // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
-      const regularGroupReference = this.getSpaceManualMemberGroup();
-      const spaceEditorGroupReference = this.getSpaceManualEditorGroup();
+      const regularGroupReference = this.getSpaceManualMemberGroupReference();
+      const spaceEditorGroupReference =
+        this.getSpaceManualEditorGroupReference();
       const [regularGroup, spaceEditorGroup] = await this.fetchGroupResources(
         auth,
         {
@@ -1007,7 +1015,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
         // Remove existing external groups
         const existingExternalGroups = this.groups.filter(
-          (g) => g.kind === "provisioned"
+          (g) => g.groupKind === "provisioned"
         );
         for (const group of existingExternalGroups) {
           await this.removeGroup(auth, group.id, t);
@@ -1064,12 +1072,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   private async removeGroup(
     auth: Authenticator,
-    groupId: ModelId,
+    groupModelId: ModelId,
     transaction?: Transaction
   ) {
     await GroupSpaceModel.destroy({
       where: {
-        groupId,
+        groupId: groupModelId,
         vaultId: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
@@ -1391,7 +1399,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return new Ok(users);
   }
 
-  private getSpaceManualMemberGroup(): SpaceGroupReference {
+  private getSpaceManualMemberGroupReference(): SpaceGroupReference {
     const regularGroups = this.groups.filter((group) => group.isRegularAuto());
     assert(
       regularGroups.length === 1,
@@ -1400,9 +1408,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return regularGroups[0];
   }
 
-  private getSpaceManualEditorGroup(): SpaceGroupReference | null {
+  private getSpaceManualEditorGroupReference(): SpaceGroupReference | null {
     const editorGroups = this.groups.filter(
-      (group) => group.kind === "space_editors"
+      (group) => group.groupKind === "space_editors"
     );
     if (editorGroups.length === 0) {
       return null;
@@ -1551,7 +1559,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           ],
           groups: this.groups.reduce((acc, group) => {
             if (groupFilter(group)) {
-              if (group.relationshipKind === "project_editor") {
+              if (group.kind === "project_editor") {
                 // Project editors get admin permissions
                 acc.push({
                   id: group.id,
@@ -1686,10 +1694,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
-    const memberGroup = this.getSpaceManualMemberGroup();
-    const editorGroup = this.getSpaceManualEditorGroup();
+    const memberGroupReference = this.getSpaceManualMemberGroupReference();
+    const editorGroupReference = this.getSpaceManualEditorGroupReference();
     const groups = await this.fetchGroupResources(auth, {
-      groupReferences: [memberGroup, ...(editorGroup ? [editorGroup] : [])],
+      groupReferences: [
+        memberGroupReference,
+        ...(editorGroupReference ? [editorGroupReference] : []),
+      ],
       transaction,
     });
 
@@ -1705,10 +1716,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
-    const memberGroup = this.getSpaceManualMemberGroup();
-    const editorGroup = this.getSpaceManualEditorGroup();
+    const memberGroupReference = this.getSpaceManualMemberGroupReference();
+    const editorGroupReference = this.getSpaceManualEditorGroupReference();
     const groups = await this.fetchGroupResources(auth, {
-      groupReferences: [memberGroup, ...(editorGroup ? [editorGroup] : [])],
+      groupReferences: [
+        memberGroupReference,
+        ...(editorGroupReference ? [editorGroupReference] : []),
+      ],
       transaction,
     });
 
@@ -1735,7 +1749,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     allGroupMemberships: GroupMembershipModel[];
   }> {
     const groupReferences = this.groups.filter(
-      (group) => group.isRegularAuto() || group.kind === "space_editors"
+      (group) => group.isRegularAuto() || group.groupKind === "space_editors"
     );
     const groupsToProcess = await this.fetchGroupResources(auth, {
       groupReferences,
@@ -1817,7 +1831,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const allGroupIds = new Set<ModelId>();
     for (const space of spaces) {
       const groupIds = space.groups
-        .filter((g) => g.kind === "regular_auto" || g.kind === "space_editors")
+        .filter(
+          (g) =>
+            g.groupKind === "regular_auto" || g.groupKind === "space_editors"
+        )
         .map((group) => group.id);
       manualGroupIdsBySpaceModelId.set(space.id, groupIds);
       groupIds.forEach((groupId) => allGroupIds.add(groupId));

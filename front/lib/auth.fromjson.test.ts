@@ -145,7 +145,7 @@ describe("Authenticator.fromJSON", () => {
 
     const pod = await SpaceFactory.project(workspace, user.id);
     const editorGroup = pod.groups.find(
-      (group) => group.kind === "space_editors"
+      (group) => group.groupKind === "space_editors"
     );
     expect(editorGroup).toBeDefined();
 

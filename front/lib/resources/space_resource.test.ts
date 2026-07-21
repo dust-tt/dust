@@ -1189,8 +1189,8 @@ describe("SpaceResource", () => {
       expect(fetchedSpace?.groups).toEqual([
         expect.objectContaining({
           id: groupReference.id,
-          kind: "regular_auto",
-          relationshipKind: "member",
+          groupKind: "regular_auto",
+          kind: "member",
           workspaceId: workspace.id,
         }),
       ]);

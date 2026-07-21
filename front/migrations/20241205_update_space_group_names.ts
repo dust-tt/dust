@@ -33,7 +33,7 @@ makeScript(
               group.isRegularAuto()
             );
             const spaceEditorGroupReferences = pod.groups.filter(
-              (group) => group.kind === "space_editors"
+              (group) => group.groupKind === "space_editors"
             );
             const groups = await pod.fetchGroupResources(auth, {
               groupReferences: [
