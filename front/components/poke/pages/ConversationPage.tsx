@@ -1072,11 +1072,7 @@ export function ConversationPage() {
                 disabled={isTestCaseLoading}
               />
             </div>
-            <div
-              role="group"
-              aria-label="Render conversation controls"
-              className="inline-flex items-center gap-2 rounded-md border border-separator bg-muted-background p-1"
-            >
+            <div className="flex items-center gap-2">
               <Button
                 label="Render Conversation"
                 variant="primary"
