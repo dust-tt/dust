@@ -79,11 +79,8 @@ ActivationRecommendationModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["userId"],
-        concurrently: true,
-      },
-      {
-        fields: ["workspaceId"],
+        name: "activation_recommendations_workspace_user_status_created_at_idx",
+        fields: ["workspaceId", "userId", "status", "createdAt"],
         concurrently: true,
       },
       {
