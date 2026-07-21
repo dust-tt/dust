@@ -114,6 +114,7 @@ function itemToEvents(
         })
       );
     }
+
     case "function_call": {
       return [
         {
@@ -128,6 +129,7 @@ function itemToEvents(
         },
       ];
     }
+
     case "reasoning":
       const encrypted_content = item.encrypted_content ?? undefined;
       // OpenAI sometimes sends multiple summary blocks in a single reasoning item.
@@ -146,6 +148,7 @@ function itemToEvents(
           metadata: { ...metadata, id: item.id, encrypted_content },
         },
       ];
+
     case "tool_search_call":
     case "tool_search_output": {
       logOpenAIToolSearchItem(item, {
@@ -164,6 +167,7 @@ function itemToEvents(
         },
       ];
     }
+
     default:
       throw new EventError(
         {

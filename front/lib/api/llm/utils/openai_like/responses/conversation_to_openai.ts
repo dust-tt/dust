@@ -73,6 +73,7 @@ function toAssistantInputItem(
         content: content.value,
         phase: content.metadata?.phase,
       };
+
     case "function_call":
       return {
         type: "function_call",
@@ -81,6 +82,7 @@ function toAssistantInputItem(
         arguments: content.value.arguments,
         namespace: content.value.namespace,
       };
+
     case "reasoning": {
       // The encrypted content is only usable if it was generated in the same region
       // as the one being used to call the API, since OpenAI uses different keys per region.
@@ -103,6 +105,7 @@ function toAssistantInputItem(
         ...(encryptedContent ? { encrypted_content: encryptedContent } : {}),
       };
     }
+
     case "error":
       return {
         role: "assistant",
@@ -113,7 +116,9 @@ function toAssistantInputItem(
       if (content.value.provider !== "openai") {
         return null;
       }
+
       return parseOpenAIToolSearchItem(content.value.block);
+
     default:
       assertNever(content);
   }

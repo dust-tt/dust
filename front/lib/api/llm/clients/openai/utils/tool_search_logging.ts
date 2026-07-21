@@ -32,7 +32,7 @@ export function logOpenAIToolSearchItem(
   { tags, logFields }: OpenAIToolSearchLogContext
 ): void {
   switch (item.type) {
-    case "tool_search_call":
+    case "tool_search_call": {
       logToolSearchRequest({
         providerName: "OpenAI",
         toolName: "tool_search",
@@ -47,6 +47,8 @@ export function logOpenAIToolSearchItem(
         logFields,
       });
       break;
+    }
+
     case "tool_search_output": {
       const toolReferences = item.tools.flatMap(getToolReferences);
       logToolSearchResults({
@@ -63,6 +65,7 @@ export function logOpenAIToolSearchItem(
       });
       break;
     }
+
     default:
       assertNever(item);
   }
