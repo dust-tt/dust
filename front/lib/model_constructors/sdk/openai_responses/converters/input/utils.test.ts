@@ -1,10 +1,15 @@
 import {
+  assistantProviderPassthroughMessageToInputItems,
   assistantReasoningMessageToInputItems,
   assistantTextMessageToInputItem,
+  assistantToolCallRequestToInputItem,
+  toolSpecsToOpenAITools,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import type {
+  BaseAssistantProviderPassthroughMessage,
   BaseAssistantReasoningMessage,
   BaseAssistantTextMessage,
+  BaseAssistantToolCallRequestMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import { describe, expect, it } from "vitest";
 
@@ -99,6 +104,104 @@ describe("assistantReasoningMessageToInputItems", () => {
     };
     expect(assistantReasoningMessageToInputItems(message)).toEqual([
       { id: "rs_123", type: "reasoning", summary: [] },
+    ]);
+  });
+});
+
+describe("assistantToolCallRequestToInputItem", () => {
+  it("replays a discovered function call with its namespace", () => {
+    const message: BaseAssistantToolCallRequestMessage = {
+      role: "assistant",
+      type: "tool_call_request",
+      content: {
+        callId: "call_123",
+        toolName: "get_weather",
+        arguments: "{}",
+        namespace: "weather",
+      },
+    };
+
+    expect(assistantToolCallRequestToInputItem(message)).toEqual({
+      type: "function_call",
+      call_id: "call_123",
+      name: "get_weather",
+      arguments: "{}",
+      namespace: "weather",
+    });
+  });
+});
+
+describe("toolSpecsToOpenAITools", () => {
+  const eagerTool = {
+    name: "get_time",
+    description: "Get the current time",
+    inputSchema: { type: "object", properties: {} },
+    eager: true,
+  };
+  const deferredTool = {
+    name: "get_weather",
+    description: "Get the current weather",
+    inputSchema: { type: "object", properties: {} },
+  };
+
+  it("prepends tool search and defers non-eager functions", () => {
+    expect(
+      toolSpecsToOpenAITools([eagerTool, deferredTool], {
+        forceTool: undefined,
+        toolSearchEnabled: true,
+      })
+    ).toEqual([
+      { type: "tool_search" },
+      expect.objectContaining({ name: "get_time" }),
+      expect.objectContaining({
+        name: "get_weather",
+        defer_loading: true,
+      }),
+    ]);
+  });
+
+  it("keeps the forced function eager", () => {
+    const tools = toolSpecsToOpenAITools([deferredTool], {
+      forceTool: deferredTool.name,
+      toolSearchEnabled: true,
+    });
+
+    expect(tools).toEqual([expect.objectContaining({ name: "get_weather" })]);
+    expect(tools[0]).not.toHaveProperty("defer_loading");
+  });
+});
+
+describe("assistantProviderPassthroughMessageToInputItems", () => {
+  it("replays an OpenAI tool-search output item", () => {
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: {
+        provider: "openai",
+        block: {
+          type: "tool_search_output",
+          id: "tso_123",
+          call_id: null,
+          execution: "server",
+          status: "completed",
+          created_by: "openai",
+          tools: [
+            {
+              type: "function",
+              name: "get_weather",
+              description: "Get the current weather",
+              parameters: { type: "object", properties: {} },
+              strict: false,
+              defer_loading: true,
+              future_tool_field: "preserve-me",
+            },
+          ],
+        },
+      },
+    };
+
+    expect(assistantProviderPassthroughMessageToInputItems(message)).toEqual([
+      message.content.block,
     ]);
   });
 });

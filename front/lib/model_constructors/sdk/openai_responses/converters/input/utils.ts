@@ -1,3 +1,7 @@
+import {
+  OPENAI_TOOL_SEARCH_TOOL,
+  parseOpenAIToolSearchItem,
+} from "@app/lib/api/llm/clients/openai/utils/tool_search_passthrough";
 import type {
   OutputFormat,
   Reasoning,
@@ -6,6 +10,7 @@ import type {
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
   BaseAssistantMessage,
+  BaseAssistantProviderPassthroughMessage,
   BaseAssistantReasoningMessage,
   BaseAssistantTextMessage,
   BaseAssistantToolCallRequestMessage,
@@ -21,6 +26,7 @@ import type {
   FunctionTool,
   ResponseFormatTextJSONSchemaConfig,
   ResponseInputItem,
+  Tool,
   ToolChoiceFunction,
 } from "openai/resources/responses/responses";
 import type { Reasoning as OpenAIReasoning } from "openai/resources/shared";
@@ -44,6 +50,9 @@ export interface MessageItemConverters {
   assistantToolCallRequestToInputItem(
     message: BaseAssistantToolCallRequestMessage
   ): ResponseInputItem;
+  assistantProviderPassthroughMessageToInputItems(
+    message: BaseAssistantProviderPassthroughMessage
+  ): ResponseInputItem[];
 }
 
 // -- Leaf converters: one Responses input item per message --
@@ -143,7 +152,19 @@ export function assistantToolCallRequestToInputItem(
     call_id: message.content.callId,
     name: message.content.toolName,
     arguments: message.content.arguments,
+    namespace: message.content.namespace,
   };
+}
+
+export function assistantProviderPassthroughMessageToInputItems(
+  message: BaseAssistantProviderPassthroughMessage
+): ResponseInputItem[] {
+  if (message.content.provider !== "openai") {
+    return [];
+  }
+
+  const item = parseOpenAIToolSearchItem(message.content.block);
+  return item ? [item] : [];
 }
 
 // -- Composite message converters (depend on the leaf converters) --
@@ -176,8 +197,9 @@ export function assistantMessageToInputItems(
     case "tool_call_request":
       return [converters.assistantToolCallRequestToInputItem(message)];
     case "provider_passthrough":
-      // Opaque block owned by another provider. Skip.
-      return [];
+      return converters.assistantProviderPassthroughMessageToInputItems(
+        message
+      );
     default:
       assertNever(message);
   }
@@ -208,7 +230,10 @@ export function systemMessagesToInputItems(
 
 // -- Config converters (pure) --
 
-export function toFunctionTool(tool: ToolSpecification): FunctionTool {
+export function toFunctionTool(
+  tool: ToolSpecification,
+  { toolSearchEnabled = false }: { toolSearchEnabled?: boolean } = {}
+): FunctionTool {
   return {
     type: "function",
     name: tool.name,
@@ -218,7 +243,26 @@ export function toFunctionTool(tool: ToolSpecification): FunctionTool {
     // the core provider, which sends `strict: false` for function tools.
     strict: false,
     parameters: { type: "object", ...tool.inputSchema },
+    ...(toolSearchEnabled && !tool.eager ? { defer_loading: true } : {}),
   };
+}
+
+export function toolSpecsToOpenAITools(
+  tools: ToolSpecification[],
+  {
+    forceTool,
+    toolSearchEnabled,
+  }: { forceTool: string | undefined; toolSearchEnabled: boolean }
+): Tool[] {
+  const converted = tools.map((tool) =>
+    toFunctionTool(tool, {
+      toolSearchEnabled: toolSearchEnabled && tool.name !== forceTool,
+    })
+  );
+
+  return converted.some((tool) => tool.defer_loading)
+    ? [OPENAI_TOOL_SEARCH_TOOL, ...converted]
+    : converted;
 }
 
 export function forceToolToToolChoice(

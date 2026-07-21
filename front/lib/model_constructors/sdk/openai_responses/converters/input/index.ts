@@ -1,5 +1,6 @@
 import type { Client } from "@app/lib/model_constructors/client";
 import {
+  assistantProviderPassthroughMessageToInputItems,
   assistantReasoningMessageToInputItems,
   assistantTextMessageToInputItem,
   assistantToolCallRequestToInputItem,
@@ -10,8 +11,8 @@ import {
   reasoningToOpenAIResponsesReasoning,
   systemMessagesToInputItems,
   systemMessageToInputItem,
-  toFunctionTool,
   toolCallResultMessageToInputItem,
+  toolSpecsToOpenAITools,
   userImageMessageToInputItem,
   userTextMessageToInputItem,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
@@ -46,6 +47,8 @@ export function WithOpenAIResponsesInputConverter<
     assistantReasoningMessageToInputItems =
       assistantReasoningMessageToInputItems;
     assistantToolCallRequestToInputItem = assistantToolCallRequestToInputItem;
+    assistantProviderPassthroughMessageToInputItems =
+      assistantProviderPassthroughMessageToInputItems;
 
     conversationToInput(
       conversation: Payload["conversation"]
@@ -70,6 +73,8 @@ export function WithOpenAIResponsesInputConverter<
         reasoning,
         outputFormat,
         cacheKey,
+        forceTool,
+        toolSearchEnabled,
       } = config;
 
       const reasoningConfig = reasoningToOpenAIResponsesReasoning(reasoning);
@@ -88,7 +93,10 @@ export function WithOpenAIResponsesInputConverter<
               include: ["reasoning.encrypted_content"],
             }
           : {}),
-        tools: tools.map((tool) => toFunctionTool(tool)),
+        tools: toolSpecsToOpenAITools(tools, {
+          forceTool,
+          toolSearchEnabled: toolSearchEnabled ?? false,
+        }),
         tool_choice: forceToolToToolChoice(tools, toToolChoiceInput(config)),
         ...(outputFormat
           ? { text: { format: outputFormatToResponseFormat(outputFormat) } }

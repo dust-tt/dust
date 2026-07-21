@@ -2,8 +2,11 @@ import type {
   ToolSearchToolResultError,
   ToolSearchToolSearchResultBlock,
 } from "@anthropic-ai/sdk/resources/messages/messages";
-import { getStatsDClient } from "@app/lib/utils/statsd";
-import logger from "@app/logger/logger";
+import {
+  logToolSearchError,
+  logToolSearchRequest,
+  logToolSearchResults,
+} from "@app/lib/api/llm/utils/tool_search_logging";
 import { isRecord, isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
@@ -14,10 +17,9 @@ type ToolSearchResultContent =
   | ToolSearchToolResultError
   | ToolSearchToolSearchResultBlock;
 
-// Shared instrumentation for Anthropic's server-side tool search, used by both
-// the legacy (lib/api/llm) and model_constructors client stacks. Callers map
-// their own metadata into `tags` (StatsD) and `logFields` (structured logs).
-// The parsing, log shape, and metric name live here so they stay in sync.
+// Anthropic parsing shared by the legacy and model_constructors client stacks.
+// Callers map their metadata into StatsD tags and structured log fields. The
+// provider-independent log shape and metric live in the shared utility.
 
 // Logs the natural-language query the model issued against a tool search tool
 // (e.g. tool_search_tool_bm25) and increments a per-search StatsD counter. The
@@ -44,21 +46,17 @@ export function logToolSearchQuery({
     query = parsed.value.query;
   }
 
-  logger.info(
-    {
-      ...logFields,
-      toolName,
+  logToolSearchRequest({
+    providerName: "Anthropic",
+    toolName,
+    details: {
       query,
       // Keep the raw payload only when parsing failed, to debug malformed input.
       rawInput: query === undefined ? rawInput : undefined,
     },
-    "Anthropic tool search query"
-  );
-
-  getStatsDClient().increment("llm_tool_search.requests", 1, [
-    `tool_name:${toolName}`,
-    ...tags,
-  ]);
+    tags,
+    logFields,
+  });
 
   return query;
 }
@@ -75,26 +73,26 @@ export function logToolSearchResult({
   logFields: Record<string, unknown>;
 }): void {
   if (content.type === "tool_search_tool_result_error") {
-    logger.warn(
-      {
-        ...logFields,
+    logToolSearchError({
+      providerName: "Anthropic",
+      details: {
         query,
         errorCode: content.error_code,
         errorMessage: content.error_message,
       },
-      "Anthropic tool search returned an error"
-    );
+      logFields,
+    });
     return;
   }
 
   const toolReferences = content.tool_references.map((ref) => ref.tool_name);
-  logger.info(
-    {
-      ...logFields,
+  logToolSearchResults({
+    providerName: "Anthropic",
+    details: {
       query,
       toolReferences,
       resultCount: toolReferences.length,
     },
-    "Anthropic tool search results"
-  );
+    logFields,
+  });
 }

@@ -32,8 +32,8 @@ export const toolSpecificationSchema = z.object({
   description: z.string(),
   inputSchema: z.record(z.unknown()),
   // Whether this tool is loaded upfront in the cached prefix. Intrinsic,
-  // provider-agnostic property. Anthropic defers non-eager tools when tool
-  // search is enabled. Other providers ignore it.
+  // provider-agnostic property. Providers with tool search defer non-eager
+  // tools when tool search is enabled.
   eager: z.boolean().optional(),
 });
 export type ToolSpecification = z.infer<typeof toolSpecificationSchema>;
@@ -47,8 +47,8 @@ export const inputConfigSchema = z.object({
   // (tool choice "none"). Used to force a final generation while keeping the
   // request's tool definitions stable across steps. Mutually exclusive with `forceTool`.
   disableToolUse: z.boolean().optional(),
-  // When true, the Anthropic client defers non-eager tools behind tool search.
-  // Other provider clients ignore it.
+  // When true, supporting provider clients defer non-eager tools behind tool
+  // search.
   toolSearchEnabled: z.boolean().optional(),
   outputFormat: outputFormatSchema.optional(),
   cacheKey: z.string().optional(),

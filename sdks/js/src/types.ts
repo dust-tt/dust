@@ -729,6 +729,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_vertex_fallback"
   | "anthropic_cache_diagnostics"
   | "anthropic_tool_search"
+  | "openai_tool_search"
   | "checkpointed_conversation_window"
   | "audit_logs"
   | "claude_4_5_opus_feature"

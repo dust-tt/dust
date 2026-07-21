@@ -4,6 +4,10 @@ import {
   isOpenAIResponsesWhitelistedModelId,
   OPENAI_MODEL_CONFIGS,
 } from "@app/lib/api/llm/clients/openai/types";
+import {
+  OPENAI_TOOL_SEARCH_TOOL,
+  parseOpenAIToolSearchItem,
+} from "@app/lib/api/llm/clients/openai/utils/tool_search_passthrough";
 import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { ExclusiveToolChoiceParameters } from "@app/lib/api/llm/types/options";
 import {
@@ -32,6 +36,7 @@ import type {
   ResponseInput,
   ResponseInputContent,
   ResponseInputItem,
+  Tool,
   ToolChoiceFunction,
 } from "openai/resources/responses/responses";
 import type {
@@ -74,6 +79,7 @@ function toAssistantInputItem(
         call_id: content.value.id,
         name: content.value.name,
         arguments: content.value.arguments,
+        namespace: content.value.namespace,
       };
     case "reasoning": {
       // The encrypted content is only usable if it was generated in the same region
@@ -104,8 +110,10 @@ function toAssistantInputItem(
         content: content.value.message,
       };
     case "provider_passthrough":
-      // Opaque block owned by another provider. Skip.
-      return null;
+      if (content.value.provider !== "openai") {
+        return null;
+      }
+      return parseOpenAIToolSearchItem(content.value.block);
     default:
       assertNever(content);
   }
@@ -172,7 +180,10 @@ export function toInput(
   return inputs;
 }
 
-export function toTool(tool: AgentActionSpecification): FunctionTool {
+function toToolWithSearch(
+  tool: AgentActionSpecification,
+  { toolSearchEnabled }: { toolSearchEnabled: boolean }
+): FunctionTool {
   return {
     type: "function",
     // If not set to false, OpenAI requires all properties to be required,
@@ -182,7 +193,32 @@ export function toTool(tool: AgentActionSpecification): FunctionTool {
     name: tool.name,
     description: tool.description,
     parameters: { type: "object", ...tool.inputSchema },
+    ...(toolSearchEnabled && !tool.eager ? { defer_loading: true } : {}),
   };
+}
+
+export function toTool(tool: AgentActionSpecification): FunctionTool {
+  return toToolWithSearch(tool, { toolSearchEnabled: false });
+}
+
+export function toToolsParam(
+  specifications: AgentActionSpecification[],
+  {
+    forceToolCall,
+    toolSearchEnabled,
+  }: { forceToolCall: string | undefined; toolSearchEnabled: boolean }
+): Tool[] {
+  const tools = specifications.map((specification) =>
+    // A forced function must be callable immediately.
+    toToolWithSearch(specification, {
+      toolSearchEnabled:
+        toolSearchEnabled && specification.name !== forceToolCall,
+    })
+  );
+
+  return tools.some((tool) => tool.defer_loading)
+    ? [OPENAI_TOOL_SEARCH_TOOL, ...tools]
+    : tools;
 }
 
 const REASONING_CONFIG_MAPPING: Record<ReasoningEffort, OpenAIReasoningEffort> =

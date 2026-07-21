@@ -81,6 +81,38 @@ describe("toBaseMessages", () => {
       },
     ]);
   });
+
+  it("preserves a function call namespace", () => {
+    const message: ModelMessageTypeMultiActionsWithoutContentFragment = {
+      role: "assistant",
+      name: "agent",
+      contents: [
+        {
+          type: "function_call",
+          value: {
+            id: "call_123",
+            name: "get_weather",
+            arguments: "{}",
+            namespace: "weather",
+          },
+        },
+      ],
+    };
+
+    expect(toBaseMessages(message)).toEqual([
+      {
+        role: "assistant",
+        type: "tool_call_request",
+        content: {
+          callId: "call_123",
+          toolName: "get_weather",
+          arguments: "{}",
+          namespace: "weather",
+        },
+        signature: undefined,
+      },
+    ]);
+  });
 });
 
 describe("withMessageCacheBreakpoints", () => {
@@ -316,6 +348,33 @@ describe("convertToOldEvent", () => {
     expect(convertToOldEvent(event, llmMetadata)).toEqual({
       type: "provider_passthrough",
       content: { provider: "anthropic", block: serverToolUseBlock },
+      metadata: llmMetadata,
+    });
+  });
+
+  it("preserves a function call namespace", () => {
+    expect(
+      convertToOldEvent(
+        {
+          type: "tool_call",
+          content: {
+            id: "call_123",
+            name: "get_weather",
+            arguments: {},
+            namespace: "weather",
+          },
+          metadata: endpointMetadata,
+        },
+        llmMetadata
+      )
+    ).toEqual({
+      type: "tool_call",
+      content: {
+        id: "call_123",
+        name: "get_weather",
+        arguments: {},
+        namespace: "weather",
+      },
       metadata: llmMetadata,
     });
   });

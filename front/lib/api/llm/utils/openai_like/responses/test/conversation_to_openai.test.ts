@@ -1,4 +1,8 @@
-import { toInput } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import {
+  toInput,
+  toToolsParam,
+} from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { conversationMessages } from "@app/lib/api/llm/utils/openai_like/responses/test/fixtures/conversation_messages";
 import { inputMessages } from "@app/lib/api/llm/utils/openai_like/responses/test/fixtures/model_input";
 import { describe, expect, it } from "vitest";
@@ -11,5 +15,130 @@ describe("toInput", () => {
 
       expect(messages).toEqual(inputMessages);
     });
+  });
+
+  it("replays OpenAI tool-search items and skips other providers", () => {
+    const toolSearchCall = {
+      type: "tool_search_call" as const,
+      id: "ts_123",
+      call_id: null,
+      execution: "server" as const,
+      status: "completed" as const,
+      arguments: { paths: ["weather"] },
+      created_by: "openai",
+    };
+
+    const messages = toInput("prompt", {
+      messages: [
+        {
+          role: "assistant",
+          name: "agent",
+          contents: [
+            {
+              type: "provider_passthrough",
+              value: { provider: "openai", block: toolSearchCall },
+            },
+            {
+              type: "provider_passthrough",
+              value: { provider: "anthropic", block: toolSearchCall },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(messages).toEqual([
+      {
+        role: "developer",
+        content: [{ type: "input_text", text: "prompt" }],
+      },
+      toolSearchCall,
+    ]);
+  });
+
+  it("replays a discovered function call with its namespace", () => {
+    const messages = toInput("prompt", {
+      messages: [
+        {
+          role: "assistant",
+          name: "agent",
+          contents: [
+            {
+              type: "function_call",
+              value: {
+                id: "call_123",
+                name: "get_weather",
+                arguments: "{}",
+                namespace: "weather",
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(messages).toEqual([
+      {
+        role: "developer",
+        content: [{ type: "input_text", text: "prompt" }],
+      },
+      {
+        type: "function_call",
+        call_id: "call_123",
+        name: "get_weather",
+        arguments: "{}",
+        namespace: "weather",
+      },
+    ]);
+  });
+});
+
+describe("toToolsParam", () => {
+  const eagerTool: AgentActionSpecification = {
+    name: "get_time",
+    description: "Get the current time",
+    inputSchema: { type: "object", properties: {} },
+    eager: true,
+  };
+  const deferredTool: AgentActionSpecification = {
+    name: "get_weather",
+    description: "Get the current weather",
+    inputSchema: { type: "object", properties: {} },
+  };
+
+  it("prepends tool search and defers non-eager functions", () => {
+    expect(
+      toToolsParam([eagerTool, deferredTool], {
+        forceToolCall: undefined,
+        toolSearchEnabled: true,
+      })
+    ).toEqual([
+      { type: "tool_search" },
+      expect.objectContaining({ name: "get_time" }),
+      expect.objectContaining({
+        name: "get_weather",
+        defer_loading: true,
+      }),
+    ]);
+  });
+
+  it("keeps a forced function eager", () => {
+    const tools = toToolsParam([deferredTool], {
+      forceToolCall: deferredTool.name,
+      toolSearchEnabled: true,
+    });
+
+    expect(tools).toEqual([expect.objectContaining({ name: "get_weather" })]);
+    expect(tools[0]).not.toHaveProperty("defer_loading");
+  });
+
+  it("does not defer functions when tool search is disabled", () => {
+    const tools = toToolsParam([deferredTool], {
+      forceToolCall: undefined,
+      toolSearchEnabled: false,
+    });
+
+    expect(tools).toEqual([expect.objectContaining({ name: "get_weather" })]);
+    expect(tools[0]).not.toHaveProperty("defer_loading");
   });
 });

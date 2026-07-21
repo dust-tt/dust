@@ -116,9 +116,8 @@ export const ModelConfigurationSchema = z.object({
   disablePrefill: z.boolean().optional(),
   supportsBatchProcessing: z.boolean().optional(),
   // If true, the model supports deferring rarely-used tool definitions out of
-  // its active context until searched/discovered on demand. Provider-specific
-  // (currently only consulted for Anthropic models). Must not be enabled based
-  // on a feature flag alone, since unsupported models reject the request.
+  // its active context until searched/discovered on demand. Must not be enabled
+  // based on a feature flag alone, since unsupported models reject the request.
   supportsToolSearch: z.boolean().optional(),
   // Specify if the model is available in specific regions.
   regionalAvailability: z.record(z.enum(SUPPORTED_REGIONS), z.boolean()),

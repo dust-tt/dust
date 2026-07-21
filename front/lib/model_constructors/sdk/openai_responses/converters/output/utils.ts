@@ -1,8 +1,11 @@
+import { OPENAI_PROVIDER_ID } from "@app/lib/api/llm/clients/openai/types";
+import { logOpenAIToolSearchItem } from "@app/lib/api/llm/clients/openai/utils/tool_search_logging";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   ErrorEvent,
   ModelResponseEvent,
   NonDeltaResponseEvent,
+  ProviderPassthroughEvent,
   ReasoningDeltaEvent,
   ReasoningEvent,
   ResponseIdEvent,
@@ -29,6 +32,11 @@ import type {
   ResponseStreamEvent,
   ResponseUsage,
 } from "openai/resources/responses/responses";
+
+type ToolSearchOutputItem = Extract<
+  ResponseOutputItem,
+  { type: "tool_search_call" | "tool_search_output" }
+>;
 
 // Parses tool-call arguments into an object, falling back to `{}` for malformed
 // or non-object JSON.
@@ -81,8 +89,13 @@ export interface OutputEventConverters {
     metadata: EndpointMetadata,
     id: string,
     name: string,
-    argumentsJson: string
+    argumentsJson: string,
+    namespace?: string
   ): ToolCallEvent;
+  toolSearchItemToProviderPassthroughEvent(
+    metadata: EndpointMetadata,
+    item: ToolSearchOutputItem
+  ): ProviderPassthroughEvent;
   usageToTokenUsageEvent(
     metadata: EndpointMetadata,
     usage: ResponseUsage
@@ -182,11 +195,41 @@ export function functionCallToToolCallEvent(
   metadata: EndpointMetadata,
   id: string,
   name: string,
-  argumentsJson: string
+  argumentsJson: string,
+  namespace?: string
 ): ToolCallEvent {
   return {
     type: "tool_call",
-    content: { id, name, arguments: parseToolArguments(argumentsJson) },
+    content: {
+      id,
+      name,
+      arguments: parseToolArguments(argumentsJson),
+      namespace,
+    },
+    metadata,
+  };
+}
+
+export function toolSearchItemToProviderPassthroughEvent(
+  metadata: EndpointMetadata,
+  item: ToolSearchOutputItem
+): ProviderPassthroughEvent {
+  logOpenAIToolSearchItem(item, {
+    tags: [
+      `provider_id:${metadata.lab}`,
+      `api:${metadata.host}`,
+      `model_id:${metadata.model}`,
+    ],
+    logFields: {
+      providerId: metadata.lab,
+      api: metadata.host,
+      modelId: metadata.model,
+    },
+  });
+
+  return {
+    type: "provider_passthrough",
+    content: { provider: OPENAI_PROVIDER_ID, block: item },
     metadata,
   };
 }
@@ -386,8 +429,14 @@ export function outputItemToEvents(
           metadata,
           item.call_id,
           item.name,
-          item.arguments
+          item.arguments,
+          item.namespace
         ),
+      ];
+    case "tool_search_call":
+    case "tool_search_output":
+      return [
+        converters.toolSearchItemToProviderPassthroughEvent(metadata, item),
       ];
     // Output item types we don't surface (server tools, image gen, etc.).
     // Listed explicitly so a new Responses output item type breaks the build.
@@ -396,8 +445,6 @@ export function outputItemToEvents(
     case "web_search_call":
     case "computer_call":
     case "computer_call_output":
-    case "tool_search_call":
-    case "tool_search_output":
     case "compaction":
     case "image_generation_call":
     case "code_interpreter_call":

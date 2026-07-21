@@ -257,6 +257,7 @@ export function toBaseMessages(
                     callId: c.value.id,
                     toolName: c.value.name,
                     arguments: c.value.arguments,
+                    namespace: c.value.namespace,
                   },
                   signature: c.value.metadata?.thoughtSignature,
                 },
@@ -374,11 +375,7 @@ function convertAggregatedItem(
     case "tool_call":
       return {
         type: "tool_call",
-        content: {
-          id: item.content.id,
-          name: item.content.name,
-          arguments: item.content.arguments,
-        },
+        content: item.content,
         metadata: {
           ...metadata,
           ...(typeof item.metadata.content?.signature === "string"
@@ -510,11 +507,7 @@ export function convertToOldEvent(
     case "tool_call":
       return {
         type: "tool_call",
-        content: {
-          id: event.content.id,
-          name: event.content.name,
-          arguments: event.content.arguments,
-        },
+        content: event.content,
         metadata: {
           ...metadata,
           ...(typeof event.metadata.content?.signature === "string"

@@ -10,6 +10,7 @@ import {
   responseCreatedToResponseIdEvent,
   streamErrorToErrorEvent,
   textDeltaToTextDeltaEvent,
+  toolSearchItemToProviderPassthroughEvent,
   usageToTokenUsageEvent,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
 
@@ -34,6 +35,8 @@ export function WithOpenAIResponsesOutputConverter<
     accumulatedTextToTextEvent = accumulatedTextToTextEvent;
     accumulatedReasoningToReasoningEvent = accumulatedReasoningToReasoningEvent;
     functionCallToToolCallEvent = functionCallToToolCallEvent;
+    toolSearchItemToProviderPassthroughEvent =
+      toolSearchItemToProviderPassthroughEvent;
     usageToTokenUsageEvent = usageToTokenUsageEvent;
     streamErrorToErrorEvent = streamErrorToErrorEvent;
   }

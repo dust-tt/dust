@@ -68,6 +68,7 @@ export type BaseAssistantToolCallRequestMessage = {
     callId: string;
     toolName: string;
     arguments: string;
+    namespace?: string;
   };
   signature?: string;
 };
