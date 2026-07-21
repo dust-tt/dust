@@ -7,10 +7,7 @@ import type {
   ModelWithReasoningEffort,
   ResolvedTier,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import {
-  AUTO_TOOLTIP,
-  REASONING_EFFORT_INFO,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import { REASONING_EFFORT_INFO } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { RevertToDefaultIndicator } from "@app/components/assistant/conversation/input_bar/RevertToDefaultIndicator";
 import { useClientType } from "@app/lib/context/clientType";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -206,7 +203,7 @@ function TierRow({
   const { tier, modelWithEffort } = resolved;
   return (
     <ModelPickerRowTooltip
-      description={modelWithEffort ? "" : AUTO_TOOLTIP}
+      description={modelWithEffort ? "" : tier.tooltip}
       isMobile={isMobile}
       media={
         modelWithEffort ? (

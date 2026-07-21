@@ -1,8 +1,11 @@
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
-import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
 import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
-import { GPT_5_6_TERRA_MODEL_ID } from "@app/types/assistant/models/openai";
+import type { ModelStreamIdType } from "@app/types/assistant/models/streams";
+import {
+  isModelStreamId,
+  MODEL_STREAMS,
+} from "@app/types/assistant/models/streams";
 import type {
   ModelConfigurationType,
   ModelMakerIdType,
@@ -18,10 +21,20 @@ import type { ComponentType } from "react";
 
 export type ModelTierId = "quick" | "standard" | "deep";
 
-// What a tier sends: either "Auto" (Dust selects the model — the Standard tier)
-// or a hardcoded model + reasoning-effort combo.
+export const AUTO_TOOLTIP =
+  "Dust selects and switches model for cost efficient performance and reliability.";
+
+const QUICK_TOOLTIP =
+  "Fast, lightweight models for simple tasks. Dust routes among them automatically.";
+const DEEP_TOOLTIP =
+  "Powerful models for complex tasks. Dust routes among them automatically.";
+
+// What a tier sends: "Auto" (Dust selects any model — the Standard tier), a
+// "stream" (Dust routes among a curated pool — the Quick/Deep tiers), or a
+// hardcoded model + reasoning-effort combo.
 type TierSelection =
   | { kind: "auto" }
+  | { kind: "stream"; streamId: ModelStreamIdType }
   | {
       kind: "model";
       providerId: ModelProviderIdType;
@@ -33,30 +46,31 @@ export interface ModelTier {
   id: ModelTierId;
   name: string;
   subtitle: string;
+  // Blurb shown in the tier's hover tooltip (for auto/stream tiers, which have
+  // no single concrete model to describe).
+  tooltip: string;
   icon: ComponentType;
   selection: TierSelection;
 }
 
 // The tiers are the primary picks. Order matters: it is the order shown in the
-// picker. "Standard" behaves like the old "Auto" option (Dust selects the
-// model) and is the fallback when nothing else is resolved.
+// picker. "Standard" behaves like the "Auto" option (Dust selects any model) and
+// is the fallback when nothing else is resolved; "Quick" and "Deep" route among
+// their own curated streams.
 export const MODEL_TIERS: ModelTier[] = [
   {
     id: "quick",
     name: "Quick",
     subtitle: "Simple tasks",
+    tooltip: QUICK_TOOLTIP,
     icon: Star04,
-    selection: {
-      kind: "model",
-      providerId: "anthropic",
-      modelId: CLAUDE_SONNET_4_6_MODEL_ID,
-      effort: "light",
-    },
+    selection: { kind: "stream", streamId: "quick" },
   },
   {
     id: "standard",
     name: "Standard",
     subtitle: "Everyday tasks",
+    tooltip: AUTO_TOOLTIP,
     icon: Star01,
     selection: { kind: "auto" },
   },
@@ -64,18 +78,11 @@ export const MODEL_TIERS: ModelTier[] = [
     id: "deep",
     name: "Deep",
     subtitle: "Heavy tasks",
+    tooltip: DEEP_TOOLTIP,
     icon: Star03,
-    selection: {
-      kind: "model",
-      providerId: "openai",
-      modelId: GPT_5_6_TERRA_MODEL_ID,
-      effort: "high",
-    },
+    selection: { kind: "stream", streamId: "deep" },
   },
 ];
-
-export const AUTO_TOOLTIP =
-  "Dust selects and switches model for cost efficient performance and reliability.";
 
 // Per reasoning-effort blurbs shown in each model's hover tooltip: what the
 // effort does, and what it is recommended for.
@@ -107,7 +114,8 @@ export interface ResolvedTier {
   tier: ModelTier;
   toSend: ModelSelectionType;
   // The resolved model + effort for a concrete tier (used for its tooltip);
-  // null for the "Auto" (Standard) tier.
+  // null for the auto (Standard) and stream (Quick/Deep) tiers, which route
+  // dynamically and have no single model to show.
   modelWithEffort: ModelWithReasoningEffort | null;
 }
 
@@ -118,6 +126,7 @@ export interface MakerGroup {
 
 export type UserModelSelection =
   | { kind: "auto"; toSend: ModelSelectionType }
+  | { kind: "stream"; streamId: ModelStreamIdType; toSend: ModelSelectionType }
   | ({ kind: "model"; toSend: ModelSelectionType } & ModelWithReasoningEffort);
 
 export type Selection =
@@ -129,6 +138,18 @@ export const AUTO_MODEL_SELECTION: ModelSelectionType = {
   modelId: AUTO_MODEL_ID,
   reasoningEffort: "none",
 };
+
+// A stream tier sends its sentinel model (providerId and modelId both equal the
+// stream id); the backend routes it to a concrete model at send-time.
+export function buildStreamSelection(
+  streamId: ModelStreamIdType
+): ModelSelectionType {
+  return {
+    providerId: streamId,
+    modelId: streamId,
+    reasoningEffort: "none",
+  };
+}
 
 export function buildModelSelection(
   model: ModelConfigurationType,
@@ -176,6 +197,7 @@ export function getModelWithReasoningEffortKey(
 // model resolved after the fact) can pass a plain literal.
 export type LabelSelection =
   | { kind: "auto" }
+  | { kind: "stream"; streamId: ModelStreamIdType }
   | ({ kind: "agent" | "model" } & ModelWithReasoningEffort);
 
 export function getModelWithReasoningEffortLabel(
@@ -184,6 +206,8 @@ export function getModelWithReasoningEffortLabel(
   switch (selection.kind) {
     case "auto":
       return "Auto";
+    case "stream":
+      return capitalize(selection.streamId);
     case "agent":
       return "Default";
     case "model": {
@@ -200,12 +224,14 @@ export function getModelWithReasoningEffortLabel(
 
 // A stable identity for a selection, used to compare the shown selection against
 // the default (to know whether there is anything to revert) and to mark the
-// default row. "auto" collapses to a single sentinel; models/agent defaults use
-// their model + effort key.
+// default row. "auto" and each stream collapse to a single sentinel; models/agent
+// defaults use their model + effort key.
 export function getSelectionIdentityKey(selection: LabelSelection): string {
   switch (selection.kind) {
     case "auto":
       return "auto";
+    case "stream":
+      return `stream:${selection.streamId}`;
     case "agent":
     case "model":
       return getModelWithReasoningEffortKey(
@@ -220,13 +246,22 @@ export function getSelectionIdentityKey(selection: LabelSelection): string {
 }
 
 // Returns the tier a selection corresponds to, or null when it is not one of
-// the tiers. An "auto" selection maps to the Standard tier; a concrete "model"
-// selection maps to Quick/Deep when it matches their pins. An "agent" default
+// the tiers. An "auto" selection maps to the Standard tier; a "stream" selection
+// maps to the Quick/Deep tier of the same stream. A concrete "model" selection
+// maps to a tier only when it matches a "model" tier's pin. An "agent" default
 // never maps to a tier — it is surfaced through the "More models" path instead.
 export function getMatchingTier(selection: LabelSelection): ModelTier | null {
   switch (selection.kind) {
     case "auto":
       return MODEL_TIERS.find((tier) => tier.selection.kind === "auto") ?? null;
+    case "stream":
+      return (
+        MODEL_TIERS.find(
+          (tier) =>
+            tier.selection.kind === "stream" &&
+            tier.selection.streamId === selection.streamId
+        ) ?? null
+      );
     case "model": {
       const { model, effort } = selection;
       return (
@@ -258,12 +293,37 @@ function findAvailableModel(
 }
 
 // Resolve the tiers against the workspace's actual models. The Auto (Standard)
-// tier is always available; a concrete tier is dropped when its model is
+// tier is always available; a stream tier is available when at least one of its
+// candidate models is; a concrete "model" tier is dropped when its model is
 // unavailable or does not support the tier effort.
 export function resolveTiers(models: ModelConfigurationType[]): ResolvedTier[] {
   return MODEL_TIERS.flatMap((tier): ResolvedTier[] => {
     if (tier.selection.kind === "auto") {
       return [{ tier, toSend: AUTO_MODEL_SELECTION, modelWithEffort: null }];
+    }
+    if (tier.selection.kind === "stream") {
+      const { streamId } = tier.selection;
+      const hasAvailableCandidate = MODEL_STREAMS[streamId].some(
+        (candidate) => {
+          const model = findAvailableModel(models, candidate);
+          return (
+            model &&
+            getAvailableReasoningEfforts(
+              model.supportedReasoningEfforts
+            ).includes(candidate.reasoningEffort)
+          );
+        }
+      );
+      if (!hasAvailableCandidate) {
+        return [];
+      }
+      return [
+        {
+          tier,
+          toSend: buildStreamSelection(streamId),
+          modelWithEffort: null,
+        },
+      ];
     }
     const { providerId, modelId, effort } = tier.selection;
     const model = findAvailableModel(models, { providerId, modelId });
@@ -308,6 +368,14 @@ function resolveRequestedSelection(
   }
   if (requestedModel.modelId === AUTO_MODEL_ID) {
     return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
+  }
+  if (isModelStreamId(requestedModel.modelId)) {
+    const streamId = requestedModel.modelId;
+    return {
+      kind: "stream",
+      streamId,
+      toSend: buildStreamSelection(streamId),
+    };
   }
   const effort =
     selection?.reasoningEffort ?? requestedModel.defaultReasoningEffort;
