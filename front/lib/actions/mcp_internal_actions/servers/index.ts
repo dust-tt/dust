@@ -141,6 +141,10 @@ function createServer<
   const server = new McpServer(serverInfo);
 
   for (const tool of toolMetadata) {
+    if (tool.isAvailableForContext?.({ auth, toolContext }) === false) {
+      continue;
+    }
+
     registerTool(
       auth,
       toolContext,
