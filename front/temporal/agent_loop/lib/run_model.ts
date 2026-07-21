@@ -628,14 +628,10 @@ export async function runModel(
   ]);
 
   // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
-  // deferred behind tool search is a provider-specific policy applied in each
-  // supporting client, gated on `toolSearchEnabled` (threaded through below).
-  // Gated on model.supportsToolSearch too: unsupported models reject the
-  // request outright if deferred tools are included, so the feature flag alone
-  // is not enough to decide this.
+  // deferred behind tool search is a provider-specific policy applied downstream.
+  // Anthropic is fully rolled out while OpenAI remains behind a feature flag.
   const toolSearchFeatureEnabled =
-    (model.providerId === ANTHROPIC_PROVIDER_ID &&
-      featureFlags.includes("anthropic_tool_search")) ||
+    model.providerId === ANTHROPIC_PROVIDER_ID ||
     (model.providerId === OPENAI_PROVIDER_ID &&
       featureFlags.includes("openai_tool_search"));
   const toolSearchEnabled =

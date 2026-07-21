@@ -28,11 +28,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",
     stage: "dust_only",
   },
-  anthropic_tool_search: {
-    description:
-      "Defer non-default (cold) MCP tools via Anthropic's tool search tool so mid-run tool additions append inline instead of mutating the cached prefix",
-    stage: "dust_only",
-  },
   openai_tool_search: {
     description:
       "Defer non-eager tools through OpenAI tool search until the model discovers them",
