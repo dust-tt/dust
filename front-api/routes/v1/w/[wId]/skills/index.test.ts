@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { importSkillsFromFiles } from "@app/lib/api/skills/detection/files/import_skills";
 import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -157,9 +158,17 @@ describe("GET /api/v1/w/[wId]/skills", () => {
 describe("POST /api/v1/w/[wId]/skills", () => {
   it("adds provided editors to new and existing imported skills", async () => {
     const { auth, workspace } = await createPublicApiMockRequest();
-    await SpaceFactory.defaults(
-      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
     );
+    await SpaceFactory.defaults(adminAuth);
+    // The mock key's role ("builder") doesn't grant create/skill by itself anymore — it
+    // requires a group grant. The key is scoped to the workspace's global group, so granting
+    // the capability to everybody satisfies it.
+    await GroupPermissionResource.setForEverybody(adminAuth, {
+      grantType: "create",
+      resourceType: "skill",
+    });
     const firstEditor = await UserFactory.basic();
     const secondEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, firstEditor, {
@@ -244,9 +253,7 @@ describe("POST /api/v1/w/[wId]/skills", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toBe(
-        "Importing skills requires a builder user."
-      );
+      expect(result.error.message).toBe("Creating skills is restricted.");
     }
   });
 });

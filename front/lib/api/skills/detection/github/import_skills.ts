@@ -42,6 +42,12 @@ type ImportSkillsResult = {
   skipped: { name: string; message: string }[];
 };
 
+// Wider than GitHubSkillDetectionError (shared with the read-only detect endpoint, which never
+// produces this variant): only the actual import/creation path checks the create/skill capability.
+export type ImportSkillsFromGitHubError =
+  | GitHubSkillDetectionError
+  | { type: "unauthorized"; message: string };
+
 /**
  * Imports skills from a GitHub repository. Detects skills, fetches their
  * attachments, and creates or updates SkillResource objects.
@@ -57,7 +63,14 @@ export async function importSkillsFromGitHub(
     names: string[];
     onConflict?: "error" | "skip";
   }
-): Promise<Result<ImportSkillsResult, GitHubSkillDetectionError>> {
+): Promise<Result<ImportSkillsResult, ImportSkillsFromGitHubError>> {
+  if (!(await auth.hasWorkspacePermission("create", "skill"))) {
+    return new Err({
+      type: "unauthorized",
+      message: "Creating skills is restricted.",
+    });
+  }
+
   const accessToken = await getWorkspaceLevelGitHubAccessToken(auth);
   const clientResult = initGitHubRepoClient({ repoUrl, accessToken });
   if (clientResult.isErr()) {

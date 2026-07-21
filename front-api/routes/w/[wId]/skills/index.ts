@@ -18,7 +18,6 @@ import {
   SKILL_REINFORCEMENT_MODES,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
-import { isBuilder } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -204,14 +203,13 @@ app.post(
   validate("json", PostSkillRequestBodySchema),
   async (ctx): HandlerResult<PostSkillResponseBody> => {
     const auth = ctx.get("auth");
-    const owner = auth.getNonNullableWorkspace();
 
-    if (!isBuilder(owner)) {
+    if (!(await auth.hasWorkspacePermission("create", "skill"))) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
-          message: "User is not a builder.",
+          message: "Creating skills is restricted.",
         },
       });
     }

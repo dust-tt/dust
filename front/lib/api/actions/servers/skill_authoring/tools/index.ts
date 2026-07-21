@@ -29,7 +29,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-function requireInteractiveBuilder(
+function requireInteractiveUser(
   auth: Authenticator
 ): Result<UserResource, MCPError> {
   const user = auth.user();
@@ -41,8 +41,21 @@ function requireInteractiveBuilder(
     );
   }
 
-  if (!auth.isBuilder()) {
-    return new Err(new MCPError("Skill authoring requires a builder user."));
+  return new Ok(user);
+}
+
+async function requireCreateSkillPermission(
+  auth: Authenticator
+): Promise<Result<UserResource, MCPError>> {
+  const user = auth.user();
+  if (!user) {
+    return new Err(
+      new MCPError("Skill authoring requires an interactive user context.")
+    );
+  }
+
+  if (!(await auth.hasWorkspacePermission("create", "skill"))) {
+    return new Err(new MCPError("Creating skills is restricted."));
   }
 
   return new Ok(user);
@@ -219,7 +232,7 @@ function findDisallowedSpecialTagChanges(
 
 const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
   [LIST_SKILLS_TOOL_NAME]: async ({ filter, cursor, limit }, { auth }) => {
-    const user = requireInteractiveBuilder(auth);
+    const user = requireInteractiveUser(auth);
     if (user.isErr()) {
       return new Err(user.error);
     }
@@ -271,7 +284,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
   },
 
   [GET_SKILL_TOOL_NAME]: async ({ sId }, { auth }) => {
-    const user = requireInteractiveBuilder(auth);
+    const user = requireInteractiveUser(auth);
     if (user.isErr()) {
       return new Err(user.error);
     }
@@ -322,7 +335,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const user = requireInteractiveBuilder(auth);
+    const user = await requireCreateSkillPermission(auth);
     if (user.isErr()) {
       return new Err(user.error);
     }
@@ -442,7 +455,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const user = requireInteractiveBuilder(auth);
+    const user = requireInteractiveUser(auth);
     if (user.isErr()) {
       return new Err(user.error);
     }
