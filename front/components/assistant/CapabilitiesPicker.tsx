@@ -33,7 +33,6 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Button,
-  ChevronRight,
   Chip,
   DotsHorizontal,
   DropdownMenu,
@@ -500,16 +499,14 @@ export function CapabilitiesPicker({
           </DropdownMenuTrigger>
         ) : (
           <DropdownMenuSubTrigger
+            label="Capabilities"
+            icon={ShapesPlus}
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
               setIsOpen(true);
             }}
-          >
-            <ShapesPlus className="h-5 w-5" />
-            Capabilities
-            <ChevronRight className="h-5 w-5" />
-          </DropdownMenuSubTrigger>
+          />
         )}
         <ContentWrapper
           className="w-80"

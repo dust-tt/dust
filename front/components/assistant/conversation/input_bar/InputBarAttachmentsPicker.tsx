@@ -35,7 +35,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Attachment01,
   Button,
-  ChevronRight,
   DoubleIcon,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -590,16 +589,14 @@ export const InputBarAttachmentsPicker = ({
         </DropdownMenuTrigger>
       ) : (
         <DropdownMenuSubTrigger
+          label="Attach knowledge"
+          icon={Attachment01}
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
             setIsOpen(true);
           }}
-        >
-          <Attachment01 className="w-5 h-5" />
-          Attach knowledge
-          <ChevronRight className="w-5 h-5" />
-        </DropdownMenuSubTrigger>
+        />
       )}
       <ContentWrapper
         // Radix ScrollArea wraps content in a content-height `display:table` div. Force it to fill

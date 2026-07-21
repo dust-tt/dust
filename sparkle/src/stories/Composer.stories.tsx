@@ -8,7 +8,6 @@ import {
   ArrowUp,
   Attachment01,
   ChevronDown,
-  ChevronRight,
   Command,
   File01,
   Folder,
@@ -412,16 +411,14 @@ function ComposerDemo({
       }}
     >
       <DropdownMenuSubTrigger
+        label="Capabilities"
+        icon={ShapesPlus}
         onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();
           setIsCapabilitiesSubOpen(true);
         }}
-      >
-        <ShapesPlus className="h-5 w-5" />
-        Capabilities
-        <ChevronRight className="h-5 w-5" />
-      </DropdownMenuSubTrigger>
+      />
       <DropdownMenuSubContent className="w-80">
         <DropdownMenuSearchbar
           name="search-capabilities"
@@ -474,16 +471,14 @@ function ComposerDemo({
         }}
       >
         <DropdownMenuSubTrigger
+          label="Attach knowledge"
+          icon={Attachment01}
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
             setIsAttachmentsOpen(true);
           }}
-        >
-          <Attachment01 className="h-5 w-5" />
-          Attach knowledge
-          <ChevronRight className="h-5 w-5" />
-        </DropdownMenuSubTrigger>
+        />
         <DropdownMenuSubContent
           collisionPadding={15}
           className="h-80 w-80 xs:h-96 xs:w-96 [&_[data-radix-scroll-area-viewport]>div]:h-full"
@@ -535,18 +530,18 @@ function ComposerDemo({
   const spacesPicker = (
     <DropdownMenuSub open={isSpacesSubOpen} onOpenChange={setIsSpacesSubOpen}>
       <DropdownMenuSubTrigger
+        label={
+          selectedSpaceIds.length > 0
+            ? `${selectedSpaceIds.length} Space${selectedSpaceIds.length > 1 ? "s" : ""}`
+            : "Spaces"
+        }
+        icon={Planet}
         onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();
           setIsSpacesSubOpen(true);
         }}
-      >
-        <Planet className="h-5 w-5" />
-        {selectedSpaceIds.length > 0
-          ? `${selectedSpaceIds.length} Space${selectedSpaceIds.length > 1 ? "s" : ""}`
-          : "Spaces"}
-        <ChevronRight className="h-5 w-5" />
-      </DropdownMenuSubTrigger>
+      />
       <DropdownMenuSubContent className="w-64">
         <DropdownMenuLabel>Spaces</DropdownMenuLabel>
         <DropdownMenuSeparator />

@@ -154,7 +154,11 @@ export const InputBarButtons = React.memo(function InputBarButtons({
                 : "cursor-pointer hover:bg-primary-100 dark:hover:bg-[#4a453e]"
             )}
           >
-            <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
+            <Avatar
+              size="xxs"
+              visual={selectedAgent.pictureUrl}
+              className="h-4 w-4"
+            />
             {!isWidthConstrained && (
               <span className="grow truncate notranslate">
                 {selectedAgent.label}

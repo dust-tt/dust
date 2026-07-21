@@ -226,7 +226,11 @@ export function VoicePicker({
   }
 
   const icon = shouldShowStop ? Square : Microphone01;
-  const variant = shouldShowStop ? "highlight" : "ghost-secondary";
+  // "highlight" maps to a white ("light") spinner via Button's own
+  // variant→spinner-color mapping — buttonProps deliberately excludes
+  // `variant`, so this is the only way to get a white spinner while
+  // authorizing the microphone (Spinner recolors via variant, not CSS).
+  const variant = shouldShowStop || isLoading ? "highlight" : "ghost-secondary";
   const label = isTranscribing
     ? `${transcribingProgress ?? 0}%`
     : shouldShowStop && showStopLabel

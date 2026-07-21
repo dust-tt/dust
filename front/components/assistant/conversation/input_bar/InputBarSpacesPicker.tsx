@@ -1,7 +1,6 @@
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ChevronRight,
   DropdownMenuCheckboxItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -46,17 +45,15 @@ export function InputBarSpacesPicker({
   return (
     <DropdownMenuSub open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuSubTrigger
+        label={label}
+        icon={Planet}
         disabled={disabled}
         onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();
           setIsOpen(true);
         }}
-      >
-        <Planet className="h-5 w-5" />
-        {label}
-        <ChevronRight className="h-5 w-5" />
-      </DropdownMenuSubTrigger>
+      />
       <DropdownMenuSubContent className="w-64">
         <DropdownMenuLabel>Spaces</DropdownMenuLabel>
         <DropdownMenuSeparator />
