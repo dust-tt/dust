@@ -13,12 +13,13 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useFormState } from "react-hook-form";
 
 const MIN_DISCOVERABLE_DESCRIPTION_LENGTH = 150;
 
 export function SkillBuilderIsDefaultSection() {
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
+  const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
   const isDefault = watch("isDefault");
   const agentFacingDescription = watch("agentFacingDescription");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -41,7 +42,11 @@ export function SkillBuilderIsDefaultSection() {
   return (
     <>
       <div className="flex items-center gap-2">
-        <SliderToggle selected={isDefault} onClick={handleToggle} />
+        <SliderToggle
+          disabled={isReadOnly}
+          selected={isDefault}
+          onClick={handleToggle}
+        />
         <span className="text-sm text-foreground">
           Allow agents to discover this skill
         </span>
@@ -104,7 +109,7 @@ export function SkillBuilderIsDefaultSection() {
             rightButtonProps={{
               label: "Confirm",
               variant: "warning",
-              disabled: isDescriptionTooShort,
+              disabled: isReadOnly || isDescriptionTooShort,
               onClick: handleConfirm,
             }}
           />

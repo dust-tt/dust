@@ -27,6 +27,7 @@ export function SkillBuilderUserFacingDescriptionSection() {
   >({
     name: USER_FACING_DESCRIPTION_FIELD_NAME,
   });
+  const isReadOnly = field.disabled ?? false;
 
   const instructions = useWatch<SkillBuilderFormData, "instructions">({
     name: "instructions",
@@ -51,7 +52,7 @@ export function SkillBuilderUserFacingDescriptionSection() {
   );
 
   const generateDescription = async (): Promise<boolean> => {
-    if (isGenerating || !canGenerate) {
+    if (isReadOnly || isGenerating || !canGenerate) {
       return false;
     }
 
@@ -130,7 +131,7 @@ export function SkillBuilderUserFacingDescriptionSection() {
               variant="outline"
               size="xs"
               className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
-              disabled={isGenerating || !canGenerate}
+              disabled={isReadOnly || isGenerating || !canGenerate}
               onClick={generate}
               tooltip={getTooltip()}
             />

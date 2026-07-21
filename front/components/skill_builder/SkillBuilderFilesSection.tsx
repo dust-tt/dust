@@ -17,19 +17,14 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext, useFormState } from "react-hook-form";
 
-interface SkillBuilderFilesSectionProps {
-  disableUpload?: boolean;
-}
-
-export function SkillBuilderFilesSection({
-  disableUpload = false,
-}: SkillBuilderFilesSectionProps) {
+export function SkillBuilderFilesSection() {
   const { owner, skillId } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
   const { featureFlags } = useFeatureFlags();
   const { setValue } = useFormContext<SkillBuilderFormData>();
+  const { disabled: disableUpload } = useFormState<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const [canScrollFilesDown, setCanScrollFilesDown] = useState(false);
 
@@ -200,6 +195,7 @@ export function SkillBuilderFilesSection({
               icon={ReverseLeft}
               onClick={restoreFiles}
               label="Restore files"
+              disabled={disableUpload}
             />
           )}
           {headerActions}
@@ -259,9 +255,9 @@ export function SkillBuilderFilesSection({
                       </span>
                     }
                     visual={<ContextItem.Visual visual={File02} />}
-                    hoverAction={!isDiffMode}
+                    hoverAction={!isDiffMode && !disableUpload}
                     action={
-                      !isDiffMode ? (
+                      !isDiffMode && !disableUpload ? (
                         <Button
                           type="button"
                           variant="ghost"

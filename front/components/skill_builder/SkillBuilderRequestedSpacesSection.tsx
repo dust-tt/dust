@@ -41,6 +41,7 @@ export function SkillBuilderRequestedSpacesSection({
   } = useController<SkillBuilderFormData, "additionalSpaces">({
     name: "additionalSpaces",
   });
+  const isReadOnly = additionalSpacesField.disabled ?? false;
   const selectedAdditionalSpaces = additionalSpacesField.value ?? [];
 
   const { mcpServerViews, isMCPServerViewsLoading } =
@@ -245,7 +246,7 @@ export function SkillBuilderRequestedSpacesSection({
           label="Manage"
           icon={Planet}
           variant="outline"
-          disabled={!areSpaceRequirementsReady}
+          disabled={isReadOnly || !areSpaceRequirementsReady}
           onClick={handleOpenSheet}
         />
       </div>
@@ -264,7 +265,10 @@ export function SkillBuilderRequestedSpacesSection({
           </ContentMessage>
         </div>
       )}
-      <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
+      <SpaceChips
+        spaces={spacesToDisplay}
+        onRemoveSpace={isReadOnly ? undefined : handleRemoveSpace}
+      />
 
       <SpaceSelectionSheet
         alreadyRequestedSpaceIds={spaceIdsUsedBySkill}
@@ -272,7 +276,7 @@ export function SkillBuilderRequestedSpacesSection({
         missingSpaceIds={missingSpaceIds}
         onClose={handleCloseSheet}
         onSave={handleSaveSpaces}
-        open={isSheetOpen}
+        open={isSheetOpen && !isReadOnly}
         selectedSpaces={draftSelectedSpaces}
         setSelectedSpaces={setDraftSelectedSpaces}
       />
