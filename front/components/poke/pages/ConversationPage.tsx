@@ -23,6 +23,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
+  ButtonGroup,
   Check,
   ChevronDown,
   Chip,
@@ -1070,26 +1071,28 @@ export function ConversationPage() {
               icon={useMarkdown ? DocumentTextIcon : CodeBracketIcon}
               onClick={() => setUseMarkdown(!useMarkdown)}
             />
-            <Button
-              label="Self-improving skills test"
-              variant="primary"
-              size="xs"
-              onClick={() => void copyTestCase()}
-              disabled={isTestCaseLoading}
-            />
-            <Button
-              label="Render Conversation"
-              variant="primary"
-              size="xs"
-              onClick={() => {
-                if (!showRenderControls) {
-                  setShowRenderControls(true);
-                  return;
-                }
-                void handleRenderConversation();
-              }}
-              disabled={isRendering}
-            />
+            <ButtonGroup>
+              <Button
+                label="Self-improving skills test"
+                variant="primary"
+                size="xs"
+                onClick={() => void copyTestCase()}
+                disabled={isTestCaseLoading}
+              />
+              <Button
+                label="Render Conversation"
+                variant="primary"
+                size="xs"
+                onClick={() => {
+                  if (!showRenderControls) {
+                    setShowRenderControls(true);
+                    return;
+                  }
+                  void handleRenderConversation();
+                }}
+                disabled={isRendering}
+              />
+            </ButtonGroup>
             {isRendering && <Spinner size="xs" />}
             {showRenderControls && (
               <div className="ml-2 flex items-center space-x-2">
