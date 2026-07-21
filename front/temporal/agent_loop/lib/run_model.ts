@@ -659,11 +659,6 @@ export async function runModel(
           leadingMessages,
           enabledSkills,
           metricsCaller: "agent_loop",
-          windowStrategy: featureFlags.includes(
-            "checkpointed_conversation_window"
-          )
-            ? "checkpointed"
-            : "legacy",
         })
       )
   );

@@ -241,12 +241,6 @@ export class CheckpointedConversationWindowState {
     return {
       totalTokensBefore: this.totalTokensBefore,
       totalTokensAfterPruning,
-      totalTokensAfterDropping: totalTokensAfterPruning,
-      totalTokensAfterFloorPruning: totalTokensAfterPruning,
-      totalTokensAfterFloorDropping: totalTokensAfterPruning,
-      interactionsBefore: this.interactions.length,
-      interactionsAfterDropping: this.interactions.length,
-      interactionsAfterFloorDropping: this.interactions.length,
       pruningBudget: this.options.pruningBudget,
       budgetForInteractions: this.options.budgetForInteractions,
     };

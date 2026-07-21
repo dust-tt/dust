@@ -131,7 +131,7 @@ describe("CheckpointedConversationWindowState", () => {
     if (result.isErr()) {
       return;
     }
-    expect(result.value.stats.totalTokensAfterFloorDropping).toBe(60_000);
+    expect(result.value.stats.totalTokensAfterPruning).toBe(60_000);
     expect(result.value.stats.budgetForInteractions).toBe(50_000);
     expect(state.renderedInteractions()).toHaveLength(2);
   });
