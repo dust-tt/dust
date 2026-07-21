@@ -116,6 +116,8 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     return {
       model: this.modelId,
       input: toInput(promptText, conversation, "developer", {
+        // The legacy registry includes custom model IDs that are absent from
+        // model_constructors, so narrow before using its capability helper.
         cacheBreakpointOnLeadingMessage:
           isModel(this.modelId) &&
           supportsOpenAIExplicitPromptCaching(this.modelId),
