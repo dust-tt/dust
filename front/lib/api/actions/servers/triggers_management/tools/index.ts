@@ -268,7 +268,7 @@ export function createTriggersManagementTools(
       ]);
     },
 
-    list_triggers: async () => {
+    list_triggers: async ({ podId }) => {
       assert(
         isAgentLoopRunContext(toolContext?.runContext),
         "AgentLoopRunContext expected"
@@ -296,12 +296,17 @@ export function createTriggersManagementTools(
         `agent_id:${agentConfiguration.sId}`,
       ]);
 
-      const triggers = triggersResult.value.map((t) => t.toJSON());
+      const allTriggers = triggersResult.value.map((t) => t.toJSON());
+      const triggers = podId
+        ? allTriggers.filter((t) => t.spaceId === podId)
+        : allTriggers;
       if (triggers.length === 0) {
         return new Ok([
           {
             type: "text" as const,
-            text: "No triggers configured for this agent.",
+            text: podId
+              ? `No triggers associated with Pod "${podId}" for this agent.`
+              : "No triggers configured for this agent.",
           },
         ]);
       }

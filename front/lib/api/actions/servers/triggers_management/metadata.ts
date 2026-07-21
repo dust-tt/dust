@@ -48,8 +48,15 @@ export const TRIGGERS_MANAGEMENT_TOOLS_METADATA = [
   {
     name: "list_triggers",
     description:
-      "List all triggers (schedules and event triggers) created for this agent by the current user.",
-    schema: {},
+      "List all triggers (schedules and event triggers) created for this agent by the current user. Pass podId to filter triggers associated with a specific Pod.",
+    schema: {
+      podId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional Pod ID (sId) to filter triggers associated with this Pod. Omit to list all triggers."
+        ),
+    },
     stake: "never_ask",
     displayLabels: {
       running: "Listing triggers",
