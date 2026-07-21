@@ -177,9 +177,6 @@ ShareableFileModel.init(
     indexes: [
       { fields: ["workspaceId", "shareScope"], unique: false },
       { fields: ["token"], unique: true },
-      // Serves the `ON DELETE RESTRICT` check on `files` deletion and the
-      // shareable-file upsert's ON CONFLICT target. Unique on `fileId` alone
-      // is safe: a file belongs to a single workspace.
       { fields: ["fileId"], unique: true, concurrently: true },
     ],
   }
