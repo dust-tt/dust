@@ -7,8 +7,8 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { tryParsePhoneNumber } from "@app/lib/plans/trial/phone";
 import {
-  dataSourceToPokeJSON,
-  dataSourceViewToPokeJSON,
+  dataSourceToPokeItem,
+  dataSourceViewToPokeItem,
 } from "@app/lib/poke/utils";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -207,7 +207,7 @@ async function searchPokeDataSourcesByDustAPIProjectId(
     return [];
   }
 
-  return [await dataSourceToPokeJSON(auth, dataSource)];
+  return [await dataSourceToPokeItem(dataSource)];
 }
 
 async function searchByPhoneNumber(
@@ -285,7 +285,7 @@ async function searchPokeResourcesBySId(
         return [];
       }
 
-      return [await dataSourceViewToPokeJSON(auth, dataSourceView)];
+      return [await dataSourceViewToPokeItem(dataSourceView)];
 
     case "data_source":
       const dataSource = await DataSourceResource.fetchByNameOrId(auth, sId);
@@ -293,7 +293,7 @@ async function searchPokeResourcesBySId(
         return [];
       }
 
-      return [await dataSourceToPokeJSON(auth, dataSource)];
+      return [await dataSourceToPokeItem(dataSource)];
 
     default:
       return [];

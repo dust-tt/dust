@@ -148,9 +148,12 @@ describe("GET /api/poke/search - data source", () => {
     });
 
     const dustAPIProjectId = faker.string.numeric(9);
-    await DataSourceViewFactory.folder(workspace, globalSpace, null, {
-      dustAPIProjectId,
-    });
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      null,
+      { dustAPIProjectId }
+    );
 
     const response = await searchRequest(dustAPIProjectId);
 
@@ -158,10 +161,12 @@ describe("GET /api/poke/search - data source", () => {
     const data = await response.json();
     expect(data.results).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          dustAPIProjectId,
+        {
+          id: dataSourceView.dataSource.id,
+          link: expect.stringContaining(dataSourceView.dataSource.sId),
+          name: `${workspace.name}'s folder (${dataSourceView.dataSource.name})`,
           type: "Data Source",
-        }),
+        },
       ])
     );
   });
