@@ -61,17 +61,15 @@ export interface MessageItemConverters {
 
 // -- Small, reusable building blocks --
 
-type PromptCacheBreakpoint = NonNullable<
-  ResponseInputText["prompt_cache_breakpoint"]
->;
-
 // Spreadable fragment adding an explicit breakpoint only when the message opts
 // in and the model supports it. OpenAI applies one request-wide TTL, so both
 // cache durations map to the same wire representation.
 export function promptCacheBreakpointFor(
   cache: CacheOption | undefined,
   metadata: EndpointMetadata
-): { prompt_cache_breakpoint: PromptCacheBreakpoint } | Record<string, never> {
+): { prompt_cache_breakpoint: NonNullable<
+    ResponseInputText["prompt_cache_breakpoint"]
+  > } | Record<string, never> {
   switch (cache) {
     case "short":
     case "long":

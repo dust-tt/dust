@@ -88,7 +88,7 @@ export function isModel(value: string): value is Model {
   return (MODELS as readonly string[]).includes(value);
 }
 
-// Older models reject explicit prompt cache breakpoints.
+// Models older than 5.6 do not support explicit cache breakpoints.
 // https://developers.openai.com/api/docs/guides/prompt-caching#prompt-cache-breakpoints
 const OPENAI_EXPLICIT_PROMPT_CACHING_MODELS: readonly Model[] = [
   GPT_5_6_SOL,
@@ -99,8 +99,6 @@ const OPENAI_EXPLICIT_PROMPT_CACHING_MODELS: readonly Model[] = [
 export function supportsOpenAIExplicitPromptCaching(
   model: OpenAIWhitelistedModelId | Model
 ): boolean {
-  // The legacy OpenAI client and model_constructors use distinct model-ID
-  // unions. Compare their values without widening the Model-only support list.
   return OPENAI_EXPLICIT_PROMPT_CACHING_MODELS.some(
     (supportedModel) => supportedModel === model
   );

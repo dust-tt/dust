@@ -41,8 +41,6 @@ export function WithOpenAIResponsesInputConverter<
     implements MessageItemConverters
   {
     systemMessageToInputItem = systemMessageToInputItem;
-    // Prompt-cache support depends on the concrete endpoint model, so the leaf
-    // converter needs its metadata in addition to the provider-agnostic message.
     userTextMessageToInputItem = (message: BaseUserTextMessage) =>
       userTextMessageToInputItem(message, this.metadata());
     userImageMessageToInputItem = userImageMessageToInputItem;
