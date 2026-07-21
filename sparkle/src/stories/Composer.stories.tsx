@@ -7,11 +7,15 @@ import { ComposerInput } from "@sparkle/components/ComposerInput";
 import {
   ArrowUp,
   Attachment01,
+  ChevronDown,
+  ChevronRight,
   Command,
   File01,
   Folder,
   Globe01,
   Image01,
+  Planet,
+  Plus,
   Robot,
   SearchMd,
   ShapesPlus,
@@ -33,8 +37,12 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Icon,
   Tooltip,
@@ -124,6 +132,14 @@ const MOCK_KNOWLEDGE_NODES = [
   { id: "slack-design", title: "#design", source: "Slack" },
 ];
 
+const MOCK_SPACES = [
+  { id: "space-general", name: "General" },
+  { id: "space-engineering", name: "Engineering" },
+  { id: "space-marketing", name: "Marketing" },
+];
+
+const MOCK_MODELS = ["Auto", "Fast", "Reasoning"];
+
 function useMockVoiceService(onTranscript: (text: string) => void) {
   const [status, setStatus] = useState<VoicePickerStatus>("idle");
   const [level, setLevel] = useState(0);
@@ -187,6 +203,11 @@ function ComposerDemo({
   const [toolSearch, setToolSearch] = useState("");
   const [knowledgeSearch, setKnowledgeSearch] = useState("");
   const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(false);
+  const [isCapabilitiesSubOpen, setIsCapabilitiesSubOpen] = useState(false);
+  const [isSpacesSubOpen, setIsSpacesSubOpen] = useState(false);
+  const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
+  const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState("Auto");
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -381,16 +402,27 @@ function ComposerDemo({
   );
 
   const capabilitiesPicker = (
-    <DropdownMenu onOpenChange={(open) => open && setToolSearch("")}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost-secondary"
-          size="xs"
-          icon={ShapesPlus}
-          tooltip="Capabilities"
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-80">
+    <DropdownMenuSub
+      open={isCapabilitiesSubOpen}
+      onOpenChange={(open) => {
+        setIsCapabilitiesSubOpen(open);
+        if (open) {
+          setToolSearch("");
+        }
+      }}
+    >
+      <DropdownMenuSubTrigger
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          setIsCapabilitiesSubOpen(true);
+        }}
+      >
+        <ShapesPlus className="h-5 w-5" />
+        Capabilities
+        <ChevronRight className="h-5 w-5" />
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent align="start" className="w-80">
         <DropdownMenuSearchbar
           name="search-capabilities"
           placeholder="Search capabilities"
@@ -414,8 +446,8 @@ function ComposerDemo({
             onClick={() => addTool(tool)}
           />
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 
   const filteredKnowledgeNodes = MOCK_KNOWLEDGE_NODES.filter((n) =>
@@ -432,7 +464,7 @@ function ComposerDemo({
         style={{ display: "none" }}
         onChange={handleFileChange}
       />
-      <DropdownMenu
+      <DropdownMenuSub
         open={isAttachmentsOpen}
         onOpenChange={(open) => {
           setIsAttachmentsOpen(open);
@@ -441,15 +473,18 @@ function ComposerDemo({
           }
         }}
       >
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost-secondary"
-            size="xs"
-            icon={Attachment01}
-            tooltip="Attach knowledge"
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
+        <DropdownMenuSubTrigger
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setIsAttachmentsOpen(true);
+          }}
+        >
+          <Attachment01 className="h-5 w-5" />
+          Attach knowledge
+          <ChevronRight className="h-5 w-5" />
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent
           align="start"
           collisionPadding={15}
           className="h-80 w-80 xs:h-96 xs:w-96 [&_[data-radix-scroll-area-viewport]>div]:h-full"
@@ -493,9 +528,95 @@ function ComposerDemo({
               </div>
             </div>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
     </>
+  );
+
+  const spacesPicker = (
+    <DropdownMenuSub open={isSpacesSubOpen} onOpenChange={setIsSpacesSubOpen}>
+      <DropdownMenuSubTrigger
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          setIsSpacesSubOpen(true);
+        }}
+      >
+        <Planet className="h-5 w-5" />
+        {selectedSpaceIds.length > 0
+          ? `${selectedSpaceIds.length} Space${selectedSpaceIds.length > 1 ? "s" : ""}`
+          : "Spaces"}
+        <ChevronRight className="h-5 w-5" />
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="w-64">
+        <DropdownMenuLabel>Spaces</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {MOCK_SPACES.map((space) => {
+          const checked = selectedSpaceIds.includes(space.id);
+          return (
+            <DropdownMenuCheckboxItem
+              key={space.id}
+              label={space.name}
+              checked={checked}
+              onCheckedChange={(nextChecked) => {
+                setSelectedSpaceIds((prev) =>
+                  nextChecked
+                    ? [...prev, space.id]
+                    : prev.filter((id) => id !== space.id)
+                );
+              }}
+              onSelect={(event) => event.preventDefault()}
+            />
+          );
+        })}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
+
+  const plusMenu = (
+    <DropdownMenu open={isPlusMenuOpen} onOpenChange={setIsPlusMenuOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost-secondary"
+          icon={Plus}
+          size="xs"
+          isRounded
+          tooltip="More"
+          className={cn(
+            "border-[0.5px] border-border-dark bg-background dark:bg-[#3c3934]",
+            "shadow-[inset_2px_-2px_7px_0px_rgba(0,0,0,0.02),0px_0.5px_0.5px_0px_rgba(0,0,0,0.04)]",
+            "hover:bg-primary-100 dark:hover:bg-[#4a453e]"
+          )}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-64">
+        {capabilitiesPicker}
+        {attachmentsPicker}
+        {spacesPicker}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  const modelPicker = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost-secondary"
+          size="xs"
+          label={`Model: ${selectedModel}`}
+          icon={ChevronDown}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {MOCK_MODELS.map((model) => (
+          <DropdownMenuItem
+            key={model}
+            label={model}
+            onClick={() => setSelectedModel(model)}
+          />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 
   return (
@@ -592,31 +713,45 @@ function ComposerDemo({
           voice.status !== "recording" && (
             <>
               {agentPicker}
-              {capabilitiesPicker}
-              {attachmentsPicker}
+              {plusMenu}
             </>
           )
         }
         rightActions={
           <>
-            <VoicePicker
-              status={voice.status}
-              level={voice.level}
-              elapsedSeconds={voice.elapsedSeconds}
-              onRecordStart={voice.startRecording}
-              onRecordStop={voice.stopRecording}
-              size="xs"
-              showStopLabel
-            />
-            <Button
-              variant="highlight"
-              size="xs"
-              icon={ArrowUp}
-              className="rounded-full"
-              isLoading={isSubmitting}
-              disabled={isSubmitDisabled}
-              onClick={handleSubmit}
-            />
+            {modelPicker}
+            {!text || voice.status !== "idle" ? (
+              <VoicePicker
+                status={voice.status}
+                level={voice.level}
+                elapsedSeconds={voice.elapsedSeconds}
+                onRecordStart={voice.startRecording}
+                onRecordStop={voice.stopRecording}
+                size="xs"
+                showStopLabel
+                buttonProps={
+                  voice.status === "idle"
+                    ? {
+                        className: cn(
+                          "rounded-full",
+                          "bg-linear-to-b from-blue-400 to-blue-500 text-white",
+                          "hover:from-blue-500 hover:to-blue-600"
+                        ),
+                      }
+                    : undefined
+                }
+              />
+            ) : (
+              <Button
+                variant="highlight"
+                size="xs"
+                icon={ArrowUp}
+                className="rounded-full"
+                isLoading={isSubmitting}
+                disabled={isSubmitDisabled}
+                onClick={handleSubmit}
+              />
+            )}
           </>
         }
       >
