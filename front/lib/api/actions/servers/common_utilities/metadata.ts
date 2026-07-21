@@ -3,6 +3,7 @@ import {
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import { z } from "zod";
 
 export const COMMON_UTILITIES_SERVER_NAME = "common_utilities" as const;
@@ -115,10 +116,15 @@ export const COMMON_UTILITIES_TOOLS_METADATA = [
       toolContext,
     }: {
       toolContext?: ToolContext | undefined;
-    }) =>
-      ((isAgentLoopRunContext(toolContext?.runContext)
-        ? toolContext.runContext.conversation
-        : null) ?? toolContext?.listToolsContext?.conversation) !== undefined,
+    }) => {
+      let conversation: ConversationType | undefined;
+      if (isAgentLoopRunContext(toolContext?.runContext)) {
+        conversation = toolContext.runContext.conversation;
+      } else {
+        conversation = toolContext?.listToolsContext?.conversation;
+      }
+      return conversation !== undefined;
+    },
     description:
       "Update the title of the current conversation. Use this to give the conversation a descriptive name that summarizes its topic.",
     schema: {
