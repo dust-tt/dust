@@ -1,18 +1,17 @@
 import { fireworksConfigSchema } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
-import { FIREWORKS_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/fireworks/reasoning_efforts";
 import { GLM_5P2 } from "@app/lib/model_constructors/types/models";
 import { z } from "zod";
 
 const CONTEXT_SIZE = 1_000_000;
 const MAX_OUTPUT_TOKENS = 64_000;
 
-// GLM-5.2 has no native light reasoning, so none/low must drop reasoning_effort
-// (the legacy client does the same); only medium/high reach the model.
+// GLM-5.2 only supports none/high/maximal reasoning; `none` drops
+// reasoning_effort, high/maximal reach the model. Defaults to maximal.
 const configSchema = fireworksConfigSchema.extend({
   reasoning: z
-    .object({ effort: z.enum(FIREWORKS_SUPPORTED_REASONING_EFFORTS) })
+    .object({ effort: z.enum(["none", "high", "maximal"]) })
     .optional()
-    .default({ effort: "high" }),
+    .default({ effort: "maximal" }),
 });
 
 // Mixin carrying shared config; runtime base differs per surface.
