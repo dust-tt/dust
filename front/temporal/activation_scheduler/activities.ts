@@ -9,6 +9,7 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import { ensureActivationWorkspaceSchedules } from "@app/temporal/activation_scheduler/client";
 import {
   ACTIVATION_WORKDAY_WINDOW_MINUTES,
   ACTIVATION_WORKDAY_WINDOW_START_MINUTES,
@@ -181,4 +182,15 @@ export async function reGateAndNudgePodActivity({
   }
 
   await ActivationNudgeResource.makeNew(auth, { pod, trigger });
+}
+
+// ---------------------------------------------------------------------------
+// Ensure schedules activity
+// ---------------------------------------------------------------------------
+
+export async function ensureActivationWorkspaceSchedulesActivity(): Promise<{
+  started: string[];
+  stopped: string[];
+}> {
+  return ensureActivationWorkspaceSchedules();
 }

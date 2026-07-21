@@ -22,6 +22,7 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
+import { startActivationWorkspaceSchedule } from "@app/temporal/activation_scheduler/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -385,6 +386,20 @@ export const joinActivationPodPlugin = createPlugin({
       return new Err(
         new Error(
           `Failed to emit Activation Pod event: ${emitResult.error.message}`
+        )
+      );
+    }
+
+    // Ensure the workspace has a running Activation schedule now that it has
+    // a pod to nudge: idempotent (a no-op if one already exists), so this
+    // runs unconditionally rather than only on the workspace's first pod.
+    const scheduleResult = await startActivationWorkspaceSchedule({
+      workspaceId: workspace.sId,
+    });
+    if (scheduleResult.isErr()) {
+      return new Err(
+        new Error(
+          `Failed to start the Activation Pod schedule: ${scheduleResult.error.message}`
         )
       );
     }

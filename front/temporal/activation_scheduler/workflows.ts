@@ -3,10 +3,13 @@ import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
 import { runActivationSignal } from "./signals";
 
-const { enumerateEligiblePodsForNudgeActivity, reGateAndNudgePodActivity } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "5 minutes",
-  });
+const {
+  enumerateEligiblePodsForNudgeActivity,
+  reGateAndNudgePodActivity,
+  ensureActivationWorkspaceSchedulesActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "5 minutes",
+});
 
 /**
  * Workspace-level workflow: one per workspace, triggered by the workspace's
@@ -44,4 +47,13 @@ export async function activationWorkspaceWorkflow({
       targetUserId: pod.targetUserId,
     });
   }
+}
+
+/**
+ * Cron workflow that ensures every workspace with a live Activation Pod has a
+ * running schedule, and stops schedules for workspaces whose pods have all
+ * gone terminal (archived).
+ */
+export async function ensureActivationWorkspaceSchedulesWorkflow(): Promise<void> {
+  await ensureActivationWorkspaceSchedulesActivity();
 }

@@ -1,5 +1,8 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -7,11 +10,17 @@ import {
   ScheduleAlreadyRunning,
   ScheduleNotFoundError,
   ScheduleOverlapPolicy,
+  WorkflowExecutionAlreadyStartedError,
+  WorkflowNotFoundError,
 } from "@temporalio/client";
+import moment from "moment-timezone";
 
 import { QUEUE_NAME } from "./config";
 import { runActivationSignal } from "./signals";
-import { activationWorkspaceWorkflow } from "./workflows";
+import {
+  activationWorkspaceWorkflow,
+  ensureActivationWorkspaceSchedulesWorkflow,
+} from "./workflows";
 
 const WORKSPACE_WORKFLOW_ID_PREFIX = "activation-workspace-";
 
@@ -143,4 +152,205 @@ export async function triggerActivationWorkspaceWorkflow({
     "[ActivationScheduler] Triggered workspace workflow."
   );
   return new Ok(workflowId);
+}
+
+// ---------------------------------------------------------------------------
+// Ensure schedules (start missing, stop extra)
+// ---------------------------------------------------------------------------
+
+/**
+ * Workspaces that currently have at least one live Activation Pod, i.e. the
+ * workspaces that should have a running schedule. Provisioning a workspace's
+ * first pod (see the `join-activation-pod` poke plugin) defines scope going
+ * forward; this reconcile pass is the safety net that keeps schedules in
+ * sync as pods are provisioned/removed outside that hook.
+ */
+async function getActivationWorkspaceIds(): Promise<string[]> {
+  const workspaceModelIds =
+    await ActivationPodResource.listWorkspaceModelIdsWithActivationPods();
+  if (workspaceModelIds.length === 0) {
+    return [];
+  }
+
+  const workspaces = await WorkspaceResource.fetchByModelIds(workspaceModelIds);
+  return workspaces.map((workspace) => workspace.sId);
+}
+
+/**
+ * Ensure every workspace with a live Activation Pod has a running schedule,
+ * and delete schedules for workspaces that no longer have any pod left. This
+ * is the only place schedules are deleted for that reason; a stale schedule
+ * firing for an emptied-out workspace is a no-op (the workflow enumerates
+ * zero eligible pods).
+ */
+export async function ensureActivationWorkspaceSchedules(): Promise<{
+  started: string[];
+  stopped: string[];
+}> {
+  const client = await getTemporalClientForFrontNamespace();
+  const inScopeWorkspaceIds = new Set(await getActivationWorkspaceIds());
+  logger.info(
+    { inScopeWorkspaceCount: inScopeWorkspaceIds.size },
+    "[ActivationScheduler] Ensuring workspace schedules."
+  );
+
+  // Find existing schedules by ID prefix.
+  const runningWorkspaceIds = new Set<string>();
+  for await (const schedule of client.schedule.list()) {
+    if (schedule.scheduleId.startsWith(WORKSPACE_WORKFLOW_ID_PREFIX)) {
+      runningWorkspaceIds.add(
+        schedule.scheduleId.slice(WORKSPACE_WORKFLOW_ID_PREFIX.length)
+      );
+    }
+  }
+  logger.info(
+    { runningWorkspaceCount: runningWorkspaceIds.size },
+    "[ActivationScheduler] Found existing workspace schedules."
+  );
+
+  // Workspaces that need a schedule started / stopped.
+  const toStart = [...inScopeWorkspaceIds].filter(
+    (id) => !runningWorkspaceIds.has(id)
+  );
+  const toStop = [...runningWorkspaceIds].filter(
+    (id) => !inScopeWorkspaceIds.has(id)
+  );
+  logger.info(
+    { toStartCount: toStart.length, toStopCount: toStop.length },
+    "[ActivationScheduler] Schedules to start/stop."
+  );
+
+  const CONCURRENCY = 5;
+
+  // Create schedules for in-scope workspaces that don't have one.
+  const started = await concurrentExecutor(
+    toStart,
+    async (workspaceId) => {
+      logger.info(
+        { workspaceId },
+        "[ActivationScheduler] Creating schedule for workspace."
+      );
+      await startActivationWorkspaceSchedule({ workspaceId });
+      return workspaceId;
+    },
+    { concurrency: CONCURRENCY }
+  );
+
+  // Delete schedules for workspaces that no longer have a live pod.
+  const stopped = await concurrentExecutor(
+    toStop,
+    async (workspaceId) => {
+      logger.info(
+        { workspaceId },
+        "[ActivationScheduler] Deleting schedule for workspace."
+      );
+      await deleteActivationWorkspaceSchedule({ workspaceId });
+      return workspaceId;
+    },
+    { concurrency: CONCURRENCY }
+  );
+
+  logger.info(
+    { startedCount: started.length, stoppedCount: stopped.length },
+    "[ActivationScheduler] Ensured activation workspace schedules."
+  );
+
+  return { started, stopped };
+}
+
+// ---------------------------------------------------------------------------
+// Bulk stop (all workspaces)
+// ---------------------------------------------------------------------------
+
+export async function stopAllActivationWorkspaceSchedules(): Promise<void> {
+  const client = await getTemporalClientForFrontNamespace();
+
+  const workspaceIds: string[] = [];
+  for await (const schedule of client.schedule.list()) {
+    if (schedule.scheduleId.startsWith(WORKSPACE_WORKFLOW_ID_PREFIX)) {
+      workspaceIds.push(
+        schedule.scheduleId.slice(WORKSPACE_WORKFLOW_ID_PREFIX.length)
+      );
+    }
+  }
+
+  for (const workspaceId of workspaceIds) {
+    await deleteActivationWorkspaceSchedule({ workspaceId });
+  }
+
+  logger.info(
+    { workspaceCount: workspaceIds.length },
+    "[ActivationScheduler] Deleted schedules for all workspaces."
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Nightly reconcile cron
+// ---------------------------------------------------------------------------
+
+export const ENSURE_ACTIVATION_SCHEDULES_WORKFLOW_ID = `ensure-${WORKSPACE_WORKFLOW_ID_PREFIX}schedules`;
+
+const ELEVEN_PM = "23:00";
+
+export async function launchEnsureActivationSchedulesWorkflow(): Promise<
+  Result<string, Error>
+> {
+  const client = await getTemporalClientForFrontNamespace();
+  const region = config.getCurrentRegion();
+  const timezone = REGION_TIMEZONES[region];
+  const elevenPmInTz = moment.tz(ELEVEN_PM, "HH:mm", timezone);
+  const utcHour = elevenPmInTz.utc().hour();
+
+  try {
+    await client.workflow.start(ensureActivationWorkspaceSchedulesWorkflow, {
+      args: [],
+      taskQueue: QUEUE_NAME,
+      workflowId: ENSURE_ACTIVATION_SCHEDULES_WORKFLOW_ID,
+      cronSchedule: `0 ${utcHour} * * *`,
+    });
+
+    logger.info(
+      {
+        region,
+        timezone,
+        utcHour,
+        workflowId: ENSURE_ACTIVATION_SCHEDULES_WORKFLOW_ID,
+      },
+      "[ActivationScheduler] Launched ensure-schedules workflow."
+    );
+  } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.info(
+        { workflowId: ENSURE_ACTIVATION_SCHEDULES_WORKFLOW_ID },
+        "[ActivationScheduler] Ensure-schedules workflow already running, skipping."
+      );
+    } else {
+      throw e;
+    }
+  }
+
+  return new Ok(ENSURE_ACTIVATION_SCHEDULES_WORKFLOW_ID);
+}
+
+export async function stopEnsureActivationSchedulesWorkflow(): Promise<void> {
+  const client = await getTemporalClientForFrontNamespace();
+
+  try {
+    const handle = client.workflow.getHandle(
+      ENSURE_ACTIVATION_SCHEDULES_WORKFLOW_ID
+    );
+    await handle.terminate("Stopped via CLI");
+  } catch (e) {
+    if (e instanceof WorkflowNotFoundError) {
+      logger.info(
+        { workflowId: ENSURE_ACTIVATION_SCHEDULES_WORKFLOW_ID },
+        "[ActivationScheduler] Ensure-schedules workflow not running, skipping."
+      );
+    } else {
+      logger.error(
+        { error: e, workflowId: ENSURE_ACTIVATION_SCHEDULES_WORKFLOW_ID },
+        "[ActivationScheduler] Failed stopping ensure-schedules workflow."
+      );
+    }
+  }
 }
