@@ -966,24 +966,6 @@ describe("GroupResource", () => {
       expect(members).toEqual([]);
     });
 
-    it("leaves a provisioned group squatting the name untouched", async () => {
-      const group = await GroupResource.makeNew({
-        name: MANUAL_BUILDERS_GROUP_NAME,
-        workspaceId: workspace.id,
-        kind: "provisioned",
-        workOSGroupId: "workos-group-builders",
-      });
-
-      await GroupResource.syncBuilderGroupMembership({
-        workspace,
-        user,
-        isBuilder: true,
-      });
-
-      const members = await group.getActiveMembers(authenticator);
-      expect(members).toEqual([]);
-    });
-
     it("coexists with a provisioned dust-builders group", async () => {
       const provisionedGroup = await GroupResource.makeNew({
         name: BUILDER_GROUP_NAME,

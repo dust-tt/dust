@@ -2648,16 +2648,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     }
 
-    if (group.kind === "provisioned") {
-      // An IdP group squats the name: never mutate provisioned membership. The nightly
-      // consistency check will surface the blocked sync.
-      logger.warn(
-        { workspaceId: workspace.id, groupId: group.id },
-        "Builders group name taken by a provisioned group; skipping builder group sync"
-      );
-      return;
-    }
-
     const now = new Date();
     // Served by the (userId, groupId) index.
     const activeMembershipWhere = {
