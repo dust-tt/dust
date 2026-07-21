@@ -47,12 +47,7 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
-import {
-  type ComponentProps,
-  type ReactNode,
-  useEffect,
-  useState,
-} from "react";
+import { type ComponentProps, type ReactNode, useState } from "react";
 
 type ChipColor = NonNullable<ComponentProps<typeof Chip>["color"]>;
 
@@ -899,8 +894,14 @@ export function ConversationPage() {
     return lastAgentMessage?.configuration.sId ?? agents[0]?.sId ?? "";
   })();
 
-  const [selectedAgentId, setSelectedAgentId] =
-    useState<string>(defaultAgentId);
+  const [agentSelection, setAgentSelection] = useState<{
+    agentId: string;
+    conversationId: string;
+  } | null>(null);
+  const selectedAgentId =
+    agentSelection?.conversationId === conversationId
+      ? agentSelection.agentId
+      : defaultAgentId;
   const [contextSizeOverride, setContextSizeOverride] = useState<string>("");
   const [isRendering, setIsRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
@@ -917,14 +918,6 @@ export function ConversationPage() {
 
   const { copyTestCase, isLoading: isTestCaseLoading } =
     useCopyReinforcementTestCase({ owner, conversationId });
-
-  useEffect(() => {
-    if (!selectedAgentId) {
-      if (defaultAgentId) {
-        setSelectedAgentId(defaultAgentId);
-      }
-    }
-  }, [defaultAgentId, selectedAgentId]);
 
   async function handleRenderConversation() {
     if (!selectedAgentId) {
@@ -1118,7 +1111,12 @@ export function ConversationPage() {
                       {agents.map((a) => (
                         <DropdownMenuItem
                           key={a.sId}
-                          onClick={() => setSelectedAgentId(a.sId)}
+                          onClick={() =>
+                            setAgentSelection({
+                              agentId: a.sId,
+                              conversationId,
+                            })
+                          }
                         >
                           {a.name} ({a.sId})
                         </DropdownMenuItem>
