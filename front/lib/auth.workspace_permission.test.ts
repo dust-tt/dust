@@ -8,6 +8,8 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const CAPABILITY = { grantType: "create", resourceType: "agent" } as const;
+const RESOURCE_TYPE = "agent";
+const VERB = "create";
 
 describe("Authenticator.hasWorkspacePermission", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
@@ -39,23 +41,15 @@ describe("Authenticator.hasWorkspacePermission", () => {
 
   it("returns true for admins unconditionally (no grant needed)", async () => {
     expect(adminAuth.isAdmin()).toBe(true);
-    expect(
-      await adminAuth.hasWorkspacePermission(
-        CAPABILITY.grantType,
-        CAPABILITY.resourceType
-      )
-    ).toBe(true);
+    expect(await adminAuth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(
+      true
+    );
   });
 
   it("returns false for a non-admin without any grant", async () => {
     const auth = await memberAuthInGroup();
     expect(auth.isAdmin()).toBe(false);
-    expect(
-      await auth.hasWorkspacePermission(
-        CAPABILITY.grantType,
-        CAPABILITY.resourceType
-      )
-    ).toBe(false);
+    expect(await auth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(false);
   });
 
   it("returns true when one of the caller's groups holds the -1 grant", async () => {
@@ -66,12 +60,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
     });
     const auth = await memberAuthInGroup(group);
 
-    expect(
-      await auth.hasWorkspacePermission(
-        CAPABILITY.grantType,
-        CAPABILITY.resourceType
-      )
-    ).toBe(true);
+    expect(await auth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(true);
     // A different verb on the same type is not granted.
     expect(await auth.hasWorkspacePermission("publish", "agent")).toBe(false);
   });
@@ -89,12 +78,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
     });
     const auth = await memberAuthInGroup();
 
-    expect(
-      await auth.hasWorkspacePermission(
-        CAPABILITY.grantType,
-        CAPABILITY.resourceType
-      )
-    ).toBe(true);
+    expect(await auth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(true);
   });
 
   it("matches a wildcard grant against any capability", async () => {
