@@ -175,15 +175,12 @@ ShareableFileModel.init(
     modelName: "shareable_files",
     sequelize: frontSequelize,
     indexes: [
-      { fields: ["workspaceId", "fileId"], unique: true },
       { fields: ["workspaceId", "shareScope"], unique: false },
       { fields: ["token"], unique: true },
-      // Standalone index on the `fileId` foreign key. Without it, the
-      // `ON DELETE RESTRICT` referential-integrity check triggered when a
-      // `files` row is deleted sequentially scans `shareable_files` (the
-      // composite `(workspaceId, fileId)` index cannot serve a `fileId`-only
-      // lookup), which times out workspace deletions on large tables.
-      { fields: ["fileId"], concurrently: true },
+      // Serves the `ON DELETE RESTRICT` check on `files` deletion and the
+      // shareable-file upsert's ON CONFLICT target. Unique on `fileId` alone
+      // is safe: a file belongs to a single workspace.
+      { fields: ["fileId"], unique: true, concurrently: true },
     ],
   }
 );
