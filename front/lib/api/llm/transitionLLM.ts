@@ -29,6 +29,7 @@ import {
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch/configuration";
 import type {
@@ -38,8 +39,12 @@ import type {
 } from "@app/lib/model_constructors/batch/endpoint";
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import type { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
-import type { NoopRequest } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
-import { NoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
+import type { NoopRequest } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
+import { NoopNoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
+import {
+  AGENT_PLATFORM_HOST,
+  OPENAI_RESPONSES_HOST,
+} from "@app/lib/model_constructors/types/hosts";
 import type {
   InputConfig,
   ToolSpecification,
@@ -50,7 +55,8 @@ import type {
   SystemTextMessage,
   ToolCallResultPart,
 } from "@app/lib/model_constructors/types/input/messages";
-import { NOOP_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { GOOGLE_LAB, NOOP_LAB } from "@app/lib/model_constructors/types/labs";
+import { NOOP_MODEL } from "@app/lib/model_constructors/types/models";
 import type {
   ErrorType,
   ModelResponseEvent,
@@ -58,12 +64,8 @@ import type {
   TextEvent as NewTextEvent,
   ToolCallEvent as NewToolCallEvent,
   NonDeltaResponseEvent,
+  PassthroughLab,
 } from "@app/lib/model_constructors/types/output/events";
-import {
-  AGENT_PLATFORM_API,
-  OPENAI_RESPONSES_API,
-} from "@app/lib/model_constructors/types/provider_apis";
-import { NOOP_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
 import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type {
@@ -73,7 +75,11 @@ import type {
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
-import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -103,6 +109,45 @@ function mapReasoningEffort(
       return "high";
     default:
       assertNever(effort);
+  }
+}
+
+// The persisted passthrough `provider` uses the legacy provider-id vocabulary
+// (e.g. `google_ai_studio`), while BaseMessage carries the model's `Lab`. Only
+// `google_ai_studio` diverges (-> `google`); the rest are identical.
+function passthroughProviderToLab(
+  provider: AgentProviderPassthroughContentType["value"]["provider"]
+): PassthroughLab {
+  switch (provider) {
+    case "google_ai_studio":
+      return GOOGLE_LAB;
+    case "openai":
+    case "anthropic":
+    case "mistral":
+    case "deepseek":
+    case "noop":
+      return provider;
+    default:
+      assertNever(provider);
+  }
+}
+
+// Inverse of `passthroughProviderToLab`: maps a new-router `PassthroughLab` back
+// to the legacy provider-id vocabulary persisted on the passthrough content.
+function labToPassthroughProvider(
+  lab: PassthroughLab
+): AgentProviderPassthroughContentType["value"]["provider"] {
+  switch (lab) {
+    case "google":
+      return "google_ai_studio";
+    case "openai":
+    case "anthropic":
+    case "mistral":
+    case "deepseek":
+    case "noop":
+      return lab;
+    default:
+      assertNever(lab);
   }
 }
 
@@ -220,7 +265,7 @@ export function toBaseMessages(
                   role: "assistant",
                   type: "provider_passthrough",
                   content: {
-                    provider: c.value.provider,
+                    provider: passthroughProviderToLab(c.value.provider),
                     block: c.value.block,
                   },
                 },
@@ -534,7 +579,10 @@ export function convertToOldEvent(
     case "provider_passthrough":
       return {
         type: "provider_passthrough",
-        content: event.content,
+        content: {
+          provider: labToPassthroughProvider(event.content.provider),
+          block: event.content.block,
+        },
         metadata,
       };
 
@@ -577,6 +625,18 @@ function convertBatchEventsToOld(
   metadata: LLMClientMetadata
 ): LLMEvent[] {
   return events.map((event) => convertToOldEvent(event, metadata));
+}
+
+// The endpoint's `lab` is the model's developer ("deepseek" for a
+// fireworks-hosted DeepSeek model), not the legacy `ModelProviderIdType` the LLM
+// base keys its config on — that's the serving provider ("fireworks"). Resolve
+// it from the model config, which is unique by modelId.
+function legacyProviderIdForModel(modelId: ModelIdType): ModelProviderIdType {
+  const modelConfig = getModelConfigByModelId(modelId);
+  if (!modelConfig) {
+    throw new Error(`Model config not found for ${modelId}`);
+  }
+  return modelConfig.providerId;
 }
 
 /**
@@ -717,11 +777,11 @@ export class StreamEndpointTransition extends BaseTransition {
     llmParameters: LLMParameters,
     modelConstructor: DustStreamEndpointConstructor
   ) {
-    super(auth, modelConstructor.providerId, llmParameters);
+    super(auth, legacyProviderIdForModel(llmParameters.modelId), llmParameters);
     this.endpointConstructor = modelConstructor;
     this.model = new modelConstructor(llmParameters.credentials);
 
-    const { api, region } = this.model.metadata();
+    const { host: api, region } = this.model.metadata();
     this.metadata = {
       ...this.metadata,
       inferenceProvider: api,
@@ -733,15 +793,15 @@ export class StreamEndpointTransition extends BaseTransition {
     streamParameters: LLMStreamParameters,
     metadata?: LLMStreamMetadata
   ) {
-    const { api } = this.model.metadata();
+    const { host: api } = this.model.metadata();
     // Agent-platform (Vertex) has no request-level automatic cache_control, so it
     // needs an explicit breakpoint on the conversation tail (legacy's isLast).
-    const explicitTailBreakpoint = api === AGENT_PLATFORM_API;
+    const explicitTailBreakpoint = api === AGENT_PLATFORM_HOST;
     // Only OpenAI Responses consumes a prompt cache key (as `prompt_cache_key`);
     // legacy sent the conversationId. Other surfaces guard `cacheKey` to
     // undefined, so leave it unset for them.
     const cacheKey =
-      api === OPENAI_RESPONSES_API ? metadata?.conversationId : undefined;
+      api === OPENAI_RESPONSES_HOST ? metadata?.conversationId : undefined;
     return this.model.buildRequestPayload(
       this.buildPayload(streamParameters, { explicitTailBreakpoint }),
       this.buildConfig(
@@ -775,7 +835,7 @@ export class StreamEndpointTransition extends BaseTransition {
  *   base `getSimulatedRunUsages` hook.
  */
 export class NoopStreamTransition extends StreamEndpointTransition {
-  private readonly noopModel = new NoopGlobalNoopStream(undefined);
+  private readonly noopModel = new NoopNoopGlobalNoopStream(undefined);
   private readonly noopMetaData?: Record<string, unknown>;
   private simulatedRunUsages: RunUsageType[] | null = null;
 
@@ -808,8 +868,8 @@ export class NoopStreamTransition extends StreamEndpointTransition {
       const costMicroUsd = Math.round(parseFloat(consumeMatch[1]) * 1_000_000);
       this.simulatedRunUsages = [
         {
-          providerId: NOOP_PROVIDER_ID,
-          modelId: NOOP_MODEL_ID,
+          providerId: NOOP_LAB,
+          modelId: NOOP_MODEL,
           promptTokens: 0,
           completionTokens: 0,
           cachedTokens: null,
@@ -842,7 +902,7 @@ export class BatchEndpointTransition extends BaseTransition {
     llmParameters: LLMParameters,
     modelConstructor: BatchEndpointConstructor
   ) {
-    super(auth, modelConstructor.providerId, llmParameters);
+    super(auth, legacyProviderIdForModel(llmParameters.modelId), llmParameters);
     this.model = new modelConstructor(llmParameters.credentials);
   }
 

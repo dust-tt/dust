@@ -1,6 +1,6 @@
 import { MISTRAL_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/mistral/reasoning_efforts";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
-import { MISTRAL_MEDIUM_3_5_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { MISTRAL_MEDIUM_3_5 } from "@app/lib/model_constructors/types/models";
 
 import { z } from "zod";
 
@@ -35,7 +35,7 @@ export function WithMistralMedium35Config<
   ) => object,
 >(Base: TBase) {
   abstract class MistralMedium35 extends Base {
-    static readonly modelId = MISTRAL_MEDIUM_3_5_MODEL_ID;
+    static readonly model = MISTRAL_MEDIUM_3_5;
 
     static readonly configSchema = configSchema;
 

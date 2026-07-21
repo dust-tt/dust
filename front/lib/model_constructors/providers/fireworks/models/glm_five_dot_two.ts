@@ -1,6 +1,6 @@
 import { fireworksConfigSchema } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
 import { FIREWORKS_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/fireworks/reasoning_efforts";
-import { FIREWORKS_GLM_5P2_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { GLM_5P2 } from "@app/lib/model_constructors/types/models";
 import { z } from "zod";
 
 const CONTEXT_SIZE = 1_000_000;
@@ -16,13 +16,13 @@ const configSchema = fireworksConfigSchema.extend({
 });
 
 // Mixin carrying shared config; runtime base differs per surface.
-export function WithFireworksGlm52Config<
+export function WithZAiGlm52Config<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  abstract class FireworksGlm52 extends Base {
-    static readonly modelId = FIREWORKS_GLM_5P2_MODEL_ID;
+  abstract class ZAiGlm52 extends Base {
+    static readonly model = GLM_5P2;
 
     static readonly configSchema = configSchema;
 
@@ -30,5 +30,5 @@ export function WithFireworksGlm52Config<
     static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
   }
 
-  return FireworksGlm52;
+  return ZAiGlm52;
 }

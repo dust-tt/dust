@@ -21,10 +21,10 @@ const llmMetadata: LLMClientMetadata = {
 };
 
 const endpointMetadata: EndpointMetadata = {
-  providerId: "anthropic",
-  api: "anthropic",
+  lab: "anthropic",
+  host: "anthropic",
   region: "us",
-  modelId: "claude-sonnet-4-6",
+  model: "claude-sonnet-4-6",
 };
 
 const serverToolUseBlock = {

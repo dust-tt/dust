@@ -1,6 +1,6 @@
 import { fireworksConfigSchema } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
 import { FIREWORKS_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/fireworks/reasoning_efforts";
-import { FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { DEEPSEEK_V4_PRO } from "@app/lib/model_constructors/types/models";
 import { z } from "zod";
 
 const CONTEXT_SIZE = 1_000_000;
@@ -15,13 +15,13 @@ const configSchema = fireworksConfigSchema.extend({
     .default({ effort: "high" }),
 });
 
-export function WithFireworksDeepSeekV4ProConfig<
+export function WithDeepSeekDeepSeekV4ProConfig<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  abstract class FireworksDeepSeekV4Pro extends Base {
-    static readonly modelId = FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID;
+  abstract class DeepSeekDeepSeekV4Pro extends Base {
+    static readonly model = DEEPSEEK_V4_PRO;
 
     static readonly configSchema = configSchema;
 
@@ -29,5 +29,5 @@ export function WithFireworksDeepSeekV4ProConfig<
     static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
   }
 
-  return FireworksDeepSeekV4Pro;
+  return DeepSeekDeepSeekV4Pro;
 }

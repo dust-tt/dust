@@ -1,7 +1,7 @@
 import type {
+  Model as HostModel,
   MessageCreateParamsNonStreaming,
   MessageParam,
-  Model,
   TextBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import { stripUnreplayableToolSearchBlocks } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
@@ -32,7 +32,7 @@ import type {
   Payload,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
-import type { ModelId } from "@app/lib/model_constructors/types/model_ids";
+import type { Model } from "@app/lib/model_constructors/types/models";
 
 type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 
@@ -58,7 +58,7 @@ export function WithAnthropicAIInputConverter<
     assistantProviderPassthroughMessageToBlocks =
       assistantProviderPassthroughMessageToBlocks;
     reasoningToThinkingConfig = reasoningToThinkingConfig;
-    modelIdToApiModelId = (modelId: ModelId): Model => modelId;
+    modelToHostModel = (modelId: Model): HostModel => modelId;
 
     conversationToMessages(
       conversation: Payload["conversation"]
@@ -108,7 +108,7 @@ export function WithAnthropicAIInputConverter<
       });
 
       return {
-        model: this.modelIdToApiModelId(this.constructor.modelId),
+        model: this.modelToHostModel(this.constructor.model),
         max_tokens: this.constructor.maxOutputTokens,
         messages,
         system: includesToolSearchTool(anthropicTools)

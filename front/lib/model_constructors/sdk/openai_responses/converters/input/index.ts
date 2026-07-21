@@ -75,7 +75,7 @@ export function WithOpenAIResponsesInputConverter<
       const reasoningConfig = reasoningToOpenAIResponsesReasoning(reasoning);
 
       return {
-        model: this.constructor.modelId,
+        model: this.constructor.model,
         max_output_tokens: this.constructor.maxOutputTokens,
         ...(cacheKey ? { prompt_cache_key: cacheKey } : {}),
         input: [

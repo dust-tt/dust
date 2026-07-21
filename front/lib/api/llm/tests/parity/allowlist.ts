@@ -1,4 +1,7 @@
-import type { ProviderId } from "@app/lib/model_constructors/types/provider_ids";
+import {
+  ANTHROPIC_HOST,
+  type Host,
+} from "@app/lib/model_constructors/types/hosts";
 import { isRecord } from "@app/types/shared/utils/general";
 
 /**
@@ -131,15 +134,15 @@ const anthropicNormalizer: Normalizer = (request) => {
   return r;
 };
 
-const NORMALIZERS: Partial<Record<ProviderId, Normalizer>> = {
-  anthropic: anthropicNormalizer,
+const NORMALIZERS: Partial<Record<Host, Normalizer>> = {
+  [ANTHROPIC_HOST]: anthropicNormalizer,
 };
 
 export function normalizeRequest(
-  providerId: ProviderId,
+  host: Host,
   request: unknown
 ): Record<string, unknown> {
-  const normalizer = NORMALIZERS[providerId];
+  const normalizer = NORMALIZERS[host];
   if (!normalizer) {
     return clone(request);
   }

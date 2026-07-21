@@ -29,7 +29,10 @@ import {
 import { StreamEndpointTransition } from "@app/lib/api/llm/transitionLLM";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { DUST_STREAM_ENDPOINTS } from "@app/lib/llms/stream";
-import { NOOP_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import {
+  AGENT_PLATFORM_HOST,
+  NOOP_HOST,
+} from "@app/lib/model_constructors/types/hosts";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { describe, expect, it, vi } from "vitest";
@@ -131,14 +134,17 @@ async function drain(gen: AsyncGenerator<unknown>): Promise<Error | undefined> {
 }
 
 // Local parity only exercises global endpoints — the eu/Vertex path is not run
-// locally. Global agent-platform coverage can be added here once it exists.
+// locally.
 const ENDPOINTS = Object.values(DUST_STREAM_ENDPOINTS)
   .map(readEndpointInfo)
   // The noop endpoint synthesizes its stream in-process; there is no provider
   // SDK request to compare against, so it is out of scope for router parity.
+  // agent-platform is a new host with same behavior as anthropic;
   .filter(
     (endpoint) =>
-      endpoint.region === GLOBAL && endpoint.providerId !== NOOP_PROVIDER_ID
+      endpoint.region === GLOBAL &&
+      endpoint.host !== NOOP_HOST &&
+      endpoint.host !== AGENT_PLATFORM_HOST
   );
 const MATRIX = buildParityMatrix();
 
@@ -146,7 +152,7 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
   "LLM router request parity (legacy vs new)",
   () => {
     for (const endpoint of ENDPOINTS) {
-      const provider = getParityProvider(endpoint.providerId);
+      const provider = getParityProvider(endpoint.host);
       const modelId = provider.toModelId(endpoint.modelId);
 
       describe(endpoint.id, () => {
@@ -207,8 +213,8 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
               "new router did not dispatch a request"
             ).toBeDefined();
 
-            expect(normalizeRequest(endpoint.providerId, newReq)).toEqual(
-              normalizeRequest(endpoint.providerId, oldReq)
+            expect(normalizeRequest(endpoint.host, newReq)).toEqual(
+              normalizeRequest(endpoint.host, oldReq)
             );
           });
         }

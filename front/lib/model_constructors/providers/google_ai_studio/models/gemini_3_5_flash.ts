@@ -4,7 +4,7 @@ import {
   GEMINI_3_MAX_OUTPUT_TOKENS,
 } from "@app/lib/model_constructors/providers/google_ai_studio/models/shared";
 import { GEMINI_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
-import { GEMINI_3_5_FLASH_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { GEMINI_3_5_FLASH } from "@app/lib/model_constructors/types/models";
 
 import { z } from "zod";
 
@@ -28,7 +28,7 @@ export function WithGoogleAiStudioGeminiThreeDotFiveFlashConfig<
   ) => object,
 >(Base: TBase) {
   abstract class GoogleAiStudioGeminiThreeDotFiveFlash extends Base {
-    static readonly modelId = GEMINI_3_5_FLASH_MODEL_ID;
+    static readonly model = GEMINI_3_5_FLASH;
 
     static readonly configSchema = configSchema;
 

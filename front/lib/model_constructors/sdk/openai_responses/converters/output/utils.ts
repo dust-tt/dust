@@ -274,7 +274,7 @@ function apiErrorToErrorEvent(
       return buildErrorEvent({
         metadata,
         type: "rate_limit_error",
-        message: `Rate limit exceeded for OpenAI/${metadata.modelId}: ${error.message}`,
+        message: `Rate limit exceeded for OpenAI/${metadata.model}: ${error.message}`,
         originalError: error,
       });
     default:

@@ -64,10 +64,10 @@ import { describe, expect, it } from "vitest";
  */
 
 const metadata: EndpointMetadata = {
-  providerId: "anthropic",
-  api: "anthropic",
+  lab: "anthropic",
+  host: "anthropic",
   region: "us",
-  modelId: "claude-opus-4-8",
+  model: "claude-opus-4-8",
 };
 
 const outputConverters: OutputEventConverters = {
