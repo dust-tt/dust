@@ -1,4 +1,8 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ServerMetadata,
+  ToolMeta,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { z } from "zod";
 
 export const COMMON_UTILITIES_SERVER_NAME = "common_utilities" as const;
@@ -107,6 +111,10 @@ export const COMMON_UTILITIES_TOOLS_METADATA = [
   },
   {
     name: SET_CONVERSATION_TITLE_TOOL_NAME,
+    isAvailableForContext: ({ toolContext }) =>
+      ((isAgentLoopRunContext(toolContext?.runContext)
+        ? toolContext.runContext.conversation
+        : null) ?? toolContext?.listToolsContext?.conversation) !== undefined,
     description:
       "Update the title of the current conversation. Use this to give the conversation a descriptive name that summarizes its topic.",
     schema: {
@@ -123,7 +131,7 @@ export const COMMON_UTILITIES_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: true,
   },
-] as const;
+] as const satisfies readonly ToolMeta[];
 
 export const COMMON_UTILITIES_SERVER = {
   serverInfo: {
