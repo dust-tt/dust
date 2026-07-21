@@ -67,7 +67,6 @@ function constructContextSection({
   let context = "# CONTEXT\n\n";
   context += `assistant: @${agentConfiguration.name}\n`;
   context += `current_date: ${d.format("YYYY-MM-DD (ddd)")}\n`;
-  context += `model_id: ${model.modelId}\n`;
   if (owner) {
     context += `workspace: ${owner.name}\n`;
   }
