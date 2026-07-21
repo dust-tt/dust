@@ -443,10 +443,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     >
       <style>{`
         :root {
-          --panel-resize-focus-border: linear-gradient(to bottom, ${customColors.gray[100]}, ${customColors.blue[400]}, ${customColors.gray[100]});
-        }
-        .dark {
-          --panel-resize-focus-border: linear-gradient(to bottom, ${customColors.gray[900]}, ${customColors.blue[600]}, ${customColors.gray[900]});
+          --panel-resize-focus-border: linear-gradient(to bottom, ${customColors.blue[400]}00, ${customColors.blue[400]}00, ${customColors.blue[400]}80, ${customColors.blue[400]}99, ${customColors.blue[400]}80, ${customColors.blue[400]}00, ${customColors.blue[400]}00);
         }
       `}</style>
       <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-app-background">
