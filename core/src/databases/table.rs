@@ -1332,10 +1332,7 @@ mod tests {
         let row = Row::from_csv_record(headers.clone(), record, "0".to_string())?;
         assert_eq!(row.content()["a"], Value::String("32E0134".to_string()));
         assert_eq!(row.content()["b"], Value::String("14e0050".to_string()));
-        assert_eq!(
-            row.content()["c"],
-            Value::Number(serde_json::Number::from_f64(320000.0).unwrap())
-        );
+        assert_eq!(row.content()["c"], Value::from(320000.0));
 
         let headers = Arc::new(vec!["a".to_string(), "b".to_string()]);
         let record = vec!["true", "false"];
