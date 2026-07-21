@@ -11,7 +11,7 @@ export class GroupSpaceModel extends WorkspaceAwareModel<GroupSpaceModel> {
   declare createdAt: CreationOptional<Date>;
   declare groupId: ForeignKey<GroupModel["id"]>;
   // Denormalized from groups.kind. Keep in sync if group kinds ever become mutable.
-  declare groupKind: GroupKind | null;
+  declare groupKind: GroupKind;
   declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare kind: GroupSpaceKind;
 }
@@ -32,7 +32,7 @@ GroupSpaceModel.init(
     },
     groupKind: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
   },
   {
