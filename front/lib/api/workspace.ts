@@ -314,6 +314,14 @@ export async function searchMembers(
 
   let users: UserResource[];
   let total: number;
+  const shouldSortInMemory =
+    paginationParams.sortBy !== undefined &&
+    paginationParams.sortBy !== "name" &&
+    paginationParams.sortBy !== "email";
+  const searchSortBy =
+    paginationParams.sortBy === "name" || paginationParams.sortBy === "email"
+      ? paginationParams.sortBy
+      : undefined;
 
   if (options.searchEmails) {
     if (options.searchEmails.length > MAX_SEARCH_EMAILS) {
@@ -326,11 +334,29 @@ export async function searchMembers(
       options.searchEmails
     );
     total = users.length;
+  } else if (shouldSortInMemory) {
+    const results = await UserResource.searchAllUsers(auth, {
+      searchTerm: options.searchTerm ?? "",
+    });
+
+    if (results.isErr()) {
+      logger.error({ err: results.error }, "Error searching users");
+      return { members: [], total: 0 };
+    }
+
+    users = results.value.users;
+    total = results.value.total;
   } else {
     const results = await UserResource.searchUsers(auth, {
       searchTerm: options.searchTerm ?? "",
       offset: paginationParams.offset,
       limit: paginationParams.limit,
+      ...(searchSortBy && {
+        orderBy: {
+          field: searchSortBy,
+          direction: paginationParams.sortDirection ?? "asc",
+        },
+      }),
     });
 
     if (results.isErr()) {
@@ -389,8 +415,51 @@ export async function searchMembers(
     filteredUsers = usersWithWorkspace.filter((u) => isBuilder(u.workspace));
   }
 
+  if (options.searchEmails || shouldSortInMemory) {
+    const sortBy = paginationParams.sortBy ?? "name";
+    const sortDirection = paginationParams.sortDirection ?? "asc";
+
+    filteredUsers.sort((a, b) => {
+      const getSortValue = (user: UserTypeWithWorkspace) => {
+        switch (sortBy) {
+          case "email":
+            return user.email ?? "";
+          case "role":
+            return user.workspace.role ?? "";
+          case "status":
+            return `${
+              user.lastLoginAt === null ? "Unregistered" : "Active"
+            }${user.origin ? ` (${user.origin})` : ""}`;
+          case "groups":
+            return user.workspace.groups?.join(", ") ?? "";
+          case "name":
+            return user.fullName ?? "";
+        }
+      };
+
+      const comparison = getSortValue(a).localeCompare(
+        getSortValue(b),
+        undefined,
+        { sensitivity: "base" }
+      );
+      return comparison === 0
+        ? a.sId.localeCompare(b.sId)
+        : sortDirection === "desc"
+          ? -comparison
+          : comparison;
+    });
+  }
+
+  const paginatedUsers =
+    options.searchEmails || shouldSortInMemory
+      ? filteredUsers.slice(
+          paginationParams.offset,
+          paginationParams.offset + paginationParams.limit
+        )
+      : filteredUsers;
+
   return {
-    members: filteredUsers,
+    members: paginatedUsers,
     total: options.buildersOnly ? filteredUsers.length : total,
   };
 }

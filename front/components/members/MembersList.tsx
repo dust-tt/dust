@@ -14,7 +14,11 @@ import {
   LoadingBlock,
   XClose,
 } from "@dust-tt/sparkle";
-import type { CellContext, PaginationState } from "@tanstack/react-table";
+import type {
+  CellContext,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import capitalize from "lodash/capitalize";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo } from "react";
@@ -78,6 +82,7 @@ const memberColumns = [
   {
     id: "name" as const,
     header: "Name",
+    accessorFn: (row: RowData) => row.name,
     cell: (info: Info) => (
       <DataTable.CellContent avatarUrl={info.row.original.icon} roundedAvatar>
         {info.row.original.name}
@@ -86,7 +91,7 @@ const memberColumns = [
         )}
       </DataTable.CellContent>
     ),
-    enableSorting: false,
+    enableSorting: true,
   },
   {
     id: "email" as const,
@@ -139,6 +144,8 @@ const memberColumns = [
   {
     id: "status" as const,
     header: "Status",
+    accessorFn: (row: RowData) =>
+      row.status + (row.origin ? ` (${capitalize(row.origin)})` : ""),
     cell: (info: Info) => {
       return (
         <DataTable.CellContent>
@@ -153,6 +160,7 @@ const memberColumns = [
   {
     id: "groups" as const,
     header: "Groups",
+    accessorFn: (row: RowData) => row.groups.join(", "),
     cell: (info: Info) => (
       <DataTable.CellContent className="max-w-40 truncate capitalize">
         {info.row.original.groups.join(", ")}
@@ -169,6 +177,8 @@ interface MembersListProps {
   showColumns: ("name" | "email" | "role" | "remove" | "status" | "groups")[];
   pagination?: PaginationState;
   setPagination?: (pagination: PaginationState) => void;
+  sorting?: SortingState;
+  setSorting?: (sorting: SortingState) => void;
 }
 
 export function MembersList({
@@ -179,6 +189,8 @@ export function MembersList({
   showColumns,
   pagination,
   setPagination,
+  sorting,
+  setSorting,
 }: MembersListProps) {
   assert(
     !showColumns.includes("remove") || onRemoveMemberClick,
@@ -214,6 +226,9 @@ export function MembersList({
           pagination={pagination}
           setPagination={setPagination}
           totalRowCount={totalMembersCount}
+          sorting={sorting}
+          setSorting={setSorting}
+          isServerSideSorting={!!sorting && !!setSorting}
         />
       )}
     </>

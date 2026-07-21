@@ -25,7 +25,7 @@ import {
   ButtonsSwitchList,
   SearchInput,
 } from "@dust-tt/sparkle";
-import type { PaginationState } from "@tanstack/react-table";
+import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
@@ -153,6 +153,7 @@ function WorkspaceMembersList({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [prevSearchTerm, setPrevSearchTerm] = useState(searchTerm);
 
   const [selectedMember, setSelectedMember] =
@@ -164,7 +165,13 @@ function WorkspaceMembersList({
     pageIndex: pagination.pageIndex,
     pageSize: DEFAULT_PAGE_SIZE,
     groupKind: isProvisioningEnabled ? "provisioned" : undefined,
+    sorting,
   });
+
+  const handleSetSorting = useCallback((next: SortingState) => {
+    setSorting(next);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
 
   if (searchTerm !== prevSearchTerm) {
     setPrevSearchTerm(searchTerm);
@@ -196,6 +203,8 @@ function WorkspaceMembersList({
         }
         pagination={pagination}
         setPagination={setPagination}
+        sorting={sorting}
+        setSorting={handleSetSorting}
       />
       <ChangeMemberModal
         onClose={resetSelectedMember}
