@@ -31,8 +31,10 @@ function newCounts(): SeederCounts {
  * `CAPABILITY_SEEDERS` (`@app/lib/api/permissions/governance_seeding`), from each existing
  * workspace's current legacy configuration, so that once a capability's
  * `auth.hasWorkspacePermission(verb, resourceType)` check is enforced server-side, every
- * workspace preserves its effective access as of today. First capability: `create agent`
- * (dust-tt/tasks#9463).
+ * workspace preserves its effective access as of today. Runs every registered capability in one
+ * pass — adding a new seeder to the registry is picked up here automatically, no script changes
+ * needed. First capabilities: `create agent` (dust-tt/tasks#9463) and `create skill`
+ * (dust-tt/tasks#9464).
  *
  * The seeders themselves — which capability, and what target (everyone / builders / admins_only)
  * a workspace resolves to — are shared with `seedWorkspaceCapabilities`, which applies the same

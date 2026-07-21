@@ -67,4 +67,37 @@ describe("seedWorkspaceCapabilities", () => {
       true
     );
   });
+
+  it("always grants create-skill to the Builders group, regardless of any flag", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    await GroupFactory.defaults(workspace);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    await seedWorkspaceCapabilities(auth);
+
+    const plainUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, plainUser, { role: "user" });
+    const plainAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      plainUser.sId,
+      workspace.sId
+    );
+    expect(await plainAuth.hasWorkspacePermission("create", "skill")).toBe(
+      false
+    );
+
+    const builder = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, builder, { role: "builder" });
+    await GroupResource.syncBuilderGroupMembership({
+      workspace,
+      user: builder,
+      isBuilder: true,
+    });
+    const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      builder.sId,
+      workspace.sId
+    );
+    expect(await builderAuth.hasWorkspacePermission("create", "skill")).toBe(
+      true
+    );
+  });
 });
