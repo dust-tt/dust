@@ -1,9 +1,8 @@
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
   AnchoredPopover,
   Avatar,
@@ -159,11 +158,9 @@ export function WelcomeTourGuide({
   const centeredRef = useRef<HTMLDivElement>(null);
   const [currentStep, setCurrentStep] = useState(0);
 
-  const { featureFlags } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions(owner);
 
-  const isRestrictedFromAgentCreation =
-    featureFlags.includes("disallow_agent_creation_to_users") &&
-    !isBuilder(owner);
+  const isRestrictedFromAgentCreation = !hasPermission("agent", "create");
 
   const connections = useMemo(() => {
     return Object.values(CONNECTOR_CONFIGURATIONS)

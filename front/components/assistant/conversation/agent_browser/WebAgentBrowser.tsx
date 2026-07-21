@@ -1,8 +1,8 @@
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
 import { ManageDropdownMenu } from "@app/components/assistant/ManageDropdownMenu";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { getAgentBuilderRoute, setQueryParam } from "@app/lib/utils/router";
 import { isBuilder } from "@app/types/user";
@@ -21,7 +21,6 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
-
 import {
   AGENTS_TABS,
   AgentBrowserSearchDropdown,
@@ -52,11 +51,9 @@ export function WebAgentBrowser({
 }: WebAgentBrowserProps) {
   const router = useAppRouter();
   const { createAgentButtonRef } = useWelcomeTourGuide();
-  const { featureFlags } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions(owner);
 
-  const isRestrictedFromAgentCreation =
-    featureFlags.includes("disallow_agent_creation_to_users") &&
-    !isBuilder(owner);
+  const isRestrictedFromAgentCreation = !hasPermission("agent", "create");
 
   const sortTypeLabel = useMemo(() => {
     switch (sortType) {

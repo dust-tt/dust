@@ -37,12 +37,13 @@ import { usePodsSectionCollapsed } from "@app/hooks/usePodsSectionCollapsed";
 import { useSearchPods } from "@app/hooks/useSearchPods";
 import { useStarredPodsSectionCollapsed } from "@app/hooks/useStarredPodsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { getConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
@@ -419,7 +420,7 @@ export function AgentSidebarMenu({
   const router = useAppRouter();
   const activeConversationId = useActiveConversationId();
   const activePodId = useActivePodId();
-  const { hasFeature } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions(owner);
   const moveConversationToPod = useMoveConversationToPod(owner);
   const bulkMoveConversationsToPod = useBulkMoveConversationsToPod(owner);
 
@@ -496,8 +497,7 @@ export function AgentSidebarMenu({
   const { isStarredPodsSectionCollapsed, setStarredPodsSectionCollapsed } =
     useStarredPodsSectionCollapsed();
 
-  const isRestrictedFromAgentCreation =
-    hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
+  const isRestrictedFromAgentCreation = !hasPermission("agent", "create");
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null
