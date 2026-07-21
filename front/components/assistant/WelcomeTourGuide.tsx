@@ -160,7 +160,7 @@ export function WelcomeTourGuide({
 
   const { hasPermission } = useWorkspacePermissions(owner);
 
-  const isRestrictedFromAgentCreation = !hasPermission("agent", "create");
+  const isRestrictedFromAgentCreation = !hasPermission("create", "agent");
 
   const connections = useMemo(() => {
     return Object.values(CONNECTOR_CONFIGURATIONS)

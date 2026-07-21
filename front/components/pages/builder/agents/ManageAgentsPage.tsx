@@ -82,7 +82,7 @@ export function ManageAgentsPage() {
 
   const { hasPermission } = useWorkspacePermissions(owner);
 
-  const isRestrictedFromAgentCreation = !hasPermission("agent", "create");
+  const isRestrictedFromAgentCreation = !hasPermission("create", "agent");
   const shouldDisableAgentFetching = isRestrictedFromAgentCreation;
   const isSearchActive = assistantSearch.trim() !== "";
 

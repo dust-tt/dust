@@ -175,7 +175,7 @@ export function ConversationMenu({
 
   const { hasPermission } = useWorkspacePermissions(owner);
 
-  const isRestrictedFromAgentCreation = !hasPermission("agent", "create");
+  const isRestrictedFromAgentCreation = !hasPermission("create", "agent");
   const canTurnIntoAgent =
     !!conversation &&
     !!user &&

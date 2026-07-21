@@ -497,7 +497,7 @@ export function AgentSidebarMenu({
   const { isStarredPodsSectionCollapsed, setStarredPodsSectionCollapsed } =
     useStarredPodsSectionCollapsed();
 
-  const isRestrictedFromAgentCreation = !hasPermission("agent", "create");
+  const isRestrictedFromAgentCreation = !hasPermission("create", "agent");
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null

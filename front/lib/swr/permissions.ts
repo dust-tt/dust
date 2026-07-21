@@ -36,7 +36,7 @@ export function useWorkspacePermissions(
   );
 
   const hasPermission = useCallback(
-    (resourceType: ConcreteResourceType, verb: GrantVerb): boolean =>
+    (verb: GrantVerb, resourceType: ConcreteResourceType): boolean =>
       workspacePermissions?.[resourceType]?.includes(verb) ?? false,
     [workspacePermissions]
   );

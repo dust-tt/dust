@@ -36,7 +36,7 @@ export function NewAgentPage() {
   const templateId = useSearchParam("templateId");
   const conversationId = useSearchParam("conversationId");
 
-  const isRestrictedFromAgentCreation = !hasPermission("agent", "create");
+  const isRestrictedFromAgentCreation = !hasPermission("create", "agent");
 
   const {
     agentConfiguration,
