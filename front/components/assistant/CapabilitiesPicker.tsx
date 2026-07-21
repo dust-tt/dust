@@ -513,7 +513,7 @@ export function CapabilitiesPicker({
         )}
         <ContentWrapper
           className="w-80"
-          align="start"
+          {...(type === "dropdown" ? { align: "start" as const } : {})}
           onAnimationEnd={() => {
             if (!isOpen) {
               setIsClosing(false);

@@ -422,7 +422,7 @@ function ComposerDemo({
         Capabilities
         <ChevronRight className="h-5 w-5" />
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent align="start" className="w-80">
+      <DropdownMenuSubContent className="w-80">
         <DropdownMenuSearchbar
           name="search-capabilities"
           placeholder="Search capabilities"
@@ -485,7 +485,6 @@ function ComposerDemo({
           <ChevronRight className="h-5 w-5" />
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent
-          align="start"
           collisionPadding={15}
           className="h-80 w-80 xs:h-96 xs:w-96 [&_[data-radix-scroll-area-viewport]>div]:h-full"
           dropdownHeaders={
