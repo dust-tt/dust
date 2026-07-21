@@ -30,7 +30,7 @@ import {
 
 /* ---------------- TEMPLATE DATA ---------------- */
 
-const USER = { name: "Alex", role: "Marketing", company: "Acme" };
+const USER = { name: "User", role: "Marketing", company: "Acme" };
 
 const CONVERSATION_URL = "https://app.dust.tt/w/[workspace-id]/assistant/[conversation-id]";
 
@@ -183,46 +183,96 @@ function CuratedRow({ name, type, desc }: { name: string; type: string; desc: st
   );
 }
 
+/* ---------------- How this works (shared) ---------------- */
+
+function HowThisWorks({ compact = false }: { compact?: boolean }) {
+  if (compact) {
+    return (
+      <div className="flex h-full flex-col justify-center gap-1.5 overflow-hidden">
+        <SectionLabel icon={<Sparkles className="h-3 w-3 text-blue-500" />}>
+          How this works
+        </SectionLabel>
+        <p className="truncate text-xs text-foreground">
+          <span className="font-medium">{POD_INTRO.lead}</span>
+        </p>
+        <div className="flex min-h-0 flex-1 items-stretch gap-1.5">
+          {LOOP.map((step, i) => (
+            <div key={step.title} className="flex min-w-0 flex-1 items-center gap-1">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center rounded-lg border border-border px-2 py-1.5">
+                <span
+                  className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 font-semibold text-white"
+                  style={{ fontSize: 9 }}
+                >
+                  {i + 1}
+                </span>
+                <p className="mt-1 truncate text-xs font-medium text-foreground">{step.title}</p>
+                <p className="truncate text-xs text-muted-foreground" style={{ fontSize: 10 }}>
+                  {step.sub}
+                </p>
+              </div>
+              {i < LOOP.length - 1 && (
+                <ArrowRight className="h-3 w-3 shrink-0 text-stone-400" />
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="h-px flex-1 bg-border" />
+          <p className="flex items-center gap-1 text-xs text-muted-foreground" style={{ fontSize: 10 }}>
+            <RotateCcw className="h-2.5 w-2.5" />
+            what it finds shapes the next suggestion
+          </p>
+          <span className="h-px flex-1 bg-border" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <SectionLabel icon={<Sparkles className="h-3.5 w-3.5 text-blue-500" />}>
+        How this works
+      </SectionLabel>
+      <p className="mt-2 text-sm text-foreground">
+        <span className="font-medium">{POD_INTRO.lead}</span>{" "}
+        <span className="text-muted-foreground">{POD_INTRO.body}</span>
+      </p>
+
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-stretch">
+        {LOOP.map((step, i) => (
+          <div key={step.title} className="flex min-w-0 flex-1 items-center gap-2">
+            <div className="min-w-0 flex-1 rounded-xl border border-border px-3 py-2.5">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-semibold text-white">
+                {i + 1}
+              </span>
+              <p className="mt-1.5 text-sm font-medium text-foreground">{step.title}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{step.sub}</p>
+            </div>
+            {i < LOOP.length - 1 && (
+              <ArrowRight className="hidden h-3.5 w-3.5 shrink-0 text-stone-400 sm:block" />
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <span className="h-px flex-1 bg-border" />
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <RotateCcw className="h-3 w-3" />
+          what it finds shapes the next suggestion
+        </p>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- Tab 1: Overview ---------------- */
 
 function OverviewTab() {
   return (
     <div className="space-y-6">
 
-      <div>
-        <SectionLabel icon={<Sparkles className="h-3.5 w-3.5 text-blue-500" />}>
-          How this works
-        </SectionLabel>
-        <p className="mt-2 text-sm text-foreground">
-          <span className="font-medium">{POD_INTRO.lead}</span>{" "}
-          <span className="text-muted-foreground">{POD_INTRO.body}</span>
-        </p>
-
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-stretch">
-          {LOOP.map((step, i) => (
-            <div key={step.title} className="flex min-w-0 flex-1 items-center gap-2">
-              <div className="min-w-0 flex-1 rounded-xl border border-border px-3 py-2.5">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-semibold text-white">
-                  {i + 1}
-                </span>
-                <p className="mt-1.5 text-sm font-medium text-foreground">{step.title}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{step.sub}</p>
-              </div>
-              {i < LOOP.length - 1 && (
-                <ArrowRight className="hidden h-3.5 w-3.5 shrink-0 text-stone-400 sm:block" />
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="mt-2 flex items-center gap-2">
-          <span className="h-px flex-1 bg-border" />
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <RotateCcw className="h-3 w-3" />
-            what it finds shapes the next suggestion
-          </p>
-          <span className="h-px flex-1 bg-border" />
-        </div>
-      </div>
+      <HowThisWorks />
 
       <div>
         <SectionLabel icon={<Users className="h-3.5 w-3.5 text-blue-500" />}>
@@ -625,28 +675,17 @@ function FullView() {
 
       <div className="mx-auto w-full max-w-4xl flex-1 px-8 py-6">
         {active === 0 ? <OverviewTab /> : active === 1 ? <YourWorkTab /> : active === 2 ? <YourSetupTab /> : <RecommendationsTab />}
-
-        <div className="mt-6 flex justify-center">
-          <a
-            href={CONVERSATION_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600"
-          >
-            Open the last recommendation <ArrowRight className="h-4 w-4" />
-          </a>
-        </div>
       </div>
     </div>
   );
 }
 
-/* ---------------- Condensed banner view (~280px) ---------------- */
+/* ---------------- Condensed banner view (pinned, ~280px) ---------------- */
 
 function BannerView() {
   return (
-    <div className="flex h-full flex-col bg-background text-foreground">
-      <div className="flex shrink-0 items-center gap-2 border-b border-blue-100 bg-blue-50 px-4 py-2.5 dark:border-blue-900 dark:bg-blue-950/40">
+    <div className="flex h-full flex-col overflow-hidden bg-background text-foreground">
+      <div className="flex shrink-0 items-center gap-2 border-b border-blue-100 bg-blue-50 px-4 py-2 dark:border-blue-900 dark:bg-blue-950/40">
         <Sparkles className="h-4 w-4 shrink-0 text-blue-500" />
         <span className="truncate text-sm font-semibold text-foreground">{USER.name}'s pod</span>
         <a
@@ -658,25 +697,8 @@ function BannerView() {
           Open the last recommendation <ArrowRight className="h-3.5 w-3.5" />
         </a>
       </div>
-      <div className="min-h-0 flex-1 px-4 py-3">
-        <p className="text-sm text-foreground" style={{ overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-          <span className="font-medium">{POD_INTRO.lead}</span>{" "}
-          <span className="text-muted-foreground">{POD_INTRO.body}</span>
-        </p>
-        <div className="mt-3 flex items-center gap-2 overflow-x-auto">
-          {LOOP.map((step, i) => (
-            <div key={step.title} className="flex shrink-0 items-center gap-2">
-              <div className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5">
-                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-500 font-semibold text-white" style={{ fontSize: 10 }}>
-                  {i + 1}
-                </span>
-                <span className="text-xs font-medium text-foreground">{step.title}</span>
-              </div>
-              {i < LOOP.length - 1 && <ArrowRight className="h-3 w-3 shrink-0 text-stone-400" />}
-            </div>
-          ))}
-          <RotateCcw className="h-3 w-3 shrink-0 text-stone-400" />
-        </div>
+      <div className="min-h-0 flex-1 overflow-hidden px-4 py-2">
+        <HowThisWorks compact />
       </div>
     </div>
   );
