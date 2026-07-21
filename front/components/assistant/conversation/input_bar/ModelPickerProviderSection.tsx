@@ -5,7 +5,6 @@ import type {
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelWithReasoningEffortKey } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import {
-  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuSeparator,
 } from "@dust-tt/sparkle";
@@ -18,9 +17,10 @@ interface ModelPickerProviderSectionProps {
   onSelect: (modelWithEffort: ModelWithReasoningEffort) => void;
 }
 
-// The per-model sections (one label + its effort lines) shown for a maker.
-// Rendered inside a submenu on desktop and inline under the maker name on
-// mobile.
+// The per-model sections shown for a maker: each model's effort lines, with a
+// separator between different models (no title label — the effort rows already
+// carry the model name). Rendered inside a submenu on desktop and inline under
+// the maker name on mobile.
 export function ModelPickerProviderSection({
   maker,
   selectedKey,
@@ -32,7 +32,6 @@ export function ModelPickerProviderSection({
       {maker.models.map((entry, index) => (
         <Fragment key={entry.model.modelId}>
           {index > 0 && <DropdownMenuSeparator />}
-          <DropdownMenuLabel label={entry.model.displayName} />
           <DropdownMenuRadioGroup value={selectedKey}>
             {entry.efforts.map((effort) => {
               const modelWithEffort = { model: entry.model, effort };
