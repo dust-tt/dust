@@ -3,8 +3,8 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 import { describe, expect, it } from "vitest";
 
-// Minimal, real (non-DeepSeek) agent configuration so the parser resolves the
-// standard <thinking>/<response> chain-of-thought delimiters. No DB needed:
+// Minimal, real (non-DeepSeek) agent configuration so the reload parser resolves
+// legacy <thinking>/<response> chain-of-thought delimiters. No DB needed:
 // `renderAgentMessageContentView` is pure.
 const agentConfiguration: LightAgentConfigurationType = {
   id: 1,

@@ -14,17 +14,11 @@ import { FunctionCallingConfigMode } from "@google/genai";
 export function toThinkingConfig({
   modelId,
   reasoningEffort,
-  useNativeLightReasoning,
 }: {
   modelId: GoogleAIStudioWhitelistedModelId;
   reasoningEffort: ReasoningEffort | null;
-  useNativeLightReasoning?: boolean;
 }): ThinkingConfig | undefined {
   const thinkingConfig = GOOGLE_AI_STUDIO_MODEL_CONFIGS[modelId].thinkingConfig;
-
-  if (reasoningEffort === "light" && !useNativeLightReasoning) {
-    return thinkingConfig.none;
-  }
 
   switch (reasoningEffort) {
     case null:

@@ -356,7 +356,6 @@ export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     high: true,
   },
   defaultReasoningEffort: "medium",
-  useNativeLightReasoning: true,
   // Opus 4.8 shares Opus 4.7's tokenizer (~555k words/1M tokens vs ~750k for
   // anthropic_base). Ratio: 750/555 ≈ 1.35, applied on top of the base 1.3
   // adjustment → 1.3 × 1.35 ≈ 1.75.
@@ -395,8 +394,7 @@ export const CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   supportsResponseFormat: true,
   // Fable 5 rejects an explicit `thinking: {type: "disabled"}` (400), so
-  // "none" is unsupported and "light" relies on native light reasoning
-  // (adaptive thinking with low effort) instead of disabling thinking.
+  // "none" is unsupported and "light" uses adaptive thinking with low effort.
   supportedReasoningEfforts: {
     none: false,
     light: true,
@@ -404,7 +402,6 @@ export const CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     high: true,
   },
   defaultReasoningEffort: "medium",
-  useNativeLightReasoning: true,
   // Fable 5 shares the Opus 4.7/4.8 tokenizer (~555k words/1M tokens vs ~750k
   // for anthropic_base). Ratio: 750/555 ≈ 1.35, applied on top of the base 1.3
   // adjustment → 1.3 × 1.35 ≈ 1.75.

@@ -248,15 +248,8 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     // Build thinking config, use custom type if specified.
     const thinkingConfig =
       this.modelConfig.customThinkingType === "auto"
-        ? toAutoThinkingConfig(
-            reasoningEffort,
-            this.modelConfig.useNativeLightReasoning,
-            this.omittedThinking
-          )
-        : toThinkingConfig(
-            reasoningEffort,
-            this.modelConfig.useNativeLightReasoning
-          );
+        ? toAutoThinkingConfig(reasoningEffort, this.omittedThinking)
+        : toThinkingConfig(reasoningEffort);
 
     // Build the tools once so the system prompt can be derived from what is
     // actually sent: the tool search instruction is added only when the search

@@ -60,10 +60,7 @@ export class FireworksLLM extends LLM<ChatCompletionCreateParamsStreaming> {
         include_usage: true,
       },
       temperature: this.temperature ?? undefined,
-      reasoning_effort: toReasoningParam(
-        this.reasoningEffort,
-        this.modelConfig.useNativeLightReasoning
-      ),
+      reasoning_effort: toReasoningParam(this.reasoningEffort),
       tool_choice: toToolChoiceParam(specifications, streamParameters),
       ...(tools ? { tools } : {}),
       response_format: toOutputFormatParam(this.responseFormat),

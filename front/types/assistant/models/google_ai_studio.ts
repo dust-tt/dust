@@ -38,7 +38,6 @@ export const GEMINI_2_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
     high: false,
   },
   defaultReasoningEffort: "light",
-  useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   supportsBatchProcessing: true,
   regionalAvailability: {
@@ -68,7 +67,6 @@ export const GEMINI_3_1_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
     high: true,
   },
   defaultReasoningEffort: "light",
-  useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   supportsBatchProcessing: true,
   regionalAvailability: {
@@ -102,7 +100,6 @@ export const GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_CONFIG: ModelConfigu
       high: true,
     },
     defaultReasoningEffort: "light",
-    useNativeLightReasoning: true,
     tokenizer: { type: "tiktoken", base: "cl100k_base" },
     supportsBatchProcessing: true,
     regionalAvailability: {
@@ -132,7 +129,6 @@ export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
     high: false,
   },
   defaultReasoningEffort: "light",
-  useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   supportsBatchProcessing: true,
   regionalAvailability: {
@@ -162,7 +158,6 @@ export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
     high: true,
   },
   defaultReasoningEffort: "light",
-  useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   supportsBatchProcessing: true,
   regionalAvailability: {
@@ -194,7 +189,6 @@ export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
-  useNativeLightReasoning: true,
   supportsBatchProcessing: true,
   regionalAvailability: {
     "us-central1": true,
@@ -225,7 +219,6 @@ export const GEMINI_3_1_PRO_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
-  useNativeLightReasoning: true,
   supportsBatchProcessing: true,
   regionalAvailability: {
     "us-central1": true,
@@ -255,7 +248,6 @@ export const GEMINI_3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
-  useNativeLightReasoning: true,
   supportsBatchProcessing: true,
   regionalAvailability: {
     "us-central1": true,
@@ -286,7 +278,6 @@ export const GEMINI_3_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
-  useNativeLightReasoning: true,
   supportsBatchProcessing: true,
   regionalAvailability: {
     "us-central1": true,

@@ -91,19 +91,14 @@ import { isString } from "@app/types/shared/utils/general";
  * Maps a reasoning effort to the model constructor's effort values.
  */
 function mapReasoningEffort(
-  effort: ReasoningEffort | null,
-  useNativeLightReasoning: boolean
+  effort: ReasoningEffort | null
 ): "none" | "low" | "medium" | "high" | "maximal" {
   switch (effort) {
     case null:
     case "none":
       return "none";
     case "light":
-      // Models without native light reasoning rely on the chain-of-thought meta
-      // prompt instead of native thinking. Enabling native thinking while that
-      // meta prompt is injected makes the <thinking>/<response> tags leak, so
-      // keep thinking disabled for them.
-      return useNativeLightReasoning ? "low" : "none";
+      return "low";
     case "medium":
       return "medium";
     case "high":
@@ -751,10 +746,7 @@ abstract class BaseTransition extends LLM {
       tools: specifications as ToolSpecification[],
       temperature: this.temperature ?? undefined,
       reasoning: {
-        effort: mapReasoningEffort(
-          this.reasoningEffort,
-          this.modelConfig.useNativeLightReasoning ?? false
-        ),
+        effort: mapReasoningEffort(this.reasoningEffort),
       },
       forceTool: forceToolCall,
       disableToolUse,

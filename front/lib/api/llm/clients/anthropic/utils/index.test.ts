@@ -17,14 +17,8 @@ describe("toThinkingConfig", () => {
     });
   });
 
-  it('returns disabled thinking for "light" when native light reasoning is false', () => {
-    expect(toThinkingConfig("light", false)).toEqual({
-      thinking: { type: "disabled" },
-    });
-  });
-
-  it('returns enabled thinking for "light" when native light reasoning is true', () => {
-    expect(toThinkingConfig("light", true)).toEqual({
+  it('returns enabled thinking for "light"', () => {
+    expect(toThinkingConfig("light")).toEqual({
       thinking: {
         type: "enabled",
         budget_tokens: ANTHROPIC_THINKING_BUDGET_TOKENS_MAPPING.light,
@@ -49,21 +43,6 @@ describe("toThinkingConfig", () => {
       },
     });
   });
-
-  it('ignores useNativeLightReasoning parameter for reasoning efforts other than "light"', () => {
-    expect(toThinkingConfig("medium", false)).toEqual({
-      thinking: {
-        type: "enabled",
-        budget_tokens: ANTHROPIC_THINKING_BUDGET_TOKENS_MAPPING.medium,
-      },
-    });
-    expect(toThinkingConfig("high", true)).toEqual({
-      thinking: {
-        type: "enabled",
-        budget_tokens: ANTHROPIC_THINKING_BUDGET_TOKENS_MAPPING.high,
-      },
-    });
-  });
 });
 
 describe("toAutoThinkingConfig", () => {
@@ -79,14 +58,8 @@ describe("toAutoThinkingConfig", () => {
     });
   });
 
-  it('returns disabled thinking for "light" when native light reasoning is false', () => {
+  it('returns adaptive thinking with low effort for "light"', () => {
     expect(toAutoThinkingConfig("light")).toEqual({
-      thinking: { type: "disabled" },
-    });
-  });
-
-  it('returns adaptive thinking for "light" when native light reasoning is true', () => {
-    expect(toAutoThinkingConfig("light", true)).toEqual({
       thinking: { type: "adaptive", display: "summarized" },
       output_config: {
         effort: ANTHROPIC_THINKING_EFFORT_MAPPING.light,
