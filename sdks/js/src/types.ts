@@ -24,6 +24,8 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "xai"
   | "noop"
   | "auto"
+  | "auto_quick"
+  | "auto_deep"
 >();
 
 export type KnownModelLLMId =
@@ -101,7 +103,9 @@ export type KnownModelLLMId =
   | "grok-4-1-fast-non-reasoning-latest"
   | "grok-4-1-fast-reasoning-latest"
   | "noop" // Noop
-  | "auto"; // Auto
+  | "auto" // Auto
+  | "auto_quick" // Quick stream tier
+  | "auto_deep"; // Deep stream tier
 
 // Cast to allow custom/unknown model IDs while preserving autocomplete.
 const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<

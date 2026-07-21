@@ -8,10 +8,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
-import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
+import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
+import { AUTO_MODEL_ID, MODEL_STREAMS } from "@app/types/assistant/models/auto";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,
+  ReasoningEffort,
   ReasoningEffortSupport,
 } from "@app/types/assistant/models/types";
 import { getMaximumReasoningEffort } from "@app/types/assistant/models/types";
@@ -120,6 +122,36 @@ export async function getAutoModelForAuth(
   return {
     ...pickPreferredLargeModel(availableModels.filter((m) => m.isSelectable)),
   };
+}
+
+// Resolve a stream tier (Quick/Deep) to a concrete model + reasoning effort.
+// Walks the stream's ordered candidate pool and picks the first one available
+// (selectable) to the workspace that supports the requested effort. Returns null
+// when none of the stream's candidates are available — the caller falls back to
+// the auto model.
+export async function getModelForStream(
+  auth: Authenticator,
+  streamId: ModelStreamIdType
+): Promise<{
+  model: EnabledModelConfigurationType;
+  reasoningEffort: ReasoningEffort;
+} | null> {
+  const availableModels = await getEnabledModelsForAuth(auth);
+
+  for (const candidate of MODEL_STREAMS[streamId]) {
+    const model = availableModels.find(
+      (m) =>
+        m.isSelectable &&
+        m.providerId === candidate.providerId &&
+        m.modelId === candidate.modelId &&
+        m.supportedReasoningEfforts[candidate.reasoningEffort]
+    );
+    if (model) {
+      return { model, reasoningEffort: candidate.reasoningEffort };
+    }
+  }
+
+  return null;
 }
 
 export async function getModelsForAuth(auth: Authenticator): Promise<{

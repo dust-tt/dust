@@ -51,7 +51,10 @@ export type AgentProviderPassthroughContentType = {
   value: {
     // Anthropic feature only for now. Need split between host and lab to be
     // completed for other lab support.
-    provider: Exclude<ModelProviderIdType, "xai" | "fireworks" | "auto">;
+    provider: Exclude<
+      ModelProviderIdType,
+      "xai" | "fireworks" | "auto" | "auto_quick" | "auto_deep"
+    >;
     block: unknown;
   };
 };

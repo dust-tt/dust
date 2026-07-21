@@ -55,6 +55,12 @@ const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
   auto: {
     light: DustLogo,
   },
+  auto_quick: {
+    light: DustLogo,
+  },
+  auto_deep: {
+    light: DustLogo,
+  },
 };
 
 export const getModelProviderLogo = (
