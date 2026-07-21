@@ -274,6 +274,7 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     high: true,
   },
   defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
@@ -314,6 +315,7 @@ export const CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     high: true,
   },
   defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
   // Opus 4.7 uses a new tokenizer (~555k words/1M tokens vs ~750k for anthropic_base).
   // Ratio: 750/555 ≈ 1.35, applied on top of the base 1.3 adjustment → 1.3 × 1.35 ≈ 1.75.
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT * 1.35,
