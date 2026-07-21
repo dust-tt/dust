@@ -945,6 +945,13 @@ impl Row {
         let mut values = Vec::<serde_json::Value>::new();
 
         fn try_parse_float(s: &str) -> Result<serde_json::Number> {
+            // Rust's float parser accepts exponent notation without a decimal separator,
+            // coercing product references like "32E0134" into numbers. Only treat exponent
+            // notation as numeric when a decimal separator is present (e.g. "3.2E5").
+            // Round-trip safe: to_csv_record writes floats via Display, never as exponents.
+            if !s.contains('.') && (s.contains('e') || s.contains('E')) {
+                return Err(anyhow!("Exponent notation without decimal separator"));
+            }
             if let Ok(float) = s.parse::<f64>() {
                 match serde_json::Number::from_f64(float) {
                     Some(num) => Ok(num),
@@ -1317,6 +1324,16 @@ mod tests {
             Value::Number(serde_json::Number::from_f64(0.1).unwrap())
         );
 
+        // Exponent notation without a decimal separator is kept as text (product
+        // references such as "32E0134" must not be coerced to numbers), while genuine
+        // scientific notation with a decimal separator is parsed as a float.
+        let headers = Arc::new(vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+        let record = vec!["32E0134", "14e0050", "3.2E5"];
+        let row = Row::from_csv_record(headers.clone(), record, "0".to_string())?;
+        assert_eq!(row.content()["a"], Value::String("32E0134".to_string()));
+        assert_eq!(row.content()["b"], Value::String("14e0050".to_string()));
+        assert_eq!(row.content()["c"], Value::from(320000.0));
+
         let headers = Arc::new(vec!["a".to_string(), "b".to_string()]);
         let record = vec!["true", "false"];
         let row = Row::from_csv_record(headers, record, "0".to_string())?;
@@ -1351,6 +1368,7 @@ mod tests {
             ("integer_col".to_string(), 42.into()),
             ("float_col".to_string(), 3.14.into()),
             ("string_col".to_string(), "hello world".into()),
+            ("exponent_like_col".to_string(), "32E0134".into()),
             ("bool_col".to_string(), true.into()),
             ("null_col".to_string(), Value::Null),
         ]);
