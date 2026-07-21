@@ -19,45 +19,64 @@ import {
   MagicWand02,
   SliderToggle,
   Stars02,
+  Tooltip,
+  Users01,
 } from "@dust-tt/sparkle";
 import { DropdownMenuStaticItem } from "@dust-tt/sparkle/components/Dropdown";
+import type { ComponentProps, ReactElement } from "react";
 import { useMemo, useState } from "react";
 
+import type { Effort } from "../data/models";
 import {
+  EFFORT_ORDER,
+  EFFORTS,
+  getAccessibleModels,
+  getEffortOption,
   getGroupedModelsByProvider,
+  getMaxEffortForModel,
+  getMaxEffortForProfile,
+  isModelAccessible,
   MODEL_PROVIDERS,
   MODELS,
+  PROFILES,
 } from "../data/models";
 
-type Effort = "light" | "medium" | "high";
-
-interface EffortOption {
-  value: Effort;
-  label: string;
-  description: string;
-  color: string;
+// Lower an effort down to a cap when it exceeds it.
+function clampEffort(effort: Effort, cap: Effort | null): Effort {
+  if (!cap) {
+    return effort;
+  }
+  return EFFORT_ORDER.indexOf(effort) > EFFORT_ORDER.indexOf(cap)
+    ? cap
+    : effort;
 }
 
-const EFFORTS: EffortOption[] = [
-  {
-    value: "light",
-    label: "Quick",
-    description: "Simple tasks",
-    color: "#7AC0F0",
-  },
-  {
-    value: "medium",
-    label: "Standard",
-    description: "Everyday tasks",
-    color: "#C6E36B",
-  },
-  {
-    value: "high",
-    label: "Deep",
-    description: "Heavy tasks",
-    color: "#F5A9C8",
-  },
-];
+function isEffortWithinCap(effort: Effort, cap: Effort | null): boolean {
+  return (
+    cap !== null && EFFORT_ORDER.indexOf(effort) <= EFFORT_ORDER.indexOf(cap)
+  );
+}
+
+const ACCESS_TOOLTIP = "Ask for higher model access";
+
+// DropdownMenuRadioItem has no `tooltip` prop, so wrap disabled items in a
+// Tooltip whose trigger (a span) still receives hover while the item itself is
+// pointer-events-none.
+function ModelRadioItem(
+  props: ComponentProps<typeof DropdownMenuRadioItem>
+): ReactElement {
+  const item = <DropdownMenuRadioItem {...props} />;
+  if (!props.disabled) {
+    return item;
+  }
+  return (
+    <Tooltip
+      tooltipTriggerAsChild
+      label={ACCESS_TOOLTIP}
+      trigger={<span className="block w-full">{item}</span>}
+    />
+  );
+}
 
 function EffortDot({ color }: { color: string }) {
   return (
@@ -69,15 +88,31 @@ function EffortDot({ color }: { color: string }) {
 }
 
 export function ModelSelectorView() {
+  const [profileId, setProfileId] = useState(PROFILES[0].id);
   const [isAuto, setIsAuto] = useState(true);
   const [effort, setEffort] = useState<Effort>("medium");
-  const [selectedModelId, setSelectedModelId] = useState(MODELS[0].id);
+  const [selectedModelId, setSelectedModelId] = useState(
+    getAccessibleModels(PROFILES[0])[0]?.id ?? MODELS[0].id
+  );
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
 
+  const profile = useMemo(
+    () => PROFILES.find((p) => p.id === profileId) ?? PROFILES[0],
+    [profileId]
+  );
+
+  const accessibleModels = useMemo(
+    () => getAccessibleModels(profile),
+    [profile]
+  );
+
   const selectedModel = useMemo(
-    () => MODELS.find((m) => m.id === selectedModelId) ?? MODELS[0],
-    [selectedModelId]
+    () =>
+      MODELS.find((m) => m.id === selectedModelId) ??
+      accessibleModels[0] ??
+      MODELS[0],
+    [selectedModelId, accessibleModels]
   );
 
   const selectedProvider = useMemo(
@@ -85,11 +120,15 @@ export function ModelSelectorView() {
     [selectedModel]
   );
 
-  const selectedEffort = useMemo(
-    () => EFFORTS.find((e) => e.value === effort) ?? EFFORTS[1],
-    [effort]
-  );
+  // Effort cap depends on mode: Auto uses the profile-wide max, otherwise the
+  // selected model's tier cap.
+  const effortCap = isAuto
+    ? getMaxEffortForProfile(profile)
+    : getMaxEffortForModel(profile, selectedModel);
 
+  const selectedEffort = getEffortOption(clampEffort(effort, effortCap));
+
+  // Search across all models; inaccessible ones are shown disabled.
   const filteredModels = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) {
@@ -105,10 +144,57 @@ export function ModelSelectorView() {
     ? Stars02
     : (selectedProvider?.icon ?? MagicWand02);
 
+  const handleSelectProfile = (id: string) => {
+    const nextProfile = PROFILES.find((p) => p.id === id) ?? PROFILES[0];
+    const nextAccessible = getAccessibleModels(nextProfile);
+
+    // Reset selection if the current model is no longer accessible.
+    const nextModel = isModelAccessible(nextProfile, selectedModel)
+      ? selectedModel
+      : (nextAccessible[0] ?? selectedModel);
+    setSelectedModelId(nextModel.id);
+
+    // Clamp effort to the new cap for the resulting mode.
+    const nextCap = isAuto
+      ? getMaxEffortForProfile(nextProfile)
+      : getMaxEffortForModel(nextProfile, nextModel);
+    setEffort(clampEffort(effort, nextCap));
+
+    setProfileId(id);
+  };
+
   const handleSelectModel = (id: string) => {
     setSelectedModelId(id);
+    const model = MODELS.find((m) => m.id === id);
+    if (model) {
+      setEffort(clampEffort(effort, getMaxEffortForModel(profile, model)));
+    }
     setSearch("");
     setOpen(false);
+  };
+
+  const handleToggleAuto = () => {
+    setIsAuto((prev) => {
+      const next = !prev;
+      // When switching to a specific model, make sure it is accessible.
+      const model = isModelAccessible(profile, selectedModel)
+        ? selectedModel
+        : (accessibleModels[0] ?? selectedModel);
+      if (model.id !== selectedModelId) {
+        setSelectedModelId(model.id);
+      }
+      const nextCap = next
+        ? getMaxEffortForProfile(profile)
+        : getMaxEffortForModel(profile, model);
+      setEffort((e) => clampEffort(e, nextCap));
+      return next;
+    });
+  };
+
+  const handleSelectEffort = (value: Effort) => {
+    if (isEffortWithinCap(value, effortCap)) {
+      setEffort(value);
+    }
   };
 
   return (
@@ -120,6 +206,39 @@ export function ModelSelectorView() {
             ? `Auto · ${selectedEffort.label}`
             : `${selectedModel.name} · ${selectedEffort.label}`}
         </p>
+      </div>
+
+      <div className="flex flex-col items-center gap-1.5">
+        <span className="text-muted-foreground copy-xs uppercase tracking-wide">
+          Test profile
+        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              isSelect
+              icon={Users01}
+              label={profile.name}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-72">
+            <DropdownMenuLabel label="User profile" />
+            <DropdownMenuRadioGroup
+              value={profileId}
+              onValueChange={handleSelectProfile}
+            >
+              {PROFILES.map((p) => (
+                <DropdownMenuRadioItem
+                  key={p.id}
+                  value={p.id}
+                  label={p.name}
+                  description={p.description}
+                />
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -136,10 +255,7 @@ export function ModelSelectorView() {
         <DropdownMenuContent className="w-72">
           <DropdownMenuLabel label="Model" />
           <DropdownMenuStaticItem label="Auto">
-            <SliderToggle
-              selected={isAuto}
-              onClick={() => setIsAuto((v) => !v)}
-            />
+            <SliderToggle selected={isAuto} onClick={handleToggleAuto} />
           </DropdownMenuStaticItem>
 
           {!isAuto && (
@@ -167,12 +283,13 @@ export function ModelSelectorView() {
                             (p) => p.id === model.provider
                           );
                           return (
-                            <DropdownMenuRadioItem
+                            <ModelRadioItem
                               key={model.id}
                               value={model.id}
                               label={model.name}
                               description={model.description}
                               icon={provider?.icon}
+                              disabled={!isModelAccessible(profile, model)}
                             />
                           );
                         })
@@ -218,22 +335,28 @@ export function ModelSelectorView() {
                                     <DropdownMenuLabel label="Recommended" />
                                   )}
                                   {recommended.map((model) => (
-                                    <DropdownMenuRadioItem
+                                    <ModelRadioItem
                                       key={model.id}
                                       value={model.id}
                                       label={model.name}
                                       description={model.description}
+                                      disabled={
+                                        !isModelAccessible(profile, model)
+                                      }
                                     />
                                   ))}
                                   {legacy.length > 0 && (
                                     <DropdownMenuLabel label="Legacy" />
                                   )}
                                   {legacy.map((model) => (
-                                    <DropdownMenuRadioItem
+                                    <ModelRadioItem
                                       key={model.id}
                                       value={model.id}
                                       label={model.name}
                                       description={model.description}
+                                      disabled={
+                                        !isModelAccessible(profile, model)
+                                      }
                                     />
                                   ))}
                                 </DropdownMenuRadioGroup>
@@ -259,20 +382,25 @@ export function ModelSelectorView() {
             />
             <DropdownMenuPortal>
               <DropdownMenuSubContent className="w-64">
-                {EFFORTS.map((e) => (
-                  <DropdownMenuItem
-                    key={e.value}
-                    label={e.label}
-                    icon={<EffortDot color={e.color} />}
-                    endComponent={
-                      <span className="text-muted-foreground copy-sm">
-                        {e.description}
-                      </span>
-                    }
-                    onClick={() => setEffort(e.value)}
-                    onSelect={(event) => event.preventDefault()}
-                  />
-                ))}
+                {EFFORTS.map((e) => {
+                  const allowed = isEffortWithinCap(e.value, effortCap);
+                  return (
+                    <DropdownMenuItem
+                      key={e.value}
+                      label={e.label}
+                      disabled={!allowed}
+                      tooltip={allowed ? undefined : ACCESS_TOOLTIP}
+                      icon={<EffortDot color={e.color} />}
+                      endComponent={
+                        <span className="text-muted-foreground copy-sm">
+                          {e.description}
+                        </span>
+                      }
+                      onClick={() => handleSelectEffort(e.value)}
+                      onSelect={(event) => event.preventDefault()}
+                    />
+                  );
+                })}
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
