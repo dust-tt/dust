@@ -75,6 +75,7 @@ export async function fetchUserExportRows({
               date_histogram: {
                 field: "timestamp",
                 calendar_interval: "day",
+                min_doc_count: 1,
                 time_zone: timezone,
               },
             },
