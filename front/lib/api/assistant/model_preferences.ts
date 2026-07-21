@@ -14,7 +14,7 @@ import {
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import {
   GROK_3_MINI_MODEL_CONFIG,
-  GROK_4_MODEL_CONFIG,
+  GROK_4_5_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
 
 // includes options for users who are on cost_efficient caps
@@ -27,7 +27,7 @@ export const PREFERRED_LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
   GEMINI_3_1_FLASH_LITE_MODEL_CONFIG,
   MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
-  GROK_4_MODEL_CONFIG,
+  GROK_4_5_MODEL_CONFIG,
   GROK_3_MINI_MODEL_CONFIG,
 ];
 

@@ -74,7 +74,10 @@ import {
   O4_MINI_MODEL_ID,
 } from "@app/types/assistant/models/openai";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
-import { GROK_4_MODEL_ID } from "@app/types/assistant/models/xai";
+import {
+  GROK_4_5_MODEL_ID,
+  GROK_4_MODEL_ID,
+} from "@app/types/assistant/models/xai";
 
 type CustomModelId = (typeof CUSTOM_MODEL_IDS)[number];
 
@@ -226,6 +229,10 @@ export const MODELS: Record<
     providerId: "fireworks",
   },
   // xAI
+  [GROK_4_5_MODEL_ID]: {
+    runTest: false,
+    providerId: "xai",
+  },
   [GROK_4_MODEL_ID]: {
     runTest: false,
     providerId: "xai",

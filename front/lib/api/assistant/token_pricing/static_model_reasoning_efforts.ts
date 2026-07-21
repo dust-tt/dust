@@ -400,6 +400,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: false,
     high: false,
   },
+  "grok-4.5": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "grok-4-latest": {
     none: true,
     light: true,
