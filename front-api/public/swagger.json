@@ -12204,6 +12204,9 @@
             "$ref": "#/components/schemas/PrivateCompactionMessageDoneEvent"
           },
           {
+            "$ref": "#/components/schemas/PrivateConversationForkPreparedEvent"
+          },
+          {
             "$ref": "#/components/schemas/PrivateConversationTitleEvent"
           },
           {
@@ -12354,6 +12357,24 @@
           },
           "message": {
             "$ref": "#/components/schemas/PrivateCompactionMessage"
+          }
+        }
+      },
+      "PrivateConversationForkPreparedEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "conversation_fork_prepared"
+            ]
+          },
+          "created": {
+            "type": "integer"
           }
         }
       },

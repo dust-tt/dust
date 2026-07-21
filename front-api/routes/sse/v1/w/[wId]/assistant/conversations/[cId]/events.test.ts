@@ -60,6 +60,13 @@ function wakeUpUpdatedEvent(): ConversationEvent {
   };
 }
 
+function forkPreparedEvent(): ConversationEvent {
+  return {
+    eventId: "fork",
+    data: { type: "conversation_fork_prepared", created: 0 },
+  };
+}
+
 function getEvents(
   workspaceId: string,
   conversationId: string,
@@ -161,6 +168,7 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/events", () => {
         titleEvent("kept"),
         planUpdatedEvent(),
         wakeUpUpdatedEvent(),
+        forkPreparedEvent(),
       ])
     );
 
@@ -175,6 +183,7 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/events", () => {
     expect(body).not.toContain("plan_updated");
     // wake_up_updated is front-only; it must never reach the public API stream.
     expect(body).not.toContain("wake_up_updated");
+    expect(body).not.toContain("conversation_fork_prepared");
   });
 
   it("delivers events produced before an iterator error and ends the stream", async () => {

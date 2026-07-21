@@ -1322,6 +1322,7 @@
  *         - $ref: '#/components/schemas/PrivateAgentMessageDoneEvent'
  *         - $ref: '#/components/schemas/PrivateCompactionMessageNewEvent'
  *         - $ref: '#/components/schemas/PrivateCompactionMessageDoneEvent'
+ *         - $ref: '#/components/schemas/PrivateConversationForkPreparedEvent'
  *         - $ref: '#/components/schemas/PrivateConversationTitleEvent'
  *         - $ref: '#/components/schemas/PrivateWakeUpUpdatedEvent'
  *     PrivateUserMessageNewEvent:
@@ -1396,6 +1397,15 @@
  *           type: string
  *         message:
  *           $ref: '#/components/schemas/PrivateCompactionMessage'
+ *     PrivateConversationForkPreparedEvent:
+ *       type: object
+ *       required: [type, created]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [conversation_fork_prepared]
+ *         created:
+ *           type: integer
  *     PrivateConversationTitleEvent:
  *       type: object
  *       required: [type, created, title]

@@ -109,8 +109,6 @@ import { ConversationErrorDisplay } from "./ConversationError";
 import { findFirstUnreadMessageIndex } from "./utils";
 
 const DEFAULT_PAGE_LIMIT = 50;
-const FORK_PREPARATION_POLL_INTERVAL_MS = 2_000;
-
 // A conversation must be unread and older than that to enable the suggestion of enabling notifications.
 const DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION = 60 * 60 * 1000; // 1 hour
 
@@ -372,12 +370,6 @@ export const ConversationViewer = ({
   } = useConversation({
     conversationId,
     workspaceId: owner.sId,
-    options: {
-      refreshInterval: (data) =>
-        data?.conversation.forkingData?.forkedFrom?.fileCopyStatus === "pending"
-          ? FORK_PREPARATION_POLL_INTERVAL_MS
-          : 0,
-    },
   });
 
   const { spaceInfo } = useSpaceInfo({
@@ -924,6 +916,9 @@ export const ConversationViewer = ({
               { revalidate: false }
             );
 
+            break;
+          case "conversation_fork_prepared":
+            void mutateConversation();
             break;
           case "agent_message_done":
             // Mark as read and do not mutate the list of convos in the sidebar to avoid useless network request.

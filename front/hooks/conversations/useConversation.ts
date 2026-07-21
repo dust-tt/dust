@@ -5,7 +5,7 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import { isAPIErrorResponse } from "@app/types/error";
-import type { Fetcher, SWRConfiguration } from "swr";
+import type { Fetcher } from "swr";
 
 export function useConversation({
   conversationId,
@@ -14,10 +14,7 @@ export function useConversation({
 }: {
   conversationId?: string | null;
   workspaceId: string;
-  options?: {
-    disabled?: boolean;
-    refreshInterval?: SWRConfiguration<GetConversationResponseBody>["refreshInterval"];
-  };
+  options?: { disabled?: boolean };
 }): {
   conversation?: ConversationWithoutContentType;
   isConversationLoading: boolean;
