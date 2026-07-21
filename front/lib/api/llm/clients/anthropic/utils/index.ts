@@ -18,8 +18,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 const ANTHROPIC_MINIMUM_THINKING_BUDGET = 1024;
 
 export const ANTHROPIC_THINKING_BUDGET_TOKENS_MAPPING = {
-  // All Claude models have useNativeLightReasoning set to false,
-  // so light budget token should not be used.
   light: ANTHROPIC_MINIMUM_THINKING_BUDGET,
   medium: ANTHROPIC_MINIMUM_THINKING_BUDGET,
   high: 4096,
@@ -29,8 +27,6 @@ export const ANTHROPIC_THINKING_EFFORT_MAPPING: Record<
   Exclude<ReasoningEffort, "none">,
   "low" | "medium" | "high"
 > = {
-  // All Claude models have useNativeLightReasoning set to false,
-  // so light budget token should not be used.
   light: "low",
   medium: "medium",
   high: "high",
