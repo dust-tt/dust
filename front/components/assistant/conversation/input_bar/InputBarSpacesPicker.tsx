@@ -6,6 +6,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -37,7 +38,7 @@ export function InputBarSpacesPicker({
 }: InputBarSpacesPickerProps) {
   const selectedSpaceIdsSet = useMemo(
     () => new Set(selectedSpaceIds),
-    [selectedSpaceIds]
+    [selectedSpaceIds],
   );
   const [searchText, setSearchText] = useState("");
   const filteredSpaces = useMemo(() => {
@@ -47,14 +48,14 @@ export function InputBarSpacesPicker({
     }
 
     return spaces.filter((space) =>
-      space.name.toLowerCase().includes(normalizedSearchText)
+      space.name.toLowerCase().includes(normalizedSearchText),
     );
   }, [searchText, spaces]);
 
   const tooltip =
     selectedSpaceIds.length > 0
-      ? `${selectedSpaceIds.length} Space${selectedSpaceIds.length > 1 ? "s" : ""} selected`
-      : "Select Spaces";
+      ? `${selectedSpaceIds.length} additional Space${selectedSpaceIds.length > 1 ? "s" : ""}`
+      : "Add Spaces";
 
   const handleSpaceCheckedChange = (spaceId: string, checked: boolean) => {
     if (!checked && !canDeselectSelectedSpaces) {
@@ -65,7 +66,7 @@ export function InputBarSpacesPicker({
       onSelectedSpaceIdsChange(
         selectedSpaceIdsSet.has(spaceId)
           ? selectedSpaceIds
-          : [...selectedSpaceIds, spaceId]
+          : [...selectedSpaceIds, spaceId],
       );
       return;
     }
@@ -109,6 +110,13 @@ export function InputBarSpacesPicker({
           </>
         }
       >
+        <DropdownMenuCheckboxItem
+          label="Agent's existing knowledge"
+          checked
+          disabled
+        />
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel label="Additional Spaces" />
         {isLoading ? (
           <DropdownMenuItem
             label="Loading"
