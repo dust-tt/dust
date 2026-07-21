@@ -175,6 +175,18 @@ type ConversationSkillCreationAttributes =
         }
     );
 
+type ListSkillsOptions = {
+  status?: SkillStatus | SkillStatus[];
+  limit?: number;
+  onlyCustom?: boolean;
+  isDefault?: boolean;
+  updatedAfter?: Date;
+  reinforcementNotOff?: boolean;
+  withInstructions?: boolean;
+  withTools?: boolean;
+  withFileAttachments?: boolean;
+};
+
 function isSkillResourceWithVersion(
   skill: SkillResource
 ): skill is SkillResource & { version: number } {
@@ -1434,8 +1446,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       status = "active",
       limit,
-      globalSpaceOnly,
-      podSpaceId,
       onlyCustom,
       availability,
       updatedAfter,
@@ -1443,23 +1453,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withInstructions = true,
       withTools = true,
       withFileAttachments = true,
-    }: {
-      status?: SkillStatus | SkillStatus[];
-      limit?: number;
-      globalSpaceOnly?: boolean;
-      // When set, restricts results to skills usable inside that Pod: skills whose
-      // requested spaces are all either the global space or the Pod's own space.
-      podSpaceId?: ModelId;
-      onlyCustom?: boolean;
-      availability?: SkillAvailability | SkillAvailability[];
-      updatedAfter?: Date;
-      reinforcementNotOff?: boolean;
-      withInstructions?: boolean;
-      withTools?: boolean;
-      withFileAttachments?: boolean;
-    } = {}
+    }: ListSkillsOptions = {}
   ): Promise<SkillResource[]> {
-    const skills = await this.baseFetch(auth, {
+    return this.baseFetch(auth, {
       where: {
         status,
         ...(availability !== undefined ? { availability } : {}),
@@ -1472,22 +1468,36 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withTools,
       withFileAttachments,
     });
+  }
 
-    // Scope to the global space (globalSpaceOnly) and/or a specific Pod's space
-    // (podSpaceId). A skill is kept only when every one of its requested spaces is
-    // in the allowed set, so Pod-restricted skills from other Pods are excluded.
-    if (globalSpaceOnly || podSpaceId !== undefined) {
-      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-      const allowedSpaceIds = new Set<ModelId>([globalSpace.id]);
-      if (podSpaceId !== undefined) {
-        allowedSpaceIds.add(podSpaceId);
-      }
-      return skills.filter((skill) =>
-        skill.requestedSpaceIds.every((id) => allowedSpaceIds.has(id))
-      );
+  static async listBySpace(
+    auth: Authenticator,
+    {
+      globalSpaceOnly,
+      podSpaceId,
+      ...listOptions
+    }: ListSkillsOptions & {
+      globalSpaceOnly?: boolean;
+      // When set, restricts results to skills usable inside that Pod: skills whose
+      // requested spaces are all either the global space or the Pod's own space.
+      podSpaceId?: ModelId;
+    } = {}
+  ): Promise<SkillResource[]> {
+    const skills = await this.listByWorkspace(auth, listOptions);
+
+    if (!globalSpaceOnly && podSpaceId === undefined) {
+      return skills;
     }
 
-    return skills;
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    const allowedSpaceIds = new Set<ModelId>([globalSpace.id]);
+    if (podSpaceId !== undefined) {
+      allowedSpaceIds.add(podSpaceId);
+    }
+
+    return skills.filter((skill) =>
+      skill.requestedSpaceIds.every((id) => allowedSpaceIds.has(id))
+    );
   }
 
   /**

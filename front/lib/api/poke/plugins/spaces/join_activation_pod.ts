@@ -190,7 +190,7 @@ export const joinActivationPodPlugin = createPlugin({
     requiredRoles: ["support"],
   },
   populateAsyncArgs: async (auth) => {
-    const skills = await SkillResource.listByWorkspace(auth, {
+    const skills = await SkillResource.listBySpace(auth, {
       status: "active",
       globalSpaceOnly: true,
       withInstructions: false,

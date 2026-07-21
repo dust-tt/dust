@@ -153,37 +153,7 @@ app.get(
     }
     const skillStatus = statusValidation.data;
 
-    const availabilityValidation =
-      SkillAvailabilitiesSchema.safeParse(availabilityParams);
-    if (!availabilityValidation.success) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Invalid availability: ${availabilityParams}. Expected "editors", "workspace_users", or "users_and_agents".`,
-        },
-      });
-    }
-    // An explicit availability takes priority over the deprecated isDefault alias.
-    const availability =
-      availabilityValidation.data && availabilityValidation.data.length > 0
-        ? availabilityValidation.data
-        : isDefault === "true"
-          ? ["users_and_agents" as const]
-          : undefined;
-
-    // Only admins may list unpublished skills they don't edit (e.g. for governance views).
-    if (bypassEditorVisibility && !auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message: "Only admins can bypass editor visibility.",
-        },
-      });
-    }
-
-    const allSkills = await SkillResource.listByWorkspace(auth, {
+    const skills = await SkillResource.listBySpace(auth, {
       status: skillStatus,
       globalSpaceOnly: globalSpaceOnly === "true",
       podSpaceId,
