@@ -67,9 +67,13 @@ export interface MessageItemConverters {
 export function promptCacheBreakpointFor(
   cache: CacheOption | undefined,
   metadata: EndpointMetadata
-): { prompt_cache_breakpoint: NonNullable<
-    ResponseInputText["prompt_cache_breakpoint"]
-  > } | Record<string, never> {
+):
+  | {
+      prompt_cache_breakpoint: NonNullable<
+        ResponseInputText["prompt_cache_breakpoint"]
+      >;
+    }
+  | Record<string, never> {
   switch (cache) {
     case "short":
     case "long":
