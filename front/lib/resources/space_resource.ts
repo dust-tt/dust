@@ -1834,22 +1834,27 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     // Manual group references (regular + editor) per space.
-    const manualGroupIdsBySpaceModelId = new Map<ModelId, ModelId[]>();
-    const allGroupIds = new Set<ModelId>();
+    const manualGroupReferencesBySpaceModelId = new Map<
+      ModelId,
+      SpaceGroupReference[]
+    >();
+    const allGroupReferences = new Map<ModelId, SpaceGroupReference>();
     for (const space of spaces) {
-      const groupIds = space.groups
-        .filter(
-          (g) =>
-            g.groupKind === "regular_auto" || g.groupKind === "space_editors"
-        )
-        .map((group) => group.id);
-      manualGroupIdsBySpaceModelId.set(space.id, groupIds);
-      groupIds.forEach((groupId) => allGroupIds.add(groupId));
+      const groupReferences = space.groups.filter(
+        (group) =>
+          group.groupKind === "regular_auto" ||
+          group.groupKind === "space_editors"
+      );
+      manualGroupReferencesBySpaceModelId.set(space.id, groupReferences);
+      groupReferences.forEach((group) =>
+        allGroupReferences.set(group.id, group)
+      );
     }
 
-    const allGroups = await GroupResource.fetchByModelIds(auth, [
-      ...allGroupIds,
-    ]);
+    const allGroups = await GroupResource.fetchByModelIds(
+      auth,
+      [...allGroupReferences.values()].map((group) => group.id)
+    );
 
     // Single query for the active memberships across every group.
     const userModelIdsByGroupModelId =
@@ -1867,10 +1872,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     // Reassemble the distinct member set for each space.
     for (const space of spaces) {
-      const groupIds = manualGroupIdsBySpaceModelId.get(space.id) ?? [];
+      const groups = manualGroupReferencesBySpaceModelId.get(space.id) ?? [];
       const byId = new Map<ModelId, UserResource>();
-      for (const groupId of groupIds) {
-        for (const userModelId of userModelIdsByGroupModelId[groupId] ?? []) {
+      for (const group of groups) {
+        for (const userModelId of userModelIdsByGroupModelId[group.id] ?? []) {
           const user = usersByModelId.get(userModelId);
           if (user && !byId.has(user.id)) {
             byId.set(user.id, user);
