@@ -1,10 +1,14 @@
 import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_preferences";
 import { selectEnabledModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
-import { getAutoModelForAuth } from "@app/lib/model_tiers/enabled_models";
+import {
+  getAutoModelForAuth,
+  getModelForStream,
+} from "@app/lib/model_tiers/enabled_models";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import { isModelStreamId } from "@app/types/assistant/models/streams";
 import type {
   ModelConfigurationType,
   ModelResolutionMethodType,
@@ -72,22 +76,38 @@ export async function resolveModel(
     }
   );
 
+  // Effort chosen by a stream tier (Quick/Deep) for its resolved model. When set,
+  // it takes precedence over any effort carried by the (sentinel) selection.
+  let streamEffort: ReasoningEffort | undefined;
+
   if (enabled?.modelId === AUTO_MODEL_ID) {
     // Alternatively, we could remove the agent config from the list of candidates and let the auto model fallback to a supported model by the workspace.
     // However, to be future-proof, we keep do it here to allow evolution on the way the auto model is selected.
     enabled = await getAutoModelForAuth(auth);
     modelResolutionMethod = "auto";
+  } else if (enabled && isModelStreamId(enabled.modelId)) {
+    const streamId = enabled.modelId;
+    const resolved = await getModelForStream(auth, streamId);
+    if (resolved) {
+      enabled = resolved.model;
+      streamEffort = resolved.reasoningEffort;
+    } else {
+      // None of the stream's candidates are available: fall back to auto.
+      enabled = await getAutoModelForAuth(auth);
+    }
+    modelResolutionMethod = streamId;
   }
 
   // Should never happen as we should at least fallback to our selection of PREFERRED_LARGE_MODEL_CONFIGS.
   assert(enabled, "No enabled model found");
 
-  // Honor an explicit effort only if the model supports it; otherwise fall back
-  // to its default (raw API clients can send an unsupported effort).
+  // A stream tier dictates the effort of its resolved model. Otherwise honor an
+  // explicit effort only if the model supports it; fall back to its default (raw
+  // API clients can send an unsupported effort).
+  const requestedEffort = streamEffort ?? selection?.reasoningEffort;
   const effort =
-    selection?.reasoningEffort &&
-    enabled.supportedReasoningEfforts[selection.reasoningEffort]
-      ? selection.reasoningEffort
+    requestedEffort && enabled.supportedReasoningEfforts[requestedEffort]
+      ? requestedEffort
       : enabled.defaultReasoningEffort;
 
   return {

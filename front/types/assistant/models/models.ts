@@ -150,6 +150,12 @@ import {
   O4_MINI_MODEL_CONFIG,
   O4_MINI_MODEL_ID,
 } from "./openai";
+import {
+  DEEP_MODEL_CONFIG,
+  DEEP_MODEL_ID,
+  QUICK_MODEL_CONFIG,
+  QUICK_MODEL_ID,
+} from "./streams";
 import type { ModelConfigurationType } from "./types";
 import {
   GROK_3_MINI_MODEL_CONFIG,
@@ -242,6 +248,8 @@ export const STATIC_MODEL_IDS = [
   GROK_4_1_FAST_REASONING_MODEL_ID,
   NOOP_MODEL_ID,
   AUTO_MODEL_ID,
+  QUICK_MODEL_ID,
+  DEEP_MODEL_ID,
 ] as const;
 
 // Type for static model IDs only (excludes custom models from GCS).
@@ -349,6 +357,8 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
   NOOP_MODEL_CONFIG,
   AUTO_MODEL_CONFIG,
+  QUICK_MODEL_CONFIG,
+  DEEP_MODEL_CONFIG,
   // Custom models (generated at build time from GCS).
   ...CUSTOM_MODEL_CONFIGS,
 ];

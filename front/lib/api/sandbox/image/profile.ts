@@ -24,6 +24,8 @@ export function providerToProfile(
     case "fireworks":
     case "noop":
     case "auto":
+    case "quick":
+    case "deep":
       return "anthropic";
     default:
       assertNever(providerId);

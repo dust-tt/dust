@@ -243,6 +243,8 @@ const USERFACING_CLIENT_ID: Record<ModelProviderIdType, string> = {
   google_ai_studio: "Google AI Studio",
   noop: "Noop",
   auto: "Auto",
+  quick: "Quick",
+  deep: "Deep",
 };
 
 /**

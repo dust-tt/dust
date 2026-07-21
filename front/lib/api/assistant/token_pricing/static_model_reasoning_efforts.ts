@@ -442,4 +442,16 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: false,
     high: false,
   },
+  quick: {
+    none: true,
+    light: false,
+    medium: false,
+    high: false,
+  },
+  deep: {
+    none: true,
+    light: false,
+    medium: false,
+    high: false,
+  },
 } as const satisfies Record<StaticModelIdType, ReasoningEffortSupport>;
