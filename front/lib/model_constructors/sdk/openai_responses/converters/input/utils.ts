@@ -78,6 +78,9 @@ export function promptCacheBreakpointFor(
     case "short":
     case "long":
       return supportsOpenAIExplicitPromptCaching(metadata.model)
+        // Link to the doc: https://developers.openai.com/api/docs/guides/prompt-caching
+        // We can create up to 4 new cache writes (i.e. 4 cache breakpoints).
+        // We can't control the TTL, it's set to 30min (they may change this in the future).
         ? { prompt_cache_breakpoint: { mode: "explicit" } }
         : {};
     case undefined:
