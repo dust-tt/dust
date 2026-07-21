@@ -45,6 +45,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
+  Icon,
   LoadingBlock,
   ShapesPlus,
 } from "@dust-tt/sparkle";
@@ -500,7 +501,13 @@ export function CapabilitiesPicker({
         ) : (
           <DropdownMenuSubTrigger
             label="Capabilities"
-            icon={ShapesPlus}
+            icon={
+              <Icon
+                size="xs"
+                visual={ShapesPlus}
+                className="text-muted-foreground"
+              />
+            }
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();

@@ -590,7 +590,13 @@ export const InputBarAttachmentsPicker = ({
       ) : (
         <DropdownMenuSubTrigger
           label="Attach knowledge"
-          icon={Attachment01}
+          icon={
+            <Icon
+              size="xs"
+              visual={Attachment01}
+              className="text-muted-foreground"
+            />
+          }
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();

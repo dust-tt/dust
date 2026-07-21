@@ -411,7 +411,13 @@ function ComposerDemo({
     >
       <DropdownMenuSubTrigger
         label="Capabilities"
-        icon={ShapesPlus}
+        icon={
+          <Icon
+            size="xs"
+            visual={ShapesPlus}
+            className="text-muted-foreground"
+          />
+        }
         onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();
@@ -471,7 +477,13 @@ function ComposerDemo({
       >
         <DropdownMenuSubTrigger
           label="Attach knowledge"
-          icon={Attachment01}
+          icon={
+            <Icon
+              size="xs"
+              visual={Attachment01}
+              className="text-muted-foreground"
+            />
+          }
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
@@ -534,7 +546,9 @@ function ComposerDemo({
             ? `${selectedSpaceIds.length} Space${selectedSpaceIds.length > 1 ? "s" : ""}`
             : "Spaces"
         }
-        icon={Planet}
+        icon={
+          <Icon size="xs" visual={Planet} className="text-muted-foreground" />
+        }
         onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();

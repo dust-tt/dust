@@ -7,6 +7,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
+  Icon,
   Planet,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -46,7 +47,9 @@ export function InputBarSpacesPicker({
     <DropdownMenuSub open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuSubTrigger
         label={label}
-        icon={Planet}
+        icon={
+          <Icon size="xs" visual={Planet} className="text-muted-foreground" />
+        }
         disabled={disabled}
         onClick={(e) => {
           e.stopPropagation();
