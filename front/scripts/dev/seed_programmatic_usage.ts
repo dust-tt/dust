@@ -103,6 +103,7 @@ async function seedProgrammaticUsage(
       agent_tag_ids: [],
       ancestor_message_ids: [],
       conversation_id: `seed-conv-${i}`,
+      space_id: null,
       cost: {
         full_awu: awuFromMicroUsd(costMicroUsd),
         llm_awu: awuFromMicroUsd(costMicroUsd),

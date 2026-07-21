@@ -123,6 +123,7 @@ export async function seedAnalytics(
       agent_tag_ids: [],
       ancestor_message_ids: [],
       conversation_id: conversationId,
+      space_id: null,
       cost: {
         full_awu: 0,
         llm_awu: 0,

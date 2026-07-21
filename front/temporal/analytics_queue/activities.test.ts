@@ -5,8 +5,10 @@ import { storeAgentAnalyticsActivity } from "@app/temporal/analytics_queue/activ
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { ModelId } from "@app/types/shared/model_id";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -54,9 +56,11 @@ async function seedMessages(
   {
     agentConfigurationId,
     agentConfigurationVersion,
+    spaceModelId,
   }: {
     agentConfigurationId: string;
     agentConfigurationVersion: number;
+    spaceModelId?: ModelId;
   }
 ): Promise<{
   conversationSId: string;
@@ -68,6 +72,7 @@ async function seedMessages(
   const conversation = await ConversationFactory.create(auth, {
     agentConfigurationId,
     messagesCreatedAt: [],
+    spaceId: spaceModelId,
   });
 
   const userMessageRow = await ConversationFactory.createUserMessageWithRank({
@@ -231,5 +236,54 @@ describe("storeAgentAnalyticsActivity - agent_tag_ids", () => {
     indexed = captureIndexedDocs();
     await runAnalytics(auth, seededV1);
     expect(analyticsDoc(indexed)?.agent_tag_ids).toEqual([]);
+  });
+});
+
+describe("storeAgentAnalyticsActivity - space_id", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("stamps the space sId when the conversation lives in a pod", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const space = await SpaceFactory.project(
+      auth.getNonNullableWorkspace(),
+      auth.getNonNullableUser().id
+    );
+    // Pick up the pod editor group membership created above.
+    await auth.refresh();
+
+    const seeded = await seedMessages(auth, {
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+      spaceModelId: space.id,
+    });
+
+    const indexed = captureIndexedDocs();
+    await runAnalytics(auth, seeded);
+
+    const doc = analyticsDoc(indexed);
+    expect(doc).toBeDefined();
+    expect(doc?.space_id).toBe(space.sId);
+  });
+
+  it("stamps null when the conversation is not attached to a space", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const seeded = await seedMessages(auth, {
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+    });
+
+    const indexed = captureIndexedDocs();
+    await runAnalytics(auth, seeded);
+
+    const doc = analyticsDoc(indexed);
+    expect(doc).toBeDefined();
+    expect(doc?.space_id).toBeNull();
   });
 });
