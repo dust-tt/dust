@@ -385,7 +385,7 @@ export const joinActivationPodPlugin = createPlugin({
 
     // Fire the activation event so the trigger kicks off the initial conversation
     // as soon as the pod is provisioned.
-    const emitResult = await emitActivationEvent(adminAuth, pod);
+    const emitResult = await emitActivationEvent(adminAuth, pod, creator.sId);
     if (emitResult.isErr()) {
       return new Err(
         new Error(
