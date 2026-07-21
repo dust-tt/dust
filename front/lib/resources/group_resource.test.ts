@@ -71,7 +71,11 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
 });
 
 import type { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import {
+  BUILDER_GROUP_NAME,
+  GroupResource,
+  MANUAL_BUILDERS_GROUP_NAME,
+} from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -863,6 +867,130 @@ describe("GroupResource", () => {
         await transaction.rollback();
         throw err;
       }
+    });
+  });
+
+  describe("syncBuilderGroupMembership", () => {
+    it("creates a regular_manual Builders group with the user when they become a builder", async () => {
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+      });
+
+      const group = await GroupResource.fetchByName(
+        authenticator,
+        MANUAL_BUILDERS_GROUP_NAME
+      );
+      expect(group).not.toBeNull();
+      expect(group?.kind).toBe("regular_manual");
+
+      const members = await group?.getActiveMembers(authenticator);
+      expect(members?.map((m) => m.id)).toEqual([user.id]);
+    });
+
+    it("does not create the group when the user is not a builder", async () => {
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: false,
+      });
+
+      const group = await GroupResource.fetchByName(
+        authenticator,
+        MANUAL_BUILDERS_GROUP_NAME
+      );
+      expect(group).toBeNull();
+    });
+
+    it("adds then removes the user as the builder role comes and goes", async () => {
+      const group = await GroupResource.makeNew({
+        name: MANUAL_BUILDERS_GROUP_NAME,
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+      });
+
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+      });
+      let members = await group.getActiveMembers(authenticator);
+      expect(members.map((m) => m.id)).toEqual([user.id]);
+
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: false,
+      });
+      members = await group.getActiveMembers(authenticator);
+      expect(members).toEqual([]);
+    });
+
+    it("is idempotent", async () => {
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+      });
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+      });
+
+      const group = await GroupResource.fetchByName(
+        authenticator,
+        MANUAL_BUILDERS_GROUP_NAME
+      );
+      const membershipCount = await GroupMembershipModel.count({
+        where: {
+          groupId: group?.id,
+          userId: user.id,
+          workspaceId: workspace.id,
+        },
+      });
+      expect(membershipCount).toBe(1);
+
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: false,
+      });
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: false,
+      });
+      const members = await group?.getActiveMembers(authenticator);
+      expect(members).toEqual([]);
+    });
+
+    it("coexists with a provisioned dust-builders group", async () => {
+      const provisionedGroup = await GroupResource.makeNew({
+        name: BUILDER_GROUP_NAME,
+        workspaceId: workspace.id,
+        kind: "provisioned",
+        workOSGroupId: "workos-group-dust-builders",
+      });
+
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: true,
+      });
+
+      const manualGroup = await GroupResource.fetchByName(
+        authenticator,
+        MANUAL_BUILDERS_GROUP_NAME
+      );
+      expect(manualGroup?.kind).toBe("regular_manual");
+      const members = await manualGroup?.getActiveMembers(authenticator);
+      expect(members?.map((m) => m.id)).toEqual([user.id]);
+
+      const provisionedMembers =
+        await provisionedGroup.getActiveMembers(authenticator);
+      expect(provisionedMembers).toEqual([]);
     });
   });
 });

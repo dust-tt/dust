@@ -104,6 +104,13 @@ export const applyGroupRoles = createPlugin({
             `Failed to update role for user ${user.sId}: ${updateResult.error.type}`
           );
         } else {
+          // Per-changed-member queries, like the role update above: poke-only plugin,
+          // bounded by the number of role changes.
+          await GroupResource.syncBuilderGroupMembership({
+            workspace,
+            user,
+            isBuilder: expectedRole === "builder",
+          });
           updatedCount++;
         }
       }

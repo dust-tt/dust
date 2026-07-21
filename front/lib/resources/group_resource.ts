@@ -53,10 +53,14 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { col, fn, Op, QueryTypes } from "sequelize";
+import { col, fn, Op, QueryTypes, UniqueConstraintError } from "sequelize";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const BUILDER_GROUP_NAME = "dust-builders";
+// User-facing name of the manual builders group synced from the builder role (see
+// syncBuilderGroupMembership). Distinct from BUILDER_GROUP_NAME: workspaces provisioning
+// builders via SCIM keep their "dust-builders" IdP group alongside this one.
+export const MANUAL_BUILDERS_GROUP_NAME = "Builders";
 
 /**
  * ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -2575,6 +2579,115 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     return provisionedGroups;
+  }
+
+  /**
+   * Transitional — builder role deprecation, see
+   * https://github.com/dust-tt/tasks/issues/9459.
+   *
+   * Keeps a per-workspace "Builders" group (`regular_manual`) in sync with the `builder`
+   * role so that when the role is removed, the group can be granted the builders' governance
+   * capabilities (create agents / skills) and former builders keep their rights. Until then
+   * the role is the source of truth: the group is created lazily and manual edits may be
+   * undone by the sync. Once the role is removed, the sync goes away and the group becomes
+   * fully admin-managed.
+   *
+   * The group is deliberately independent from SCIM provisioning: provisioned
+   * "dust-builders" groups proved unreliable (drifted membership, stale groups after
+   * deprovisioning). Workspaces provisioning builders get both groups — IdP changes flow
+   * through role assignment, which keeps this group in sync automatically.
+   *
+   * Idempotent ensure-state semantics: after the call, the user's active membership in the
+   * group matches `isBuilder`.
+   *
+   * Callers must invoke this after every membership write that can involve the builder role
+   * (role change, membership creation, revocation) — see the `lib/api/membership.ts`
+   * wrappers.
+   */
+  static async syncBuilderGroupMembership({
+    workspace,
+    user,
+    isBuilder,
+  }: {
+    workspace: LightWorkspaceType;
+    user: UserResource;
+    isBuilder: boolean;
+  }): Promise<void> {
+    let group = await GroupModel.findOne({
+      where: { workspaceId: workspace.id, name: MANUAL_BUILDERS_GROUP_NAME },
+    });
+
+    if (!group) {
+      if (!isBuilder) {
+        return;
+      }
+      try {
+        await GroupResource.makeNew(
+          {
+            name: MANUAL_BUILDERS_GROUP_NAME,
+            kind: "regular_manual",
+            workspaceId: workspace.id,
+          },
+          { memberIds: [user.id] }
+        );
+        return;
+      } catch (err) {
+        // Two concurrent membership writes can race on the group creation; the
+        // (workspaceId, name) unique index makes the loser land here. Fall through to the
+        // membership sync against the winner's group.
+        if (!(err instanceof UniqueConstraintError)) {
+          throw err;
+        }
+        group = await GroupModel.findOne({
+          where: {
+            workspaceId: workspace.id,
+            name: MANUAL_BUILDERS_GROUP_NAME,
+          },
+        });
+        assert(group, "Builders group missing after unique constraint error");
+      }
+    }
+
+    const now = new Date();
+    // Served by the (userId, groupId) index.
+    const activeMembershipWhere = {
+      groupId: group.id,
+      userId: user.id,
+      workspaceId: workspace.id,
+      status: "active",
+      startAt: { [Op.lte]: now },
+      [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+    };
+    const activeMembership = await GroupMembershipModel.findOne({
+      where: activeMembershipWhere,
+    });
+
+    if (isBuilder) {
+      if (activeMembership) {
+        return;
+      }
+      await GroupMembershipModel.create({
+        groupId: group.id,
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: now,
+        status: "active",
+      });
+    } else {
+      if (!activeMembership) {
+        return;
+      }
+      // End every matching row, not just the one fetched: concurrent adds can leave
+      // duplicate active rows.
+      await GroupMembershipModel.update(
+        { endAt: now },
+        { where: activeMembershipWhere }
+      );
+    }
+
+    await GroupResource.batchInvalidateGroupIdsCacheForUsers([
+      [{ user: { id: user.id }, workspace: { id: workspace.id } }],
+    ]);
   }
 
   /**
