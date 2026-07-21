@@ -48,6 +48,32 @@ describe("toInput", () => {
         ],
       });
     });
+
+    it("does not add cache breakpoints to following messages", () => {
+      const messages = toInput(
+        "You are a helpful assistant.",
+        {
+          messages: [
+            {
+              role: "user",
+              name: "system",
+              content: [{ type: "text", text: "Available skills" }],
+            },
+            ...conversationMessages,
+          ],
+        },
+        "developer",
+        { cacheBreakpointOnLeadingMessage: true }
+      );
+
+      for (const message of messages.slice(2)) {
+        if ("content" in message && Array.isArray(message.content)) {
+          for (const block of message.content) {
+            expect(block).not.toHaveProperty("prompt_cache_breakpoint");
+          }
+        }
+      }
+    });
   });
 
   it("replays OpenAI tool-search items and skips other providers", () => {
