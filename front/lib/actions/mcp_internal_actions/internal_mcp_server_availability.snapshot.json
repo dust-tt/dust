@@ -81,6 +81,7 @@
     { "name": "front", "id": 1018 },
     { "name": "poke", "id": 1027 },
     { "name": "clari_copilot", "id": 1030 },
-    { "name": "workday", "id": 1038 }
+    { "name": "workday", "id": 1038 },
+    { "name": "servicenow", "id": 1042 }
   ]
 }

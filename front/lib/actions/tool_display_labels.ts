@@ -1041,6 +1041,7 @@ function getDynamicToolDisplayLabels({
     case "jit_testing":
     case "run_dust_app":
     case "salesloft":
+    case "servicenow":
     case "skill_authoring":
     case "slab":
     case "snowflake":

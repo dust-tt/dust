@@ -68,14 +68,28 @@ export function loadInternalToolAvailabilitySnapshot(): InternalToolAvailability
   return JSON.parse(content) as InternalToolAvailabilitySnapshot;
 }
 
+function formatInternalToolSnapshotList(tools: InternalToolSnapshot[]): string {
+  if (tools.length === 0) {
+    return "[]";
+  }
+  const entries = tools
+    .map(
+      (tool) => `    { "name": ${JSON.stringify(tool.name)}, "id": ${tool.id} }`
+    )
+    .join(",\n");
+  return `[\n${entries}\n  ]`;
+}
+
 export function writeInternalToolAvailabilitySnapshot(
   snapshot: InternalToolAvailabilitySnapshot
 ): void {
-  fs.writeFileSync(
-    getInternalToolAvailabilitySnapshotPath(),
-    `${JSON.stringify(snapshot, null, 2)}\n`,
-    "utf-8"
-  );
+  const content =
+    "{\n" +
+    `  "auto": ${formatInternalToolSnapshotList(snapshot.auto)},\n` +
+    `  "manual": ${formatInternalToolSnapshotList(snapshot.manual)}\n` +
+    "}\n";
+
+  fs.writeFileSync(getInternalToolAvailabilitySnapshotPath(), content, "utf-8");
 }
 
 export function shouldUpdateInternalToolAvailabilitySnapshot(): boolean {
