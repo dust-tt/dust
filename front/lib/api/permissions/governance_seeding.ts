@@ -1,9 +1,13 @@
 import type { Authenticator } from "@app/lib/auth";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import {
+  GroupResource,
+  MANUAL_BUILDERS_GROUP_NAME,
+} from "@app/lib/resources/group_resource";
 import type { CapabilitySpec } from "@app/types/group_permissions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
 
 /**
  * Governance capability seeders: the single source of truth for where each capability's default
@@ -52,22 +56,45 @@ export const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
 export type ApplyCapabilityOutcome =
   | "seeded_everybody"
   | "seeded_builders"
-  | "skipped_admins_only";
+  | "skipped_admins_only"
+  | "skipped_no_builders_group";
+
+// Resolves a seeder's raw target down to what will actually happen: "builders" degrades to
+// "admins_only" if the workspace has no Builders group yet (no builder-role member has ever been
+// synced into it — see `syncBuilderGroupMembership`). Deliberately never creates the group here;
+// a capability grant with no members behind it isn't a meaningful default for either call site.
+// Exposed so a caller that needs to know the effective target before deciding whether to write
+// (the backfill script's idempotency check) doesn't have to duplicate the group lookup.
+export async function resolveEffectiveTarget(
+  auth: Authenticator,
+  target: CapabilityTarget
+): Promise<CapabilityTarget> {
+  if (target !== "builders") {
+    return target;
+  }
+  const buildersGroup = await GroupResource.fetchByName(
+    auth,
+    MANUAL_BUILDERS_GROUP_NAME
+  );
+  return buildersGroup ? "builders" : "admins_only";
+}
 
 // Applies an already-resolved target for one capability on the workspace behind `auth`. Shared
-// write path for both call sites listed above. The "builders" target creates the workspace's
-// Builders group if it doesn't exist yet (e.g. no builder-role member has ever been synced into
-// it), so this never leaves the capability unconfigured. With `dryRun: true`, resolves and
-// returns the outcome without writing — used by the backfill script's default dry-run mode.
+// write path for both call sites listed above. With `dryRun: true`, resolves and returns the
+// outcome without writing — used by the backfill script's default dry-run mode.
 export async function applyCapabilityTarget(
   auth: Authenticator,
   capability: CapabilitySpec,
   target: CapabilityTarget,
   { dryRun = false }: { dryRun?: boolean } = {}
 ): Promise<ApplyCapabilityOutcome> {
-  switch (target) {
+  const effectiveTarget = await resolveEffectiveTarget(auth, target);
+
+  switch (effectiveTarget) {
     case "admins_only":
-      return "skipped_admins_only";
+      return target === "builders"
+        ? "skipped_no_builders_group"
+        : "skipped_admins_only";
     case "everyone":
       if (!dryRun) {
         await GroupPermissionResource.setForEverybody(auth, capability);
@@ -75,10 +102,14 @@ export async function applyCapabilityTarget(
       return "seeded_everybody";
     case "builders": {
       if (!dryRun) {
-        const buildersGroup =
-          await GroupResource.fetchOrCreateManualBuildersGroup(
-            auth.getNonNullableWorkspace()
-          );
+        const buildersGroup = await GroupResource.fetchByName(
+          auth,
+          MANUAL_BUILDERS_GROUP_NAME
+        );
+        assert(
+          buildersGroup,
+          "Builders group disappeared between resolve and apply."
+        );
         await GroupPermissionResource.setGroups(auth, capability, [
           buildersGroup,
         ]);
@@ -86,7 +117,7 @@ export async function applyCapabilityTarget(
       return "seeded_builders";
     }
     default:
-      assertNever(target);
+      assertNever(effectiveTarget);
   }
 }
 
