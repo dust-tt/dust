@@ -1,6 +1,6 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolRunContext } from "@app/lib/actions/types";
+import type { ToolContext, ToolRunContext } from "@app/lib/actions/types";
 import type {
   InternalMCPServerDefinitionType,
   ToolCostCategory,
@@ -95,7 +95,12 @@ interface ClientToolDefinition<
 export type ToolMeta<
   TName extends string = string,
   TSchema extends ZodRawShape = ZodRawShape,
-> = Omit<ToolDefinition<TName, TSchema>, "handler">;
+> = Omit<ToolDefinition<TName, TSchema>, "handler"> & {
+  isAvailableForContext?: (context: {
+    auth: Authenticator;
+    toolContext?: ToolContext;
+  }) => boolean;
+};
 
 export type ClientToolMeta<
   TName extends string = string,
