@@ -95,7 +95,15 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/mcp_views/:svId", () => {
     );
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    await regularSpace.groups[0].dangerouslyAddMember(adminAuth, {
+    const [memberGroup] = await regularSpace.fetchGroupResources(adminAuth, {
+      groupReferences: regularSpace.groups.filter((group) =>
+        group.isRegularAuto()
+      ),
+    });
+    if (!memberGroup) {
+      throw new Error("Expected the space member group to exist.");
+    }
+    await memberGroup.dangerouslyAddMember(adminAuth, {
       user: user.toJSON(),
     });
     await FeatureFlagFactory.basic(adminAuth, "dev_mcp_actions");

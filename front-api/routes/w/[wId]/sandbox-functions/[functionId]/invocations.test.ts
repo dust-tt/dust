@@ -122,12 +122,15 @@ async function setupSandboxFunction({
     workspace,
   });
   if (addCallerToSpace) {
-    const addMemberResult = await space.groups[0].dangerouslyAddMember(
-      adminAuth,
-      {
-        user: user.toJSON(),
-      }
-    );
+    const [memberGroup] = await space.fetchGroupResources(adminAuth, {
+      groupReferences: space.groups.filter((group) => group.isRegularAuto()),
+    });
+    if (!memberGroup) {
+      throw new Error("Expected the project member group to exist.");
+    }
+    const addMemberResult = await memberGroup.dangerouslyAddMember(adminAuth, {
+      user: user.toJSON(),
+    });
     expect(addMemberResult.isOk()).toBe(true);
   }
   const callerAuth = await Authenticator.fromUserIdAndWorkspaceId(

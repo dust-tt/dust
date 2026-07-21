@@ -43,7 +43,7 @@ app.delete(
 
     if (
       space.managementMode === "group" ||
-      space.groups.some((g) => g.kind === "global")
+      space.groups.some((group) => group.isGlobal())
     ) {
       return apiError(ctx, {
         status_code: 404,
