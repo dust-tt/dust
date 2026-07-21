@@ -10,7 +10,7 @@ import { useWorkspaceGitHubConnection } from "@app/lib/swr/github_connection";
 import { useDetectSkillsFromRepo } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
-import { ContentMessage, InfoCircle, Input } from "@dust-tt/sparkle";
+import { ContentMessage, cn, InfoCircle, Input } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -73,6 +73,12 @@ export function ImportFromRepositoryTab({
 
   const showRepositoryNotFound = repositoryNotFound && !isConnectionLoading;
 
+  const hasRepositoryContent =
+    isDetecting ||
+    !!detectError ||
+    showRepositoryNotFound ||
+    detectedSkills.length > 0;
+
   let repositoryContent = (
     <DetectedSkillsList
       detectedSkills={detectedSkills}
@@ -90,8 +96,8 @@ export function ImportFromRepositoryTab({
       >
         The currently connected GitHub account can't access this repository.{" "}
         {isAdmin(owner)
-          ? "Reconnect with an account that has access."
-          : "Ask an admin to reconnect with an account that has access."}
+          ? "Check the URL or reconnect with an account that has access."
+          : "Check the URL or ask an admin to reconnect with an account that has access."}
       </ContentMessage>
     );
   } else if (showRepositoryNotFound && isAdmin(owner)) {
@@ -139,7 +145,11 @@ export function ImportFromRepositoryTab({
         className="bg-muted-background"
       />
 
-      {repositoryContent}
+      <div
+        className={cn("flex flex-col", hasRepositoryContent && "min-h-[160px]")}
+      >
+        {repositoryContent}
+      </div>
 
       {connection && (
         <GitHubConnectionRow
