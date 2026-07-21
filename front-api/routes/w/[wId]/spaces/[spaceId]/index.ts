@@ -249,7 +249,7 @@ app.get(
     const appsList = await AppResource.listBySpace(auth, space);
     const actions = await MCPServerViewResource.listBySpace(auth, space);
     const actionsCount = actions.filter(
-      (a) => a.toJSON().server.availability === "manual"
+      (a) => a.getServerDisplayMetadata().availability === "manual"
     ).length;
 
     const usages = await getDataSourceViewsUsageByModelIds({

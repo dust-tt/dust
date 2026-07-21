@@ -77,7 +77,16 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
     const views = await MCPServerViewResource.listBySpaceIds(
       auth,
       [claims.spaceId],
-      { includeGlobalSpace: true }
+      {
+        includeGlobalSpace: true,
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
     );
 
     const serverViews = views.map((view) => view.toJSON());
@@ -160,7 +169,15 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
   }
 
   // Fetch the server views with their tools metadata.
-  const views = await MCPServerViewResource.fetchByIds(auth, [...viewIds]);
+  const views = await MCPServerViewResource.fetchByIds(auth, [...viewIds], {
+    includeHeavyAttributes: [
+      "authorization",
+      "cachedTools",
+      "customHeaders",
+      "lastError",
+      "sharedSecret",
+    ],
+  });
 
   return ctx.json(
     {

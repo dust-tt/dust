@@ -21,7 +21,16 @@ export const discoverToolsSkill = {
       await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
         auth,
         spaceIds,
-        { includeGlobalSpace: true }
+        {
+          includeGlobalSpace: true,
+          includeHeavyAttributes: [
+            "authorization",
+            "cachedTools",
+            "customHeaders",
+            "lastError",
+            "sharedSecret",
+          ],
+        }
       );
 
     const availableToolsets = allToolsets.filter((toolset) => {

@@ -68,7 +68,15 @@ app.get(
         return ctx.json({ server: await enrichServer(auth, server.toJSON()) });
       }
       case "remote": {
-        const server = await RemoteMCPServerResource.fetchById(auth, serverId);
+        const server = await RemoteMCPServerResource.fetchById(auth, serverId, {
+          includeHeavyAttributes: [
+            "authorization",
+            "cachedTools",
+            "customHeaders",
+            "lastError",
+            "sharedSecret",
+          ],
+        });
 
         if (!server || server.id !== id) {
           return apiError(ctx, {
@@ -103,7 +111,16 @@ app.patch(
     if (serverType === "remote") {
       const remoteServer = await RemoteMCPServerResource.fetchById(
         auth,
-        serverId
+        serverId,
+        {
+          includeHeavyAttributes: [
+            "authorization",
+            "cachedTools",
+            "customHeaders",
+            "lastError",
+            "sharedSecret",
+          ],
+        }
       );
       if (!remoteServer) {
         return apiError(ctx, {
@@ -188,7 +205,15 @@ async function enrichServer(
   json: MCPServerType
 ): Promise<MCPServerTypeWithViews> {
   const [views, workspaceConnection] = await Promise.all([
-    MCPServerViewResource.listByMCPServer(auth, json.sId),
+    MCPServerViewResource.listByMCPServer(auth, json.sId, {
+      includeHeavyAttributes: [
+        "authorization",
+        "cachedTools",
+        "customHeaders",
+        "lastError",
+        "sharedSecret",
+      ],
+    }),
     MCPServerConnectionResource.findByMCPServer(auth, {
       mcpServerId: json.sId,
       connectionType: "workspace",

@@ -24,15 +24,40 @@ app.get(
 
     let mcpServerViews: MCPServerViewResource[];
     if (systemSpaceOnly === "true") {
-      mcpServerViews = await MCPServerViewResource.listForSystemSpace(auth);
+      mcpServerViews = await MCPServerViewResource.listForSystemSpace(auth, {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      });
     } else if (globalSpaceOnly === "true") {
       const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
       mcpServerViews = await MCPServerViewResource.listBySpace(
         auth,
-        globalSpace
+        globalSpace,
+        {
+          includeHeavyAttributes: [
+            "authorization",
+            "cachedTools",
+            "customHeaders",
+            "lastError",
+            "sharedSecret",
+          ],
+        }
       );
     } else {
-      mcpServerViews = await MCPServerViewResource.listByWorkspace(auth);
+      mcpServerViews = await MCPServerViewResource.listByWorkspace(auth, {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      });
     }
 
     return ctx.json({

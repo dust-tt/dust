@@ -104,13 +104,83 @@ describe("RemoteMCPServerResource.updateMetadata", () => {
     expect(remainingNames).toEqual(["tool_a", "tool_c"]);
 
     // Also ensure the server actually updated its cachedTools.
-    const refreshed = (await RemoteMCPServerResource.findByPk(
+    const refreshed = (await RemoteMCPServerResource.findByPk(auth, server.id, {
+      includeHeavyAttributes: ["cachedTools"],
+    }))!;
+    expect(
+      refreshed
+        .getCachedTools()
+        .map((t) => t.name)
+        .sort()
+    ).toEqual(["tool_a", "tool_c"]);
+  });
+});
+
+describe("RemoteMCPServerResource heavy attributes contract", () => {
+  async function setup() {
+    const workspace = await WorkspaceFactory.basic();
+    await SpaceFactory.system(workspace);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Contract Server",
+      tools: [{ name: "tool_a", description: "A", inputSchema: undefined }],
+    });
+
+    return { auth, server };
+  }
+
+  it("should throw on heavy attribute getters after a light fetch", async () => {
+    const { auth, server } = await setup();
+
+    const light = (await RemoteMCPServerResource.findByPk(auth, server.id))!;
+
+    expect(() => light.getCachedTools()).toThrow(/was not fetched/);
+    expect(() => light.getSharedSecret()).toThrow(/was not fetched/);
+    expect(() => light.getAuthorization()).toThrow(/was not fetched/);
+    expect(() => light.getCustomHeaders()).toThrow(/was not fetched/);
+    expect(() => light.getLastError()).toThrow(/was not fetched/);
+  });
+
+  it("should only expose the getters listed in includeHeavyAttributes", async () => {
+    const { auth, server } = await setup();
+
+    const partial = (await RemoteMCPServerResource.findByPk(auth, server.id, {
+      includeHeavyAttributes: ["sharedSecret"],
+    }))!;
+
+    expect(() => partial.getSharedSecret()).not.toThrow();
+    expect(() => partial.getCachedTools()).toThrow(/was not fetched/);
+    expect(() => partial.getAuthorization()).toThrow(/was not fetched/);
+  });
+
+  it("should hydrate only the requested heavy attributes", async () => {
+    const { auth, server } = await setup();
+
+    const light = (await RemoteMCPServerResource.findByPk(auth, server.id))!;
+    await RemoteMCPServerResource.hydrateHeavyAttributes(
       auth,
-      server.id
-    ))!;
-    expect(refreshed.cachedTools?.map((t) => t.name).sort()).toEqual([
-      "tool_a",
-      "tool_c",
-    ]);
+      [light],
+      ["cachedTools"]
+    );
+
+    expect(light.getCachedTools().map((t) => t.name)).toEqual(["tool_a"]);
+    expect(() => light.getSharedSecret()).toThrow(/was not fetched/);
+  });
+
+  it("should reflect updateMetadata writes on getters without a refetch", async () => {
+    const { auth, server } = await setup();
+
+    const light = (await RemoteMCPServerResource.findByPk(auth, server.id))!;
+    expect(() => light.getCachedTools()).toThrow(/was not fetched/);
+
+    await light.updateMetadata(auth, {
+      cachedTools: [
+        { name: "tool_new", description: "N", inputSchema: undefined },
+      ],
+      lastSyncAt: new Date(),
+    });
+
+    expect(light.getCachedTools().map((t) => t.name)).toEqual(["tool_new"]);
   });
 });

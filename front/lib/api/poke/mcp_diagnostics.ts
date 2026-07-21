@@ -541,7 +541,8 @@ async function runOAuthDiscoveryCheck(
 
   const remoteServer = await RemoteMCPServerResource.fetchById(
     auth,
-    mcpServerId
+    mcpServerId,
+    { includeHeavyAttributes: ["customHeaders"] }
   );
 
   if (!remoteServer?.url) {
@@ -558,7 +559,7 @@ async function runOAuthDiscoveryCheck(
 
   const discoveryRes = await probeOAuthDiscovery({
     serverUrl: remoteServer.url,
-    customHeaders: remoteServer.customHeaders ?? undefined,
+    customHeaders: remoteServer.getCustomHeaders() ?? undefined,
   });
   const duration_ms = Date.now() - startedAt;
 

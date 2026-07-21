@@ -243,11 +243,21 @@ app.post(
       });
     }
 
-    // Validate all MCP server views exist before creating anything.
+    // Validate all MCP server views exist before creating anything. The views end up on the
+    // created skill, whose serialized response includes their tools — fetch the heavy attributes.
     const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
     const mcpServerViews = await MCPServerViewResource.fetchByIds(
       auth,
-      mcpServerViewIds
+      mcpServerViewIds,
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
     );
 
     if (mcpServerViewIds.length !== mcpServerViews.length) {
