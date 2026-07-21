@@ -104,7 +104,11 @@ export function toolCallResultMessageToInputItem(
 export function assistantTextMessageToInputItem(
   message: BaseAssistantTextMessage
 ): ResponseInputItem {
-  return { role: "assistant", content: message.content.value };
+  return {
+    role: "assistant",
+    content: message.content.value,
+    ...(message.phase ? { phase: message.phase } : {}),
+  };
 }
 
 export function assistantReasoningMessageToInputItems(

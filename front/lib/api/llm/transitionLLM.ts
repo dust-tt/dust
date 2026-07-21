@@ -74,6 +74,7 @@ import type {
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
+import { isAgentMessagePhase } from "@app/types/assistant/agent_message_content";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import type {
   ModelIdType,
@@ -211,6 +212,7 @@ export function toBaseMessages(
                   role: "assistant",
                   type: "text",
                   content: { value: c.value },
+                  phase: c.metadata?.phase,
                 },
               ];
             case "reasoning": {
@@ -461,12 +463,19 @@ export function convertToOldEvent(
         metadata,
       };
 
-    case "text":
+    case "text": {
+      // Carry the Responses API phase (commentary/final_answer) back onto the
+      // legacy text event so it is persisted and resent on follow-up turns.
+      const phase = event.metadata.content?.phase;
       return {
         type: "text_generated",
         content: { text: event.content.value },
-        metadata,
+        metadata: {
+          ...metadata,
+          ...(isString(phase) && isAgentMessagePhase(phase) ? { phase } : {}),
+        },
       };
+    }
 
     case "reasoning_delta":
       return {

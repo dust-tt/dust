@@ -13,6 +13,7 @@ import type {
   ToolCallEvent,
   ToolCallStartedEvent,
 } from "@app/lib/model_constructors/types/output/events";
+import type { Phase } from "@app/lib/model_constructors/types/phases";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import {
   assertNever,
@@ -67,7 +68,8 @@ export interface OutputEventConverters {
   accumulatedTextToTextEvent(
     metadata: EndpointMetadata,
     text: string,
-    id?: string
+    id?: string,
+    phase?: Phase
   ): TextEvent;
   accumulatedReasoningToReasoningEvent(
     metadata: EndpointMetadata,
@@ -136,14 +138,19 @@ export function argumentsDeltaToToolCallDeltaEvent(
 export function accumulatedTextToTextEvent(
   metadata: EndpointMetadata,
   text: string,
-  id?: string
+  id?: string,
+  phase?: Phase
 ): TextEvent {
+  // Thread the message item id (so the input converter can resend it) and the
+  // phase (so downstream persistence keeps it) through metadata.content.
+  const content = { ...(id ? { id } : {}), ...(phase ? { phase } : {}) };
   return {
     type: "text",
     content: { value: text },
-    // Thread the message item id through so the input converter can resend it
-    // on the next turn.
-    metadata: { ...metadata, ...(id ? { content: { id } } : {}) },
+    metadata: {
+      ...metadata,
+      ...(Object.keys(content).length ? { content } : {}),
+    },
   };
 }
 
@@ -342,7 +349,8 @@ export function outputItemToEvents(
               converters.accumulatedTextToTextEvent(
                 metadata,
                 part.text,
-                item.id
+                item.id,
+                item.phase ?? undefined
               ),
             ];
           case "refusal":
