@@ -461,6 +461,14 @@ export async function revokeAndTrackMembership(
         "[Metronome] Failed to remove seat for revoked member"
       );
     }
+  } else if (revokeResult.error.type === "already_revoked") {
+    // Heal drift from a retried revoke whose first attempt failed after the membership
+    // write but before the group sync.
+    await GroupResource.syncBuilderGroupMembership({
+      workspace,
+      user,
+      isBuilder: false,
+    });
   }
 
   return revokeResult;
@@ -517,13 +525,17 @@ export async function updateMembershipRoleAndTrack({
     author,
   });
 
-  if (updateRes.isOk()) {
+  // On `already_on_role`, the membership already carries `newRole`: syncing anyway heals
+  // drift from a retried role change whose first attempt failed before the group sync.
+  if (updateRes.isOk() || updateRes.error.type === "already_on_role") {
     await GroupResource.syncBuilderGroupMembership({
       workspace,
       user,
       isBuilder: newRole === "builder",
     });
+  }
 
+  if (updateRes.isOk()) {
     void ServerSideTracking.trackUpdateMembershipRole({
       user: user.toJSON(),
       workspace,

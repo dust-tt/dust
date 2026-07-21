@@ -1,4 +1,5 @@
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { ArgumentSpecs } from "@app/scripts/helpers";
@@ -90,6 +91,12 @@ makeScript(
       });
 
       if (result.isOk()) {
+        await GroupResource.syncBuilderGroupMembership({
+          workspace,
+          user,
+          isBuilder: result.value.newRole === "builder",
+        });
+
         scriptLogger.info(
           {
             userId: user.sId,

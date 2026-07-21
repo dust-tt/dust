@@ -2647,16 +2647,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const now = new Date();
-    // Single row expected; served by the (userId, groupId) index.
+    // Served by the (userId, groupId) index.
+    const activeMembershipWhere = {
+      groupId: group.id,
+      userId: user.id,
+      workspaceId: workspace.id,
+      status: "active",
+      startAt: { [Op.lte]: now },
+      [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+    };
     const activeMembership = await GroupMembershipModel.findOne({
-      where: {
-        groupId: group.id,
-        userId: user.id,
-        workspaceId: workspace.id,
-        status: "active",
-        startAt: { [Op.lte]: now },
-        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
-      },
+      where: activeMembershipWhere,
     });
 
     if (isBuilder) {
@@ -2674,9 +2675,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       if (!activeMembership) {
         return;
       }
+      // End every matching row, not just the one fetched: concurrent adds can leave
+      // duplicate active rows.
       await GroupMembershipModel.update(
         { endAt: now },
-        { where: { id: activeMembership.id, workspaceId: workspace.id } }
+        { where: activeMembershipWhere }
       );
     }
 
