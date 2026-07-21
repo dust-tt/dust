@@ -114,6 +114,8 @@ export const reasoningLLMEvents = [
     content: {
       inputTokens: 6853,
       cachedTokens: 0,
+      cacheCreationTokens: 0,
+      uncachedInputTokens: 6853,
       reasoningTokens: 320,
       outputTokens: 414,
       totalTokens: 7267,

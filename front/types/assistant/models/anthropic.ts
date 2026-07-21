@@ -356,6 +356,7 @@ export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     high: true,
   },
   defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
   // Opus 4.8 shares Opus 4.7's tokenizer (~555k words/1M tokens vs ~750k for
   // anthropic_base). Ratio: 750/555 ≈ 1.35, applied on top of the base 1.3
   // adjustment → 1.3 × 1.35 ≈ 1.75.

@@ -85,6 +85,15 @@ describe("toAutoThinkingConfig", () => {
     });
   });
 
+  it('returns adaptive thinking for "light" when native light reasoning is true', () => {
+    expect(toAutoThinkingConfig("light", true)).toEqual({
+      thinking: { type: "adaptive", display: "summarized" },
+      output_config: {
+        effort: ANTHROPIC_THINKING_EFFORT_MAPPING.light,
+      },
+    });
+  });
+
   it('returns adaptive thinking with output_config for "medium"', () => {
     expect(toAutoThinkingConfig("medium")).toEqual({
       thinking: { type: "adaptive", display: "summarized" },

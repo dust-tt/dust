@@ -9,6 +9,9 @@
     "conversation_id": {
       "type": "keyword"
     },
+    "space_id": {
+      "type": "keyword"
+    },
     "agent_id": {
       "type": "keyword"
     },
