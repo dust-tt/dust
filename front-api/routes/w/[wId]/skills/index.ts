@@ -135,10 +135,10 @@ app.get(
     const onlyCustom = ctx.req.query("onlyCustom");
     // @deprecated Use availability instead. Kept while old clients still send it.
     const isDefault = ctx.req.query("isDefault");
-    const podSpaceSId = ctx.req.query("podSpaceId");
-    const podSpaceId =
-      podSpaceSId !== undefined
-        ? (getResourceIdFromSId(podSpaceSId) ?? undefined)
+    const podSpaceId = ctx.req.query("podSpaceId");
+    const podSpaceModelId =
+      podSpaceId !== undefined
+        ? (getResourceIdFromSId(podSpaceId) ?? undefined)
         : undefined;
 
     const statusValidation = SkillStatusSchema.safeParse(status);
@@ -156,7 +156,7 @@ app.get(
     const skills = await SkillResource.listBySpace(auth, {
       status: skillStatus,
       globalSpaceOnly: globalSpaceOnly === "true",
-      podSpaceId,
+      podSpaceId: podSpaceModelId,
       onlyCustom: onlyCustom === "true",
       availability,
       withInstructions: false,
