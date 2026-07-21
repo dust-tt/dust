@@ -113,8 +113,6 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     return {
       model: this.modelId,
       input: toInput(promptText, conversation, "developer", {
-        // Same cache breakpoint strategy as for other providers that support it.
-        // Not all OpenAI models support explicit breakpoints.
         cacheBreakpointOnLeadingMessage: supportsOpenAIExplicitPromptCaching(
           this.modelId
         ),
