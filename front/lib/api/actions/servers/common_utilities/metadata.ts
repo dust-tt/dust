@@ -1,7 +1,4 @@
-import type {
-  ServerMetadata,
-  ToolMeta,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { z } from "zod";
 
@@ -131,7 +128,7 @@ export const COMMON_UTILITIES_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: true,
   },
-] as const satisfies readonly ToolMeta[];
+] as const;
 
 export const COMMON_UTILITIES_SERVER = {
   serverInfo: {

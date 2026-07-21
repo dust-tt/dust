@@ -1,5 +1,6 @@
 import {
   ADVANCED_SEARCH_SWITCH,
+  INTERNAL_MCP_SERVERS,
   type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
@@ -22,7 +23,7 @@ import { default as agentTemplatesServer } from "@app/lib/api/actions/servers/ag
 import { default as ashbyServer } from "@app/lib/api/actions/servers/ashby";
 import { default as askUserQuestionServer } from "@app/lib/api/actions/servers/ask_user_question";
 import { default as clariCopilotServer } from "@app/lib/api/actions/servers/clari_copilot";
-import { default as commonUtilitiesServer } from "@app/lib/api/actions/servers/common_utilities";
+import { COMMON_UTILITIES_TOOL_HANDLERS } from "@app/lib/api/actions/servers/common_utilities/tools";
 import { default as confluenceServer } from "@app/lib/api/actions/servers/confluence";
 import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/servers/data_sources_file_system";
@@ -198,7 +199,11 @@ export async function getInternalMCPServer(
     case "jit_testing":
       return jitTestingServer(auth, toolContext);
     case "common_utilities":
-      return commonUtilitiesServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: COMMON_UTILITIES_TOOL_HANDLERS,
+        toolContext,
+      });
     case "web_search_&_browse":
       return webSearchBrowseServer(auth, toolContext);
     case "search":

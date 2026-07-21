@@ -1,9 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
-  COMMON_UTILITIES_TOOLS_METADATA,
+  type COMMON_UTILITIES_TOOLS_METADATA,
   SET_CONVERSATION_TITLE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
@@ -13,7 +12,7 @@ import { compile } from "mathjs";
 
 const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
 
-const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
+export const COMMON_UTILITIES_TOOL_HANDLERS = {
   generate_random_number: async ({ max }, _extra) => {
     const upperBound = max ?? RANDOM_INTEGER_DEFAULT_MAX;
     const value = Math.floor(Math.random() * upperBound) + 1;
@@ -135,6 +134,4 @@ const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
       },
     ]);
   },
-};
-
-export const TOOLS = buildTools(COMMON_UTILITIES_TOOLS_METADATA, handlers);
+} satisfies ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA>;
