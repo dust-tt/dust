@@ -37,8 +37,8 @@ export function Composer({
           "border border-white/90",
           "transition-[background-color,box-shadow] duration-150 ease-emphasized",
           isFocused
-            ? "shadow-[0px_0px_0px_1.5px_rgba(0,0,0,0.07),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.05),0px_6px_6px_-3px_rgba(0,0,0,0.04)]"
-            : "shadow-[0px_0px_0px_1.5px_rgba(0,0,0,0.04),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.05),0px_6px_6px_-3px_rgba(0,0,0,0.04)]",
+            ? "shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.07),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]"
+            : "shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.04),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]",
           isFocused ? "bg-[#fdfdfc]" : "bg-[#fbfbfb]",
           "dark:border-transparent",
           isFocused ? "dark:bg-[#322f2a]" : "dark:bg-[#2e2c28]",

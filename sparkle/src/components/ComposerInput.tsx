@@ -239,7 +239,7 @@ export const ComposerInput = React.forwardRef<
       cn(
         "block w-full resize-none bg-transparent p-0",
         "max-h-[40vh] min-h-11 overflow-y-auto",
-        "text-base text-foreground placeholder:text-muted-foreground",
+        "text-base text-foreground placeholder:text-faint",
         "border-none outline-none focus:outline-none focus:ring-0",
         "disabled:cursor-not-allowed disabled:opacity-50",
         className

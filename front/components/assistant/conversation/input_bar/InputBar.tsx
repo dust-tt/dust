@@ -492,8 +492,8 @@ export const InputBar = React.memo(function InputBar({
                   classNames(
                     "md:border-white/90",
                     "md:transition-[background-color,box-shadow] md:duration-150 md:ease-emphasized",
-                    "md:shadow-[0px_0px_0px_1.5px_rgba(0,0,0,0.04),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.05),0px_6px_6px_-3px_rgba(0,0,0,0.04)]",
-                    "md:has-[.tiptap:focus]:shadow-[0px_0px_0px_1.5px_rgba(0,0,0,0.07),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.05),0px_6px_6px_-3px_rgba(0,0,0,0.04)]",
+                    "md:shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.04),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]",
+                    "md:has-[.tiptap:focus]:shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.07),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]",
                     "md:bg-[#fbfbfb]",
                     "md:has-[.tiptap:focus]:bg-[#fdfdfc]",
                     "md:dark:border-transparent md:dark:bg-[#2e2c28]",
