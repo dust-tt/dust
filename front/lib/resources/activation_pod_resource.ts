@@ -3,6 +3,7 @@ import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -11,13 +12,15 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { col, fn } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ActivationPodResource
   extends ReadonlyAttributesType<ActivationPodModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ActivationPodResource extends BaseResource<ActivationPodModel> {
-  static model: ModelStatic<ActivationPodModel> = ActivationPodModel;
+  static model: ModelStaticWorkspaceAware<ActivationPodModel> =
+    ActivationPodModel;
 
   constructor(
     _: ModelStatic<ActivationPodModel>,
@@ -104,6 +107,25 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     });
 
     return activationPods.map((pod) => new this(this.model, pod.get()));
+  }
+
+  // Cross-tenant scan for the nightly activation-schedule reconcile job: the
+  // distinct workspaces that currently have at least one Activation Pod
+  // (row existence is the "live" signal; provisioning deletes the row when a
+  // pod is torn down), i.e. the workspaces that should have a running
+  // schedule.
+  static async listWorkspaceModelIdsWithActivationPods(): Promise<ModelId[]> {
+    const rows = await this.model.findAll({
+      attributes: [[fn("DISTINCT", col("workspaceId")), "workspaceId"]],
+      raw: true,
+      // WORKSPACE_ISOLATION_BYPASS: nightly reconcile scan across all workspaces
+      // to find which ones have a live activation pod (see
+      // front/temporal/activation_scheduler/client.ts).
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    return rows.map((row) => row.workspaceId);
   }
 
   // Sets the Pod's activation trigger once it has been provisioned.
