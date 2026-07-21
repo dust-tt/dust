@@ -3,6 +3,7 @@ import { DustError } from "@app/lib/error";
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { GroupSpaceBaseResource } from "@app/lib/resources/group_space_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -2345,11 +2346,8 @@ export class GroupResource extends BaseResource<GroupModel> {
         }
       );
 
-      await GroupSpaceModel.destroy({
-        where: {
-          groupId: this.id,
-          workspaceId: owner.id,
-        },
+      await GroupSpaceBaseResource.destroyAllForGroup(auth, {
+        groupModelId: this.id,
         transaction,
       });
 

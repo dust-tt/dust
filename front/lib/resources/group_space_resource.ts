@@ -4,12 +4,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type { GroupKind } from "@app/types/groups";
@@ -22,7 +23,14 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { GroupSpaceKind } from "@app/types/space";
 import { GROUP_SPACE_KINDS } from "@app/types/space";
 import type { UserType } from "@app/types/user";
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import type {
+  Attributes,
+  FindOptions,
+  InferAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
+import { Op } from "sequelize";
 import { z } from "zod";
 
 // Base class for group-space junction resources
@@ -33,6 +41,22 @@ export interface GroupSpaceBaseResource
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
   static model: ModelStatic<GroupSpaceModel> = GroupSpaceModel;
+
+  static async destroyAllForGroup(
+    auth: Authenticator,
+    {
+      groupModelId,
+      transaction,
+    }: { groupModelId: ModelId; transaction?: Transaction }
+  ): Promise<void> {
+    await GroupSpaceModel.destroy({
+      where: {
+        groupId: groupModelId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
+  }
 
   constructor(
     model: ModelStatic<GroupSpaceModel>,
@@ -430,9 +454,7 @@ export async function populateGroupSpacesCacheIfMissing(
       hashValues[String(vaultId)] = JSON.stringify(serializeVaultRows(rows));
     }
     await redisCli.hSet(dataKey, hashValues);
-    statsDClient.increment("group_spaces_cache.write", 1, [
-      "result:populated",
-    ]);
+    statsDClient.increment("group_spaces_cache.write", 1, ["result:populated"]);
   } catch (err) {
     logger.warn(
       { err: normalizeError(err), workspaceId },
@@ -441,3 +463,167 @@ export async function populateGroupSpacesCacheIfMissing(
     statsDClient.increment("group_spaces_cache.write", 1, ["result:error"]);
   }
 }
+
+// group_vaults cache invalidation.
+
+// INCR (not DEL): a DEL racing a concurrent miss-populate would let stale data be
+// written back forever. Bumping the version strands in-flight populates on a dead key.
+export async function invalidateGroupSpacesCache(
+  workspaceIds: number[],
+  source: string
+): Promise<void> {
+  if (workspaceIds.length === 0) {
+    return;
+  }
+  try {
+    const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
+    for (const workspaceId of workspaceIds) {
+      await redisCli.incr(groupSpacesCacheVersionKey(workspaceId));
+    }
+    getStatsDClient().increment(
+      "group_spaces_cache.invalidate",
+      workspaceIds.length,
+      [`source:${source}`]
+    );
+  } catch (err) {
+    // A failed bump means potentially stale permission data: page on this.
+    logger.error(
+      { panic: true, err: normalizeError(err), workspaceIds, source },
+      "group_vaults cache invalidation failed"
+    );
+  }
+}
+
+function scheduleInvalidation(
+  workspaceIds: number[],
+  transaction: Transaction | null | undefined,
+  source: string
+): void {
+  const uniqueIds = [...new Set(workspaceIds)];
+  invalidateCacheAfterCommit(transaction ?? undefined, () =>
+    invalidateGroupSpacesCache(uniqueIds, source)
+  );
+}
+
+function numericIds(value: unknown): number[] | null {
+  if (typeof value === "number") {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0 &&
+      value.every((v): v is number => typeof v === "number")
+      ? value
+      : null;
+  }
+  if (value && typeof value === "object") {
+    const inValue: unknown = Reflect.get(value, Op.in);
+    if (inValue !== undefined) {
+      return numericIds(inValue);
+    }
+  }
+  return null;
+}
+
+function workspaceIdsFromWhere(where: unknown): number[] {
+  if (where && typeof where === "object" && "workspaceId" in where) {
+    const ids = numericIds(where.workspaceId);
+    if (ids) {
+      return ids;
+    }
+  }
+  // Fail closed: no invalidation, no write.
+  throw new Error(
+    "group_vaults write refused: cannot derive workspaceId for cache invalidation."
+  );
+}
+
+// Raw SQL bypasses these hooks: migrations must invalidate explicitly.
+GroupSpaceModel.addHook("afterCreate", "group_vaults_cache", (gs, options) => {
+  if (gs instanceof GroupSpaceModel) {
+    scheduleInvalidation([gs.workspaceId], options.transaction, "create");
+  }
+});
+GroupSpaceModel.addHook(
+  "afterBulkCreate",
+  "group_vaults_cache",
+  (instances, options) => {
+    const workspaceIds = instances
+      .filter((gs): gs is GroupSpaceModel => gs instanceof GroupSpaceModel)
+      .map((gs) => gs.workspaceId);
+    scheduleInvalidation(workspaceIds, options.transaction, "bulk_create");
+  }
+);
+GroupSpaceModel.addHook("afterUpdate", "group_vaults_cache", (gs, options) => {
+  if (gs instanceof GroupSpaceModel) {
+    scheduleInvalidation([gs.workspaceId], options.transaction, "update");
+  }
+});
+GroupSpaceModel.addHook("afterDestroy", "group_vaults_cache", (gs, options) => {
+  if (gs instanceof GroupSpaceModel) {
+    scheduleInvalidation([gs.workspaceId], options.transaction, "destroy");
+  }
+});
+GroupSpaceModel.addHook("afterBulkUpdate", "group_vaults_cache", (options) => {
+  scheduleInvalidation(
+    workspaceIdsFromWhere(options.where),
+    options.transaction,
+    "bulk_update"
+  );
+});
+GroupSpaceModel.addHook("afterBulkDestroy", "group_vaults_cache", (options) => {
+  scheduleInvalidation(
+    workspaceIdsFromWhere(options.where),
+    options.transaction,
+    "bulk_destroy"
+  );
+});
+
+// Group name/poolCapAwuCredits are cached with the associations; group updates bump
+// the version too (kind and id are immutable).
+GroupModel.addHook("afterUpdate", "group_vaults_cache", (group, options) => {
+  if (group instanceof GroupModel) {
+    scheduleInvalidation(
+      [group.workspaceId],
+      options.transaction,
+      "group_update"
+    );
+  }
+});
+GroupModel.addHook("afterBulkUpdate", "group_vaults_cache", async (options) => {
+  const where: unknown = options.where;
+  if (where && typeof where === "object" && "workspaceId" in where) {
+    const ids = numericIds(where.workspaceId);
+    if (ids) {
+      scheduleInvalidation(ids, options.transaction, "group_bulk_update");
+      return;
+    }
+  }
+  // BaseResource.update goes through here with a bare { id } where clause.
+  const groupIds =
+    where && typeof where === "object" && "id" in where
+      ? numericIds(where.id)
+      : null;
+  if (groupIds) {
+    const findOptions: FindOptions<InferAttributes<GroupModel>> & {
+      dangerouslyBypassWorkspaceIsolationSecurity: boolean;
+    } = {
+      attributes: ["workspaceId"],
+      // WORKSPACE_ISOLATION_BYPASS: resolving workspaceId from group ids to
+      // invalidate the group_vaults cache.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      where: { id: groupIds },
+      transaction: options.transaction,
+    };
+    const groups: GroupModel[] = await GroupModel.findAll(findOptions);
+    scheduleInvalidation(
+      groups.map((g) => g.workspaceId),
+      options.transaction,
+      "group_bulk_update"
+    );
+    return;
+  }
+  logger.error(
+    { panic: true, where },
+    "groups bulk update without derivable workspaceId: group_vaults cache not invalidated"
+  );
+});

@@ -3,20 +3,23 @@ import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
-import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   groupSpacesCacheDataKey,
+  groupSpacesCacheVersionKey,
   populateGroupSpacesCacheIfMissing,
 } from "@app/lib/resources/group_space_resource";
+import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { Op } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("GroupSpaceMemberResource", () => {
@@ -479,5 +482,228 @@ describe("populateGroupSpacesCacheIfMissing", () => {
     await vi.waitFor(async () => {
       expect(spies.hSet).toHaveBeenCalled();
     });
+  });
+});
+
+describe("group_vaults cache invalidation hooks", () => {
+  let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+  let auth: Authenticator;
+
+  async function getIncrSpy() {
+    const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
+    return vi.mocked(redisCli.incr);
+  }
+
+  async function resetInvalidationSpy(): Promise<void> {
+    (await getIncrSpy()).mockClear();
+    vi.mocked(invalidateCacheAfterCommit).mockClear();
+  }
+
+  async function wasInvalidated(workspaceId: number): Promise<boolean> {
+    const incrSpy = await getIncrSpy();
+    return incrSpy.mock.calls.some(
+      (call) => call[0] === groupSpacesCacheVersionKey(workspaceId)
+    );
+  }
+
+  async function expectInvalidated(workspaceId: number): Promise<void> {
+    await vi.waitFor(async () => {
+      expect(await wasInvalidated(workspaceId)).toBe(true);
+    });
+  }
+
+  async function expectNotInvalidated(workspaceId: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(await wasInvalidated(workspaceId)).toBe(false);
+  }
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    const adminUser = await UserFactory.basic();
+    await GroupFactory.defaults(workspace);
+    await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      workspace.sId
+    );
+  });
+
+  it("invalidates on direct create", async () => {
+    const space = await SpaceFactory.regular(workspace);
+    const group = await GroupResource.makeNew({
+      name: "Extra group",
+      workspaceId: workspace.id,
+      kind: "regular_manual",
+    });
+    await resetInvalidationSpy();
+
+    await GroupSpaceFactory.associate(space, group);
+
+    await expectInvalidated(workspace.id);
+  });
+
+  it("invalidates on SpaceResource.makeNew, after its transaction commits", async () => {
+    const group = await GroupResource.makeNew({
+      name: "Space group",
+      workspaceId: workspace.id,
+      kind: "regular_auto",
+    });
+    await resetInvalidationSpy();
+
+    await SpaceResource.makeNew(
+      { name: "New space", kind: "regular", workspaceId: workspace.id },
+      { members: [group] }
+    );
+
+    await expectInvalidated(workspace.id);
+  });
+
+  it("invalidates on bulkCreate", async () => {
+    const space = await SpaceFactory.regular(workspace);
+    const group = await GroupResource.makeNew({
+      name: "Bulk group",
+      workspaceId: workspace.id,
+      kind: "regular_manual",
+    });
+    await resetInvalidationSpy();
+
+    await GroupSpaceModel.bulkCreate([
+      {
+        groupId: group.id,
+        vaultId: space.id,
+        workspaceId: workspace.id,
+        kind: "member",
+      },
+    ]);
+
+    await expectInvalidated(workspace.id);
+  });
+
+  it("invalidates on bulk destroy scoped by workspaceId", async () => {
+    const space = await SpaceFactory.regular(workspace);
+    await resetInvalidationSpy();
+
+    await GroupSpaceModel.destroy({
+      where: { vaultId: space.id, workspaceId: workspace.id },
+    });
+
+    await expectInvalidated(workspace.id);
+  });
+
+  it("invalidates when a space is deleted through the resource", async () => {
+    const space = await SpaceFactory.regular(workspace);
+    await resetInvalidationSpy();
+
+    const result = await space.delete(auth, { hardDelete: true });
+
+    expect(result.isOk()).toBe(true);
+    await expectInvalidated(workspace.id);
+  });
+
+  it("invalidates when a group is deleted (its associations are destroyed)", async () => {
+    const space = await SpaceFactory.regular(workspace);
+    const group = await GroupResource.makeNew({
+      name: "Doomed group",
+      workspaceId: workspace.id,
+      kind: "regular_manual",
+    });
+    await GroupSpaceFactory.associate(space, group);
+    await resetInvalidationSpy();
+
+    const result = await group.delete(auth);
+
+    expect(result.isOk()).toBe(true);
+    await expectInvalidated(workspace.id);
+  });
+
+  it("invalidates on group rename (names are cached)", async () => {
+    const space = await SpaceFactory.regular(workspace);
+    const group = await GroupResource.makeNew({
+      name: "Old name",
+      workspaceId: workspace.id,
+      kind: "regular_manual",
+    });
+    await GroupSpaceFactory.associate(space, group);
+    await resetInvalidationSpy();
+
+    await group.updateName(auth, "New name");
+
+    await expectInvalidated(workspace.id);
+  });
+
+  it("accepts an Op.in workspaceId shape on bulk update", async () => {
+    const space = await SpaceFactory.regular(workspace);
+    await resetInvalidationSpy();
+
+    await GroupSpaceModel.update(
+      { kind: "member" },
+      {
+        where: {
+          vaultId: space.id,
+          workspaceId: { [Op.in]: [workspace.id] },
+        },
+      }
+    );
+
+    await expectInvalidated(workspace.id);
+  });
+
+  it("forwards the ambient transaction to invalidateCacheAfterCommit", async () => {
+    const space = await SpaceFactory.regular(workspace);
+    const group = await GroupResource.makeNew({
+      name: "Tx group",
+      workspaceId: workspace.id,
+      kind: "regular_manual",
+    });
+    await resetInvalidationSpy();
+
+    await GroupSpaceFactory.associate(space, group);
+
+    const calls = vi.mocked(invalidateCacheAfterCommit).mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.at(-1)?.[0]).toBeTruthy();
+  });
+
+  it("refuses a bulk update whose where clause has no workspaceId", async () => {
+    const space = await SpaceFactory.regular(workspace);
+
+    await expect(
+      GroupSpaceModel.update(
+        { kind: "member" },
+        { where: { vaultId: space.id } }
+      )
+    ).rejects.toThrow(/cannot derive workspaceId/);
+  });
+
+  it("refuses a bulk update with a non-numeric workspaceId shape", async () => {
+    const space = await SpaceFactory.regular(workspace);
+
+    await expect(
+      GroupSpaceModel.update(
+        { kind: "member" },
+        {
+          where: {
+            vaultId: space.id,
+            workspaceId: { [Op.gt]: 0 },
+          },
+        }
+      )
+    ).rejects.toThrow(/cannot derive workspaceId/);
+  });
+
+  it("only invalidates the mutated workspace", async () => {
+    const otherWorkspace = await WorkspaceFactory.basic();
+    const space = await SpaceFactory.regular(workspace);
+    const group = await GroupResource.makeNew({
+      name: "Isolated group",
+      workspaceId: workspace.id,
+      kind: "regular_manual",
+    });
+    await resetInvalidationSpy();
+
+    await GroupSpaceFactory.associate(space, group);
+
+    await expectInvalidated(workspace.id);
+    await expectNotInvalidated(otherWorkspace.id);
   });
 });
