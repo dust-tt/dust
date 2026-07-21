@@ -4,6 +4,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow this workspace to configure SSO, independently of the plan's isSSOAllowed flag. Enable on demand for Business plan workspaces.",
     stage: "on_demand",
   },
+  allow_scim: {
+    description:
+      "Allow this workspace to configure SCIM user provisioning, independently of the plan's isSCIMAllowed flag. Enable on demand.",
+    stage: "on_demand",
+  },
   live_speech_to_text: {
     description:
       "Enable real-time speech-to-text in the input bar via ElevenLabs WebSocket streaming",

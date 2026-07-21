@@ -22,7 +22,7 @@ import {
   getWorkspaceInfos,
   isWorkspaceRelocationDone,
 } from "@app/lib/api/workspace";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlagsForWorkspace } from "@app/lib/auth";
 import type { ExternalUser } from "@app/lib/iam/provider";
 import type { CustomAttributeKey } from "@app/lib/iam/users";
 import {
@@ -30,6 +30,7 @@ import {
   createOrUpdateUser,
   WORKOS_METADATA_KEY_PREFIX,
 } from "@app/lib/iam/users";
+import { isSCIMEnabled } from "@app/lib/plans/scim";
 import {
   ADMIN_GROUP_NAME,
   BUILDER_GROUP_NAME,
@@ -113,7 +114,7 @@ async function verifyWorkOSWorkspace<E extends Event, R>(
     }
   }
 
-  // For dsync events, verify the plan allows SCIM and the directoryId matches
+  // For dsync events, verify SCIM is enabled and the directoryId matches
   // the current organization's active directory.
   const { data: eventData } = event;
   if (
@@ -123,10 +124,12 @@ async function verifyWorkOSWorkspace<E extends Event, R>(
   ) {
     const subscription =
       await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
-    if (!subscription?.getPlan().limits.users.isSCIMAllowed) {
+    const featureFlags = await getFeatureFlagsForWorkspace(workspace);
+    const plan = subscription?.getPlan();
+    if (!plan || !isSCIMEnabled(plan, featureFlags)) {
       logger.warn(
         { workspaceId: workspace.sId, organizationId },
-        "SCIM event received but workspace plan does not allow SCIM, skipping"
+        "SCIM event received but neither the workspace plan nor a feature flag allows SCIM, skipping"
       );
       return;
     }

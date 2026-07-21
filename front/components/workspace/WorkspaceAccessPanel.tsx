@@ -5,6 +5,7 @@ import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcp
 import SSOConnection from "@app/components/workspace/SSOConnection";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
+import { isSCIMEnabled } from "@app/lib/plans/scim";
 import {
   useRemoveWorkspaceDomain,
   useWorkspaceDomains,
@@ -45,8 +46,9 @@ export default function WorkspaceAccessPanel({
   const { addDomainLink, domains, isDomainsLoading } = useWorkspaceDomains({
     owner,
   });
-  const { hasFeature } = useFeatureFlags();
+  const { featureFlags, hasFeature } = useFeatureFlags();
   const workspace = useWorkspace();
+  const scimEnabled = isSCIMEnabled(plan, featureFlags);
   const hasAuditLogsAccess =
     plan.isAuditLogsAllowed || hasFeature("audit_logs");
   const showAuditLogs =
@@ -72,10 +74,8 @@ export default function WorkspaceAccessPanel({
         owner={owner}
         plan={plan}
       />
-      {plan.limits.users.isSCIMAllowed && <Separator />}
-      {plan.limits.users.isSCIMAllowed && (
-        <UserProvisioning owner={owner} plan={plan} />
-      )}
+      {scimEnabled && <Separator />}
+      {scimEnabled && <UserProvisioning owner={owner} plan={plan} />}
       {showAuditLogs && <Separator />}
       {showAuditLogs && <AuditLogsSection owner={owner} />}
       {showExtensionMcpTools && (
