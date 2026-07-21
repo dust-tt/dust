@@ -15,7 +15,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
-const WORKSPACE_CONCURRENCY = 4;
+const WORKSPACE_CONCURRENCY = 8;
 
 /**
  * Backfill of the "Builders" group (builder role deprecation, PR 2 of
@@ -59,14 +59,6 @@ async function reconcileWorkspace(
       name: MANUAL_BUILDERS_GROUP_NAME,
     },
   });
-  if (group && group.kind === "provisioned") {
-    // Same guard as the sync: never mutate IdP-owned membership.
-    logger.warn(
-      { workspaceId: workspace.sId, groupId: group.id },
-      "Builders group name taken by a provisioned group, skipping workspace"
-    );
-    return { added: 0, removed: 0 };
-  }
 
   let currentMemberIds = new Set<number>();
   if (group) {
@@ -109,7 +101,8 @@ async function reconcileWorkspace(
   const userByModelId = new Map(users.map((u) => [u.id, u]));
 
   // Per-user sync inside the loop is a deliberate reuse of the PR 1 code path (idempotent,
-  // race-safe): one-shot migration, a few queries per out-of-sync user only.
+  // race-safe): one-shot migration, a few queries per out-of-sync user only — and only
+  // builders are synced, a small fraction of users.
   let added = 0;
   let removed = 0;
   for (const userModelId of toAdd) {
