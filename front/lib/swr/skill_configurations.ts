@@ -29,6 +29,7 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
+import { mutate } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
@@ -146,6 +147,15 @@ export function useSkills({
     isSkillsLoading: isLoading,
     mutateSkills: mutate,
   };
+}
+
+export async function invalidateWorkspaceSkills(
+  workspaceId: string
+): Promise<void> {
+  await mutate(
+    (key) =>
+      typeof key === "string" && key.startsWith(`/api/w/${workspaceId}/skills`)
+  );
 }
 
 export function useSkillsWithRelations({

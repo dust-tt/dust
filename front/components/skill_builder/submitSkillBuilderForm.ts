@@ -1,5 +1,6 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { invalidateWorkspaceSkills } from "@app/lib/swr/skill_configurations";
 import type {
   PatchSkillResponseBody,
   PostSkillResponseBody,
@@ -123,6 +124,8 @@ export async function submitSkillBuilderForm({
         }
       }
     }
+
+    await invalidateWorkspaceSkills(owner.sId);
 
     return new Ok(skill);
   } catch (error) {
