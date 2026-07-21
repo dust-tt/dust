@@ -658,6 +658,8 @@ function legacyProviderIdForModel(modelId: ModelIdType): ModelProviderIdType {
  * `BatchEndpointTransition` for batch — mirroring `StreamEndpoint`/`BatchEndpoint`.
  */
 abstract class BaseTransition extends LLM {
+  protected override readonly router = "new" as const;
+
   // Builds the provider-agnostic conversation payload (system + messages) shared
   // by both the streaming and batch surfaces.
   //

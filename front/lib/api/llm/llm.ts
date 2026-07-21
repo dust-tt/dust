@@ -52,6 +52,8 @@ export abstract class LLM<TPayload = unknown> {
   protected responseFormat: string | null;
   protected bypassFeatureFlag: boolean;
   protected metadata: LLMClientMetadata;
+  // Temporary during the router migration; "new" is set by BaseTransition.
+  protected readonly router: "legacy" | "new" = "legacy";
 
   // Tracing fields.
   protected readonly authenticator: Authenticator;
@@ -270,6 +272,7 @@ export abstract class LLM<TPayload = unknown> {
           logger.error(
             {
               llmEventType: "error",
+              router: this.router,
               errorContent: currentEvent.content,
               modelId: this.modelId,
               inferenceProvider: this.metadata.inferenceProvider,
@@ -288,6 +291,7 @@ export abstract class LLM<TPayload = unknown> {
           logger.info(
             {
               llmEventType: "success",
+              router: this.router,
               modelId: this.modelId,
               inferenceProvider: this.metadata.inferenceProvider,
               region: this.metadata.region,
