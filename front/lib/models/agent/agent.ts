@@ -194,6 +194,13 @@ AgentConfigurationModel.init(
           status: "active",
         },
       },
+      {
+        fields: ["workspaceId", "scope", "id"],
+        name: "partial_agent_config_active_scope_id",
+        where: {
+          status: "active",
+        },
+      },
       { fields: ["sId"] },
       { fields: ["sId", "version"], unique: true },
       { fields: ["workspaceId", "authorId", "sId"] },
