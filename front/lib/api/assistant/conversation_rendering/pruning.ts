@@ -1,9 +1,11 @@
 /**
- * Mechanisms for fitting a conversation into a token budget. Two distinct operations, named
+ * Mechanisms for fitting a conversation into a token budget. The operations are named
  * consistently throughout this module and index.ts:
  *
  * - "prune" (pruneToolResults): replace a tool result's content with a small placeholder. The
  *   message stays in place, so tool_use/tool_result pairing is never broken.
+ * - "prune reasoning" (pruneReasoningMessage): remove reasoning blocks while preserving every
+ *   other assistant content item.
  * - "drop" (dropInteractionsToFit): remove whole interactions entirely, oldest first.
  *
  * The conversation window state implementations own the policy of when to apply which. This
@@ -36,6 +38,11 @@ export type MessageWithTokens = ModelMessageTypeMultiActions & {
 };
 
 export type InteractionWithTokens = Interaction<MessageWithTokens>;
+
+export type AssistantMessageWithTokens = Extract<
+  MessageWithTokens,
+  { role: "assistant" }
+>;
 
 /** Turns a function-role message into the pruned placeholder. */
 export function pruneToolResultMessage(
@@ -70,6 +77,52 @@ export function getToolResultTokenSavings(message: MessageWithTokens): number {
   return message.role === "function"
     ? Math.max(message.tokenCount - PRUNED_TOOL_RESULT_TOKENS, 0)
     : 0;
+}
+
+/** Tokens removed by dropping every reasoning block from an assistant message. */
+export function getReasoningTokenSavings(
+  message: AssistantMessageWithTokens
+): number {
+  const reasoningTokens = message.contents.reduce(
+    (sum, content) =>
+      content.type === "reasoning" ? sum + content.value.tokens : sum,
+    0
+  );
+
+  if (reasoningTokens <= 0) {
+    return 0;
+  }
+
+  const hasNonReasoningContent = message.contents.some(
+    (content) => content.type !== "reasoning"
+  );
+
+  return hasNonReasoningContent
+    ? Math.min(reasoningTokens, message.tokenCount)
+    : message.tokenCount;
+}
+
+/** Removes complete reasoning blocks while preserving every other assistant content item. */
+export function pruneReasoningMessage(
+  message: AssistantMessageWithTokens
+): AssistantMessageWithTokens | null {
+  const tokenSavings = getReasoningTokenSavings(message);
+  if (tokenSavings === 0) {
+    return message;
+  }
+
+  const contents = message.contents.filter(
+    (content) => content.type !== "reasoning"
+  );
+  if (contents.length === 0) {
+    return null;
+  }
+
+  return {
+    ...message,
+    contents,
+    tokenCount: message.tokenCount - tokenSavings,
+  };
 }
 
 /**

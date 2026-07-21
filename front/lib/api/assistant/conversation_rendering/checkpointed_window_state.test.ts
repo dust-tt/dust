@@ -13,11 +13,15 @@ function withTokens<T extends ModelMessageTypeMultiActions>(
   return { ...message, tokenCount };
 }
 
-function userMessage(name: string, tokenCount: number) {
+function userMessage(
+  name: string,
+  tokenCount: number,
+  { messageName = "user" }: { messageName?: string } = {}
+) {
   return withTokens(
     {
       role: "user" as const,
-      name: "user",
+      name: messageName,
       content: [{ type: "text" as const, text: name }],
     },
     tokenCount
@@ -33,6 +37,34 @@ function assistantMessage(name: string, tokenCount = 10) {
       contents: [{ type: "text_content" as const, value: name }],
     },
     tokenCount
+  );
+}
+
+function reasoningAssistantMessage(
+  name: string,
+  reasoningTokens: number,
+  { onlyReasoning = false }: { onlyReasoning?: boolean } = {}
+) {
+  return withTokens(
+    {
+      role: "assistant" as const,
+      name: "assistant",
+      contents: [
+        {
+          type: "reasoning" as const,
+          value: {
+            reasoning: `${name}_reasoning`,
+            metadata: "{}",
+            tokens: reasoningTokens,
+            provider: "anthropic" as const,
+          },
+        },
+        ...(onlyReasoning
+          ? []
+          : [{ type: "text_content" as const, value: `${name}_text` }]),
+      ],
+    },
+    reasoningTokens + (onlyReasoning ? 0 : 10)
   );
 }
 
@@ -59,6 +91,13 @@ function toolResults(state: CheckpointedConversationWindowState) {
     .renderedInteractions()
     .flatMap((item) => item.messages)
     .filter((message) => message.role === "function");
+}
+
+function assistantMessages(state: CheckpointedConversationWindowState) {
+  return state
+    .renderedInteractions()
+    .flatMap((item) => item.messages)
+    .filter((message) => message.role === "assistant");
 }
 
 function isPruned(content: unknown): boolean {
@@ -166,6 +205,90 @@ describe("CheckpointedConversationWindowState", () => {
       "pending_first_result",
       "pending_second_result",
     ]);
+  });
+
+  it("combines tool-result and historical reasoning savings into one checkpoint", () => {
+    const state = makeState({ pruningBudget: 10_000 });
+
+    state.append(
+      interaction([
+        userMessage("first_question", 10),
+        reasoningAssistantMessage("first_call", 9_000),
+        functionMessage("first_result", 12_024),
+        assistantMessage("first_answer"),
+      ])
+    );
+    state.append(interaction([userMessage("follow_up", 10)]));
+
+    expect(isPruned(toolResults(state)[0].content)).toBe(true);
+    expect(assistantMessages(state)[0].contents).toEqual([
+      { type: "text_content", value: "first_call_text" },
+    ]);
+  });
+
+  it("prunes eligible tool results before historical reasoning", () => {
+    const state = makeState({ pruningBudget: 31_000 });
+
+    state.append(
+      interaction([
+        userMessage("first_question", 10),
+        reasoningAssistantMessage("first_call", 10_000),
+        functionMessage("first_result", 25_024),
+        assistantMessage("first_answer"),
+      ])
+    );
+    state.append(interaction([userMessage("follow_up", 10)]));
+
+    expect(isPruned(toolResults(state)[0].content)).toBe(true);
+    expect(
+      assistantMessages(state)[0].contents.some(
+        (content) => content.type === "reasoning"
+      )
+    ).toBe(true);
+  });
+
+  it("preserves every reasoning block in the active user turn", () => {
+    const state = makeState({ pruningBudget: 10_000 });
+
+    state.append(
+      interaction([
+        userMessage("question", 10),
+        reasoningAssistantMessage("first_call", 15_000),
+        functionMessage("consumed", 20_024),
+        userMessage("enabled_skill", 10, { messageName: "system" }),
+        assistantMessage("second_call"),
+        functionMessage("pending", 10),
+      ])
+    );
+
+    expect(isPruned(toolResults(state)[0].content)).toBe(true);
+    expect(
+      assistantMessages(state)[0].contents.some(
+        (content) => content.type === "reasoning"
+      )
+    ).toBe(true);
+  });
+
+  it("omits a historical assistant message that contained only reasoning", () => {
+    const state = makeState({ pruningBudget: 1_000 });
+
+    state.append(
+      interaction([
+        userMessage("first_question", 10),
+        reasoningAssistantMessage("thinking", 25_000, {
+          onlyReasoning: true,
+        }),
+      ])
+    );
+    state.append(interaction([userMessage("follow_up", 10)]));
+
+    expect(assistantMessages(state)).toEqual([]);
+    expect(
+      state
+        .renderedInteractions()
+        .flatMap((item) => item.messages)
+        .map((message) => message.role)
+    ).toEqual(["user", "user"]);
   });
 
   it("waits for a full checkpoint of reclaimable results before moving the frontier", () => {
@@ -288,5 +411,38 @@ describe("CheckpointedConversationWindowState", () => {
     expect(
       extendedResults.slice(0, 3).map((message) => isPruned(message.content))
     ).toEqual([true, true, false]);
+  });
+
+  it("does not restore pruned reasoning when later tool results become eligible", () => {
+    const firstTurn = interaction([
+      userMessage("first_question", 10),
+      reasoningAssistantMessage("first_call", 9_000),
+      functionMessage("first_result", 12_024),
+      assistantMessage("first_answer"),
+    ]);
+    const nextUser = interaction([userMessage("follow_up", 10)]);
+
+    const prefixState = makeState({ pruningBudget: 10_000 });
+    prefixState.append(firstTurn);
+    prefixState.append(nextUser);
+
+    const extendedState = makeState({ pruningBudget: 10_000 });
+    extendedState.append(firstTurn);
+    extendedState.append(nextUser);
+    extendedState.append(
+      interaction([
+        assistantMessage("second_call"),
+        functionMessage("second_result", 20_024),
+        assistantMessage("third_call"),
+        functionMessage("pending", 10),
+      ])
+    );
+
+    expect(prefixState.renderedInteractions()[0]).toEqual(
+      extendedState.renderedInteractions()[0]
+    );
+    expect(assistantMessages(extendedState)[0].contents).toEqual([
+      { type: "text_content", value: "first_call_text" },
+    ]);
   });
 });
