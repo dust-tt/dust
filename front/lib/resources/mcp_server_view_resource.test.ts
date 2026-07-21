@@ -194,7 +194,8 @@ describe("MCPServerViewResource", () => {
       // - User is NOT in any group for restrictedSpace
 
       // Add user to the group that accesses accessibleSpace
-      const [accessibleGroup] = await accessibleSpace.fetchGroups(adminAuth);
+      const [accessibleGroup] =
+        await accessibleSpace.fetchGroupResources(adminAuth);
       const addMemberResult = await accessibleGroup.dangerouslyAddMember(
         adminAuth,
         {
@@ -352,8 +353,8 @@ describe("MCPServerViewResource", () => {
       await MembershipFactory.associate(workspace, user, { role: "user" });
 
       // Add user to both groups
-      const [group1] = await space1.fetchGroups(adminAuth);
-      const [group2] = await space2.fetchGroups(adminAuth);
+      const [group1] = await space1.fetchGroupResources(adminAuth);
+      const [group2] = await space2.fetchGroupResources(adminAuth);
       await group1.dangerouslyAddMember(adminAuth, {
         user: user.toJSON(),
       });

@@ -169,7 +169,7 @@ async function setupPodTestContext() {
     user,
   } = await createResourceTest({ role: "admin" });
   const space = await SpaceFactory.project(workspace, user.id);
-  const [group] = await space.fetchGroups(workspaceAdminAuth);
+  const [group] = await space.fetchGroupResources(workspaceAdminAuth);
   const addMemberResult = await group.dangerouslyAddMember(workspaceAdminAuth, {
     user: user.toJSON(),
   });

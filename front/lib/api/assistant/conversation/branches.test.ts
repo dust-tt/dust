@@ -49,11 +49,16 @@ describe("mergeConversationBranch", () => {
       workspace.sId
     );
 
-    const projectGroups = await projectSpace.fetchGroups(internalAdminAuth);
-    const projectGroup = projectGroups.find((g) => g.isRegularAuto());
-    if (!projectGroup) {
+    const projectGroupReference = projectSpace.groups.find((group) =>
+      group.isRegularAuto()
+    );
+    if (!projectGroupReference) {
       throw new Error("Project group should exist.");
     }
+    const [projectGroup] = await projectSpace.fetchGroupResources(
+      internalAdminAuth,
+      { groupReferences: [projectGroupReference] }
+    );
 
     const addMergerToProjectRes = await projectGroup.dangerouslyAddMember(
       internalAdminAuth,
@@ -73,12 +78,16 @@ describe("mergeConversationBranch", () => {
       throw new Error(addProjectMemberToProjectRes.error.message);
     }
 
-    const restrictedGroups =
-      await restrictedSpace.fetchGroups(internalAdminAuth);
-    const restrictedGroup = restrictedGroups.find((g) => g.isRegularAuto());
-    if (!restrictedGroup) {
+    const restrictedGroupReference = restrictedSpace.groups.find((group) =>
+      group.isRegularAuto()
+    );
+    if (!restrictedGroupReference) {
       throw new Error("Restricted space group should exist.");
     }
+    const [restrictedGroup] = await restrictedSpace.fetchGroupResources(
+      internalAdminAuth,
+      { groupReferences: [restrictedGroupReference] }
+    );
 
     const addMergerToRestrictedRes = await restrictedGroup.dangerouslyAddMember(
       internalAdminAuth,

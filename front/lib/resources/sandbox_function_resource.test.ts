@@ -137,7 +137,8 @@ describe("SandboxFunctionResource", () => {
 
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
-    const [accessibleGroup] = await accessibleSpace.fetchGroups(adminAuth);
+    const [accessibleGroup] =
+      await accessibleSpace.fetchGroupResources(adminAuth);
     const addMemberResult = await accessibleGroup.dangerouslyAddMember(
       adminAuth,
       {

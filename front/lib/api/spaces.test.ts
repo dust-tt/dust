@@ -90,7 +90,7 @@ describe("createSpaceAndGroup", () => {
         expect(space.isRegularAndRestricted()).toBe(true);
 
         // Verify the space has a group
-        const groups = await space.fetchGroups(adminAuth);
+        const groups = await space.fetchGroupResources(adminAuth);
         expect(groups.length).toBeGreaterThan(0);
         const spaceGroup = groups.find((g) =>
           g.name.startsWith("Group for space Test Regular Space")
@@ -118,7 +118,7 @@ describe("createSpaceAndGroup", () => {
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        const groups = await result.value.fetchGroups(adminAuth);
+        const groups = await result.value.fetchGroupResources(adminAuth);
         const memberGroup = groups.find((g) =>
           g.name.startsWith("Group for space Kind Check Space")
         );
@@ -1029,7 +1029,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const groups = await space.fetchGroups(adminAuth);
+        const groups = await space.fetchGroupResources(adminAuth);
         const spaceGroup = groups.find((g) => !g.isGlobal());
         expect(spaceGroup).toBeDefined();
 
@@ -1065,7 +1065,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const groups = await space.fetchGroups(adminAuth);
+        const groups = await space.fetchGroupResources(adminAuth);
         const spaceGroup = groups.find((g) => !g.isGlobal());
         expect(spaceGroup).toBeDefined();
 
@@ -1096,7 +1096,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const groups = await space.fetchGroups(adminAuth);
+        const groups = await space.fetchGroupResources(adminAuth);
         const spaceGroup = groups.find((g) => !g.isGlobal());
         expect(spaceGroup).toBeDefined();
 

@@ -26,7 +26,7 @@ describe("ConversationSelectedSpaceResource", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const groups = await space.fetchGroups(internalAdminAuth);
+    const groups = await space.fetchGroupResources(internalAdminAuth);
     const memberGroup = groups.find((group) => group.isRegularAuto());
     if (!memberGroup) {
       throw new Error("Expected regular member group on Space");

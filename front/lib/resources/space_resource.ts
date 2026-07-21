@@ -60,7 +60,7 @@ export class SpaceGroupReference {
     readonly workspaceId: ModelId
   ) {}
 
-  static fromModel(groupSpace: GroupSpaceModel) {
+  static fromGroupSpaceModel(groupSpace: GroupSpaceModel) {
     return new SpaceGroupReference(
       groupSpace.groupId,
       groupSpace.groupKind,
@@ -69,7 +69,7 @@ export class SpaceGroupReference {
     );
   }
 
-  get sId(): string {
+  get groupSId(): string {
     return GroupResource.modelIdToSId({
       id: this.id,
       workspaceId: this.workspaceId,
@@ -105,7 +105,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return new SpaceResource(
       SpaceModel,
       space.get(),
-      space.groupSpaces.map(SpaceGroupReference.fromModel)
+      space.groupSpaces.map(SpaceGroupReference.fromGroupSpaceModel)
     );
   }
 
@@ -157,7 +157,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return new this(
         SpaceModel,
         space.get(),
-        groupSpaces.map(SpaceGroupReference.fromModel)
+        groupSpaces.map(SpaceGroupReference.fromGroupSpaceModel)
       );
     }, transaction);
   }
@@ -244,17 +244,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
-  async fetchGroups(
+  async fetchGroupResources(
     auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<GroupResource[]> {
-    return this.fetchGroupResources(auth, this.groups, { transaction });
-  }
-
-  private async fetchGroupResources(
-    auth: Authenticator,
-    groupReferences: SpaceGroupReference[],
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      groupReferences = this.groups,
+      transaction,
+    }: {
+      groupReferences?: SpaceGroupReference[];
+      transaction?: Transaction;
+    } = {}
   ): Promise<GroupResource[]> {
     if (groupReferences.length === 0) {
       return [];
@@ -269,7 +267,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     return groupReferences.map((group) => {
       const resource = groupsById.get(group.id);
-      assert(resource, `Group ${group.sId} not found.`);
+      assert(resource, `Group ${group.groupSId} not found.`);
       return resource;
     });
   }
@@ -658,7 +656,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     options: { hardDelete: boolean; transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     const { hardDelete, transaction } = options;
-    const groups = await this.fetchGroups(auth, { transaction });
+    const groups = await this.fetchGroupResources(auth, { transaction });
 
     await GroupSpaceModel.destroy({
       where: {
@@ -794,12 +792,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       const spaceEditorGroupReference = this.getSpaceManualEditorGroup();
       const [regularGroup, spaceEditorGroup] = await this.fetchGroupResources(
         auth,
-        [
-          regularGroupReference,
-          ...(spaceEditorGroupReference && this.isProject()
-            ? [spaceEditorGroupReference]
-            : []),
-        ]
+        {
+          groupReferences: [
+            regularGroupReference,
+            ...(spaceEditorGroupReference && this.isProject()
+              ? [spaceEditorGroupReference]
+              : []),
+          ],
+        }
       );
       await regularGroup.updateName(
         auth,
@@ -1686,11 +1686,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   ): Promise<void> {
     const memberGroup = this.getSpaceManualMemberGroup();
     const editorGroup = this.getSpaceManualEditorGroup();
-    const groups = await this.fetchGroupResources(
-      auth,
-      [memberGroup, ...(editorGroup ? [editorGroup] : [])],
-      { transaction }
-    );
+    const groups = await this.fetchGroupResources(auth, {
+      groupReferences: [memberGroup, ...(editorGroup ? [editorGroup] : [])],
+      transaction,
+    });
 
     for (const group of groups) {
       await group.suspendMembers(auth, { transaction });
@@ -1706,11 +1705,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   ): Promise<void> {
     const memberGroup = this.getSpaceManualMemberGroup();
     const editorGroup = this.getSpaceManualEditorGroup();
-    const groups = await this.fetchGroupResources(
-      auth,
-      [memberGroup, ...(editorGroup ? [editorGroup] : [])],
-      { transaction }
-    );
+    const groups = await this.fetchGroupResources(auth, {
+      groupReferences: [memberGroup, ...(editorGroup ? [editorGroup] : [])],
+      transaction,
+    });
 
     for (const group of groups) {
       await group.restoreMembers(auth, { transaction });
@@ -1737,10 +1735,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const groupReferences = this.groups.filter(
       (group) => group.isRegularAuto() || group.kind === "space_editors"
     );
-    const groupsToProcess = await this.fetchGroupResources(
-      auth,
-      groupReferences
-    );
+    const groupsToProcess = await this.fetchGroupResources(auth, {
+      groupReferences,
+    });
 
     // Fetch all group memberships to get the startAt date (will be the joinedAt date returned for each member)
     const allGroupMemberships = await GroupMembershipModel.findAll({
@@ -1863,12 +1860,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   toJSON(): SpaceType {
     return {
       createdAt: this.createdAt.getTime(),
-      groupIds: this.groups.map((group) =>
-        GroupResource.modelIdToSId({
-          id: group.id,
-          workspaceId: this.workspaceId,
-        })
-      ),
+      groupIds: this.groups.map((group) => group.groupSId),
       isRestricted:
         this.isRegularAndRestricted() || this.isProjectAndRestricted(),
 

@@ -264,7 +264,7 @@ export const suggestionsOfMentions = async (
   if (spaceId) {
     const conversationSpace = await SpaceResource.fetchById(auth, spaceId);
     const conversationGroups = conversationSpace
-      ? await conversationSpace.fetchGroups(auth)
+      ? await conversationSpace.fetchGroupResources(auth)
       : [];
 
     const allMembers = await concurrentExecutor(

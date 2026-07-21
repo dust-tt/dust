@@ -73,7 +73,7 @@ describe("selected conversation Spaces", () => {
   }
 
   async function regularGroup(space: SpaceResource, auth: Authenticator) {
-    const groups = await space.fetchGroups(auth);
+    const groups = await space.fetchGroupResources(auth);
     const group = groups.find((g) => g.isRegularAuto());
     if (!group) {
       throw new Error("Expected regular member group on Space");

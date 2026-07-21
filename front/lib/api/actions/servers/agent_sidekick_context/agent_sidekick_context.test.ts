@@ -2174,7 +2174,7 @@ describe("agent_sidekick_context tools", () => {
         restrictedSpace.sId
       );
       if (fetchedSpace) {
-        const [group] = await fetchedSpace.fetchGroups(internalAuth);
+        const [group] = await fetchedSpace.fetchGroupResources(internalAuth);
         await group.dangerouslyAddMember(internalAuth, {
           user: user1.toJSON(),
         });

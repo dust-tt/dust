@@ -1500,7 +1500,7 @@ describe("createAgentMessages", () => {
       const globalGroup = globalGroupRes.value;
 
       // Add global group directly to make it open (if not already there)
-      const existingGroupIds = openSpace.groups.map((g) => g.sId);
+      const existingGroupIds = openSpace.groups.map((g) => g.groupSId);
       const hasGlobalGroup = existingGroupIds.includes(globalGroup.sId);
 
       // If global group is not already there, associate it directly

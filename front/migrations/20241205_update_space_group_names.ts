@@ -29,7 +29,7 @@ makeScript(
           const auth = await Authenticator.internalAdminForWorkspace(w.sId);
           const pods = await SpaceResource.listProjectSpaces(auth);
           for (const pod of pods) {
-            const groups = await pod.fetchGroups(auth);
+            const groups = await pod.fetchGroupResources(auth);
             const regularGroups = groups.filter((g) => g.isRegularAuto());
             if (regularGroups.length === 1) {
               const group = regularGroups[0];

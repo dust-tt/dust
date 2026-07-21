@@ -46,7 +46,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
       ReturnType<Authenticator["getNonNullableUser"]>["toJSON"]
     >
   ) {
-    const groups = await space.fetchGroups(internalAdminAuth);
+    const groups = await space.fetchGroupResources(internalAdminAuth);
     const regularGroup = groups.find((g) => g.isRegularAuto());
     if (!regularGroup) {
       throw new Error("Expected a regular group on the space");
@@ -726,9 +726,9 @@ describe("updateConversationRequirements", () => {
     const userJson = user.toJSON();
 
     const projectSpaceGroups =
-      await projectSpace.fetchGroups(internalAdminAuth);
+      await projectSpace.fetchGroupResources(internalAdminAuth);
     const anotherProjectSpaceGroups =
-      await anotherProjectSpace.fetchGroups(internalAdminAuth);
+      await anotherProjectSpace.fetchGroupResources(internalAdminAuth);
     const projectSpaceGroup = projectSpaceGroups.find((g) => g.isRegularAuto());
     const anotherProjectSpaceGroup = anotherProjectSpaceGroups.find((g) =>
       g.isRegularAuto()
@@ -1359,7 +1359,7 @@ describe("rebuildConversationRequirements", () => {
     const userJson = auth.getNonNullableUser().toJSON();
 
     for (const space of [projectSpace, regularSpace, anotherRegularSpace]) {
-      const groups = await space.fetchGroups(internalAdminAuth);
+      const groups = await space.fetchGroupResources(internalAdminAuth);
       const group = groups.find((g) => g.isRegularAuto());
       if (!group) {
         continue;

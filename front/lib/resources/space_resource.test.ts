@@ -1194,7 +1194,9 @@ describe("SpaceResource", () => {
           workspaceId: workspace.id,
         }),
       ]);
-      expect(fetchedSpace?.toJSON().groupIds).toEqual([groupReference.sId]);
+      expect(fetchedSpace?.toJSON().groupIds).toEqual([
+        groupReference.groupSId,
+      ]);
 
       findAllSpy.mockRestore();
     });
@@ -1409,7 +1411,7 @@ describe("SpaceResource", () => {
 
     it("should return project spaces only for members", async () => {
       const projectSpace = await SpaceFactory.project(workspace);
-      const projectGroups = await projectSpace.fetchGroups(adminAuth);
+      const projectGroups = await projectSpace.fetchGroupResources(adminAuth);
       const projectGroup = projectGroups.find((g) => g.isRegularAuto());
 
       // User is not a member, should not see it
