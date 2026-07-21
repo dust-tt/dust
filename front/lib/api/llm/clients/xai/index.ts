@@ -58,8 +58,6 @@ export class XaiLLM extends LLM<ResponseCreateParamsStreaming> {
       model: this.modelId,
       input: toInput(promptText, conversation, "system"),
       stream: true,
-      // Reasoning not supported by xai responses api yet
-      // Using default value for reasoning models
       temperature: this.temperature,
       tools: specifications.map(toTool),
       reasoning,

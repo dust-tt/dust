@@ -22,7 +22,7 @@ import type {
   ReasoningEffort,
   ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
-import { GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG } from "@app/types/assistant/models/xai";
+import { GROK_4_5_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export function getWhitelistedProviders(
@@ -163,7 +163,7 @@ const ORDERED_SMALL_MODEL_CONFIGS: ModelConfigurationType[] = [
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   GEMINI_3_5_FLASH_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
-  GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
+  GROK_4_5_MODEL_CONFIG,
 ];
 
 function _getSmallWhitelistedModel(

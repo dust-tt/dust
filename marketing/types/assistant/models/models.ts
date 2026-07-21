@@ -344,6 +344,11 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "xai",
   },
   {
+    modelId: "grok-4.5",
+    displayName: "Grok 4.5",
+    providerId: "xai",
+  },
+  {
     modelId: "grok-4-latest",
     displayName: "Grok 4",
     providerId: "xai",

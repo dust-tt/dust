@@ -398,6 +398,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0.2,
     output: 1.0,
   },
+  // https://docs.x.ai/developers/models/grok-4.5
+  "grok-4.5": {
+    input: 2.0,
+    output: 6.0,
+    cache_read_input_tokens: 0.3,
+  },
   "grok-4-latest": {
     input: 1.25,
     output: 2.5,

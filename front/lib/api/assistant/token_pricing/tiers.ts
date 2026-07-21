@@ -363,6 +363,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   "grok-3-mini-latest": {
     none: "cost_efficient",
   },
+  "grok-4.5": {
+    light: "balanced",
+    medium: "balanced",
+    high: "balanced",
+  },
   "grok-4-latest": {
     none: "balanced",
     light: "balanced",

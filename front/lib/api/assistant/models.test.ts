@@ -28,6 +28,10 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import {
+  GROK_4_5_MODEL_CONFIG,
+  GROK_4_MODEL_CONFIG,
+} from "@app/types/assistant/models/xai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/resources/provider_credential_resource");
@@ -470,6 +474,15 @@ describe("resolveModel", () => {
 });
 
 describe("pickPreferredLargeModel", () => {
+  it("prefers Grok 4.5 over legacy Grok models", () => {
+    const selected = pickPreferredLargeModel([
+      GROK_4_MODEL_CONFIG,
+      GROK_4_5_MODEL_CONFIG,
+    ]);
+
+    expect(selected.modelId).toBe(GROK_4_5_MODEL_CONFIG.modelId);
+  });
+
   it("picks the first model in the preferred order", () => {
     const selected = pickPreferredLargeModel([
       GPT_5_5_MODEL_CONFIG,

@@ -30,6 +30,7 @@ import {
   GPT_5_6_TERRA_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import type { ModelConfig } from "@app/types/assistant/models/types";
+import { GROK_4_5_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 
 export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
   GPT_5_6_SOL_MODEL_CONFIG,
@@ -52,5 +53,6 @@ export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
   FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
   FIREWORKS_GLM_5P2_MODEL_CONFIG,
+  GROK_4_5_MODEL_CONFIG,
   AUTO_MODEL_CONFIG,
 ] as const;
