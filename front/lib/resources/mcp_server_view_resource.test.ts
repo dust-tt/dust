@@ -376,6 +376,171 @@ describe("MCPServerViewResource", () => {
     });
   });
 
+  describe("listBySpaceIds", () => {
+    it("includes global space views without fetching spaces", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const { globalSpace } = await SpaceFactory.defaults(adminAuth);
+      const regularSpace = await SpaceFactory.regular(workspace);
+
+      const internalServer = await InternalMCPServerInMemoryResource.makeNew(
+        adminAuth,
+        {
+          name: "image_generation",
+          useCase: null,
+        }
+      );
+      const globalView = await MCPServerViewFactory.create(
+        workspace,
+        internalServer.id,
+        globalSpace
+      );
+      const regularView = await MCPServerViewFactory.create(
+        workspace,
+        internalServer.id,
+        regularSpace
+      );
+
+      const globalSpaceFetch = vi.spyOn(
+        SpaceResource,
+        "fetchWorkspaceGlobalSpace"
+      );
+      const spacesFetch = vi.spyOn(SpaceResource, "fetchByIds");
+
+      try {
+        const views = await MCPServerViewResource.listBySpaceIds(
+          adminAuth,
+          [regularSpace.sId],
+          { includeGlobalSpace: true }
+        );
+
+        expect(views.map((v) => v.sId).sort()).toEqual(
+          [globalView.sId, regularView.sId].sort()
+        );
+        expect(globalSpaceFetch).not.toHaveBeenCalled();
+        expect(spacesFetch).not.toHaveBeenCalled();
+      } finally {
+        globalSpaceFetch.mockRestore();
+        spacesFetch.mockRestore();
+      }
+    });
+
+    it("returns only global views for empty space ids with includeGlobalSpace", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const { globalSpace } = await SpaceFactory.defaults(adminAuth);
+      const regularSpace = await SpaceFactory.regular(workspace);
+
+      const internalServer = await InternalMCPServerInMemoryResource.makeNew(
+        adminAuth,
+        {
+          name: "image_generation",
+          useCase: null,
+        }
+      );
+      const globalView = await MCPServerViewFactory.create(
+        workspace,
+        internalServer.id,
+        globalSpace
+      );
+      await MCPServerViewFactory.create(
+        workspace,
+        internalServer.id,
+        regularSpace
+      );
+
+      // The run_model.ts shape: list the global space views only.
+      const globalOnly = await MCPServerViewResource.listBySpaceIds(
+        adminAuth,
+        [],
+        { includeGlobalSpace: true }
+      );
+      expect(globalOnly.map((v) => v.sId)).toEqual([globalView.sId]);
+
+      const none = await MCPServerViewResource.listBySpaceIds(adminAuth, []);
+      expect(none).toHaveLength(0);
+    });
+
+    it("filters out views from spaces the user cannot read", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const { globalSpace } = await SpaceFactory.defaults(adminAuth);
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+
+      const internalServer = await InternalMCPServerInMemoryResource.makeNew(
+        adminAuth,
+        {
+          name: "image_generation",
+          useCase: null,
+        }
+      );
+      const globalView = await MCPServerViewFactory.create(
+        workspace,
+        internalServer.id,
+        globalSpace
+      );
+      const restrictedView = await MCPServerViewFactory.create(
+        workspace,
+        internalServer.id,
+        restrictedSpace
+      );
+
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const views = await MCPServerViewResource.listBySpaceIds(
+        userAuth,
+        [restrictedSpace.sId],
+        { includeGlobalSpace: true }
+      );
+
+      expect(views.map((v) => v.sId)).toEqual([globalView.sId]);
+      expect(views.map((v) => v.sId)).not.toContain(restrictedView.sId);
+    });
+
+    it("ignores spaces from other workspaces", async () => {
+      const workspace1 = await WorkspaceFactory.basic();
+      const workspace2 = await WorkspaceFactory.basic();
+      const adminAuth1 = await Authenticator.internalAdminForWorkspace(
+        workspace1.sId
+      );
+      const adminAuth2 = await Authenticator.internalAdminForWorkspace(
+        workspace2.sId
+      );
+      await SpaceFactory.defaults(adminAuth1);
+      await SpaceFactory.defaults(adminAuth2);
+      const foreignSpace = await SpaceFactory.regular(workspace2);
+
+      const internalServer2 = await InternalMCPServerInMemoryResource.makeNew(
+        adminAuth2,
+        {
+          name: "image_generation",
+          useCase: null,
+        }
+      );
+      await MCPServerViewFactory.create(
+        workspace2,
+        internalServer2.id,
+        foreignSpace
+      );
+
+      const views = await MCPServerViewResource.listBySpaceIds(adminAuth1, [
+        foreignSpace.sId,
+      ]);
+      expect(views).toHaveLength(0);
+    });
+  });
+
   describe("internal MCP server resolution", () => {
     it("resolves auto server views without fetching the system space", async () => {
       const workspace = await WorkspaceFactory.basic();

@@ -335,14 +335,33 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     spaceIds: string[],
     { includeGlobalSpace = false }: { includeGlobalSpace?: boolean } = {}
   ) {
-    const requestedSpaces = await SpaceResource.fetchByIds(auth, spaceIds);
+    const spaceModelIds = removeNulls(spaceIds.map(getResourceIdFromSId));
 
-    if (includeGlobalSpace) {
-      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-      requestedSpaces.push(globalSpace);
+    if (spaceModelIds.length === 0 && !includeGlobalSpace) {
+      return [];
     }
 
-    return this.listBySpaces(auth, requestedSpaces);
+    return this.baseFetch(auth, undefined, {
+      includes: [
+        {
+          model: SpaceResource.model,
+          as: "space",
+          attributes: [],
+          required: true,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            deletedAt: null,
+            [Op.or]: [
+              { id: { [Op.in]: spaceModelIds } },
+              ...(includeGlobalSpace ? [{ kind: "global" }] : []),
+            ],
+          },
+        },
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
   }
 
   static async listAssistantDefaultSelected(auth: Authenticator) {

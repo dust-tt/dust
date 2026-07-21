@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
@@ -7,7 +8,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 describe("DataSourceViewResource", () => {
   describe("listByWorkspace", () => {
@@ -142,6 +143,90 @@ describe("DataSourceViewResource", () => {
       expect(viewsWithConversations.map((v) => v.space.id).sort()).toEqual(
         [regularSpace.id, conversationSpace.id].sort()
       );
+    });
+  });
+
+  describe("listBySpaceIds", () => {
+    it("includes global space views without fetching spaces", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const { globalSpace } = await SpaceFactory.defaults(adminAuth);
+      const regularSpace = await SpaceFactory.regular(workspace);
+
+      const globalDsv = await DataSourceViewFactory.folder(
+        workspace,
+        globalSpace
+      );
+      const regularDsv = await DataSourceViewFactory.folder(
+        workspace,
+        regularSpace
+      );
+
+      const globalSpaceFetch = vi.spyOn(
+        SpaceResource,
+        "fetchWorkspaceGlobalSpace"
+      );
+      const spacesFetch = vi.spyOn(SpaceResource, "fetchByIds");
+
+      try {
+        const views = await DataSourceViewResource.listBySpaceIds(
+          adminAuth,
+          [regularSpace.sId],
+          { includeGlobalSpace: true }
+        );
+
+        expect(views.map((v) => v.sId).sort()).toEqual(
+          [globalDsv.sId, regularDsv.sId].sort()
+        );
+        expect(globalSpaceFetch).not.toHaveBeenCalled();
+        expect(spacesFetch).not.toHaveBeenCalled();
+      } finally {
+        globalSpaceFetch.mockRestore();
+        spacesFetch.mockRestore();
+      }
+    });
+
+    it("returns only global views for empty space ids with includeGlobalSpace", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const { globalSpace } = await SpaceFactory.defaults(adminAuth);
+      const regularSpace = await SpaceFactory.regular(workspace);
+
+      const globalDsv = await DataSourceViewFactory.folder(
+        workspace,
+        globalSpace
+      );
+      await DataSourceViewFactory.folder(workspace, regularSpace);
+
+      const globalOnly = await DataSourceViewResource.listBySpaceIds(
+        adminAuth,
+        [],
+        { includeGlobalSpace: true }
+      );
+      expect(globalOnly.map((v) => v.sId)).toEqual([globalDsv.sId]);
+
+      const none = await DataSourceViewResource.listBySpaceIds(adminAuth, []);
+      expect(none).toHaveLength(0);
+    });
+
+    it("ignores spaces from other workspaces", async () => {
+      const workspace1 = await WorkspaceFactory.basic();
+      const workspace2 = await WorkspaceFactory.basic();
+      const adminAuth1 = await Authenticator.internalAdminForWorkspace(
+        workspace1.sId
+      );
+      await SpaceFactory.defaults(adminAuth1);
+      const foreignSpace = await SpaceFactory.regular(workspace2);
+      await DataSourceViewFactory.folder(workspace2, foreignSpace);
+
+      const views = await DataSourceViewResource.listBySpaceIds(adminAuth1, [
+        foreignSpace.sId,
+      ]);
+      expect(views).toHaveLength(0);
     });
   });
 
