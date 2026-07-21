@@ -906,6 +906,7 @@ export function ConversationPage() {
     modelContextSizeUsed: number;
     modelConversation: unknown;
     promptTokenCountApprox: number;
+    systemPrompt: string;
     toolsTokenCountApprox: number;
   }>(null);
   const [showRenderControls, setShowRenderControls] = useState(false);
@@ -954,6 +955,7 @@ export function ConversationPage() {
         modelContextSizeUsed: data.modelContextSizeUsed,
         modelConversation: data.modelConversation,
         promptTokenCountApprox: data.promptTokenCountApprox,
+        systemPrompt: data.systemPrompt,
         toolsTokenCountApprox: data.toolsTokenCountApprox,
       });
     } catch (e) {
@@ -1176,6 +1178,20 @@ export function ConversationPage() {
                         setRenderResult(null);
                       }}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-foreground">
+                      System prompt
+                    </div>
+                    <CodeBlock
+                      wrapLongLines
+                      className="language-text max-h-96 overflow-y-auto"
+                    >
+                      {renderResult.systemPrompt}
+                    </CodeBlock>
+                  </div>
+                  <div className="text-sm font-medium text-foreground">
+                    Model conversation
                   </div>
                   <CodeBlock wrapLongLines className="language-json">
                     {JSON.stringify(renderResult.modelConversation, null, 2)}

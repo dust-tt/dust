@@ -45,6 +45,7 @@ export type PostRenderConversationResponseBody = {
   modelConversation: unknown;
   modelContextSizeUsed: number;
   promptTokenCountApprox: number;
+  systemPrompt: string;
   toolsTokenCountApprox: number;
 };
 
@@ -291,6 +292,7 @@ app.post(
       modelConversation,
       modelContextSizeUsed: contextSize,
       promptTokenCountApprox,
+      systemPrompt: prompt,
       toolsTokenCountApprox,
     });
   }
