@@ -663,11 +663,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   ): Promise<Result<undefined, Error>> {
     const { hardDelete, transaction } = options;
     // Provisioned groups are not tied to any space, we don't delete them.
-    const groupReferences = this.groups.filter(
+    const groupReferencesToMaybeDelete = this.groups.filter(
       (group) => !group.isProvisioned()
     );
-    const groups = await this.fetchGroupResources(auth, {
-      groupReferences,
+    const groupsToMaybeDelete = await this.fetchGroupResources(auth, {
+      groupReferences: groupReferencesToMaybeDelete,
       transaction,
     });
 
@@ -683,7 +683,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // When deleting a space, we delete the dangling groups as it won't be available in the UI anymore.
     // This should be changed when we separate the management of groups and spaces
     await concurrentExecutor(
-      groups,
+      groupsToMaybeDelete,
       async (group) => {
         // As the model allows it, ensure the group is not associated with any other space.
         const count = await GroupSpaceModel.count({
@@ -892,7 +892,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
       // If the space should be restricted and was not restricted before, remove the global group.
       if (!wasRestricted && isRestricted) {
-        await this.removeGroup(auth, globalGroup.id, t);
+        const globalGroupReference = this.groups.find((group) =>
+          group.isGlobal()
+        );
+        assert(
+          globalGroupReference,
+          "An unrestricted space must have a global group."
+        );
+        await this.removeGroup(auth, globalGroupReference, t);
       }
 
       // If the space should not be restricted and was restricted before, add the global group.
@@ -1018,7 +1025,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           (g) => g.groupKind === "provisioned"
         );
         for (const group of existingExternalGroups) {
-          await this.removeGroup(auth, group.id, t);
+          await this.removeGroup(auth, group, t);
         }
 
         // Add the new groups
@@ -1072,12 +1079,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   private async removeGroup(
     auth: Authenticator,
-    groupModelId: ModelId,
+    groupReference: SpaceGroupReference,
     transaction?: Transaction
   ) {
     await GroupSpaceModel.destroy({
       where: {
-        groupId: groupModelId,
+        groupId: groupReference.id,
         vaultId: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
