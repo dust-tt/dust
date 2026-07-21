@@ -58,6 +58,11 @@ function ModelRadioItem({
       }
       label={modelConfig.displayName}
       disabled={!modelConfig.isSelectable}
+      onSelect={(e) => {
+        // Keep the dropdown open after picking a model so the user can adjust
+        // reasoning effort or other settings without reopening it.
+        e.preventDefault();
+      }}
       onClick={() => {
         onModelSelection(modelConfig);
       }}
@@ -124,7 +129,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger label="Model selection" />
+      <DropdownMenuSubTrigger label="Custom model" />
       <DropdownMenuPortal>
         <DropdownMenuSubContent className="w-80">
           {showSelectedModelSection && selectedModel && (

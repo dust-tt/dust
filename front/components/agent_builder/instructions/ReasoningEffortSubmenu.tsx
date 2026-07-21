@@ -88,7 +88,7 @@ export function ReasoningEffortSubmenu({
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger label="Reasoning effort" />
+      <DropdownMenuSubTrigger label="Custom reasoning effort" />
       <DropdownMenuPortal>
         <DropdownMenuSubContent className="w-80">
           <DropdownMenuLabel label="Select reasoning effort" />
