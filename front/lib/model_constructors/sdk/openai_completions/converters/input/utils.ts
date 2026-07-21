@@ -245,9 +245,9 @@ export function forceToolNameToToolChoice(
 }
 
 // Maps our reasoning effort to the chat-completions `reasoning_effort` value, or
-// `undefined` to omit it. `none` is dropped (no reasoning); `maximal` has no
-// chat-completions equivalent. Fireworks models only ever send none/low/medium/
-// high, so the other branches are dead but kept for exhaustiveness.
+// `undefined` to omit it. `none` is dropped (no reasoning). Fireworks models
+// send a subset of these (e.g. GLM-5.2 uses none/high/maximal); the remaining
+// branches are kept for exhaustiveness.
 export function toReasoningEffortParam(
   effort: ReasoningEffort
 ): OpenAIReasoningEffort | undefined {

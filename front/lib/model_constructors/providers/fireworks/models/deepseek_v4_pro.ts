@@ -1,16 +1,15 @@
 import { fireworksConfigSchema } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
-import { FIREWORKS_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/fireworks/reasoning_efforts";
 import { DEEPSEEK_V4_PRO } from "@app/lib/model_constructors/types/models";
 import { z } from "zod";
 
 const CONTEXT_SIZE = 1_000_000;
 const MAX_OUTPUT_TOKENS = 64_000;
 
-// Mirrors the legacy Fireworks reasoning mapping: none/light drop
-// reasoning_effort (default chain-of-thought), only medium/high reach the model.
+// DeepSeek V4 Pro only supports none/high/maximal reasoning; `none` drops
+// reasoning_effort, high/maximal reach the model. Defaults to high.
 const configSchema = fireworksConfigSchema.extend({
   reasoning: z
-    .object({ effort: z.enum(FIREWORKS_SUPPORTED_REASONING_EFFORTS) })
+    .object({ effort: z.enum(["none", "high", "maximal"]) })
     .optional()
     .default({ effort: "high" }),
 });

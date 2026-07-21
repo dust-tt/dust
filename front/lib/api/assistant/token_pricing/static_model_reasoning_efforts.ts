@@ -384,8 +384,8 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
   },
   "accounts/fireworks/models/glm-5p2": {
     none: false,
-    light: true,
-    medium: true,
+    light: false,
+    medium: false,
     high: true,
   },
   "grok-3-latest": {

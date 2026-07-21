@@ -355,8 +355,6 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     high: "cost_efficient",
   },
   "accounts/fireworks/models/glm-5p2": {
-    light: "balanced",
-    medium: "cost_efficient",
     high: "balanced",
   },
   "grok-3-latest": {
