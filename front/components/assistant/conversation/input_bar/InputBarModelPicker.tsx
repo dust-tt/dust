@@ -24,7 +24,10 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useModels } from "@app/lib/swr/models";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
-import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
+import {
+  AUTO_MODEL_ID,
+  isModelStreamId,
+} from "@app/types/assistant/models/auto";
 import {
   getModelMaker,
   getModelMakerDisplayName,
@@ -127,7 +130,14 @@ export function InputBarModelPicker({
   };
 
   const selectTier = (resolved: ResolvedTier) => {
-    if (resolved.modelWithEffort) {
+    const { selection } = resolved.tier;
+    if (selection.kind === "stream") {
+      commitSelection({
+        kind: "stream",
+        streamId: selection.streamId,
+        toSend: resolved.toSend,
+      });
+    } else if (resolved.modelWithEffort) {
       const { model, effort } = resolved.modelWithEffort;
       commitSelection({
         kind: "model",
@@ -196,7 +206,10 @@ export function InputBarModelPicker({
   const allModelsWithEfforts = useMemo<ModelWithReasoningEffort[]>(
     () =>
       models
-        .filter((model) => model.modelId !== AUTO_MODEL_ID)
+        .filter(
+          (model) =>
+            model.modelId !== AUTO_MODEL_ID && !isModelStreamId(model.modelId)
+        )
         .flatMap((model) =>
           getSelectableReasoningEfforts(model).map((effort) => ({
             model,
@@ -255,7 +268,7 @@ export function InputBarModelPicker({
   }, [allModelsWithEfforts, search]);
 
   const selectedKey =
-    shown.kind === "auto"
+    shown.kind === "auto" || shown.kind === "stream"
       ? undefined
       : getModelWithReasoningEffortKey(
           shown.model.providerId,
@@ -264,12 +277,15 @@ export function InputBarModelPicker({
         );
 
   // The current selection either matches a tier, or lives in the "More models"
-  // list (agent defaults and any user-picked non-tier model).
+  // list (agent defaults and any user-picked non-tier model). Auto and stream
+  // selections always match a tier.
   const matchingTier = getMatchingTier(shown);
-  const moreModelsSelected = !matchingTier && shown.kind !== "auto";
-  const selectedMakerId = moreModelsSelected
-    ? getModelMaker(shown.model)
-    : null;
+  const moreModelsSelected =
+    !matchingTier && shown.kind !== "auto" && shown.kind !== "stream";
+  const selectedMakerId =
+    moreModelsSelected && shown.kind === "model"
+      ? getModelMaker(shown.model)
+      : null;
 
   const hasResults = tiers.length > 0 || moreByMaker.length > 0;
 
@@ -288,7 +304,7 @@ export function InputBarModelPicker({
   // the model maker's logo.
   const buttonIcon: ButtonIconType | undefined = matchingTier
     ? matchingTier.icon
-    : shown.kind !== "auto"
+    : shown.kind === "model" || shown.kind === "agent"
       ? getModelMakerLogo(getModelMaker(shown.model), isDark)
       : undefined;
 
