@@ -33,6 +33,7 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Button,
+  ChevronRight,
   Chip,
   DotsHorizontal,
   DropdownMenu,
@@ -40,6 +41,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
   LoadingBlock,
@@ -180,6 +184,7 @@ interface CapabilitiesPickerProps {
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
   onOpenChange?: (open: boolean) => void;
+  type?: "dropdown" | "subdropdown";
 }
 
 export function CapabilitiesPicker({
@@ -192,6 +197,7 @@ export function CapabilitiesPicker({
   disabled = false,
   buttonSize = "xs",
   onOpenChange,
+  type = "dropdown",
 }: CapabilitiesPickerProps) {
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
@@ -458,9 +464,13 @@ export function CapabilitiesPicker({
   const shouldShowCapabilityDropdownList =
     capabilityPickerItems.length > 0 || hasNoVisibleItems;
 
+  const Wrapper = type === "dropdown" ? DropdownMenu : DropdownMenuSub;
+  const ContentWrapper =
+    type === "dropdown" ? DropdownMenuContent : DropdownMenuSubContent;
+
   return (
     <>
-      <DropdownMenu
+      <Wrapper
         open={isOpen}
         onOpenChange={(open) => {
           setIsOpen(open);
@@ -478,16 +488,30 @@ export function CapabilitiesPicker({
           }
         }}
       >
-        <DropdownMenuTrigger asChild>
-          <Button
-            icon={ShapesPlus}
-            variant="ghost-secondary"
-            size={buttonSize}
-            tooltip="Capabilities"
-            disabled={disabled || isLoading}
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
+        {type === "dropdown" ? (
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={ShapesPlus}
+              variant="ghost-secondary"
+              size={buttonSize}
+              tooltip="Capabilities"
+              disabled={disabled || isLoading}
+            />
+          </DropdownMenuTrigger>
+        ) : (
+          <DropdownMenuSubTrigger
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setIsOpen(true);
+            }}
+          >
+            <ShapesPlus className="h-5 w-5" />
+            Capabilities
+            <ChevronRight className="h-5 w-5" />
+          </DropdownMenuSubTrigger>
+        )}
+        <ContentWrapper
           className="w-80"
           align="start"
           onAnimationEnd={() => {
@@ -531,8 +555,8 @@ export function CapabilitiesPicker({
               }}
             />
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </ContentWrapper>
+      </Wrapper>
 
       {shouldShowSetupSheet && (
         <CreateMCPServerDialog

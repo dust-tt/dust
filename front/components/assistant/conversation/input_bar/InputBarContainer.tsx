@@ -2,6 +2,7 @@ import { ContextUsageIndicator } from "@app/components/assistant/conversation/in
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
 import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import {
   INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
@@ -1428,6 +1429,16 @@ const InputBarContainer = ({
 
   const hideCapabilities = startsWithUserMention && !selectedSingleAgent;
 
+  // Mic and send share the same slot: mic while idle/typing nothing, send
+  // once there's text to submit. Stays on mic mid-recording even if the
+  // editor is technically empty.
+  const canShowVoicePicker =
+    !subscription.plan.isByok &&
+    owner.metadata?.allowVoiceTranscription !== false &&
+    actions.includes("voice") &&
+    !isCompact;
+  const showMicInsteadOfSend = isEmpty || activeVoiceService.status !== "idle";
+
   const isDefaultAgentUnavailable =
     !conversation &&
     !isAgentBuilder &&
@@ -1820,85 +1831,107 @@ const InputBarContainer = ({
                         conversationId={conversation?.sId}
                       />
                     )}
-                    {!subscription.plan.isByok &&
-                      owner.metadata?.allowVoiceTranscription !== false &&
-                      actions.includes("voice") &&
-                      !isCompact && (
-                        <VoicePicker
-                          status={activeVoiceService.status}
-                          level={activeVoiceService.level}
-                          elapsedSeconds={activeVoiceService.elapsedSeconds}
-                          onRecordStart={activeVoiceService.startRecording}
-                          onRecordStop={activeVoiceService.stopRecording}
-                          size={buttonSize}
-                          showStopLabel={!isWidthConstrained}
+                    {clientType !== "extension" &&
+                      actions.includes("model-picker") && (
+                        <InputBarModelPicker
+                          agentModel={
+                            (selectedSingleAgent &&
+                              agentsById.get(selectedSingleAgent.id)?.model) ??
+                            null
+                          }
+                          agentId={selectedSingleAgent?.id ?? null}
+                          lastRequestedModel={lastRequestedModel}
+                          owner={owner}
+                          buttonSize={buttonSize}
+                          side={conversation ? "top" : "bottom"}
                           disabled={disableInput}
+                          onSelectionChange={onModelSelectionChange}
                         />
                       )}
                   </div>
-                  <TooltipProvider>
-                    <TooltipRoot
-                      open={isBlockTooltipOpen && submitBlockMessage !== null}
-                    >
-                      <TooltipTrigger
-                        asChild
-                        onPointerEnter={() => {
-                          if (submitBlockMessage) {
-                            setIsBlockTooltipOpen(true);
-                          }
-                        }}
-                        onPointerLeave={() => {
-                          if (blockTooltipTimerRef.current) {
-                            clearTimeout(blockTooltipTimerRef.current);
-                            blockTooltipTimerRef.current = null;
-                          }
-                          setIsBlockTooltipOpen(false);
-                        }}
+                  {canShowVoicePicker && showMicInsteadOfSend ? (
+                    <VoicePicker
+                      status={activeVoiceService.status}
+                      level={activeVoiceService.level}
+                      elapsedSeconds={activeVoiceService.elapsedSeconds}
+                      onRecordStart={activeVoiceService.startRecording}
+                      onRecordStop={activeVoiceService.stopRecording}
+                      size={buttonSize}
+                      showStopLabel={!isWidthConstrained}
+                      disabled={disableInput}
+                      buttonProps={{
+                        className: cn(
+                          "rounded-full",
+                          "bg-linear-to-b from-blue-400 to-blue-500 text-white",
+                          "hover:from-blue-500 hover:to-blue-600"
+                        ),
+                      }}
+                    />
+                  ) : (
+                    <TooltipProvider>
+                      <TooltipRoot
+                        open={isBlockTooltipOpen && submitBlockMessage !== null}
                       >
-                        <Button
-                          size={buttonSize}
-                          isLoading={
-                            isSubmitting &&
-                            activeVoiceService.status !== "transcribing"
-                          }
-                          icon={ArrowUp}
-                          variant={
-                            isSubmitBlocked ? "ghost-secondary" : "highlight"
-                          }
-                          disabled={isSubmitDisabled}
-                          className="rounded-full"
-                          onClick={async (
-                            e: React.MouseEvent<HTMLButtonElement>
-                          ) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (disableAutoFocus) {
-                              editorService.blur();
-                              // wait a bit for the keyboard to be closed on mobile
-                              if (isMobile) {
-                                editorService.setLoading(true);
-                                await new Promise((resolve) =>
-                                  setTimeout(resolve, 500)
-                                );
-                                editorService.setLoading(false);
-                              }
+                        <TooltipTrigger
+                          asChild
+                          onPointerEnter={() => {
+                            if (submitBlockMessage) {
+                              setIsBlockTooltipOpen(true);
                             }
-                            onEnterKeyDownWithShake(
-                              editorService.isEmpty() && !canSubmitEmpty,
-                              editorService.getMarkdownAndMentions(),
-                              () => {
-                                editorService.clearEditor();
-                              },
-                              editorService.setLoading
-                            );
                           }}
-                        />
-                      </TooltipTrigger>
-                      {submitBlockMessage && (
-                        <TooltipContent>{submitBlockMessage}</TooltipContent>
-                      )}
-                    </TooltipRoot>
-                  </TooltipProvider>
+                          onPointerLeave={() => {
+                            if (blockTooltipTimerRef.current) {
+                              clearTimeout(blockTooltipTimerRef.current);
+                              blockTooltipTimerRef.current = null;
+                            }
+                            setIsBlockTooltipOpen(false);
+                          }}
+                        >
+                          <Button
+                            size={buttonSize}
+                            isLoading={
+                              isSubmitting &&
+                              activeVoiceService.status !== "transcribing"
+                            }
+                            icon={ArrowUp}
+                            variant={
+                              isSubmitBlocked ? "ghost-secondary" : "highlight"
+                            }
+                            disabled={isSubmitDisabled}
+                            className="rounded-full"
+                            onClick={async (
+                              e: React.MouseEvent<HTMLButtonElement>
+                            ) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (disableAutoFocus) {
+                                editorService.blur();
+                                // wait a bit for the keyboard to be closed on mobile
+                                if (isMobile) {
+                                  editorService.setLoading(true);
+                                  await new Promise((resolve) =>
+                                    setTimeout(resolve, 500)
+                                  );
+                                  editorService.setLoading(false);
+                                }
+                              }
+                              onEnterKeyDownWithShake(
+                                editorService.isEmpty() && !canSubmitEmpty,
+                                editorService.getMarkdownAndMentions(),
+                                () => {
+                                  editorService.clearEditor();
+                                },
+                                editorService.setLoading
+                              );
+                            }}
+                          />
+                        </TooltipTrigger>
+                        {submitBlockMessage && (
+                          <TooltipContent>{submitBlockMessage}</TooltipContent>
+                        )}
+                      </TooltipRoot>
+                    </TooltipProvider>
+                  )}
                 </div>
               </div>
             </div>

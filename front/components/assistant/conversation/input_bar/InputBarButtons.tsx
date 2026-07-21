@@ -1,8 +1,8 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
-import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
+import { InputBarPlusMenu } from "@app/components/assistant/conversation/input_bar/InputBarPlusMenu";
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -201,6 +201,11 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       }
     />
   );
+  const isExtension = clientType === "extension";
+
+  // The extension has its own separate attachment/capture flow, so it keeps
+  // the pre-redesign left cluster (agent + model + capabilities, no
+  // attachments) unchanged.
   const toolsButton = actions.includes("capabilities") && (
     <CapabilitiesPicker
       owner={owner}
@@ -213,44 +218,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       disabled={isInputDisabled}
     />
   );
-  const attachmentButton = actions.includes("attachment") &&
-    clientType !== "extension" && (
-      <>
-        <input
-          accept={getSupportedFileExtensions().join(",")}
-          onChange={async (e) => {
-            await fileUploaderService.handleFileChange(e);
-            if (fileInputRef.current) {
-              fileInputRef.current.value = "";
-            }
-            editorService.focusEnd();
-          }}
-          ref={fileInputRef}
-          style={{ display: "none" }}
-          type="file"
-          multiple={true}
-        />
-        <InputBarAttachmentsPicker
-          fileUploaderService={fileUploaderService}
-          owner={owner}
-          isLoading={false}
-          onNodeSelect={onNodeSelect}
-          onNodeUnselect={onNodeUnselect}
-          attachedNodes={attachedNodes}
-          buttonSize={buttonSize}
-          onOpenChange={onAttachmentsPickerOpenChange}
-          toolFileUpload={{
-            useCase: "conversation",
-            useCaseMetadata: {
-              conversationId: conversation?.sId,
-            },
-          }}
-          spaceId={spaceId}
-          type="dropdown"
-          disabled={isInputDisabled}
-        />
-      </>
-    );
 
   const selectedAgentModel =
     (selectedAgent &&
@@ -270,12 +237,55 @@ export const InputBarButtons = React.memo(function InputBarButtons({
     />
   );
 
+  const hiddenFileInput = (
+    <input
+      accept={getSupportedFileExtensions().join(",")}
+      onChange={async (e) => {
+        await fileUploaderService.handleFileChange(e);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        editorService.focusEnd();
+      }}
+      ref={fileInputRef}
+      style={{ display: "none" }}
+      type="file"
+      multiple={true}
+    />
+  );
+
   return (
     <>
       {agentButton}
-      {modelPickerButton}
-      {!hideCapabilities && toolsButton}
-      {attachmentButton}
+      {hiddenFileInput}
+      {isExtension ? (
+        <>
+          {modelPickerButton}
+          {!hideCapabilities && toolsButton}
+        </>
+      ) : (
+        <InputBarPlusMenu
+          owner={owner}
+          user={user}
+          buttonSize={buttonSize}
+          disabled={isInputDisabled}
+          hideCapabilities={
+            hideCapabilities || !actions.includes("capabilities")
+          }
+          hideAttachments={!actions.includes("attachment")}
+          selectedMCPServerViews={selectedMCPServerViews}
+          onMCPServerViewSelect={onMCPServerViewSelect}
+          onSkillSelect={onSkillSelect}
+          fileUploaderService={fileUploaderService}
+          onNodeSelect={onNodeSelect}
+          onNodeUnselect={onNodeUnselect}
+          attachedNodes={attachedNodes}
+          conversation={conversation}
+          spaceId={spaceId}
+          onCapabilitiesPickerOpenChange={onCapabilitiesPickerOpenChange}
+          onAttachmentsPickerOpenChange={onAttachmentsPickerOpenChange}
+        />
+      )}
     </>
   );
 });
