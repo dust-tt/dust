@@ -86,6 +86,8 @@ async function migrateSkillEditorGroups(
       );
 
       if (execute) {
+        // If reusing this group-kind update, also update the denormalized
+        // group_vaults.groupKind. See https://github.com/dust-tt/dust/pull/29239.
         await group.update({
           kind: "skill_editors",
           name: newName,

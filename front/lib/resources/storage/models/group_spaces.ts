@@ -3,12 +3,15 @@ import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { GroupKind } from "@app/types/groups";
 import type { GroupSpaceKind } from "@app/types/space";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
 export class GroupSpaceModel extends WorkspaceAwareModel<GroupSpaceModel> {
   declare createdAt: CreationOptional<Date>;
   declare groupId: ForeignKey<GroupModel["id"]>;
+  // Denormalized from groups.kind. Keep in sync if group kinds ever become mutable.
+  declare groupKind: GroupKind | null;
   declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare kind: GroupSpaceKind;
 }
@@ -26,6 +29,10 @@ GroupSpaceModel.init(
       validate: {
         isIn: [["member", "project_editor", "project_viewer"]],
       },
+    },
+    groupKind: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {

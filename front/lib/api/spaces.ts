@@ -584,6 +584,7 @@ export async function createSpaceAndGroup(
         {
           kind: space.isProject() ? "project_viewer" : "member",
           groupId: globalGroup.id,
+          groupKind: globalGroup.kind,
           vaultId: space.id,
           workspaceId: owner.id,
         },

@@ -48,6 +48,7 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
     const groupSpace = await GroupSpaceModel.create(
       {
         groupId: group.id,
+        groupKind: group.kind,
         vaultId: space.id,
         workspaceId: auth.getNonNullableWorkspace().id,
         kind: "project_editor",
