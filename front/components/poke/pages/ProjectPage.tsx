@@ -8,6 +8,7 @@ import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import type { PokeGetSpaceDetails } from "@app/lib/api/poke/spaces";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { LinkWrapper } from "@dust-tt/sparkle";
+import { ProjectPodFunctionDataTable } from "@app/components/poke/projects/pod_functions/table";
 
 interface ProjectPageProps {
   details: PokeGetSpaceDetails;
@@ -57,6 +58,7 @@ export function ProjectPage({ details }: ProjectPageProps) {
           />
           <ProjectTasksDataTable owner={owner} projectId={space.sId} />
           <DataSourceViewsDataTable owner={owner} spaceId={space.sId} />
+          <ProjectPodFunctionDataTable owner={owner} projectId={space.sId} />
         </div>
       </div>
     </>
