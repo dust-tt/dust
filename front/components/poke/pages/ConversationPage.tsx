@@ -29,6 +29,9 @@ import {
   Clipboard,
   ClipboardCheck,
   CodeBlock,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ConversationMessage,
   cn,
   DropdownMenu,
@@ -1179,23 +1182,45 @@ export function ConversationPage() {
                       }}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-foreground">
-                      System prompt
-                    </div>
-                    <CodeBlock
-                      wrapLongLines
-                      className="language-text max-h-96 overflow-y-auto"
-                    >
-                      {renderResult.systemPrompt}
-                    </CodeBlock>
+                  <div className="rounded-md border border-separator p-3">
+                    <Collapsible defaultOpen={false}>
+                      <CollapsibleTrigger>
+                        <h3 className="text-sm font-medium text-foreground">
+                          System prompt
+                        </h3>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2">
+                          <CodeBlock
+                            wrapLongLines
+                            className="language-text max-h-96 overflow-y-auto"
+                          >
+                            {renderResult.systemPrompt}
+                          </CodeBlock>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </div>
-                  <div className="text-sm font-medium text-foreground">
-                    Model conversation
+                  <div className="rounded-md border border-separator p-3">
+                    <Collapsible defaultOpen={true}>
+                      <CollapsibleTrigger>
+                        <h3 className="text-sm font-medium text-foreground">
+                          Model conversation
+                        </h3>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2">
+                          <CodeBlock wrapLongLines className="language-json">
+                            {JSON.stringify(
+                              renderResult.modelConversation,
+                              null,
+                              2
+                            )}
+                          </CodeBlock>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </div>
-                  <CodeBlock wrapLongLines className="language-json">
-                    {JSON.stringify(renderResult.modelConversation, null, 2)}
-                  </CodeBlock>
                 </div>
               )}
             </div>
