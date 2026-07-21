@@ -82,12 +82,16 @@ export async function resolveModel(
   // Should never happen as we should at least fallback to our selection of PREFERRED_LARGE_MODEL_CONFIGS.
   assert(enabled, "No enabled model found");
 
-  // Honor an explicit effort only if the model supports it; otherwise fall back
-  // to its default (raw API clients can send an unsupported effort).
+  const requestedReasoningEffort = selection
+    ? selection.reasoningEffort
+    : configuration.model.reasoningEffort;
+
+  // Honor the selected or agent-configured effort only if the resolved model
+  // supports it. Raw API clients can send an unsupported effort.
   const effort =
-    selection?.reasoningEffort &&
-    enabled.supportedReasoningEfforts[selection.reasoningEffort]
-      ? selection.reasoningEffort
+    requestedReasoningEffort &&
+    enabled.supportedReasoningEfforts[requestedReasoningEffort]
+      ? requestedReasoningEffort
       : enabled.defaultReasoningEffort;
 
   return {
