@@ -133,7 +133,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   const isCreatingNew = !skill;
   const { isDirty } = form.formState;
 
-  const isAdminNonEditor =
+  const isEditorGateVisible =
     !!skill && !isEditorsLoading && !isEditorsError && !isCurrentUserEditor;
 
   useNavigationLock(isDirty && !isSaving);
@@ -267,7 +267,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
                 void mutateEditors();
               }}
             />
-          ) : isAdminNonEditor ? (
+          ) : isEditorGateVisible ? (
             <BuilderEditorGateMessage
               builderType="skill"
               isLoading={isAddingSelfAsEditor}
@@ -297,7 +297,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
             hasSelfImprovingSkills={hasSelfImprovingSkills}
-            isEditorGateVisible={isAdminNonEditor}
+            isEditorGateVisible={isEditorGateVisible}
             isAddingSelfAsEditor={isAddingSelfAsEditor}
             onAddSelfAsEditor={() => {
               void handleAddSelfAsEditor();
