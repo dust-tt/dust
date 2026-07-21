@@ -71,6 +71,10 @@ export async function importSkillsFromFiles(
     onConflict?: ImportConflictStrategyType;
   }
 ): Promise<Result<ImportSkillsResult, Error>> {
+  if (!auth.isBuilder()) {
+    return new Err(new Error("Importing skills requires a builder user."));
+  }
+
   const allSkills: ZipDetectedSkill[] = [];
 
   // Readers are keyed by skill to avoid re-opening the same zip for each

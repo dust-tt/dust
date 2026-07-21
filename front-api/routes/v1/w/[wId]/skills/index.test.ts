@@ -222,4 +222,31 @@ describe("POST /api/v1/w/[wId]/skills", () => {
         .sort()
     );
   });
+
+  it("rejects the import for a non-builder API key", async () => {
+    const { auth, workspace } = await createPublicApiMockRequest({
+      role: "user",
+    });
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
+
+    const result = await importSkillsFromFiles(auth, {
+      uploadedFiles: [
+        await makeSkillZipFile({
+          name: "Unauthorized Import",
+          instructions: "Should never be imported.",
+        }),
+      ],
+      source: "api",
+      onConflict: "error",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "Importing skills requires a builder user."
+      );
+    }
+  });
 });
