@@ -101,10 +101,7 @@ export function hideFileFromActionOutput({
 }
 
 export function rewriteContentForModel(
-  content: CallToolResult["content"][number],
-  {
-    renderSearchResultsAsMarkdown = false,
-  }: { renderSearchResultsAsMarkdown?: boolean } = {}
+  content: CallToolResult["content"][number]
 ): CallToolResult["content"][number] | null {
   // Only render tool generated files that are supported.
   if (
@@ -147,7 +144,7 @@ export function rewriteContentForModel(
     return null;
   }
 
-  if (renderSearchResultsAsMarkdown && isSearchResultResourceType(content)) {
+  if (isSearchResultResourceType(content)) {
     let text = `Search result: ${content.resource.text}\n`;
     text += `id: ${content.resource.id}\n`;
     text += `url: ${content.resource.uri}\n`;
