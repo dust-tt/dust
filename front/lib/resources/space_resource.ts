@@ -62,7 +62,7 @@ export class SpaceGroupReference {
   constructor(
     readonly id: ModelId,
     readonly groupKind: GroupKind,
-    readonly kind: GroupSpaceKind,
+    readonly referenceKind: GroupSpaceKind,
     readonly workspaceId: ModelId
   ) {}
 
@@ -1566,7 +1566,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           ],
           groups: this.groups.reduce((acc, group) => {
             if (groupFilter(group)) {
-              if (group.kind === "project_editor") {
+              if (group.referenceKind === "project_editor") {
                 // Project editors get admin permissions
                 acc.push({
                   id: group.id,
