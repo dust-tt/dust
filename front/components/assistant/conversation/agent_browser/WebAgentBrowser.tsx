@@ -2,10 +2,14 @@ import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
 import { ManageDropdownMenu } from "@app/components/assistant/ManageDropdownMenu";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useAppRouter } from "@app/lib/platform";
+import { SKILL_ICON } from "@app/lib/skill";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { getAgentBuilderRoute, setQueryParam } from "@app/lib/utils/router";
-import { isBuilder } from "@app/types/user";
+import {
+  getAgentBuilderRoute,
+  getSkillBuilderRoute,
+  setQueryParam,
+} from "@app/lib/utils/router";
 import {
   Button,
   ContactsRobot,
@@ -54,6 +58,7 @@ export function WebAgentBrowser({
   const { hasPermission } = useWorkspacePermissions(owner);
 
   const canCreateAgent = hasPermission("create", "agent");
+  const canCreateSkill = hasPermission("create", "skill");
 
   const sortTypeLabel = useMemo(() => {
     switch (sortType) {
@@ -103,25 +108,28 @@ export function WebAgentBrowser({
                 <CreateDropdown owner={owner} dataGtmLocation="homepage" />
               </div>
             )}
-            {isBuilder(owner) ? (
+            {canCreateAgent && canCreateSkill ? (
               <ManageDropdownMenu owner={owner} />
-            ) : (
-              canCreateAgent && (
-                <Button
-                  href={getAgentBuilderRoute(owner.sId, "manage")}
-                  variant="primary"
-                  icon={ContactsRobot}
-                  label="Manage agents"
-                  data-gtm-label="assistantManagementButton"
-                  data-gtm-location="homepage"
-                  size="sm"
-                  onClick={withTracking(
-                    TRACKING_AREAS.BUILDER,
-                    "manage_agents"
-                  )}
-                />
-              )
-            )}
+            ) : canCreateAgent ? (
+              <Button
+                href={getAgentBuilderRoute(owner.sId, "manage")}
+                variant="primary"
+                icon={ContactsRobot}
+                label="Manage agents"
+                data-gtm-label="assistantManagementButton"
+                data-gtm-location="homepage"
+                size="sm"
+                onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_agents")}
+              />
+            ) : canCreateSkill ? (
+              <Button
+                href={getSkillBuilderRoute(owner.sId, "manage")}
+                variant="primary"
+                icon={SKILL_ICON}
+                label="Manage skills"
+                size="sm"
+              />
+            ) : null}
           </div>
         </div>
       </div>
