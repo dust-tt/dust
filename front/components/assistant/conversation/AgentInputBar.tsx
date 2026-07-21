@@ -133,6 +133,10 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
         CONTEXT_USAGE_PERCENT_THRESHOLDS["force_compaction"]
       ? "Context is full, compact to continue."
       : null;
+  const forkBlockMessage =
+    context.conversation?.forkingData?.forkedFrom?.fileCopyStatus === "pending"
+      ? "Wait for the branch to finish preparing."
+      : null;
   const showContextUsageBanner =
     contextUsage &&
     !!contextUsagePercentage &&
@@ -525,6 +529,15 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           )}
         </ContentMessageInline>
       )}
+      {forkBlockMessage && (
+        <ContentMessageInline
+          icon={InfoCircle}
+          variant="primary"
+          className="mb-5 flex max-h-dvh w-full"
+        >
+          Preparing branch… You can draft a message while its files are copied.
+        </ContentMessageInline>
+      )}
       {showContextUsageBanner && (
         <ContextUsageWarningBanner
           owner={context.owner}
@@ -559,7 +572,9 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           actions={agentBuilderContext?.actionsToShow}
           isSubmitting={agentBuilderContext?.isSubmitting === true}
           isAgentBuilder={!!agentBuilderContext}
-          submitBlockMessage={wakeUpBlockMessage ?? compactionBlockMessage}
+          submitBlockMessage={
+            forkBlockMessage ?? wakeUpBlockMessage ?? compactionBlockMessage
+          }
           effectiveIsCompact={effectiveIsCompact}
           onExpandInputBar={expandInputBar}
           onEditorFocusChange={onEditorFocusChange}
