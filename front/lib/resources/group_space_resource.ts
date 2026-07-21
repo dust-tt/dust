@@ -4,7 +4,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
-import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -274,9 +273,9 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
 // This ships write-only (populated from baseFetch, nothing reads it yet) so cache
 // behavior is observable in production before reads or invalidation depend on it.
 
-// Bump to orphan every hash written under the previous schema (e.g. hashes written
-// before invalidation shipped, which may be stale).
-const GROUP_SPACES_CACHE_SCHEMA = 1;
+// Bump to orphan every hash written under the previous schema. 2: hashes written
+// before invalidation shipped may be stale.
+const GROUP_SPACES_CACHE_SCHEMA = 2;
 
 export function groupSpacesCacheVersionKey(workspaceId: number): string {
   return `group_vaults:${GROUP_SPACES_CACHE_SCHEMA}:ws:${workspaceId}:v`;
@@ -411,57 +410,6 @@ async function fetchWorkspaceGroupSpacesFromDb(
     byVault.set(gs.vaultId, rows);
   }
   return byVault;
-}
-
-// Fire-and-forget from space fetches; never throws.
-export async function populateGroupSpacesCacheIfMissing(
-  workspaceId: number
-): Promise<void> {
-  const statsDClient = getStatsDClient();
-  try {
-    if (
-      await KillSwitchResource.isKillSwitchEnabled(
-        "global_disable_group_vaults_cache"
-      )
-    ) {
-      return;
-    }
-    const redisCli: RedisClientType = await getRedisCacheClient({
-      origin: "cache_with_redis",
-    });
-
-    // An absent version key (fresh workspace or eviction) gets a fresh version via
-    // INCR, so a data key surviving from a lost version can never be read.
-    const versionKey = groupSpacesCacheVersionKey(workspaceId);
-    const rawVersion = await redisCli.get(versionKey);
-    const version =
-      rawVersion != null
-        ? Number(rawVersion)
-        : Number(await redisCli.incr(versionKey));
-    if (!Number.isFinite(version)) {
-      return;
-    }
-
-    const dataKey = groupSpacesCacheDataKey(workspaceId, version);
-    const values = await redisCli.hmGet(dataKey, [POPULATED_FIELD]);
-    if (values[0] != null) {
-      return;
-    }
-
-    const byVault = await fetchWorkspaceGroupSpacesFromDb(workspaceId);
-    const hashValues: Record<string, string> = { [POPULATED_FIELD]: "1" };
-    for (const [vaultId, rows] of byVault) {
-      hashValues[String(vaultId)] = JSON.stringify(serializeVaultRows(rows));
-    }
-    await redisCli.hSet(dataKey, hashValues);
-    statsDClient.increment("group_spaces_cache.write", 1, ["result:populated"]);
-  } catch (err) {
-    logger.warn(
-      { err: normalizeError(err), workspaceId },
-      "group_vaults cache write failed"
-    );
-    statsDClient.increment("group_spaces_cache.write", 1, ["result:error"]);
-  }
 }
 
 // group_vaults cache invalidation.
@@ -627,3 +575,106 @@ GroupModel.addHook("afterBulkUpdate", "group_vaults_cache", async (options) => {
     "groups bulk update without derivable workspaceId: group_vaults cache not invalidated"
   );
 });
+
+// group_vaults cache read side.
+
+function rehydrateVaultRows(cached: CachedVaultRows): GroupSpaceWithGroup[] {
+  return cached.map(({ groupSpace, group }) => ({
+    groupSpace: {
+      ...groupSpace,
+      createdAt: new Date(groupSpace.createdAtMs),
+      updatedAt: new Date(groupSpace.updatedAtMs),
+    },
+    group: {
+      ...group,
+      createdAt: new Date(group.createdAtMs),
+      updatedAt: new Date(group.updatedAtMs),
+    },
+  }));
+}
+
+export async function fetchGroupSpacesCachedForVaults(
+  workspaceId: number,
+  vaultIds: ModelId[]
+): Promise<Map<ModelId, GroupSpaceWithGroup[]>> {
+  if (vaultIds.length === 0) {
+    return new Map();
+  }
+  const statsDClient = getStatsDClient();
+
+  let redisCli: RedisClientType | null = null;
+  let dataKey: string | null = null;
+  try {
+    redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
+
+    // An absent version key (fresh workspace or eviction) gets a fresh version via
+    // INCR, so a data key surviving from a lost version can never be read.
+    const versionKey = groupSpacesCacheVersionKey(workspaceId);
+    const rawVersion = await redisCli.get(versionKey);
+    const version =
+      rawVersion != null
+        ? Number(rawVersion)
+        : Number(await redisCli.incr(versionKey));
+
+    if (Number.isFinite(version)) {
+      dataKey = groupSpacesCacheDataKey(workspaceId, version);
+      const values = await redisCli.hmGet(dataKey, [
+        POPULATED_FIELD,
+        ...vaultIds.map(String),
+      ]);
+      if (values[0] != null) {
+        const byVault = new Map<ModelId, GroupSpaceWithGroup[]>();
+        let parseFailed = false;
+        for (const [i, vaultId] of vaultIds.entries()) {
+          const value = values[i + 1];
+          if (value == null) {
+            byVault.set(vaultId, []);
+            continue;
+          }
+          const parsed = cachedVaultRowsSchema.safeParse(JSON.parse(value));
+          if (!parsed.success) {
+            parseFailed = true;
+            break;
+          }
+          byVault.set(vaultId, rehydrateVaultRows(parsed.data));
+        }
+        if (!parseFailed) {
+          statsDClient.increment("group_spaces_cache.read", 1, ["result:hit"]);
+          return byVault;
+        }
+      }
+    }
+  } catch (err) {
+    // Redis unavailability must not take down space fetches.
+    logger.warn(
+      { err: normalizeError(err), workspaceId },
+      "group_vaults cache read failed"
+    );
+    statsDClient.increment("group_spaces_cache.read", 1, ["result:error"]);
+    dataKey = null;
+  }
+
+  const byVault = await fetchWorkspaceGroupSpacesFromDb(workspaceId);
+
+  if (redisCli && dataKey) {
+    try {
+      const hashValues: Record<string, string> = { [POPULATED_FIELD]: "1" };
+      for (const [vaultId, rows] of byVault) {
+        hashValues[String(vaultId)] = JSON.stringify(serializeVaultRows(rows));
+      }
+      await redisCli.hSet(dataKey, hashValues);
+      statsDClient.increment("group_spaces_cache.read", 1, ["result:miss"]);
+    } catch (err) {
+      logger.warn(
+        { err: normalizeError(err), workspaceId },
+        "group_vaults cache write failed"
+      );
+    }
+  }
+
+  const requested = new Map<ModelId, GroupSpaceWithGroup[]>();
+  for (const vaultId of vaultIds) {
+    requested.set(vaultId, byVault.get(vaultId) ?? []);
+  }
+  return requested;
+}

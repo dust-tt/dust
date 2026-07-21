@@ -6,8 +6,9 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
-import { populateGroupSpacesCacheIfMissing } from "@app/lib/resources/group_space_resource";
+import { fetchGroupSpacesCachedForVaults } from "@app/lib/resources/group_space_resource";
 import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
@@ -44,6 +45,7 @@ import type {
   Attributes,
   CreationAttributes,
   Includeable,
+  InferAttributes,
   Transaction,
   WhereOptions,
 } from "sequelize";
@@ -211,33 +213,84 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }: ResourceFindOptions<SpaceModel> = {},
     t?: Transaction
   ) {
-    const includeClauses: Includeable[] = [
-      {
-        model: GroupResource.model,
-      },
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      ...(includes || []),
-    ];
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Transactions bypass the cache (read-your-writes during workspace creation).
+    const useGroupSpacesCache =
+      !t &&
+      !includes?.length &&
+      !(await KillSwitchResource.isKillSwitchEnabled(
+        "global_disable_group_vaults_cache"
+      ));
+
+    if (!useGroupSpacesCache) {
+      const includeClauses: Includeable[] = [
+        {
+          model: GroupResource.model,
+        },
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        ...(includes || []),
+      ];
+
+      const spacesModels = await this.model.findAll({
+        where: {
+          ...where,
+          workspaceId,
+        } as WhereOptions<SpaceModel>,
+        include: includeClauses,
+        limit,
+        order,
+        includeDeleted,
+        transaction: t,
+      });
+
+      return spacesModels.map(this.fromModel);
+    }
 
     const spacesModels = await this.model.findAll({
       where: {
         ...where,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId,
       } as WhereOptions<SpaceModel>,
-      include: includeClauses,
       limit,
       order,
       includeDeleted,
-      transaction: t,
     });
 
-    // Shadow-write phase: populate the cache so its behavior is observable in
-    // production before anything reads it.
-    if (!t) {
-      void populateGroupSpacesCacheIfMissing(auth.getNonNullableWorkspace().id);
-    }
+    const groupSpacesByVaultId = await fetchGroupSpacesCachedForVaults(
+      workspaceId,
+      spacesModels.map((s) => s.id)
+    );
 
-    return spacesModels.map(this.fromModel);
+    return spacesModels.map((s) => {
+      const groups = (groupSpacesByVaultId.get(s.id) ?? []).map(
+        ({ groupSpace, group }) => {
+          const blob: Attributes<GroupModel> & {
+            group_vaults: InferAttributes<GroupSpaceModel>;
+          } = {
+            id: group.id,
+            name: group.name,
+            kind: group.kind,
+            workOSGroupId: group.workOSGroupId,
+            poolCapAwuCredits: group.poolCapAwuCredits,
+            workspaceId: group.workspaceId,
+            createdAt: group.createdAt,
+            updatedAt: group.updatedAt,
+            group_vaults: {
+              id: groupSpace.id,
+              kind: groupSpace.kind,
+              vaultId: groupSpace.vaultId,
+              groupId: groupSpace.groupId,
+              workspaceId: groupSpace.workspaceId,
+              createdAt: groupSpace.createdAt,
+              updatedAt: groupSpace.updatedAt,
+            },
+          };
+          return new GroupResource(GroupModel, blob);
+        }
+      );
+      return new SpaceResource(SpaceModel, s.get(), groups);
+    });
   }
 
   static async listWorkspaceSpaces(

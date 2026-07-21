@@ -4,9 +4,9 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import {
+  fetchGroupSpacesCachedForVaults,
   groupSpacesCacheDataKey,
   groupSpacesCacheVersionKey,
-  populateGroupSpacesCacheIfMissing,
 } from "@app/lib/resources/group_space_resource";
 import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
@@ -379,112 +379,6 @@ describe("GroupSpaceViewerResource", () => {
   });
 });
 
-describe("populateGroupSpacesCacheIfMissing", () => {
-  let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
-
-  async function getRedisSpies() {
-    const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
-    return {
-      get: vi.mocked(redisCli.get),
-      incr: vi.mocked(redisCli.incr),
-      hSet: vi.mocked(redisCli.hSet),
-      hmGet: vi.mocked(redisCli.hmGet),
-    };
-  }
-
-  beforeEach(async () => {
-    workspace = await WorkspaceFactory.basic();
-    const adminUser = await UserFactory.basic();
-    await GroupFactory.defaults(workspace);
-    await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
-    const spies = await getRedisSpies();
-    spies.get.mockClear();
-    spies.incr.mockClear();
-    spies.hSet.mockClear();
-    spies.hmGet.mockClear();
-  });
-
-  it("bootstraps a version and writes the hash with a populated marker", async () => {
-    const space = await SpaceFactory.regular(workspace);
-
-    await populateGroupSpacesCacheIfMissing(workspace.id);
-
-    const spies = await getRedisSpies();
-    const setCall = spies.hSet.mock.calls.at(-1);
-    expect(setCall?.[0]).toBe(groupSpacesCacheDataKey(workspace.id, 1));
-    const written = setCall?.[1];
-    expect(written).toHaveProperty("_");
-    expect(written).toHaveProperty(String(space.id));
-  });
-
-  it("serializes one field per vault with group rows", async () => {
-    const space = await SpaceFactory.regular(workspace);
-    const group = await GroupResource.makeNew({
-      name: "Extra group",
-      workspaceId: workspace.id,
-      kind: "regular_manual",
-    });
-    await GroupSpaceFactory.associate(space, group);
-
-    await populateGroupSpacesCacheIfMissing(workspace.id);
-
-    const spies = await getRedisSpies();
-    const written = spies.hSet.mock.calls.at(-1)?.[1];
-    const field: unknown =
-      written && typeof written === "object"
-        ? Reflect.get(written, String(space.id))
-        : undefined;
-    expect(typeof field).toBe("string");
-    const rows: unknown = JSON.parse(String(field));
-    expect(Array.isArray(rows)).toBe(true);
-    expect((rows as unknown[]).length).toBe(2);
-  });
-
-  it("skips the write when the hash is already populated", async () => {
-    await SpaceFactory.regular(workspace);
-    const spies = await getRedisSpies();
-    spies.get.mockResolvedValueOnce("3");
-    spies.hmGet.mockResolvedValueOnce(["1"]);
-
-    await populateGroupSpacesCacheIfMissing(workspace.id);
-
-    expect(spies.hSet).not.toHaveBeenCalled();
-  });
-
-  it("does nothing when the killswitch is enabled", async () => {
-    await SpaceFactory.regular(workspace);
-    await KillSwitchResource.enableKillSwitch(
-      "global_disable_group_vaults_cache"
-    );
-
-    await populateGroupSpacesCacheIfMissing(workspace.id);
-
-    const spies = await getRedisSpies();
-    expect(spies.hSet).not.toHaveBeenCalled();
-    await KillSwitchResource.disableKillSwitch(
-      "global_disable_group_vaults_cache"
-    );
-  });
-
-  it("is triggered by space fetches", async () => {
-    const adminUser = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      adminUser.sId,
-      workspace.sId
-    );
-    await SpaceFactory.defaults(auth);
-    const spies = await getRedisSpies();
-    spies.hSet.mockClear();
-
-    await SpaceResource.listWorkspaceSpaces(auth);
-
-    await vi.waitFor(async () => {
-      expect(spies.hSet).toHaveBeenCalled();
-    });
-  });
-});
-
 describe("group_vaults cache invalidation hooks", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let auth: Authenticator;
@@ -705,5 +599,220 @@ describe("group_vaults cache invalidation hooks", () => {
 
     await expectInvalidated(workspace.id);
     await expectNotInvalidated(otherWorkspace.id);
+  });
+});
+
+describe("fetchGroupSpacesCachedForVaults", () => {
+  let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+
+  async function getHashSpies() {
+    const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
+    return {
+      get: vi.mocked(redisCli.get),
+      hSet: vi.mocked(redisCli.hSet),
+      hmGet: vi.mocked(redisCli.hmGet),
+    };
+  }
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    const adminUser = await UserFactory.basic();
+    await GroupFactory.defaults(workspace);
+    await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
+    const spies = await getHashSpies();
+    spies.get.mockClear();
+    spies.hSet.mockClear();
+    spies.hmGet.mockClear();
+  });
+
+  it("returns an empty map for no vault ids", async () => {
+    const result = await fetchGroupSpacesCachedForVaults(workspace.id, []);
+    expect(result.size).toBe(0);
+  });
+
+  it("populates the versioned hash on miss and returns DB rows", async () => {
+    const space = await SpaceFactory.regular(workspace);
+
+    const result = await fetchGroupSpacesCachedForVaults(workspace.id, [
+      space.id,
+    ]);
+
+    const rows = result.get(space.id);
+    expect(rows?.length).toBeGreaterThan(0);
+    expect(rows?.[0].group.id).toBe(rows?.[0].groupSpace.groupId);
+
+    const spies = await getHashSpies();
+    const setCall = spies.hSet.mock.calls.at(-1);
+    expect(setCall?.[0]).toBe(groupSpacesCacheDataKey(workspace.id, 1));
+    const written = setCall?.[1];
+    expect(written).toHaveProperty("_");
+    expect(written).toHaveProperty(String(space.id));
+  });
+
+  it("serves from the hash on hit without writing", async () => {
+    const spies = await getHashSpies();
+    const cachedRow = {
+      groupSpace: {
+        id: 1,
+        kind: "member",
+        vaultId: 42,
+        groupId: 7,
+        workspaceId: workspace.id,
+        createdAtMs: 1000,
+        updatedAtMs: 2000,
+      },
+      group: {
+        id: 7,
+        name: "From cache",
+        kind: "regular_auto",
+        workOSGroupId: null,
+        poolCapAwuCredits: null,
+        workspaceId: workspace.id,
+        createdAtMs: 1000,
+        updatedAtMs: 2000,
+      },
+    };
+    spies.get.mockResolvedValueOnce("3");
+    spies.hmGet.mockResolvedValueOnce(["1", JSON.stringify([cachedRow])]);
+
+    const result = await fetchGroupSpacesCachedForVaults(workspace.id, [42]);
+
+    expect(result.get(42)?.[0].group.name).toBe("From cache");
+    expect(result.get(42)?.[0].group.createdAt).toEqual(new Date(1000));
+    expect(spies.hSet).not.toHaveBeenCalled();
+  });
+
+  it("treats a missing field on a populated hash as no groups", async () => {
+    const spies = await getHashSpies();
+    spies.get.mockResolvedValueOnce("3");
+    spies.hmGet.mockResolvedValueOnce(["1", null]);
+
+    const result = await fetchGroupSpacesCachedForVaults(workspace.id, [42]);
+
+    expect(result.get(42)).toEqual([]);
+    expect(spies.hSet).not.toHaveBeenCalled();
+  });
+
+  it("treats an unparseable field as a miss and repopulates", async () => {
+    const space = await SpaceFactory.regular(workspace);
+    const spies = await getHashSpies();
+    spies.get.mockResolvedValueOnce("3");
+    spies.hmGet.mockResolvedValueOnce([
+      "1",
+      JSON.stringify([{ garbage: true }]),
+    ]);
+
+    const result = await fetchGroupSpacesCachedForVaults(workspace.id, [
+      space.id,
+    ]);
+
+    expect(result.get(space.id)?.length).toBeGreaterThan(0);
+    expect(spies.hSet).toHaveBeenCalled();
+  });
+});
+
+describe("SpaceResource cache path equivalence", () => {
+  let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+  let auth: Authenticator;
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    const adminUser = await UserFactory.basic();
+    await GroupFactory.defaults(workspace);
+    await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      workspace.sId
+    );
+
+    await SpaceFactory.defaults(auth);
+    await SpaceFactory.regular(workspace);
+
+    const memberGroup = await GroupResource.makeNew({
+      name: "Project members",
+      workspaceId: workspace.id,
+      kind: "regular_auto",
+    });
+    const editorGroup = await GroupResource.makeNew({
+      name: "Project editors",
+      workspaceId: workspace.id,
+      kind: "space_editors",
+    });
+    await SpaceResource.makeNew(
+      { name: "Project", kind: "project", workspaceId: workspace.id },
+      { members: [memberGroup], editors: [editorGroup] }
+    );
+  });
+
+  function normalize(spaces: SpaceResource[]) {
+    return [...spaces]
+      .sort((a, b) => a.id - b.id)
+      .map((s) => ({
+        sId: s.sId,
+        kind: s.kind,
+        name: s.name,
+        isOpen: s.isOpen(),
+        isMember: s.isMember(auth),
+        canRead: s.canRead(auth),
+        canWrite: s.canWrite(auth),
+        canAdministrate: s.canAdministrate(auth),
+        groupIds: [...s.toJSON().groupIds].sort(),
+        groups: [...s.groups]
+          .sort((a, b) => a.id - b.id)
+          .map((g) => ({
+            id: g.id,
+            name: g.name,
+            kind: g.kind,
+            groupSpaceKind: g.group_vaults?.kind ?? null,
+          })),
+      }));
+  }
+
+  it("returns the same spaces and groups as the join path", async () => {
+    const cachePath = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+
+    await KillSwitchResource.enableKillSwitch(
+      "global_disable_group_vaults_cache"
+    );
+    const joinPath = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+    await KillSwitchResource.disableKillSwitch(
+      "global_disable_group_vaults_cache"
+    );
+
+    expect(cachePath.length).toBeGreaterThan(0);
+    expect(normalize(cachePath)).toEqual(normalize(joinPath));
+  });
+
+  it("returns the same system space as the join path", async () => {
+    const cachePath = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
+    await KillSwitchResource.enableKillSwitch(
+      "global_disable_group_vaults_cache"
+    );
+    const joinPath = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+    await KillSwitchResource.disableKillSwitch(
+      "global_disable_group_vaults_cache"
+    );
+
+    expect(normalize([cachePath])).toEqual(normalize([joinPath]));
+  });
+
+  it("returns the same project permissions as the join path", async () => {
+    const cachePath = await SpaceResource.listProjectSpaces(auth);
+
+    await KillSwitchResource.enableKillSwitch(
+      "global_disable_group_vaults_cache"
+    );
+    const joinPath = await SpaceResource.listProjectSpaces(auth);
+    await KillSwitchResource.disableKillSwitch(
+      "global_disable_group_vaults_cache"
+    );
+
+    expect(cachePath.length).toBeGreaterThan(0);
+    expect(normalize(cachePath)).toEqual(normalize(joinPath));
+    const project = cachePath.find((s) => s.kind === "project");
+    expect(
+      project?.groups.some((g) => g.group_vaults?.kind === "project_editor")
+    ).toBe(true);
   });
 });
