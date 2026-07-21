@@ -1,7 +1,3 @@
-import type {
-  LLMParameterOverwrites,
-  LLMParameters,
-} from "@app/lib/api/llm/types/options";
 import {
   FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID,
@@ -28,49 +24,6 @@ export const FIREWORKS_WHITELISTED_MODEL_IDS = [
 ] as const;
 export type FireworksWhitelistedModelId =
   (typeof FIREWORKS_WHITELISTED_MODEL_IDS)[number];
-
-export const FIREWORKS_MODEL_CONFIGS: Record<
-  FireworksWhitelistedModelId,
-  {
-    overwrites: LLMParameterOverwrites;
-  }
-> = {
-  [FIREWORKS_DEEPSEEK_V3P2_MODEL_ID]: {
-    overwrites: {},
-  },
-  [FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID]: {
-    overwrites: {},
-  },
-  [FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID]: {
-    overwrites: { reasoningEffort: "none" },
-  },
-  [FIREWORKS_KIMI_K2P5_MODEL_ID]: {
-    overwrites: {},
-  },
-  [FIREWORKS_KIMI_K2P6_MODEL_ID]: {
-    overwrites: {},
-  },
-  [FIREWORKS_MINIMAX_M2P5_MODEL_ID]: {
-    overwrites: {},
-  },
-  [FIREWORKS_GLM_5_MODEL_ID]: {
-    overwrites: {},
-  },
-  [FIREWORKS_GLM_5P2_MODEL_ID]: {
-    overwrites: {},
-  },
-};
-
-export function overwriteLLMParameters(
-  llmParameters: LLMParameters & {
-    modelId: FireworksWhitelistedModelId;
-  }
-): LLMParameters & { modelId: FireworksWhitelistedModelId } {
-  return {
-    ...llmParameters,
-    ...FIREWORKS_MODEL_CONFIGS[llmParameters.modelId].overwrites,
-  };
-}
 
 export const isFireworksWhitelistedModelId = (
   modelId: ModelIdType

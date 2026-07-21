@@ -1,5 +1,6 @@
 import { getDelimitersConfiguration } from "@app/lib/llms/agent_message_content_parser";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
+import { CLAUDE_4_5_HAIKU_20251001_MODEL_ID } from "@app/types/assistant/models/anthropic";
 import { DEEPSEEK_CHAT_MODEL_ID } from "@app/types/assistant/models/deepseek";
 import { describe, expect, it } from "vitest";
 
@@ -8,7 +9,7 @@ function makeModel(
 ): AgentModelConfigurationType {
   return {
     providerId: "anthropic",
-    modelId: "claude-haiku-4-5-20251001",
+    modelId: CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
     temperature: 0,
     ...model,
   };

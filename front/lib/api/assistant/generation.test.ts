@@ -304,8 +304,6 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       },
       hasAvailableActions: true,
       systemSkills: [],
-      enabledSkills: [],
-      equippedSkills: [],
     });
 
     const prompt = systemPromptToText(sections);

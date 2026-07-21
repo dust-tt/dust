@@ -6,8 +6,7 @@ const CONTEXT_SIZE = 262_000;
 const MAX_OUTPUT_TOKENS = 2_048;
 const DEFAULT_REASONING_EFFORT = "medium";
 
-// Mirrors the legacy Fireworks reasoning mapping: none/low drop
-// reasoning_effort (default chain-of-thought), only medium/high reach the model.
+// Kimi K2.6 supports none/low/medium/high reasoning and defaults to medium.
 const configSchema = fireworksConfigSchema.extend({
   reasoning: z
     .object({ effort: z.enum(["none", "low", "medium", "high"]) })
