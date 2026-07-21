@@ -634,14 +634,35 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     spaceIds: string[],
     { includeGlobalSpace = false }: { includeGlobalSpace?: boolean } = {}
   ): Promise<MCPServerViewResource[]> {
-    const requestedSpaces = await SpaceResource.fetchByIds(auth, spaceIds);
+    const spaceModelIds = removeNulls(spaceIds.map(getResourceIdFromSId));
 
-    if (includeGlobalSpace) {
-      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-      requestedSpaces.push(globalSpace);
+    if (spaceModelIds.length === 0 && !includeGlobalSpace) {
+      return [];
     }
 
-    return this.listBySpaces(auth, requestedSpaces);
+    const views = await this.baseFetch(auth, {
+      includes: [
+        {
+          model: SpaceResource.model,
+          as: "space",
+          attributes: [],
+          required: true,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            deletedAt: null,
+            [Op.or]: [
+              { id: { [Op.in]: spaceModelIds } },
+              ...(includeGlobalSpace ? [{ kind: "global" }] : []),
+            ],
+          },
+        },
+      ],
+      order: [["id", "ASC"]],
+    });
+
+    // Permission parity with listBySpaces: the canReadOrAdministrate pre-filter on fetched
+    // spaces becomes a post-filter on the space hydrated by baseFetchWithAuthorization.
+    return views.filter((view) => view.canReadOrAdministrate(auth));
   }
 
   static async listBySpace(

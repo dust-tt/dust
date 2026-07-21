@@ -65,7 +65,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -566,12 +565,10 @@ export async function runModel(
     isServerSideMCPServerConfigurationWithName(action, "toolsets")
   );
   if (globalAgentInjectsToolsets(agentConfiguration.sId) && hasToolsetsAction) {
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const allToolsets =
-      await MCPServerViewResource.listBySpaceEnsuringAutoViews(
-        auth,
-        globalSpace
-      );
+      await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(auth, [], {
+        includeGlobalSpace: true,
+      });
     const filteredToolsets = allToolsets.filter((toolset) => {
       const mcpServerView = toolset.toJSON();
       return (
