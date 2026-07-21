@@ -2635,7 +2635,10 @@ export class GroupResource extends BaseResource<GroupModel> {
         group = await GroupModel.findOne({
           where: { workspaceId: workspace.id, name: BUILDER_GROUP_NAME },
         });
-        assert(group, "dust-builders group missing after unique constraint error");
+        assert(
+          group,
+          "dust-builders group missing after unique constraint error"
+        );
       }
     }
 
