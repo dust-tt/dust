@@ -228,11 +228,11 @@ export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
   supportedReasoningEfforts: {
     none: false,
-    light: true,
-    medium: true,
+    light: false,
+    medium: false,
     high: true,
   },
-  defaultReasoningEffort: "light",
+  defaultReasoningEffort: "high",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
