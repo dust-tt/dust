@@ -14,6 +14,71 @@ import type { Context, ErrorHandler, TypedResponse } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { routePath } from "hono/route";
 
+const MALFORMED_JSON_ERROR_MESSAGE = "Malformed JSON in request body";
+
+type MalformedJsonDiagnostics = {
+  declaredContentLengthBytes: number | null;
+  transferEncoding: string | null;
+} & (
+  | {
+      failureStage: "json_parse";
+      receivedBodySizeBytes: number;
+      matchesDeclaredContentLength: boolean | null;
+    }
+  | {
+      failureStage: "body_read";
+      bodyReadError: { name: string; message: string };
+    }
+);
+
+function parseContentLength(value: string | undefined): number | null {
+  if (!value || !/^\d+$/.test(value)) {
+    return null;
+  }
+
+  const contentLengthBytes = Number(value);
+  return Number.isSafeInteger(contentLengthBytes) ? contentLengthBytes : null;
+}
+
+async function getMalformedJsonDiagnostics(
+  ctx: Context
+): Promise<MalformedJsonDiagnostics> {
+  const declaredContentLengthBytes = parseContentLength(
+    ctx.req.header("content-length")
+  );
+  const transferEncoding = ctx.req.header("transfer-encoding") ?? null;
+
+  try {
+    // Hono caches the text before parsing it as JSON. If parsing failed after
+    // a complete read, this returns the cached text without consuming the
+    // request stream a second time.
+    const body = await ctx.req.text();
+    const receivedBodySizeBytes = Buffer.byteLength(body, "utf8");
+
+    return {
+      declaredContentLengthBytes,
+      failureStage: "json_parse",
+      matchesDeclaredContentLength:
+        declaredContentLengthBytes === null
+          ? null
+          : declaredContentLengthBytes === receivedBodySizeBytes,
+      receivedBodySizeBytes,
+      transferEncoding,
+    };
+  } catch (error) {
+    const bodyReadError = normalizeError(error);
+    return {
+      bodyReadError: {
+        name: bodyReadError.name,
+        message: bodyReadError.message,
+      },
+      declaredContentLengthBytes,
+      failureStage: "body_read",
+      transferEncoding,
+    };
+  }
+}
+
 /**
  * Return type for a Hono JSON handler. Wraps the success body type with the
  * shared API error envelope so `ctx.json(...)` success returns and
@@ -89,7 +154,7 @@ export function apiError(
  * Next.js behavior where unhandled errors do not contribute to request
  * throughput / latency metrics.
  */
-export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
+export const unhandledErrorHandler: ErrorHandler = async (err, ctx) => {
   // Hono throws `HTTPException` for client-facing errors raised inside the app
   // before our handlers run — most notably the JSON body parse failure in
   // `@hono/zod-validator` ("Malformed JSON in request body"). These are client
@@ -98,6 +163,10 @@ export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
   if (err instanceof HTTPException) {
     const type: APIErrorType =
       err.status >= 500 ? "internal_server_error" : "invalid_request_error";
+    const malformedJsonDiagnostics =
+      err.status === 400 && err.message === MALFORMED_JSON_ERROR_MESSAGE
+        ? await getMalformedJsonDiagnostics(ctx)
+        : undefined;
 
     logger.info(
       {
@@ -106,6 +175,9 @@ export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
         url: ctx.req.path,
         statusCode: err.status,
         error: { name: err.name, message: err.message },
+        ...(malformedJsonDiagnostics
+          ? { malformedJson: malformedJsonDiagnostics }
+          : {}),
       },
       "Client API Error"
     );
