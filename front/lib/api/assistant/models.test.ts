@@ -19,12 +19,14 @@ import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import {
   GPT_5_4_MINI_MODEL_CONFIG,
   GPT_5_5_MODEL_CONFIG,
+  GPT_5_6_LUNA_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
+  ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -166,9 +168,11 @@ describe("selectEnabledModel", () => {
 function makeAgentConfiguration({
   providerId,
   modelId,
+  reasoningEffort,
 }: {
   providerId: ModelProviderIdType;
   modelId: ModelIdType;
+  reasoningEffort?: ReasoningEffort;
 }): LightAgentConfigurationType {
   return {
     id: 1,
@@ -181,6 +185,7 @@ function makeAgentConfiguration({
       providerId,
       modelId,
       temperature: 0,
+      reasoningEffort,
     },
     status: "active",
     scope: "visible",
@@ -254,6 +259,45 @@ describe("resolveModel", () => {
       reasoningEffort:
         CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     });
+  });
+
+  it("honors a supported reasoning effort configured on the agent", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
+      configuration: makeAgentConfiguration({
+        providerId: GPT_5_6_LUNA_MODEL_CONFIG.providerId,
+        modelId: GPT_5_6_LUNA_MODEL_CONFIG.modelId,
+        reasoningEffort: "high",
+      }),
+      featureFlags: [],
+    });
+
+    expect(modelResolutionMethod).toBe("agent");
+    expect(resolvedModel).toEqual({
+      providerId: GPT_5_6_LUNA_MODEL_CONFIG.providerId,
+      modelId: GPT_5_6_LUNA_MODEL_CONFIG.modelId,
+      reasoningEffort: "high",
+    });
+  });
+
+  it("falls back to the model default for an unsupported agent effort", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const { resolvedModel } = await resolveModel(auth, {
+      configuration: makeAgentConfiguration({
+        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+        reasoningEffort: "none",
+      }),
+      featureFlags: [],
+    });
+
+    expect(resolvedModel.reasoningEffort).toBe(
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort
+    );
   });
 
   it("falls back to a workspace large model when the agent model is unavailable", async () => {
