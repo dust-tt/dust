@@ -32,7 +32,10 @@ import {
   streamLLMEvents,
 } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
-import { supportsOpenAIExplicitPromptCaching } from "@app/lib/model_constructors/types/model_ids";
+import {
+  isModel,
+  supportsOpenAIExplicitPromptCaching,
+} from "@app/lib/model_constructors/types/models";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -107,9 +110,9 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     return {
       model: this.modelId,
       input: toInput(promptText, conversation, "developer", {
-        cacheBreakpointOnLeadingMessage: supportsOpenAIExplicitPromptCaching(
-          this.modelId
-        ),
+        cacheBreakpointOnLeadingMessage:
+          isModel(this.modelId) &&
+          supportsOpenAIExplicitPromptCaching(this.modelId),
       }),
       temperature: this.temperature ?? undefined,
       reasoning,

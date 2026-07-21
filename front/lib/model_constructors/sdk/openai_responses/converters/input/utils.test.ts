@@ -9,10 +9,7 @@ import type {
   BaseAssistantTextMessage,
   BaseUserTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
-import {
-  GPT_5_4,
-  GPT_5_6_SOL,
-} from "@app/lib/model_constructors/types/models";
+import { GPT_5_4, GPT_5_6_SOL } from "@app/lib/model_constructors/types/models";
 import { describe, expect, it } from "vitest";
 
 describe("assistantTextMessageToInputItem", () => {
@@ -73,6 +70,15 @@ describe("prompt cache breakpoints", () => {
   it("does not serialize a cache marker for older models", () => {
     expect(
       userTextMessageToInputItem(message, { ...metadata, model: GPT_5_4 })
+    ).toEqual({
+      role: "user",
+      content: [{ type: "input_text", text: "Available skills" }],
+    });
+  });
+
+  it("does not serialize a cache marker when the message has not opted in", () => {
+    expect(
+      userTextMessageToInputItem({ ...message, cache: undefined }, metadata)
     ).toEqual({
       role: "user",
       content: [{ type: "input_text", text: "Available skills" }],

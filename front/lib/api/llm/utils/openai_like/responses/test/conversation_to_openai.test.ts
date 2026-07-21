@@ -44,5 +44,39 @@ describe("toInput", () => {
         ],
       });
     });
+
+    it("does not add a cache breakpoint to a regular leading user message", () => {
+      const messages = toInput(
+        "You are a helpful assistant.",
+        { messages: conversationMessages },
+        "developer",
+        { cacheBreakpointOnLeadingMessage: true }
+      );
+
+      expect(messages).toEqual(inputMessages);
+    });
+
+    it("does not add a cache breakpoint to a non-leading skills message", () => {
+      const messages = toInput(
+        "You are a helpful assistant.",
+        {
+          messages: [
+            ...conversationMessages,
+            {
+              role: "user",
+              name: "system",
+              content: [{ type: "text", text: "Available skills" }],
+            },
+          ],
+        },
+        "developer",
+        { cacheBreakpointOnLeadingMessage: true }
+      );
+
+      expect(messages.at(-1)).toEqual({
+        role: "user",
+        content: [{ type: "input_text", text: "Available skills" }],
+      });
+    });
   });
 });

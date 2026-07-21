@@ -290,8 +290,8 @@ export function toBaseMessages(
   }
 }
 
-// Places the Anthropic user-message cache breakpoints, matching the legacy
-// router. Returns a new array; does not mutate its input.
+// Places provider user-message cache breakpoints at the same boundaries as the
+// legacy Anthropic router. Returns a new array; does not mutate its input.
 //   - Equipped-skills prefix: always. When the first message is the
 //     `name: "system"` user block (the stable per agent+workspace skills list),
 //     its last content block is cached for cross-conversation reuse. Mirrors the
