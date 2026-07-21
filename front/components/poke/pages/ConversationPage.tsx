@@ -1071,6 +1071,13 @@ export function ConversationPage() {
               onClick={() => setUseMarkdown(!useMarkdown)}
             />
             <Button
+              label="Self-improving skills test"
+              variant="primary"
+              size="xs"
+              onClick={() => void copyTestCase()}
+              disabled={isTestCaseLoading}
+            />
+            <Button
               label="Render Conversation"
               variant="primary"
               size="xs"
@@ -1082,13 +1089,6 @@ export function ConversationPage() {
                 void handleRenderConversation();
               }}
               disabled={isRendering}
-            />
-            <Button
-              label="Self-improving skills test"
-              variant="primary"
-              size="xs"
-              onClick={() => void copyTestCase()}
-              disabled={isTestCaseLoading}
             />
             {isRendering && <Spinner size="xs" />}
             {showRenderControls && (
