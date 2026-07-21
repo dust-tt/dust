@@ -6,6 +6,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
+import { populateGroupSpacesCacheIfMissing } from "@app/lib/resources/group_space_resource";
 import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -229,6 +230,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       includeDeleted,
       transaction: t,
     });
+
+    // Shadow-write phase: populate the cache so its behavior is observable in
+    // production before anything reads it.
+    if (!t) {
+      void populateGroupSpacesCacheIfMissing(auth.getNonNullableWorkspace().id);
+    }
 
     return spacesModels.map(this.fromModel);
   }

@@ -8,6 +8,7 @@ import type { CreationOptional, ForeignKey } from "sequelize";
 
 export class GroupSpaceModel extends WorkspaceAwareModel<GroupSpaceModel> {
   declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
   declare groupId: ForeignKey<GroupModel["id"]>;
   declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare kind: GroupSpaceKind;

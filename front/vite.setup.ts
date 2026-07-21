@@ -13,6 +13,7 @@ import { afterEach, beforeEach, vi } from "vitest";
 // runOnRedis uses a shared in-memory store so that set/get/del/ttl persist across calls
 // (needed for OTP challenge generate → validate flows). runOnRedisCache stays stateless.
 const redisStore = new Map<string, { value: string; expiresAtMs: number }>();
+const redisHashStore = new Map<string, Map<string, string>>();
 
 function createStatefulMockRedisClient() {
   return {
@@ -58,6 +59,24 @@ function createStatefulMockRedisClient() {
     unsubscribe: vi.fn().mockResolvedValue(undefined),
     ping: vi.fn().mockResolvedValue("PONG"),
     eval: vi.fn().mockResolvedValue(1),
+    incr: vi.fn(async (key: string) => {
+      const entry = redisStore.get(key);
+      const value = (entry ? Number(entry.value) || 0 : 0) + 1;
+      redisStore.set(key, { value: String(value), expiresAtMs: 0 });
+      return value;
+    }),
+    hSet: vi.fn(async (key: string, values: Record<string, string>) => {
+      const hash = redisHashStore.get(key) ?? new Map<string, string>();
+      for (const [field, value] of Object.entries(values)) {
+        hash.set(field, value);
+      }
+      redisHashStore.set(key, hash);
+      return Object.keys(values).length;
+    }),
+    hmGet: vi.fn(async (key: string, fields: string[]) => {
+      const hash = redisHashStore.get(key);
+      return fields.map((field) => hash?.get(field) ?? null);
+    }),
     exists: vi.fn(async (key: string) => {
       const entry = redisStore.get(key);
       if (!entry) {
@@ -76,6 +95,9 @@ const createMockRedisClient = () => ({
   get: vi.fn(),
   set: vi.fn(),
   del: vi.fn(),
+  incr: vi.fn().mockResolvedValue(1),
+  hSet: vi.fn(),
+  hmGet: vi.fn().mockResolvedValue([]),
   ttl: vi.fn(),
   zAdd: vi.fn(),
   expire: vi.fn(),

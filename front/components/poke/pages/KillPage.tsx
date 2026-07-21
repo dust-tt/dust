@@ -75,6 +75,12 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
     note: "Workspaces with the `legacy_billing` feature flag are always on legacy billing regardless of this switch.",
     icon: CreditCard01,
   },
+  global_disable_group_vaults_cache: {
+    title: "Group Spaces Cache",
+    description:
+      "Disable the group_vaults redis cache and fall back to the spaces/groups SQL join.",
+    icon: Zap,
+  },
 };
 
 const PANEL_HEADING_CLASSES =

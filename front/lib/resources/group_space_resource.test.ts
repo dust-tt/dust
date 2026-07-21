@@ -1,16 +1,23 @@
+import { getRedisCacheClient } from "@app/lib/api/redis";
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import {
+  groupSpacesCacheDataKey,
+  populateGroupSpacesCacheIfMissing,
+} from "@app/lib/resources/group_space_resource";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("GroupSpaceMemberResource", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
@@ -365,6 +372,112 @@ describe("GroupSpaceViewerResource", () => {
           space: projectSpace,
         })
       ).rejects.toThrow("Only the global group can be a viewer group");
+    });
+  });
+});
+
+describe("populateGroupSpacesCacheIfMissing", () => {
+  let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+
+  async function getRedisSpies() {
+    const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
+    return {
+      get: vi.mocked(redisCli.get),
+      incr: vi.mocked(redisCli.incr),
+      hSet: vi.mocked(redisCli.hSet),
+      hmGet: vi.mocked(redisCli.hmGet),
+    };
+  }
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    const adminUser = await UserFactory.basic();
+    await GroupFactory.defaults(workspace);
+    await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
+    const spies = await getRedisSpies();
+    spies.get.mockClear();
+    spies.incr.mockClear();
+    spies.hSet.mockClear();
+    spies.hmGet.mockClear();
+  });
+
+  it("bootstraps a version and writes the hash with a populated marker", async () => {
+    const space = await SpaceFactory.regular(workspace);
+
+    await populateGroupSpacesCacheIfMissing(workspace.id);
+
+    const spies = await getRedisSpies();
+    const setCall = spies.hSet.mock.calls.at(-1);
+    expect(setCall?.[0]).toBe(groupSpacesCacheDataKey(workspace.id, 1));
+    const written = setCall?.[1];
+    expect(written).toHaveProperty("_");
+    expect(written).toHaveProperty(String(space.id));
+  });
+
+  it("serializes one field per vault with group rows", async () => {
+    const space = await SpaceFactory.regular(workspace);
+    const group = await GroupResource.makeNew({
+      name: "Extra group",
+      workspaceId: workspace.id,
+      kind: "regular_manual",
+    });
+    await GroupSpaceFactory.associate(space, group);
+
+    await populateGroupSpacesCacheIfMissing(workspace.id);
+
+    const spies = await getRedisSpies();
+    const written = spies.hSet.mock.calls.at(-1)?.[1];
+    const field: unknown =
+      written && typeof written === "object"
+        ? Reflect.get(written, String(space.id))
+        : undefined;
+    expect(typeof field).toBe("string");
+    const rows: unknown = JSON.parse(String(field));
+    expect(Array.isArray(rows)).toBe(true);
+    expect((rows as unknown[]).length).toBe(2);
+  });
+
+  it("skips the write when the hash is already populated", async () => {
+    await SpaceFactory.regular(workspace);
+    const spies = await getRedisSpies();
+    spies.get.mockResolvedValueOnce("3");
+    spies.hmGet.mockResolvedValueOnce(["1"]);
+
+    await populateGroupSpacesCacheIfMissing(workspace.id);
+
+    expect(spies.hSet).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the killswitch is enabled", async () => {
+    await SpaceFactory.regular(workspace);
+    await KillSwitchResource.enableKillSwitch(
+      "global_disable_group_vaults_cache"
+    );
+
+    await populateGroupSpacesCacheIfMissing(workspace.id);
+
+    const spies = await getRedisSpies();
+    expect(spies.hSet).not.toHaveBeenCalled();
+    await KillSwitchResource.disableKillSwitch(
+      "global_disable_group_vaults_cache"
+    );
+  });
+
+  it("is triggered by space fetches", async () => {
+    const adminUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      workspace.sId
+    );
+    await SpaceFactory.defaults(auth);
+    const spies = await getRedisSpies();
+    spies.hSet.mockClear();
+
+    await SpaceResource.listWorkspaceSpaces(auth);
+
+    await vi.waitFor(async () => {
+      expect(spies.hSet).toHaveBeenCalled();
     });
   });
 });
