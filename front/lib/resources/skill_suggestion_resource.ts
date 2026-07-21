@@ -371,6 +371,25 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     );
   }
 
+  /**
+   * Returns whether any pending suggestions remain linked to the given
+   * notification conversation.
+   */
+  static async hasPendingForNotificationConversation(
+    auth: Authenticator,
+    notificationConversationModelId: ModelId
+  ): Promise<boolean> {
+    const count = await SkillSuggestionModel.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        notificationConversationModelId,
+        state: "pending",
+      },
+    });
+
+    return count > 0;
+  }
+
   static async bulkUpdateState(
     auth: Authenticator,
     suggestions: SkillSuggestionResource[],

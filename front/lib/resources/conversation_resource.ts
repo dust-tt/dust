@@ -2708,6 +2708,47 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(updated);
   }
 
+  /**
+   * Marks the conversation as read for every participant. Used for
+   * notification-style conversations once their purpose is fulfilled (e.g. all
+   * skill suggestions handled), so the remaining participants are not notified
+   * about an already-handled conversation.
+   */
+  static async markAsReadForAllParticipants(
+    auth: Authenticator,
+    {
+      conversation,
+      lastReadAt,
+    }: {
+      conversation: ConversationWithoutContentType | ConversationResource;
+      lastReadAt?: Date;
+    }
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const participants = await ConversationParticipantModel.findAll({
+      where: {
+        workspaceId,
+        conversationId: conversation.id,
+      },
+      attributes: ["userId"],
+    });
+
+    if (participants.length === 0) {
+      return;
+    }
+
+    await UserConversationReadsModel.bulkCreate(
+      participants.map((p) => ({
+        conversationId: conversation.id,
+        userId: p.userId,
+        workspaceId,
+        lastReadAt: lastReadAt ?? new Date(),
+      })),
+      { updateOnDuplicate: ["lastReadAt"] }
+    );
+  }
+
   static async markAsUnreadForAuthUser(
     auth: Authenticator,
     {

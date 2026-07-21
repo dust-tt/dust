@@ -607,6 +607,81 @@ describe("SkillSuggestionResource", () => {
     });
   });
 
+  describe("hasPendingForNotificationConversation", () => {
+    it("returns true while some linked suggestions are pending", async () => {
+      const s1 = await SkillSuggestionFactory.create(authenticator, skill);
+      const s2 = await SkillSuggestionFactory.create(authenticator, skill);
+
+      const conversation = await createConversation(authenticator, {
+        title: "Notification",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      await SkillSuggestionResource.bulkSetNotificationConversation(
+        authenticator,
+        [s1, s2],
+        conversation.id
+      );
+
+      await SkillSuggestionResource.bulkUpdateState(
+        authenticator,
+        [s1],
+        "approved"
+      );
+
+      expect(
+        await SkillSuggestionResource.hasPendingForNotificationConversation(
+          authenticator,
+          conversation.id
+        )
+      ).toBe(true);
+    });
+
+    it("returns false once all linked suggestions are handled", async () => {
+      const s1 = await SkillSuggestionFactory.create(authenticator, skill);
+      const s2 = await SkillSuggestionFactory.create(authenticator, skill);
+      // Pending suggestion not linked to the conversation: must not count.
+      await SkillSuggestionFactory.create(authenticator, skill);
+
+      const conversation = await createConversation(authenticator, {
+        title: "Notification",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      await SkillSuggestionResource.bulkSetNotificationConversation(
+        authenticator,
+        [s1, s2],
+        conversation.id
+      );
+      expect(
+        await SkillSuggestionResource.hasPendingForNotificationConversation(
+          authenticator,
+          conversation.id
+        )
+      ).toBe(true);
+
+      await SkillSuggestionResource.bulkUpdateState(
+        authenticator,
+        [s1],
+        "approved"
+      );
+      await SkillSuggestionResource.bulkUpdateState(
+        authenticator,
+        [s2],
+        "rejected"
+      );
+
+      expect(
+        await SkillSuggestionResource.hasPendingForNotificationConversation(
+          authenticator,
+          conversation.id
+        )
+      ).toBe(false);
+    });
+  });
+
   describe("sourceConversationIds", () => {
     it("should store and retrieve sourceConversationIds", async () => {
       const suggestion = await SkillSuggestionFactory.create(
