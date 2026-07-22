@@ -4,7 +4,7 @@ import {
   getWorkspaceInfos,
   unsafeGetWorkspacesByModelId,
 } from "@app/lib/api/workspace";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { tryParsePhoneNumber } from "@app/lib/plans/trial/phone";
 import {
   dataSourceToPokeItem,
@@ -257,7 +257,7 @@ export async function searchPokeResources(
 ): Promise<PokeItemBase[]> {
   const resourceInfo = getResourceNameAndIdFromSId(searchTerm);
   if (resourceInfo) {
-    return searchPokeResourcesBySId(auth, resourceInfo);
+    return searchPokeResourcesBySId(resourceInfo);
   }
 
   return (
@@ -273,27 +273,47 @@ export async function searchPokeResources(
 }
 
 async function searchPokeResourcesBySId(
-  auth: Authenticator,
   resourceInfo: Exclude<ReturnType<typeof getResourceNameAndIdFromSId>, null>
 ): Promise<PokeItemBase[]> {
-  const { resourceName, sId } = resourceInfo;
+  const { resourceName, sId, workspaceModelId } = resourceInfo;
 
   switch (resourceName) {
     case "data_source_view":
-      const dataSourceView = await DataSourceViewResource.fetchById(auth, sId);
-      if (!dataSourceView) {
+    case "data_source": {
+      // The poke authenticator is not scoped to any workspace while resource
+      // fetches are; re-scope to the workspace embedded in the sId.
+      const [workspace] = await WorkspaceResource.fetchByModelIds([
+        workspaceModelId,
+      ]);
+      if (!workspace) {
         return [];
       }
+      const workspaceAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
 
-      return [await dataSourceViewToPokeItem(dataSourceView)];
+      if (resourceName === "data_source_view") {
+        const dataSourceView = await DataSourceViewResource.fetchById(
+          workspaceAuth,
+          sId
+        );
+        if (!dataSourceView) {
+          return [];
+        }
 
-    case "data_source":
-      const dataSource = await DataSourceResource.fetchByNameOrId(auth, sId);
+        return [await dataSourceViewToPokeItem(dataSourceView)];
+      }
+
+      const dataSource = await DataSourceResource.fetchByNameOrId(
+        workspaceAuth,
+        sId
+      );
       if (!dataSource) {
         return [];
       }
 
       return [await dataSourceToPokeItem(dataSource)];
+    }
 
     default:
       return [];

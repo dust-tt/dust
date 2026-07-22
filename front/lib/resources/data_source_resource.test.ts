@@ -1,6 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -246,5 +248,127 @@ describe("DataSourceResource.hardDelete", () => {
     expect(deleteConnectorSpy).toHaveBeenCalledWith(mockConnectorId, true);
 
     deleteConnectorSpy.mockRestore();
+  });
+});
+
+describe("DataSourceResource cross-workspace fetch", () => {
+  it("unsafeFetchByDustAPIProjectId resolves the space and its groups across workspaces for super users", async () => {
+    // Workspace A owns the space and the data source.
+    const workspaceA = await WorkspaceFactory.basic();
+    const spaceA = await SpaceFactory.regular(workspaceA);
+    const dustAPIProjectId = "cross-ws-project-super-user";
+    await DataSourceViewFactory.folder(workspaceA, spaceA, null, {
+      dustAPIProjectId,
+    });
+
+    // The lookup is authenticated against workspace B as a super user (the
+    // only cross-workspace path canFetch allows): the space groupSpaces join
+    // must resolve the groups of the space's own workspace, not the
+    // authenticated one.
+    const workspaceB = await WorkspaceFactory.basic();
+    const superUser = await UserFactory.superUser();
+    await MembershipFactory.associate(workspaceB, superUser, {
+      role: "admin",
+    });
+    const authB = await Authenticator.fromUserIdAndWorkspaceId(
+      superUser.sId,
+      workspaceB.sId
+    );
+
+    const dataSource = await DataSourceResource.unsafeFetchByDustAPIProjectId(
+      authB,
+      dustAPIProjectId
+    );
+
+    expect(dataSource).not.toBeNull();
+    expect(dataSource?.space.id).toBe(spaceA.id);
+    expect(dataSource?.space.groups.length).toBeGreaterThan(0);
+  });
+
+  it("unsafeFetchByDustAPIProjectId filters out other-workspace resources for non super users", async () => {
+    const workspaceA = await WorkspaceFactory.basic();
+    const spaceA = await SpaceFactory.regular(workspaceA);
+    const dustAPIProjectId = "cross-ws-project-regular-user";
+    await DataSourceViewFactory.folder(workspaceA, spaceA, null, {
+      dustAPIProjectId,
+    });
+
+    const workspaceB = await WorkspaceFactory.basic();
+    const authB = await Authenticator.internalAdminForWorkspace(workspaceB.sId);
+
+    const dataSource = await DataSourceResource.unsafeFetchByDustAPIProjectId(
+      authB,
+      dustAPIProjectId
+    );
+
+    expect(dataSource).toBeNull();
+  });
+
+  it("resolves every space when one bypassed query spans multiple workspaces", async () => {
+    // Two data sources sharing the same dustAPIProjectId in two different
+    // workspaces: the bypassed blob query returns both in a single call, so
+    // the space fetch must resolve spaces (and their groups) across both
+    // workspaces — a miss throws "Unreachable: space not found.".
+    const dustAPIProjectId = "multi-ws-project-id";
+    const workspaceA = await WorkspaceFactory.basic();
+    const spaceA = await SpaceFactory.regular(workspaceA);
+    await DataSourceViewFactory.folder(workspaceA, spaceA, null, {
+      dustAPIProjectId,
+    });
+
+    const workspaceB = await WorkspaceFactory.basic();
+    const spaceB = await SpaceFactory.regular(workspaceB);
+    await DataSourceViewFactory.folder(workspaceB, spaceB, null, {
+      dustAPIProjectId,
+    });
+
+    const superUser = await UserFactory.superUser();
+    await MembershipFactory.associate(workspaceB, superUser, {
+      role: "admin",
+    });
+    const authB = await Authenticator.fromUserIdAndWorkspaceId(
+      superUser.sId,
+      workspaceB.sId
+    );
+
+    const dataSource = await DataSourceResource.unsafeFetchByDustAPIProjectId(
+      authB,
+      dustAPIProjectId
+    );
+
+    expect(dataSource).not.toBeNull();
+    expect(dataSource?.space.workspaceId).toBe(dataSource?.workspaceId);
+    expect(dataSource?.space.groups.length).toBeGreaterThan(0);
+    expect(
+      dataSource?.space.groups.every(
+        (group) => group.workspaceId === dataSource.workspaceId
+      )
+    ).toBe(true);
+  });
+
+  it("scopes fetchById to the authenticated workspace, even for super users", async () => {
+    const workspaceA = await WorkspaceFactory.basic();
+    const spaceA = await SpaceFactory.regular(workspaceA);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspaceA,
+      spaceA
+    );
+
+    const workspaceB = await WorkspaceFactory.basic();
+    const superUser = await UserFactory.superUser();
+    await MembershipFactory.associate(workspaceB, superUser, {
+      role: "admin",
+    });
+    const authB = await Authenticator.fromUserIdAndWorkspaceId(
+      superUser.sId,
+      workspaceB.sId
+    );
+
+    const dataSource = await DataSourceResource.fetchById(
+      authB,
+      dataSourceView.dataSource.sId
+    );
+
+    expect(dataSource).toBeNull();
   });
 });

@@ -293,6 +293,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       {
         as: "groupSpaces",
         model: GroupSpaceModel,
+        // A where on an include implies required: true;
+        // pass this required: false to keep the original behavior intact
+        required: false,
+        where: { workspaceId: auth.getNonNullableWorkspace().id },
       },
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ...(includes || []),

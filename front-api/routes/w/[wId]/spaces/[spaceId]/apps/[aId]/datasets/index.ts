@@ -24,8 +24,7 @@ import name from "./[name]";
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/datasets.
 //
 // Interacting with datasets requires write access to the app's space.
-// Read permission is not enough as it's available to all space users (or
-// everybody for public spaces).
+// Read permission is not enough as it's available to all space users.
 const app = workspaceApp();
 
 // Shared prelude for GET and POST: resolves the app from `:aId`, verifies it
