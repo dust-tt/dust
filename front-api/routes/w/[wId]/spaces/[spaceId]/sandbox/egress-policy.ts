@@ -1,4 +1,9 @@
 import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
+import {
   readOwnerPolicy,
   writeOwnerPolicy,
 } from "@app/lib/api/sandbox/egress_policy";
@@ -99,6 +104,28 @@ app.put(
         },
       });
     }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "sandbox_egress_policy.updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        {
+          type: "sandbox_egress_policy",
+          id: space.sId,
+          name: "Pod sandbox egress policy",
+        },
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        allowed_domain_count: String(result.value.allowedDomains.length),
+        allowed_domains: result.value.allowedDomains.join(","),
+        // Pod-scoped policies carry their pod space sId; the workspace
+        // policy omits the key entirely (same convention as
+        // sandbox_env_var.* events).
+        space_id: space.sId,
+      },
+    });
 
     return ctx.json({ policy: result.value });
   }
