@@ -1,3 +1,9 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
+import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { CapabilityState } from "@app/lib/resources/group_permission_resource";
@@ -172,9 +178,27 @@ export async function setWorkspaceGovernancePermission(
   const state = stateByKey.get(key);
   assert(state, `Missing capability state for ${key}.`);
 
+  const updatedConfiguration = toConfiguration(state);
+
+  void emitAuditLogEvent({
+    auth,
+    action: "workspace.governance_permission_updated",
+    targets: [buildAuditLogTarget("workspace", auth.getNonNullableWorkspace())],
+    context: getAuditLogContext(auth),
+    metadata: {
+      grant_type: grantType,
+      resource_type: resourceType,
+      scope: updatedConfiguration.scope,
+      group_ids:
+        updatedConfiguration.scope === "groups"
+          ? updatedConfiguration.groupIds.join(",")
+          : "",
+    },
+  });
+
   return new Ok({
     grantType,
     resourceType,
-    configuration: toConfiguration(state),
+    configuration: updatedConfiguration,
   });
 }
