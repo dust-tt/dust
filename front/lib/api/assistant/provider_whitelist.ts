@@ -1,7 +1,4 @@
-import {
-  AUTO_MODEL_ID,
-  isModelStreamId,
-} from "@app/types/assistant/models/auto";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 
 // Canonical way to check if a provider is whitelisted.
@@ -11,9 +8,5 @@ export function isProviderWhitelisted(
   whitelistedProviders: Set<ModelProviderIdType>,
   providerId: ModelProviderIdType
 ): boolean {
-  return (
-    providerId === AUTO_MODEL_ID ||
-    isModelStreamId(providerId) ||
-    whitelistedProviders.has(providerId)
-  );
+  return isModelStreamId(providerId) || whitelistedProviders.has(providerId);
 }

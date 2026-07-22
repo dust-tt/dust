@@ -166,6 +166,28 @@ describe("getModelForStream", () => {
     await FeatureFlagFactory.basic(adminAuth, "models_picker");
   });
 
+  async function userAuthForTierCap(tierName: "cost_efficient" | "balanced") {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    await ModelsTierResource.setUserMaxAllowedTier(adminAuth, {
+      userId: user.sId,
+      tierName,
+    });
+
+    return Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId);
+  }
+
+  it("routes the Auto stream to its first available candidate + effort", async () => {
+    const resolved = await getModelForStream(adminAuth, "auto");
+
+    expect(resolved).not.toBeNull();
+    // In a full workspace every candidate is available, so the first one wins.
+    expect(resolved?.model.modelId).toBe(
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+    );
+    expect(resolved?.reasoningEffort).toBe("medium");
+  });
+
   it("routes the Quick stream to its first available candidate + effort", async () => {
     const resolved = await getModelForStream(adminAuth, "auto_fast");
 
@@ -183,8 +205,23 @@ describe("getModelForStream", () => {
     expect(resolved?.reasoningEffort).toBe("high");
   });
 
+  it("keeps a cost-effective candidate in the Deep stream for cost_efficient-capped users", async () => {
+    const auth = await userAuthForTierCap("cost_efficient");
+
+    // Every premium/balanced candidate is unavailable under a cost_efficient
+    // cap, so the stream must still resolve to its cost-effective floor rather
+    // than returning null and dropping out of the Deep stream entirely.
+    const resolved = await getModelForStream(auth, "auto_complex");
+
+    expect(resolved).not.toBeNull();
+    expect(resolved?.model.modelId).toBe(
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+    );
+    expect(resolved?.reasoningEffort).toBe("light");
+  });
+
   it("only ever resolves to a candidate declared in the stream", async () => {
-    for (const streamId of ["auto_fast", "auto_complex"] as const) {
+    for (const streamId of ["auto", "auto_fast", "auto_complex"] as const) {
       const resolved = await getModelForStream(adminAuth, streamId);
       const candidate = MODEL_STREAMS[streamId].find(
         (c) =>
