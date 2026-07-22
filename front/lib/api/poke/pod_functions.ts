@@ -14,7 +14,7 @@ export async function listProjectPodFunctions(
     space
   );
 
-  // Resolve all the authors (the user who created each function's file) 
+  // Resolve all the authors (the user who created each function's file)
   const authorModelIds = removeNulls(
     sandboxFunctions.map((sandboxFunction) => sandboxFunction.file.userId)
   );
