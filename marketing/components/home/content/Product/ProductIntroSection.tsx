@@ -4,13 +4,12 @@ import {
   HomeReveal,
   HomeRevealStyles,
 } from "@marketing/components/home/content/Product/HomeReveal";
-import { HomeTrustedSection } from "@marketing/components/home/content/Product/HomeTrustedSection";
 import { Button, Rocket02 } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 export function ProductIntroSection() {
   return (
-    <div className="sm:pt-18 w-full pt-12 lg:pt-36">
+    <div className="sm:pt-18 w-full pb-12 pt-12 lg:pt-36">
       <HomeRevealStyles />
       <div className="flex flex-col gap-16">
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 text-center sm:gap-2 lg:px-6">
@@ -48,9 +47,6 @@ export function ProductIntroSection() {
               </Link>
             </div>
           </HomeReveal>
-        </div>
-        <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
-          <HomeTrustedSection />
         </div>
       </div>
     </div>

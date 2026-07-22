@@ -28,7 +28,7 @@ const features: FeatureItem[] = [
   },
   {
     id: "skill",
-    title: "Self-improving skill",
+    title: "Self-improving skills",
     description:
       "Skills that get smarter with every use. As your team runs agents, the system learns and improves, compounding your organization's intelligence over time without any manual effort.",
     panelGradient: "linear-gradient(125deg, #E9F7FF 0.54%, #9FDBFF 100%)",
