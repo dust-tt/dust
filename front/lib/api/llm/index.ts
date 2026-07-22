@@ -338,7 +338,7 @@ const PROVIDER_ID_TO_LAB: Record<ModelProviderIdType, Lab | null> = {
   google_ai_studio: "google",
   deepseek: "deepseek",
   fireworks: null,
-  xai: "z_ai",
+  xai: "xai",
   noop: "noop",
   auto: null,
 };

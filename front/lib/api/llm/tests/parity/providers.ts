@@ -6,6 +6,8 @@ import { GoogleLLM } from "@app/lib/api/llm/clients/google";
 import { isGoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import { OpenAIResponsesLLM } from "@app/lib/api/llm/clients/openai";
 import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import { XaiLLM } from "@app/lib/api/llm/clients/xai";
+import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
@@ -16,6 +18,7 @@ import {
   GOOGLE_AI_STUDIO_HOST,
   type Host,
   OPENAI_RESPONSES_HOST,
+  XAI_HOST,
 } from "@app/lib/model_constructors/types/hosts";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { isModelId } from "@app/types/assistant/models/models";
@@ -32,6 +35,7 @@ export const PARITY_CREDENTIALS: LLMCredentialsType = {
   GOOGLE_AI_STUDIO_API_KEY: "test-google-key",
   OPENAI_API_KEY: "test-openai-key",
   FIREWORKS_API_KEY: "test-fireworks-key",
+  XAI_API_KEY: "test-xai-key",
 };
 
 /** Per-call parameters shared by both routers for one parity case. */
@@ -261,11 +265,45 @@ const fireworksProvider: ParityProvider = {
   },
 };
 
+const xaiProvider: ParityProvider = {
+  toModelId(raw) {
+    if (!isModelId(raw) || !isXaiWhitelistedModelId(raw)) {
+      throw new Error(`${raw} is not a whitelisted xAI model.`);
+    }
+    return raw;
+  },
+  buildLegacyLLM(auth, _endpoint, params) {
+    if (
+      !isModelId(params.modelId) ||
+      !isXaiWhitelistedModelId(params.modelId)
+    ) {
+      throw new Error(`${params.modelId} is not a whitelisted xAI model.`);
+    }
+    return new XaiLLM(auth, {
+      credentials: PARITY_CREDENTIALS,
+      modelId: params.modelId,
+      temperature: params.temperature,
+      reasoningEffort: params.reasoningEffort,
+      responseFormat: params.responseFormat,
+      bypassFeatureFlag: true,
+    });
+  },
+  // xAI uses the OpenAI Responses SDK (`responses.create`), so calls land in the
+  // shared `openai` bucket: legacy stream drains first, new one last.
+  selectOldRequest(_endpoint, captures) {
+    return first(captures.openai);
+  },
+  selectNewRequest(_endpoint, captures) {
+    return last(captures.openai);
+  },
+};
+
 const PARITY_PROVIDERS: Partial<Record<Host, ParityProvider>> = {
   [ANTHROPIC_HOST]: anthropicProvider,
   [GOOGLE_AI_STUDIO_HOST]: googleProvider,
   [OPENAI_RESPONSES_HOST]: openaiProvider,
   [FIREWORKS_HOST]: fireworksProvider,
+  [XAI_HOST]: xaiProvider,
 };
 
 export function getParityProvider(host: Host): ParityProvider {
