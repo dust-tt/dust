@@ -272,7 +272,7 @@ export const suggestionsOfMentions = async (
     const allMembers = await concurrentExecutor(
       conversationGroups,
       (group) => group.getActiveMembers(auth),
-      { concurrency: 8 }
+      { concurrency: 4 }
     );
 
     allMembers.flat().forEach((m) => projectMemberIds.add(m.sId));
