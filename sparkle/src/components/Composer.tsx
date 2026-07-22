@@ -35,20 +35,24 @@ export function Composer({
         "relative flex w-full flex-col items-stretch overflow-hidden rounded-[40px] [corner-shape:squircle]",
         variant === "floating" && [
           "border border-white/90",
-          "transition-[background-color,box-shadow] duration-150 ease-emphasized",
+          "transition-[background-color,box-shadow] duration-150 ease-emphasized motion-reduce:transition-none",
           isFocused
             ? "shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.07),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]"
             : "shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.04),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]",
-          isFocused ? "bg-[#fdfdfc]" : "bg-[#fbfbfb]",
+          isFocused
+            ? "bg-[oklch(0.994_0.001_106.423)]"
+            : "bg-[oklch(0.988_0_89.876)]",
           "dark:border-transparent",
-          isFocused ? "dark:bg-[#322f2a]" : "dark:bg-[#2e2c28]",
+          isFocused
+            ? "dark:bg-[oklch(0.307_0.010_80.657)]"
+            : "dark:bg-[oklch(0.294_0.008_84.593)]",
           isFocused
             ? "dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.035),inset_0px_0px_0px_1px_rgba(255,255,255,0.055),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]"
             : "dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.02),inset_0px_0px_0px_1px_rgba(255,255,255,0.04),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]",
         ],
         variant === "flat" && [
           "border bg-background",
-          "transition-colors duration-100 ease-emphasized",
+          "transition-colors duration-100 ease-emphasized motion-reduce:transition-none",
           isFocused
             ? "border-border-dark dark:border-stone-750"
             : "border-border",

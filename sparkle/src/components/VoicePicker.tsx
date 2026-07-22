@@ -242,7 +242,7 @@ export function VoicePicker({
     <div className="flex items-center">
       <div
         className={cn(
-          "duration-600 flex items-center justify-end gap-2 overflow-hidden transition-all ease-in-out",
+          "duration-600 flex items-center justify-end gap-2 overflow-hidden transition-[padding] ease-in-out motion-reduce:transition-none",
           compact ? "px-1" : "px-2",
           isRecording ? "opacity-100" : "hidden"
         )}
@@ -299,8 +299,11 @@ function VoiceLevelDisplay({
       {heights.map((height, index) => (
         <div
           key={index}
-          className="min-h-1 w-0.5 rounded-full bg-muted-foreground transition-all duration-150 ease-out"
-          style={{ height: `${height}%` }}
+          // Scale (compositor-only) instead of animating `height` (layout)
+          // on every ~120ms level tick while recording.
+          className="h-full w-0.5 origin-bottom rounded-full bg-muted-foreground transition-transform duration-150 ease-out motion-reduce:transition-none"
+          // 20% floor matches the old min-h-1 (4px) against the h-5 (20px) parent.
+          style={{ transform: `scaleY(${Math.max(height, 20) / 100})` }}
         />
       ))}
     </div>

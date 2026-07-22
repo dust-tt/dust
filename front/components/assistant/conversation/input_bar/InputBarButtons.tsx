@@ -150,12 +150,12 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             aria-disabled={isInputDisabled}
             className={cn(
               "inline-flex box-border items-center rounded-full h-7 heading-xs px-2 gap-1.5 text-primary-900 transition-colors duration-200",
-              "border-[0.5px] border-border-dark bg-background dark:bg-[#3c3934]",
+              "border-[0.5px] border-border-dark bg-background dark:bg-[oklch(0.346_0.009_80.674)]",
               "shadow-[inset_2px_-2px_7px_0px_rgba(0,0,0,0.02),0px_0.5px_0.5px_0px_rgba(0,0,0,0.04)]",
               isWidthConstrained && "pl-1",
               isInputDisabled
                 ? "opacity-50 pointer-events-none"
-                : "cursor-pointer hover:bg-primary-100 dark:hover:bg-[#4a453e]"
+                : "cursor-pointer hover:bg-primary-100 dark:hover:bg-[oklch(0.393_0.013_76.451)]"
             )}
           >
             <Avatar size="3xs" visual={selectedAgent.pictureUrl} />
@@ -195,7 +195,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             disabled={isInputDisabled}
             isRounded
             className={cn(
-              "border-[0.5px] border-border-dark bg-background dark:bg-[#3c3934]",
+              "border-[0.5px] border-border-dark bg-background dark:bg-[oklch(0.346_0.009_80.674)]",
               "shadow-[inset_2px_-2px_7px_0px_rgba(0,0,0,0.02),0px_0.5px_0.5px_0px_rgba(0,0,0,0.04)]",
               "hover:bg-primary-100",
               disableAgentSelector && "bg-primary-150"

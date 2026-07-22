@@ -343,9 +343,9 @@ function ComposerDemo({
             className={cn(
               "box-border inline-flex h-7 items-center gap-1.5 rounded-full px-2",
               "heading-xs text-primary-900",
-              "border-[0.5px] border-border-dark bg-background dark:bg-[#3c3934]",
+              "border-[0.5px] border-border-dark bg-background dark:bg-[oklch(0.346_0.009_80.674)]",
               "shadow-[inset_2px_-2px_7px_0px_rgba(0,0,0,0.02),0px_0.5px_0.5px_0px_rgba(0,0,0,0.04)]",
-              "cursor-pointer transition-colors duration-200 hover:bg-primary-100 dark:hover:bg-[#4a453e]"
+              "cursor-pointer transition-colors duration-200 hover:bg-primary-100 dark:hover:bg-[oklch(0.393_0.013_76.451)]"
             )}
           >
             <Avatar
@@ -363,7 +363,7 @@ function ComposerDemo({
             label="Agent"
             isRounded
             className={cn(
-              "border-[0.5px] border-border-dark bg-background dark:bg-[#3c3934]",
+              "border-[0.5px] border-border-dark bg-background dark:bg-[oklch(0.346_0.009_80.674)]",
               "shadow-[inset_2px_-2px_7px_0px_rgba(0,0,0,0.02),0px_0.5px_0.5px_0px_rgba(0,0,0,0.04)]",
               "hover:bg-primary-100"
             )}
@@ -590,9 +590,9 @@ function ComposerDemo({
           isRounded
           tooltip="More"
           className={cn(
-            "border-[0.5px] border-border-dark bg-background dark:bg-[#3c3934]",
+            "border-[0.5px] border-border-dark bg-background dark:bg-[oklch(0.346_0.009_80.674)]",
             "shadow-[inset_2px_-2px_7px_0px_rgba(0,0,0,0.02),0px_0.5px_0.5px_0px_rgba(0,0,0,0.04)]",
-            "hover:bg-primary-100 dark:hover:bg-[#4a453e]"
+            "hover:bg-primary-100 dark:hover:bg-[oklch(0.393_0.013_76.451)]"
           )}
         />
       </DropdownMenuTrigger>
@@ -770,6 +770,7 @@ function ComposerDemo({
               <Button
                 variant="highlight"
                 size="xs"
+                aria-label="Send message"
                 icon={ArrowUp}
                 className="rounded-full"
                 isLoading={isSubmitting}

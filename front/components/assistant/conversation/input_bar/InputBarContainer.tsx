@@ -1463,7 +1463,7 @@ const InputBarContainer = ({
   const contentEditableClasses = classNames(
     "inline-block w-full",
     "border-0 outline-hidden ring-0 focus:border-0 focus:outline-hidden focus:ring-0",
-    "whitespace-pre-wrap font-normal",
+    "whitespace-pre-wrap font-normal text-base",
     "px-3 md:pl-4 pt-3 md:pt-3.5"
   );
 
@@ -1920,6 +1920,7 @@ const InputBarContainer = ({
                         >
                           <Button
                             size={buttonSize}
+                            aria-label="Send message"
                             isLoading={
                               isSubmitting &&
                               activeVoiceService.status !== "transcribing"

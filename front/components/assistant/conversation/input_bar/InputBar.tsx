@@ -487,17 +487,17 @@ export const InputBar = React.memo(function InputBar({
                 isFloating
                   ? "max-md:border-border max-md:has-[.tiptap:focus]:border-border-dark max-md:dark:has-[.tiptap:focus]:border-stone-750"
                   : "border-border has-[.tiptap:focus]:border-border-dark dark:has-[.tiptap:focus]:border-stone-750",
-                "transition-colors duration-100 ease-emphasized",
+                "transition-colors duration-100 ease-emphasized motion-reduce:transition-none",
                 isFloating &&
                   classNames(
                     "md:border-white/90",
-                    "md:transition-[background-color,box-shadow] md:duration-150 md:ease-emphasized",
+                    "md:transition-[background-color,box-shadow] md:duration-150 md:ease-emphasized md:motion-reduce:transition-none",
                     "md:shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.04),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]",
                     "md:has-[.tiptap:focus]:shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.07),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]",
-                    "md:bg-[#fbfbfb]",
-                    "md:has-[.tiptap:focus]:bg-[#fdfdfc]",
-                    "md:dark:border-transparent md:dark:bg-[#2e2c28]",
-                    "md:dark:has-[.tiptap:focus]:bg-[#322f2a]",
+                    "md:bg-[oklch(0.988_0_89.876)]",
+                    "md:has-[.tiptap:focus]:bg-[oklch(0.994_0.001_106.423)]",
+                    "md:dark:border-transparent md:dark:bg-[oklch(0.294_0.008_84.593)]",
+                    "md:dark:has-[.tiptap:focus]:bg-[oklch(0.307_0.010_80.657)]",
                     "md:dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.02),inset_0px_0px_0px_1px_rgba(255,255,255,0.04),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]",
                     "md:dark:has-[.tiptap:focus]:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.035),inset_0px_0px_0px_1px_rgba(255,255,255,0.055),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]"
                   )
