@@ -407,7 +407,7 @@ describe("POST /api/v1/w/[wId]/skills", () => {
   });
 
   it("adds provided editors to new and existing imported skills", async () => {
-    const { auth, workspace } = await createPublicApiMockRequest();
+    const { key, workspace } = await createPublicApiMockRequest();
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -419,6 +419,12 @@ describe("POST /api/v1/w/[wId]/skills", () => {
       grantType: "create",
       resourceType: "skill",
     });
+    // The permission set is resolved once at Authenticator construction, so build the request auth
+    // after the grant above for its snapshot to include the create/skill capability.
+    const { workspaceAuth: auth } = await Authenticator.fromKey(
+      key,
+      workspace.sId
+    );
     const firstEditor = await UserFactory.basic();
     const secondEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, firstEditor, {

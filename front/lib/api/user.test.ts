@@ -3,6 +3,7 @@ import {
   getUserForWorkspace,
 } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
+import { PermissionSet } from "@app/lib/resources/group_permission_registry";
 import {
   ADMIN_GROUP_NAME,
   BUILDER_GROUP_NAME,
@@ -38,6 +39,7 @@ describe("getUserForWorkspace", () => {
       user: user1,
       role: "none",
       groupModelIds: [],
+      permissions: PermissionSet.empty(),
       workspace: null,
       subscription: null,
       authMethod: "internal",
@@ -64,6 +66,7 @@ describe("getUserForWorkspace", () => {
       user: user1,
       role: "none",
       groupModelIds: [],
+      permissions: PermissionSet.empty(),
       subscription: null,
       authMethod: "internal",
     });
@@ -90,6 +93,7 @@ describe("getUserForWorkspace", () => {
       user: user1,
       role: "user",
       groupModelIds: [],
+      permissions: PermissionSet.empty(),
       subscription: null,
       authMethod: "internal",
     });
@@ -115,6 +119,7 @@ describe("getUserForWorkspace", () => {
       user: user1,
       role: "user",
       groupModelIds: [],
+      permissions: PermissionSet.empty(),
       subscription: null,
       authMethod: "internal",
     });
@@ -142,6 +147,7 @@ describe("getUserForWorkspace", () => {
       user: user1,
       role: "user",
       groupModelIds: [],
+      permissions: PermissionSet.empty(),
       subscription: null,
       authMethod: "internal",
     });
@@ -166,6 +172,7 @@ describe("getUserForWorkspace", () => {
       user: user1,
       role: "user",
       groupModelIds: [],
+      permissions: PermissionSet.empty(),
       subscription: null,
       authMethod: "internal",
     });
@@ -197,6 +204,7 @@ describe("getUserForWorkspace", () => {
       user: user1,
       role: "admin",
       groupModelIds: [],
+      permissions: PermissionSet.empty(),
       subscription: null,
       authMethod: "internal",
     });
@@ -209,6 +217,7 @@ describe("getUserForWorkspace", () => {
       user: user1,
       role: "user",
       groupModelIds: [],
+      permissions: PermissionSet.empty(),
       subscription: null,
       authMethod: "internal",
     });
@@ -235,6 +244,7 @@ describe("getUserForWorkspace", () => {
       user: user1,
       role: "user",
       groupModelIds: [],
+      permissions: PermissionSet.empty(),
       subscription: null,
       authMethod: "internal",
     });
@@ -263,6 +273,7 @@ describe("getUserForWorkspace", () => {
       user: user1,
       role: "user",
       groupModelIds: [],
+      permissions: PermissionSet.empty(),
       subscription: null,
       authMethod: "internal",
     });
@@ -290,6 +301,7 @@ describe("getUserForWorkspace", () => {
       user: superUser,
       role: "admin",
       groupModelIds: [],
+      permissions: PermissionSet.empty(),
       subscription: null,
     });
 
