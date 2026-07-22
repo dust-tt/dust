@@ -14,12 +14,10 @@ import { DustAnthropicClaudeSonnetFiveGlobalAnthropicStream } from "@app/lib/llm
 import { DustAnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_sonnet_four_dot_six_eu_agent_platform";
 import { DustAnthropicClaudeSonnetFourDotSixGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_sonnet_four_dot_six_global_anthropic";
 import { DustDeepSeekDeepSeekV4ProGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/deepseek_deepseek_v4_pro_global_fireworks";
-import { DustGoogleAiStudioGeminiThreeDotOneFlashLiteEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_gemini_3_1_flash_lite_eu_agent_platform";
 import { DustGoogleAiStudioGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_gemini_3_1_flash_lite_global_agent_platform";
 import { DustGoogleAiStudioGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_gemini_3_1_flash_lite_global_google_ai_studio";
 import { DustGoogleAiStudioGeminiThreeDotOneProGlobalAgentPlatformStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_gemini_3_1_pro_global_agent_platform";
 import { DustGoogleAiStudioGeminiThreeDotOneProGlobalGoogleAiStudioStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_gemini_3_1_pro_global_google_ai_studio";
-import { DustGoogleAiStudioGeminiThreeDotFiveFlashEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_gemini_3_5_flash_eu_agent_platform";
 import { DustGoogleAiStudioGeminiThreeDotFiveFlashGlobalAgentPlatformStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_gemini_3_5_flash_global_agent_platform";
 import { DustGoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_gemini_3_5_flash_global_google_ai_studio";
 import { DustMistralCodestralEuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_codestral_eu_mistral";
@@ -78,10 +76,6 @@ export const DUST_STREAM_ENDPOINTS = {
     DustAnthropicClaudeSonnetFiveEuropeAgentPlatformStream,
   [DustAnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream.id]:
     DustAnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream,
-  [DustGoogleAiStudioGeminiThreeDotFiveFlashEuropeAgentPlatformStream.id]:
-    DustGoogleAiStudioGeminiThreeDotFiveFlashEuropeAgentPlatformStream,
-  [DustGoogleAiStudioGeminiThreeDotOneFlashLiteEuropeAgentPlatformStream.id]:
-    DustGoogleAiStudioGeminiThreeDotOneFlashLiteEuropeAgentPlatformStream,
   [DustGoogleAiStudioGeminiThreeDotFiveFlashGlobalAgentPlatformStream.id]:
     DustGoogleAiStudioGeminiThreeDotFiveFlashGlobalAgentPlatformStream,
   [DustGoogleAiStudioGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream.id]:
