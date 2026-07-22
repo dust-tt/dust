@@ -105,7 +105,7 @@ export function Composer({
       {(leftActions != null || rightActions != null) && (
         <div className="flex items-center justify-between px-3 pb-3 pt-2">
           <div className="flex items-center gap-1.5">{leftActions}</div>
-          <div className="flex items-center gap-1.5">{rightActions}</div>
+          <div className="flex items-center gap-2.5">{rightActions}</div>
         </div>
       )}
     </div>

@@ -1736,7 +1736,7 @@ const InputBarContainer = ({
                 <div
                   className={cn(
                     "flex items-center",
-                    isWidthConstrained ? "gap-1" : "gap-1.5"
+                    isWidthConstrained ? "gap-1.5" : "gap-2.5"
                   )}
                 >
                   {clientType === "extension" && (
@@ -1852,7 +1852,7 @@ const InputBarContainer = ({
                   <div
                     className={cn(
                       "flex items-center",
-                      isWidthConstrained ? "gap-0.5" : "gap-1"
+                      isWidthConstrained ? "gap-1" : "gap-2"
                     )}
                   >
                     {clientType !== "extension" &&
