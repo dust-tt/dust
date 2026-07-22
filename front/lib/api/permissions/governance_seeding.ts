@@ -49,6 +49,8 @@ export const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
     capability: { grantType: "create", resourceType: "skill" },
     resolveTarget: async (_auth) => "builders",
   },
+  // it's safe to set them to "everyone" because there is another workspace level permission check
+  // if inviting/publishing is allowed or not. We only check permission table if the feature itself is enabled
   {
     capability: { grantType: "invite", resourceType: "frame" },
     resolveTarget: async (_auth) => "everyone",
