@@ -246,7 +246,7 @@ const SheetContainer = ({
       noScroll={noScroll}
       className={cn(
         "min-h-0 w-full flex-1 overflow-hidden",
-        "border-t border-border/60 transition-all duration-300"
+        "border-t border-border/60"
       )}
     >
       <div

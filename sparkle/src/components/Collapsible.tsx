@@ -6,7 +6,7 @@ import * as React from "react";
 import { Icon } from "./Icon";
 
 const labelVariants = cva(
-  "inline-flex transition-colors ease-out duration-400 box-border gap-x-2 select-none text-sm",
+  "inline-flex transition-colors ease-out duration-150 box-border gap-x-2 select-none text-sm",
   {
     variants: {
       variant: {
@@ -120,7 +120,7 @@ const CollapsibleTrigger = React.forwardRef<
 );
 CollapsibleTrigger.displayName = "CollapsibleTrigger";
 
-const contentVariants = cva("overflow-hidden transition-all", {
+const contentVariants = cva("overflow-hidden motion-reduce:animate-none", {
   variants: {
     variant: {
       default: "text-foreground",

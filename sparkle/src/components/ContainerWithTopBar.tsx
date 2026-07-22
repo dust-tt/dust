@@ -32,7 +32,7 @@ export function ContainerWithTopBar({
     <div
       className={cn(
         "flex w-full flex-col",
-        "rounded-xl border bg-muted-background transition-all duration-200",
+        "rounded-xl border bg-muted-background transition-[border-color,box-shadow] duration-150 ease-out",
         "border-border",
         "focus-within:border-border-focus",
         "focus-within:outline-hidden focus-within:ring-2",

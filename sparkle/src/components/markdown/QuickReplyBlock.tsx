@@ -43,7 +43,7 @@ export function QuickReplyContainer({
     <QuickReplyContainerContext.Provider value={quickReplyContextValue}>
       <div
         className={cn(
-          "overflow-hidden transition-all duration-200 ease-in-out",
+          "overflow-hidden transition-[max-height,opacity] duration-200 ease-out motion-reduce:transition-none",
           isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0",
           className
         )}
