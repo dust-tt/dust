@@ -563,8 +563,10 @@ describe("SkillResource", () => {
         { name: "Test Skill For Availability Sync" }
       );
 
-      expect(skillResource.isDefault).toBe(false);
       expect(skillResource.availability).toBe("workspace_users");
+      expect(skillResource.toJSON(testContext.authenticator).isDefault).toBe(
+        false
+      );
 
       await skillResource.updateSkill(testContext.authenticator, {
         name: skillResource.name,
@@ -582,8 +584,10 @@ describe("SkillResource", () => {
         testContext.authenticator,
         skillResource.sId
       );
-      expect(updatedSkill?.isDefault).toBe(true);
       expect(updatedSkill?.availability).toBe("users_and_agents");
+      expect(updatedSkill?.toJSON(testContext.authenticator).isDefault).toBe(
+        true
+      );
 
       await skillResource.updateSkill(testContext.authenticator, {
         name: skillResource.name,
@@ -601,8 +605,10 @@ describe("SkillResource", () => {
         testContext.authenticator,
         skillResource.sId
       );
-      expect(revertedSkill?.isDefault).toBe(false);
       expect(revertedSkill?.availability).toBe("workspace_users");
+      expect(revertedSkill?.toJSON(testContext.authenticator).isDefault).toBe(
+        false
+      );
     });
 
     it("should add skill space requirements to agents using the skill", async () => {
