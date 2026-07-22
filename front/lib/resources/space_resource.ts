@@ -12,6 +12,7 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -763,6 +764,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     if (hardDelete) {
       await SandboxOwnerModel.destroy({
+        where: {
+          spaceId: this.id,
+          workspaceId,
+        },
+        transaction,
+      });
+
+      // Pod-scoped env var rows only — workspace rows have spaceId NULL.
+      await WorkspaceSandboxEnvVarModel.destroy({
         where: {
           spaceId: this.id,
           workspaceId,
