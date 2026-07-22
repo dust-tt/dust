@@ -76,10 +76,11 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import { isAgentMessagePhase } from "@app/types/assistant/agent_message_content";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
-import type {
-  ModelIdType,
-  ModelProviderIdType,
-  ReasoningEffort,
+import {
+  getMinimumReasoningEffort,
+  type ModelIdType,
+  type ModelProviderIdType,
+  type ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -742,12 +743,22 @@ abstract class BaseTransition extends LLM {
       previousMessageId,
     } = streamParameters;
 
+    // Clamp the reasoning effort to the model's supported range. Some callers
+    // default to "none" when no effort is set, but models like GPT-5 reject the
+    // "none" effort their schema drops, so an unsupported effort falls back to
+    // the model's minimum supported one (mirrors the legacy Anthropic client).
+    const supportedEfforts = this.modelConfig.supportedReasoningEfforts;
+    const clampedReasoningEffort: ReasoningEffort | null =
+      this.reasoningEffort !== null && !supportedEfforts[this.reasoningEffort]
+        ? getMinimumReasoningEffort(supportedEfforts)
+        : this.reasoningEffort;
+
     const config: InputConfig = {
       tools: specifications as ToolSpecification[],
       temperature: this.temperature ?? undefined,
       reasoning: {
         effort: mapReasoningEffort(
-          this.reasoningEffort,
+          clampedReasoningEffort,
           this.modelConfig.useNativeLightReasoning ?? false
         ),
       },
