@@ -121,15 +121,15 @@ vi.mock("@app/logger/logger", () => {
 import {
   addEgressDomainTool,
   buildDescribeToolsetOutput,
-  getAvailableSandboxToolsMetadata,
+  createSandboxTools,
   runSandboxBashTool,
 } from "./index";
 
-describe("getAvailableSandboxToolsMetadata", () => {
+describe("createSandboxTools", () => {
   it("omits add_egress_domain by default", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
-    const tools = await getAvailableSandboxToolsMetadata(auth);
+    const tools = await createSandboxTools(auth);
 
     expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
   });
@@ -144,7 +144,7 @@ describe("getAvailableSandboxToolsMetadata", () => {
       workspace.sId
     );
 
-    const tools = await getAvailableSandboxToolsMetadata(auth);
+    const tools = await createSandboxTools(auth);
 
     expect(tools.map((tool) => tool.name)).toContain("add_egress_domain");
   });
@@ -160,7 +160,7 @@ describe("getAvailableSandboxToolsMetadata", () => {
     );
     await FeatureFlagFactory.basic(auth, "disable_computer_feature");
 
-    const tools = await getAvailableSandboxToolsMetadata(auth);
+    const tools = await createSandboxTools(auth);
 
     expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
   });
@@ -172,7 +172,7 @@ describe("getAvailableSandboxToolsMetadata", () => {
       workspace.sId
     );
 
-    const tools = await getAvailableSandboxToolsMetadata(auth);
+    const tools = await createSandboxTools(auth);
 
     expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
   });

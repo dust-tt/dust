@@ -2,10 +2,11 @@ import type { ToolContext } from "@app/lib/actions/types";
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-  INTERACTIVE_CONTENT_TOOLS_METADATA,
   PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { createInteractiveContentTools } from "@app/lib/api/actions/servers/interactive_content/tools";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 function toolContextWithUseFileSystem(
@@ -19,15 +20,15 @@ function toolContextWithUseFileSystem(
   } as unknown as ToolContext;
 }
 
-describe("interactive content tool availability", () => {
-  it("drops the file-id edit tool but keeps retrieve when the conversation has the file system", () => {
-    const names = INTERACTIVE_CONTENT_TOOLS_METADATA.filter(
-      (tool) =>
-        !("isAvailableForContext" in tool) ||
-        tool.isAvailableForContext({
-          toolContext: toolContextWithUseFileSystem(true),
-        })
-    ).map((tool) => tool.name);
+describe("createInteractiveContentTools", () => {
+  it("drops the file-id edit tool but keeps retrieve when the conversation has the file system", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const tools = await createInteractiveContentTools(
+      auth,
+      toolContextWithUseFileSystem(true)
+    );
+    const names = tools.map((tool) => tool.name);
 
     expect(names).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(names).toContain(RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
@@ -35,27 +36,26 @@ describe("interactive content tool availability", () => {
     expect(names).toContain(CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });
 
-  it("keeps the file-id edit and retrieve tools for legacy conversations", () => {
-    const names = INTERACTIVE_CONTENT_TOOLS_METADATA.filter(
-      (tool) =>
-        !("isAvailableForContext" in tool) ||
-        tool.isAvailableForContext({
-          toolContext: toolContextWithUseFileSystem(undefined),
-        })
-    ).map((tool) => tool.name);
+  it("keeps the file-id edit and retrieve tools for legacy conversations", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const tools = await createInteractiveContentTools(
+      auth,
+      toolContextWithUseFileSystem(undefined)
+    );
+    const names = tools.map((tool) => tool.name);
 
     expect(names).toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(names).toContain(RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });
 
-  it("drops the file-id edit tool when no conversation is available", () => {
-    const names = INTERACTIVE_CONTENT_TOOLS_METADATA.filter(
-      (tool) =>
-        !("isAvailableForContext" in tool) ||
-        tool.isAvailableForContext({ toolContext: undefined })
-    ).map((tool) => tool.name);
+  it("keeps the file-id edit and retrieve tools when no conversation is available", async () => {
+    const { authenticator: auth } = await createResourceTest({});
 
-    expect(names).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    const tools = await createInteractiveContentTools(auth, undefined);
+    const names = tools.map((tool) => tool.name);
+
+    expect(names).toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(names).toContain(RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });
 });

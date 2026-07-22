@@ -8,11 +8,7 @@ import { Common } from "googleapis";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { BinaryFileResourceBlock } from "./index";
-import {
-  buildBinaryFileResource,
-  GOOGLE_DRIVE_TOOL_HANDLERS,
-  handleFileAccessError,
-} from "./index";
+import { buildBinaryFileResource, handleFileAccessError, TOOLS } from "./index";
 
 vi.mock("@app/lib/api/actions/servers/google_drive/helpers", () => ({
   getDriveClient: vi.fn(),
@@ -398,8 +394,16 @@ describe("parent folder permission checks", () => {
     runContext: undefined,
   } as unknown as ToolHandlerExtra;
 
+  function getTool(name: string) {
+    const tool = TOOLS.find((t) => t.name === name);
+    if (!tool) {
+      throw new Error(`${name} tool not found`);
+    }
+    return tool;
+  }
+
   function expectPermissionError(
-    result: Awaited<ReturnType<typeof GOOGLE_DRIVE_TOOL_HANDLERS.copy_file>>
+    result: Awaited<ReturnType<ReturnType<typeof getTool>["handler"]>>
   ) {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -426,7 +430,7 @@ describe("parent folder permission checks", () => {
       files: { get: filesGet, copy: filesCopy },
     } as unknown as Awaited<ReturnType<typeof getDriveClient>>);
 
-    const result = await GOOGLE_DRIVE_TOOL_HANDLERS.copy_file(
+    const result = await getTool("copy_file").handler(
       {
         fileId: "src-file",
         parentId: "restricted-folder",
@@ -454,7 +458,7 @@ describe("parent folder permission checks", () => {
       files: { get: filesGet, copy: filesCopy },
     } as unknown as Awaited<ReturnType<typeof getDriveClient>>);
 
-    const result = await GOOGLE_DRIVE_TOOL_HANDLERS.copy_file(
+    const result = await getTool("copy_file").handler(
       { fileId: "src-file" },
       extra
     );
@@ -481,7 +485,7 @@ describe("parent folder permission checks", () => {
       files: { get: filesGet, create: filesCreate },
     } as unknown as Awaited<ReturnType<typeof getDriveClient>>);
 
-    const result = await GOOGLE_DRIVE_TOOL_HANDLERS.create_document(
+    const result = await getTool("create_document").handler(
       { title: "Doc", parentId: "restricted-folder" },
       extra
     );
@@ -501,7 +505,7 @@ describe("parent folder permission checks", () => {
       files: { get: filesGet, create: filesCreate },
     } as unknown as Awaited<ReturnType<typeof getDriveClient>>);
 
-    const result = await GOOGLE_DRIVE_TOOL_HANDLERS.create_document(
+    const result = await getTool("create_document").handler(
       { title: "Doc", parentId: "writable-folder" },
       extra
     );
@@ -526,7 +530,7 @@ describe("parent folder permission checks", () => {
       files: { get: filesGet, create: filesCreate },
     } as unknown as Awaited<ReturnType<typeof getDriveClient>>);
 
-    const result = await GOOGLE_DRIVE_TOOL_HANDLERS.create_document(
+    const result = await getTool("create_document").handler(
       { title: "Doc" },
       extra
     );
@@ -650,10 +654,11 @@ describe("get_file_content", () => {
   }
 
   async function callTool(fileId: string) {
-    return GOOGLE_DRIVE_TOOL_HANDLERS.get_file_content(
-      { fileId, offset: 0, limit: 32000 },
-      extra
-    );
+    const tool = TOOLS.find((t) => t.name === "get_file_content");
+    if (!tool) {
+      throw new Error("get_file_content tool not found");
+    }
+    return tool.handler({ fileId, offset: 0, limit: 32000 }, extra);
   }
 
   beforeEach(() => {

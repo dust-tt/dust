@@ -31,9 +31,18 @@ vi.mock("@app/lib/api/skills/existing_skill_checker", () => ({
 }));
 
 import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
-import { SKILL_AUTHORING_TOOL_HANDLERS } from "./index";
+import { TOOLS } from "./index";
 
 const mockGetSimilarSkills = vi.mocked(getSimilarSkills);
+
+function getTool(name: string) {
+  const tool = TOOLS.find((t) => t.name === name);
+  if (!tool) {
+    throw new Error(`Tool not found: ${name}`);
+  }
+
+  return tool;
+}
 
 // The tools under test never read runContext, so a partial extra cast to ToolHandlerExtra is
 // sufficient (mirroring the poke tools test).
@@ -76,9 +85,7 @@ describe("skill_authoring tools", () => {
       role: "builder",
     });
 
-    const createResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      CREATE_SKILL_TOOL_NAME
-    ](
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
         name: "Incident Summary",
         userFacingDescription: "Summarize incidents.",
@@ -112,9 +119,10 @@ describe("skill_authoring tools", () => {
       "Collect impact, timeline, root cause, and follow-ups."
     );
 
-    const listResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      LIST_SKILLS_TOOL_NAME
-    ]({}, makeExtra(authenticator));
+    const listResult = await getTool(LIST_SKILLS_TOOL_NAME).handler(
+      {},
+      makeExtra(authenticator)
+    );
     expect(listResult.isOk()).toBe(true);
     if (listResult.isErr()) {
       throw listResult.error;
@@ -132,7 +140,7 @@ describe("skill_authoring tools", () => {
       ],
     });
 
-    const getResult = await SKILL_AUTHORING_TOOL_HANDLERS[GET_SKILL_TOOL_NAME](
+    const getResult = await getTool(GET_SKILL_TOOL_NAME).handler(
       { sId: output.resource.skillId },
       makeExtra(authenticator)
     );
@@ -159,9 +167,10 @@ describe("skill_authoring tools", () => {
       workspace.sId
     );
 
-    const otherListResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      LIST_SKILLS_TOOL_NAME
-    ]({}, makeExtra(otherAuthenticator));
+    const otherListResult = await getTool(LIST_SKILLS_TOOL_NAME).handler(
+      {},
+      makeExtra(otherAuthenticator)
+    );
     expect(otherListResult.isOk()).toBe(true);
     if (otherListResult.isErr()) {
       throw otherListResult.error;
@@ -174,18 +183,17 @@ describe("skill_authoring tools", () => {
       skills: [],
     });
 
-    const otherGetResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      GET_SKILL_TOOL_NAME
-    ]({ sId: output.resource.skillId }, makeExtra(otherAuthenticator));
+    const otherGetResult = await getTool(GET_SKILL_TOOL_NAME).handler(
+      { sId: output.resource.skillId },
+      makeExtra(otherAuthenticator)
+    );
     expect(otherGetResult.isErr()).toBe(true);
     if (otherGetResult.isOk()) {
       throw new Error("Expected another builder not to read the skill.");
     }
     expect(otherGetResult.error.message).toBe("Skill not found.");
 
-    const otherUpdateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const otherUpdateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: output.resource.skillId,
         instructions: "Unauthorized update.",
@@ -200,9 +208,7 @@ describe("skill_authoring tools", () => {
       "You need to be added as an editor of this skill before you can make changes."
     );
 
-    const updateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: output.resource.skillId,
         instructions: "Collect impact, timeline, root cause, and owners.",
@@ -227,7 +233,7 @@ describe("skill_authoring tools", () => {
     const { workspace } = await createResourceTest({ role: "builder" });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const result = await SKILL_AUTHORING_TOOL_HANDLERS[CREATE_SKILL_TOOL_NAME](
+    const result = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
         name: "No User Skill",
         userFacingDescription: "No user.",
@@ -249,7 +255,7 @@ describe("skill_authoring tools", () => {
   it("returns an MCPError for non-builders", async () => {
     const { authenticator } = await createResourceTest({ role: "user" });
 
-    const result = await SKILL_AUTHORING_TOOL_HANDLERS[CREATE_SKILL_TOOL_NAME](
+    const result = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
         name: "User Skill",
         userFacingDescription: "User.",
@@ -270,9 +276,7 @@ describe("skill_authoring tools", () => {
   it("ignores an invalid icon on create and falls back to a valid one", async () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
 
-    const createResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      CREATE_SKILL_TOOL_NAME
-    ](
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
         name: "Bad Icon Skill",
         userFacingDescription: "Skill with a hallucinated icon name.",
@@ -304,9 +308,7 @@ describe("skill_authoring tools", () => {
   it("rejects an invalid icon on update", async () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
 
-    const createResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      CREATE_SKILL_TOOL_NAME
-    ](
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
         name: "Update Icon Skill",
         userFacingDescription: "Skill to update.",
@@ -325,9 +327,7 @@ describe("skill_authoring tools", () => {
       throw new Error("Expected structured skill authoring output.");
     }
 
-    const updateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: output.resource.skillId,
         icon: "TotallyNotARealIcon",
@@ -353,9 +353,7 @@ describe("skill_authoring tools", () => {
   it("applies a targeted instructions edit with old_string/new_string", async () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
 
-    const createResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      CREATE_SKILL_TOOL_NAME
-    ](
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
         name: "Targeted Edit Skill",
         userFacingDescription: "Skill to edit.",
@@ -374,9 +372,7 @@ describe("skill_authoring tools", () => {
       throw new Error("Expected structured skill authoring output.");
     }
 
-    const updateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: output.resource.skillId,
         old_string: "follow-ups",
@@ -399,9 +395,7 @@ describe("skill_authoring tools", () => {
   it("rejects an edit when old_string is not found", async () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
 
-    const createResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      CREATE_SKILL_TOOL_NAME
-    ](
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
         name: "Missing Match Skill",
         userFacingDescription: "Skill to edit.",
@@ -420,9 +414,7 @@ describe("skill_authoring tools", () => {
       throw new Error("Expected structured skill authoring output.");
     }
 
-    const updateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: output.resource.skillId,
         old_string: "not in the instructions",
@@ -448,9 +440,7 @@ describe("skill_authoring tools", () => {
   it("rejects an edit when the replacement count does not match", async () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
 
-    const createResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      CREATE_SKILL_TOOL_NAME
-    ](
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
         name: "Multiple Match Skill",
         userFacingDescription: "Skill to edit.",
@@ -469,9 +459,7 @@ describe("skill_authoring tools", () => {
       throw new Error("Expected structured skill authoring output.");
     }
 
-    const updateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: output.resource.skillId,
         old_string: "step",
@@ -487,9 +475,7 @@ describe("skill_authoring tools", () => {
     expect(updateResult.error.message).toContain("matched 3 times");
 
     // Passing the right expected_replacements lets the edit through.
-    const retryResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const retryResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: output.resource.skillId,
         old_string: "step",
@@ -517,9 +503,7 @@ describe("skill_authoring tools", () => {
     });
 
     // A full replace that omits the knowledge tag is rejected.
-    const droppingResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const droppingResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: skill.sId,
         instructions: "Summarize the runbook in three bullet points.",
@@ -538,9 +522,7 @@ describe("skill_authoring tools", () => {
     expect(untouched?.instructions).toBe(originalInstructions);
 
     // A full replace that keeps the tag is allowed.
-    const keepingResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const keepingResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: skill.sId,
         instructions:
@@ -560,9 +542,7 @@ describe("skill_authoring tools", () => {
       instructions: originalInstructions,
     });
 
-    const updateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: skill.sId,
         old_string: '<knowledge id="data_xyz" title="Runbook" />',
@@ -599,9 +579,7 @@ describe("skill_authoring tools", () => {
       expect.objectContaining({ sId: childSkill.sId }),
     ]);
 
-    const updateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: parentSkill.sId,
         old_string: skillReferenceTag,
@@ -638,9 +616,7 @@ describe("skill_authoring tools", () => {
       instructions: originalInstructions,
     });
 
-    const updateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: skill.sId,
         instructions: 'Use <knowledge id="n1" title="Runbook" /> for context.',
@@ -669,9 +645,7 @@ describe("skill_authoring tools", () => {
       instructions: originalInstructions,
     });
 
-    const updateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: skill.sId,
         instructions: reorderedInstructions,
@@ -693,9 +667,7 @@ describe("skill_authoring tools", () => {
       instructions: originalInstructions,
     });
 
-    const updateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: skill.sId,
         instructions: 'Use <tool id="tool_1" name="Search" /> for research.',
@@ -732,9 +704,7 @@ describe("skill_authoring tools", () => {
     ]);
 
     // A targeted edit that keeps the reference tag re-derives the references.
-    const updateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: parentSkill.sId,
         old_string: "when needed",
@@ -756,9 +726,7 @@ describe("skill_authoring tools", () => {
   it("rejects creating a skill that embeds a knowledge tag", async () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
 
-    const createResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      CREATE_SKILL_TOOL_NAME
-    ](
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
         name: "Phantom Knowledge Skill",
         userFacingDescription: "Skill that should not embed a knowledge tag.",
@@ -781,9 +749,7 @@ describe("skill_authoring tools", () => {
   it("rejects creating a skill that embeds a tool tag", async () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
 
-    const createResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      CREATE_SKILL_TOOL_NAME
-    ](
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
         name: "Phantom Tool Skill",
         userFacingDescription: "Skill that should not embed a tool tag.",
@@ -812,9 +778,7 @@ describe("skill_authoring tools", () => {
     const skillReferenceTag =
       SkillFactory.serializeSkillReferenceTag(childSkill);
 
-    const createResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      CREATE_SKILL_TOOL_NAME
-    ](
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
         name: "Phantom Reference Skill",
         userFacingDescription: "Skill that should not embed a reference.",
@@ -842,9 +806,7 @@ describe("skill_authoring tools", () => {
       instructions: originalInstructions,
     });
 
-    const updateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: skill.sId,
         instructions:
@@ -871,9 +833,7 @@ describe("skill_authoring tools", () => {
       instructions: originalInstructions,
     });
 
-    const updateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: skill.sId,
         old_string: "the search step",
@@ -895,9 +855,7 @@ describe("skill_authoring tools", () => {
   it("rejects combining a full instructions replace with a targeted edit", async () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
 
-    const createResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      CREATE_SKILL_TOOL_NAME
-    ](
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
         name: "Conflicting Modes Skill",
         userFacingDescription: "Skill to edit.",
@@ -916,9 +874,7 @@ describe("skill_authoring tools", () => {
       throw new Error("Expected structured skill authoring output.");
     }
 
-    const updateResult = await SKILL_AUTHORING_TOOL_HANDLERS[
-      UPDATE_SKILL_TOOL_NAME
-    ](
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
         sId: output.resource.skillId,
         instructions: "Brand new instructions.",

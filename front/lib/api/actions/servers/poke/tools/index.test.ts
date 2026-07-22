@@ -1,4 +1,3 @@
-import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { Authenticator } from "@app/lib/auth";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -6,14 +5,22 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { describe, expect, it, vi } from "vitest";
 
-import { POKE_TOOL_HANDLERS } from ".";
+import { TOOLS } from ".";
+
+function getToolByName(name: string) {
+  const tool = TOOLS.find((t) => t.name === name);
+  if (!tool) {
+    throw new Error(`Tool ${name} not found`);
+  }
+  return tool;
+}
 
 function createTestExtra(auth: Authenticator, runContext?: unknown) {
   return {
     signal: new AbortController().signal,
     auth,
     runContext,
-  } as ToolHandlerExtra;
+  } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
 }
 
 describe("poke tools - security gates", () => {
@@ -33,7 +40,8 @@ describe("poke tools - security gates", () => {
         workspace.sId
       );
 
-      const result = await POKE_TOOL_HANDLERS.get_workspace_metadata(
+      const tool = getToolByName("get_workspace_metadata");
+      const result = await tool.handler(
         { workspace_id: workspace.sId },
         createTestExtra(auth)
       );
@@ -64,7 +72,8 @@ describe("poke tools - security gates", () => {
       // Sanity: auth IS a super user but the workspace is NOT the Dust workspace.
       expect(auth.isDustSuperUser()).toBe(true);
 
-      const result = await POKE_TOOL_HANDLERS.get_workspace_metadata(
+      const tool = getToolByName("get_workspace_metadata");
+      const result = await tool.handler(
         { workspace_id: workspace.sId },
         createTestExtra(auth)
       );
@@ -99,7 +108,8 @@ describe("poke tools - security gates", () => {
       const authModule = await import("@app/lib/auth");
       vi.spyOn(authModule, "getFeatureFlags").mockResolvedValueOnce([]);
 
-      const result = await POKE_TOOL_HANDLERS.get_workspace_metadata(
+      const tool = getToolByName("get_workspace_metadata");
+      const result = await tool.handler(
         { workspace_id: workspace.sId },
         createTestExtra(auth)
       );
@@ -141,7 +151,8 @@ describe("poke tools - security gates", () => {
         "poke_mcp",
       ]);
 
-      const result = await POKE_TOOL_HANDLERS.get_workspace_metadata(
+      const tool = getToolByName("get_workspace_metadata");
+      const result = await tool.handler(
         { workspace_id: workspace.sId },
         createTestExtra(auth)
       );
@@ -188,7 +199,8 @@ describe("poke tools - security gates", () => {
         "poke_mcp",
       ]);
 
-      const result = await POKE_TOOL_HANDLERS.get_workspace_metadata(
+      const tool = getToolByName("get_workspace_metadata");
+      const result = await tool.handler(
         { workspace_id: "nonexistent-workspace-id" },
         createTestExtra(auth)
       );
