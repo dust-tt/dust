@@ -7,7 +7,9 @@ import * as React from "react";
 
 export const radioStyles = cva(
   cn(
-    "touch-hitbox h-5 w-5 aspect-square rounded-full border transition duration-100 ease-out motion-reduce:transition-none active:scale-95",
+    // `scale` is v4's standalone property (active:scale-95), so it is named
+    // explicitly — `transform` alone would not transition the press.
+    "touch-hitbox h-5 w-5 aspect-square rounded-full border transition-[color,background-color,border-color,scale] duration-100 ease-out motion-reduce:transition-none active:scale-95",
     "border-border-dark",
     "bg-background",
     "text-foreground",

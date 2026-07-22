@@ -18,7 +18,7 @@ const listItemVariants = cva("group flex w-full flex-row gap-3 p-3", {
     },
     interactive: {
       true: cn(
-        "cursor-pointer transition duration-200",
+        "cursor-pointer transition-colors duration-200",
         "hover:bg-muted-background",
         "active:bg-primary-100",
         "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0"
@@ -138,7 +138,7 @@ const listItemSectionVariants = cva("", {
     },
     interactive: {
       true: cn(
-        "cursor-pointer transition duration-200",
+        "cursor-pointer transition-colors duration-200",
         "active:bg-primary-100"
       ),
       false: "",

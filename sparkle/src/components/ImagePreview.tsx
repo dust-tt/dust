@@ -43,7 +43,7 @@ const overlayVariants = cva(
   cn(
     "absolute inset-0 z-10",
     "bg-primary-100/60",
-    "opacity-0 transition duration-200"
+    "opacity-0 transition-opacity duration-200"
   ),
   {
     variants: {
@@ -174,7 +174,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
                 src={imgSrc}
                 alt={alt}
                 className={cn(
-                  "h-full w-full object-cover transition duration-200",
+                  "h-full w-full object-cover transition-[filter] duration-200",
                   variant === "embedded"
                     ? "group-hover:blur-sm"
                     : "group-hover/image-preview:blur-sm"
