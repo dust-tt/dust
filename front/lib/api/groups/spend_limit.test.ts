@@ -252,7 +252,7 @@ describe("setGroupSpendLimit", () => {
     if (reloaded.isErr()) {
       throw reloaded.error;
     }
-    expect(reloaded.value.poolCapAwuCredits).toBe(10_000);
+    expect(await reloaded.value.getPoolCapAwuCredits()).toBe(10_000);
     expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
   });
 });

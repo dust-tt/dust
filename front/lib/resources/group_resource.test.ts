@@ -883,7 +883,7 @@ describe("GroupResource", () => {
         workspaceId: workspace.id,
         kind: "regular_auto",
       });
-      await cappedGroup.updatePoolCap(authenticator, 1234);
+      await cappedGroup.updatePoolCap(1234);
 
       const uncappedGroup = await GroupResource.makeNew({
         name: "Uncapped Group",
@@ -903,7 +903,7 @@ describe("GroupResource", () => {
         workspaceId: workspace.id,
         kind: "regular_auto",
       });
-      await cappedGroup.updatePoolCap(authenticator, 700);
+      await cappedGroup.updatePoolCap(700);
 
       const uncappedGroup = await GroupResource.makeNew({
         name: "Batch Uncapped Group",

@@ -138,7 +138,7 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
       if (reloaded.isErr()) {
         throw reloaded.error;
       }
-      expect(reloaded.value.poolCapAwuCredits).toBe(1500);
+      expect(await reloaded.value.getPoolCapAwuCredits()).toBe(1500);
     });
   });
 

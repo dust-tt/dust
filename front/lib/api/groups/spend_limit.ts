@@ -261,11 +261,11 @@ export async function setGroupSpendLimit(
   }
 
   const poolCapAwuCredits = limit.kind === "limited" ? limit.awuCredits : null;
-  const previousPoolCapAwuCredits = group.poolCapAwuCredits;
+  const previousPoolCapAwuCredits = await group.getPoolCapAwuCredits();
 
-  // Persist the admin's intent first: the group column is the source of truth,
-  // the Metronome alerts below are derived enforcement (a failed sync can be
-  // retried and re-derives from this value).
+  // Persist the admin's intent first: the group_pool_caps row is the source of
+  // truth, the Metronome alerts below are derived enforcement (a failed sync
+  // can be retried and re-derives from this value).
   const updateResult = await group.updatePoolCap(poolCapAwuCredits);
   if (updateResult.isErr()) {
     return new Err(

@@ -80,6 +80,7 @@ export function GroupsUsageTable({
   const { groups, isGroupsLoading } = useGroups({
     owner,
     kinds: [...CAP_ELIGIBLE_GROUP_KINDS],
+    withPoolCaps: true,
   });
   const { doUpdateGroupSpendLimit } = useUpdateGroupSpendLimit({
     workspaceId: owner.sId,

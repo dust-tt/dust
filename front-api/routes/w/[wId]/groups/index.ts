@@ -32,6 +32,12 @@ const GetGroupsQuerySchema = z.object({
   // When "true", each group also carries its member sIds (one extra batched
   // query) instead of just memberCount.
   withMembers: z.enum(["true", "false"]).optional(),
+  // When "true", each group also carries its pool cap (one extra batched
+  // query). Accepted but not yet honored: the cap is still returned
+  // unconditionally so front-end bundles that predate the flag keep working.
+  // A follow-up makes the cap conditional on this flag, once the bundles
+  // sending it are deployed everywhere.
+  withPoolCaps: z.enum(["true", "false"]).optional(),
 });
 
 // Mounted at /api/w/:wId/groups.
