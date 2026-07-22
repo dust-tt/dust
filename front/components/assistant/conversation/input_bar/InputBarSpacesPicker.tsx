@@ -8,10 +8,28 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   Icon,
+  LoadingBlock,
   Planet,
-  Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
+
+// Matches the row height/shape of a real DropdownMenuCheckboxItem so there's
+// no layout jump when the skeleton is replaced by actual Spaces (see the
+// same pattern in CapabilitiesPicker's loading rows).
+function SpacesPickerLoading({ count = 3 }: { count?: number }) {
+  return (
+    <div className="py-1">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={`spaces-picker-loading-${i}`} className="px-1 py-1">
+          <div className="flex items-center gap-2 rounded-md p-2">
+            <LoadingBlock className="h-4 w-4 rounded-sm" />
+            <LoadingBlock className="h-4 w-[60%]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface InputBarSpacesPickerProps {
   owner: LightWorkspaceType;
@@ -72,9 +90,7 @@ export function InputBarSpacesPicker({
         <DropdownMenuLabel>Spaces</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {isSpacesLoading ? (
-          <div className="flex items-center justify-center p-4">
-            <Spinner size="xs" />
-          </div>
+          <SpacesPickerLoading />
         ) : spaces.length === 0 ? (
           <div className="px-2 py-3 text-sm text-muted-foreground">
             No Spaces available
