@@ -101,7 +101,7 @@ export function ImportFromRepositoryTab({
               title="GitHub connection can't access this repository"
             >
               The currently connected GitHub account can't access this
-              repository.&nsbp;
+              repository.&nbsp;
               {isAdmin(owner)
                 ? "Check the URL or reconnect with an account that has access."
                 : "Check the URL or ask an admin to reconnect with an account that has access."}
