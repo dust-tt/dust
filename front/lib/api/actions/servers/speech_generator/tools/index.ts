@@ -49,7 +49,8 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Error transcribing audio with ElevenLabs: ${cause.message}`,
-          { cause }
+          // ElevenLabs is a Dust-managed provider: unexpected failures are ours to know about.
+          { tracked: true, cause }
         )
       );
     }
@@ -99,9 +100,8 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Error generating speech audio with ElevenLabs: ${cause.message}`,
-          {
-            cause,
-          }
+          // ElevenLabs is a Dust-managed provider: unexpected failures are ours to know about.
+          { tracked: true, cause }
         )
       );
     }
@@ -151,9 +151,8 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Error generating dialogue audio with ElevenLabs: ${cause.message}`,
-          {
-            cause,
-          }
+          // ElevenLabs is a Dust-managed provider: unexpected failures are ours to know about.
+          { tracked: true, cause }
         )
       );
     }
