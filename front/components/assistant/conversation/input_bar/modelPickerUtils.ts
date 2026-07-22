@@ -55,16 +55,16 @@ export interface ModelTier {
 
 // The tiers are the primary picks. Order matters: it is the order shown in the
 // picker. "Standard" behaves like the "Auto" option (Dust selects any model) and
-// is the fallback when nothing else is resolved; "Quick" and "Deep" route among
+// is the fallback when nothing else is resolved; "Fast" and "Complex" route among
 // their own curated streams.
 export const MODEL_TIERS: ModelTier[] = [
   {
     id: "quick",
-    name: "Quick",
+    name: "Fast",
     subtitle: "Simple tasks",
     tooltip: QUICK_TOOLTIP,
     icon: Star04,
-    selection: { kind: "stream", streamId: "auto_quick" },
+    selection: { kind: "stream", streamId: "auto_fast" },
   },
   {
     id: "standard",
@@ -76,11 +76,11 @@ export const MODEL_TIERS: ModelTier[] = [
   },
   {
     id: "deep",
-    name: "Deep",
+    name: "Complex",
     subtitle: "Heavy tasks",
     tooltip: DEEP_TOOLTIP,
     icon: Star03,
-    selection: { kind: "stream", streamId: "auto_deep" },
+    selection: { kind: "stream", streamId: "auto_complex" },
   },
 ];
 

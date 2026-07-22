@@ -20,8 +20,8 @@ export const MODEL_PROVIDER_IDS = [
   "xai",
   "noop",
   "auto",
-  "auto_quick",
-  "auto_deep",
+  "auto_fast",
+  "auto_complex",
 ] as const;
 
 export const BYOK_MODEL_PROVIDER_IDS = [
@@ -51,8 +51,8 @@ export function getProviderDisplayName(
     case "noop":
       return "noop";
     case "auto":
-    case "auto_quick":
-    case "auto_deep":
+    case "auto_fast":
+    case "auto_complex":
       return "Dust";
     default:
       return providerId;
