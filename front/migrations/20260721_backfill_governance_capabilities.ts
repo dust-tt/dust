@@ -32,6 +32,8 @@ function newCounts(): SeederCounts {
   };
 }
 
+const WORKSPACE_CONCURRENCY = 4;
+
 /**
  * Backfill governance capabilities (`group_permissions`) for every seeder registered in
  * `CAPABILITY_SEEDERS` (`@app/lib/api/permissions/governance_seeding`), from each existing
@@ -172,7 +174,7 @@ makeScript(
           }
         }
       },
-      { wId }
+      { wId, concurrency: WORKSPACE_CONCURRENCY }
     );
 
     logger.info(
