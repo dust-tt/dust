@@ -19,6 +19,7 @@ import type {
   BaseUserImageMessage,
   BaseUserMessage,
   BaseUserTextMessage,
+  CacheOption,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -26,17 +27,25 @@ import type {
   FunctionTool,
   ResponseFormatTextJSONSchemaConfig,
   ResponseInputItem,
+  ResponseInputText,
   Tool,
   ToolChoiceFunction,
 } from "openai/resources/responses/responses";
 import type { Reasoning as OpenAIReasoning } from "openai/resources/shared";
+
+type PromptCacheBreakpoint =
+  | {
+      prompt_cache_breakpoint: NonNullable<
+        ResponseInputText["prompt_cache_breakpoint"]
+      >;
+    }
+  | Record<string, never>;
 
 // The per-message leaf converters. Composites below take an object satisfying
 // this interface (`this`), so overriding one leaf on an endpoint changes how
 // every composite uses it.
 export interface MessageItemConverters {
   systemMessageToInputItem(message: SystemTextMessage): ResponseInputItem;
-  userTextMessageToInputItem(message: BaseUserTextMessage): ResponseInputItem;
   userImageMessageToInputItem(message: BaseUserImageMessage): ResponseInputItem;
   toolCallResultMessageToInputItem(
     message: BaseToolCallResultMessage
@@ -53,6 +62,31 @@ export interface MessageItemConverters {
   assistantProviderPassthroughMessageToInputItems(
     message: BaseAssistantProviderPassthroughMessage
   ): ResponseInputItem[];
+  promptCacheBreakpointFor(
+    cache: CacheOption | undefined
+  ): PromptCacheBreakpoint;
+}
+
+// -- Small, reusable building blocks --
+
+// Spreadable fragment adding an explicit breakpoint only when the message opts
+// in and the model supports it. OpenAI applies one request-wide TTL, so both
+// cache durations map to the same wire representation.
+export function promptCacheBreakpointFor(
+  cache: CacheOption | undefined
+): PromptCacheBreakpoint {
+  switch (cache) {
+    case "short":
+    case "long":
+      // Link to the doc: https://developers.openai.com/api/docs/guides/prompt-caching
+      // We can create up to 4 new cache writes (i.e. 4 cache breakpoints).
+      // We can't control the TTL, it's set to 30min (they may change this in the future).
+      return { prompt_cache_breakpoint: { mode: "explicit" } };
+    case undefined:
+      return {};
+    default:
+      return assertNever(cache);
+  }
 }
 
 // -- Leaf converters: one Responses input item per message --
@@ -68,11 +102,18 @@ export function systemMessageToInputItem(
 }
 
 export function userTextMessageToInputItem(
-  message: BaseUserTextMessage
+  message: BaseUserTextMessage,
+  converters: MessageItemConverters
 ): ResponseInputItem {
   return {
     role: "user",
-    content: [{ type: "input_text", text: message.content.value }],
+    content: [
+      {
+        type: "input_text",
+        text: message.content.value,
+        ...converters.promptCacheBreakpointFor(message.cache),
+      },
+    ],
   };
 }
 
@@ -175,7 +216,7 @@ export function userMessageToInputItems(
 ): ResponseInputItem[] {
   switch (message.type) {
     case "text":
-      return [converters.userTextMessageToInputItem(message)];
+      return [userTextMessageToInputItem(message, converters)];
     case "image_url":
       return [converters.userImageMessageToInputItem(message)];
     case "tool_call_result":

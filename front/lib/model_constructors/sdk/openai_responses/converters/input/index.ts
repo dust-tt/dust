@@ -8,13 +8,13 @@ import {
   forceToolToToolChoice,
   type MessageItemConverters,
   outputFormatToResponseFormat,
+  promptCacheBreakpointFor,
   reasoningToOpenAIResponsesReasoning,
   systemMessagesToInputItems,
   systemMessageToInputItem,
   toolCallResultMessageToInputItem,
   toolSpecsToOpenAITools,
   userImageMessageToInputItem,
-  userTextMessageToInputItem,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import { toToolChoiceInput } from "@app/lib/model_constructors/types/input/configuration";
@@ -39,8 +39,8 @@ export function WithOpenAIResponsesInputConverter<
     extends Base
     implements MessageItemConverters
   {
+    promptCacheBreakpointFor = promptCacheBreakpointFor;
     systemMessageToInputItem = systemMessageToInputItem;
-    userTextMessageToInputItem = userTextMessageToInputItem;
     userImageMessageToInputItem = userImageMessageToInputItem;
     toolCallResultMessageToInputItem = toolCallResultMessageToInputItem;
     assistantTextMessageToInputItem = assistantTextMessageToInputItem;

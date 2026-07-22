@@ -65,6 +65,17 @@ export const OPENAI_WHITELISTED_MODEL_IDS = [
 export type OpenAIWhitelistedModelId =
   (typeof OPENAI_WHITELISTED_MODEL_IDS)[number];
 
+// Models older than 5.6 do not support explicit cache breakpoints.
+// https://developers.openai.com/api/docs/guides/prompt-caching#prompt-cache-breakpoints
+const OPENAI_EXPLICIT_PROMPT_CACHING_MODELS: readonly OpenAIWhitelistedModelId[] =
+  [GPT_5_6_SOL_MODEL_ID, GPT_5_6_TERRA_MODEL_ID, GPT_5_6_LUNA_MODEL_ID];
+
+export function supportsOpenAIExplicitPromptCaching(
+  model: OpenAIWhitelistedModelId
+): boolean {
+  return OPENAI_EXPLICIT_PROMPT_CACHING_MODELS.includes(model);
+}
+
 const NON_THINKING_OVERWRITES: LLMParameterOverwrites = {
   reasoningEffort: null,
 };

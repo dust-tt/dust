@@ -2,6 +2,7 @@ import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/t
 import {
   OPENAI_PROVIDER_ID,
   overwriteLLMParameters,
+  supportsOpenAIExplicitPromptCaching,
 } from "@app/lib/api/llm/clients/openai/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import type {
@@ -111,7 +112,11 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
 
     return {
       model: this.modelId,
-      input: toInput(promptText, conversation),
+      input: toInput(promptText, conversation, "developer", {
+        cacheBreakpointOnLeadingMessage: supportsOpenAIExplicitPromptCaching(
+          this.modelId
+        ),
+      }),
       temperature: this.temperature ?? undefined,
       reasoning,
       tools: toToolsParam(specifications, {

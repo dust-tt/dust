@@ -5,11 +5,14 @@ import {
   assistantToolCallRequestToInputItem,
   toolSpecsToOpenAITools,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
+import { OpenAIGptFiveDotFourGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_four_global_openai_responses";
+import { OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_sol_global_openai_responses";
 import type {
   BaseAssistantProviderPassthroughMessage,
   BaseAssistantReasoningMessage,
   BaseAssistantTextMessage,
   BaseAssistantToolCallRequestMessage,
+  BaseUserTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import { describe, expect, it } from "vitest";
 
@@ -38,6 +41,87 @@ describe("assistantTextMessageToInputItem", () => {
       role: "assistant",
       content: "no phase here",
     });
+  });
+});
+
+describe("prompt cache breakpoints", () => {
+  const message: BaseUserTextMessage = {
+    role: "user",
+    type: "text",
+    content: { value: "Available skills" },
+    cache: "short",
+  };
+  const supportedEndpoint =
+    new OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream({
+      OPENAI_API_KEY: "",
+    });
+  const unsupportedEndpoint =
+    new OpenAIGptFiveDotFourGlobalOpenAIResponsesStream({
+      OPENAI_API_KEY: "",
+    });
+  const conversationWith = (userMessage: BaseUserTextMessage) => ({
+    system: [],
+    messages: [userMessage],
+  });
+
+  it("serializes a cache marker with the default endpoint converter", () => {
+    expect(
+      supportedEndpoint.conversationToInput(conversationWith(message))
+    ).toEqual([
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: "Available skills",
+            prompt_cache_breakpoint: { mode: "explicit" },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("maps long cache opt-in to the request-wide breakpoint", () => {
+    expect(
+      supportedEndpoint.conversationToInput(
+        conversationWith({ ...message, cache: "long" })
+      )
+    ).toEqual([
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: "Available skills",
+            prompt_cache_breakpoint: { mode: "explicit" },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("uses the endpoint override for models without explicit caching", () => {
+    expect(
+      unsupportedEndpoint.conversationToInput(conversationWith(message))
+    ).toEqual([
+      {
+        role: "user",
+        content: [{ type: "input_text", text: "Available skills" }],
+      },
+    ]);
+  });
+
+  it("does not serialize a cache marker when the message has not opted in", () => {
+    expect(
+      supportedEndpoint.conversationToInput(
+        conversationWith({ ...message, cache: undefined })
+      )
+    ).toEqual([
+      {
+        role: "user",
+        content: [{ type: "input_text", text: "Available skills" }],
+      },
+    ]);
   });
 });
 
