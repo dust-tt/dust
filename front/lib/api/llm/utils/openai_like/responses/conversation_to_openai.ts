@@ -4,10 +4,8 @@ import {
   isOpenAIResponsesWhitelistedModelId,
   OPENAI_MODEL_CONFIGS,
 } from "@app/lib/api/llm/clients/openai/types";
-import {
-  OPENAI_TOOL_SEARCH_TOOL,
-  parseOpenAIToolSearchItem,
-} from "@app/lib/api/llm/clients/openai/utils/tool_search_passthrough";
+import { OPENAI_TOOL_SEARCH_TOOL } from "@app/lib/api/llm/clients/openai/utils/tool_search";
+import { parseOpenAIToolSearchItem } from "@app/lib/api/llm/clients/openai/utils/tool_search_passthrough";
 import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type {
   ExclusiveToolChoiceParameters,

@@ -1,7 +1,5 @@
-import {
-  OPENAI_TOOL_SEARCH_TOOL,
-  parseOpenAIToolSearchItem,
-} from "@app/lib/api/llm/clients/openai/utils/tool_search_passthrough";
+import { OPENAI_TOOL_SEARCH_TOOL } from "@app/lib/api/llm/clients/openai/utils/tool_search";
+import { parseOpenAIToolSearchItem } from "@app/lib/api/llm/clients/openai/utils/tool_search_passthrough";
 import type {
   OutputFormat,
   Reasoning,

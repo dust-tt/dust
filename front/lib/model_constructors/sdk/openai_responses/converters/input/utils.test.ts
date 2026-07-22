@@ -1,3 +1,4 @@
+import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/api/llm/utils/tool_search";
 import {
   assistantProviderPassthroughMessageToInputItems,
   assistantReasoningMessageToInputItems,
@@ -226,6 +227,40 @@ describe("prompt cache breakpoints", () => {
         content: [{ type: "input_text", text: "Current request" }],
       },
     ]);
+  });
+
+  it("preserves cache breakpoints when adding tool search guidance", () => {
+    const payload = supportedEndpoint.buildRequestPayload(
+      {
+        conversation: {
+          system,
+          messages: [],
+        },
+      },
+      {
+        toolSearchEnabled: true,
+        tools: [
+          {
+            name: "search_docs",
+            description: "Search documentation",
+            inputSchema: { properties: {} },
+          },
+        ],
+      }
+    );
+
+    expect(payload.input).toBeDefined();
+    if (!payload.input) {
+      return;
+    }
+    expect(payload.input.slice(0, system.length)).toEqual(
+      supportedEndpoint.systemMessagesToInputItems(system)
+    );
+    expect(payload.input[system.length]).toEqual({
+      role: "developer",
+      content: [{ type: "input_text", text: TOOL_SEARCH_INSTRUCTION }],
+    });
+    expect(payload.tools?.[0]).toEqual({ type: "tool_search" });
   });
 
   it("does not serialize breakpoints on following messages without cache opt-in", () => {

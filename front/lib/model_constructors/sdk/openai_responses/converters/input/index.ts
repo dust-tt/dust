@@ -1,3 +1,5 @@
+import { includesOpenAIToolSearchTool } from "@app/lib/api/llm/clients/openai/utils/tool_search";
+import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/api/llm/utils/tool_search";
 import type { Client } from "@app/lib/model_constructors/client";
 import {
   assistantProviderPassthroughMessageToInputItems,
@@ -76,6 +78,10 @@ export function WithOpenAIResponsesInputConverter<
       } = config;
 
       const reasoningConfig = reasoningToOpenAIResponsesReasoning(reasoning);
+      const openAITools = toolSpecsToOpenAITools(tools, {
+        forceTool,
+        toolSearchEnabled: toolSearchEnabled ?? false,
+      });
 
       return {
         model: this.constructor.model,
@@ -83,6 +89,15 @@ export function WithOpenAIResponsesInputConverter<
         ...(cacheKey ? { prompt_cache_key: cacheKey } : {}),
         input: [
           ...this.systemMessagesToInputItems(conversation.system),
+          ...(includesOpenAIToolSearchTool(openAITools)
+            ? this.systemMessagesToInputItems([
+                {
+                  role: "system",
+                  type: "text",
+                  content: { value: TOOL_SEARCH_INSTRUCTION },
+                },
+              ])
+            : []),
           ...this.conversationToInput(conversation),
         ],
         ...(reasoningConfig
@@ -91,10 +106,7 @@ export function WithOpenAIResponsesInputConverter<
               include: ["reasoning.encrypted_content"],
             }
           : {}),
-        tools: toolSpecsToOpenAITools(tools, {
-          forceTool,
-          toolSearchEnabled: toolSearchEnabled ?? false,
-        }),
+        tools: openAITools,
         tool_choice: forceToolToToolChoice(tools, toToolChoiceInput(config)),
         ...(outputFormat
           ? { text: { format: outputFormatToResponseFormat(outputFormat) } }

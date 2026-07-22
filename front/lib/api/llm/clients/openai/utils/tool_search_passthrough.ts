@@ -6,8 +6,6 @@ import type {
 } from "openai/resources/responses/responses";
 import { z } from "zod";
 
-export const OPENAI_TOOL_SEARCH_TOOL = { type: "tool_search" } as const;
-
 const replayStatusSchema = z
   .enum(["in_progress", "completed", "incomplete"])
   .nullable()
