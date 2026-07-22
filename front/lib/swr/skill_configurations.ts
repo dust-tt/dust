@@ -503,9 +503,9 @@ export function useDetectSkillsFromRepo({
 
   return {
     isDetecting,
-    detectError: !isDetecting ? detectError : null,
-    detectedSkills: !isDetecting && !detectError ? detectedSkills : [],
-    repositoryNotFound: !isDetecting ? repositoryNotFound : false,
+    detectError: isDetecting ? null : detectError,
+    repositoryNotFound: !isDetecting && repositoryNotFound,
+    detectedSkills: isDetecting || detectError ? [] : detectedSkills,
     triggerDetect,
   };
 }
