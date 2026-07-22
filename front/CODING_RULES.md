@@ -455,12 +455,20 @@ that the `AuditAction` union and schema files stay consistent.
 
 ## MCP
 
-### [MCP1] Single file internal servers
+### [MCP1] Internal MCP server structure
 
-If possible, internal MCP servers should fit in one file. The name of the file must match the
-name of the server. If having only one file is not possible, they should be placed into a folder
-that contains a file `index.ts` from where the `createServer` function that creates the server
-will be default exported.
+Internal MCP servers must live in `lib/api/actions/servers/<server_name>/` and separate metadata,
+tool implementation, and server wiring:
+
+- `metadata.ts` exports the literal tool metadata array and the server metadata.
+- `tools/index.ts` defines the schema-inferred `ToolHandlers<typeof TOOLS_METADATA>` and combines
+  them with the metadata using `buildTools`.
+- `index.ts` creates the MCP server, registers its tools (binding the tool handlers to the server metadata), and default
+  exports the McpServer.
+
+Keep server creation local to the provider instead of routing every server through a generic
+`createServer` helper. Additional files such as `client.ts` or `helpers.ts` can be added
+when the integration needs them.
 
 ### [MCP2] Tool output typing
 

@@ -1,8 +1,8 @@
 import type { ToolMeta } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
-import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby";
+import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import type { ServerEntry } from "@app/lib/api/actions/servers/bm25";
-import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot";
+import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot/metadata";
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
