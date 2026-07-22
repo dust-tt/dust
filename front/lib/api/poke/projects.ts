@@ -39,6 +39,8 @@ export type PokePodFunction = {
   sId: string;
   slug: string;
   description: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type PokeListProjectPodFunctions = {

@@ -1,4 +1,7 @@
-import type { PokeListProjectPodFunctions } from "@app/lib/api/poke/projects";
+import type {
+  PokeListProjectPodFunctions,
+  PokePodFunction,
+} from "@app/lib/api/poke/projects";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
@@ -23,8 +26,7 @@ export function usePokeProjectPodFunction({
   );
 
   return {
-    data:
-      data?.items ?? emptyArray<PokeListProjectPodFunctions["items"][number]>(),
+    data: data?.items ?? emptyArray<PokePodFunction>(),
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,

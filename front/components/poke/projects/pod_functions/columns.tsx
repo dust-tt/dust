@@ -1,5 +1,6 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import type { PokePodFunction } from "@app/lib/api/poke/projects";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { ColumnDef } from "@tanstack/react-table";
 
 export function makeColumnsForProjectPodFunction(): ColumnDef<PokePodFunction>[] {
@@ -24,6 +25,26 @@ export function makeColumnsForProjectPodFunction(): ColumnDef<PokePodFunction>[]
         <PokeColumnSortableHeader column={column} label="sId" />
       ),
       cell: ({ row }) => row.original.sId,
+    },
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Created" />
+      ),
+      cell: ({ row }) =>
+        formatTimestampToFriendlyDate(
+          new Date(row.original.createdAt).getTime()
+        ),
+    },
+    {
+      accessorKey: "updatedAt",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Updated" />
+      ),
+      cell: ({ row }) =>
+        formatTimestampToFriendlyDate(
+          new Date(row.original.updatedAt).getTime()
+        ),
     },
   ];
 }

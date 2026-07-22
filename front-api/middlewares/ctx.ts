@@ -27,6 +27,12 @@ export type PokeCtx = SessionCtx & {
   };
 };
 
+export type PokeProjectCtx = PokeCtx & {
+  Variables: {
+    space: SpaceResource;
+  };
+};
+
 export type PublicApiCtx = {
   Variables: {
     auth: Authenticator;
@@ -70,6 +76,7 @@ export const unauthedApp = () => createHono();
 export const sessionApp = () => createHono<SessionCtx>();
 export const workspaceApp = () => createHono<WorkspaceAwareCtx>();
 export const pokeApp = () => createHono<PokeCtx>();
+export const pokeProjectApp = () => createHono<PokeProjectCtx>();
 export const publicApiApp = () => createHono<PublicApiCtx>();
 export const sandboxApp = () => createHono<SandboxCtx>();
 export const skillApp = () => createHono<SkillCtx>();

@@ -1,3 +1,4 @@
+import type { PokePodFunction } from "@app/lib/api/poke/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -348,6 +349,16 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       sandboxFunction: this,
       body,
     });
+  }
+
+  toPokeJSON(): PokePodFunction {
+    return {
+      sId: this.sId,
+      slug: this.slug,
+      description: this.description,
+      createdAt: this.createdAt.toISOString(),
+      updatedAt: this.updatedAt.toISOString(),
+    };
   }
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
