@@ -342,6 +342,24 @@ fn is_unsafe_substitution_header(name: &str) -> bool {
             // which would round-trip a substituted secret to the client.
             | "access-control-request-headers"
             | "access-control-request-method"
+            // WebSocket handshake — the server echoes the selected
+            // subprotocol (and negotiated extensions) in the 101 response.
+            | "sec-websocket-protocol"
+            | "sec-websocket-extensions"
+            // Idempotency — APIs commonly echo the key in 409/422 error
+            // bodies ("key already used").
+            | "idempotency-key"
+            // Content-Disposition — upload endpoints often echo the filename
+            // back in JSON responses or error messages.
+            | "content-disposition"
+            // Prefer — RFC 7240 servers can answer with `Preference-Applied`
+            // mirroring what they honored.
+            | "prefer"
+            // Expect — a 417 response can quote the failed expectation.
+            | "expect"
+            // Last-Event-ID — SSE reconnection header, occasionally reflected
+            // by stream endpoints.
+            | "last-event-id"
     )
 }
 
@@ -610,6 +628,17 @@ mod tests {
             // CORS preflight.
             "access-control-request-headers",
             "access-control-request-method",
+            // WebSocket handshake.
+            "sec-websocket-protocol",
+            "sec-websocket-extensions",
+            // Idempotency.
+            "idempotency-key",
+            // Content-Disposition.
+            "content-disposition",
+            // Prefer / Expect / SSE.
+            "prefer",
+            "expect",
+            "last-event-id",
             // Prefix families.
             "sec-ch-ua",
             "sec-ch-ua-platform",
