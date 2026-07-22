@@ -60,8 +60,14 @@ const TIER_BY_META_MODEL_ID: Record<ModelStreamIdType, ModelTierId> = {
 };
 
 export function getModelTier(tierId: ModelTierId): ModelTierDefinition {
-  // The map is exhaustive over ModelTierId, so a match is guaranteed.
-  return MODEL_TIERS.find((tier) => tier.id === tierId) ?? MODEL_TIERS[1];
+  // MODEL_TIERS is exhaustive over ModelTierId, so a match is guaranteed; the
+  // fallback to the "standard" tier is dead today and only guards against a
+  // future tier being removed from the list.
+  return (
+    MODEL_TIERS.find((tier) => tier.id === tierId) ??
+    MODEL_TIERS.find((tier) => tier.id === "standard") ??
+    MODEL_TIERS[0]
+  );
 }
 
 // Per reasoning-effort blurbs surfaced in the effort slider tooltip.
@@ -289,6 +295,11 @@ export function resolveRequestedSelection(
   if (!model) {
     return null;
   }
+  // FIXME(review): this takes the stored effort verbatim without checking that
+  // the workspace tier still grants it. If the effort is locked for this tier,
+  // the slider will display a padlocked stop and the backend (resolve_model)
+  // will silently downgrade to the model's default — display and sent effort
+  // then disagree. Consider clamping to an unlocked stop like getInitialEffort.
   const effort = selection.reasoningEffort ?? getInitialEffort(model);
   return {
     display: { kind: "model", model, effort },
@@ -327,6 +338,10 @@ export function resolveAgentDefault({
   if (!model) {
     return standardDefault;
   }
+  // FIXME(review): same issue as resolveRequestedSelection — the agent's
+  // configured effort is used as-is even when the viewing user's tier locks it,
+  // so the picker can show an effort ("High") that resolve_model will silently
+  // downgrade when the message is sent.
   const effort = agentModel.reasoningEffort ?? getInitialEffort(model);
   return {
     display: { kind: "model", model, effort },
