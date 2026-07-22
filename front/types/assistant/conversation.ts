@@ -798,6 +798,11 @@ export type ConversationTitleEvent = {
   title: string;
 };
 
+export type ConversationForkPreparedEvent = {
+  type: "conversation_fork_prepared";
+  created: number;
+};
+
 // Event sent when the conversation's plan.md is created, edited, or closed. A refetch signal: the
 // UI re-reads the plan content via the plan_mode GET endpoint on receipt. `isClosed` lets the UI
 // close the plan panel.
