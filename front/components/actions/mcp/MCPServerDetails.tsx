@@ -431,7 +431,7 @@ export function MCPServerDetails({
   };
 
   return (
-    <FormProvider form={form}>
+    <FormProvider form={form} asForm={false}>
       <MCPServerDetailsSheet
         owner={owner}
         mcpServerView={mcpServerView}
