@@ -1,5 +1,4 @@
 import type {
-  CapabilitySpec,
   ConcreteResourceType,
   GrantType,
   GrantVerb,
@@ -143,24 +142,27 @@ export function grantTypesForVerb(
   });
 }
 
-function typeLevelVerbsForGrant(
+// Verbs a grant type confers at `level`; empty when the role is not valid at that level.
+function verbsForGrantAtLevel(
   grantType: ConcreteGrantType,
-  resourceType: ConcreteResourceType
+  resourceType: ConcreteResourceType,
+  level: GrantLevel
 ): GrantVerb[] {
   const role = ROLE_REGISTRY[resourceType][grantType];
-  if (!role || !role.levels.includes("type")) {
+  if (!role || !role.levels.includes(level)) {
     return [];
   }
   return role.verbs;
 }
 
-function allTypeLevelVerbsForResource(
-  resourceType: ConcreteResourceType
+// Every verb valid at `level` on `resourceType` — used to expand a "*" grant.
+function allVerbsForResourceAtLevel(
+  resourceType: ConcreteResourceType,
+  level: GrantLevel
 ): GrantVerb[] {
   const verbs = new Set<GrantVerb>();
-  const roles = Object.values(ROLE_REGISTRY[resourceType]);
-  for (const role of roles) {
-    if (role.levels.includes("type")) {
+  for (const role of Object.values(ROLE_REGISTRY[resourceType])) {
+    if (role.levels.includes(level)) {
       for (const verb of role.verbs) {
         verbs.add(verb);
       }
@@ -182,55 +184,131 @@ function emptyWorkspacePermissions(): WorkspacePermissions {
   };
 }
 
-// Every type-level verb on every resource type — an admin's implicit full access.
-export function allWorkspacePermissions(): WorkspacePermissions {
-  const permissions = emptyWorkspacePermissions();
-  for (const resourceType of GROUP_PERMISSION_RESOURCE_TYPES) {
-    if (!isConcreteResourceType(resourceType)) {
-      continue;
-    }
-    permissions[resourceType] = allTypeLevelVerbsForResource(resourceType);
-  }
-  return permissions;
+// A raw grant row as stored in `group_permissions`: a role name for a (resourceType, resourceId).
+export interface StoredGrant {
+  grantType: GrantType;
+  resourceType: GroupPermissionResourceType;
+  resourceId: number;
 }
 
-// The workspace-level verbs a caller's type-wide (-1) grants confer, grouped by resource type. A
-// "*" grantType fans out to every type-level verb of the resource; a "*" resourceType fans out to
-// every concrete resource type.
-export function workspacePermissionsFromGrants(
-  grants: CapabilitySpec[]
-): WorkspacePermissions {
-  const verbsByResource: Record<ConcreteResourceType, Set<GrantVerb>> = {
-    space: new Set(),
-    agent: new Set(),
-    skill: new Set(),
-    frame: new Set(),
-    billing: new Set(),
-    identity: new Set(),
-    audit_log: new Set(),
-    models_tier: new Set(),
-  };
+/**
+ * The governance grants a caller holds, resolved once at auth construction. Grants are keyed by
+ * (resourceType, resourceId): resourceId is WHOLE_TYPE_RESOURCE_ID (-1) for type-wide capabilities
+ * (e.g. "create" on "agent") or a resource's model id for instance grants (e.g. "write" on a
+ * specific space). A type-wide grant satisfies an instance check on any id of that type.
+ */
+export class WorkspacePermissionSet {
+  private constructor(
+    private readonly grants: Map<
+      ConcreteResourceType,
+      Map<number, Set<GrantVerb>>
+    >,
+    // Admins hold every capability on every resource/instance by default.
+    private readonly isAdminAll: boolean
+  ) {}
 
-  for (const { grantType, resourceType } of grants) {
-    const resources =
-      resourceType === "*"
-        ? GROUP_PERMISSION_RESOURCE_TYPES.filter(isConcreteResourceType)
-        : [resourceType];
+  static empty(): WorkspacePermissionSet {
+    return new WorkspacePermissionSet(new Map(), false);
+  }
 
-    for (const resource of resources) {
-      const verbs =
-        grantType === "*"
-          ? allTypeLevelVerbsForResource(resource)
-          : typeLevelVerbsForGrant(grantType, resource);
-      verbs.forEach((verb) => verbsByResource[resource].add(verb));
+  static all(): WorkspacePermissionSet {
+    return new WorkspacePermissionSet(new Map(), true);
+  }
+
+  static fromGrants(grants: StoredGrant[]): WorkspacePermissionSet {
+    const map = new Map<ConcreteResourceType, Map<number, Set<GrantVerb>>>();
+    const add = (
+      resourceType: ConcreteResourceType,
+      resourceId: number,
+      verbs: GrantVerb[]
+    ) => {
+      if (verbs.length === 0) {
+        return;
+      }
+      let byId = map.get(resourceType);
+      if (!byId) {
+        byId = new Map();
+        map.set(resourceType, byId);
+      }
+      let set = byId.get(resourceId);
+      if (!set) {
+        set = new Set();
+        byId.set(resourceId, set);
+      }
+      for (const verb of verbs) {
+        set.add(verb);
+      }
+    };
+
+    for (const { grantType, resourceType, resourceId } of grants) {
+      // A "*" grant / -1 resourceId are always type-wide; concrete ids are instance-level.
+      const level: GrantLevel =
+        resourceId === WHOLE_TYPE_RESOURCE_ID ? "type" : "instance";
+      const resourceTypes =
+        resourceType === "*"
+          ? GROUP_PERMISSION_RESOURCE_TYPES.filter(isConcreteResourceType)
+          : [resourceType];
+
+      for (const rt of resourceTypes) {
+        const verbs =
+          grantType === "*"
+            ? allVerbsForResourceAtLevel(rt, level)
+            : verbsForGrantAtLevel(grantType, rt, level);
+        add(rt, resourceId, verbs);
+      }
     }
+
+    return new WorkspacePermissionSet(map, false);
   }
 
-  const permissions = emptyWorkspacePermissions();
-  for (const resource of GROUP_PERMISSION_RESOURCE_TYPES.filter(
-    isConcreteResourceType
-  )) {
-    permissions[resource] = [...verbsByResource[resource]];
+  // Whether the caller holds `verb` on the given resource instance. A type-wide (-1) grant on the
+  // resource type satisfies the check for any instance.
+  has(
+    resourceType: ConcreteResourceType,
+    resourceId: number,
+    verb: GrantVerb
+  ): boolean {
+    if (this.isAdminAll) {
+      return true;
+    }
+    const byId = this.grants.get(resourceType);
+    if (!byId) {
+      return false;
+    }
+    return (
+      (byId.get(resourceId)?.has(verb) ?? false) ||
+      (byId.get(WHOLE_TYPE_RESOURCE_ID)?.has(verb) ?? false)
+    );
   }
-  return permissions;
+
+  hasTypeWide(resourceType: ConcreteResourceType, verb: GrantVerb): boolean {
+    return this.has(resourceType, WHOLE_TYPE_RESOURCE_ID, verb);
+  }
+
+  // The type-wide (-1) capabilities the caller holds, as the flat per-resource-type record consumed
+  // by the `/permissions` endpoint and the Workspace & Governance page. Admins, who hold everything
+  // implicitly, are materialized as every type-level verb on every resource type.
+  toTypeWideWorkspacePermissions(): WorkspacePermissions {
+    const result = emptyWorkspacePermissions();
+
+    if (this.isAdminAll) {
+      for (const resourceType of GROUP_PERMISSION_RESOURCE_TYPES) {
+        if (isConcreteResourceType(resourceType)) {
+          result[resourceType] = allVerbsForResourceAtLevel(
+            resourceType,
+            "type"
+          );
+        }
+      }
+      return result;
+    }
+
+    for (const [resourceType, byId] of this.grants) {
+      const typeWideVerbs = byId.get(WHOLE_TYPE_RESOURCE_ID);
+      if (typeWideVerbs) {
+        result[resourceType] = [...typeWideVerbs];
+      }
+    }
+    return result;
+  }
 }

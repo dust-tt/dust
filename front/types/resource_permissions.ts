@@ -1,3 +1,4 @@
+import type { ConcreteResourceType, GrantVerb } from "./group_permissions";
 import type { ModelId } from "./shared/model_id";
 import type { RoleType } from "./user";
 
@@ -37,11 +38,35 @@ export type GroupResourcePermissions = {
 };
 
 /**
- * Defines combined group and role-based permissions for a resource.
+ * Represents permissions conferred by holding a workspace-level governance capability
+ * (a type-wide `group_permissions` grant, e.g. the `write` capability on `space`).
+ *
+ * Unlike role/group permissions, which are resolved synchronously from the Authenticator's role and
+ * group memberships, capabilities live in `group_permissions` and are resolved once at auth
+ * construction (see `Authenticator.getWorkspacePermissions`). A resource declares which capability
+ * grants it, and which permissions holding that capability confers on that resource.
+ *
+ * @property resourceType - The governance resource domain of the capability (e.g. "space")
+ * @property verb - The verb the caller must hold on `resourceType` (e.g. "globalWrite")
+ * @property resourceId - The grant's resource id: WHOLE_TYPE_RESOURCE_ID (-1) for a type-wide
+ *   capability, or a resource's model id for an instance grant. A type-wide grant held by the
+ *   caller also satisfies an instance requirement.
+ * @property permissions - Permissions granted on this resource when the caller holds the capability
+ */
+export type WorkspacePermissionGrant = {
+  resourceType: ConcreteResourceType;
+  verb: GrantVerb;
+  resourceId: number;
+  permissions: PermissionType[];
+};
+
+/**
+ * Defines combined group, role, and workspace-capability-based permissions for a resource.
  */
 export type CombinedResourcePermissions = {
   groups: GroupPermission[];
   roles: RolePermission[];
+  workspacePermissions?: WorkspacePermissionGrant[];
   workspaceId: ModelId;
 };
 

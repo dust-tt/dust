@@ -15,6 +15,7 @@ import { Authenticator } from "@app/lib/auth";
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import { WorkspacePermissionSet } from "@app/lib/resources/group_permission_registry";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type {
   ModelConversationTypeMultiActions,
@@ -61,6 +62,7 @@ export function createMockAuthenticator(): Authenticator {
     groupModelIds: [],
     subscription,
     authMethod: "internal",
+    workspacePermissions: WorkspacePermissionSet.empty(),
   });
 }
 

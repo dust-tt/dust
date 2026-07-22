@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { WorkspacePermissionSet } from "@app/lib/resources/group_permission_registry";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -20,6 +21,7 @@ async function setup() {
     workspace: workspaceResource,
     subscription: null,
     authMethod: "internal",
+    workspacePermissions: WorkspacePermissionSet.all(),
   });
   return { workspace, user, auth };
 }

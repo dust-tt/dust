@@ -17,9 +17,8 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import {
-  allWorkspacePermissions,
   grantTypesForVerb,
-  workspacePermissionsFromGrants,
+  WorkspacePermissionSet,
 } from "@app/lib/resources/group_permission_registry";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -49,7 +48,6 @@ import type {
   GrantVerb,
   WorkspacePermissions,
 } from "@app/types/group_permissions";
-import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { GroupKind } from "@app/types/groups";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
@@ -143,6 +141,8 @@ export class Authenticator {
   _authMethod: AuthMethodType;
   _providersHealth: ProvidersHealth | null;
   _clientIp?: string;
+  // Governance grants the caller holds, resolved by the factory (see `resolveWorkspacePermissions`)
+  _workspacePermissions: WorkspacePermissionSet;
 
   // Should only be called from the static methods below.
   constructor({
@@ -156,6 +156,7 @@ export class Authenticator {
     attributionKey,
     providersHealth,
     clientIp,
+    workspacePermissions,
   }: {
     workspace?: WorkspaceResource | null;
     user?: UserResource | null;
@@ -167,6 +168,7 @@ export class Authenticator {
     attributionKey?: { id: ModelId; name: string };
     providersHealth?: ProvidersHealth | null;
     clientIp?: string;
+    workspacePermissions: WorkspacePermissionSet;
   }) {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._workspace = workspace || null;
@@ -181,6 +183,7 @@ export class Authenticator {
     this._attributionKey = attributionKey;
     this._providersHealth = providersHealth ?? null;
     this._clientIp = clientIp;
+    this._workspacePermissions = workspacePermissions;
     if (user) {
       tracer.setUser({
         id: user?.sId,
@@ -326,6 +329,11 @@ export class Authenticator {
         groupModelIds,
         subscription,
         providersHealth,
+        workspacePermissions: await this.resolveWorkspacePermissions({
+          workspace,
+          role,
+          groupModelIds,
+        }),
       });
     });
   }
@@ -360,6 +368,13 @@ export class Authenticator {
             transaction,
           })
         : [];
+      // Group memberships changed, so capabilities may have changed too: re-resolve them.
+      this._workspacePermissions =
+        await Authenticator.resolveWorkspacePermissions({
+          workspace: this._workspace,
+          role: this._role,
+          groupModelIds: this._groupModelIds,
+        });
     }
   }
 
@@ -400,14 +415,21 @@ export class Authenticator {
       subscription
     );
 
+    const role: RoleType = user?.isDustSuperUser ? "admin" : "none";
+    const groupModelIds = groups.map((g) => g.id);
     return new Authenticator({
       authMethod: "session",
       workspace,
       user,
-      role: user?.isDustSuperUser ? "admin" : "none",
-      groupModelIds: groups.map((g) => g.id),
+      role,
+      groupModelIds,
       subscription,
       providersHealth,
+      workspacePermissions: await this.resolveWorkspacePermissions({
+        workspace,
+        role,
+        groupModelIds,
+      }),
     });
   }
   /**
@@ -457,6 +479,11 @@ export class Authenticator {
       groupModelIds,
       subscription,
       providersHealth,
+      workspacePermissions: await this.resolveWorkspacePermissions({
+        workspace,
+        role,
+        groupModelIds,
+      }),
     });
   }
 
@@ -503,6 +530,11 @@ export class Authenticator {
         role: authData.role,
         subscription: authData.subscription,
         providersHealth,
+        workspacePermissions: await this.resolveWorkspacePermissions({
+          workspace,
+          role: authData.role,
+          groupModelIds: authData.groupModelIds,
+        }),
       })
     );
   }
@@ -644,6 +676,11 @@ export class Authenticator {
         groupModelIds,
         subscription,
         providersHealth,
+        workspacePermissions: await this.resolveWorkspacePermissions({
+          workspace,
+          role,
+          groupModelIds,
+        }),
       })
     );
   }
@@ -875,24 +912,44 @@ export class Authenticator {
       workspaceSubscription
     );
 
+    // If the key is associated with the workspace, we associate the groups.
+    const workspaceGroupModelIds = isKeyWorkspace
+      ? allGroups.map((g) => g.id)
+      : [];
+    const keyGroupModelIds = allGroups.map((g) => g.id);
+
+    const [workspacePermissions, keyPermissions] = await Promise.all([
+      this.resolveWorkspacePermissions({
+        workspace,
+        role,
+        groupModelIds: workspaceGroupModelIds,
+      }),
+      this.resolveWorkspacePermissions({
+        workspace: keyWorkspace,
+        role: "builder",
+        groupModelIds: keyGroupModelIds,
+      }),
+    ]);
+
     return {
       workspaceAuth: new Authenticator({
         authMethod: key.isSystem ? "system_api_key" : "api_key",
-        // If the key is associated with the workspace, we associate the groups.
-        groupModelIds: isKeyWorkspace ? allGroups.map((g) => g.id) : [],
+        groupModelIds: workspaceGroupModelIds,
         key: key.toAuthJSON(),
         role,
         subscription: workspaceSubscription,
         workspace,
         providersHealth: workspaceProvidersHealth,
+        workspacePermissions,
       }),
       keyAuth: new Authenticator({
         authMethod: key.isSystem ? "system_api_key" : "api_key",
-        groupModelIds: allGroups.map((g) => g.id),
+        groupModelIds: keyGroupModelIds,
         key: key.toAuthJSON(),
         role: "builder",
         subscription: keySubscription,
         workspace: keyWorkspace,
+        workspacePermissions: keyPermissions,
       }),
     };
   }
@@ -923,13 +980,19 @@ export class Authenticator {
       subscription
     );
 
+    const groupModelIds = globalGroup ? [globalGroup.id] : [];
     return new Authenticator({
       authMethod: "internal",
       workspace,
       role: "builder",
-      groupModelIds: globalGroup ? [globalGroup.id] : [],
+      groupModelIds,
       subscription,
       providersHealth,
+      workspacePermissions: await this.resolveWorkspacePermissions({
+        workspace,
+        role: "builder",
+        groupModelIds,
+      }),
     });
   }
 
@@ -970,13 +1033,19 @@ export class Authenticator {
       subscription
     );
 
+    const groupModelIds = groups.map((g) => g.id);
     return new Authenticator({
       authMethod: "internal",
       workspace,
       role: "admin",
-      groupModelIds: groups.map((g) => g.id),
+      groupModelIds,
       subscription,
       providersHealth,
+      workspacePermissions: await this.resolveWorkspacePermissions({
+        workspace,
+        role: "admin",
+        groupModelIds,
+      }),
     });
   }
 
@@ -1057,6 +1126,11 @@ export class Authenticator {
       subscription: auth._subscription,
       workspace: auth._workspace,
       providersHealth: auth._providersHealth,
+      workspacePermissions: await Authenticator.resolveWorkspacePermissions({
+        workspace: auth._workspace,
+        role: "user",
+        groupModelIds,
+      }),
     });
   }
 
@@ -1071,6 +1145,8 @@ export class Authenticator {
       workspace: this._workspace,
       clientIp: this._clientIp,
       providersHealth: this._providersHealth,
+      // Role and groups are unchanged, so capabilities carry over unchanged.
+      workspacePermissions: this._workspacePermissions,
     });
   }
 
@@ -1107,64 +1183,70 @@ export class Authenticator {
   }
 
   /**
-   * Whether the caller holds a workspace-level capability. A capability is asked as a verb (e.g.
-   * "create"), expanded via the registry into the stored grant types (role names) that imply it, and
-   * checked against the type-wide (-1) group_permissions rows. Admins bypass unconditionally
-   * (billing/security are admin-by-default). Otherwise we look for a -1 grant on any of the caller's
-   * groups; "*" grants match any grant type / resource type.
-   *
-   * Cold path: a query per check is fine — no caching yet (pending auth-resolution decision).
+   * Whether the caller holds a workspace-level capability, asked as a type-level verb (e.g.
+   * "create" on "agent"). Reads the capabilities resolved at construction, which fold in
+   * admin-by-default access and "*" wildcard grants.
    */
   async hasWorkspacePermission(
     verb: GrantVerb,
     resourceType: ConcreteResourceType
   ): Promise<boolean> {
-    // Reject invalid capability queries (e.g. create/billing) up front, so a "*" grant can't satisfy
-    // a pair the registry forbids, and so callers fail fast on a programmer error.
+    // Reject invalid capability queries (e.g. create/billing) up front so callers fail fast on a
+    // programmer error rather than silently returning false.
     const grantTypes = grantTypesForVerb(resourceType, verb, "type");
     assert(
       grantTypes.length > 0,
       `Verb "${verb}" is not allowed (no type-level role grants it) on resource type "${resourceType}".`
     );
 
-    if (this.isAdmin()) {
-      return true;
-    }
     if (!this.workspace()) {
       return false;
     }
 
-    const grants = await GroupPermissionResource.listForGroups(this, {
-      groupModelIds: this._groupModelIds,
-      resourceId: WHOLE_TYPE_RESOURCE_ID,
-    });
-
-    return grants.some(
-      (grant) =>
-        (grant.resourceType === resourceType || grant.resourceType === "*") &&
-        (grant.grantType === "*" || grantTypes.includes(grant.grantType))
-    );
+    return this._workspacePermissions.hasTypeWide(resourceType, verb);
   }
 
   /**
-   * All workspace-level (type-wide) verbs the caller holds, grouped by resource type. This is the
-   * batch companion to hasWorkspacePermission: it expands every type-wide (-1) grant on the
-   * caller's groups into the verbs it confers. Admins hold every type-level capability by default,
-   * and "*" grants expand to all type-level verbs of the matched resource type(s), mirroring
-   * hasWorkspacePermission's semantics.
+   * The caller's governance grants, serialized to the wire shape consumed by the `/permissions`
+   * endpoint. Resolved at construction (see `resolveWorkspacePermissions`).
    */
   async getWorkspacePermissions(): Promise<WorkspacePermissions> {
-    // Admins bypass grants entirely: every type-level capability is theirs by default.
-    if (this.isAdmin()) {
-      return allWorkspacePermissions();
+    return this._workspacePermissions.toTypeWideWorkspacePermissions();
+  }
+
+  /**
+   * Resolves the grant set a caller holds, before an Authenticator exists. Admins hold every
+   * capability by default; other callers derive them from the grants on their groups. Cheap for
+   * admins and for callers with no groups (no query).
+   */
+  static async resolveWorkspacePermissions({
+    workspace,
+    role,
+    groupModelIds,
+  }: {
+    workspace?: WorkspaceResource | null;
+    role: RoleType;
+    groupModelIds: ModelId[];
+  }): Promise<WorkspacePermissionSet> {
+    if (!workspace) {
+      return WorkspacePermissionSet.empty();
+    }
+    if (role === "admin") {
+      return WorkspacePermissionSet.all();
     }
 
-    const grants = await GroupPermissionResource.listForGroups(this, {
-      groupModelIds: this._groupModelIds,
-      resourceId: WHOLE_TYPE_RESOURCE_ID,
-    });
+    const grants = await GroupPermissionResource.listForGroups(
+      renderLightWorkspaceType({ workspace }),
+      { groupModelIds }
+    );
 
-    return workspacePermissionsFromGrants(grants);
+    return WorkspacePermissionSet.fromGrants(
+      grants.map((grant) => ({
+        grantType: grant.grantType,
+        resourceType: grant.resourceType,
+        resourceId: grant.resourceId,
+      }))
+    );
   }
 
   isSystemKey(): boolean {
@@ -1354,10 +1436,10 @@ export class Authenticator {
   }
 
   /**
-   * Determines if a user has a specific permission on a resource based on their role and group
-   * memberships.
+   * Determines if a user has a specific permission on a resource based on their role, workspace
+   * capabilities, and group memberships.
    *
-   * The permission check follows two independent paths (OR):
+   * The permission check follows three independent paths (OR):
    *
    * 1. Role-based permission check:
    *    Applies when the resource has role-based permissions configured.
@@ -1365,14 +1447,19 @@ export class Authenticator {
    *    - The resource has public access (role="none") for the requested permission, OR
    *    - The user's role has the required permission AND the resource belongs to user's workspace
    *
-   * 2. Group-based permission check:
+   * 2. Workspace-capability-based check:
+   *    Applies when the resource declares `workspacePermissions`.
+   *    Permission is granted if the user holds the declared workspace-level capability (a type-wide
+   *    `group_permissions` grant) AND the resource belongs to the user's workspace.
+   *
+   * 3. Group-based permission check:
    *    Applies when the resource has group-based permissions configured.
    *    Permission is granted if:
    *    - The user belongs to a group that has the required permission on this resource
    *
    * @param resourcePermission - The resource's permission configuration
    * @param permission - The specific permission being checked
-   * @returns true if either permission path grants access
+   * @returns true if any permission path grants access
    */
   private hasResourcePermission(
     resourcePermission: ResourcePermission,
@@ -1393,9 +1480,31 @@ export class Authenticator {
       ) {
         return true;
       }
+
+      // Second path: workspace-capability-based check. A resource can grant permissions to callers
+      // holding a governance grant (e.g. the type-wide `globalWrite` capability on `space`, or an
+      // instance grant on this resource). A type-wide grant satisfies an instance requirement.
+      const hasCapabilityPermission = (
+        resourcePermission.workspacePermissions ?? []
+      ).some(
+        (wp) =>
+          wp.permissions.includes(permission) &&
+          this._workspacePermissions.has(
+            wp.resourceType,
+            wp.resourceId,
+            wp.verb
+          )
+      );
+
+      if (
+        hasCapabilityPermission &&
+        workspace.id === resourcePermission.workspaceId
+      ) {
+        return true;
+      }
     }
 
-    // Second path: Group-based permission check.
+    // Third path: Group-based permission check.
     return this._groupModelIds.some((groupId) =>
       resourcePermission.groups.some(
         (gp) => gp.id === groupId && gp.permissions.includes(permission)
@@ -1447,6 +1556,8 @@ export class Authenticator {
       workspace: this._workspace,
       clientIp: this._clientIp,
       providersHealth: this._providersHealth,
+      // Attribution-only copy: role and groups are unchanged, so capabilities carry over unchanged.
+      workspacePermissions: this._workspacePermissions,
     });
   }
 
@@ -1518,6 +1629,11 @@ export class Authenticator {
       attributionKey: authType.attributionKey,
       providersHealth,
       clientIp: authType.clientIp,
+      workspacePermissions: await this.resolveWorkspacePermissions({
+        workspace,
+        role: authType.role,
+        groupModelIds: groupIds,
+      }),
     });
   }
 
