@@ -46,22 +46,6 @@ function activationPodNameForCreator(
   return `${label}${ACTIVATION_POD_NAME_PREFIX}`;
 }
 
-async function markPodAsActivation(
-  auth: Authenticator,
-  pod: SpaceResource
-): Promise<Result<void, Error>> {
-  const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
-  if (!metadata) {
-    return new Err(
-      new Error("Project metadata not found for the newly created pod.")
-    );
-  }
-
-  await metadata.updateProvisioningSource("activation");
-
-  return new Ok(undefined);
-}
-
 async function setPodDefaultSkills(
   auth: Authenticator,
   pod: SpaceResource,
@@ -328,11 +312,6 @@ export const joinActivationPodPlugin = createPlugin({
       }
     }
 
-    const activationResult = await markPodAsActivation(auth, pod);
-    if (activationResult.isErr()) {
-      return activationResult;
-    }
-
     // Star the pod for every member so it surfaces in their sidebar.
     await UserProjectPreferencesResource.setStarredForUsers(auth, {
       spaceModelId: pod.id,
@@ -386,8 +365,9 @@ export const joinActivationPodPlugin = createPlugin({
     }
 
     // Record the canonical ActivationPod row now that the pod's owner and
-    // trigger are known. Best-effort: existing nudge/recommendation flows
-    // don't depend on it yet, so a lookup miss here shouldn't fail pod setup.
+    // trigger are known. This is the record `isEligibleForNudge` and the
+    // activation scheduler use to find the pod and its trigger, so it must
+    // be created for the pod to ever be nudged.
     const activationTrigger = await TriggerResource.fetchById(
       podMemberAuth,
       triggerResult.value.triggerId

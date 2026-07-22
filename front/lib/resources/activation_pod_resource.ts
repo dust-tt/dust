@@ -95,6 +95,17 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     return activationPods.map((pod) => new this(this.model, pod.get()));
   }
 
+  // Lists every ActivationPod in the calling workspace.
+  static async listForWorkspace(
+    auth: Authenticator
+  ): Promise<ActivationPodResource[]> {
+    const activationPods = await this.model.findAll({
+      where: { workspaceId: auth.getNonNullableWorkspace().id },
+    });
+
+    return activationPods.map((pod) => new this(this.model, pod.get()));
+  }
+
   // Sets the Pod's activation trigger once it has been provisioned.
   async setTrigger(trigger: TriggerResource): Promise<void> {
     await this.update({ triggerId: trigger.id });

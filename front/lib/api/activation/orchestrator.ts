@@ -1,7 +1,7 @@
 import { evaluateActivation } from "@app/lib/api/activation/evaluator";
 import { emitActivationEvent } from "@app/lib/api/activation/trigger";
 import { Authenticator } from "@app/lib/auth";
-import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -33,7 +33,7 @@ export async function determineEligibleActivationUsers(
 ): Promise<Result<OrchestratorResult, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
-  const pods = await ProjectMetadataResource.fetchActivationPods(auth);
+  const pods = await ActivationPodResource.listForWorkspace(auth);
 
   const spaces = await SpaceResource.fetchByModelIds(
     auth,
