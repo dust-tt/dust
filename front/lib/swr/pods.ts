@@ -1493,6 +1493,7 @@ export function usePodEgressPolicy({
 
   return {
     policy: data?.policy ?? EMPTY_EGRESS_POLICY,
+    requestedDomains: data?.requestedDomains ?? emptyArray(),
     isPodEgressPolicyLoading: disabled ? false : isLoading,
     isPodEgressPolicyError: !!error,
     mutatePodEgressPolicy: mutate,
@@ -1536,7 +1537,16 @@ export function useUpdatePodEgressPolicy({
       }
 
       const data: PutPodEgressPolicyResponseBody = await response.json();
-      await mutatePodEgressPolicy({ policy: data.policy }, false);
+      // Keep requestedDomains, or the other pending rows vanish until refetch.
+      await mutatePodEgressPolicy(
+        {
+          policy: data.policy,
+          requestedDomains: (data.policy.requestedDomains ?? []).map(
+            ({ domain: d, requestedAtMs }) => ({ domain: d, requestedAtMs })
+          ),
+        },
+        false
+      );
       sendNotification({
         type: "success",
         title: "Pod network policy updated",
@@ -1557,4 +1567,67 @@ export function useUpdatePodEgressPolicy({
   };
 
   return { updatePodEgressPolicy, isUpdatingPodEgressPolicy };
+}
+
+export function useDismissPodEgressRequest({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const [isDismissingRequest, setIsDismissing] = useState(false);
+  const { mutatePodEgressPolicy } = usePodEgressPolicy({
+    owner,
+    podId,
+    disabled: true,
+  });
+
+  const dismissPodEgressRequest = async (domain: string): Promise<boolean> => {
+    setIsDismissing(true);
+    try {
+      const response = await clientFetch(
+        `${podEgressPolicyUrl(owner.sId, podId)}/requests/dismiss`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ domain }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
+        sendNotification({
+          type: "error",
+          title: "Failed to reject domain request",
+          description: error.message,
+        });
+        return false;
+      }
+
+      const data: PutPodEgressPolicyResponseBody = await response.json();
+      await mutatePodEgressPolicy(
+        {
+          policy: data.policy,
+          requestedDomains: (data.policy.requestedDomains ?? []).map(
+            ({ domain: d, requestedAtMs }) => ({ domain: d, requestedAtMs })
+          ),
+        },
+        false
+      );
+      return true;
+    } catch {
+      sendNotification({
+        type: "error",
+        title: "Failed to reject domain request",
+        description: "An unexpected error occurred. Please try again.",
+      });
+      return false;
+    } finally {
+      setIsDismissing(false);
+    }
+  };
+
+  return { dismissPodEgressRequest, isDismissingRequest };
 }

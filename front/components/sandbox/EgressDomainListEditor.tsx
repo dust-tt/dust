@@ -1,5 +1,12 @@
 import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
-import { Button, ContentMessage, Input, Plus, Trash01 } from "@dust-tt/sparkle";
+import {
+  Button,
+  ContentMessage,
+  Input,
+  Plus,
+  Trash01,
+  XClose,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface EgressDomainListEditorProps {
@@ -10,6 +17,9 @@ interface EgressDomainListEditorProps {
   isUpdating: boolean;
   // Shown when the list is empty (scope wording differs per surface).
   emptyMessage: string;
+  pendingRequests?: { domain: string }[];
+  onApproveRequest?: (domain: string) => void;
+  onRejectRequest?: (domain: string) => void;
 }
 
 // Add/remove editor for a sandbox egress allowlist, shared by the workspace
@@ -21,6 +31,9 @@ export function EgressDomainListEditor({
   onSave,
   isUpdating,
   emptyMessage,
+  pendingRequests,
+  onApproveRequest,
+  onRejectRequest,
 }: EgressDomainListEditorProps) {
   const [domainInput, setDomainInput] = useState("");
 
@@ -90,12 +103,45 @@ export function EgressDomainListEditor({
         />
       </form>
 
-      {allowedDomains.length === 0 ? (
+      {allowedDomains.length === 0 && (pendingRequests?.length ?? 0) === 0 ? (
         <ContentMessage variant="outline" size="lg">
           {emptyMessage}
         </ContentMessage>
       ) : (
         <div className="flex w-full flex-col divide-y divide-separator">
+          {pendingRequests?.map((request) => (
+            <div key={request.domain} className="flex items-center gap-3 py-3">
+              <div
+                title={request.domain}
+                className="flex min-w-0 grow items-center gap-2 overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2"
+              >
+                <span className="font-mono text-sm text-foreground">
+                  {request.domain}
+                </span>
+                <span className="shrink-0 rounded-full bg-golden-100 px-2 py-0.5 text-xs font-medium text-golden-800">
+                  Pending approval
+                </span>
+              </div>
+              <Button
+                variant="highlight"
+                size="mini"
+                label="Approve"
+                tooltip={`Add ${request.domain} to the allowlist`}
+                disabled={isUpdating}
+                onClick={() => onApproveRequest?.(request.domain)}
+                className="shrink-0"
+              />
+              <Button
+                variant="ghost"
+                size="mini"
+                icon={XClose}
+                tooltip={`Reject ${request.domain}`}
+                disabled={isUpdating}
+                onClick={() => onRejectRequest?.(request.domain)}
+                className="shrink-0"
+              />
+            </div>
+          ))}
           {allowedDomains.map((domain) => (
             <div key={domain} className="flex items-center gap-3 py-3">
               <pre

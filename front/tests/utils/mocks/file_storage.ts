@@ -203,6 +203,11 @@ class FileStorageMock {
     return this._objectStore.get(filePath);
   }
 
+  // Seed the in-memory object store directly (no write path).
+  setObject(filePath: string, content: string): void {
+    this._objectStore.set(filePath, content);
+  }
+
   reset(): void {
     this._writeStreamCalls.length = 0;
     this._readStreamCalls.length = 0;
