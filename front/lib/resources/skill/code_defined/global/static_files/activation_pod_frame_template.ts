@@ -396,27 +396,74 @@ function FullView() {
 
 /* ---------------- Condensed banner view (pinned, ~280px) ---------------- */
 
-function BannerView() {
+function BannerDay1() {
   return (
-    <div className="flex h-full flex-col justify-center gap-1.5 overflow-hidden bg-background px-4 py-3 text-foreground">
-      <Kicker>Your pod</Kicker>
-      {LEVEL === "day1" ? (
-        <>
-          <p className="truncate text-sm font-semibold text-foreground">
-            One place where Dust works for you.
-          </p>
-          <p className="truncate text-xs text-muted-foreground">
-            Your first idea is waiting in the chat.
-          </p>
-        </>
-      ) : (
-        <>
-          <p className="truncate text-sm font-semibold text-foreground">{LATEST.label}</p>
-          <p className="truncate text-xs text-muted-foreground">{LATEST.findings[0]}</p>
-        </>
-      )}
+    <div className="flex h-full flex-col gap-3 overflow-hidden bg-background px-4 py-3 text-foreground">
+      <div>
+        <Kicker>Your pod</Kicker>
+        <p className="mt-1 text-sm font-semibold leading-snug text-foreground">
+          One place where Dust works for you, {USER.name}.
+        </p>
+      </div>
+      <div className="flex flex-col gap-2">
+        {HOW_IT_WORKS.map((step) => {
+          const t = tintClasses(step.tint);
+          return (
+            <div key={step.title} className="flex items-center gap-2.5">
+              <div className={"flex h-7 w-7 shrink-0 items-center justify-center rounded-full " + t.bg}>
+                <StepIcon name={step.icon} className={"h-3.5 w-3.5 " + t.text} />
+              </div>
+              <p className="text-xs text-foreground">
+                <span className="font-medium">{step.title}</span>
+                {" "}
+                <span className="text-muted-foreground">{step.shortSub}</span>
+              </p>
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-auto text-xs text-muted-foreground">
+        Your first idea is waiting in the chat.
+      </p>
     </div>
   );
+}
+
+function BannerGrown() {
+  return (
+    <div className="flex h-full flex-col gap-3 overflow-hidden bg-background px-4 py-3 text-foreground">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <Inbox className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
+            {LATEST.label}
+          </span>
+        </div>
+        <span className="shrink-0 text-xs text-muted-foreground">{LATEST.when}</span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {LATEST.findings.map((f, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+            <p className="text-xs leading-snug text-foreground line-clamp-2">{f}</p>
+          </div>
+        ))}
+      </div>
+      {NEXT_IDEA.title ? (
+        <div className="mt-auto rounded-lg border border-indigo-100 bg-indigo-50/50 px-3 py-2 dark:border-indigo-900/50 dark:bg-indigo-950/30">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="h-3 w-3 shrink-0 text-indigo-500" />
+            <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400">Next idea</p>
+          </div>
+          <p className="mt-0.5 text-xs leading-snug text-foreground line-clamp-2">{NEXT_IDEA.title}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BannerView() {
+  return LEVEL === "day1" ? <BannerDay1 /> : <BannerGrown />;
 }
 
 export default function ActivationPodFrame() {
