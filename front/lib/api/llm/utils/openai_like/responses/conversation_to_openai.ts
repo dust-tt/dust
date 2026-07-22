@@ -9,10 +9,12 @@ import {
   parseOpenAIToolSearchItem,
 } from "@app/lib/api/llm/clients/openai/utils/tool_search_passthrough";
 import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
+import type {
+  ExclusiveToolChoiceParameters,
+  SystemPromptInput,
+} from "@app/lib/api/llm/types/options";
 import {
-  type ExclusiveToolChoiceParameters,
   normalizePrompt,
-  type SystemPromptInput,
   systemPromptToText,
 } from "@app/lib/api/llm/types/options";
 import {
