@@ -188,7 +188,7 @@ describe("getModelForStream", () => {
     expect(resolved?.reasoningEffort).toBe("medium");
   });
 
-  it("routes the Quick stream to its first available candidate + effort", async () => {
+  it("routes the Fast stream to its first available candidate + effort", async () => {
     const resolved = await getModelForStream(adminAuth, "auto_fast");
 
     expect(resolved).not.toBeNull();
@@ -197,7 +197,7 @@ describe("getModelForStream", () => {
     expect(resolved?.reasoningEffort).toBe("light");
   });
 
-  it("routes the Deep stream to its first available candidate + effort", async () => {
+  it("routes the Complex stream to its first available candidate + effort", async () => {
     const resolved = await getModelForStream(adminAuth, "auto_complex");
 
     expect(resolved).not.toBeNull();
@@ -205,12 +205,12 @@ describe("getModelForStream", () => {
     expect(resolved?.reasoningEffort).toBe("high");
   });
 
-  it("keeps a cost-effective candidate in the Deep stream for cost_efficient-capped users", async () => {
+  it("keeps a cost-effective candidate in the Complex stream for cost_efficient-capped users", async () => {
     const auth = await userAuthForTierCap("cost_efficient");
 
     // Every premium/balanced candidate is unavailable under a cost_efficient
     // cap, so the stream must still resolve to its cost-effective floor rather
-    // than returning null and dropping out of the Deep stream entirely.
+    // than returning null and dropping out of the Complex stream entirely.
     const resolved = await getModelForStream(auth, "auto_complex");
 
     expect(resolved).not.toBeNull();
