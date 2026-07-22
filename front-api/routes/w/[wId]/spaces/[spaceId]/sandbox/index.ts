@@ -3,6 +3,7 @@ import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { withSandboxFunctionsFeature } from "@front-api/middlewares/with_sandbox_functions_feature";
 
 import egressPolicy from "./egress-policy";
+import envVars from "./env-vars";
 
 // Mounted at /api/w/:wId/spaces/:spaceId/sandbox. The workspace-admin and
 // `sandbox_functions` feature gates are applied here so every leaf below
@@ -20,5 +21,6 @@ app.use("*", ensureIsAdmin());
 app.use("*", withSandboxFunctionsFeature());
 
 app.route("/egress-policy", egressPolicy);
+app.route("/env-vars", envVars);
 
 export default app;
