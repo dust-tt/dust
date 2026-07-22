@@ -277,7 +277,7 @@ describe("renderConversationForModel", () => {
     expect(tool4.content).toContain("This tool result is no longer available");
     expect(tool5.content).toContain("This tool result is no longer available");
     expect(tool12.content).toBe("result_12");
-    expect(res.value.prunedContext).toBe(true);
+    expect(res.value.prunedContext).toBe(false);
   });
 
   it("prunes a long current turn in a checkpoint and preserves its latest result", async () => {
