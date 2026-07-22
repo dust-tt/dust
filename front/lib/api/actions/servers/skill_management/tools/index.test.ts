@@ -34,7 +34,7 @@ vi.mock("@app/lib/resources/skill/skill_resource", () => ({
   },
 }));
 
-import { TOOLS } from "./index";
+import { SKILL_MANAGEMENT_TOOL_HANDLERS } from "./index";
 
 describe("skill_management enable_skill tool", () => {
   type TestUserMessage = {
@@ -119,16 +119,8 @@ describe("skill_management enable_skill tool", () => {
     } as never;
   }
 
-  function getTool() {
-    const tool = TOOLS.find((tool) => tool.name === ENABLE_SKILL_TOOL_NAME);
-    if (!tool) {
-      throw new Error("enable_skill tool not found");
-    }
-    return tool;
-  }
-
   it("loads skill files into the conversation and surfaces their paths", async () => {
-    const result = await getTool().handler(
+    const result = await SKILL_MANAGEMENT_TOOL_HANDLERS[ENABLE_SKILL_TOOL_NAME](
       { skillName: "commit" },
       makeExtra()
     );
@@ -158,7 +150,7 @@ describe("skill_management enable_skill tool", () => {
   it("skips file loading when the skill has no attachments", async () => {
     mockHasFiles.mockReturnValue(false);
 
-    const result = await getTool().handler(
+    const result = await SKILL_MANAGEMENT_TOOL_HANDLERS[ENABLE_SKILL_TOOL_NAME](
       { skillName: "commit" },
       makeExtra()
     );
@@ -172,7 +164,7 @@ describe("skill_management enable_skill tool", () => {
       new Err(new Error("GCS copy failed"))
     );
 
-    const result = await getTool().handler(
+    const result = await SKILL_MANAGEMENT_TOOL_HANDLERS[ENABLE_SKILL_TOOL_NAME](
       { skillName: "commit" },
       makeExtra()
     );
@@ -195,7 +187,7 @@ describe("skill_management enable_skill tool", () => {
       systemSkills: [],
     });
 
-    const result = await getTool().handler(
+    const result = await SKILL_MANAGEMENT_TOOL_HANDLERS[ENABLE_SKILL_TOOL_NAME](
       { skillName: "commit" },
       makeExtra()
     );
@@ -211,7 +203,7 @@ describe("skill_management enable_skill tool", () => {
       systemSkills: [],
     });
 
-    const result = await getTool().handler(
+    const result = await SKILL_MANAGEMENT_TOOL_HANDLERS[ENABLE_SKILL_TOOL_NAME](
       { skillName: "commit" },
       makeExtra()
     );
@@ -237,7 +229,7 @@ describe("skill_management enable_skill tool", () => {
       ])
     );
 
-    const result = await getTool().handler(
+    const result = await SKILL_MANAGEMENT_TOOL_HANDLERS[ENABLE_SKILL_TOOL_NAME](
       { skillName: "commit" },
       makeExtra()
     );
@@ -274,7 +266,7 @@ describe("skill_management enable_skill tool", () => {
       ])
     );
 
-    const result = await getTool().handler(
+    const result = await SKILL_MANAGEMENT_TOOL_HANDLERS[ENABLE_SKILL_TOOL_NAME](
       { skillName: "commit" },
       makeExtra()
     );
@@ -309,7 +301,7 @@ describe("skill_management enable_skill tool", () => {
       ])
     );
 
-    const result = await getTool().handler(
+    const result = await SKILL_MANAGEMENT_TOOL_HANDLERS[ENABLE_SKILL_TOOL_NAME](
       { skillName: "commit" },
       makeExtra()
     );
@@ -335,7 +327,7 @@ describe("skill_management enable_skill tool", () => {
       ])
     );
 
-    const result = await getTool().handler(
+    const result = await SKILL_MANAGEMENT_TOOL_HANDLERS[ENABLE_SKILL_TOOL_NAME](
       { skillName: "commit" },
       makeExtra({
         userMessageOverride: {
@@ -361,7 +353,7 @@ describe("skill_management enable_skill tool", () => {
     });
     mockFetchByIds.mockResolvedValue([skill]);
 
-    const result = await getTool().handler(
+    const result = await SKILL_MANAGEMENT_TOOL_HANDLERS[ENABLE_SKILL_TOOL_NAME](
       { skillName: "commit" },
       makeExtra({
         userMessageOverride: currentUserMessage,
@@ -399,7 +391,7 @@ describe("skill_management enable_skill tool", () => {
     });
     mockFetchByIds.mockResolvedValue([skill]);
 
-    const result = await getTool().handler(
+    const result = await SKILL_MANAGEMENT_TOOL_HANDLERS[ENABLE_SKILL_TOOL_NAME](
       { skillName: "commit" },
       makeExtra({
         conversationOverride: conversationWithEarlierSkill,
@@ -444,7 +436,7 @@ describe("skill_management enable_skill tool", () => {
     });
     mockFetchByIds.mockResolvedValue([skill]);
 
-    const result = await getTool().handler(
+    const result = await SKILL_MANAGEMENT_TOOL_HANDLERS[ENABLE_SKILL_TOOL_NAME](
       { skillName: "commit" },
       makeExtra({
         conversationOverride: conversationWithCompaction,
@@ -481,7 +473,7 @@ describe("skill_management enable_skill tool", () => {
       systemSkills: [],
     });
 
-    const result = await getTool().handler(
+    const result = await SKILL_MANAGEMENT_TOOL_HANDLERS[ENABLE_SKILL_TOOL_NAME](
       { skillName: "commit" },
       makeExtra({
         conversationOverride: conversationWithLaterSkill,
