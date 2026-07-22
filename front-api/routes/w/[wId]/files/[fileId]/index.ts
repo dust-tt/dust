@@ -255,10 +255,14 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const isUploadUseCase =
     file.useCase === "upsert_table" || file.useCase === "folders_document";
   const canWriteInSpace = space ? space.canWrite(auth) : false;
+  const canManageWorkspaceFiles = await auth.hasWorkspacePermission(
+    "globalWrite",
+    "space"
+  );
 
   if (
     isUploadUseCase &&
-    !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
+    !((isFileAuthor && canWriteInSpace) || canManageWorkspaceFiles)
   ) {
     return apiError(ctx, {
       status_code: 403,
@@ -267,13 +271,13 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
         message: "You cannot edit files in that space.",
       },
     });
-  } else if (!auth.isBuilder() && file.useCase !== "conversation") {
+  } else if (!canManageWorkspaceFiles && file.useCase !== "conversation") {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can modify files.",
+          "You do not have permission to modify files in this workspace.",
       },
     });
   }
@@ -314,10 +318,14 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const isUploadUseCase =
     file.useCase === "upsert_table" || file.useCase === "folders_document";
   const canWriteInSpace = space ? space.canWrite(auth) : false;
+  const canManageWorkspaceFiles = await auth.hasWorkspacePermission(
+    "globalWrite",
+    "space"
+  );
 
   if (
     isUploadUseCase &&
-    !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
+    !((isFileAuthor && canWriteInSpace) || canManageWorkspaceFiles)
   ) {
     return apiError(ctx, {
       status_code: 403,
@@ -328,7 +336,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     });
   } else if (
     !space &&
-    !auth.isBuilder() &&
+    !canManageWorkspaceFiles &&
     file.useCase !== "conversation" &&
     file.useCase !== "avatar"
   ) {
@@ -337,7 +345,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can modify files.",
+          "You do not have permission to modify files in this workspace.",
       },
     });
   }

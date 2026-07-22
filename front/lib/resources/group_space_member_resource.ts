@@ -6,6 +6,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { GroupKind } from "@app/types/groups";
 import type {
   CombinedResourcePermissions,
@@ -186,9 +187,16 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
                 permissions: ["read"],
               },
             ],
-            roles: [
-              { role: "admin", permissions: ["admin", "read", "write"] },
-              { role: "builder", permissions: ["read", "write"] },
+            roles: [{ role: "admin", permissions: ["admin", "read", "write"] }],
+            // Mirrors the space-level grant: the workspace `space` write capability confers
+            // read+write, replacing the legacy `builder` role grant (dust-tt/tasks#9746).
+            workspacePermissions: [
+              {
+                resourceType: "space",
+                verb: "globalWrite",
+                resourceId: WHOLE_TYPE_RESOURCE_ID,
+                permissions: ["read", "write"],
+              },
             ],
             workspaceId: this.workspaceId,
           },

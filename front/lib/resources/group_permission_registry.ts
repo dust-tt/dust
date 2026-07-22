@@ -49,6 +49,9 @@ export const ROLE_REGISTRY: Record<
     reader: { verbs: ["read"], levels: ["instance"] },
     member: { verbs: ["read", "write"], levels: ["instance"] },
     admin: { verbs: ["read", "write", "admin"], levels: ["instance"] },
+    // Workspace-level capability: manage content (files, documents) in open/global spaces. Replaces
+    // the legacy `builder` role write grant on those spaces (dust-tt/tasks#9746).
+    globalWrite: { verbs: ["globalWrite"], levels: ["type"] },
   },
   agent: {
     editor: { verbs: ["read", "write"], levels: ["instance"] },

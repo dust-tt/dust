@@ -35,6 +35,13 @@ export interface CapabilitySeeder {
 
 export const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
   {
+    // Manage content (files, documents) in open/global spaces. Replaces the legacy `builder` role
+    // write grant on those spaces (dust-tt/tasks#9746); seeded to the Builders group so it lands on
+    // exactly today's builder population.
+    capability: { grantType: "globalWrite", resourceType: "space" },
+    resolveTarget: async (_auth) => "builders",
+  },
+  {
     capability: { grantType: "create", resourceType: "agent" },
     resolveTarget: async (auth) => {
       const disallowsUserCreation =

@@ -18,6 +18,9 @@ export const GRANT_VERBS = [
   "publish",
   "invite",
   "use",
+  // Manage content in open/global spaces workspace-wide (type-level only). Distinct from the
+  // instance-level `write` verb, which is granted per space via space membership.
+  "globalWrite",
 ] as const;
 export type GrantVerb = (typeof GRANT_VERBS)[number];
 
@@ -32,6 +35,7 @@ export const GRANT_TYPES = [
   "publish",
   "invite",
   "read",
+  "globalWrite",
   "use",
   "*",
 ] as const;

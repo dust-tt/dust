@@ -21,6 +21,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import tracer from "@app/logger/tracer";
+import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
@@ -1526,9 +1527,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return [
         {
           workspaceId: this.workspaceId,
-          roles: [
-            { role: "admin", permissions: ["admin", "read", "write"] },
-            { role: "builder", permissions: ["read", "write"] },
+          roles: [{ role: "admin", permissions: ["admin", "read", "write"] }],
+          // The workspace-level `space` write capability confers read+write, replacing the legacy
+          // `builder` role grant (dust-tt/tasks#9746).
+          workspacePermissions: [
+            {
+              resourceType: "space",
+              verb: "globalWrite",
+              resourceId: WHOLE_TYPE_RESOURCE_ID,
+              permissions: ["read", "write"],
+            },
           ],
           groups: this.groups.map((group) => ({
             id: group.groupId,
@@ -1554,8 +1562,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           workspaceId: this.workspaceId,
           roles: [
             { role: "admin", permissions: ["admin", "read", "write"] },
-            { role: "builder", permissions: ["read", "write"] },
             { role: "user", permissions: ["read"] },
+          ],
+          // The workspace-level `space` write capability confers read+write, replacing the legacy
+          // `builder` role grant (dust-tt/tasks#9746).
+          workspacePermissions: [
+            {
+              resourceType: "space",
+              verb: "globalWrite",
+              resourceId: WHOLE_TYPE_RESOURCE_ID,
+              permissions: ["read", "write"],
+            },
           ],
           groups: this.groups.reduce((acc, group) => {
             if (groupFilter(group)) {
