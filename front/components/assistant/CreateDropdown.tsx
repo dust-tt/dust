@@ -1,13 +1,13 @@
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useAppRouter } from "@app/lib/platform";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   getAgentBuilderRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -39,6 +39,9 @@ export const CreateDropdown = ({
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
+  const { hasPermission } = useWorkspacePermissions(owner);
+
+  const canCreateSkill = hasPermission("create", "skill");
 
   return (
     <DropdownMenu>
@@ -57,7 +60,7 @@ export const CreateDropdown = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        {isBuilder(owner) && <DropdownMenuLabel label="Agents" />}
+        {canCreateSkill && <DropdownMenuLabel label="Agents" />}
         <DropdownMenuItem
           label="agent from scratch"
           icon={File02}
@@ -88,7 +91,7 @@ export const CreateDropdown = ({
           disabled={isUploadingYAML}
           onClick={triggerYAMLUpload}
         />
-        {isBuilder(owner) && (
+        {canCreateSkill && (
           <>
             <DropdownMenuLabel label="Skills" />
             <DropdownMenuItem

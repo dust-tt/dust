@@ -61,7 +61,6 @@ import {
 } from "@app/types/assistant/conversation";
 import type { PodType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
   ArrowRight,
   Avatar,
@@ -498,6 +497,7 @@ export function AgentSidebarMenu({
     useStarredPodsSectionCollapsed();
 
   const canCreateAgent = hasPermission("create", "agent");
+  const canCreateSkill = hasPermission("create", "skill");
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null
@@ -1102,7 +1102,7 @@ export function AgentSidebarMenu({
                             />
                           </>
                         )}
-                        {isBuilder(owner) && (
+                        {canCreateSkill && (
                           <>
                             <DropdownMenuLabel>Skills</DropdownMenuLabel>
                             <DropdownMenuSub>

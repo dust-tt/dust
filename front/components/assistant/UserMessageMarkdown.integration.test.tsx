@@ -43,6 +43,16 @@ vi.mock("@app/lib/utils/router", () => ({
   setQueryParam: (...args: any[]) => setQueryParamMock(...args),
 }));
 
+// Mock workspace permissions so skill chips can be rendered without a
+// FetcherProvider / live permissions endpoint. Tests toggle the return value to
+// simulate whether the current user can create skills.
+const hasPermissionMock = vi.fn(() => false);
+vi.mock("@app/lib/swr/permissions", () => ({
+  useWorkspacePermissions: () => ({
+    hasPermission: hasPermissionMock,
+  }),
+}));
+
 const mockOwner = {
   id: 1,
   sId: "test-workspace",
@@ -219,6 +229,7 @@ Quote text
     });
 
     it("renders inline skill tags as chips", () => {
+      hasPermissionMock.mockReturnValue(false);
       const content =
         'Please use <skill id="skill_123" name="commit" icon="book_open" />';
       const message = { ...mockMessage, content };
@@ -235,14 +246,14 @@ Quote text
       expect(container.textContent).not.toContain("<skill");
     });
 
-    it("links inline skill tags for builders", () => {
+    it("links inline skill tags when the user can create skills", () => {
+      hasPermissionMock.mockReturnValue(true);
       const content =
         'Please use <skill id="skill_123" name="commit" icon="book_open" />';
       const message = { ...mockMessage, content };
-      const builderOwner = { ...mockOwner, role: "builder" } as const;
       const { container } = render(
         <UserMessageMarkdown
-          owner={builderOwner}
+          owner={mockOwner}
           message={message}
           isLastMessage={false}
         />
