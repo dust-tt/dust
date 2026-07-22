@@ -117,6 +117,226 @@ describe("toInput", () => {
       ]);
     });
 
+    it("joins sections within each tier before placing its breakpoint", () => {
+      const messages = toInput(
+        {
+          instructions: [
+            { role: "instruction", content: " First instruction " },
+            { role: "instruction", content: "Second instruction" },
+          ],
+          sharedContext: [
+            { role: "context", content: "Shared context A" },
+            { role: "context", content: "Shared context B" },
+          ],
+          ephemeralContext: [{ role: "context", content: "Ephemeral context" }],
+        },
+        { messages: [] },
+        "developer",
+        { cacheBreakpointsOnSystemPrompt: true }
+      );
+
+      expect(messages).toEqual([
+        {
+          role: "developer",
+          content: [
+            {
+              type: "input_text",
+              text: "First instruction\nSecond instruction",
+              prompt_cache_breakpoint: { mode: "explicit" },
+            },
+          ],
+        },
+        {
+          role: "developer",
+          content: [
+            {
+              type: "input_text",
+              text: "Shared context A\nShared context B",
+              prompt_cache_breakpoint: { mode: "explicit" },
+            },
+          ],
+        },
+        {
+          role: "developer",
+          content: [{ type: "input_text", text: "Ephemeral context" }],
+        },
+      ]);
+    });
+
+    it("skips empty tiers without moving a breakpoint to ephemeral context", () => {
+      const messages = toInput(
+        {
+          instructions: [{ role: "instruction", content: "  " }],
+          sharedContext: [{ role: "context", content: "Shared context" }],
+          ephemeralContext: [{ role: "context", content: "Ephemeral context" }],
+        },
+        { messages: [] },
+        "developer",
+        { cacheBreakpointsOnSystemPrompt: true }
+      );
+
+      expect(messages).toEqual([
+        {
+          role: "developer",
+          content: [
+            {
+              type: "input_text",
+              text: "Shared context",
+              prompt_cache_breakpoint: { mode: "explicit" },
+            },
+          ],
+        },
+        {
+          role: "developer",
+          content: [{ type: "input_text", text: "Ephemeral context" }],
+        },
+      ]);
+    });
+
+    it("treats a string prompt as one cacheable shared-context tier", () => {
+      expect(
+        toInput("Shared context", { messages: [] }, "developer", {
+          cacheBreakpointsOnSystemPrompt: true,
+        })
+      ).toEqual([
+        {
+          role: "developer",
+          content: [
+            {
+              type: "input_text",
+              text: "Shared context",
+              prompt_cache_breakpoint: { mode: "explicit" },
+            },
+          ],
+        },
+      ]);
+    });
+
+    it("preserves an empty system prompt without adding a breakpoint", () => {
+      expect(
+        toInput(
+          {
+            instructions: [],
+            sharedContext: [],
+            ephemeralContext: [],
+          },
+          { messages: [] },
+          "developer",
+          { cacheBreakpointsOnSystemPrompt: true }
+        )
+      ).toEqual([
+        {
+          role: "developer",
+          content: [{ type: "input_text", text: "" }],
+        },
+      ]);
+    });
+
+    it("uses exactly the Anthropic-equivalent explicit breakpoints", () => {
+      const messages = toInput(
+        prompt,
+        {
+          messages: [
+            {
+              role: "user",
+              name: "system",
+              content: [{ type: "text", text: "Equipped skills" }],
+            },
+            {
+              role: "user",
+              name: "user",
+              content: [{ type: "text", text: "Current request" }],
+            },
+          ],
+        },
+        "developer",
+        {
+          cacheBreakpointsOnSystemPrompt: true,
+          cacheBreakpointOnLeadingMessage: true,
+        }
+      );
+
+      expect(messages).toEqual([
+        {
+          role: "developer",
+          content: [
+            {
+              type: "input_text",
+              text: "Instructions",
+              prompt_cache_breakpoint: { mode: "explicit" },
+            },
+          ],
+        },
+        {
+          role: "developer",
+          content: [
+            {
+              type: "input_text",
+              text: "Shared context",
+              prompt_cache_breakpoint: { mode: "explicit" },
+            },
+          ],
+        },
+        {
+          role: "developer",
+          content: [{ type: "input_text", text: "Ephemeral context" }],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: "Equipped skills",
+              prompt_cache_breakpoint: { mode: "explicit" },
+            },
+          ],
+        },
+        {
+          role: "user",
+          content: [{ type: "input_text", text: "Current request" }],
+        },
+      ]);
+    });
+
+    it("keeps system tiers unmarked when only skills caching is enabled", () => {
+      const messages = toInput(
+        prompt,
+        {
+          messages: [
+            {
+              role: "user",
+              name: "system",
+              content: [{ type: "text", text: "Equipped skills" }],
+            },
+          ],
+        },
+        "developer",
+        { cacheBreakpointOnLeadingMessage: true }
+      );
+
+      expect(messages).toEqual([
+        {
+          role: "developer",
+          content: [
+            {
+              type: "input_text",
+              text: "Instructions\nShared context\nEphemeral context",
+            },
+          ],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: "Equipped skills",
+              prompt_cache_breakpoint: { mode: "explicit" },
+            },
+          ],
+        },
+      ]);
+    });
+
     it("keeps the flattened system prompt without explicit caching", () => {
       expect(toInput(prompt, { messages: [] })).toEqual([
         {

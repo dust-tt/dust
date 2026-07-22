@@ -52,6 +52,25 @@ describe("prompt cache breakpoints", () => {
     content: { value: "Available skills" },
     cache: "short",
   };
+  const system: SystemTextMessage[] = [
+    {
+      role: "system",
+      type: "text",
+      content: { value: "Instructions" },
+      cache: "long",
+    },
+    {
+      role: "system",
+      type: "text",
+      content: { value: "Shared context" },
+      cache: "short",
+    },
+    {
+      role: "system",
+      type: "text",
+      content: { value: "Ephemeral context" },
+    },
+  ];
   const supportedEndpoint =
     new OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream({
       OPENAI_API_KEY: "",
@@ -102,26 +121,6 @@ describe("prompt cache breakpoints", () => {
   });
 
   it("serializes cache markers on stable system prompt tiers", () => {
-    const system: SystemTextMessage[] = [
-      {
-        role: "system",
-        type: "text",
-        content: { value: "Instructions" },
-        cache: "long",
-      },
-      {
-        role: "system",
-        type: "text",
-        content: { value: "Shared context" },
-        cache: "short",
-      },
-      {
-        role: "system",
-        type: "text",
-        content: { value: "Ephemeral context" },
-      },
-    ];
-
     expect(supportedEndpoint.systemMessagesToInputItems(system)).toEqual([
       {
         role: "developer",
@@ -150,6 +149,116 @@ describe("prompt cache breakpoints", () => {
     ]);
   });
 
+  it("serializes the complete cached prefix alongside tools", () => {
+    const payload = supportedEndpoint.buildRequestPayload(
+      {
+        conversation: {
+          system,
+          messages: [
+            message,
+            {
+              role: "user",
+              type: "text",
+              content: { value: "Current request" },
+            },
+          ],
+        },
+      },
+      {
+        cacheKey: "conversation-123",
+        tools: [
+          {
+            name: "search_docs",
+            description: "Search documentation",
+            inputSchema: { properties: {} },
+          },
+        ],
+      }
+    );
+
+    expect(payload.prompt_cache_key).toBe("conversation-123");
+    expect(payload.tools).toEqual([
+      {
+        type: "function",
+        name: "search_docs",
+        description: "Search documentation",
+        strict: false,
+        parameters: { type: "object", properties: {} },
+      },
+    ]);
+    expect(payload.input).toEqual([
+      {
+        role: "developer",
+        content: [
+          {
+            type: "input_text",
+            text: "Instructions",
+            prompt_cache_breakpoint: { mode: "explicit" },
+          },
+        ],
+      },
+      {
+        role: "developer",
+        content: [
+          {
+            type: "input_text",
+            text: "Shared context",
+            prompt_cache_breakpoint: { mode: "explicit" },
+          },
+        ],
+      },
+      {
+        role: "developer",
+        content: [{ type: "input_text", text: "Ephemeral context" }],
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: "Available skills",
+            prompt_cache_breakpoint: { mode: "explicit" },
+          },
+        ],
+      },
+      {
+        role: "user",
+        content: [{ type: "input_text", text: "Current request" }],
+      },
+    ]);
+  });
+
+  it("does not serialize breakpoints on following messages without cache opt-in", () => {
+    expect(
+      supportedEndpoint.conversationToInput({
+        system: [],
+        messages: [
+          message,
+          {
+            role: "user",
+            type: "text",
+            content: { value: "Current request" },
+          },
+        ],
+      })
+    ).toEqual([
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: "Available skills",
+            prompt_cache_breakpoint: { mode: "explicit" },
+          },
+        ],
+      },
+      {
+        role: "user",
+        content: [{ type: "input_text", text: "Current request" }],
+      },
+    ]);
+  });
+
   it("uses the endpoint override for models without explicit caching", () => {
     expect(
       unsupportedEndpoint.conversationToInput(conversationWith(message))
@@ -157,6 +266,23 @@ describe("prompt cache breakpoints", () => {
       {
         role: "user",
         content: [{ type: "input_text", text: "Available skills" }],
+      },
+    ]);
+  });
+
+  it("uses the endpoint override for cached system messages", () => {
+    expect(unsupportedEndpoint.systemMessagesToInputItems(system)).toEqual([
+      {
+        role: "developer",
+        content: [{ type: "input_text", text: "Instructions" }],
+      },
+      {
+        role: "developer",
+        content: [{ type: "input_text", text: "Shared context" }],
+      },
+      {
+        role: "developer",
+        content: [{ type: "input_text", text: "Ephemeral context" }],
       },
     ]);
   });
