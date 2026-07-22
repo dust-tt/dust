@@ -2034,8 +2034,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   canWrite(auth: Authenticator): boolean {
-    // API keys with at least builder role can write to any skill.
-    if (auth.isKey() && auth.isBuilder()) {
+    // TODO(governance): cleanup we we'll be able to assign API key to editor groups.
+    // API keys cannot be added to a skill's editor group (no such assignment mechanism exists),
+    // so any key is allowed to write to any skill. Skill *creation* is separately gated by
+    // `auth.hasWorkspacePermission("create", "skill")`; this only governs already-existing skills.
+    if (auth.isKey()) {
       return true;
     }
 
@@ -2047,8 +2050,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   canAdministrate(auth: Authenticator): boolean {
-    // API keys with at least builder role can administrate any skill.
-    if (auth.isKey() && auth.isBuilder()) {
+    // See canWrite: API keys have no editor-group assignment mechanism, so any key can
+    // administrate any skill.
+    if (auth.isKey()) {
       return true;
     }
 

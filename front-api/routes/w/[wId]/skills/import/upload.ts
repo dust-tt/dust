@@ -3,7 +3,6 @@ import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_ski
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import type { HttpBindings } from "@hono/node-server";
 import formidable from "formidable";
@@ -16,7 +15,7 @@ import formidable from "formidable";
 const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
 /** @ignoreswagger */
-app.post("/", ensureIsBuilder(), async (ctx) => {
+app.post("/", async (ctx) => {
   const auth = ctx.get("auth");
   const incoming = ctx.env?.incoming;
   if (!incoming) {

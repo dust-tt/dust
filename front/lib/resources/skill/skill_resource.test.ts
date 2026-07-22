@@ -48,23 +48,17 @@ describe("SkillResource", () => {
   });
 
   describe("permissions", () => {
-    it("allows builder API keys to administrate skills", async () => {
+    it("allows any API key to write and administrate skills, regardless of role", async () => {
       const skill = await SkillFactory.create(testContext.authenticator);
-      const builderKey = await KeyFactory.regular(testContext.globalGroup);
-      const readOnlyKey = await KeyFactory.readOnly(testContext.globalGroup);
+      // Keys have no editor-group assignment mechanism, so even the least-privileged key
+      // role ("user") must be allowed here — there is no role distinction left to gate on.
+      const key = await KeyFactory.readOnly(testContext.globalGroup);
 
-      const builderAuth = (
-        await Authenticator.fromKey(builderKey, testContext.workspace.sId)
-      ).workspaceAuth;
-      const readOnlyAuth = (
-        await Authenticator.fromKey(readOnlyKey, testContext.workspace.sId)
-      ).workspaceAuth;
+      const auth = (await Authenticator.fromKey(key, testContext.workspace.sId))
+        .workspaceAuth;
 
-      expect(skill.canWrite(builderAuth)).toBe(true);
-      expect(skill.canAdministrate(builderAuth)).toBe(true);
-
-      expect(skill.canWrite(readOnlyAuth)).toBe(false);
-      expect(skill.canAdministrate(readOnlyAuth)).toBe(false);
+      expect(skill.canWrite(auth)).toBe(true);
+      expect(skill.canAdministrate(auth)).toBe(true);
     });
   });
 

@@ -71,8 +71,8 @@ export async function importSkillsFromFiles(
     onConflict?: ImportConflictStrategyType;
   }
 ): Promise<Result<ImportSkillsResult, Error>> {
-  if (!auth.isBuilder()) {
-    return new Err(new Error("Importing skills requires a builder user."));
+  if (!(await auth.hasWorkspacePermission("create", "skill"))) {
+    return new Err(new Error("Creating skills is restricted."));
   }
 
   const allSkills: ZipDetectedSkill[] = [];

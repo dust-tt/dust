@@ -3,6 +3,7 @@ import {
   SkillFileAttachmentModel,
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/system/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -26,6 +27,29 @@ import { describe, expect, it, vi } from "vitest";
 
 async function setupTest(role: MembershipRoleType = "builder") {
   return createPrivateApiMockRequest({ role });
+}
+
+// The test's own "builder" membership role doesn't grant create/skill by itself anymore — it
+// requires a group grant. Used by tests that specifically need a non-admin caller (e.g. to
+// exercise space-access checks admins would otherwise bypass) while still being allowed to
+// create a skill.
+async function grantCreateSkillCapability(
+  workspace: Awaited<ReturnType<typeof setupTest>>["workspace"],
+  user: Awaited<ReturnType<typeof setupTest>>["user"]
+) {
+  const adminAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
+  const group = await GroupFactory.regularAuto(
+    workspace,
+    `skill-creator-${user.sId}`
+  );
+  await GroupFactory.withMembers(adminAuth, group, [user]);
+  await GroupPermissionResource.grantTypeWide(adminAuth, {
+    group,
+    grantType: "create",
+    resourceType: "skill",
+  });
 }
 
 function getSkills(
@@ -770,7 +794,8 @@ describe("POST /api/w/:wId/skills", () => {
   });
 
   it("rejects additional requested spaces the user cannot access", async () => {
-    const { workspace } = await setupTest("builder");
+    const { workspace, user } = await setupTest("builder");
+    await grantCreateSkillCapability(workspace, user);
 
     const restrictedSpace = await SpaceFactory.regular(workspace);
 
@@ -796,7 +821,8 @@ describe("POST /api/w/:wId/skills", () => {
   });
 
   it("allows restricting a skill to an open Pod the user can access", async () => {
-    const { workspace, globalGroup } = await setupTest("builder");
+    const { workspace, globalGroup, user } = await setupTest("builder");
+    await grantCreateSkillCapability(workspace, user);
 
     const openPod = await SpaceFactory.project(workspace);
     await GroupSpaceFactory.associate(openPod, globalGroup);
@@ -1055,6 +1081,7 @@ describe("POST /api/w/:wId/skills", () => {
 describe("POST /api/w/:wId/skills - file attachments", () => {
   it("creates a skill with file attachments", async () => {
     const { auth, workspace, user } = await setupTest("builder");
+    await grantCreateSkillCapability(workspace, user);
 
     const file1 = await FileFactory.create(auth, user, {
       contentType: "text/plain",
