@@ -1659,7 +1659,7 @@ const InputBarContainer = ({
                   <div
                     className={cn(
                       "flex items-center",
-                      isWidthConstrained ? "gap-0.5" : "gap-1"
+                      isWidthConstrained ? "gap-1" : "gap-1.5"
                     )}
                   >
                     <InputBarButtons
