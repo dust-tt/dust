@@ -1,6 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import type { WorkspaceType } from "@app/types/user";
-import { isAdmin, isBuilder } from "@app/types/user";
 
 export const PUBLISHING_RESTRICTIONS = {
   builders_and_admins: {
@@ -41,16 +39,6 @@ function canPublishForRole(
   return role === "admin" ? check.isAdmin : check.isBuilder;
 }
 
-export function canPublishForOwner(
-  owner: WorkspaceType | null,
-  level: PublishingRestriction
-): boolean {
-  return canPublishForRole(PUBLISHING_RESTRICTIONS[level].requiredRole, {
-    isAdmin: isAdmin(owner),
-    isBuilder: isBuilder(owner),
-  });
-}
-
 export function canPublishForAuth(
   auth: Authenticator,
   level: PublishingRestriction
@@ -59,20 +47,4 @@ export function canPublishForAuth(
     isAdmin: auth.isAdmin(),
     isBuilder: auth.isBuilder(),
   });
-}
-
-export function getPublishingRestrictionForOwner(
-  featureFlags: readonly string[],
-  owner: WorkspaceType | null
-): { disabled: boolean; tooltip: string | undefined } {
-  const level = getPublishingRestrictionLevel(featureFlags);
-  if (!level) {
-    return { disabled: false, tooltip: undefined };
-  }
-  const restriction = PUBLISHING_RESTRICTIONS[level];
-  const disabled = !canPublishForOwner(owner, level);
-  return {
-    disabled,
-    tooltip: disabled ? restriction.message : undefined,
-  };
 }
