@@ -11,12 +11,11 @@ This runbook provides step-by-step instructions for creating new internal MCP se
 
 For a minimal new server (no OAuth, no external API yet — just the skeleton to register and test):
 
-1. Create `front/lib/api/actions/servers/{provider}/metadata.ts` with `createToolsRecord`
-2. Create `front/lib/api/actions/servers/{provider}/tools/index.ts` with stub handlers
-3. Create `front/lib/api/actions/servers/{provider}/index.ts` with `createServer`
-4. Register in `constants.ts` and `servers/index.ts`
-5. Add the server to `SERVERS` in `bm25_tool_search_utils.test.ts`
-6. Add at least one BM25 query case to `bm25_tool_search.test.ts`
+1. Create `front/lib/api/actions/servers/{provider}/metadata.ts` with a literal array of tool metadata
+2. Create `front/lib/api/actions/servers/{provider}/tools/index.ts` with a server-qualified handler map
+3. Register the server metadata in `constants.ts`
+4. Wire the handler map to the shared `createServer` path in `servers/index.ts`
+5. Add the server to `bm25_tool_search_utils.test.ts` with at least one BM25 query case in `bm25_tool_search.test.ts`
 
 See the **BM25 Tests** section below for the test setup. This gives you a runnable skeleton
 with type-checked tool descriptions before writing any real API calls.
@@ -27,17 +26,16 @@ with type-checked tool descriptions before writing any real API calls.
 
 ```text
 front/lib/api/actions/servers/{provider}/
-├── metadata.ts           # Tool metadata and server info using createToolsRecord
-├── tools/index.ts        # Tool handlers with exhaustive Record type
-├── index.ts              # Server creation and tool registration
+├── metadata.ts           # Tool metadata and server info
+├── tools/index.ts        # Exhaustive, typed tool handler map
 ├── client.ts             # API client (optional)
 └── helpers.ts            # Helper functions (optional)
 ```
 
 ### Registration Files
 
-1. `front/lib/actions/mcp_internal_actions/constants.ts` - Add server config with `metadata: YOUR_SERVER`
-2. `front/lib/actions/mcp_internal_actions/servers/index.ts` - Import and register in switch statement
+1. `front/lib/actions/mcp_internal_actions/constants.ts` - Register `metadata: YOUR_PROVIDER_SERVER`
+2. `front/lib/actions/mcp_internal_actions/servers/index.ts` - Import the handler map and pass it to `createServer`
 
 ### OAuth Requirements (if the platform requires OAuth)
 
@@ -50,11 +48,16 @@ front/lib/api/actions/servers/{provider}/
 
 - Do not forget to add the server to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES` array
 - Server IDs must be stable and unique; never change them once deployed
+- Define tools as an array; do not add a helper whose only job is to attach names or convert the array
+- Give each tool an explicit, stable `name`
+- Internal tools must define `displayLabels`, `stake`, `toolCostCategory`, and `freeUsage`
+- Export a searchable server-qualified handler map such as `YOUR_PROVIDER_TOOL_HANDLERS`
+- Monitoring defaults to the server name; use `monitoringName: "tool"` only when metrics must be split by tool name
 - Tool stakes must be configured appropriately (`never_ask`, `low`, `medium`, `high`)
 - Tool descriptions should start with a bare infinitive/base verb like `List`, `Get`, `Search`,
   `Create`, or `Update`
 - Always implement proper error handling with `Result` types
-- Handle OAuth token refresh automatically through the `withAuth` pattern
+- Add a `withAuth` helper only when token validation or client construction is genuinely repeated
 
 ## Prerequisites
 
@@ -105,15 +108,12 @@ Document the operations you want to expose:
 Create `front/lib/api/actions/servers/{provider}/metadata.ts`:
 
 ```typescript
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { z } from "zod";
 
-export const YOUR_PROVIDER_TOOLS_METADATA = createToolsRecord({
-  list_items: {
+export const YOUR_PROVIDER_TOOLS_METADATA = [
+  {
+    name: "list_items",
     description: "List all items accessible to the user.",
     schema: {
       pageToken: z.string().optional().describe("Page token for pagination."),
@@ -124,8 +124,11 @@ export const YOUR_PROVIDER_TOOLS_METADATA = createToolsRecord({
       running: "Listing Items",
       done: "List items",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  get_item: {
+  {
+    name: "get_item",
     description: "Get a single item by ID.",
     schema: {
       itemId: z.string().describe("The ID of the item to retrieve."),
@@ -135,8 +138,11 @@ export const YOUR_PROVIDER_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving item",
       done: "Retrieve item",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  create_item: {
+  {
+    name: "create_item",
     description: "Create a new item.",
     schema: {
       name: z.string().describe("Name of the item."),
@@ -147,8 +153,10 @@ export const YOUR_PROVIDER_TOOLS_METADATA = createToolsRecord({
       running: "Creating item",
       done: "Create item",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-});
+] as const;
 
 export const YOUR_PROVIDER_SERVER = {
   serverInfo: {
@@ -163,30 +171,26 @@ export const YOUR_PROVIDER_SERVER = {
     documentationUrl: "https://docs.dust.tt/docs/your-provider",
     instructions: null,
   },
-  tools: Object.values(YOUR_PROVIDER_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    stake: t.stake,
-  })),
+  tools: YOUR_PROVIDER_TOOLS_METADATA,
 } as const satisfies ServerMetadata;
 ```
 
 Key points:
 
-- `createToolsRecord` automatically adds the `name` property from the object key
-- tool keys become the source of truth
+- the metadata is a plain array and each tool declares its own `name`
+- pass that same array directly to `YOUR_PROVIDER_SERVER.tools`; JSON-schema conversion happens centrally
+- keep `as const` so tool names and Zod schemas remain precise enough for `ToolHandlers<typeof ...>`
 - tool descriptions start with a bare infinitive/base verb such as `List`, `Get`, `Search`,
   `Create`, `Update`, or `Retrieve`; avoid noun phrases, articles, gerunds, and third-person
   verbs because descriptions are part of the BM25 tool-search corpus (see **BM25-Friendly
   Descriptions** below)
-- `stake` values map to review/approval expectations
+- `stake` controls review/approval expectations
+- `toolCostCategory` and `freeUsage` control credit accounting
 
 ### BM25-Friendly Descriptions (MCP3 rule)
 
 Tool names and descriptions both drive BM25 retrieval. **Names are the strongest signal** — they
-must be consistent and follow the `verbNoun` convention (e.g., `listWarehouses`, `getWorkbook`).
+must be consistent and follow the `verb_noun` convention (e.g., `list_warehouses`, `get_workbook`).
 Descriptions are the secondary signal: write each one as if answering "what user intent does this
 tool serve?"
 
@@ -235,11 +239,13 @@ Create `front/lib/api/actions/servers/{provider}/tools/index.ts`:
 ```typescript
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { YOUR_PROVIDER_TOOLS_METADATA } from "@app/lib/api/actions/servers/your_provider/metadata";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-const handlers: ToolHandlers<typeof YOUR_PROVIDER_TOOLS_METADATA> = {
+export const YOUR_PROVIDER_TOOL_HANDLERS: ToolHandlers<
+  typeof YOUR_PROVIDER_TOOLS_METADATA
+> = {
   list_items: async ({ pageToken, maxResults }, { authInfo }) => {
     const token = authInfo?.token;
     if (!token) {
@@ -250,11 +256,15 @@ const handlers: ToolHandlers<typeof YOUR_PROVIDER_TOOLS_METADATA> = {
       const items = [];
 
       return new Ok([
-        { type: "text" as const, text: `Found ${items.length} items` },
-        { type: "text" as const, text: JSON.stringify({ items }, null, 2) },
+        {
+          type: "text" as const,
+          text: `Found ${items.length} items\n\n${JSON.stringify(items, null, 2)}`,
+        },
       ]);
     } catch (e) {
-      return new Err(new MCPError("Failed to list items"));
+      return new Err(
+        new MCPError(`Failed to list items: ${normalizeError(e).message}`)
+      );
     }
   },
 
@@ -272,7 +282,9 @@ const handlers: ToolHandlers<typeof YOUR_PROVIDER_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(item, null, 2) },
       ]);
     } catch (e) {
-      return new Err(new MCPError("Failed to get item"));
+      return new Err(
+        new MCPError(`Failed to get item: ${normalizeError(e).message}`)
+      );
     }
   },
 
@@ -290,53 +302,23 @@ const handlers: ToolHandlers<typeof YOUR_PROVIDER_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(item, null, 2) },
       ]);
     } catch (e) {
-      return new Err(new MCPError("Failed to create item"));
+      return new Err(
+        new MCPError(`Failed to create item: ${normalizeError(e).message}`)
+      );
     }
   },
 };
-
-export const TOOLS = buildTools(YOUR_PROVIDER_TOOLS_METADATA, handlers);
 ```
 
 Key points:
 
 - `ToolHandlers<T>` enforces exhaustive implementation
-- `buildTools` combines metadata and handlers into `ToolDefinition[]`
 - each handler receives typed params inferred from the schema
-- access the OAuth token via `extra.authInfo?.token`
+- the second argument exposes request context such as `auth`, `authInfo`, and `runContext`
+- access the OAuth token via `authInfo?.token`; do not close over request state when `ToolHandlerExtra` already provides it
+- consistently use a server-qualified export name rather than a generic `TOOL_HANDLERS` export
 
-### 3. Create `index.ts`
-
-Create `front/lib/api/actions/servers/{provider}/index.ts`:
-
-```typescript
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { TOOLS } from "@app/lib/api/actions/servers/your_provider/tools";
-import type { Authenticator } from "@app/lib/auth";
-
-function createServer(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("your_provider");
-
-  for (const tool of TOOLS) {
-    registerTool(auth, agentLoopContext, server, tool, {
-      monitoringName: "your_provider",
-    });
-  }
-
-  return server;
-}
-
-export default createServer;
-```
-
-### 4. Register in `constants.ts`
+### 3. Register in `constants.ts`
 
 Edit `front/lib/actions/mcp_internal_actions/constants.ts`:
 
@@ -367,15 +349,30 @@ Important properties:
 - `allowMultipleInstances`: `true` for OAuth-based integrations
 - `isRestricted`: feature-flag or plan gating function, if needed
 - `isPreview`: `true` for beta or preview integrations
+- `requiresBearerToken`: set this when the server authenticates with a bearer token
+- `tools_arguments_requiring_approval`: optionally identify sensitive arguments that require review
+- `tools_retry_policies`: configure retries only when the tool semantics support them
 
-### 5. Register in `servers/index.ts`
+### 4. Wire the handler map in `servers/index.ts`
 
-Edit `front/lib/actions/mcp_internal_actions/servers/index.ts`:
+Import the handler map and add a case to `getInternalMCPServer` that uses the central server factory:
 
 ```typescript
+import { YOUR_PROVIDER_TOOL_HANDLERS } from "@app/lib/api/actions/servers/your_provider/tools";
+
 case "your_provider":
-  return yourProviderServer(auth, agentLoopContext);
+  return createServer(auth, {
+    serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+    toolHandlers: YOUR_PROVIDER_TOOL_HANDLERS,
+    toolContext,
+  });
 ```
+
+Do not create a provider-level `index.ts` or server factory whose only job is to merge metadata and
+handlers. The shared `createServer` path already registers the Zod schemas, applies tool availability,
+and links each metadata entry to its handler. It monitors all tools under `serverInfo.name` by
+default. Pass `monitoringName: "tool"` only for servers that intentionally monitor each tool under
+`tool.name`, such as `data_sources_file_system`.
 
 ## Optional: `client.ts` and `helpers.ts`
 
@@ -403,8 +400,9 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { Err } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-export async function withAuth<T>(
+export async function withAuth(
   { authInfo }: ToolHandlerExtra,
   action: (token: string) => Promise<ToolHandlerResult>
 ): Promise<ToolHandlerResult> {
@@ -416,7 +414,9 @@ export async function withAuth<T>(
   try {
     return await action(token);
   } catch (e) {
-    return new Err(new MCPError("Operation failed"));
+    return new Err(
+      new MCPError(`Operation failed: ${normalizeError(e).message}`)
+    );
   }
 }
 ```
@@ -428,12 +428,43 @@ Use `client.ts` / `helpers.ts` based on complexity:
 - several API endpoints: create `client.ts`
 - complex response formatting: add dedicated rendering helpers
 
-## Alternative: function-based tools
+## Context-dependent tools
 
-If handlers need access to `Authenticator` directly, create tools through a function instead of a
-constant.
+### Prefer metadata availability callbacks
 
-See `front/lib/api/actions/servers/github/tools/index.ts` for a full example.
+If a static tool should only be exposed for some users or run contexts, add
+`isAvailableForContext` to its `ToolMeta`. The shared `createServer` implementation evaluates this
+callback before registering the tool:
+
+```typescript
+{
+  name: "contextual_tool",
+  isAvailableForContext: ({
+    auth,
+    toolContext,
+  }: {
+    auth: Authenticator;
+    toolContext?: ToolContext;
+  }) => {
+    return canUseContextualTool(auth, toolContext);
+  },
+  // description, schema, stake, displayLabels, toolCostCategory, freeUsage...
+}
+```
+
+Keep the availability rule beside the tool metadata instead of scattering conditional callbacks
+through server wiring. See `common_utilities/metadata.ts`, `conversation_files/metadata.ts`, and
+`interactive_content/metadata.ts` for current examples. For a standalone `as const` metadata
+array, type the callback context inline as above; do not widen the whole array to `ToolMeta[]`.
+
+### Use factories only for genuinely dynamic construction
+
+Most handlers do not need a factory: they receive `auth`, `authInfo`, and `runContext` through their
+second argument. Keep a contextual factory only when the set of metadata or handlers itself must be
+built from runtime state. Examples include fully dynamic tool definitions such as `extract_data`
+and context-selected metadata variants such as `data_sources_file_system`.
+
+Do not introduce a factory merely to combine a static metadata array with a static handler map.
 
 ## Icon
 
@@ -501,13 +532,13 @@ description quality is sufficient for tool-search retrieval.
 
 ### 1. Register the server in `bm25_tool_search_utils.test.ts`
 
-Add an import and a `SERVERS` entry:
+Add an import and a `SERVER_SOURCES` entry. The test utility derives `SERVERS` from this array:
 
 ```typescript
 // At the top with the other imports:
 import { YOUR_PROVIDER_SERVER } from "@app/lib/api/actions/servers/your_provider/metadata";
 
-// In the SERVERS array:
+// In the SERVER_SOURCES array:
 { name: "your_provider", tools: YOUR_PROVIDER_SERVER.tools },
 ```
 
@@ -535,7 +566,8 @@ Add entries to the `QUERIES` array. Each entry needs:
 ### 3. Run the tests
 
 ```bash
-npm run test -- front/lib/api/actions/servers/bm25_tool_search.test.ts
+cd front
+NODE_ENV=test npm test -- ./lib/api/actions/servers/bm25_tool_search.test.ts
 ```
 
 If a case fails with "Expected tool to have a non-zero score but it was not found", the query
@@ -546,22 +578,27 @@ token, or rephrase the query to use a term that's actually in the description.
 
 Before marking implementation complete:
 
-- `metadata.ts` exists and uses `createToolsRecord`
+- `metadata.ts` exports a literal metadata array with explicit tool names
+- each tool defines `schema`, `stake`, `displayLabels`, `toolCostCategory`, and `freeUsage`
+- the server metadata references the tool array directly and satisfies `ServerMetadata`
 - tool descriptions start with a bare infinitive/base verb
 - `tools/index.ts` exists and uses `ToolHandlers<typeof METADATA>`
-- `index.ts` default-exports the server factory
+- the handler map has a server-qualified export name
 - the server is in `AVAILABLE_INTERNAL_MCP_SERVER_NAMES`
 - the server config is in `INTERNAL_MCP_SERVERS`
-- the server is registered in `servers/index.ts`
+- `getInternalMCPServer` passes the registered metadata and handler map to `createServer`
+- context-dependent visibility uses `isAvailableForContext` when possible
+- tests call the handler map directly rather than rebuilding or looking up tools by name
+- direct handler tests provide post-Zod values, including defaults normally applied by MCP schema parsing
 - response rendering is implemented
 - a temporary icon is set
 - the icon is present in `PLATFORM_LOGOS` in `sparkle/src/logo/platforms/registry.ts`
 - the engineer has been told marketing needs a redeploy for the icon to appear publicly
 - feature gating is configured if needed
-- server added to `SERVERS` in `bm25_tool_search_utils.test.ts`
+- server added to `SERVER_SOURCES` in `bm25_tool_search_utils.test.ts`
 - at least one query case per tool added to `bm25_tool_search.test.ts`
-- `npm run test -- front/lib/api/actions/servers/bm25_tool_search.test.ts` passes
-- `npx tsgo --noEmit` passes
+- `cd front && NODE_ENV=test npm test -- ./lib/api/actions/servers/bm25_tool_search.test.ts` passes
+- `cd front && npx tsgo --noEmit` passes
 - `npm run format:changed` passes from the repo root
 - manual testing is complete
 
@@ -582,7 +619,8 @@ Before marking implementation complete:
 ### Tools not working
 
 - verify the tool is registered
-- verify every published tool includes its `stake`
+- verify every tool metadata entry has a matching handler-map key
+- verify every published tool includes `stake`, `displayLabels`, `toolCostCategory`, and `freeUsage`
 - test the API helper functions directly
 - confirm `authInfo.token` is propagated
 
@@ -590,7 +628,9 @@ Before marking implementation complete:
 
 - ensure the server name was added to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES`
 - run `npx tsgo --noEmit`
-- if handler typing fails, re-check the metadata/handler mapping
+- preserve the metadata array with `as const`; annotating it as `ToolMeta[]` widens tool names and schemas
+- if handler typing fails, re-check that `ToolHandlers<typeof YOUR_PROVIDER_TOOLS_METADATA>` uses the exact array
+- if a handler is missing or extra, fix the handler map rather than adding a metadata-to-handler adapter
 
 ## Reference Implementations
 
@@ -599,10 +639,11 @@ Before marking implementation complete:
 - `front/lib/api/actions/servers/google_calendar/`
 - `front/lib/api/actions/servers/agent_sidekick_context/`
 - `front/lib/api/actions/servers/agent_sidekick_agent_state/`
+- `front/lib/actions/mcp_internal_actions/servers/index.ts` for central `createServer` wiring
 
 ## Additional Resources
 
 - MCP SDK documentation: https://modelcontextprotocol.io/
 - existing server implementations in `front/lib/api/actions/servers/`
-- legacy implementations in `front/lib/actions/mcp_internal_actions/servers/`
+- internal server registry and shared construction in `front/lib/actions/mcp_internal_actions/`
 - OAuth providers in `core/src/oauth/providers/`
