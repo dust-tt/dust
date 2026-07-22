@@ -84,6 +84,11 @@ ActivationRecommendationModel.init(
         concurrently: true,
       },
       {
+        name: "idx_activation_recommendations_user",
+        fields: ["userId"],
+        concurrently: true,
+      },
+      {
         fields: ["conversationId"],
         concurrently: true,
       },

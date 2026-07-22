@@ -13,17 +13,10 @@ Statement 1
 */
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
-DROP INDEX CONCURRENTLY IF EXISTS "idx_activation_recommendations_user";
-
-/*
-Statement 2
-*/
-SET SESSION statement_timeout = 1200000;
-SET SESSION lock_timeout = 3000;
 DROP INDEX CONCURRENTLY IF EXISTS "activation_recommendations_workspace_id";
 
 /*
-Statement 3
+Statement 2
 */
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
