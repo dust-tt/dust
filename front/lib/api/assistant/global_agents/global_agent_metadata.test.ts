@@ -23,18 +23,6 @@ describe("canRoleSeeAudience", () => {
     }
   });
 
-  it("makes 'builders' visible to builders and admins, not users", async () => {
-    expect(canRoleSeeAudience("builders", await authForRole("admin"))).toBe(
-      true
-    );
-    expect(canRoleSeeAudience("builders", await authForRole("builder"))).toBe(
-      true
-    );
-    expect(canRoleSeeAudience("builders", await authForRole("user"))).toBe(
-      false
-    );
-  });
-
   it("makes 'admins' visible to admins only", async () => {
     expect(canRoleSeeAudience("admins", await authForRole("admin"))).toBe(true);
     expect(canRoleSeeAudience("admins", await authForRole("builder"))).toBe(

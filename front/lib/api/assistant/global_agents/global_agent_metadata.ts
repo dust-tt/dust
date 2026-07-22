@@ -33,11 +33,7 @@ import {
 } from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-export const GLOBAL_AGENT_AUDIENCES = [
-  "everyone",
-  "builders",
-  "admins",
-] as const;
+export const GLOBAL_AGENT_AUDIENCES = ["everyone", "admins"] as const;
 export type GlobalAgentAudience = (typeof GLOBAL_AGENT_AUDIENCES)[number];
 
 type AgentMetadata = {
@@ -55,8 +51,6 @@ export function canRoleSeeAudience(
   switch (audience) {
     case "everyone":
       return true;
-    case "builders":
-      return auth.isBuilder();
     case "admins":
       return auth.isAdmin();
     default:
