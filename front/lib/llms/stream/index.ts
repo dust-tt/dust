@@ -52,6 +52,7 @@ import { DustOpenAIGptFiveMiniEuropeOpenAIResponsesStream } from "@app/lib/llms/
 import { DustOpenAIGptFiveMiniGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_mini_global_openai_responses";
 import { DustOpenAIGptFiveNanoEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_nano_eu_openai_responses";
 import { DustOpenAIGptFiveNanoGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_nano_global_openai_responses";
+import { DustXaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_five_global_xai";
 import { DustZAiGlmFiveDotTwoGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/z_ai_glm_five_dot_two_global_fireworks";
 import { isEndpointAvailable } from "@app/lib/llms/stream/utils/is_endpoint_available";
 import type {
@@ -169,6 +170,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustOpenAIGptFiveNanoGlobalOpenAIResponsesStream,
   [DustOpenAIGptFiveGlobalOpenAIResponsesStream.id]:
     DustOpenAIGptFiveGlobalOpenAIResponsesStream,
+  [DustXaiGrokFourDotFiveGlobalXaiStream.id]:
+    DustXaiGrokFourDotFiveGlobalXaiStream,
 } as const satisfies Record<StreamEndpointId, DustStreamEndpointConstructor>;
 
 export function getStreamEndpoints(
