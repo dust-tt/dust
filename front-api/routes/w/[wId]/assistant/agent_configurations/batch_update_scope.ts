@@ -1,6 +1,6 @@
 import { updateAgentConfigurationsScope } from "@app/lib/api/assistant/configuration/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -16,7 +16,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsBuilder(),
+  ensureIsAdmin(),
   validate("json", BatchUpdateAgentScopeRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
