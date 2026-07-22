@@ -125,6 +125,7 @@ export async function writeBatchUserMessages(
         {
           workspaceId: workspace.id,
           userId: null,
+          conversationId: conversationResource.id,
           content,
           userContextUsername,
           userContextTimezone: "UTC",
@@ -220,6 +221,7 @@ export async function storeLlmResult(
           status,
           agentConfigurationId,
           agentConfigurationVersion: 0,
+          conversationId: conversation.id,
           workspaceId: workspace.id,
           skipToolsValidation: false,
           errorCode: firstError ? firstError.content.type : null,
