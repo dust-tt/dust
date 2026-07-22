@@ -11,13 +11,10 @@ import {
   useSetNavChildren,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -74,7 +71,7 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
 
 export function ManageAgentsPage() {
   const owner = useWorkspace();
-  const { user, isBuilder } = useAuth();
+  const { user } = useAuth();
   const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
@@ -83,11 +80,10 @@ export function ManageAgentsPage() {
   const [isBatchEdit, setIsBatchEdit] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
 
-  const { featureFlags } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions(owner);
 
-  const isRestrictedFromAgentCreation =
-    featureFlags.includes("disallow_agent_creation_to_users") && !isBuilder;
-  const shouldDisableAgentFetching = isRestrictedFromAgentCreation;
+  const canCreateAgent = hasPermission("create", "agent");
+  const shouldDisableAgentFetching = !canCreateAgent;
   const isSearchActive = assistantSearch.trim() !== "";
 
   const activeTab = useMemo(() => {
@@ -219,7 +215,7 @@ export function ManageAgentsPage() {
   }, []);
 
   useEffect(() => {
-    if (isRestrictedFromAgentCreation) {
+    if (!canCreateAgent) {
       return;
     }
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -233,7 +229,7 @@ export function ManageAgentsPage() {
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [isRestrictedFromAgentCreation]);
+  }, [canCreateAgent]);
 
   const navChildren = useMemo(
     () => <AgentSidebarMenu owner={owner} />,
@@ -245,7 +241,7 @@ export function ManageAgentsPage() {
 
   return (
     <>
-      {isRestrictedFromAgentCreation ? (
+      {!canCreateAgent ? (
         <Custom404 />
       ) : (
         <>
@@ -288,7 +284,7 @@ export function ManageAgentsPage() {
                       setSelectedTags={setSelectedTags}
                       owner={owner}
                     />
-                    {!isRestrictedFromAgentCreation && (
+                    {canCreateAgent && (
                       <CreateDropdown
                         owner={owner}
                         dataGtmLocation="assistantsWorkspace"
@@ -370,7 +366,7 @@ export function ManageAgentsPage() {
                   />
                 ) : (
                   !assistantSearch &&
-                  !isRestrictedFromAgentCreation && (
+                  canCreateAgent && (
                     <div className="pt-2">
                       <EmptyCallToAction
                         href={`/w/${owner.sId}/builder/agents/create`}

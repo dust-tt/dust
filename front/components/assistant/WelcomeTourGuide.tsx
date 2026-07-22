@@ -1,9 +1,8 @@
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
   AnchoredPopover,
   Avatar,
@@ -159,11 +158,9 @@ export function WelcomeTourGuide({
   const centeredRef = useRef<HTMLDivElement>(null);
   const [currentStep, setCurrentStep] = useState(0);
 
-  const { featureFlags } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions(owner);
 
-  const isRestrictedFromAgentCreation =
-    featureFlags.includes("disallow_agent_creation_to_users") &&
-    !isBuilder(owner);
+  const canCreateAgent = hasPermission("create", "agent");
 
   const connections = useMemo(() => {
     return Object.values(CONNECTOR_CONFIGURATIONS)
@@ -202,8 +199,7 @@ export function WelcomeTourGuide({
             workspace.
           </div>
           <div className="copy-base px-3 text-muted-foreground">
-            Discover the basics of Dust in{" "}
-            {!isRestrictedFromAgentCreation ? "3" : "2"} steps.
+            Discover the basics of Dust in {canCreateAgent ? "3" : "2"} steps.
           </div>
         </>
       ),
@@ -314,7 +310,7 @@ export function WelcomeTourGuide({
         </>
       ),
     },
-    ...(!isRestrictedFromAgentCreation
+    ...(canCreateAgent
       ? [
           {
             anchorRef: createAgentButtonRef,
