@@ -1,0 +1,309 @@
+import { ModelPickerModelRow } from "@app/components/assistant/conversation/input_bar/ModelPickerModelRow";
+import type {
+  MakerGroup,
+  Selection,
+} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import {
+  getEffortStops,
+  getInitialEffort,
+  getModelKey,
+  isModelDisplayed,
+} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import { getModelMakerLogo } from "@app/components/providers/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import {
+  getModelMaker,
+  getModelMakerDisplayName,
+} from "@app/types/assistant/models/providers";
+import type {
+  ModelConfigurationType,
+  ModelMakerIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  Icon,
+} from "@dust-tt/sparkle";
+import { Fragment } from "react";
+
+interface ModelPickerMoreModelsProps {
+  makerGroups: MakerGroup[];
+  allModels: ModelConfigurationType[];
+  shown: Selection;
+  agentDefault: Selection;
+  // Whether the active selection differs from the agent default.
+  canRevert: boolean;
+  search: string;
+  onSearchChange: (value: string) => void;
+  // On width-constrained clients (mobile, extension) there are no submenus:
+  // "More models" and each maker expand inline.
+  isWidthConstrained: boolean;
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
+  expandedMaker: ModelMakerIdType | null;
+  onToggleMaker: (makerId: ModelMakerIdType) => void;
+  onSelectModel: (model: ModelConfigurationType) => void;
+  onChangeEffort: (effort: ReasoningEffort) => void;
+  onRevert: () => void;
+  // Vetoes the interaction-outside dismissal that a model/effort pick triggers
+  // on the open submenus, so they stay reachable after a pick.
+  shouldBlockDismiss: () => boolean;
+}
+
+export function ModelPickerMoreModels({
+  makerGroups,
+  allModels,
+  shown,
+  agentDefault,
+  canRevert,
+  search,
+  onSearchChange,
+  isWidthConstrained,
+  isExpanded,
+  onToggleExpanded,
+  expandedMaker,
+  onToggleMaker,
+  onSelectModel,
+  onChangeEffort,
+  onRevert,
+  shouldBlockDismiss,
+}: ModelPickerMoreModelsProps) {
+  const { isDark } = useTheme();
+
+  const query = search.trim().toLowerCase();
+  const isSearching = query !== "";
+  const searchResults = isSearching
+    ? allModels.filter(
+        (model) =>
+          model.displayName.toLowerCase().includes(query) ||
+          getModelMakerDisplayName(getModelMaker(model))
+            .toLowerCase()
+            .includes(query)
+      )
+    : [];
+
+  // A concrete model (as opposed to a tier) is the active selection: mark the
+  // "More models" entry so the user knows their pick lives inside it.
+  const modelSelected = shown.display.kind === "model";
+  // The maker whose submenu holds the active model, so we can mark that
+  // provider entry too. Null when a tier (not a concrete model) is selected.
+  const selectedModelMaker =
+    shown.display.kind === "model" ? getModelMaker(shown.display.model) : null;
+
+  const renderModelRow = (
+    model: ModelConfigurationType,
+    showMakerIcon: boolean
+  ) => {
+    const isSelected = isModelDisplayed(model, shown.display);
+    const isDefault = isModelDisplayed(model, agentDefault.display);
+    const effort =
+      isSelected && shown.display.kind === "model"
+        ? shown.display.effort
+        : getInitialEffort(model);
+    return (
+      <ModelPickerModelRow
+        key={getModelKey(model.providerId, model.modelId)}
+        model={model}
+        isSelected={isSelected}
+        isDefault={isDefault}
+        effort={effort}
+        effortStops={getEffortStops(model)}
+        icon={
+          showMakerIcon
+            ? getModelMakerLogo(getModelMaker(model), isDark)
+            : undefined
+        }
+        onSelectModel={onSelectModel}
+        onChangeEffort={onChangeEffort}
+        canRevert={canRevert}
+        onRevert={onRevert}
+      />
+    );
+  };
+
+  const searchbar = (
+    <div className="sticky top-0 z-10 bg-overlay-background pt-2">
+      <DropdownMenuSearchbar
+        autoFocus={!isWidthConstrained}
+        name="search-models"
+        placeholder="Search for model"
+        value={search}
+        onChange={onSearchChange}
+      />
+    </div>
+  );
+
+  // The list body: flat search results, or the maker groups.
+  const body = isSearching ? (
+    searchResults.length > 0 ? (
+      searchResults.map((model) => renderModelRow(model, true))
+    ) : (
+      <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+        No models found
+      </div>
+    )
+  ) : (
+    makerGroups.map((maker) =>
+      isWidthConstrained ? (
+        <Fragment key={maker.makerId}>
+          <DropdownMenuItem
+            label={getModelMakerDisplayName(maker.makerId)}
+            icon={getModelMakerLogo(maker.makerId, isDark)}
+            endComponent={
+              <div className="flex items-center gap-1">
+                {selectedModelMaker === maker.makerId && (
+                  <Icon
+                    visual={Check}
+                    size="sm"
+                    className="text-muted-foreground"
+                  />
+                )}
+                <Icon
+                  visual={
+                    expandedMaker === maker.makerId ? ChevronDown : ChevronRight
+                  }
+                  size="xs"
+                />
+              </div>
+            }
+            onClick={() => onToggleMaker(maker.makerId)}
+            onSelect={(e) => e.preventDefault()}
+          />
+          {expandedMaker === maker.makerId &&
+            maker.models.map((model) => renderModelRow(model, false))}
+        </Fragment>
+      ) : (
+        <DropdownMenuSub key={maker.makerId}>
+          {/* Children mode (not label/icon): DropdownMenuSubTrigger has no
+              endComponent slot, so we compose the row ourselves to place the
+              selection check to the right, before the built-in chevron. */}
+          <DropdownMenuSubTrigger>
+            <Icon visual={getModelMakerLogo(maker.makerId, isDark)} size="sm" />
+            <span className="flex-grow truncate text-left">
+              {getModelMakerDisplayName(maker.makerId)}
+            </span>
+            {selectedModelMaker === maker.makerId && (
+              <Icon
+                visual={Check}
+                size="sm"
+                className="text-muted-foreground"
+              />
+            )}
+            <Icon
+              visual={ChevronRight}
+              size="xs"
+              className="text-muted-foreground"
+            />
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent
+            className="max-h-96 w-64 overflow-y-auto"
+            // Clicks inside a portaled submenu bubble up the React tree to the
+            // parent menu, which would dismiss the whole picker (e.g. clicking
+            // the searchbar or empty space). Contain them here.
+            onClick={(e) => e.stopPropagation()}
+            onFocusOutside={(e) => {
+              if (shouldBlockDismiss()) {
+                e.preventDefault();
+              }
+            }}
+            onPointerDownOutside={(e) => {
+              if (shouldBlockDismiss()) {
+                e.preventDefault();
+              }
+            }}
+            onInteractOutside={(e) => {
+              if (shouldBlockDismiss()) {
+                e.preventDefault();
+              }
+            }}
+          >
+            {maker.models.map((model) => renderModelRow(model, false))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      )
+    )
+  );
+
+  if (isWidthConstrained) {
+    return (
+      <>
+        <DropdownMenuItem
+          label="More models"
+          endComponent={
+            <div className="flex items-center gap-1">
+              {modelSelected && (
+                <Icon
+                  visual={Check}
+                  size="sm"
+                  className="text-muted-foreground"
+                />
+              )}
+              <Icon
+                visual={isExpanded ? ChevronDown : ChevronRight}
+                size="xs"
+              />
+            </div>
+          }
+          onClick={onToggleExpanded}
+          onSelect={(e) => e.preventDefault()}
+        />
+        {isExpanded && (
+          <>
+            {searchbar}
+            {body}
+          </>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <DropdownMenuSub>
+      {/* Children mode: place the selection check to the right, before the
+          built-in chevron (DropdownMenuSubTrigger has no endComponent slot). */}
+      <DropdownMenuSubTrigger>
+        <span className="flex-grow truncate text-left">More models</span>
+        {modelSelected && (
+          <Icon visual={Check} size="sm" className="text-muted-foreground" />
+        )}
+        <Icon
+          visual={ChevronRight}
+          size="xs"
+          className="text-muted-foreground"
+        />
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent
+        className="max-h-[28rem] w-64 overflow-y-auto"
+        // Clicks inside a portaled submenu bubble up the React tree to the
+        // parent menu, which would dismiss the whole picker (e.g. clicking the
+        // searchbar or empty space). Contain them here.
+        onClick={(e) => e.stopPropagation()}
+        onFocusOutside={(e) => {
+          if (shouldBlockDismiss()) {
+            e.preventDefault();
+          }
+        }}
+        onPointerDownOutside={(e) => {
+          if (shouldBlockDismiss()) {
+            e.preventDefault();
+          }
+        }}
+        onInteractOutside={(e) => {
+          if (shouldBlockDismiss()) {
+            e.preventDefault();
+          }
+        }}
+      >
+        {searchbar}
+        {body}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
+}

@@ -1,81 +1,126 @@
-import { ModelPickerList } from "@app/components/assistant/conversation/input_bar/ModelPickerList";
-import { ModelPickerRowTooltip } from "@app/components/assistant/conversation/input_bar/ModelPickerRowTooltip";
+import { ModelPickerMoreModels } from "@app/components/assistant/conversation/input_bar/ModelPickerMoreModels";
+import { ModelPickerSelectionIndicator } from "@app/components/assistant/conversation/input_bar/ModelPickerSelectionIndicator";
 import type {
-  ModelPickerListState,
-  ModelWithReasoningEffort,
+  MakerGroup,
+  ModelTierId,
+  Selection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { AUTO_TOOLTIP } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import {
+  isTierDisplayed,
+  MODEL_TIERS,
+} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import type {
+  ModelConfigurationType,
+  ModelMakerIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
+import {
+  BarFull,
+  BarHalf,
+  BarLow,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSearchbar,
-  SliderToggle,
+  DropdownMenuSeparator,
 } from "@dust-tt/sparkle";
+import type { ComponentType } from "react";
+
+// Tier trigger icons: rising bars from Fast to Complex.
+const TIER_ICON: Record<ModelTierId, ComponentType> = {
+  fast: BarLow,
+  standard: BarHalf,
+  complex: BarFull,
+};
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
+  // Vetoes the interaction-outside dismissal that a model/effort pick triggers
+  // on the open submenus, so they stay reachable after a pick.
+  shouldBlockDismiss: () => boolean;
+  shown: Selection;
+  agentDefault: Selection;
+  canRevert: boolean;
+  makerGroups: MakerGroup[];
+  allModels: ModelConfigurationType[];
   search: string;
   onSearchChange: (value: string) => void;
-  listState: ModelPickerListState;
-  // The Auto row: null hides it entirely (e.g. while searching), otherwise
-  // `isOn` drives the toggle state.
-  auto: { isOn: boolean } | null;
-  selectedKey?: string;
-  onToggleAuto: () => void;
-  onSelectModel: (modelWithEffort: ModelWithReasoningEffort) => void;
-  // On mobile the "More models" makers expand inline; this tracks the single
-  // maker currently expanded.
+  isWidthConstrained: boolean;
+  moreModelsExpanded: boolean;
+  onToggleMoreModels: () => void;
   expandedMaker: ModelMakerIdType | null;
   onToggleMaker: (makerId: ModelMakerIdType) => void;
+  onSelectTier: (tierId: ModelTierId) => void;
+  onSelectModel: (model: ModelConfigurationType) => void;
+  onChangeEffort: (effort: ReasoningEffort) => void;
+  onRevert: () => void;
 }
 
 export function ModelPickerContent({
   side,
+  shouldBlockDismiss,
+  shown,
+  agentDefault,
+  canRevert,
+  makerGroups,
+  allModels,
   search,
   onSearchChange,
-  listState,
-  auto,
-  selectedKey,
-  onToggleAuto,
-  onSelectModel,
+  isWidthConstrained,
+  moreModelsExpanded,
+  onToggleMoreModels,
   expandedMaker,
   onToggleMaker,
+  onSelectTier,
+  onSelectModel,
+  onChangeEffort,
+  onRevert,
 }: ModelPickerContentProps) {
-  const isMobile = useIsMobile();
-
   return (
     <DropdownMenuContent className="w-72" align="start" side={side}>
-      {auto && (
-        <ModelPickerRowTooltip description={AUTO_TOOLTIP} isMobile={isMobile}>
+      {MODEL_TIERS.map((tier) => {
+        const isSelected = isTierDisplayed(tier.id, shown.display);
+        const isDefault = isTierDisplayed(tier.id, agentDefault.display);
+        return (
           <DropdownMenuItem
-            label="Auto"
-            endComponent={<SliderToggle selected={auto.isOn} />}
-            onClick={onToggleAuto}
+            key={tier.id}
+            icon={TIER_ICON[tier.id]}
+            label={`${tier.name}${isDefault ? " (Default)" : ""}`}
+            endComponent={
+              isSelected ? (
+                <ModelPickerSelectionIndicator
+                  canRevert={canRevert}
+                  onRevert={onRevert}
+                />
+              ) : (
+                <span className="whitespace-nowrap text-xs text-muted-foreground">
+                  {tier.description}
+                </span>
+              )
+            }
+            onClick={() => onSelectTier(tier.id)}
             onSelect={(e) => e.preventDefault()}
           />
-        </ModelPickerRowTooltip>
-      )}
+        );
+      })}
 
-      {!auto?.isOn && (
-        <div className="sticky top-0 z-10 bg-overlay-background pt-2">
-          <DropdownMenuSearchbar
-            autoFocus={!isMobile}
-            name="search-models"
-            placeholder="Search models"
-            value={search}
-            onChange={onSearchChange}
-          />
-        </div>
-      )}
+      <DropdownMenuSeparator />
 
-      <ModelPickerList
-        listState={listState}
-        selectedKey={selectedKey}
-        onSelectModel={onSelectModel}
+      <ModelPickerMoreModels
+        shouldBlockDismiss={shouldBlockDismiss}
+        makerGroups={makerGroups}
+        allModels={allModels}
+        shown={shown}
+        agentDefault={agentDefault}
+        canRevert={canRevert}
+        search={search}
+        onSearchChange={onSearchChange}
+        isWidthConstrained={isWidthConstrained}
+        isExpanded={moreModelsExpanded}
+        onToggleExpanded={onToggleMoreModels}
         expandedMaker={expandedMaker}
         onToggleMaker={onToggleMaker}
+        onSelectModel={onSelectModel}
+        onChangeEffort={onChangeEffort}
+        onRevert={onRevert}
       />
     </DropdownMenuContent>
   );

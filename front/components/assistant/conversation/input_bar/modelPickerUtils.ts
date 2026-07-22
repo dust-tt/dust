@@ -1,12 +1,15 @@
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
-import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
-import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
-import { GPT_5_6_TERRA_MODEL_ID } from "@app/types/assistant/models/openai";
+import type { MetaModelIdType } from "@app/types/assistant/models/auto";
+import {
+  AUTO_DEEP_MODEL_ID,
+  AUTO_MODEL_ID,
+  AUTO_QUICK_MODEL_ID,
+  isMetaModelId,
+} from "@app/types/assistant/models/auto";
 import type {
   ModelConfigurationType,
   ModelMakerIdType,
-  ModelProviderIdType,
   ModelSelectionType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
@@ -14,86 +17,105 @@ import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types"
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import capitalize from "lodash/capitalize";
 
-export const SUGGESTED_PINS: {
-  providerId: ModelProviderIdType;
-  modelId: string;
-  effort: ReasoningEffort;
-  recommendation: string;
-}[] = [
+// The three primary picks of the model picker. Each tier is backed by a
+// meta-model that is resolved to a concrete model at message-send time:
+//   - Fast     -> auto_quick (curated pool of small, cheap models)
+//   - Standard -> auto       (Dust picks any available model — the old "Auto")
+//   - Complex  -> auto_deep  (curated pool of powerful models)
+export type ModelTierId = "fast" | "standard" | "complex";
+
+export interface ModelTierDefinition {
+  id: ModelTierId;
+  metaModelId: MetaModelIdType;
+  name: string;
+  // Short right-aligned blurb shown next to the tier name.
+  description: string;
+}
+
+export const MODEL_TIERS: ModelTierDefinition[] = [
   {
-    providerId: "anthropic",
-    modelId: CLAUDE_SONNET_4_6_MODEL_ID,
-    effort: "light",
-    recommendation:
-      "Quick answers. Recommended for easy retrieval, light analysis or general questions.",
+    id: "fast",
+    metaModelId: AUTO_QUICK_MODEL_ID,
+    name: "Fast",
+    description: "Quick, low cost",
   },
   {
-    providerId: "anthropic",
-    modelId: CLAUDE_SONNET_4_6_MODEL_ID,
-    effort: "medium",
-    recommendation:
-      "Everyday tasks. Recommended for multi-step tasks, Frames, analysis.",
+    id: "standard",
+    metaModelId: AUTO_MODEL_ID,
+    name: "Standard",
+    description: "Best for most",
   },
   {
-    providerId: "openai",
-    modelId: GPT_5_6_TERRA_MODEL_ID,
-    effort: "high",
-    recommendation:
-      "Hard problems. Recommended for high quality retrieval, complex analysis and Frames",
+    id: "complex",
+    metaModelId: AUTO_DEEP_MODEL_ID,
+    name: "Complex",
+    description: "Slower, most capable",
   },
 ];
 
-export const AUTO_TOOLTIP =
-  "Dust selects and switches model for cost efficient performance and reliability.";
-
-// Per reasoning-effort blurbs shown in each model's hover tooltip: what the
-// effort does, and what it is recommended for.
-export const REASONING_EFFORT_INFO: Record<
-  ReasoningEffort,
-  { reasoning: string }
-> = {
-  none: {
-    reasoning: "No additional reasoning, for the fastest responses",
-  },
-  light: {
-    reasoning: "Light reasoning effort, faster responses.",
-  },
-  medium: {
-    reasoning: "Medium reasoning effort, balancing speed and quality.",
-  },
-  high: {
-    reasoning: "High reasoning effort, longer wait times but higher quality.",
-  },
+const TIER_BY_META_MODEL_ID: Record<MetaModelIdType, ModelTierId> = {
+  [AUTO_QUICK_MODEL_ID]: "fast",
+  [AUTO_MODEL_ID]: "standard",
+  [AUTO_DEEP_MODEL_ID]: "complex",
 };
 
-export interface ModelWithReasoningEffort {
-  model: ModelConfigurationType;
-  effort: ReasoningEffort;
+export function getModelTier(tierId: ModelTierId): ModelTierDefinition {
+  // The map is exhaustive over ModelTierId, so a match is guaranteed.
+  return MODEL_TIERS.find((tier) => tier.id === tierId) ?? MODEL_TIERS[1];
 }
 
-export interface SuggestedModelWithReasoningEffort
-  extends ModelWithReasoningEffort {
-  recommendation: string;
+// Per reasoning-effort blurbs surfaced in the effort slider tooltip.
+export const REASONING_EFFORT_INFO: Record<ReasoningEffort, string> = {
+  none: "No additional reasoning, for the fastest responses.",
+  light: "Light reasoning effort, faster responses.",
+  medium: "Medium reasoning effort, balancing speed and quality.",
+  high: "High reasoning effort, longer wait times but higher quality.",
+};
+
+export function getReasoningEffortLabel(effort: ReasoningEffort): string {
+  return effort === "none" ? "None" : capitalize(effort);
+}
+
+// What the picker is currently showing, decoupled from the payload we send:
+// a tier or a concrete model + reasoning effort.
+export type SelectionDisplay =
+  | { kind: "tier"; tierId: ModelTierId }
+  | { kind: "model"; model: ModelConfigurationType; effort: ReasoningEffort };
+
+// A resolved picker selection. `toSend` is `undefined` when the selection is
+// the untouched agent default: we then send no override and let the backend use
+// the agent's own configured model/effort.
+export interface Selection {
+  display: SelectionDisplay;
+  toSend: ModelSelectionType | undefined;
 }
 
 export interface MakerGroup {
   makerId: ModelMakerIdType;
-  models: { model: ModelConfigurationType; efforts: ReasoningEffort[] }[];
+  models: ModelConfigurationType[];
 }
 
-export type UserModelSelection =
-  | { kind: "auto"; toSend: ModelSelectionType }
-  | ({ kind: "model"; toSend: ModelSelectionType } & ModelWithReasoningEffort);
+// One stop of the reasoning-effort slider. A stop is `locked` when the level is
+// not selectable — either the model does not support it natively, or the
+// workspace's tier does not grant access to it.
+export interface EffortStop {
+  effort: ReasoningEffort;
+  locked: boolean;
+}
 
-export type Selection =
-  | UserModelSelection
-  | ({ kind: "agent"; toSend: undefined } & ModelWithReasoningEffort);
+// The reasoning-effort slider always presents these three canonical levels so
+// its shape stays consistent across models. "none" is not a level here: it
+// means "no reasoning" and is never a selectable slider position.
+const SLIDER_EFFORTS: ReasoningEffort[] = ["light", "medium", "high"];
 
-export const AUTO_MODEL_SELECTION: ModelSelectionType = {
-  providerId: AUTO_MODEL_ID,
-  modelId: AUTO_MODEL_ID,
-  reasoningEffort: "none",
-};
+export function buildTierSelection(tierId: ModelTierId): ModelSelectionType {
+  const { metaModelId } = getModelTier(tierId);
+  return {
+    providerId: metaModelId,
+    modelId: metaModelId,
+    reasoningEffort: "none",
+  };
+}
 
 export function buildModelSelection(
   model: ModelConfigurationType,
@@ -106,61 +128,120 @@ export function buildModelSelection(
   };
 }
 
-// The list body is a small state machine: hidden while Auto is on, then a
-// loading / empty / search-results / browse view depending on the models
-// query and the search input. Modeling it as a single discriminated union
-// keeps the picker's props flat instead of a fistful of correlated booleans.
-export type ModelPickerListState =
-  | { kind: "hidden" }
-  | { kind: "loading" }
-  | { kind: "empty" }
-  | { kind: "search"; models: ModelWithReasoningEffort[] }
-  | {
-      kind: "browse";
-      agentDefault: ModelWithReasoningEffort | null;
-      suggested: SuggestedModelWithReasoningEffort[];
-      moreByMaker: MakerGroup[];
-    };
-
-export function getSelectableReasoningEfforts(
-  model: ModelConfigurationType
-): ReasoningEffort[] {
-  const efforts = getAvailableReasoningEfforts(model.supportedReasoningEfforts);
-  const withReasoning = efforts.filter((effort) => effort !== "none");
-  return withReasoning.length > 0 ? withReasoning : efforts;
+export function getModelKey(providerId: string, modelId: string): string {
+  return `${providerId}/${modelId}`;
 }
 
-export function getModelWithReasoningEffortKey(
-  providerId: string,
-  modelId: string,
-  effort: ReasoningEffort
-): string {
-  return `${providerId}/${modelId}/${effort}`;
+export function isModelDisplayed(
+  model: ModelConfigurationType,
+  display: SelectionDisplay
+): boolean {
+  return (
+    display.kind === "model" &&
+    display.model.providerId === model.providerId &&
+    display.model.modelId === model.modelId
+  );
 }
 
-// Narrower than `Selection`: label rendering only needs the kind/model/effort,
-// not the API payload, so callers without a `toSend` handy (e.g. a per-message
-// model resolved after the fact) can pass a plain literal.
-export type LabelSelection =
-  | { kind: "auto" }
-  | ({ kind: "agent" | "model" } & ModelWithReasoningEffort);
+export function isTierDisplayed(
+  tierId: ModelTierId,
+  display: SelectionDisplay
+): boolean {
+  return display.kind === "tier" && display.tierId === tierId;
+}
 
+// Display equality ignoring reasoning effort: two model displays for the same
+// model are "the same" regardless of effort. Used to highlight the selected row
+// and to mark the default, where effort is surfaced by the slider instead.
+export function isSameDisplay(
+  a: SelectionDisplay,
+  b: SelectionDisplay
+): boolean {
+  if (a.kind === "tier" && b.kind === "tier") {
+    return a.tierId === b.tierId;
+  }
+  if (a.kind === "model" && b.kind === "model") {
+    return (
+      a.model.providerId === b.model.providerId &&
+      a.model.modelId === b.model.modelId
+    );
+  }
+  return false;
+}
+
+// Full selection equality, effort included. Used to decide whether the active
+// selection is exactly the agent default (so no override needs to be kept, and
+// the revert affordance is hidden).
+export function isSameSelection(
+  a: SelectionDisplay,
+  b: SelectionDisplay
+): boolean {
+  if (a.kind === "model" && b.kind === "model") {
+    return isSameDisplay(a, b) && a.effort === b.effort;
+  }
+  return isSameDisplay(a, b);
+}
+
+// Slider stops for a model, in order. The three canonical levels
+// (Light/Medium/High) are always returned so the slider looks the same across
+// models; levels the model does not support natively (per its static config),
+// or that the workspace's tier does not grant, are flagged `locked` — the
+// "impossible" positions rendered with a padlock. `enabledModel` carries the
+// workspace-restricted support, so any native effort missing from it is locked.
+// Non-reasoning models (only "none") end up with all three levels locked, which
+// the slider renders as fully disabled with an explanatory tooltip.
+export function getEffortStops(
+  enabledModel: ModelConfigurationType
+): EffortStop[] {
+  const staticModel = getSupportedModelConfig(enabledModel);
+  const nativeEfforts = new Set(
+    getAvailableReasoningEfforts(
+      (staticModel ?? enabledModel).supportedReasoningEfforts
+    )
+  );
+  const allowed = new Set(
+    getAvailableReasoningEfforts(enabledModel.supportedReasoningEfforts)
+  );
+
+  return SLIDER_EFFORTS.map((effort) => ({
+    effort,
+    locked: !nativeEfforts.has(effort) || !allowed.has(effort),
+  }));
+}
+
+// The reasoning effort to use when a model is freshly selected: its default when
+// that is allowed, otherwise the first unlocked stop.
+export function getInitialEffort(
+  enabledModel: ModelConfigurationType
+): ReasoningEffort {
+  const stops = getEffortStops(enabledModel);
+  const preferred = stops.find(
+    (stop) =>
+      stop.effort === enabledModel.defaultReasoningEffort && !stop.locked
+  );
+  if (preferred) {
+    return preferred.effort;
+  }
+  return stops.find((stop) => !stop.locked)?.effort ?? "none";
+}
+
+// Narrower than `Selection`: label rendering only needs the display, so callers
+// without a `toSend` handy (e.g. a per-message model resolved after the fact)
+// can pass a plain literal.
 export function getModelWithReasoningEffortLabel(
-  selection: LabelSelection
+  display: SelectionDisplay
 ): string {
-  switch (selection.kind) {
-    case "auto":
-      return "Auto";
-    case "agent":
-      return "Default";
+  switch (display.kind) {
+    case "tier":
+      return getModelTier(display.tierId).name;
     case "model": {
-      const { model, effort } = selection;
+      const { model, effort } = display;
       return effort === "none"
         ? model.displayName
         : `${model.displayName} ${capitalize(effort)}`;
     }
     default:
-      assertNeverAndIgnore(selection);
+      assertNeverAndIgnore(display);
       return "";
   }
 }
@@ -186,30 +267,77 @@ function findAgentModel(
   );
 }
 
-function resolveRequestedSelection(
+// Maps a raw model selection (from sticky storage / last-requested / a fresh
+// pick) to a `Selection` with a concrete `toSend` payload. Meta-model ids map to
+// their tier; concrete ids map to the matching available model. Returns null
+// when the selection does not resolve to anything available.
+export function resolveRequestedSelection(
   models: ModelConfigurationType[],
   selection: ModelSelectionType | null | undefined
 ): Selection | null {
-  const requestedModel = selection
-    ? findAvailableModel(models, selection)
-    : undefined;
-  if (!requestedModel) {
+  if (!selection) {
     return null;
   }
-  if (requestedModel.modelId === AUTO_MODEL_ID) {
-    return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
+  if (isMetaModelId(selection.modelId)) {
+    const tierId = TIER_BY_META_MODEL_ID[selection.modelId];
+    return {
+      display: { kind: "tier", tierId },
+      toSend: buildTierSelection(tierId),
+    };
   }
-  const effort =
-    selection?.reasoningEffort ?? requestedModel.defaultReasoningEffort;
+  const model = findAvailableModel(models, selection);
+  if (!model) {
+    return null;
+  }
+  const effort = selection.reasoningEffort ?? getInitialEffort(model);
   return {
-    kind: "model",
-    model: requestedModel,
-    effort,
-    toSend: buildModelSelection(requestedModel, effort),
+    display: { kind: "model", model, effort },
+    toSend: buildModelSelection(model, effort),
   };
 }
 
-export function resolveDefaultSelection({
+// The agent's own configured default, expressed as a `Selection` with a
+// `toSend` of `undefined` (so the untouched default sends no override). Agents
+// configured with the plain `auto` model — or with none at all — default to the
+// Standard tier.
+export function resolveAgentDefault({
+  agentModel,
+  models,
+}: {
+  agentModel: AgentModelConfigurationType | null;
+  models: ModelConfigurationType[];
+}): Selection {
+  const standardDefault: Selection = {
+    display: { kind: "tier", tierId: "standard" },
+    toSend: undefined,
+  };
+  if (!agentModel) {
+    return standardDefault;
+  }
+  if (isMetaModelId(agentModel.modelId)) {
+    return {
+      display: {
+        kind: "tier",
+        tierId: TIER_BY_META_MODEL_ID[agentModel.modelId],
+      },
+      toSend: undefined,
+    };
+  }
+  const model = findAgentModel(models, agentModel);
+  if (!model) {
+    return standardDefault;
+  }
+  const effort = agentModel.reasoningEffort ?? getInitialEffort(model);
+  return {
+    display: { kind: "model", model, effort },
+    toSend: undefined,
+  };
+}
+
+// The selection to show, in precedence order: last-requested (per-conversation)
+// > session sticky > agent default. The agent default is returned separately so
+// callers can mark it "(Default)" and offer a revert affordance.
+export function resolveShownSelection({
   agentModel,
   lastRequestedModel,
   sessionSticky,
@@ -219,31 +347,11 @@ export function resolveDefaultSelection({
   lastRequestedModel: ModelSelectionType | null;
   sessionSticky?: ModelSelectionType | null;
   models: ModelConfigurationType[];
-}): Selection {
-  const fromLastRequested = resolveRequestedSelection(
-    models,
-    lastRequestedModel
-  );
-  if (fromLastRequested) {
-    return fromLastRequested;
-  }
-
-  const fromSticky = resolveRequestedSelection(models, sessionSticky);
-  if (fromSticky) {
-    return fromSticky;
-  }
-
-  const agentDefaultModel = agentModel
-    ? findAgentModel(models, agentModel)
-    : undefined;
-  if (!agentDefaultModel || agentDefaultModel.modelId === AUTO_MODEL_ID) {
-    return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
-  }
-  return {
-    kind: "agent",
-    model: agentDefaultModel,
-    effort:
-      agentModel?.reasoningEffort ?? agentDefaultModel.defaultReasoningEffort,
-    toSend: undefined,
-  };
+}): { shown: Selection; agentDefault: Selection } {
+  const agentDefault = resolveAgentDefault({ agentModel, models });
+  const shown =
+    resolveRequestedSelection(models, lastRequestedModel) ??
+    resolveRequestedSelection(models, sessionSticky) ??
+    agentDefault;
+  return { shown, agentDefault };
 }

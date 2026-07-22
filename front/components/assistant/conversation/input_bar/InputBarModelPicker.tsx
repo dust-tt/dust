@@ -2,20 +2,17 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { ModelPickerContent } from "@app/components/assistant/conversation/input_bar/ModelPickerContent";
 import type {
   MakerGroup,
-  ModelPickerListState,
-  ModelWithReasoningEffort,
+  ModelTierId,
   Selection,
-  SuggestedModelWithReasoningEffort,
-  UserModelSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import {
-  AUTO_MODEL_SELECTION,
   buildModelSelection,
-  getModelWithReasoningEffortKey,
+  buildTierSelection,
+  getInitialEffort,
+  getModelTier,
   getModelWithReasoningEffortLabel,
-  getSelectableReasoningEfforts,
-  resolveDefaultSelection,
-  SUGGESTED_PINS,
+  isSameSelection,
+  resolveShownSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -24,21 +21,31 @@ import { useClientType } from "@app/lib/context/clientType";
 import { useModels } from "@app/lib/swr/models";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
-import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
-import {
-  getModelMaker,
-  getModelMakerDisplayName,
-} from "@app/types/assistant/models/providers";
+import { isMetaModelId } from "@app/types/assistant/models/auto";
+import { getModelMaker } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
   ModelMakerIdType,
   ModelSelectionType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
+import {
+  BarFull,
+  BarHalf,
+  BarLow,
+  Button,
+  DropdownMenu,
+  DropdownMenuTrigger,
+} from "@dust-tt/sparkle";
+import type { ComponentType } from "react";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
+
+const TIER_BUTTON_ICON: Record<ModelTierId, ComponentType> = {
+  fast: BarLow,
+  standard: BarHalf,
+  complex: BarFull,
+};
 
 interface InputBarModelPickerProps {
   agentModel: AgentModelConfigurationType | null;
@@ -76,53 +83,29 @@ export function InputBarModelPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
 
-  // The list of models is hidden while "Auto" is on.
-  const [expanded, setExpanded] = useState(false);
-
-  const [userOverride, setUserOverride] = useState<Selection | null>(null);
-
-  // On mobile there are no nested submenus: the "More models" makers expand
-  // inline below their name. This tracks the single maker currently expanded.
+  // Inline-expansion state, only used on width-constrained clients.
+  const [moreModelsExpanded, setMoreModelsExpanded] = useState(false);
   const [expandedMaker, setExpandedMaker] = useState<ModelMakerIdType | null>(
     null
   );
 
-  const commitSelection = (selection: UserModelSelection) => {
-    const isSelectionAuto = selection.kind === "auto";
-    const isDefaultAuto = defaultSelection.kind === "auto";
-    const isSelectionSameModelAsAgent =
-      selection.kind === "model" &&
-      defaultSelection.kind === "agent" &&
-      selection.model.modelId === agentModel?.modelId &&
-      selection.model.providerId === agentModel?.providerId &&
-      selection.effort === agentModel?.reasoningEffort;
+  const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
-    if ((isSelectionAuto && isDefaultAuto) || isSelectionSameModelAsAgent) {
-      // show default and clear override
-      setUserOverride(null);
-      setStickyModelOverride(undefined);
-      return;
-    }
-    setUserOverride(selection);
-    setStickyModelOverride(selection.toSend);
-  };
-
-  // Clear the manual override when the user switches which agent they address
+  // Clear the manual override when the user switches which agent they address.
   const prevAgentIdRef = useRef(agentId);
   if (agentId !== prevAgentIdRef.current) {
     prevAgentIdRef.current = agentId;
     setUserOverride(null);
-    setExpanded(false);
   }
 
-  const { models, isModelsLoading } = useModels({
+  const { models } = useModels({
     owner,
     disabled: !hasModelsPicker,
   });
 
-  const defaultSelection = useMemo(
+  const { shown: baseSelection, agentDefault } = useMemo(
     () =>
-      resolveDefaultSelection({
+      resolveShownSelection({
         agentModel,
         lastRequestedModel,
         sessionSticky: stickyModelOverride,
@@ -131,8 +114,10 @@ export function InputBarModelPicker({
     [agentModel, lastRequestedModel, stickyModelOverride, models]
   );
 
-  const shown: Selection = userOverride ?? defaultSelection;
+  const shown: Selection = userOverride ?? baseSelection;
   const shownModelSelection = shown.toSend;
+
+  const canRevert = !isSameSelection(shown.display, agentDefault.display);
 
   // Keep the parent's send-time selection in sync. `onSelectionChange` only
   // stashes the value in a parent ref, so this triggers no parent re-render.
@@ -143,187 +128,118 @@ export function InputBarModelPicker({
     onSelectionChange?.(shownModelSelection);
   }, [hasModelsPicker, onSelectionChange, shownModelSelection]);
 
-  const allModelsWithEfforts = useMemo<ModelWithReasoningEffort[]>(
+  // Concrete, selectable models (meta-models are surfaced as tiers instead).
+  const allModels = useMemo<ModelConfigurationType[]>(
     () =>
-      models
-        .filter((model) => model.modelId !== AUTO_MODEL_ID)
-        .flatMap((model) =>
-          getSelectableReasoningEfforts(model).map((effort) => ({
-            model,
-            effort,
-          }))
-        ),
+      models.filter(
+        (model) => !isMetaModelId(model.modelId) && model.isSelectable
+      ),
     [models]
   );
 
-  // Resolve the pinned combos against the workspace's actual models (skipping any
-  // the workspace doesn't have or that don't support the pinned effort).
-  const suggestedModelsWithEfforts = useMemo<
-    SuggestedModelWithReasoningEffort[]
-  >(
-    () =>
-      SUGGESTED_PINS.flatMap((pin) => {
-        const model = models.find(
-          (m) => m.providerId === pin.providerId && m.modelId === pin.modelId
-        );
-        if (
-          !model ||
-          !getAvailableReasoningEfforts(
-            model.supportedReasoningEfforts
-          ).includes(pin.effort)
-        ) {
-          return [];
-        }
-        return [
-          {
-            model,
-            effort: pin.effort,
-            recommendation: pin.recommendation,
-          },
-        ];
-      }),
-    [models]
-  );
-
-  const moreByMaker = useMemo<MakerGroup[]>(() => {
-    const makers = new Map<
-      ModelMakerIdType,
-      Map<string, { model: ModelConfigurationType; efforts: ReasoningEffort[] }>
-    >();
-    for (const modelWithEffort of allModelsWithEfforts) {
-      const makerId = getModelMaker(modelWithEffort.model);
-      let modelsMap = makers.get(makerId);
-      if (!modelsMap) {
-        modelsMap = new Map();
-        makers.set(makerId, modelsMap);
+  // Group models by maker, preserving first-seen order of both makers and
+  // models within each maker.
+  const makerGroups = useMemo<MakerGroup[]>(() => {
+    const groups = new Map<ModelMakerIdType, ModelConfigurationType[]>();
+    for (const model of allModels) {
+      const makerId = getModelMaker(model);
+      const existing = groups.get(makerId);
+      if (existing) {
+        existing.push(model);
+      } else {
+        groups.set(makerId, [model]);
       }
-      let entry = modelsMap.get(modelWithEffort.model.modelId);
-      if (!entry) {
-        entry = { model: modelWithEffort.model, efforts: [] };
-        modelsMap.set(modelWithEffort.model.modelId, entry);
-      }
-      entry.efforts.push(modelWithEffort.effort);
     }
-    return Array.from(makers.entries()).map(([makerId, modelsMap]) => ({
+    return Array.from(groups.entries()).map(([makerId, makerModels]) => ({
       makerId,
-      models: Array.from(modelsMap.values()),
+      models: makerModels,
     }));
-  }, [allModelsWithEfforts]);
+  }, [allModels]);
 
-  // The agent's configured default, ignoring the last-requested model: reuse
-  // resolveDefaultSelection with no last-requested model, then keep only the
-  // agent-model outcome.
-  const agentDefault = useMemo<ModelWithReasoningEffort | null>(() => {
-    const selection = resolveDefaultSelection({
-      agentModel,
-      lastRequestedModel: null,
-      models,
-    });
-    return selection.kind === "agent"
-      ? { model: selection.model, effort: selection.effort }
-      : null;
-  }, [agentModel, models]);
-  // Hide the Suggested section entirely when the agent has a configured
-  // default: the default already surfaces the recommended pick, so the
-  // suggestions would be redundant.
-  const suggested = useMemo(
-    () => (agentDefault ? [] : suggestedModelsWithEfforts),
-    [suggestedModelsWithEfforts, agentDefault]
-  );
-
-  const isSearching = search.trim() !== "";
-
-  // While searching we show a single flat list over every model/effort.
-  const filteredAll = useMemo<ModelWithReasoningEffort[]>(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) {
-      return allModelsWithEfforts;
+  const commit = (selection: Selection) => {
+    if (isSameSelection(selection.display, agentDefault.display)) {
+      // Exactly the agent default: keep no override so we defer to the agent's
+      // own config (toSend undefined).
+      setUserOverride(agentDefault);
+      setStickyModelOverride(undefined);
+      return;
     }
-    return allModelsWithEfforts.filter(
-      (modelWithEffort) =>
-        getModelWithReasoningEffortLabel({
-          model: modelWithEffort.model,
-          effort: modelWithEffort.effort,
-          kind: "model",
-        })
-          .toLowerCase()
-          .includes(q) ||
-        getModelMakerDisplayName(getModelMaker(modelWithEffort.model))
-          .toLowerCase()
-          .includes(q)
-    );
-  }, [allModelsWithEfforts, search]);
-
-  const selectedKey =
-    shown.kind === "auto"
-      ? undefined
-      : getModelWithReasoningEffortKey(
-          shown.model.providerId,
-          shown.model.modelId,
-          shown.effort
-        );
-
-  // Auto is "on" while it is the shown selection and the list has not been
-  // manually expanded for browsing. It is hidden entirely while searching.
-  const isAutoOn = shown.kind === "auto" && !expanded;
-  const showAuto = !isSearching;
-  const showList = expanded || isSearching || shown.kind !== "auto";
-
-  const hasResults = isSearching
-    ? filteredAll.length > 0
-    : !!agentDefault || suggested.length > 0 || moreByMaker.length > 0;
-
-  // Collapse the correlated list booleans + data arrays into a single state so
-  // the picker content receives one flat, exhaustively-typed prop.
-  let listState: ModelPickerListState = {
-    kind: "browse",
-    agentDefault,
-    suggested,
-    moreByMaker,
+    setUserOverride(selection);
+    setStickyModelOverride(selection.toSend);
   };
-  if (!showList) {
-    listState = { kind: "hidden" };
-  } else if (isModelsLoading) {
-    listState = { kind: "loading" };
-  } else if (!hasResults) {
-    listState = { kind: "empty" };
-  } else if (isSearching) {
-    listState = { kind: "search", models: filteredAll };
-  }
 
-  const auto = showAuto ? { isOn: isAutoOn } : null;
+  // Picking a concrete model (or nudging its effort slider) must keep the menu
+  // and its open submenus visible so the effort can still be adjusted. The
+  // click briefly moves focus/pointer in a way Radix treats as an
+  // interaction-outside and dismisses the (sub)menu; we record the pick time
+  // and veto the close that immediately follows it (see `onOpenChange` and the
+  // submenu guards in `ModelPickerMoreModels`).
+  const lastModelInteractionAtMsRef = useRef(0);
 
-  const label = isWidthConstrained
-    ? "Model"
-    : `Model: ${getModelWithReasoningEffortLabel(shown)}`;
+  const shouldBlockDismiss = () =>
+    Date.now() - lastModelInteractionAtMsRef.current < 300;
 
-  const buttonIcon =
-    isWidthConstrained && shown.kind !== "auto"
-      ? getModelMakerLogo(getModelMaker(shown.model), isDark)
-      : undefined;
+  const onSelectTier = (tierId: ModelTierId) => {
+    commit({
+      display: { kind: "tier", tierId },
+      toSend: buildTierSelection(tierId),
+    });
+  };
 
-  const toggleAuto = () => {
-    if (isAutoOn) {
-      setUserOverride(null);
-      setExpanded(true);
-    } else {
-      commitSelection({ kind: "auto", toSend: AUTO_MODEL_SELECTION });
-      setExpanded(false);
+  const onSelectModel = (model: ModelConfigurationType) => {
+    lastModelInteractionAtMsRef.current = Date.now();
+    const effort = getInitialEffort(model);
+    commit({
+      display: { kind: "model", model, effort },
+      toSend: buildModelSelection(model, effort),
+    });
+  };
+
+  const onChangeEffort = (effort: ReasoningEffort) => {
+    if (shown.display.kind !== "model") {
+      return;
     }
+    lastModelInteractionAtMsRef.current = Date.now();
+    const { model } = shown.display;
+    commit({
+      display: { kind: "model", model, effort },
+      toSend: buildModelSelection(model, effort),
+    });
+  };
+
+  const onRevert = () => {
+    setUserOverride(agentDefault);
+    setStickyModelOverride(undefined);
   };
 
   if (!hasModelsPicker) {
     return null;
   }
 
+  const buttonIcon =
+    shown.display.kind === "tier"
+      ? TIER_BUTTON_ICON[shown.display.tierId]
+      : getModelMakerLogo(getModelMaker(shown.display.model), isDark);
+
+  const tooltip =
+    shown.display.kind === "tier"
+      ? getModelTier(shown.display.tierId).name
+      : getModelWithReasoningEffortLabel(shown.display);
+
   return (
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
+        // Ignore the dismissal that a model/effort pick triggers, so the menu
+        // stays open. The window is short enough not to swallow a genuine
+        // click-outside a moment later.
+        if (!open && shouldBlockDismiss()) {
+          return;
+        }
         setIsOpen(open);
         if (open) {
           setSearch("");
-          setExpanded(false);
+          setMoreModelsExpanded(false);
           setExpandedMaker(null);
         }
       }}
@@ -333,35 +249,32 @@ export function InputBarModelPicker({
           className="px-2"
           variant="ghost-secondary"
           size={buttonSize}
-          label={label}
           icon={buttonIcon}
+          tooltip={tooltip}
           disabled={disabled}
-          isSelect
         />
       </DropdownMenuTrigger>
       <ModelPickerContent
         side={side}
+        shouldBlockDismiss={shouldBlockDismiss}
+        shown={shown}
+        agentDefault={agentDefault}
+        canRevert={canRevert}
+        makerGroups={makerGroups}
+        allModels={allModels}
         search={search}
         onSearchChange={setSearch}
-        listState={listState}
-        auto={auto}
-        selectedKey={selectedKey}
-        onToggleAuto={toggleAuto}
-        onSelectModel={(modelWithEffort: ModelWithReasoningEffort) => {
-          commitSelection({
-            kind: "model",
-            model: modelWithEffort.model,
-            effort: modelWithEffort.effort,
-            toSend: buildModelSelection(
-              modelWithEffort.model,
-              modelWithEffort.effort
-            ),
-          });
-        }}
+        isWidthConstrained={isWidthConstrained}
+        moreModelsExpanded={moreModelsExpanded}
+        onToggleMoreModels={() => setMoreModelsExpanded((v) => !v)}
         expandedMaker={expandedMaker}
         onToggleMaker={(makerId) =>
           setExpandedMaker((current) => (current === makerId ? null : makerId))
         }
+        onSelectTier={onSelectTier}
+        onSelectModel={onSelectModel}
+        onChangeEffort={onChangeEffort}
+        onRevert={onRevert}
       />
     </DropdownMenu>
   );
