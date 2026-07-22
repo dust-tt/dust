@@ -927,7 +927,12 @@ export const ConversationViewer = ({
 
             break;
           case "conversation_fork_prepared":
-            void mutateConversation();
+            if (
+              conversation?.forkingData?.forkedFrom?.fileCopyStatus ===
+              "pending"
+            ) {
+              void mutateConversation();
+            }
             break;
           case "agent_message_done":
             // Mark as read and do not mutate the list of convos in the sidebar to avoid useless network request.
@@ -1099,6 +1104,7 @@ export const ConversationViewer = ({
       }
     },
     [
+      conversation?.forkingData?.forkedFrom?.fileCopyStatus,
       conversationId,
       debouncedMarkAsRead,
       mutateContextUsage,
