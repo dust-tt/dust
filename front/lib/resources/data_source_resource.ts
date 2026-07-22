@@ -139,16 +139,23 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   ) {
     const { includeDeleted } = fetchDataSourceOptions ?? {};
 
+    // Scope to the authenticated workspace unless the caller performs an intentionally
+    // cross-workspace lookup (e.g. unsafeFetchByDustAPIProjectId).
+    const where: WhereOptions<DataSourceModel> =
+      options?.dangerouslyBypassWorkspaceIsolationSecurity
+        ? (options?.where ?? {})
+        : {
+            ...options?.where,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          };
+
     return this.baseFetchWithAuthorization(
       auth,
       {
         ...this.getOptions(fetchDataSourceOptions),
         ...options,
         includeDeleted,
-        // WORKSPACE_ISOLATION_BYPASS: Data sources can be public, preventing to enforce a
-        // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
-        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-        dangerouslyBypassWorkspaceIsolationSecurity: true,
+        where,
       },
       transaction
     );
@@ -324,10 +331,6 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       where: {
         id: ids,
       },
-      // WORKSPACE_ISOLATION_BYPASS: Data sources can be public, preventing to enforce a
-      // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
   }
 

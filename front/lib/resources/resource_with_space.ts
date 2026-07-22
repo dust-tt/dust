@@ -87,23 +87,34 @@ export abstract class ResourceWithSpace<
       return [];
     }
 
-    // We use the model directly here; it's a very rare case where we don't check the workspace,
-    // which in this case is due to the fact that we may need to fetch data from public workspaces
-    // as well as the current workspace.
+    // Scope on the fetched blobs' workspaces rather than the authenticated one: some lookups
+    // are intentionally cross-workspace (e.g. unsafeFetchByDustAPIProjectId) and a blob always
+    // lives in the same workspace as its space.
+    const blobWorkspaceIds = [...new Set(blobs.map((b) => b.workspaceId))];
+
     const spaces = await ResourceWithSpace.spaceModel.findAll({
       where: {
         id: blobs.map((b) => b.vaultId),
+        workspaceId: blobWorkspaceIds,
       },
       include: [
         {
           as: "groupSpaces",
           model: GroupSpaceModel,
+          // A where on an include implies required: true;
+          // pass this required: false to keep the original behavior intact
+          required: false,
+          where: {
+            workspaceId: blobWorkspaceIds,
+          },
         },
       ],
       includeDeleted,
       transaction,
-      // WORKSPACE_ISOLATION_BYPASS: Spaces can be public, preventing to enforce a
-      // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+      // WORKSPACE_ISOLATION_BYPASS: The where clause is scoped to the blobs' workspaces, which
+      // may span multiple workspaces when the blob query ran with the bypass (e.g.
+      // unsafeFetchByDustAPIProjectId); the static check only accepts a single workspaceId.
+      // Permissions are enforced by canFetch below.
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
