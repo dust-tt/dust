@@ -91,13 +91,6 @@ export function InputBarModelPicker({
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
-  // Clear the manual override when the user switches which agent they address.
-  const prevAgentIdRef = useRef(agentId);
-  if (agentId !== prevAgentIdRef.current) {
-    prevAgentIdRef.current = agentId;
-    setUserOverride(null);
-  }
-
   const { models } = useModels({
     owner,
     disabled: !hasModelsPicker,
@@ -113,6 +106,18 @@ export function InputBarModelPicker({
       }),
     [agentModel, lastRequestedModel, stickyModelOverride, models]
   );
+
+  // When the user switches which agent they address, discard any model override
+  // so the picker falls back to the newly-selected agent's own default.
+  const prevAgentIdRef = useRef(agentId);
+  useEffect(() => {
+    if (agentId === prevAgentIdRef.current) {
+      return;
+    }
+    prevAgentIdRef.current = agentId;
+    setUserOverride(null);
+    setStickyModelOverride(undefined);
+  }, [agentId, setStickyModelOverride]);
 
   const shown: Selection = userOverride ?? baseSelection;
   const shownModelSelection = shown.toSend;
