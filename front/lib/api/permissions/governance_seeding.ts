@@ -1,10 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import {
-  GroupResource,
-  MANUAL_BUILDERS_GROUP_NAME,
-} from "@app/lib/resources/group_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import type { CapabilitySpec } from "@app/types/group_permissions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
@@ -72,9 +69,8 @@ export async function resolveEffectiveTarget(
   if (target !== "builders") {
     return target;
   }
-  const buildersGroup = await GroupResource.fetchByName(
-    auth,
-    MANUAL_BUILDERS_GROUP_NAME
+  const buildersGroup = await GroupResource.fetchManualBuildersGroup(
+    auth.getNonNullableWorkspace()
   );
   return buildersGroup ? "builders" : "admins_only";
 }
@@ -102,9 +98,8 @@ export async function applyCapabilityTarget(
       return "seeded_everybody";
     case "builders": {
       if (!dryRun) {
-        const buildersGroup = await GroupResource.fetchByName(
-          auth,
-          MANUAL_BUILDERS_GROUP_NAME
+        const buildersGroup = await GroupResource.fetchManualBuildersGroup(
+          auth.getNonNullableWorkspace()
         );
         assert(
           buildersGroup,

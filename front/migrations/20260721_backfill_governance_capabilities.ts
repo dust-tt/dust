@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/permissions/governance_seeding";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { CapabilityKey } from "@app/types/group_permissions";
@@ -14,18 +15,20 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 interface SeederCounts {
   seededEverybody: number;
   seededBuilders: number;
-  alreadySet: number;
-  skippedAdminsOnly: number;
-  revertedToAdminsOnly: number;
+  seededAdminsOnly: number;
+  alreadyEverybody: number;
+  alreadyBuilders: number;
+  alreadyAdminsOnly: number;
 }
 
 function newCounts(): SeederCounts {
   return {
     seededEverybody: 0,
     seededBuilders: 0,
-    alreadySet: 0,
-    skippedAdminsOnly: 0,
-    revertedToAdminsOnly: 0,
+    seededAdminsOnly: 0,
+    alreadyEverybody: 0,
+    alreadyBuilders: 0,
+    alreadyAdminsOnly: 0,
   };
 }
 
@@ -75,6 +78,11 @@ makeScript(
           auth,
           CAPABILITY_SEEDERS.map((seeder) => seeder.capability)
         );
+        // Fetched once per workspace (not per capability) for the "is this recognizably our own
+        // seeded output" check below.
+        const buildersGroup = await GroupResource.fetchManualBuildersGroup(
+          auth.getNonNullableWorkspace()
+        );
 
         for (const seeder of CAPABILITY_SEEDERS) {
           const key = capabilityKey(seeder.capability);
@@ -87,13 +95,11 @@ makeScript(
           const effectiveTarget = await resolveEffectiveTarget(auth, target);
 
           const current = states.get(key);
-          const currentlyConfigured =
-            !!current && current.scope !== "admins_only";
 
           if (effectiveTarget === "admins_only") {
-            if (!currentlyConfigured) {
+            if (!current || current.scope === "admins_only") {
               // Already the default state; nothing to do.
-              counts.skippedAdminsOnly++;
+              counts.alreadyAdminsOnly++;
               continue;
             }
 
@@ -113,15 +119,29 @@ makeScript(
             if (execute) {
               await GroupPermissionResource.disable(auth, seeder.capability);
             }
-            counts.revertedToAdminsOnly++;
+            counts.seededAdminsOnly++;
             continue;
           }
 
-          // effectiveTarget is "everyone" or "builders": preserve any existing configuration
-          // (e.g. a manual admin override) rather than overwriting it.
-          if (currentlyConfigured) {
-            counts.alreadySet++;
-            continue;
+          if (effectiveTarget === "builders") {
+            const isRecognizedBuildersState =
+              current &&
+              current.scope === "groups" &&
+              !!buildersGroup &&
+              current.groups.length === 1 &&
+              current.groups[0].id === buildersGroup.id;
+
+            if (isRecognizedBuildersState) {
+              counts.alreadyBuilders++;
+              continue;
+            }
+          }
+
+          if (effectiveTarget === "everyone") {
+            if (current && current.scope === "everyone") {
+              counts.alreadyEverybody++;
+              continue;
+            }
           }
 
           const outcome = await applyCapabilityTarget(
@@ -145,7 +165,7 @@ makeScript(
               break;
             case "skipped_admins_only":
             case "skipped_no_builders_group":
-              counts.skippedAdminsOnly++;
+              // Does not happen, handled in effectiveTarget === "admins_only"
               break;
             default:
               assertNeverAndIgnore(outcome);

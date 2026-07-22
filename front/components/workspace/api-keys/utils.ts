@@ -7,7 +7,7 @@ import {
 } from "@app/types/groups";
 import { z } from "zod";
 
-export const KEY_ROLES = ["user", "builder", "admin"] as const;
+export const KEY_ROLES = ["user", "admin"] as const;
 export type KeyRole = (typeof KEY_ROLES)[number];
 
 export const isKeyRole = (value: string): value is KeyRole =>

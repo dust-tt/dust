@@ -3,17 +3,19 @@
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { ApiKeyCreditState, KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -21,6 +23,7 @@ import { redactString } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, RoleType } from "@app/types/user";
 import { formatUserFullName } from "@app/types/user";
 import { blake3 } from "@napi-rs/blake-hash";
+import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
@@ -378,6 +381,62 @@ export class KeyResource extends BaseResource<KeyModel> {
 
   async updateRole({ newRole }: { newRole: RoleType }) {
     await this.update({ role: newRole });
+    await this.syncBuilderGroupMembership({ isBuilder: newRole === "builder" });
+  }
+
+  // Adds or removes a single group from groupIds. Idempotent.
+  async setGroupMembership({
+    group,
+    isMember,
+  }: {
+    group: GroupResource;
+    isMember: boolean;
+  }): Promise<void> {
+    const hasGroup = this.groupIds.includes(group.id);
+    if (isMember === hasGroup) {
+      return;
+    }
+
+    const groupIds = isMember
+      ? [...this.groupIds, group.id]
+      : this.groupIds.filter((id) => id !== group.id);
+    await this.update({ groupIds });
+  }
+
+  /**
+   * Idempotent ensure-state sync mirroring `GroupResource.syncBuilderGroupMembership` for
+   * users: after the call, the key's membership in the workspace's manual Builders group
+   * matches `isBuilder`. Only caller today is `updateRole` (an admin CLI command), so the
+   * extra workspace fetch here is cheap; see dust-tt/tasks#9710.
+   */
+  async syncBuilderGroupMembership({
+    isBuilder,
+  }: {
+    isBuilder: boolean;
+  }): Promise<void> {
+    if (!isBuilder) {
+      const existingGroup = await GroupResource.fetchManualBuildersGroup(
+        await this.fetchWorkspace()
+      );
+      if (!existingGroup) {
+        return;
+      }
+      await this.setGroupMembership({ group: existingGroup, isMember: false });
+      return;
+    }
+
+    const group = await GroupResource.fetchOrCreateManualBuildersGroup(
+      await this.fetchWorkspace()
+    );
+    await this.setGroupMembership({ group, isMember: true });
+  }
+
+  private async fetchWorkspace(): Promise<LightWorkspaceType> {
+    const [workspace] = await WorkspaceResource.fetchByModelIds([
+      this.workspaceId,
+    ]);
+    assert(workspace, `Workspace not found for key ${this.id}`);
+    return renderLightWorkspaceType({ workspace });
   }
 
   async updateMonthlyCap({

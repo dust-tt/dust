@@ -81,7 +81,7 @@ export const NewAPIKeyDialog = ({
       monthlyCapDollars: "",
       monthlyCapCredits: "",
       selectedGroupIds: [],
-      role: "builder",
+      role: "user",
     },
   });
 
@@ -277,12 +277,6 @@ export const NewAPIKeyDialog = ({
                     value="user"
                     className="gap-2"
                     label="Can create conversations, read agents and data sources."
-                  />
-                  <RadioGroupItem
-                    id="api-key-scope-builder"
-                    value="builder"
-                    className="gap-2"
-                    label="Can also create and modify resources"
                   />
                   <RadioGroupItem
                     id="api-key-scope-admin"
