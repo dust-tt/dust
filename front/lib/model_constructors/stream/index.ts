@@ -52,6 +52,7 @@ import { OpenAIGptFiveMiniEuropeOpenAIResponsesStream } from "@app/lib/model_con
 import { OpenAIGptFiveMiniGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_mini_global_openai_responses";
 import { OpenAIGptFiveNanoEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_nano_eu_openai_responses";
 import { OpenAIGptFiveNanoGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_nano_global_openai_responses";
+import { XaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_five_global_xai";
 import { ZAiGlmFiveDotTwoGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_two_global_fireworks";
 
 export const STREAM_ENDPOINTS = {
@@ -161,6 +162,7 @@ export const STREAM_ENDPOINTS = {
     OpenAIGptFiveNanoGlobalOpenAIResponsesStream,
   [OpenAIGptFiveGlobalOpenAIResponsesStream.id]:
     OpenAIGptFiveGlobalOpenAIResponsesStream,
+  [XaiGrokFourDotFiveGlobalXaiStream.id]: XaiGrokFourDotFiveGlobalXaiStream,
 } as const satisfies Record<string, StreamEndpointConstructor>;
 
 export type StreamEndpointId = keyof typeof STREAM_ENDPOINTS;
