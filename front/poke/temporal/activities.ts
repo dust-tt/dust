@@ -10,6 +10,7 @@ import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
+import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -250,6 +251,16 @@ export async function scrubSpaceActivity({
   // `onDelete: "RESTRICT"`, so these rows must be removed before the space
   // can be hard-deleted.
   await ActivationNudgeModel.destroy({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      spaceId: space.id,
+    },
+  });
+
+  // Delete the activation pod record for this space. The FK to spaces is
+  // `onDelete: "RESTRICT"`, so this row must be removed before the space
+  // can be hard-deleted.
+  await ActivationPodModel.destroy({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       spaceId: space.id,

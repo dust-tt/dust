@@ -1,3 +1,4 @@
+import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
@@ -21,6 +22,8 @@ export class ActivationRecommendationModel extends WorkspaceAwareModel<Activatio
   declare updatedAt: CreationOptional<Date>;
 
   declare userId: ForeignKey<UserModel["id"]>;
+  // The Pod the recommendation was made in. Nullable until backfilled.
+  declare activationPodId: ForeignKey<ActivationPodModel["id"]> | null;
   declare status: ActivationRecommendationStatus;
   declare title: string;
   declare content: string;
@@ -49,6 +52,10 @@ ActivationRecommendationModel.init(
     userId: {
       type: DataTypes.BIGINT,
       allowNull: false,
+    },
+    activationPodId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     status: {
       type: DataTypes.STRING,
@@ -89,6 +96,10 @@ ActivationRecommendationModel.init(
         concurrently: true,
       },
       {
+        fields: ["activationPodId"],
+        concurrently: true,
+      },
+      {
         fields: ["conversationId"],
         concurrently: true,
       },
@@ -111,6 +122,14 @@ ActivationRecommendationModel.belongsTo(UserModel, {
 UserModel.hasMany(ActivationRecommendationModel, {
   foreignKey: { name: "userId", allowNull: false },
   onDelete: "RESTRICT",
+});
+
+ActivationRecommendationModel.belongsTo(ActivationPodModel, {
+  foreignKey: { name: "activationPodId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+ActivationPodModel.hasMany(ActivationRecommendationModel, {
+  foreignKey: { name: "activationPodId", allowNull: true },
 });
 
 ActivationRecommendationModel.belongsTo(ConversationModel, {

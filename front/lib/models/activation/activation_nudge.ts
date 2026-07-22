@@ -1,3 +1,4 @@
+import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
@@ -17,6 +18,10 @@ export class ActivationNudgeModel extends WorkspaceAwareModel<ActivationNudgeMod
   declare triggerId: ForeignKey<TriggerModel["id"]>;
   // The user targeted by the nudge.
   declare userId: ForeignKey<UserModel["id"]>;
+
+  // The Pod that was nudged, via ActivationPod. Nullable until backfilled;
+  // will replace spaceId/triggerId/userId above once migrated.
+  declare activationPodId: ForeignKey<ActivationPodModel["id"]> | null;
 }
 
 ActivationNudgeModel.init(
@@ -39,6 +44,7 @@ ActivationNudgeModel.init(
       { fields: ["spaceId"], concurrently: true },
       { fields: ["triggerId"], concurrently: true },
       { fields: ["userId"], concurrently: true },
+      { fields: ["activationPodId"], concurrently: true },
     ],
   }
 );
@@ -65,4 +71,12 @@ ActivationNudgeModel.belongsTo(UserModel, {
 });
 UserModel.hasMany(ActivationNudgeModel, {
   foreignKey: { name: "userId", allowNull: false },
+});
+
+ActivationNudgeModel.belongsTo(ActivationPodModel, {
+  foreignKey: { name: "activationPodId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+ActivationPodModel.hasMany(ActivationNudgeModel, {
+  foreignKey: { name: "activationPodId", allowNull: true },
 });
