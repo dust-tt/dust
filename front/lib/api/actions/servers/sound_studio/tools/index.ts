@@ -50,9 +50,8 @@ const handlers: ToolHandlers<typeof SOUND_STUDIO_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Error generating sound effect with ElevenLabs: ${cause.message}`,
-          {
-            cause,
-          }
+          // ElevenLabs is a Dust-managed provider: unexpected failures are ours to know about.
+          { tracked: true, cause }
         )
       );
     }

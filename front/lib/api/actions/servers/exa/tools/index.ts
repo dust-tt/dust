@@ -23,7 +23,12 @@ async function exaSearch({
   category: "people" | "company";
 }) {
   if (!credentials.EXA_API_KEY) {
-    return new Err(new MCPError("EXA_API_KEY is required for Exa search."));
+    // Dust-managed credential: missing means a Dust misconfiguration, not a user error.
+    return new Err(
+      new MCPError("EXA_API_KEY is required for Exa search.", {
+        tracked: true,
+      })
+    );
   }
   const exa = new Exa(credentials.EXA_API_KEY);
 
@@ -44,7 +49,10 @@ async function exaSearch({
       );
     }
     logger.error({ error, category }, "Unexpected error on Exa search");
-    return new Err(new MCPError(normalizeError(error).message));
+    // Exa is a Dust-managed provider: unexpected failures are ours to know about.
+    return new Err(
+      new MCPError(normalizeError(error).message, { tracked: true })
+    );
   }
 
   return new Ok(

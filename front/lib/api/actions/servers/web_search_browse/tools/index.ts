@@ -80,8 +80,13 @@ async function handleWebsearch(
   });
 
   if (websearchRes.isErr()) {
+    // Search providers (Firecrawl, SerpAPI, Serper, Exa) are Dust-managed: any failure that
+    // is not a provider 5xx (those throw ProviderError from inside webSearch) is still ours
+    // to know about (bad request from our side, exhausted credits, unexpected response shape).
     return new Err(
-      new MCPError(`Failed to search: ${websearchRes.error.message}`)
+      new MCPError(`Failed to search: ${websearchRes.error.message}`, {
+        tracked: true,
+      })
     );
   }
 
