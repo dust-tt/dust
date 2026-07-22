@@ -1,35 +1,79 @@
 import { CapabilitySection } from "@marketing/components/home/content/Product/CapabilitySection";
-import { HomeAIOperatorsCTASection } from "@marketing/components/home/content/Product/HomeAIOperatorsCTASection";
-import { HomeQuotesSection } from "@marketing/components/home/content/Product/HomeQuotesSection";
 import { InteractiveFeaturesSection } from "@marketing/components/home/content/Product/InteractiveFeaturesSection";
 import { ProductIntroSection } from "@marketing/components/home/content/Product/ProductIntroSection";
+import { ProductVideoSection } from "@marketing/components/home/content/Product/ProductVideoSection";
 import { SecurityFeaturesSection } from "@marketing/components/home/content/Product/SecurityFeaturesSection";
-import { HomeTeamUsageSection } from "@marketing/components/home/content/Product/HomeTeamUsageSection";
+import type { SecurityFeature } from "@marketing/components/home/content/Product/SecurityFeaturesSection";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
-const TESTIMONIAL_IMAGE = "/static/landing/people/quote-testimonial.png";
-
-// Same testimonial carousel as the homepage (IntroSection).
-const QUOTES = [
+const CAPABILITY_FEATURES: SecurityFeature[] = [
   {
-    quote:
-      "Dust is the most impactful software we've adopted since building Clay.",
-    authorName: "Everett Berry",
-    authorRole: "Head of GTM Engineering at Clay",
-    imageSrc: TESTIMONIAL_IMAGE,
-    imageAlt: "Everett Berry, Head of GTM Engineering at Clay",
+    id: "org-intelligence",
+    title: "Organizational intelligence",
+    description:
+      "Put a deep understanding of how your company works into action",
+    placeholder: "",
   },
   {
-    quote: "We used to do the work. Now we build the agents that do it.",
-    authorName: "Shashank Khanna",
-    authorRole: "Founder in Residence of GTM Innovation at Vanta",
-    imageSrc: "/static/landing/people/shashank-khanna.png",
-    imageAlt: "Shashank Khanna, Founder in Residence at Vanta",
-    bg: "bg-violet-50",
+    id: "collaboration",
+    title: "Human-agent collaboration",
+    description: "Orchestrate complex work across humans and agents",
+    placeholder: "",
+  },
+  {
+    id: "activation",
+    title: "AI-native activation",
+    description: "Activate reusable AI building blocks that compound with use",
+    placeholder: "",
+  },
+];
+
+const MODEL_FEATURES: SecurityFeature[] = [
+  {
+    id: "flexibility",
+    title: "Model flexibility",
+    description: "Power workflows with any frontier or open-source model.",
+    placeholder: "",
+  },
+  {
+    id: "cost",
+    title: "Token costs",
+    description: "Optimize model usage for efficiency and performance.",
+    placeholder: "",
+  },
+  {
+    id: "sovereignty",
+    title: "Sovereignty",
+    description:
+      "Protect your organization's intelligence from vendor and geopolitical risk.",
+    placeholder: "",
+  },
+];
+
+const GOVERN_FEATURES: SecurityFeature[] = [
+  {
+    id: "security",
+    title: "Security",
+    description:
+      "Control access to data, tools, and systems across digital workforces of humans and agents.",
+    placeholder: "",
+  },
+  {
+    id: "observability",
+    title: "Observability",
+    description:
+      "Track and manage AI usage and adoption across the organization.",
+    placeholder: "",
+  },
+  {
+    id: "cost-control",
+    title: "Cost control",
+    description: "Measure ROI, forecast consumption, and manage AI costs.",
+    placeholder: "",
   },
 ];
 
@@ -57,14 +101,28 @@ export function Landing() {
       <section className="w-full">
         <div className="flex flex-col">
           <ProductIntroSection />
+          <ProductVideoSection />
           <CapabilitySection />
+          <SecurityFeaturesSection
+            showHeader={false}
+            reverse
+            features={CAPABILITY_FEATURES}
+            accordionTitle="Multiplayer AI"
+          />
+          <SecurityFeaturesSection
+            showHeader={false}
+            features={MODEL_FEATURES}
+            videoSrc="/static/landing/home/features/best-model.mp4"
+            accordionTitle="Multi-model"
+          />
+          <SecurityFeaturesSection
+            showHeader={false}
+            reverse
+            features={GOVERN_FEATURES}
+            imageSrc="/static/landing/product/govern-ai-usage.svg"
+            accordionTitle="AI-native governance"
+          />
           <InteractiveFeaturesSection />
-          <SecurityFeaturesSection />
-          <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] flex w-screen flex-col">
-            <HomeQuotesSection quotes={QUOTES} />
-            <HomeTeamUsageSection />
-            <HomeAIOperatorsCTASection />
-          </div>
         </div>
       </section>
     </>
