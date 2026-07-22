@@ -20,4 +20,4 @@ Statement 2
 */
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
-CREATE INDEX CONCURRENTLY "activation_recommendations_workspace_user_status_created_at_idx" ON public.activation_recommendations USING btree ("workspaceId", "userId", "status", "createdAt");
+CREATE INDEX CONCURRENTLY "activation_recommendations_workspace_user_idx" ON public.activation_recommendations USING btree ("workspaceId", "userId");
