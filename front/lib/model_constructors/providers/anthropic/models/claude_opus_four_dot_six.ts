@@ -23,6 +23,7 @@ const configSchema = z.union([
       })
       .default({ effort: DEFAULT_REASONING_EFFORT }),
     forceTool: z.undefined(),
+    temperature: z.literal(1).optional().default(1),
   }),
   baseConfig.extend({
     reasoning: z.object({ effort: z.literal("none") }),

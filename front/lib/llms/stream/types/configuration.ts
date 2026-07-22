@@ -40,22 +40,6 @@ export function dropTemperatureWhenReasoning<C extends InputConfig>(
   return config;
 }
 
-// `configParsers` helper: Anthropic rejects an explicit temperature=1 while
-// thinking is disabled ("temperature may only be set to 1 when thinking is
-// enabled or in adaptive mode"). When reasoning is off, drop a temperature of
-// exactly 1 so we fall back to the provider default; other values pass through.
-// Used by Opus 4.6, which — unlike 4.7/4.8 — accepts a caller-supplied
-// temperature.
-export function dropTemperatureOfOneWhenReasoningIsNone<C extends InputConfig>(
-  config: C
-): C {
-  if (config.reasoning?.effort !== "none" || config.temperature !== 1) {
-    return config;
-  }
-
-  return { ...config, temperature: undefined };
-}
-
 // `configParsers` helper: some models reject an explicit temperature outright,
 // regardless of reasoning effort (e.g. the OpenAI gpt-5 / gpt-5-mini / gpt-5-nano
 // / gpt-5.1 Responses models). Always drop it.
