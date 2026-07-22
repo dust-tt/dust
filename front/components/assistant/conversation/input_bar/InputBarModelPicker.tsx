@@ -21,7 +21,7 @@ import { useClientType } from "@app/lib/context/clientType";
 import { useModels } from "@app/lib/swr/models";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
-import { isMetaModelId } from "@app/types/assistant/models/auto";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
@@ -132,7 +132,7 @@ export function InputBarModelPicker({
   const allModels = useMemo<ModelConfigurationType[]>(
     () =>
       models.filter(
-        (model) => !isMetaModelId(model.modelId) && model.isSelectable
+        (model) => !isModelStreamId(model.modelId) && model.isSelectable
       ),
     [models]
   );

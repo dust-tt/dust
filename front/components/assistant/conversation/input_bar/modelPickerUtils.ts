@@ -1,11 +1,11 @@
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
-import type { MetaModelIdType } from "@app/types/assistant/models/auto";
+import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
 import {
   AUTO_COMPLEX_MODEL_ID,
   AUTO_FAST_MODEL_ID,
   AUTO_MODEL_ID,
-  isMetaModelId,
+  isModelStreamId,
 } from "@app/types/assistant/models/auto";
 import type {
   ModelConfigurationType,
@@ -26,7 +26,7 @@ export type ModelTierId = "fast" | "standard" | "complex";
 
 export interface ModelTierDefinition {
   id: ModelTierId;
-  metaModelId: MetaModelIdType;
+  metaModelId: ModelStreamIdType;
   name: string;
   // Short right-aligned blurb shown next to the tier name.
   description: string;
@@ -53,7 +53,7 @@ export const MODEL_TIERS: ModelTierDefinition[] = [
   },
 ];
 
-const TIER_BY_META_MODEL_ID: Record<MetaModelIdType, ModelTierId> = {
+const TIER_BY_META_MODEL_ID: Record<ModelStreamIdType, ModelTierId> = {
   [AUTO_FAST_MODEL_ID]: "fast",
   [AUTO_MODEL_ID]: "standard",
   [AUTO_COMPLEX_MODEL_ID]: "complex",
@@ -278,7 +278,7 @@ export function resolveRequestedSelection(
   if (!selection) {
     return null;
   }
-  if (isMetaModelId(selection.modelId)) {
+  if (isModelStreamId(selection.modelId)) {
     const tierId = TIER_BY_META_MODEL_ID[selection.modelId];
     return {
       display: { kind: "tier", tierId },
@@ -314,7 +314,7 @@ export function resolveAgentDefault({
   if (!agentModel) {
     return standardDefault;
   }
-  if (isMetaModelId(agentModel.modelId)) {
+  if (isModelStreamId(agentModel.modelId)) {
     return {
       display: {
         kind: "tier",
