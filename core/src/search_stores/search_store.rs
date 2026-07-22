@@ -210,6 +210,41 @@ fn map_sort_field(field: &str) -> &str {
     }
 }
 
+fn build_search_request_body(
+    search: Search,
+    cursor: Option<String>,
+    sort_len: usize,
+) -> Result<serde_json::Value> {
+    let mut search_body = serde_json::to_value(search)?;
+
+    if let Some(cursor) = cursor {
+        let decoded = URL_SAFE.decode(cursor)?;
+        let json_str = String::from_utf8(decoded)?;
+        let search_after: Vec<serde_json::Value> = serde_json::from_str(&json_str)?;
+
+        if search_after.len() != sort_len {
+            return Err(SearchNodesError::CursorSortMismatch(format!(
+                "cursor has {} value(s) but sort has {}",
+                search_after.len(),
+                sort_len
+            ))
+            .into());
+        }
+
+        // Preserve the raw sort tuple returned by Elasticsearch, including null values.
+        // The DSL serializes search_after through Terms and drops null/empty entries.
+        search_body
+            .as_object_mut()
+            .ok_or_else(|| anyhow::anyhow!("Failed to serialize search request body"))?
+            .insert(
+                "search_after".to_string(),
+                serde_json::Value::Array(search_after),
+            );
+    }
+
+    Ok(search_body)
+}
+
 impl ElasticsearchSearchStore {
     pub async fn new(es_uri: &str, username: &str, password: &str) -> Result<Self> {
         let credentials = Credentials::Basic(username.to_string(), password.to_string());
@@ -337,7 +372,7 @@ impl SearchStore for ElasticsearchSearchStore {
         let sort_len = sort.len();
 
         // Build and run search
-        let mut search = Search::new()
+        let search = Search::new()
             .size(options.limit.unwrap_or(MAX_PAGE_SIZE))
             .query(bool_query)
             .track_total_hits(MAX_TOTAL_HITS_TRACKED)
@@ -345,47 +380,13 @@ impl SearchStore for ElasticsearchSearchStore {
             .indices_boost(DATA_SOURCE_INDEX_NAME, DATA_SOURCE_BOOST)
             .sort(sort);
 
-        if let Some(cursor) = options.cursor {
-            let decoded = URL_SAFE.decode(cursor)?;
-            let json_str = String::from_utf8(decoded)?;
-            let search_after: Vec<serde_json::Value> = serde_json::from_str(&json_str)?;
-
-            if search_after.len() != sort_len {
-                return Err(SearchNodesError::CursorSortMismatch(format!(
-                    "cursor has {} value(s) but sort has {}",
-                    search_after.len(),
-                    sort_len
-                ))
-                .into());
-            }
-
-            // We replace empty strings with a "high sort" sentinel so that documents with
-            // an originally empty title will appear at the end of ascending sort order.
-            //
-            // Elasticsearch's Rust client (or DSL) has trouble when search_after contains "".
-            // By substituting a high-Unicode character ("\u{10FFFF}"), we ensure those items
-            // sort last without breaking the library's internal validation.
-            //
-            // Will be removed once we don't have empty strings titles anymore.
-            let fixed_sort = search_after
-                .iter()
-                .map(|v| {
-                    if v.as_str() == Some("") {
-                        serde_json::Value::String("\u{10FFFF}".to_string())
-                    } else {
-                        v.clone()
-                    }
-                })
-                .collect::<Vec<_>>();
-
-            search = search.search_after(fixed_sort);
-        }
+        let search_body = build_search_request_body(search, options.cursor, sort_len)?;
 
         let search_start = utils::now();
         let response = self
             .client
             .search(SearchParts::Index(&indices_to_query))
-            .body(search)
+            .body(search_body)
             .send()
             .await?;
 
@@ -1400,6 +1401,44 @@ impl ElasticsearchSearchStore {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_search_request_body;
+    use base64::{engine::general_purpose::URL_SAFE, Engine};
+    use elasticsearch_dsl::{FieldSort, Search, Sort, SortOrder};
+    use serde_json::json;
+
+    #[test]
+    fn preserves_null_search_after_values() {
+        let cursor = URL_SAFE.encode(
+            serde_json::to_string(&json!([null, null, "data-source-internal-id"]))
+                .unwrap()
+                .as_bytes(),
+        );
+
+        let search = Search::new().sort([
+            Sort::FieldSort(
+                FieldSort::new("title.keyword")
+                    .order(SortOrder::Asc)
+                    .unmapped_type("keyword"),
+            ),
+            Sort::FieldSort(
+                FieldSort::new("node_id")
+                    .order(SortOrder::Asc)
+                    .unmapped_type("keyword"),
+            ),
+            Sort::FieldSort(FieldSort::new("data_source_internal_id").order(SortOrder::Asc)),
+        ]);
+
+        let body = build_search_request_body(search, Some(cursor), 3).unwrap();
+
+        assert_eq!(
+            body["search_after"],
+            json!([null, null, "data-source-internal-id"])
+        );
     }
 }
 
