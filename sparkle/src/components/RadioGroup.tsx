@@ -7,7 +7,7 @@ import * as React from "react";
 
 export const radioStyles = cva(
   cn(
-    "h-5 w-5 aspect-square rounded-full border transition duration-100 ease-out motion-reduce:transition-none active:scale-95",
+    "touch-hitbox h-5 w-5 aspect-square rounded-full border transition duration-100 ease-out motion-reduce:transition-none active:scale-95",
     "border-border-dark",
     "bg-background",
     "text-foreground",

@@ -9,7 +9,7 @@ type SliderToggleProps = {
 };
 
 const baseClasses = cn(
-  "relative shrink-0 h-5 w-8 rounded-full cursor-pointer flex items-center",
+  "touch-hitbox relative shrink-0 h-5 w-8 rounded-full cursor-pointer flex items-center",
   // Track color and knob slide share timing so they animate as one unit.
   "transition-colors duration-200 ease-in-out motion-reduce:transition-none",
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0",
