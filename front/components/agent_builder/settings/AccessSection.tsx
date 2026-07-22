@@ -111,6 +111,12 @@ export function AccessSection({
               label={getDisplayValue()}
               isSelect
               type="button"
+              disabled={!canPublishAgent}
+              tooltip={
+                !canPublishAgent
+                  ? "You don't have permission to publish agents."
+                  : undefined
+              }
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
@@ -120,17 +126,13 @@ export function AccessSection({
               icon={Eye}
               onClick={() => scope.onChange("visible")}
               disabled={!canPublishAgent}
-              tooltip={
-                !canPublishAgent
-                  ? "You don't have permission to publish agents."
-                  : undefined
-              }
             />
             <DropdownMenuItem
               label="Unpublished"
               description="Visible & usable by editors only."
               icon={EyeOff}
               onClick={() => scope.onChange("hidden")}
+              disabled={!canPublishAgent}
             />
           </DropdownMenuContent>
         </DropdownMenu>
