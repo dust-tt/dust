@@ -21,7 +21,12 @@ const EmptyCTA = React.forwardRef<HTMLDivElement, EmptyCTAProps>(
       {...props}
     >
       {message && (
-        <div className={cn("text-center text-sm", "text-muted-foreground")}>
+        <div
+          className={cn(
+            "text-center text-sm text-pretty",
+            "text-muted-foreground"
+          )}
+        >
           {message}
         </div>
       )}

@@ -133,7 +133,7 @@ type ListItemSectionProps = {
 const listItemSectionVariants = cva("", {
   variants: {
     size: {
-      xs: "heading-xs uppercase pb-2 pt-4 text-muted-foreground",
+      xs: "heading-xs uppercase tracking-wider pb-2 pt-4 text-muted-foreground",
       sm: "heading-sm bg-muted-background p-2 text-foreground",
     },
     interactive: {

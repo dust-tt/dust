@@ -294,7 +294,7 @@ const NavigationListCompactLabel = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "flex px-2 py-1 pl-3 text-[10px] font-semibold text-faint pt-3 uppercase whitespace-nowrap overflow-hidden text-ellipsis",
+      "flex px-2 py-1 pl-3 text-[10px] font-semibold text-faint pt-3 uppercase tracking-wider whitespace-nowrap overflow-hidden text-ellipsis",
       isSticky && "sticky top-0 z-10 bg-muted-background border-border",
       className
     )}

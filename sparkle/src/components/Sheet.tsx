@@ -335,7 +335,7 @@ const SheetTitle = React.forwardRef<
     {icon && <Icon visual={icon} size="lg" className="text-foreground" />}
     <SheetPrimitive.Title
       ref={ref}
-      className={cn("heading-lg", className)}
+      className={cn("heading-lg text-balance", className)}
       {...props}
     />
   </>
@@ -348,7 +348,7 @@ const SheetDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Description
     ref={ref}
-    className={cn("text-sm", "text-muted-foreground", className)}
+    className={cn("text-sm text-pretty", "text-muted-foreground", className)}
     {...props}
   />
 ));
