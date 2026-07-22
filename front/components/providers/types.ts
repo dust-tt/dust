@@ -55,10 +55,10 @@ const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
   auto: {
     light: DustLogo,
   },
-  auto_quick: {
+  auto_fast: {
     light: DustLogo,
   },
-  auto_deep: {
+  auto_complex: {
     light: DustLogo,
   },
 };
