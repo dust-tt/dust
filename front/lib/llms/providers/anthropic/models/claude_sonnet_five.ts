@@ -1,4 +1,7 @@
-import { dropTemperature } from "@app/lib/llms/stream/types/configuration";
+import {
+  disableReasoningWhenForcingTool,
+  dropTemperature,
+} from "@app/lib/llms/stream/types/configuration";
 
 export function WithDustClaudeSonnetFiveConfig<
   TBase extends abstract new (
@@ -16,7 +19,10 @@ export function WithDustClaudeSonnetFiveConfig<
     static readonly maxOutputTokens = 64_000;
     static readonly byok = true;
     // Anthropic rejects an explicit temperature for this model.
-    static readonly configParsers = [dropTemperature];
+    static readonly configParsers = [
+      disableReasoningWhenForcingTool,
+      dropTemperature,
+    ];
   }
 
   return DustClaudeSonnetFive;

@@ -1,4 +1,7 @@
-import { dropTemperatureWhenReasoning } from "@app/lib/llms/stream/types/configuration";
+import {
+  disableReasoningWhenForcingTool,
+  dropTemperatureWhenReasoning,
+} from "@app/lib/llms/stream/types/configuration";
 
 export function WithDustClaudeOpusFourDotSixConfig<
   TBase extends abstract new (
@@ -17,7 +20,10 @@ export function WithDustClaudeOpusFourDotSixConfig<
     static readonly byok = true;
     // Opus 4.6 accepts a caller-supplied temperature, but Anthropic rejects
     // temperature=1 while thinking is disabled; drop it in that case only.
-    static readonly configParsers = [dropTemperatureWhenReasoning];
+    static readonly configParsers = [
+      disableReasoningWhenForcingTool,
+      dropTemperatureWhenReasoning,
+    ];
   }
 
   return DustClaudeOpusFourDotSix;
