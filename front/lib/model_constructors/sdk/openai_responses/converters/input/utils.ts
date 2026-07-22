@@ -45,7 +45,6 @@ type PromptCacheBreakpoint =
 // this interface (`this`), so overriding one leaf on an endpoint changes how
 // every composite uses it.
 export interface MessageItemConverters {
-  systemMessageToInputItem(message: SystemTextMessage): ResponseInputItem;
   userImageMessageToInputItem(message: BaseUserImageMessage): ResponseInputItem;
   toolCallResultMessageToInputItem(
     message: BaseToolCallResultMessage
@@ -93,11 +92,18 @@ export function promptCacheBreakpointFor(
 
 // OpenAI uses the "developer" role for the system prompt on reasoning models.
 export function systemMessageToInputItem(
-  message: SystemTextMessage
+  message: SystemTextMessage,
+  converters: MessageItemConverters
 ): ResponseInputItem {
   return {
     role: "developer",
-    content: [{ type: "input_text", text: message.content.value }],
+    content: [
+      {
+        type: "input_text",
+        text: message.content.value,
+        ...converters.promptCacheBreakpointFor(message.cache),
+      },
+    ],
   };
 }
 
@@ -266,7 +272,7 @@ export function systemMessagesToInputItems(
   system: SystemTextMessage[],
   converters: MessageItemConverters
 ): ResponseInputItem[] {
-  return system.map((message) => converters.systemMessageToInputItem(message));
+  return system.map((message) => systemMessageToInputItem(message, converters));
 }
 
 // -- Config converters (pure) --
