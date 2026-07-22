@@ -1,3 +1,9 @@
+import {
+  isMCPError,
+  isProviderError,
+  MCPError,
+  ProviderError,
+} from "@app/lib/actions/mcp_errors";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -96,8 +102,16 @@ const makeGraphQLRequest = async (
 
       // Special handling for authentication errors
       if (response.status === 401 || response.status === 403) {
-        throw new Error(
-          `Authentication failed: ${response.status} - Token may be expired or invalid`
+        throw new MCPError(
+          `Authentication failed: ${response.status} - Token may be expired or invalid`,
+          { tracked: false }
+        );
+      }
+
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `Monday API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
         );
       }
 
@@ -117,8 +131,7 @@ const makeGraphQLRequest = async (
         }
       }
 
-      const error = new Error(errorMessage);
-      throw normalizeError(error);
+      throw new MCPError(errorMessage, { tracked: false });
     }
 
     let result;
@@ -147,12 +160,18 @@ const makeGraphQLRequest = async (
         )
         .join(", ");
 
-      const error = new Error(`Monday GraphQL error: ${errorDetails}`);
-      throw normalizeError(error);
+      // GraphQL-level errors are driven by the query/user input, not a provider outage.
+      throw new MCPError(`Monday GraphQL error: ${errorDetails}`, {
+        tracked: false,
+      });
     }
 
     return result.data;
   } catch (error) {
+    // Let typed tool errors escape to the tool-execution wrapper.
+    if (isMCPError(error) || isProviderError(error)) {
+      throw error;
+    }
     localLogger.error("Error making Monday API request:", {
       error,
       query: query.substring(0, 200),
@@ -191,7 +210,7 @@ export const getBoardItems = async (
   // Convert boardId to integer to ensure proper format
   const boardIdInt = parseInt(boardId, 10);
   if (isNaN(boardIdInt)) {
-    throw new Error(`Invalid board ID: ${boardId}`);
+    throw new MCPError(`Invalid board ID: ${boardId}`, { tracked: false });
   }
 
   const query = `
@@ -310,7 +329,9 @@ export const searchItems = async (
     // Convert boardId to integer
     const boardIdInt = parseInt(filters.boardId, 10);
     if (isNaN(boardIdInt)) {
-      throw new Error(`Invalid board ID: ${filters.boardId}`);
+      throw new MCPError(`Invalid board ID: ${filters.boardId}`, {
+        tracked: false,
+      });
     }
 
     query = `
@@ -578,7 +599,7 @@ export const updateItem = async (
   // First get the item to find its board ID (required by Monday API)
   const itemDetails = await getItemDetails(accessToken, itemId);
   if (!itemDetails) {
-    throw new Error("Item not found");
+    throw new MCPError("Item not found", { tracked: false });
   }
 
   const query = `
@@ -672,7 +693,7 @@ export const updateItemName = async (
   // First get the item to find its board ID
   const itemDetails = await getItemDetails(accessToken, itemId);
   if (!itemDetails) {
-    throw new Error("Item not found");
+    throw new MCPError("Item not found", { tracked: false });
   }
 
   const query = `
@@ -929,7 +950,7 @@ export const updateSubitem = async (
   // First get the subitem to find its board ID (required by Monday API)
   const itemDetails = await getItemDetails(accessToken, subitemId);
   if (!itemDetails) {
-    throw new Error("Subitem not found");
+    throw new MCPError("Subitem not found", { tracked: false });
   }
 
   const query = `
@@ -1028,23 +1049,34 @@ export const uploadFileToColumn = async (
     });
 
     if (!response.ok) {
-      const error = new Error(
-        `Monday API file upload failed: ${response.status} ${response.statusText}`
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `Monday API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
+      throw new MCPError(
+        `Monday API file upload failed: ${response.status} ${response.statusText}`,
+        { tracked: false }
       );
-      throw normalizeError(error);
     }
 
     const result = await response.json();
 
     if (result.errors) {
-      const error = new Error(
-        `Monday GraphQL error: ${result.errors.map((e: any) => e.message).join(", ")}`
+      // GraphQL-level errors are driven by the query/user input, not a provider outage.
+      throw new MCPError(
+        `Monday GraphQL error: ${result.errors.map((e: any) => e.message).join(", ")}`,
+        { tracked: false }
       );
-      throw normalizeError(error);
     }
 
     return result.data.add_file_to_column;
   } catch (error) {
+    // Let typed tool errors escape to the tool-execution wrapper.
+    if (isMCPError(error) || isProviderError(error)) {
+      throw error;
+    }
     localLogger.error("Error uploading file to Monday:", error);
     throw normalizeError(error);
   }
@@ -1141,7 +1173,7 @@ export const getBoardValues = async (
   // Convert boardId to integer
   const boardIdInt = parseInt(boardId, 10);
   if (isNaN(boardIdInt)) {
-    throw new Error(`Invalid board ID: ${boardId}`);
+    throw new MCPError(`Invalid board ID: ${boardId}`, { tracked: false });
   }
 
   const query = `
@@ -1266,7 +1298,7 @@ export const getGroupDetails = async (
   // Convert boardId to integer
   const boardIdInt = parseInt(boardId, 10);
   if (isNaN(boardIdInt)) {
-    throw new Error(`Invalid board ID: ${boardId}`);
+    throw new MCPError(`Invalid board ID: ${boardId}`, { tracked: false });
   }
 
   const query = `
@@ -1579,7 +1611,7 @@ export const getBoardAnalytics = async (
   const board = data.boards?.[0];
 
   if (!board) {
-    throw new Error("Board not found");
+    throw new MCPError("Board not found", { tracked: false });
   }
 
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

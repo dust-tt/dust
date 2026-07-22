@@ -1,4 +1,8 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  isMCPError,
+  isProviderError,
+  MCPError,
+} from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createFreshserviceClient } from "@app/lib/api/actions/servers/freshservice/client";
@@ -15,6 +19,22 @@ import {
   FreshserviceTicketSchema,
 } from "@app/lib/api/actions/servers/freshservice/types";
 import { Err, Ok } from "@app/types/shared/result";
+
+function handleRequestError(error: unknown): Err<MCPError> {
+  // Let provider 5xx errors escape to the tool-execution wrapper, which tracks them.
+  if (isProviderError(error)) {
+    throw error;
+  }
+  // MCPErrors thrown by the client carry their own tracking flag; honor them as-is.
+  if (isMCPError(error)) {
+    return new Err(error);
+  }
+  return new Err(
+    new MCPError(
+      `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
+    )
+  );
+}
 
 const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
   list_tickets: async ({ filter, fields, page, per_page }, { authInfo }) => {
@@ -69,11 +89,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -120,11 +136,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -190,11 +202,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -281,11 +289,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -337,11 +341,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -375,11 +375,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -407,11 +403,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -441,11 +433,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -474,11 +462,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -502,11 +486,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -567,11 +547,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -636,11 +612,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -664,11 +636,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -695,11 +663,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -736,11 +700,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -804,11 +764,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -842,11 +798,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -880,11 +832,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -918,11 +866,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -956,11 +900,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -998,11 +938,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1047,11 +983,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1078,11 +1010,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1118,11 +1046,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1209,11 +1133,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1247,11 +1167,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1292,11 +1208,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1358,11 +1270,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1389,11 +1297,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1438,11 +1342,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1489,11 +1389,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1520,11 +1416,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1558,11 +1450,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1591,11 +1479,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1645,11 +1529,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 
@@ -1676,11 +1556,7 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
       ]);
     } catch (error) {
-      return new Err(
-        new MCPError(
-          `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      );
+      return handleRequestError(error);
     }
   },
 };

@@ -1,4 +1,8 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  isProviderError,
+  MCPError,
+  ProviderError,
+} from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
   ToolHandlerResult,
@@ -103,6 +107,13 @@ async function ukgReadyApiCall<T extends z.ZodTypeAny>(
       body: body ? JSON.stringify(body) : undefined,
     });
 
+    if (response.status >= 500) {
+      throw new ProviderError(
+        `UKG Ready API returned an unexpected error (HTTP ${response.status}).`,
+        { status: response.status }
+      );
+    }
+
     if (!response.ok) {
       const errorBody = await response.text();
       const msg = `UKG Ready API error: ${response.status} ${response.statusText} - ${errorBody}`;
@@ -126,6 +137,9 @@ async function ukgReadyApiCall<T extends z.ZodTypeAny>(
 
     return new Ok(parseResult.data);
   } catch (error: unknown) {
+    if (isProviderError(error)) {
+      throw error;
+    }
     const errorMsg = `UKG Ready API call failed for ${endpoint}: ${normalizeError(error).message}`;
     logger.error(errorMsg);
     return new Err(normalizeError(error).message);
@@ -328,6 +342,13 @@ export async function deletePTORequest(
       },
     });
 
+    if (response.status >= 500) {
+      throw new ProviderError(
+        `UKG Ready API returned an unexpected error (HTTP ${response.status}).`,
+        { status: response.status }
+      );
+    }
+
     if (!response.ok) {
       const errorBody = await response.text();
       const msg = `UKG Ready API error: ${response.status} ${response.statusText} - ${errorBody}`;
@@ -337,6 +358,9 @@ export async function deletePTORequest(
 
     return new Ok(undefined);
   } catch (error: unknown) {
+    if (isProviderError(error)) {
+      throw error;
+    }
     const errorMsg = `Failed to delete PTO request(s) ${requestIds.join(", ")}: ${normalizeError(error).message}`;
     logger.error(errorMsg);
     return new Err(normalizeError(error).message);

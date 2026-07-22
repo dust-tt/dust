@@ -1,8 +1,13 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  isMCPError,
+  isProviderError,
+  MCPError,
+} from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { toHubspotProviderError } from "@app/lib/api/actions/servers/hubspot/client";
 import logger from "@app/logger/logger";
 import { Err } from "@app/types/shared/result";
 
@@ -76,6 +81,21 @@ export const withAuth = async (
   try {
     return await action(accessToken);
   } catch (error: unknown) {
+    if (isProviderError(error)) {
+      // Unexpected provider failure: rethrow for the central tool wrapper to track.
+      throw error;
+    }
+    if (isMCPError(error)) {
+      // Thrown from call stacks where returning a Result is impractical; honor it as if
+      // it had been returned (its tracked flag is respected by the tool wrapper).
+      return new Err(error);
+    }
+    // HubSpot SDK calls without a local catch site propagate here: surface HTTP 5xx
+    // responses as ProviderError.
+    const providerError = toHubspotProviderError(error);
+    if (providerError) {
+      throw providerError;
+    }
     return logAndReturnError({ error, message: "Operation failed" });
   }
 };

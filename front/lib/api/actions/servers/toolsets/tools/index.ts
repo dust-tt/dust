@@ -1,5 +1,8 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnDustAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -51,7 +54,12 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const r = await api.getMCPServerViews(globalSpace.sId, true);
     if (r.isErr()) {
-      throw new Error(r.error.message);
+      throwOnDustAPIInternalError(r.error);
+      return new Err(
+        new MCPError(`Failed to list toolsets: ${r.error.message}`, {
+          tracked: false,
+        })
+      );
     }
 
     const mcpServerViews = r.value
@@ -116,6 +124,10 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       mcpServerViewId: toolsetId,
       agentConfigurationId,
     });
+
+    if (res.isErr()) {
+      throwOnDustAPIInternalError(res.error);
+    }
 
     if (res.isErr() || !res.value.success) {
       return new Err(

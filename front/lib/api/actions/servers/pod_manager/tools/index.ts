@@ -1,4 +1,7 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnDustAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
 import type {
   ToolDefinition,
@@ -1221,6 +1224,7 @@ export function createProjectManagerTools(
         });
 
         if (messageRes.isErr()) {
+          throwOnDustAPIInternalError(messageRes.error.api_error);
           return new Err(
             new MCPError(
               `Failed to post message: ${messageRes.error.api_error.message}`,
@@ -1510,6 +1514,7 @@ export function createProjectManagerTools(
         });
 
         if (messageRes.isErr()) {
+          throwOnDustAPIInternalError(messageRes.error.api_error);
           return new Err(
             new MCPError(
               `Failed to post message: ${messageRes.error.api_error.message}`,

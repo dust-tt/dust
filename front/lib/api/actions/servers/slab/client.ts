@@ -1,3 +1,9 @@
+import {
+  isMCPError,
+  isProviderError,
+  MCPError,
+  ProviderError,
+} from "@app/lib/actions/mcp_errors";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -76,19 +82,33 @@ async function makeGraphQLRequest<T>(
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `Slab API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
+      throw new MCPError(`HTTP ${response.status}: ${await response.text()}`, {
+        tracked: false,
+      });
     }
 
     const json = (await response.json()) as GraphQLResponse<T>;
 
     if (json.errors?.length) {
-      throw new Error(
-        `GraphQL errors: ${json.errors.map((e) => e.message).join(", ")}`
+      // GraphQL-level errors are driven by the query/user input, not a provider outage.
+      throw new MCPError(
+        `GraphQL errors: ${json.errors.map((e) => e.message).join(", ")}`,
+        { tracked: false }
       );
     }
 
     return json.data;
   } catch (error) {
+    // Let typed tool errors escape to the tool-execution wrapper.
+    if (isMCPError(error) || isProviderError(error)) {
+      throw error;
+    }
     const normalizedError = normalizeError(error);
     logger.error({ error: normalizedError }, "GraphQL request failed");
     throw normalizedError;

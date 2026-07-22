@@ -1,4 +1,7 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnCoreAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   IncludeResultResourceType,
@@ -116,6 +119,7 @@ export async function runIncludeDataRetrieval(
   );
 
   if (searchResults.isErr()) {
+    throwOnCoreAPIInternalError(searchResults.error);
     return new Err(new MCPError(searchResults.error.message));
   }
 

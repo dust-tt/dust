@@ -1,3 +1,4 @@
+import { ProviderError } from "@app/lib/actions/mcp_errors";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { escape } from "html-escaper";
 import sanitizeHtml from "sanitize-html";
@@ -309,13 +310,22 @@ export async function fetchFromGmail(
   options?: RequestInit
 ): Promise<Response> {
   // eslint-disable-next-line no-restricted-globals
-  return fetch(`https://gmail.googleapis.com${endpoint}`, {
+  const response = await fetch(`https://gmail.googleapis.com${endpoint}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${accessToken}`,
       ...options?.headers,
     },
   });
+
+  if (response.status >= 500) {
+    throw new ProviderError(
+      `Gmail API returned an unexpected error (HTTP ${response.status}).`,
+      { status: response.status }
+    );
+  }
+
+  return response;
 }
 
 /**

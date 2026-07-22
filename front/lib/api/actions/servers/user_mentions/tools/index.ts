@@ -1,4 +1,7 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnDustAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
@@ -48,6 +51,7 @@ const handlers: ToolHandlers<typeof USER_MENTIONS_TOOLS_METADATA> = {
     });
 
     if (r.isErr()) {
+      throwOnDustAPIInternalError(r.error);
       return new Err(
         new MCPError(`Error getting mentions suggestions: ${r.error.message}`, {
           cause: r.error,

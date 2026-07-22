@@ -1,4 +1,7 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnDustAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_ROUTER_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_router/metadata";
@@ -40,6 +43,7 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
       view: user ? "list" : "all",
     });
     if (res.isErr()) {
+      throwOnDustAPIInternalError(res.error);
       return new Err(new MCPError("Error fetching agent configurations"));
     }
 
@@ -86,6 +90,7 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
       view: user ? "list" : "all",
     });
     if (getAgentsRes.isErr()) {
+      throwOnDustAPIInternalError(getAgentsRes.error);
       logger.error(
         { err: getAgentsRes.error },
         "suggest_agents_for_content: error fetching agent configurations"

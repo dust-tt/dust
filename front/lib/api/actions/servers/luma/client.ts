@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type {
   CreateEventParams,
@@ -101,6 +101,12 @@ export class LumaClient {
     }
 
     if (!response.ok) {
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `Luma API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
       const errorText = await response.text();
       return new Err(
         new Error(

@@ -5,6 +5,7 @@ import {
   getElevenLabsClient,
   resolveDefaultVoiceId,
   streamToBase64,
+  throwIfElevenLabsProviderError,
 } from "@app/lib/api/actions/servers/elevenlabs/utils";
 import {
   isAllowedAudioUrl,
@@ -43,6 +44,7 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
 
       return new Ok([{ type: "text" as const, text: result.text }]);
     } catch (e) {
+      throwIfElevenLabsProviderError(e);
       const cause = normalizeError(e);
       return new Err(
         new MCPError(
@@ -92,6 +94,7 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
         },
       ]);
     } catch (e) {
+      throwIfElevenLabsProviderError(e);
       const cause = normalizeError(e);
       return new Err(
         new MCPError(
@@ -143,6 +146,7 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
         },
       ]);
     } catch (e) {
+      throwIfElevenLabsProviderError(e);
       const cause = normalizeError(e);
       return new Err(
         new MCPError(

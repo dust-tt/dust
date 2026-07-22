@@ -1,3 +1,4 @@
+import { isProviderError, ProviderError } from "@app/lib/actions/mcp_errors";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
   ConfluenceCreatePageRequest,
@@ -56,6 +57,12 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
     });
 
     if (!response.ok) {
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `Confluence API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
       const errorBody = await response.text();
       const msg = `Confluence API error: ${response.status} ${response.statusText} - ${errorBody}`;
       logger.error(`[Confluence MCP Server] ${msg}`);
@@ -81,6 +88,9 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
 
     return new Ok(parseResult.data);
   } catch (error: unknown) {
+    if (isProviderError(error)) {
+      throw error;
+    }
     logger.error(
       `[Confluence MCP Server] Confluence API call failed for ${endpoint}:`,
       {
@@ -181,6 +191,11 @@ export async function withAuth<T>(
     const result = await action(baseUrl, accessToken);
     return { success: true, result };
   } catch (error) {
+    if (isProviderError(error)) {
+      // Let provider 5xx failures escape to the tool-execution wrapper, which converts
+      // them to tracked MCPErrors.
+      throw error;
+    }
     logger.error("Error in withAuth", { error });
     return {
       success: false,

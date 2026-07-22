@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { isProviderError, MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
@@ -320,6 +320,9 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
             },
           ]);
         } catch (error) {
+          if (isProviderError(error)) {
+            throw error;
+          }
           return new Err(
             new MCPError(
               `Error retrieving issue types: ${normalizeError(error).message}`
@@ -360,6 +363,9 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
             },
           ]);
         } catch (error) {
+          if (isProviderError(error)) {
+            throw error;
+          }
           return new Err(
             new MCPError(
               `Error retrieving issue fields: ${normalizeError(error).message}`
@@ -604,6 +610,9 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
             },
           });
         } catch (error) {
+          if (isProviderError(error)) {
+            throw error;
+          }
           logger.error(`Error in read_attachment:`, {
             error: error,
             issueKey,

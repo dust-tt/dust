@@ -1,4 +1,7 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnCoreAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
@@ -151,6 +154,8 @@ export async function list(
   }
 
   if (searchResult.isErr()) {
+    throwOnCoreAPIInternalError(searchResult.error);
+
     if (searchResult.error.code === "cursor_sort_mismatch") {
       return new Err(
         new MCPError(

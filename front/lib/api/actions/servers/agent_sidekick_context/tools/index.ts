@@ -1,5 +1,8 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnCoreAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import { isToolWithKnowledge } from "@app/lib/actions/mcp_helper";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -1291,6 +1294,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     );
 
     if (searchResults.isErr()) {
+      throwOnCoreAPIInternalError(searchResults.error);
       return new Err(
         new MCPError(
           `Failed to search knowledge: ${searchResults.error.message}`

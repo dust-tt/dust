@@ -5,6 +5,7 @@ import type { ToolContext } from "@app/lib/actions/types";
 import {
   getValTownClient,
   isValTownError,
+  throwIfValTownServerError,
 } from "@app/lib/api/actions/servers/val_town/helpers";
 import { VAL_TOWN_TOOLS_METADATA } from "@app/lib/api/actions/servers/val_town/metadata";
 import type { Authenticator } from "@app/lib/auth";
@@ -46,6 +47,7 @@ export function createValTownTools(
           },
         ]);
       } catch (error: unknown) {
+        throwIfValTownServerError(error);
         if (isValTownError(error) && error.status === 409) {
           return new Err(
             new MCPError(
@@ -95,6 +97,7 @@ export function createValTownTools(
           },
         ]);
       } catch (err) {
+        throwIfValTownServerError(err);
         return new Err(
           new MCPError(`Error getting val: ${normalizeError(err).message}`)
         );
@@ -158,6 +161,7 @@ export function createValTownTools(
           },
         ]);
       } catch (err) {
+        throwIfValTownServerError(err);
         return new Err(
           new MCPError(`Error listing vals: ${normalizeError(err).message}`)
         );
@@ -215,6 +219,7 @@ export function createValTownTools(
           },
         ]);
       } catch (err) {
+        throwIfValTownServerError(err);
         return new Err(
           new MCPError(`Error searching vals: ${normalizeError(err).message}`)
         );
@@ -276,6 +281,7 @@ export function createValTownTools(
           },
         ]);
       } catch (err) {
+        throwIfValTownServerError(err);
         return new Err(
           new MCPError(
             `Error listing val files: ${normalizeError(err).message}`
@@ -308,6 +314,7 @@ export function createValTownTools(
           },
         ]);
       } catch (err) {
+        throwIfValTownServerError(err);
         return new Err(
           new MCPError(
             `Error getting file content: ${normalizeError(err).message}`
@@ -337,6 +344,7 @@ export function createValTownTools(
           },
         ]);
       } catch (err) {
+        throwIfValTownServerError(err);
         return new Err(
           new MCPError(`Error deleting file: ${normalizeError(err).message}`)
         );
@@ -364,6 +372,7 @@ export function createValTownTools(
           },
         ]);
       } catch (err) {
+        throwIfValTownServerError(err);
         return new Err(
           new MCPError(
             `Error updating file content: ${normalizeError(err).message}`
@@ -405,6 +414,7 @@ export function createValTownTools(
           },
         ]);
       } catch (err) {
+        throwIfValTownServerError(err);
         return new Err(
           new MCPError(`Error updating file: ${normalizeError(err).message}`)
         );
@@ -433,6 +443,7 @@ export function createValTownTools(
           },
         ]);
       } catch (err) {
+        throwIfValTownServerError(err);
         return new Err(
           new MCPError(`Error creating file: ${normalizeError(err).message}`)
         );

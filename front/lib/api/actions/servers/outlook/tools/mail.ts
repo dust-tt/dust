@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import { OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   ToolHandlerExtra,
@@ -100,13 +100,29 @@ const fetchFromOutlook = async (
   options?: RequestInit
 ): Promise<Response> => {
   // eslint-disable-next-line no-restricted-globals
-  return fetch(`https://graph.microsoft.com/v1.0${endpoint}`, {
+  const response = await fetch(`https://graph.microsoft.com/v1.0${endpoint}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${accessToken}`,
       ...options?.headers,
     },
   });
+
+  // Microsoft Graph signals throttling with 429/503 + Retry-After. A 503
+  // carrying Retry-After is expected throttling, not an unexpected provider
+  // failure: let callers handle it (move_messages surfaces the retry delay to
+  // the model).
+  if (
+    response.status >= 500 &&
+    !(response.status === 503 && response.headers.has("Retry-After"))
+  ) {
+    throw new ProviderError(
+      `Microsoft Graph API returned an unexpected error (HTTP ${response.status}).`,
+      { status: response.status }
+    );
+  }
+
+  return response;
 };
 
 const getMailboxBasePath = (sharedMailboxAddress?: string): string => {
@@ -518,11 +534,13 @@ async function createOutlookDraft({
     );
 
     if (!updateDraftResponse.ok) {
+      // Best-effort draft cleanup: swallow failures (including the funnel's
+      // ProviderError on 5xx) so they don't surface as unhandled rejections.
       void fetchFromOutlook(
         `${basePath}/messages/${encodedDraftId}`,
         accessToken,
         { method: "DELETE" }
-      );
+      ).catch(() => {});
       const errorText = await getErrorText(updateDraftResponse);
       return new Err(
         new MCPError(`Failed to update reply draft: ${errorText}`)
@@ -591,11 +609,13 @@ async function createOutlookDraft({
     );
 
     if (!attachmentResponse.ok) {
+      // Best-effort draft cleanup: swallow failures (including the funnel's
+      // ProviderError on 5xx) so they don't surface as unhandled rejections.
       void fetchFromOutlook(
         `${basePath}/messages/${encodedDraftId}`,
         accessToken,
         { method: "DELETE" }
-      );
+      ).catch(() => {});
       const errorText = await getErrorText(attachmentResponse);
       return new Err(new MCPError(`Failed to add attachment: ${errorText}`));
     }
@@ -1677,11 +1697,13 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       );
 
       if (!sendResponse.ok) {
+        // Best-effort draft cleanup: swallow failures (including the funnel's
+        // ProviderError on 5xx) so they don't surface as unhandled rejections.
         void fetchFromOutlook(
           `${basePath}/messages/${encodedDraftId}`,
           accessToken,
           { method: "DELETE" }
-        );
+        ).catch(() => {});
         const errorText = await getErrorText(sendResponse);
         return new Err(
           new MCPError(

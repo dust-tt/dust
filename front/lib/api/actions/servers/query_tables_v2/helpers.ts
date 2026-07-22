@@ -3,7 +3,10 @@ import {
   generateSectionFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnCoreAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import type {
   SqlQueryOutputType,
   ThinkingOutputType,
@@ -118,6 +121,7 @@ export async function executeQuery(
     query,
   });
   if (queryResult.isErr()) {
+    throwOnCoreAPIInternalError(queryResult.error);
     return new Err(
       // Certain errors we don't track as they can occur in the context of a normal execution.
       new MCPError(

@@ -1,3 +1,4 @@
+import type { CoreAPIError } from "@app/types/core/core_api";
 import type { APIError } from "@app/types/error";
 
 export class MCPServerNotFoundError extends Error {
@@ -65,4 +66,35 @@ export class ProviderError extends Error {
 
 export function isProviderError(error: unknown): error is ProviderError {
   return error instanceof ProviderError;
+}
+
+/**
+ * Throws a `ProviderError` when a `CoreAPIError` is an unexpected core failure (core uses the
+ * `internal_server_error` code for its 500s). All other codes are request/data-driven and must
+ * keep their local handling: call this before converting the error at the call site.
+ */
+export function throwOnCoreAPIInternalError(error: CoreAPIError): void {
+  if (error.code === "internal_server_error") {
+    throw new ProviderError("CoreAPI returned an unexpected error.", {
+      cause: new Error(error.message),
+    });
+  }
+}
+
+/**
+ * Throws a `ProviderError` when a Dust API error is an unexpected front failure (front uses the
+ * `internal_server_error` type for its 500s). All other types are request/user/config-driven and
+ * must keep their local handling: call this before converting the error at the call site.
+ *
+ * Accepts both the `@dust-tt/client` and the front `APIError` shapes structurally.
+ */
+export function throwOnDustAPIInternalError(error: {
+  type: string;
+  message: string;
+}): void {
+  if (error.type === "internal_server_error") {
+    throw new ProviderError("Dust API returned an unexpected error.", {
+      cause: new Error(error.message),
+    });
+  }
 }

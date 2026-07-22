@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -57,6 +57,13 @@ async function databricksApiCall<T extends z.ZodTypeAny>(
     },
     ...(options.body && { body: JSON.stringify(options.body) }),
   });
+
+  if (response.status >= 500) {
+    throw new ProviderError(
+      `Databricks API returned an unexpected error (HTTP ${response.status}).`,
+      { status: response.status }
+    );
+  }
 
   if (!response.ok) {
     const errorBody = await response.text();

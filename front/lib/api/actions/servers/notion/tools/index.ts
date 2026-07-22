@@ -1,4 +1,8 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  isMCPError,
+  MCPError,
+  ProviderError,
+} from "@app/lib/actions/mcp_errors";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   ToolDefinition,
@@ -23,14 +27,56 @@ import {
 } from "@app/types/shared/utils/time_frame";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { Client, isFullDataSource, isFullPage } from "@notionhq/client";
+import {
+  APIErrorCode,
+  APIResponseError,
+  Client,
+  isFullDataSource,
+  isFullPage,
+  isHTTPResponseError,
+} from "@notionhq/client";
 import type {
   CreateCommentParameters,
   QueryDataSourceParameters,
   RichTextItemResponse,
 } from "@notionhq/client/build/src/api-endpoints";
-import { APIResponseError } from "@notionhq/client/build/src/errors";
 import { parseISO } from "date-fns";
+
+/**
+ * Converts an error caught around a Notion SDK call into an MCPError. Notion server-side
+ * failures (HTTP 5xx) are rethrown as ProviderError so they are tracked upstream.
+ */
+function notionErrorToMCPError(e: unknown): MCPError {
+  if (isMCPError(e)) {
+    return e;
+  }
+  if (
+    isHTTPResponseError(e) &&
+    (e.status >= 500 ||
+      e.code === APIErrorCode.InternalServerError ||
+      e.code === APIErrorCode.ServiceUnavailable)
+  ) {
+    throw new ProviderError(
+      `Notion API returned an unexpected error (HTTP ${e.status}).`,
+      { status: e.status, cause: e }
+    );
+  }
+  if (
+    APIResponseError.isAPIResponseError(e) &&
+    [
+      // Errors due to a malformed input passed by the model (e.g. invalid ID) are not tracked.
+      APIErrorCode.RestrictedResource,
+      APIErrorCode.ObjectNotFound,
+      APIErrorCode.InvalidRequest,
+      APIErrorCode.ValidationError,
+    ].includes(e.code)
+  ) {
+    return new MCPError(e.message, { tracked: false, cause: e });
+  }
+  return new MCPError(normalizeError(e).message, {
+    cause: normalizeError(e),
+  });
+}
 
 async function withNotionClient<T>(
   fn: (notion: Client) => Promise<T>,
@@ -51,21 +97,7 @@ async function withNotionClient<T>(
       { type: "text" as const, text: JSON.stringify(result, null, 2) },
     ]);
   } catch (e) {
-    const tracked =
-      APIResponseError.isAPIResponseError(e) &&
-      [
-        // Ignoring errors due to a malformed input passed by the model (e.g. invalid ID).
-        "restricted_resource",
-        "object_not_found",
-        "invalid_request",
-        "validation_error",
-      ].includes(e.code);
-    return new Err(
-      new MCPError(normalizeError(e).message, {
-        tracked,
-        cause: normalizeError(e),
-      })
-    );
+    return new Err(notionErrorToMCPError(e));
   }
 }
 
@@ -81,14 +113,19 @@ export function createNotionTools(toolContext?: ToolContext): ToolDefinition[] {
       }
       const notion = new Client({ auth: accessToken });
 
-      const rawResults = await notion.search({
-        query,
-        filter: {
-          property: "object",
-          value: type === "database" ? "data_source" : type,
-        },
-        page_size: NOTION_SEARCH_ACTION_NUM_RESULTS,
-      });
+      let rawResults;
+      try {
+        rawResults = await notion.search({
+          query,
+          filter: {
+            property: "object",
+            value: type === "database" ? "data_source" : type,
+          },
+          page_size: NOTION_SEARCH_ACTION_NUM_RESULTS,
+        });
+      } catch (e) {
+        return new Err(notionErrorToMCPError(e));
+      }
 
       const timeFrame = parseTimeFrame(relativeTimeFrame);
 
@@ -346,8 +383,9 @@ export function createNotionTools(toolContext?: ToolContext): ToolDefinition[] {
     ) => {
       return withNotionClient((notion) => {
         if (!parent_page_id && !discussion_id) {
-          throw new Error(
-            "Either parent_page_id or discussion_id must be provided."
+          throw new MCPError(
+            "Either parent_page_id or discussion_id must be provided.",
+            { tracked: false }
           );
         }
         let params: CreateCommentParameters;

@@ -16,6 +16,7 @@ import {
   getDriveItemEndpoint,
   getGraphClient,
   searchMicrosoftDriveItems,
+  throwIfGraphProviderError,
   validateDocumentXml,
   validateZipFile,
 } from "@app/lib/api/actions/servers/microsoft/utils";
@@ -76,6 +77,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to search files")
       );
@@ -108,6 +110,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to search drive items"
@@ -209,6 +212,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to list drive items"
@@ -258,6 +262,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to resolve URL to a drive item"
@@ -348,6 +353,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       const originalError =
         normalizeError(err).message || "Failed to update document";
       let errorMessage = originalError;
@@ -424,6 +430,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
             extractAsXml: true,
           });
         } catch (error) {
+          throwIfGraphProviderError(error);
           return new Err(
             new MCPError(
               `Failed to process file: ${normalizeError(error).message}`
@@ -468,6 +475,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       try {
         buffer = await downloadDriveItemAsBuffer(client, endpoint, downloadUrl);
       } catch (err) {
+        throwIfGraphProviderError(err);
         return new Err(
           new MCPError(
             `Failed to download file: ${normalizeError(err).message}`
@@ -502,6 +510,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
       return new Ok(result.value);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to retrieve file content"
@@ -549,6 +558,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       const error = normalizeError(err);
       if (error.message.toLowerCase().includes("namealreadyexists")) {
         return new Err(
@@ -634,6 +644,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       const error = normalizeError(err);
 
       const errorMessage = error.message || "Failed to upload file";
@@ -676,6 +687,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to rename item")
       );
@@ -737,6 +749,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to copy file or folder"

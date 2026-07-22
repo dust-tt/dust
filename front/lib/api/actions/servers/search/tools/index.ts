@@ -1,4 +1,7 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnCoreAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -142,6 +145,7 @@ export async function searchFunction(
   );
 
   if (searchResults.isErr()) {
+    throwOnCoreAPIInternalError(searchResults.error);
     return new Err(new MCPError(searchResults.error.message));
   }
 

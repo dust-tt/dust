@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import type {
   MCPProgressNotificationType,
   ToolGeneratedFileType,
@@ -29,7 +29,9 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { ApiError as GoogleGenAIApiError } from "@google/genai";
 import assert from "assert";
+import { APIError as OpenAIAPIError } from "openai";
 
 export type ImageGenerationErrorCode =
   | "api_error"
@@ -44,6 +46,34 @@ export class ImageGenerationError extends Error {
   ) {
     super(message, { cause: options?.cause });
     this.name = "ImageGenerationError";
+  }
+}
+
+/**
+ * Rethrows an `ImageGenerationError` as `ProviderError` when the underlying image
+ * generation provider call failed unexpectedly (HTTP 5xx), so it escapes the tool
+ * handler and reaches the central tool wrapper, which always tracks it. The provider
+ * SDK error is carried on `cause` by the LLM layer. No-op for anything else.
+ */
+export function throwIfImageGenerationProviderError(
+  error: ImageGenerationError
+): void {
+  const { cause } = error;
+  if (
+    cause instanceof OpenAIAPIError &&
+    typeof cause.status === "number" &&
+    cause.status >= 500
+  ) {
+    throw new ProviderError(
+      `OpenAI API returned an unexpected error (HTTP ${cause.status}).`,
+      { status: cause.status, cause }
+    );
+  }
+  if (cause instanceof GoogleGenAIApiError && cause.status >= 500) {
+    throw new ProviderError(
+      `Google AI Studio API returned an unexpected error (HTTP ${cause.status}).`,
+      { status: cause.status, cause }
+    );
   }
 }
 

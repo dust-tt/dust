@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import { untrustedFetch } from "@app/lib/egress/server";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -51,6 +51,13 @@ async function servicenowApiCall<T extends z.ZodTypeAny>(
     },
   });
 
+  if (response.status >= 500) {
+    throw new ProviderError(
+      `ServiceNow API returned an unexpected error (HTTP ${response.status}).`,
+      { status: response.status }
+    );
+  }
+
   if (!response.ok) {
     const errorBody = await response.text();
     let errorMessage = `ServiceNow API error: ${response.status} ${response.statusText}`;
@@ -60,9 +67,7 @@ async function servicenowApiCall<T extends z.ZodTypeAny>(
     } catch {
       errorMessage = `${errorMessage} - ${errorBody}`;
     }
-    return new Err(
-      new MCPError(errorMessage, { tracked: response.status >= 500 })
-    );
+    return new Err(new MCPError(errorMessage, { tracked: false }));
   }
 
   const responseText = await response.text();

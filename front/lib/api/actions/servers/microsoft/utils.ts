@@ -1,3 +1,4 @@
+import { isProviderError, ProviderError } from "@app/lib/actions/mcp_errors";
 import type { ToolContext } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import config from "@app/lib/api/config";
@@ -14,6 +15,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import {
   Client as GraphClient,
+  GraphError,
   ResponseType,
 } from "@microsoft/microsoft-graph-client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
@@ -168,6 +170,24 @@ export async function getGraphClient(
   return GraphClient.init({
     authProvider: (done) => done(null, accessToken),
   });
+}
+
+/**
+ * Rethrows a caught error as `ProviderError` when Microsoft Graph failed unexpectedly
+ * (HTTP 5xx), so it escapes the tool handlers' catch-all blocks and reaches the central
+ * tool wrapper, which always tracks it. Rethrows an existing `ProviderError` as-is so
+ * nested catch sites do not swallow it. No-op for anything else.
+ */
+export function throwIfGraphProviderError(error: unknown): void {
+  if (isProviderError(error)) {
+    throw error;
+  }
+  if (error instanceof GraphError && error.statusCode >= 500) {
+    throw new ProviderError(
+      `Microsoft Graph API returned an unexpected error (HTTP ${error.statusCode}).`,
+      { status: error.statusCode, cause: error }
+    );
+  }
 }
 
 export async function getDriveItemEndpoint(
@@ -464,6 +484,12 @@ export async function downloadDriveItemAsBuffer(
 ): Promise<Buffer> {
   if (downloadUrl) {
     const response = await untrustedFetch(downloadUrl);
+    if (response.status >= 500) {
+      throw new ProviderError(
+        `Microsoft Graph API returned an unexpected error (HTTP ${response.status}).`,
+        { status: response.status }
+      );
+    }
     if (!response.ok) {
       throw new Error(
         `Failed to download file: ${response.status} ${response.statusText}`
@@ -515,6 +541,12 @@ export async function downloadAndProcessMicrosoftFile({
     buffer = await downloadDriveItemAsBuffer(client, endpoint, downloadUrl);
   } else if (downloadUrl) {
     const docResponse = await untrustedFetch(downloadUrl);
+    if (docResponse.status >= 500) {
+      throw new ProviderError(
+        `Microsoft Graph API returned an unexpected error (HTTP ${docResponse.status}).`,
+        { status: docResponse.status }
+      );
+    }
     if (!docResponse.ok) {
       throw new Error(
         `Failed to download file: ${docResponse.status} ${docResponse.statusText}`

@@ -1,4 +1,8 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  isProviderError,
+  MCPError,
+  ProviderError,
+} from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
   ToolHandlers,
@@ -12,6 +16,7 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { Octokit } from "@octokit/core";
+import { RequestError } from "@octokit/request-error";
 import type {
   RequestInfo as UndiciRequestInfo,
   RequestInit as UndiciRequestInit,
@@ -58,6 +63,23 @@ export const createOctokit = async (
   });
 };
 
+/**
+ * Rethrows GitHub API server-side failures (HTTP 5xx) as ProviderError so they are tracked
+ * upstream. Passes through ProviderErrors surfaced by nested catch blocks; leaves every other
+ * error untouched.
+ */
+function throwIfGithubServerError(e: unknown): void {
+  if (isProviderError(e)) {
+    throw e;
+  }
+  if (e instanceof RequestError && e.status >= 500) {
+    throw new ProviderError(
+      `GitHub API returned an unexpected error (HTTP ${e.status}).`,
+      { status: e.status, cause: e }
+    );
+  }
+}
+
 export function createGithubTools(auth: Authenticator): ToolDefinition[] {
   const handlers: ToolHandlers<typeof GITHUB_TOOLS_METADATA> = {
     create_issue: async (
@@ -85,6 +107,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           { type: "text" as const, text: `Issue created: #${issue.number}` },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error creating GitHub issue: ${normalizeError(e).message}`
@@ -362,6 +385,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           { type: "text" as const, text: JSON.stringify(content, null, 2) },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error retrieving GitHub pull request: ${normalizeError(e).message}`
@@ -410,6 +434,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           { type: "text" as const, text: `Issue #${issue.number} updated` },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error updating GitHub issue: ${normalizeError(e).message}`
@@ -446,6 +471,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error reviewing GitHub pull request: ${normalizeError(e).message}`
@@ -550,6 +576,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           { type: "text" as const, text: JSON.stringify(content, null, 2) },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error retrieving GitHub repository projects: ${normalizeError(e).message}`
@@ -643,6 +670,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error adding GitHub issue to project: ${normalizeError(e).message}`
@@ -677,6 +705,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error commenting on GitHub issue: ${normalizeError(e).message}`
@@ -769,6 +798,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error listing GitHub discussion categories: ${normalizeError(e).message}`
@@ -851,6 +881,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error creating GitHub discussion: ${normalizeError(e).message}`
@@ -938,6 +969,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error commenting on GitHub discussion: ${normalizeError(e).message}`
@@ -1052,6 +1084,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error retrieving GitHub discussion: ${normalizeError(e).message}`
@@ -1207,6 +1240,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error retrieving GitHub discussion comments: ${normalizeError(e).message}`
@@ -1358,6 +1392,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error listing GitHub discussions: ${normalizeError(e).message}`
@@ -1477,6 +1512,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error retrieving GitHub issue: ${normalizeError(e).message}`
@@ -1705,7 +1741,8 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                   text: JSON.stringify({ customFields: [] }, null, 2),
                 },
               ]);
-            } catch {
+            } catch (e) {
+              throwIfGithubServerError(e);
               return new Err(
                 new MCPError(
                   `Issue #${issueNumber} is not in the specified project, or project not found`
@@ -1765,6 +1802,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         const error = normalizeError(e);
         // Handle case where projectItems field might not be available
         if (
@@ -1960,6 +1998,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                 },
               ]);
             } catch (fallbackError) {
+              throwIfGithubServerError(fallbackError);
               return new Err(
                 new MCPError(
                   `Error retrieving GitHub issue custom fields: ${normalizeError(fallbackError).message}. Note: Querying all projects requires the projectItems field which may not be available on all GitHub plans.`
@@ -2122,6 +2161,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error listing GitHub issues: ${normalizeError(e).message}`
@@ -2418,6 +2458,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error searching GitHub issues and pull requests: ${normalizeError(e).message}`
@@ -2628,6 +2669,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           },
         ]);
       } catch (e) {
+        throwIfGithubServerError(e);
         return new Err(
           new MCPError(
             `Error listing GitHub pull requests: ${normalizeError(e).message}`

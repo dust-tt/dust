@@ -1,4 +1,7 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnCoreAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import config from "@app/lib/api/config";
@@ -51,6 +54,7 @@ export async function executeFindTags(
   });
 
   if (result.isErr()) {
+    throwOnCoreAPIInternalError(result.error);
     return new Err(new MCPError("Error searching for labels"));
   }
 
@@ -64,6 +68,7 @@ export async function executeFindTags(
     });
 
     if (result.isErr()) {
+      throwOnCoreAPIInternalError(result.error);
       return new Err(new MCPError("Error searching for labels"));
     }
   }

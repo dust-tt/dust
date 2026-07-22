@@ -1,4 +1,8 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  isProviderError,
+  MCPError,
+  ProviderError,
+} from "@app/lib/actions/mcp_errors";
 import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
@@ -97,6 +101,12 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
     });
 
     if (!response.ok) {
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `Jira API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
       const errorBody = await response.text();
       const msg = `JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
       logger.error(`[JIRA MCP Server] ${msg}`);
@@ -119,6 +129,9 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
 
     return new Ok(parseResult.data);
   } catch (error: unknown) {
+    if (isProviderError(error)) {
+      throw error;
+    }
     logger.error(`[JIRA MCP Server] JIRA API call failed for ${endpoint}:`);
     return new Err(normalizeError(error).message);
   }
@@ -1109,6 +1122,11 @@ export const withAuth = async ({
 
     return await action(baseUrl, resourceInfo, accessToken);
   } catch (error: unknown) {
+    if (isProviderError(error)) {
+      // Let provider 5xx failures escape to the tool-execution wrapper, which converts
+      // them to tracked MCPErrors.
+      throw error;
+    }
     return logAndReturnError({
       error,
       message: "Operation failed",
@@ -1203,6 +1221,12 @@ export async function uploadAttachmentsToJira(
     );
 
     if (!response.ok) {
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `Jira API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
       const errorBody = await response.text();
       const msg = `JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
       return logAndReturnApiError({
@@ -1232,6 +1256,9 @@ export async function uploadAttachmentsToJira(
 
     return new Ok(parseResult.data);
   } catch (error: unknown) {
+    if (isProviderError(error)) {
+      throw error;
+    }
     return logAndReturnApiError({
       error,
       message: "JIRA API call failed for attachment upload",
@@ -1290,6 +1317,12 @@ async function downloadAttachmentContent({
     });
 
     if (!response.ok) {
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `Jira API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
       const errorBody = await response.text();
       const msg = `JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
       logger.warn(`${msg}`);
@@ -1302,6 +1335,9 @@ async function downloadAttachmentContent({
     const buffer = Buffer.from(await response.arrayBuffer());
     return new Ok(buffer);
   } catch (error) {
+    if (isProviderError(error)) {
+      throw error;
+    }
     logger.warn(`Attachment download failed:`, {
       error: error instanceof Error ? error.message : String(error),
       attachmentId,

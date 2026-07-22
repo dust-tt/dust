@@ -1,4 +1,8 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  isProviderError,
+  MCPError,
+  ProviderError,
+} from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
   ToolHandlerResult,
@@ -11,12 +15,30 @@ import logger from "@app/logger/logger";
 import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { drive_v3, sheets_v4 } from "googleapis";
+import { Common } from "googleapis";
 
 export const ERROR_MESSAGES = {
   NO_ACCESS_TOKEN: "Failed to authenticate with Google",
   DRIVE_AUTH_FAILED: "Failed to authenticate with Google Drive",
   SHEETS_AUTH_FAILED: "Failed to authenticate with Google Sheets",
 } as const;
+
+/**
+ * Rethrows Google 5xx responses as ProviderError so the tool-execution
+ * wrapper reports them as tracked provider failures; other errors are left
+ * untouched for the caller's local handling.
+ */
+export function throwIfGoogleServerError(err: unknown): void {
+  if (err instanceof Common.GaxiosError) {
+    const status = err.response?.status;
+    if (status !== undefined && status >= 500) {
+      throw new ProviderError(
+        `Google Sheets API returned an unexpected error (HTTP ${status}).`,
+        { status, cause: err }
+      );
+    }
+  }
+}
 
 /**
  * Wrapper to handle authentication and error logging for Google Sheets operations.
@@ -41,6 +63,12 @@ export async function withAuth(
   try {
     return await action({ drive, sheets, accessToken });
   } catch (error: unknown) {
+    // Let ProviderError reach the tool-execution wrapper instead of being
+    // converted to a plain MCPError here.
+    if (isProviderError(error)) {
+      throw error;
+    }
+    throwIfGoogleServerError(error);
     return logAndReturnError({ error, message: "Operation failed" });
   }
 }
@@ -62,6 +90,12 @@ export async function withSheetsAuth(
   try {
     return await action(sheets);
   } catch (error: unknown) {
+    // Let ProviderError reach the tool-execution wrapper instead of being
+    // converted to a plain MCPError here.
+    if (isProviderError(error)) {
+      throw error;
+    }
+    throwIfGoogleServerError(error);
     return logAndReturnError({ error, message: "Operation failed" });
   }
 }
@@ -83,6 +117,12 @@ export async function withDriveAuth(
   try {
     return await action(drive);
   } catch (error: unknown) {
+    // Let ProviderError reach the tool-execution wrapper instead of being
+    // converted to a plain MCPError here.
+    if (isProviderError(error)) {
+      throw error;
+    }
+    throwIfGoogleServerError(error);
     return logAndReturnError({ error, message: "Operation failed" });
   }
 }

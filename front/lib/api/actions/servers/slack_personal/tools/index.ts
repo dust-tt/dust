@@ -1,5 +1,5 @@
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   ToolDefinition,
@@ -32,6 +32,7 @@ import {
   resolveChannelId,
   resolveUserDisplayName,
   SLACK_THREAD_LISTING_LIMIT,
+  throwIfSlackProviderError,
 } from "@app/lib/api/actions/servers/slack/helpers";
 import {
   formatSlackMessageForLLM,
@@ -158,14 +159,20 @@ const slackSearch = async (
     );
 
     if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}`);
+      if (resp.status >= 500) {
+        throw new ProviderError(
+          `Slack API returned an unexpected error (HTTP ${resp.status}).`,
+          { status: resp.status }
+        );
+      }
+      throw new MCPError(`HTTP ${resp.status}`, { tracked: false });
     }
 
     const data: SlackSearchResponse =
       (await resp.json()) as SlackSearchResponse;
     if (!data.ok) {
       // If invalid_action_token or other errors, throw to trigger fallback.
-      throw new Error(data.error ?? "unknown_error");
+      throw new MCPError(data.error ?? "unknown_error", { tracked: false });
     }
 
     // Transform API response to match SlackSearchMatch format.
@@ -204,7 +211,7 @@ const slackSearch = async (
     });
 
     if (!response.ok) {
-      throw new Error("Failed to search messages");
+      throw new MCPError("Failed to search messages", { tracked: false });
     }
 
     const rawMatches = response.messages?.matches ?? [];
@@ -479,6 +486,7 @@ export function createSlackPersonalTools(
           }))
         );
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -559,6 +567,7 @@ export function createSlackPersonalTools(
           }))
         );
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -604,6 +613,7 @@ export function createSlackPersonalTools(
           showSentByFooter: show_sent_by_footer ?? true,
         });
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -649,6 +659,7 @@ export function createSlackPersonalTools(
           showSentByFooter: show_sent_by_footer ?? true,
         });
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -671,6 +682,7 @@ export function createSlackPersonalTools(
           mcpServerId,
         });
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -690,6 +702,7 @@ export function createSlackPersonalTools(
       try {
         return await executeListUserGroups({ accessToken });
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -712,6 +725,7 @@ export function createSlackPersonalTools(
           mcpServerId,
         });
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -745,6 +759,7 @@ export function createSlackPersonalTools(
           accessToken,
         });
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -776,6 +791,7 @@ export function createSlackPersonalTools(
           limit: SLACK_THREAD_LISTING_LIMIT,
         });
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -882,15 +898,28 @@ export function createSlackPersonalTools(
         return new Err(new MCPError("Access token not found"));
       }
 
-      return executeReadThreadMessages({
-        channel,
-        threadTs,
-        limit,
-        cursor,
-        oldest,
-        latest,
-        accessToken,
-      });
+      try {
+        return await executeReadThreadMessages({
+          channel,
+          threadTs,
+          limit,
+          cursor,
+          oldest,
+          latest,
+          accessToken,
+        });
+      } catch (error) {
+        throwIfSlackProviderError(error);
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(
+            `Error reading thread messages: ${normalizeError(error)}`
+          )
+        );
+      }
     },
 
     get_channel_canvases: async ({ channel_id }, { authInfo }) => {
@@ -905,6 +934,7 @@ export function createSlackPersonalTools(
           accessToken,
         });
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -934,6 +964,7 @@ export function createSlackPersonalTools(
           accessToken,
         });
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -964,6 +995,7 @@ export function createSlackPersonalTools(
           accessToken,
         });
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -991,6 +1023,7 @@ export function createSlackPersonalTools(
           accessToken,
         });
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -1010,6 +1043,7 @@ export function createSlackPersonalTools(
       try {
         return await executeInviteToChannel({ channel, users, accessToken });
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -1031,6 +1065,7 @@ export function createSlackPersonalTools(
       try {
         return await executeArchiveChannel({ channel, accessToken });
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -1072,6 +1107,7 @@ export function createSlackPersonalTools(
             : "Status cleared";
         return new Ok([{ type: "text" as const, text: displayText }]);
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -1110,6 +1146,7 @@ export function createSlackPersonalTools(
           },
         ]);
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -1148,6 +1185,7 @@ export function createSlackPersonalTools(
           },
         ]);
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
@@ -1196,6 +1234,7 @@ export function createSlackPersonalTools(
 
         return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
       } catch (error) {
+        throwIfSlackProviderError(error);
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;

@@ -10,6 +10,7 @@ import {
   computeImageGenerationCostDetails,
   processImageFileIds,
   sendImageProgressNotification,
+  throwIfImageGenerationProviderError,
   trackTokenUsage,
   uploadAndFormatImageResponse,
 } from "@app/lib/api/actions/servers/image_generation/helpers";
@@ -142,6 +143,8 @@ export function createImageGenerationTools(
           },
         });
         generation.end();
+
+        throwIfImageGenerationProviderError(genError);
 
         return new Err(
           new MCPError(genError.message, { tracked, cause: genError })

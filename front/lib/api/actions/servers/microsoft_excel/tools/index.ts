@@ -5,6 +5,7 @@ import {
   getDriveItemEndpoint,
   getGraphClient,
   parseCellRef,
+  throwIfGraphProviderError,
 } from "@app/lib/api/actions/servers/microsoft/utils";
 import { makeExcelRequest } from "@app/lib/api/actions/servers/microsoft_excel/helpers";
 import { MICROSOFT_EXCEL_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_excel/metadata";
@@ -38,6 +39,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(response, null, 2) },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to list Excel files"
@@ -69,6 +71,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(response, null, 2) },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to get worksheets")
       );
@@ -160,6 +163,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
 
       return new Ok([{ type: "text" as const, text: csv }]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to read worksheet data"
@@ -265,6 +269,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(response, null, 2) },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to write worksheet data"
@@ -302,6 +307,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(response, null, 2) },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to create worksheet"
@@ -346,6 +352,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to clear range")
       );

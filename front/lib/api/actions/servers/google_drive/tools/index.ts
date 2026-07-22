@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
   ToolHandlerResult,
@@ -135,6 +135,23 @@ async function extractTextAndBuildResource({
  */
 function normalizeCode(code: string | number | undefined): string | undefined {
   return code !== undefined ? String(code) : undefined;
+}
+
+/**
+ * Rethrows Google 5xx responses as ProviderError so the tool-execution
+ * wrapper reports them as tracked provider failures; other errors are left
+ * untouched for the local handling below.
+ */
+function throwIfGoogleServerError(err: unknown): void {
+  if (err instanceof Common.GaxiosError) {
+    const status = err.response?.status;
+    if (status !== undefined && status >= 500) {
+      throw new ProviderError(
+        `Google Drive API returned an unexpected error (HTTP ${status}).`,
+        { status, cause: err }
+      );
+    }
+  }
 }
 
 // 403 reasons that are authentication problems: the token lacks the required
@@ -298,6 +315,8 @@ export async function handleFileAccessError(
   { authInfo, runContext }: Pick<ToolHandlerExtra, "authInfo" | "runContext">,
   fileMeta?: { name?: string; mimeType?: string }
 ): Promise<ToolHandlerResult> {
+  throwIfGoogleServerError(err);
+
   if (err instanceof Common.GaxiosError) {
     const status = normalizeCode(err.code);
     const message = err.message?.toLowerCase() ?? "";
@@ -403,6 +422,8 @@ async function handleDriveAccessError(
   err: unknown,
   authInfo?: Pick<ToolHandlerExtra, "authInfo">["authInfo"]
 ): Promise<ToolHandlerResult> {
+  throwIfGoogleServerError(err);
+
   if (err instanceof Common.GaxiosError) {
     const status = normalizeCode(err.code);
 
@@ -540,6 +561,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
+      throwIfGoogleServerError(err);
       return new Err(
         new MCPError(normalizeError(err).message ?? "Failed to list drives")
       );
@@ -595,6 +617,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
+      throwIfGoogleServerError(err);
       const error = normalizeError(err);
       return new Err(
         new MCPError(error.message ?? "Failed to search files", {

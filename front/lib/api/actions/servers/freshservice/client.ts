@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
@@ -15,7 +15,9 @@ export function normalizeApiDomain(freshserviceDomainRaw: string): string {
     .replace(/\/$/, "");
 
   if (!domain) {
-    throw new Error("Invalid Freshservice domain format");
+    throw new MCPError("Invalid Freshservice domain format", {
+      tracked: false,
+    });
   }
 
   // If it already contains a dot (likely a full domain), use as-is
@@ -60,8 +62,16 @@ export class FreshserviceClient {
     });
 
     if (!response.ok) {
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `Freshservice API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
       const errorText = await response.text();
-      throw new Error(`API error: ${response.status} - ${errorText}`);
+      throw new MCPError(`API error: ${response.status} - ${errorText}`, {
+        tracked: false,
+      });
     }
 
     const contentType = response.headers.get("content-type");

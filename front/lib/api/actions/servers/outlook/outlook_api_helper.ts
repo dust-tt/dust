@@ -1,3 +1,4 @@
+import { isProviderError, ProviderError } from "@app/lib/actions/mcp_errors";
 import logger from "@app/logger/logger";
 import { z } from "zod";
 
@@ -171,10 +172,19 @@ const fetchFromOutlook = async (
   }
 
   // eslint-disable-next-line no-restricted-globals
-  return fetch(`https://graph.microsoft.com/v1.0${endpoint}`, {
+  const response = await fetch(`https://graph.microsoft.com/v1.0${endpoint}`, {
     ...options,
     headers,
   });
+
+  if (response.status >= 500) {
+    throw new ProviderError(
+      `Microsoft Graph API returned an unexpected error (HTTP ${response.status}).`,
+      { status: response.status }
+    );
+  }
+
+  return response;
 };
 
 const getErrorText = async (response: Response): Promise<string> => {
@@ -208,6 +218,9 @@ export async function getUserTimezone(
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return result.timeZone || "UTC";
   } catch (error) {
+    if (isProviderError(error)) {
+      throw error;
+    }
     localLogger.error({ error }, "Error getting user timezone");
     return { error: `Error getting user timezone: ${error}` };
   }
@@ -261,6 +274,9 @@ export async function listCalendars(
       nextLink: result["@odata.nextLink"],
     };
   } catch (error) {
+    if (isProviderError(error)) {
+      throw error;
+    }
     localLogger.error({ error }, "Error listing calendars");
     return { error: `Error listing calendars: ${error}` };
   }
@@ -329,6 +345,9 @@ export async function listEvents(
         nextLink: result["@odata.nextLink"],
       };
     } catch (error) {
+      if (isProviderError(error)) {
+        throw error;
+      }
       localLogger.error({ error }, "Error listing events");
       return { error: `Error listing events: ${error}` };
     }
@@ -397,6 +416,9 @@ export async function listEvents(
         nextLink: result["@odata.nextLink"],
       };
     } catch (error) {
+      if (isProviderError(error)) {
+        throw error;
+      }
       localLogger.error({ error }, "Error listing events");
       return { error: `Error listing events: ${error}` };
     }
@@ -446,6 +468,9 @@ export async function getEvent(
 
     return eventResult.data;
   } catch (error) {
+    if (isProviderError(error)) {
+      throw error;
+    }
     localLogger.error({ error }, "Error getting event");
     return { error: `Error getting event: ${error}` };
   }
@@ -550,6 +575,9 @@ export async function createEvent(
 
     return eventResult.data;
   } catch (error) {
+    if (isProviderError(error)) {
+      throw error;
+    }
     localLogger.error({ error }, "Error creating event");
     return { error: `Error creating event: ${error}` };
   }
@@ -664,6 +692,9 @@ export async function updateEvent(
 
     return eventResult.data;
   } catch (error) {
+    if (isProviderError(error)) {
+      throw error;
+    }
     localLogger.error({ error }, "Error updating event");
     return { error: `Error updating event: ${error}` };
   }
@@ -699,6 +730,9 @@ export async function deleteEvent(
 
     return { success: true };
   } catch (error) {
+    if (isProviderError(error)) {
+      throw error;
+    }
     localLogger.error({ error }, "Error deleting event");
     return { error: `Error deleting event: ${error}` };
   }
@@ -773,6 +807,9 @@ export async function checkAvailability(
       timeSlot: { start: startTime, end: endTime },
     };
   } catch (error) {
+    if (isProviderError(error)) {
+      throw error;
+    }
     localLogger.error({ error }, "Error checking availability");
     return { error: `Error checking availability: ${error}` };
   }

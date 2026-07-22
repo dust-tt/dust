@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -67,6 +67,12 @@ export class OpenAIUsageClient {
     });
 
     if (!response.ok) {
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `OpenAI API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
       const errorBody = await response.text();
       if (response.status === 401) {
         return new Err(

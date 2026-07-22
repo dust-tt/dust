@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import { untrustedFetch } from "@app/lib/egress/server";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -39,6 +39,13 @@ export async function vantaGet<T extends z.ZodTypeAny>({
       "Content-Type": "application/json",
     },
   });
+
+  if (response.status >= 500) {
+    throw new ProviderError(
+      `Vanta API returned an unexpected error (HTTP ${response.status}).`,
+      { status: response.status }
+    );
+  }
 
   if (!response.ok) {
     return new Err(
