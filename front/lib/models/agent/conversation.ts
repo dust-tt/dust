@@ -27,6 +27,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelResolutionMethodType } from "@app/types/assistant/models/types";
 import { MODEL_RESOLUTION_METHODS } from "@app/types/assistant/models/types";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
 export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
@@ -305,6 +306,9 @@ export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
   declare userContextAuthMethod: string | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
+  // Denormalized from messages for conversation-scoped fetches (plain column, no FK — the value
+  // is derived from messages at write time). Nullable until backfilled.
+  declare conversationId: CreationOptional<ModelId | null>;
 
   declare user?: NonAttribute<UserModel>;
   declare key?: NonAttribute<KeyModel>;
@@ -401,6 +405,10 @@ UserMessageModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    conversationId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
   },
   {
     modelName: "user_message",
@@ -408,6 +416,15 @@ UserMessageModel.init(
     indexes: [
       { fields: ["userContextOrigin"], concurrently: true },
       { fields: ["workspaceId"], concurrently: true },
+      { fields: ["workspaceId", "conversationId"], concurrently: true },
+      // Backfill scaffolding: serves the keyset probe on rows not yet backfilled. Dropped once
+      // conversationId flips NOT NULL.
+      {
+        fields: ["id"],
+        where: { conversationId: null },
+        name: "user_messages_id_conversation_id_null",
+        concurrently: true,
+      },
       { fields: ["userContextApiKeyId"], concurrently: true },
       {
         fields: ["workspaceId", "agenticOriginMessageId"],
@@ -488,6 +505,10 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare resolvedModelId: string | null;
   declare resolvedReasoningEffort: string | null;
   declare modelResolutionMethod: ModelResolutionMethodType | null;
+
+  // Denormalized from messages for conversation-scoped fetches (plain column, no FK — the value
+  // is derived from messages at write time). Nullable until backfilled.
+  declare conversationId: CreationOptional<ModelId | null>;
 }
 
 AgentMessageModel.init(
@@ -601,12 +622,25 @@ AgentMessageModel.init(
         isIn: [MODEL_RESOLUTION_METHODS],
       },
     },
+    conversationId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_message",
     sequelize: frontSequelize,
     indexes: [
       { fields: ["workspaceId"], concurrently: true },
+      { fields: ["workspaceId", "conversationId"], concurrently: true },
+      // Backfill scaffolding: serves the keyset probe on rows not yet backfilled. Dropped once
+      // conversationId flips NOT NULL.
+      {
+        fields: ["id"],
+        where: { conversationId: null },
+        name: "agent_messages_id_conversation_id_null",
+        concurrently: true,
+      },
       // Index for agent-based data retention queries.
       { fields: ["workspaceId", "agentConfigurationId"], concurrently: true },
     ],
@@ -738,6 +772,10 @@ export class CompactionMessageModel extends WorkspaceAwareModel<CompactionMessag
 
   declare status: CompactionMessageStatus;
   declare content: string | null;
+
+  // Denormalized from messages for conversation-scoped fetches (the conversation this compaction
+  // message belongs to — sourceConversationId is the compacted one). Nullable until backfilled.
+  declare conversationId: CreationOptional<ModelId | null>;
 }
 
 CompactionMessageModel.init(
@@ -769,6 +807,10 @@ CompactionMessageModel.init(
       type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
+    conversationId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
   },
   {
     modelName: "compaction_message",
@@ -776,6 +818,15 @@ CompactionMessageModel.init(
     indexes: [
       {
         fields: ["workspaceId"],
+        concurrently: true,
+      },
+      { fields: ["workspaceId", "conversationId"], concurrently: true },
+      // Backfill scaffolding: serves the keyset probe on rows not yet backfilled. Dropped once
+      // conversationId flips NOT NULL.
+      {
+        fields: ["id"],
+        where: { conversationId: null },
+        name: "compaction_messages_id_conversation_id_null",
         concurrently: true,
       },
     ],

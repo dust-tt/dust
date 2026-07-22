@@ -955,6 +955,7 @@ describe("getConversation with branches", () => {
 
     const beforeBranchUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "before branch",
       userContextUsername: "testuser",
@@ -978,6 +979,7 @@ describe("getConversation with branches", () => {
 
     const atBranchUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "at branch",
       userContextUsername: "testuser",
@@ -1001,6 +1003,7 @@ describe("getConversation with branches", () => {
 
     const afterBranchUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "after branch main",
       userContextUsername: "testuser",
@@ -1032,6 +1035,7 @@ describe("getConversation with branches", () => {
 
     const branchUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "branch message",
       userContextUsername: "testuser",
@@ -1814,6 +1818,7 @@ describe("postUserMessage", () => {
       const compactionMessageRow = await CompactionMessageModel.create({
         status: "created",
         content: null,
+        conversationId: conversation.id,
         workspaceId: workspace.id,
       });
       await MessageModel.create({
@@ -1865,6 +1870,7 @@ describe("postUserMessage", () => {
       const compactionMessageRow = await CompactionMessageModel.create({
         status: "succeeded",
         content: "compacted summary",
+        conversationId: conversation.id,
         workspaceId: workspace.id,
       });
       await MessageModel.create({
@@ -3267,6 +3273,7 @@ describe("compactConversation", () => {
     const compactionMessageRow = await CompactionMessageModel.create({
       status: "succeeded",
       content: "compacted summary",
+      conversationId: conversation.id,
       workspaceId: workspace.id,
     });
     await MessageModel.create({
@@ -3307,6 +3314,7 @@ describe("compactConversation", () => {
       status: "created",
       agentConfigurationId: agentConfig.sId,
       agentConfigurationVersion: 0,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       skipToolsValidation: false,
     });
@@ -4400,6 +4408,7 @@ describe("isConversationEventAllowedForAuth", () => {
 
     const baseUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Base message",
       userContextUsername: "testuser",

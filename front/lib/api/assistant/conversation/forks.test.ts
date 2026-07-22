@@ -86,6 +86,7 @@ async function createUserMessage(
 
   const userMessage = await UserMessageModel.create({
     userId: user.id,
+    conversationId: conversation.id,
     workspaceId: workspace.id,
     content,
     userContextUsername: user.username,
@@ -129,6 +130,7 @@ async function createAgentMessage(
   const workspace = auth.getNonNullableWorkspace();
 
   const agentMessage = await AgentMessageModel.create({
+    conversationId: conversation.id,
     workspaceId: workspace.id,
     status,
     agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
