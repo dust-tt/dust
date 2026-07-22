@@ -108,7 +108,9 @@ export async function resolveModel(
   // (raw API clients can send an unsupported effort); fall back to its default.
   const requestedReasoningEffort =
     streamEffort ??
-    (selection ? selection.reasoningEffort : configuration.model.reasoningEffort);
+    (selection
+      ? selection.reasoningEffort
+      : configuration.model.reasoningEffort);
 
   const effort =
     requestedReasoningEffort &&

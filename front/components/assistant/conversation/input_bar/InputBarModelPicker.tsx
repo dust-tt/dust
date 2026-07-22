@@ -2,9 +2,12 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { ModelPickerContent } from "@app/components/assistant/conversation/input_bar/ModelPickerContent";
 import type {
   MakerGroup,
+  ModelEntry,
   ModelPickerListState,
+  ModelRef,
   ModelWithReasoningEffort,
   ResolvedTier,
+  SelectedModelRef,
   Selection,
   UserModelSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
@@ -12,7 +15,6 @@ import {
   AUTO_MODEL_SELECTION,
   buildModelSelection,
   getMatchingTier,
-  getModelWithReasoningEffortKey,
   getModelWithReasoningEffortLabel,
   getSelectableReasoningEfforts,
   getSelectionIdentityKey,
@@ -33,10 +35,8 @@ import {
   getModelMakerDisplayName,
 } from "@app/types/assistant/models/providers";
 import type {
-  ModelConfigurationType,
   ModelMakerIdType,
   ModelSelectionType,
-  ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ButtonIconType } from "@dust-tt/sparkle";
@@ -150,7 +150,20 @@ export function InputBarModelPicker({
     }
   };
 
+  // Picking a concrete model (or nudging its effort slider) must keep the menu
+  // open so the effort can still be adjusted. Each model row is wrapped in a
+  // tooltip trigger whose portal makes Radix treat the click as an
+  // interaction-outside and dismiss the menu; we record the pick time and
+  // ignore the close that immediately follows it (see `onOpenChange`).
+  const lastModelSelectionAtMsRef = useRef(0);
+
+  // True in the brief window after a model/effort pick, used to veto the
+  // focus-outside dismissal that the pick triggers on the open submenus.
+  const shouldBlockDismiss = () =>
+    Date.now() - lastModelSelectionAtMsRef.current < 300;
+
   const selectModel = (modelWithEffort: ModelWithReasoningEffort) => {
+    lastModelSelectionAtMsRef.current = Date.now();
     commitSelection({
       kind: "model",
       model: modelWithEffort.model,
@@ -189,10 +202,15 @@ export function InputBarModelPicker({
   // Which rows carry the "(Default)" marker. When the default maps to a tier we
   // mark that tier; otherwise we mark its model line in "More models".
   const defaultTier = getMatchingTier(pureDefaultSelection);
-  const defaultModelKey =
-    !defaultTier && pureDefaultSelection.kind !== "auto"
-      ? getSelectionIdentityKey(pureDefaultSelection)
-      : undefined;
+  const defaultModel: ModelRef | null =
+    !defaultTier &&
+    (pureDefaultSelection.kind === "model" ||
+      pureDefaultSelection.kind === "agent")
+      ? {
+          providerId: pureDefaultSelection.model.providerId,
+          modelId: pureDefaultSelection.model.modelId,
+        }
+      : null;
 
   // Keep the parent's send-time selection in sync. `onSelectionChange` only
   // stashes the value in a parent ref, so this triggers no parent re-render.
@@ -203,78 +221,65 @@ export function InputBarModelPicker({
     onSelectionChange?.(shownModelSelection);
   }, [hasModelsPicker, onSelectionChange, shownModelSelection]);
 
-  const allModelsWithEfforts = useMemo<ModelWithReasoningEffort[]>(
+  // One entry per selectable model, carrying the reasoning efforts it supports.
+  const modelEntries = useMemo<ModelEntry[]>(
     () =>
       models
         .filter(
           (model) =>
             model.modelId !== AUTO_MODEL_ID && !isModelStreamId(model.modelId)
         )
-        .flatMap((model) =>
-          getSelectableReasoningEfforts(model).map((effort) => ({
-            model,
-            effort,
-          }))
-        ),
+        .map((model) => ({
+          model,
+          efforts: getSelectableReasoningEfforts(model),
+        }))
+        .filter((entry) => entry.efforts.length > 0),
     [models]
   );
 
   const moreByMaker = useMemo<MakerGroup[]>(() => {
-    const makers = new Map<
-      ModelMakerIdType,
-      Map<string, { model: ModelConfigurationType; efforts: ReasoningEffort[] }>
-    >();
-    for (const modelWithEffort of allModelsWithEfforts) {
-      const makerId = getModelMaker(modelWithEffort.model);
-      let modelsMap = makers.get(makerId);
-      if (!modelsMap) {
-        modelsMap = new Map();
-        makers.set(makerId, modelsMap);
+    const makers = new Map<ModelMakerIdType, ModelEntry[]>();
+    for (const entry of modelEntries) {
+      const makerId = getModelMaker(entry.model);
+      const group = makers.get(makerId);
+      if (group) {
+        group.push(entry);
+      } else {
+        makers.set(makerId, [entry]);
       }
-      let entry = modelsMap.get(modelWithEffort.model.modelId);
-      if (!entry) {
-        entry = { model: modelWithEffort.model, efforts: [] };
-        modelsMap.set(modelWithEffort.model.modelId, entry);
-      }
-      entry.efforts.push(modelWithEffort.effort);
     }
-    return Array.from(makers.entries()).map(([makerId, modelsMap]) => ({
+    return Array.from(makers.entries()).map(([makerId, makerModels]) => ({
       makerId,
-      models: Array.from(modelsMap.values()),
+      models: makerModels,
     }));
-  }, [allModelsWithEfforts]);
+  }, [modelEntries]);
 
   const tiers = useMemo<ResolvedTier[]>(() => resolveTiers(models), [models]);
 
-  // While searching we show a single flat list over every model/effort.
-  const filteredModels = useMemo<ModelWithReasoningEffort[]>(() => {
+  // While searching we show a single flat list of models, matched on the model
+  // and maker names.
+  const filteredModels = useMemo<ModelEntry[]>(() => {
     const q = search.trim().toLowerCase();
     if (!q) {
-      return allModelsWithEfforts;
+      return modelEntries;
     }
-    return allModelsWithEfforts.filter(
-      (modelWithEffort) =>
-        getModelWithReasoningEffortLabel({
-          model: modelWithEffort.model,
-          effort: modelWithEffort.effort,
-          kind: "model",
-        })
-          .toLowerCase()
-          .includes(q) ||
-        getModelMakerDisplayName(getModelMaker(modelWithEffort.model))
+    return modelEntries.filter(
+      (entry) =>
+        entry.model.displayName.toLowerCase().includes(q) ||
+        getModelMakerDisplayName(getModelMaker(entry.model))
           .toLowerCase()
           .includes(q)
     );
-  }, [allModelsWithEfforts, search]);
+  }, [modelEntries, search]);
 
-  const selectedKey =
-    shown.kind === "auto" || shown.kind === "stream"
-      ? undefined
-      : getModelWithReasoningEffortKey(
-          shown.model.providerId,
-          shown.model.modelId,
-          shown.effort
-        );
+  const selectedModel: SelectedModelRef | null =
+    shown.kind === "model" || shown.kind === "agent"
+      ? {
+          providerId: shown.model.providerId,
+          modelId: shown.model.modelId,
+          effort: shown.effort,
+        }
+      : null;
 
   // The current selection either matches a tier, or lives in the "More models"
   // list (agent defaults and any user-picked non-tier model). Auto and stream
@@ -283,7 +288,7 @@ export function InputBarModelPicker({
   const moreModelsSelected =
     !matchingTier && shown.kind !== "auto" && shown.kind !== "stream";
   const selectedMakerId =
-    moreModelsSelected && shown.kind === "model"
+    moreModelsSelected && (shown.kind === "model" || shown.kind === "agent")
       ? getModelMaker(shown.model)
       : null;
 
@@ -320,6 +325,12 @@ export function InputBarModelPicker({
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
+        // Ignore the dismissal that a model/effort pick triggers, so the effort
+        // slider stays reachable. The window is short enough not to swallow a
+        // genuine click-outside a moment later.
+        if (!open && Date.now() - lastModelSelectionAtMsRef.current < 300) {
+          return;
+        }
         setIsOpen(open);
         if (open) {
           setSearch("");
@@ -341,15 +352,16 @@ export function InputBarModelPicker({
       </DropdownMenuTrigger>
       <ModelPickerContent
         side={side}
+        shouldBlockDismiss={shouldBlockDismiss}
         listState={listState}
-        selectedKey={selectedKey}
+        selectedModel={selectedModel}
         selectedTierId={matchingTier?.id ?? null}
         onSelectTier={selectTier}
         onSelectModel={selectModel}
         canRevert={canRevert}
         onRevert={revertToDefault}
         defaultTierId={defaultTier?.id ?? null}
-        defaultModelKey={defaultModelKey}
+        defaultModel={defaultModel}
         search={search}
         onSearchChange={setSearch}
         filteredModels={filteredModels}

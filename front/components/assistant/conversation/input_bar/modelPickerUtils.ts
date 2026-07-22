@@ -119,9 +119,39 @@ export interface ResolvedTier {
   modelWithEffort: ModelWithReasoningEffort | null;
 }
 
+// A model with the reasoning efforts it supports, low to high. Backs both the
+// per-maker rows and the flat search results.
+export interface ModelEntry {
+  model: ModelConfigurationType;
+  efforts: ReasoningEffort[];
+}
+
 export interface MakerGroup {
   makerId: ModelMakerIdType;
-  models: { model: ModelConfigurationType; efforts: ReasoningEffort[] }[];
+  models: ModelEntry[];
+}
+
+// A model identity, used to mark which row in "More models" is the default.
+export interface ModelRef {
+  providerId: string;
+  modelId: string;
+}
+
+// A model identity plus the selected reasoning effort, used to mark the current
+// selection and drive its effort slider.
+export interface SelectedModelRef extends ModelRef {
+  effort: ReasoningEffort;
+}
+
+export function modelRefMatches(
+  ref: ModelRef | null,
+  model: ModelConfigurationType
+): boolean {
+  return (
+    ref !== null &&
+    ref.providerId === model.providerId &&
+    ref.modelId === model.modelId
+  );
 }
 
 export type UserModelSelection =

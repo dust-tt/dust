@@ -3,9 +3,12 @@ import { ModelPickerProviderSection } from "@app/components/assistant/conversati
 import { ModelPickerSubTrigger } from "@app/components/assistant/conversation/input_bar/ModelPickerSubTrigger";
 import type {
   MakerGroup,
+  ModelEntry,
+  ModelRef,
   ModelWithReasoningEffort,
+  SelectedModelRef,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { getModelWithReasoningEffortKey } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import { modelRefMatches } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getModelMakerDisplayName } from "@app/types/assistant/models/providers";
@@ -25,14 +28,15 @@ import { Fragment } from "react";
 interface MoreModelsPanelProps {
   search: string;
   onSearchChange: (value: string) => void;
-  // Flat list of every model/effort filtered by the search string (used while
-  // searching).
-  filteredModels: ModelWithReasoningEffort[];
+  // Flat list of every model (with its supported efforts) filtered by the
+  // search string (used while searching).
+  filteredModels: ModelEntry[];
   moreByMaker: MakerGroup[];
-  selectedKey?: string;
+  // The current selection's model + effort, when it lives in "More models".
+  selectedModel: SelectedModelRef | null;
   // The model line that carries the "(Default)" marker, when the default is a
   // non-tier model surfaced here.
-  defaultModelKey?: string;
+  defaultModel: ModelRef | null;
   // The selected model's check turns into a clickable X on hover to revert to
   // the default.
   canRevert: boolean;
@@ -47,6 +51,9 @@ interface MoreModelsPanelProps {
   expandProvidersInline: boolean;
   expandedMaker: ModelMakerIdType | null;
   onToggleMaker: (makerId: ModelMakerIdType) => void;
+  // Vetoes the focus-outside dismissal that a model/effort pick triggers on the
+  // maker submenu, so the effort slider stays reachable after a pick.
+  shouldBlockDismiss: () => boolean;
 }
 
 // The body of the "More models" section: a search bar over every model, then
@@ -57,8 +64,8 @@ export function MoreModelsPanel({
   onSearchChange,
   filteredModels,
   moreByMaker,
-  selectedKey,
-  defaultModelKey,
+  selectedModel,
+  defaultModel,
   canRevert,
   onRevert,
   selectedMakerId,
@@ -67,6 +74,7 @@ export function MoreModelsPanel({
   expandProvidersInline,
   expandedMaker,
   onToggleMaker,
+  shouldBlockDismiss,
 }: MoreModelsPanelProps) {
   const { isDark } = useTheme();
   const isSearching = search.trim() !== "";
@@ -85,17 +93,18 @@ export function MoreModelsPanel({
 
       {isSearching ? (
         filteredModels.length > 0 ? (
-          filteredModels.map((modelWithEffort) => (
+          filteredModels.map((entry) => (
             <ModelPickerLineItem
-              key={getModelWithReasoningEffortKey(
-                modelWithEffort.model.providerId,
-                modelWithEffort.model.modelId,
-                modelWithEffort.effort
-              )}
-              modelWithEffort={modelWithEffort}
+              key={entry.model.modelId}
+              model={entry.model}
+              efforts={entry.efforts}
               isMobile={isMobile}
-              selectedKey={selectedKey}
-              defaultModelKey={defaultModelKey}
+              selectedEffort={
+                modelRefMatches(selectedModel, entry.model)
+                  ? (selectedModel?.effort ?? null)
+                  : null
+              }
+              isDefaultModel={modelRefMatches(defaultModel, entry.model)}
               canRevert={canRevert}
               onRevert={onRevert}
               onSelect={onSelectModel}
@@ -134,8 +143,8 @@ export function MoreModelsPanel({
               {expandedMaker === maker.makerId && (
                 <ModelPickerProviderSection
                   maker={maker}
-                  selectedKey={selectedKey}
-                  defaultModelKey={defaultModelKey}
+                  selectedModel={selectedModel}
+                  defaultModel={defaultModel}
                   canRevert={canRevert}
                   onRevert={onRevert}
                   isMobile={isMobile}
@@ -150,11 +159,28 @@ export function MoreModelsPanel({
                 icon={getModelMakerLogo(maker.makerId, isDark)}
                 checked={maker.makerId === selectedMakerId}
               />
-              <DropdownMenuSubContent>
+              <DropdownMenuSubContent
+                className="w-72"
+                onFocusOutside={(e) => {
+                  if (shouldBlockDismiss()) {
+                    e.preventDefault();
+                  }
+                }}
+                onPointerDownOutside={(e) => {
+                  if (shouldBlockDismiss()) {
+                    e.preventDefault();
+                  }
+                }}
+                onInteractOutside={(e) => {
+                  if (shouldBlockDismiss()) {
+                    e.preventDefault();
+                  }
+                }}
+              >
                 <ModelPickerProviderSection
                   maker={maker}
-                  selectedKey={selectedKey}
-                  defaultModelKey={defaultModelKey}
+                  selectedModel={selectedModel}
+                  defaultModel={defaultModel}
                   canRevert={canRevert}
                   onRevert={onRevert}
                   isMobile={isMobile}

@@ -2,10 +2,13 @@ import { ModelPickerRowTooltip } from "@app/components/assistant/conversation/in
 import { ModelPickerSubTrigger } from "@app/components/assistant/conversation/input_bar/ModelPickerSubTrigger";
 import { MoreModelsPanel } from "@app/components/assistant/conversation/input_bar/MoreModelsPanel";
 import type {
+  ModelEntry,
   ModelPickerListState,
+  ModelRef,
   ModelTierId,
   ModelWithReasoningEffort,
   ResolvedTier,
+  SelectedModelRef,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { REASONING_EFFORT_INFO } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { RevertToDefaultIndicator } from "@app/components/assistant/conversation/input_bar/RevertToDefaultIndicator";
@@ -26,8 +29,10 @@ import {
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
+  // Vetoes the focus-outside dismissal that a model/effort pick triggers on the
+  // open submenus, so the effort slider stays reachable after a pick.
+  shouldBlockDismiss: () => boolean;
   listState: ModelPickerListState;
-  selectedKey?: string;
   // The tier that matches the current selection (null when the selection lives
   // in the "More models" list).
   selectedTierId: ModelTierId | null;
@@ -41,11 +46,13 @@ interface ModelPickerContentProps {
   // The tier / model line that carries the "(Default)" marker (whichever the
   // selection would revert to).
   defaultTierId: ModelTierId | null;
-  defaultModelKey?: string;
+  defaultModel: ModelRef | null;
   // "More models" panel:
   search: string;
   onSearchChange: (value: string) => void;
-  filteredModels: ModelWithReasoningEffort[];
+  filteredModels: ModelEntry[];
+  // The current selection's model + effort, when it lives in "More models".
+  selectedModel: SelectedModelRef | null;
   // True when the current selection is a concrete model reached through "More
   // models" (rather than a tier): the "More models" row shows a check.
   moreModelsSelected: boolean;
@@ -60,18 +67,19 @@ interface ModelPickerContentProps {
 
 export function ModelPickerContent({
   side,
+  shouldBlockDismiss,
   listState,
-  selectedKey,
   selectedTierId,
   onSelectTier,
   onSelectModel,
   canRevert,
   onRevert,
   defaultTierId,
-  defaultModelKey,
+  defaultModel,
   search,
   onSearchChange,
   filteredModels,
+  selectedModel,
   moreModelsSelected,
   selectedMakerId,
   expandedMaker,
@@ -89,8 +97,8 @@ export function ModelPickerContent({
       onSearchChange={onSearchChange}
       filteredModels={filteredModels}
       moreByMaker={listState.kind === "ready" ? listState.moreByMaker : []}
-      selectedKey={selectedKey}
-      defaultModelKey={defaultModelKey}
+      selectedModel={selectedModel}
+      defaultModel={defaultModel}
       canRevert={canRevert}
       onRevert={onRevert}
       selectedMakerId={selectedMakerId}
@@ -99,6 +107,7 @@ export function ModelPickerContent({
       expandProvidersInline={expandProvidersInline}
       expandedMaker={expandedMaker}
       onToggleMaker={onToggleMaker}
+      shouldBlockDismiss={shouldBlockDismiss}
     />
   );
 
@@ -168,7 +177,24 @@ export function ModelPickerContent({
                     canRevert={canRevert}
                     onRevert={onRevert}
                   />
-                  <DropdownMenuSubContent className="w-72">
+                  <DropdownMenuSubContent
+                    className="w-72"
+                    onFocusOutside={(e) => {
+                      if (shouldBlockDismiss()) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPointerDownOutside={(e) => {
+                      if (shouldBlockDismiss()) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onInteractOutside={(e) => {
+                      if (shouldBlockDismiss()) {
+                        e.preventDefault();
+                      }
+                    }}
+                  >
                     {morePanel}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
