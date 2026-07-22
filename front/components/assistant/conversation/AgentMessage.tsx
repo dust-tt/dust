@@ -183,7 +183,9 @@ function PrunedContextChip() {
             process at once.
           </p>
           <p>
-            For best accuracy, start a fresh conversation or narrow the request.
+            For best accuracy, first use <code>/compact</code> to summarize this
+            conversation and free up context. If needed, start a fresh
+            conversation or narrow your request.
           </p>
           <p>
             <a
