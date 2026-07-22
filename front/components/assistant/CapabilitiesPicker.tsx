@@ -185,6 +185,11 @@ interface CapabilitiesPickerProps {
   buttonSize?: "xs" | "sm" | "md";
   onOpenChange?: (open: boolean) => void;
   type?: "dropdown" | "subdropdown";
+  // When true, start fetching tools/skills data even before this picker's
+  // own dropdown opens — lets a parent menu (e.g. the "+" menu) kick off
+  // the fetch as soon as IT opens, instead of waterfalling on this
+  // picker's own click.
+  prefetch?: boolean;
 }
 
 export function CapabilitiesPicker({
@@ -198,6 +203,7 @@ export function CapabilitiesPicker({
   buttonSize = "xs",
   onOpenChange,
   type = "dropdown",
+  prefetch = false,
 }: CapabilitiesPickerProps) {
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
@@ -218,7 +224,11 @@ export function CapabilitiesPicker({
     useState<MCPServerViewType | null>(null);
 
   const shouldFetchToolsData =
-    isOpen || isClosing || isSettingUpServer || !!pendingServerToAdd;
+    isOpen ||
+    isClosing ||
+    isSettingUpServer ||
+    !!pendingServerToAdd ||
+    prefetch;
 
   const { spaces: globalSpaces } = useSpaces({
     workspaceId: owner.sId,

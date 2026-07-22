@@ -107,6 +107,11 @@ interface InputBarAttachmentsPickerProps {
   onExternalOpenChange?: (open: boolean) => void;
   onOpenChange?: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement | null>;
+  // When true, start fetching spaces even before this picker's own
+  // dropdown opens — lets a parent menu (e.g. the "+" menu) kick off the
+  // fetch as soon as IT opens, instead of waterfalling on this picker's
+  // own click.
+  prefetch?: boolean;
 }
 
 const PAGE_SIZE = 25;
@@ -277,6 +282,7 @@ export const InputBarAttachmentsPicker = ({
   onExternalOpenChange,
   onOpenChange,
   anchorRef,
+  prefetch = false,
 }: InputBarAttachmentsPickerProps) => {
   const isMobile = useIsMobile();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -303,7 +309,7 @@ export const InputBarAttachmentsPicker = ({
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global", "regular", "project"],
-    disabled: !isOpen,
+    disabled: !isOpen && !prefetch,
   });
 
   const spacesMap = useMemo(

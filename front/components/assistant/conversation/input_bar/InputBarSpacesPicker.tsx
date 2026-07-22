@@ -16,6 +16,11 @@ import { useMemo, useState } from "react";
 interface InputBarSpacesPickerProps {
   owner: LightWorkspaceType;
   disabled?: boolean;
+  // When true, start fetching spaces even before this picker's own
+  // dropdown opens — lets a parent menu (e.g. the "+" menu) kick off the
+  // fetch as soon as IT opens, instead of waterfalling on this picker's
+  // own click.
+  prefetch?: boolean;
 }
 
 // Shell: lets users see which Spaces are accessible from the input bar.
@@ -23,6 +28,7 @@ interface InputBarSpacesPickerProps {
 export function InputBarSpacesPicker({
   owner,
   disabled = false,
+  prefetch = false,
 }: InputBarSpacesPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
@@ -30,7 +36,7 @@ export function InputBarSpacesPicker({
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: "all",
-    disabled: !isOpen,
+    disabled: !isOpen && !prefetch,
   });
 
   const selectedSpaceIdsSet = useMemo(

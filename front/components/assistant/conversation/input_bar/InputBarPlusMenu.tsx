@@ -65,6 +65,11 @@ export function InputBarPlusMenu({
   onAttachmentsPickerOpenChange,
 }: InputBarPlusMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  // Sticky once true: a hover almost always precedes the click by a beat,
+  // so kicking off the fetch on hover (in addition to on open) shaves that
+  // gap off the perceived load time for the common mouse-driven case.
+  const [hasHovered, setHasHovered] = useState(false);
+  const shouldPrefetch = isOpen || hasHovered;
 
   return (
     <DropdownMenu
@@ -83,6 +88,7 @@ export function InputBarPlusMenu({
           isRounded
           tooltip="More"
           className={PLUS_BUTTON_CLASSNAME}
+          onMouseEnter={() => setHasHovered(true)}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
@@ -97,6 +103,7 @@ export function InputBarPlusMenu({
             onOpenChange={onCapabilitiesPickerOpenChange}
             buttonSize={buttonSize}
             disabled={disabled}
+            prefetch={shouldPrefetch}
           />
         )}
         {!hideAttachments && (
@@ -118,9 +125,14 @@ export function InputBarPlusMenu({
             }}
             spaceId={spaceId}
             disabled={disabled}
+            prefetch={shouldPrefetch}
           />
         )}
-        <InputBarSpacesPicker owner={owner} disabled={disabled} />
+        <InputBarSpacesPicker
+          owner={owner}
+          disabled={disabled}
+          prefetch={shouldPrefetch}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   );
