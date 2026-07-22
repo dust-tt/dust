@@ -3,6 +3,7 @@
 // type-check when a new endpoint is added to `STREAM_ENDPOINTS` without a
 // matching test file exporting its `setup`, forcing the test to be written.
 import type { StreamEndpointId } from "@app/lib/model_constructors/stream";
+import { AnthropicClaudeFableFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_fable_five_eu_agent_platform";
 import { AnthropicClaudeFableFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_fable_five_global_anthropic";
 import { AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_haiku_four_dot_five_eu_agent_platform";
 import { AnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_haiku_four_dot_five_global_anthropic";
@@ -58,6 +59,7 @@ import { OpenAIGptFiveNanoEuropeOpenAIResponsesStream } from "@app/lib/model_con
 import { OpenAIGptFiveNanoGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_nano_global_openai_responses";
 import { XaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_five_global_xai";
 import { ZAiGlmFiveDotTwoGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_two_global_fireworks";
+import { AnthropicClaudeFableFiveEuropeAgentPlatformStreamSetup } from "@app/lib/model_constructors/test/endpoints/anthropic_claude_fable_five_eu_agent_platform.test";
 import { AnthropicClaudeFableFiveGlobalAnthropicStreamSetup } from "@app/lib/model_constructors/test/endpoints/anthropic_claude_fable_five_global_anthropic.test";
 import { AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStreamSetup } from "@app/lib/model_constructors/test/endpoints/anthropic_claude_haiku_four_dot_five_eu_agent_platform.test";
 import { AnthropicClaudeHaikuFourDotFiveGlobalAnthropicStreamSetup } from "@app/lib/model_constructors/test/endpoints/anthropic_claude_haiku_four_dot_five_global_anthropic.test";
@@ -138,6 +140,8 @@ export const STREAM_ENDPOINT_SETUPS = {
     GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalAgentPlatformStreamSetup,
   [GoogleAiStudioGeminiThreeDotOneProGlobalAgentPlatformStream.id]:
     GoogleAiStudioGeminiThreeDotOneProGlobalAgentPlatformStreamSetup,
+  [AnthropicClaudeFableFiveEuropeAgentPlatformStream.id]:
+    AnthropicClaudeFableFiveEuropeAgentPlatformStreamSetup,
   [AnthropicClaudeFableFiveGlobalAnthropicStream.id]:
     AnthropicClaudeFableFiveGlobalAnthropicStreamSetup,
   [AnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream.id]:
