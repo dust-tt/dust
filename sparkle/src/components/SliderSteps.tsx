@@ -19,26 +19,15 @@ function stepCenter(index: number, lastIndex: number): string {
 }
 
 export interface SliderStepsProps {
-  /** Number of selectable positions, locked ones included. */
   stepCount: number;
-  /** Index of the selected step (0-based). Should not be a locked step. */
   value: number;
   onChange: (index: number) => void;
-  /**
-   * Indices rendered with a padlock and skipped when snapping. Snapping
-   * resolves to the nearest unlocked step, so a locked step in the middle of
-   * the range cannot be crossed with the keyboard.
-   */
   lockedSteps?: number[];
   disabled?: boolean;
   className?: string;
   ariaLabel?: string;
 }
 
-// A stepped slider from the same family as SliderToggle: same track token,
-// inset shadow, blue fill and white knob. Dots mark the available positions
-// and hovering past the knob previews the fill up to the step it would snap
-// to, using SliderToggle's hover tint.
 export function SliderSteps({
   stepCount,
   value,

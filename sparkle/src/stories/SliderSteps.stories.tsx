@@ -85,7 +85,7 @@ export const SliderStepsExample = () => (
     <div className="flex items-center gap-2">
       <SliderToggle selected />
       <span className="text-xs text-muted-foreground">
-        Same family as SliderToggle
+        {"<- Slider Toggle (binary) for comparison"}
       </span>
     </div>
   </div>
