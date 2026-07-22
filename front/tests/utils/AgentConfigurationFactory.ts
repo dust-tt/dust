@@ -1,5 +1,5 @@
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ModelIdType,
@@ -34,7 +34,16 @@ export class AgentConfigurationFactory {
     const user = auth.user();
     assert(user, "User is required");
 
-    const result = await createAgentConfiguration(auth, {
+    // Test fixture, not a real workflow: many tests construct an Authenticator directly without
+    // ever creating a workspace membership, so `auth` may not hold the create-agent capability
+    // (or any capability at all). `authorId`/`editors` below are explicit, so using an internal
+    // admin authenticator for the actual write doesn't change who the created agent is
+    // attributed to — it only bypasses the capability check for this test fixture.
+    const internalAuth = await Authenticator.internalAdminForWorkspace(
+      auth.getNonNullableWorkspace().sId
+    );
+
+    const result = await createAgentConfiguration(internalAuth, {
       name,
       description,
       instructions: "Test Instructions",
@@ -57,6 +66,13 @@ export class AgentConfigurationFactory {
     if (result.isErr()) {
       throw result.error;
     }
+
+    // createAgentConfiguration refreshes its own `auth` argument's group memberships as a side
+    // effect of creating the new editor group. Since we called it with `internalAuth` above,
+    // mirror that refresh onto the caller's own `auth` so tests that rely on it seeing
+    // just-added group memberships (added earlier in the same test, before this call) keep
+    // working as if `auth` itself had been used.
+    await auth.refresh();
 
     return { ...result.value, instructionsHtml: null, actions: [] };
   }

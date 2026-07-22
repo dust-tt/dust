@@ -136,7 +136,11 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - pending agent"
     });
     await SpaceFactory.defaults(auth);
 
-    const { sId: pendingId } = await createPendingAgentConfiguration(auth);
+    const pendingAgentRes = await createPendingAgentConfiguration(auth);
+    if (pendingAgentRes.isErr()) {
+      throw pendingAgentRes.error;
+    }
+    const { sId: pendingId } = pendingAgentRes.value;
 
     const response = await patch(workspace, pendingId, {
       assistant: {
