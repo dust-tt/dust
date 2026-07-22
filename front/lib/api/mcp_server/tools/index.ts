@@ -5,6 +5,7 @@ import { registerFilesTools } from "./files";
 import { registerIdentityTool } from "./identity";
 import { registerPodsTools } from "./pods";
 import { registerSearchTools } from "./search";
+import { registerSkillsTools } from "./skills";
 
 export function registerDustMcpTools(server: McpServer) {
   registerIdentityTool(server);
@@ -13,4 +14,5 @@ export function registerDustMcpTools(server: McpServer) {
   registerPodsTools(server);
   registerSearchTools(server);
   registerFilesTools(server);
+  registerSkillsTools(server);
 }

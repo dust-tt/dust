@@ -16,7 +16,7 @@ HTTP entrypoints live in `front-api/routes/mcp/`. This folder holds the auth and
 |---|---|
 | HTTP routing and wiring | `front-api/routes/mcp/` |
 | OAuth metadata discovery | `front-api/routes/mcp/well-known.ts` |
-| Tool definitions | `tools/` (registered from `server.ts`; grouped under `tools/agents/`, `tools/conversations/`, `tools/pods/`, `tools/search/`, `tools/files/`) |
+| Tool definitions | `tools/` (registered from `server.ts`; grouped under `tools/agents/`, `tools/conversations/`, `tools/pods/`, `tools/search/`, `tools/files/`, `tools/skills/`) |
 | Token verification | `auth.ts` |
 | User + workspace resolution from the token | `authenticator.ts` |
 | How tools access per-request auth | `context.ts`, `tools/register.ts` |

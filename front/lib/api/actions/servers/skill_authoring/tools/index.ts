@@ -6,6 +6,7 @@ import {
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { CreateSkillArgs } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import {
   CREATE_SKILL_TOOL_NAME,
   GET_SKILL_TOOL_NAME,
@@ -231,6 +232,112 @@ function findDisallowedSpecialTagChanges(
   return disallowed;
 }
 
+export async function createSkill(
+  auth: Authenticator,
+  {
+    agentFacingDescription,
+    bypassSimilarSkillCheck,
+    icon,
+    instructions,
+    name,
+    userFacingDescription,
+  }: CreateSkillArgs
+): Promise<Result<SkillResource, MCPError>> {
+  const user = await requireCreateSkillPermission(auth);
+  if (user.isErr()) {
+    return new Err(user.error);
+  }
+
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    return new Err(new MCPError("Skill name cannot be empty."));
+  }
+
+  // A new skill has no attachments, so any special tag in the instructions
+  // would be dead markup. Keep created skills instructions-only.
+  const specialTags = findSpecialTagsPresent(instructions);
+  if (specialTags.length > 0) {
+    return new Err(
+      new MCPError(
+        `The instructions contain special tags (${specialTags.join(", ")}) ` +
+          "that are wired up in the builder, not authored as plain text. Create " +
+          "instructions-only skills; nested skills, knowledge, and tools must be " +
+          "attached in the builder."
+      )
+    );
+  }
+
+  const existingSkill = await SkillResource.fetchByName(auth, trimmedName);
+  if (existingSkill) {
+    return new Err(
+      new MCPError(`A skill with the name "${trimmedName}" already exists.`)
+    );
+  }
+
+  if (bypassSimilarSkillCheck !== true) {
+    const similarSkills = await findSimilarSkillSummaries(
+      auth,
+      agentFacingDescription
+    );
+    if (similarSkills.isErr()) {
+      return new Err(similarSkills.error);
+    }
+    if (similarSkills.value.length > 0) {
+      return new Err(
+        new MCPError(makeSimilarSkillsErrorMessage(similarSkills.value))
+      );
+    }
+  }
+
+  // Ignore an invalid agent-supplied icon and fall back to a suggestion
+  // rather than persisting a name that renders as a broken glyph.
+  let resolvedIcon = icon && isValidSkillIcon(icon) ? icon : null;
+  if (!resolvedIcon) {
+    const iconResult = await getSkillIconSuggestion(auth, {
+      name: trimmedName,
+      instructions,
+      agentFacingDescription,
+    });
+
+    if (iconResult.isOk()) {
+      resolvedIcon = iconResult.value;
+    } else {
+      logger.warn(
+        { err: iconResult.error },
+        "Failed to generate icon suggestion for skill"
+      );
+      resolvedIcon = "ActionListIcon";
+    }
+  }
+
+  const skill = await SkillResource.makeNew(
+    auth,
+    {
+      status: "active",
+      name: trimmedName,
+      agentFacingDescription,
+      userFacingDescription,
+      instructions,
+      instructionsHtml: convertMarkdownToBlockHtml(instructions),
+      editedBy: user.value.id,
+      requestedSpaceIds: [],
+      icon: resolvedIcon,
+      source: "agent",
+      sourceMetadata: null,
+      availability: DEFAULT_SKILL_AVAILABILITY,
+      reinforcement: "on",
+    },
+    {
+      mcpServerViews: [],
+      attachedKnowledge: [],
+    }
+  );
+
+  await auth.refresh();
+
+  return new Ok(skill);
+}
+
 const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
   [LIST_SKILLS_TOOL_NAME]: async ({ filter, cursor, limit }, { auth }) => {
     const user = requireInteractiveUser(auth);
@@ -325,110 +432,14 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
     ]);
   },
 
-  [CREATE_SKILL_TOOL_NAME]: async (
-    {
-      agentFacingDescription,
-      bypassSimilarSkillCheck,
-      icon,
-      instructions,
-      name,
-      userFacingDescription,
-    },
-    { auth }
-  ) => {
-    const user = await requireCreateSkillPermission(auth);
-    if (user.isErr()) {
-      return new Err(user.error);
+  [CREATE_SKILL_TOOL_NAME]: async (args, { auth }) => {
+    const result = await createSkill(auth, args);
+    if (result.isErr()) {
+      return new Err(result.error);
     }
-
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      return new Err(new MCPError("Skill name cannot be empty."));
-    }
-
-    // A new skill has no attachments, so any special tag in the instructions
-    // would be dead markup. Keep created skills instructions-only.
-    const specialTags = findSpecialTagsPresent(instructions);
-    if (specialTags.length > 0) {
-      return new Err(
-        new MCPError(
-          `The instructions contain special tags (${specialTags.join(", ")}) ` +
-            "that are wired up in the builder, not authored as plain text. Create " +
-            "instructions-only skills; nested skills, knowledge, and tools must be " +
-            "attached in the builder."
-        )
-      );
-    }
-
-    const existingSkill = await SkillResource.fetchByName(auth, trimmedName);
-    if (existingSkill) {
-      return new Err(
-        new MCPError(`A skill with the name "${trimmedName}" already exists.`)
-      );
-    }
-
-    if (bypassSimilarSkillCheck !== true) {
-      const similarSkills = await findSimilarSkillSummaries(
-        auth,
-        agentFacingDescription
-      );
-      if (similarSkills.isErr()) {
-        return new Err(similarSkills.error);
-      }
-      if (similarSkills.value.length > 0) {
-        return new Err(
-          new MCPError(makeSimilarSkillsErrorMessage(similarSkills.value))
-        );
-      }
-    }
-
-    // Ignore an invalid agent-supplied icon and fall back to a suggestion
-    // rather than persisting a name that renders as a broken glyph.
-    let resolvedIcon = icon && isValidSkillIcon(icon) ? icon : null;
-    if (!resolvedIcon) {
-      const iconResult = await getSkillIconSuggestion(auth, {
-        name: trimmedName,
-        instructions,
-        agentFacingDescription,
-      });
-
-      if (iconResult.isOk()) {
-        resolvedIcon = iconResult.value;
-      } else {
-        logger.warn(
-          { err: iconResult.error },
-          "Failed to generate icon suggestion for skill"
-        );
-        resolvedIcon = "ActionListIcon";
-      }
-    }
-
-    const skill = await SkillResource.makeNew(
-      auth,
-      {
-        status: "active",
-        name: trimmedName,
-        agentFacingDescription,
-        userFacingDescription,
-        instructions,
-        instructionsHtml: convertMarkdownToBlockHtml(instructions),
-        editedBy: user.value.id,
-        requestedSpaceIds: [],
-        icon: resolvedIcon,
-        source: "agent",
-        sourceMetadata: null,
-        availability: DEFAULT_SKILL_AVAILABILITY,
-        reinforcement: "on",
-      },
-      {
-        mcpServerViews: [],
-        attachedKnowledge: [],
-      }
-    );
-
-    await auth.refresh();
 
     const owner = auth.getNonNullableWorkspace();
+    const skill = result.value;
     const text = `Created skill "${skill.name}".`;
 
     return new Ok([

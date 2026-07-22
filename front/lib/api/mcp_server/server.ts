@@ -33,6 +33,7 @@ Every call is scoped to the authenticated Dust user and workspace.
 - **Workspace**: the Dust organization you signed into. All tools operate within it.
 - **Conversation**: a chat thread with Dust agents. Conversations can live at workspace level or inside a Pod. Each has its own file system for attachments and generated files.
 - **Pod**: a Dust project space — shared context with a description, tasks, linked company-data nodes, conversations, and files.
+- **Skill**: a reusable set of instructions that Dust agents can enable when relevant.
 - **File system**: scoped paths such as \`conversation-<id>/...\` or \`pod-<id>/...\`.
 - **Search**: semantic search across all globally accessible Spaces in the workspace.`;
 
