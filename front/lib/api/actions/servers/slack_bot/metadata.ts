@@ -52,7 +52,7 @@ export const SLACK_BOT_TOOLS_METADATA = [
         .describe(
           "If false, disable media previews (unfurling) for image/video URLs in the message. Defaults to Slack's behavior."
         ),
-      show_sent_by_footer: z
+      showSentByFooter: z
         .boolean()
         .optional()
         .default(true)
