@@ -38,7 +38,7 @@ export class GlobalSkillsRegistry {
     where: AllSkillConfigurationFindOptions["where"] = {}
   ): Promise<GlobalSkillDefinition[]> {
     return filterSkillDefinitions(auth, GLOBAL_SKILLS_ARRAY, where, {
-      isDefault: true,
+      availability: "users_and_agents",
     });
   }
 

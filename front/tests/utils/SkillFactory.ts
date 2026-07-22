@@ -8,6 +8,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SKILL_ICON } from "@app/lib/skill";
 import { serializeSkillTag } from "@app/lib/skills/format";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
@@ -57,7 +58,7 @@ export class SkillFactory {
         requestedSpaceIds,
         status,
         icon: SKILL_ICON.name,
-        isDefault: false,
+        availability: DEFAULT_SKILL_AVAILABILITY,
       },
       {
         mcpServerViews,

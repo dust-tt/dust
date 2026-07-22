@@ -17,8 +17,10 @@ export const SKILL_AVAILABILITIES = [
 ] as const;
 export type SkillAvailability = (typeof SKILL_AVAILABILITIES)[number];
 
-// Transition (isDefault -> availability): rows written before the availability column existed only
-// carry isDefault. Remove these mappings once the backfill has run and isDefault is dropped.
+export const DEFAULT_SKILL_AVAILABILITY: SkillAvailability = "workspace_users";
+
+// The DB column is availability; isDefault survives as a boolean alias in the API and
+// frontend. Remove these mappings once clients rely on availability directly.
 export function availabilityFromIsDefault(
   isDefault: boolean
 ): SkillAvailability {

@@ -16,6 +16,7 @@ import type {
   SkillSourceType,
   SkillStatus,
 } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import isNil from "lodash/isNil";
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
 
@@ -70,17 +71,10 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.JSONB,
     allowNull: true,
   },
-  isDefault: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: false,
-  },
-  // Transition (isDefault -> availability): nullable with no default on purpose. NULL means
-  // "written by code predating the column, derive from isDefault". Will become NOT NULL once
-  // the backfill has run and isDefault is dropped.
   availability: {
     type: DataTypes.STRING,
-    allowNull: true,
+    allowNull: false,
+    defaultValue: DEFAULT_SKILL_AVAILABILITY,
   },
 } as const satisfies ModelAttributes;
 
@@ -119,8 +113,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
 
   declare source: SkillSourceType | null;
   declare sourceMetadata: SkillSourceMetadata | null;
-  declare isDefault: boolean;
-  declare availability: SkillAvailability | null;
+  declare availability: CreationOptional<SkillAvailability>;
   declare favoriteCount: CreationOptional<number>;
 
   declare reinforcement: CreationOptional<SkillReinforcementMode>;
@@ -178,7 +171,7 @@ SkillConfigurationModel.init(
         concurrently: true,
       },
       {
-        fields: ["workspaceId", "status", "isDefault"],
+        fields: ["workspaceId", "status", "availability"],
         concurrently: true,
       },
       {

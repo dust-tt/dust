@@ -15,6 +15,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Op } from "sequelize";
@@ -286,7 +287,7 @@ async function createProductboardSkill(
       instructionsHtml: convertMarkdownToBlockHtml(
         PRODUCTBOARD_SKILL_INSTRUCTIONS
       ),
-      isDefault: false,
+      availability: DEFAULT_SKILL_AVAILABILITY,
       name: PRODUCTBOARD_SKILL_NAME,
       reinforcement: "on",
       // The MCP server views are all on the global space in practice.
