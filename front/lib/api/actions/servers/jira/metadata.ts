@@ -350,7 +350,7 @@ export const JIRA_TOOLS_METADATA = [
   {
     name: "update_issue",
     description:
-      "Update or change field values on an existing Jira issue, such as its summary, description, priority, or assignee. Description accepts plain text or rich ADF. Issue links and attachments are not changed here.",
+      "Update or change field values on an existing Jira issue, such as its summary, description, priority, or assignee. Use this tool to update, edit, or replace a Jira issue description. Description accepts plain text or rich ADF. Issue links and attachments are not changed here.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       updateData: JiraCreateIssueRequestSchema.partial().describe(
