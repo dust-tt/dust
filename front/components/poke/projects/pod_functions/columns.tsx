@@ -27,6 +27,14 @@ export function makeColumnsForProjectPodFunction(): ColumnDef<PokePodFunction>[]
       cell: ({ row }) => row.original.sId,
     },
     {
+      id: "author",
+      accessorFn: (row) => row.author ?? "",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Author" />
+      ),
+      cell: ({ row }) => row.original.author ?? "—",
+    },
+    {
       accessorKey: "createdAt",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Created" />

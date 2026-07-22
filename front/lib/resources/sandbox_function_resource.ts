@@ -17,6 +17,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import type { PostSandboxFunctionInvocationRequestBody } from "@app/types/api/sandbox_functions";
 import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
@@ -351,13 +352,14 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     });
   }
 
-  toPokeJSON(): PokePodFunction {
+  toPokeJSON(author: UserResource | null): PokePodFunction {
     return {
       sId: this.sId,
       slug: this.slug,
       description: this.description,
       createdAt: this.createdAt.toISOString(),
       updatedAt: this.updatedAt.toISOString(),
+      author: author ? author.fullName() : null,
     };
   }
 

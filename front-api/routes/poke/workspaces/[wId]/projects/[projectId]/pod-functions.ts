@@ -1,5 +1,5 @@
+import { listProjectPodFunctions } from "@app/lib/api/poke/pod_functions";
 import type { PokeListProjectPodFunctions } from "@app/lib/api/poke/projects";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { pokeProjectApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
@@ -11,13 +11,7 @@ app.get("/", async (ctx): HandlerResult<PokeListProjectPodFunctions> => {
   const auth = ctx.get("auth");
   const space = ctx.get("space");
 
-  const sandboxFunctions = await SandboxFunctionResource.listBySpace(
-    auth,
-    space
-  );
-  const items = sandboxFunctions.map((sandboxFunction) =>
-    sandboxFunction.toPokeJSON()
-  );
+  const items = await listProjectPodFunctions(auth, space);
 
   return ctx.json({ items });
 });

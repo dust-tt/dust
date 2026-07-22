@@ -41,6 +41,7 @@ export type PokePodFunction = {
   description: string;
   createdAt: string;
   updatedAt: string;
+  author: string | null;
 };
 
 export type PokeListProjectPodFunctions = {

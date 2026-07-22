@@ -3,10 +3,10 @@ import { makeColumnsForProjectPodFunction } from "@app/components/poke/projects/
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { usePokeProjectPodFunction } from "@app/poke/swr/project_pod_functions";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
-import type { WorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface ProjectPodFunctionDataTableProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   projectId: string;
 }
 
