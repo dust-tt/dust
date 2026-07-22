@@ -1,4 +1,4 @@
-import { animate } from "framer-motion";
+import { animate, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
 export type StreamingState = "streaming" | "none" | "cancelled";
@@ -13,6 +13,7 @@ export function useAnimatedText(
   const [startingCursor, setStartingCursor] = useState(0);
   const [prevText, setPrevText] = useState(text);
   const [disableAnimation, setDisableAnimation] = useState(true);
+  const shouldReduceMotion = useReducedMotion();
 
   const controlsRef = useRef<ReturnType<typeof animate> | null>(null);
   const streamingStateRef = useRef(streamingState);
@@ -25,6 +26,9 @@ export function useAnimatedText(
   }
 
   useEffect(() => {
+    if (shouldReduceMotion) {
+      return;
+    }
     if (streamingStateRef.current !== "streaming") {
       // When streaming ended before this effect ran (e.g. the last text chunk
       // arrived at the same time as streamingState transitioned to "none"),
@@ -61,7 +65,13 @@ export function useAnimatedText(
     return () => {
       controlsRef.current?.stop();
     };
-  }, [startingCursor, text, delimiter, animationDurationSeconds]);
+  }, [
+    startingCursor,
+    text,
+    delimiter,
+    animationDurationSeconds,
+    shouldReduceMotion,
+  ]);
 
   useEffect(() => {
     // stop animation if streaming is cancelled.
@@ -73,6 +83,7 @@ export function useAnimatedText(
 
   // Return full text immediately if cancelled or none (and animation is finished if streaming before)
   if (
+    shouldReduceMotion ||
     streamingState === "cancelled" ||
     (streamingState === "none" && disableAnimation)
   ) {

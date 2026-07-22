@@ -77,9 +77,13 @@ function Hover3D({
   );
   const [transition, setTransition] = useState("");
 
-  // Detect touch device on mount
+  // Touch devices and reduced-motion preferences both take the static
+  // rendering path (no tilt, no transition).
   useEffect(() => {
-    setIsTouch(isTouchDevice());
+    setIsTouch(
+      isTouchDevice() ||
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
   }, []);
 
   useEffect(() => {
