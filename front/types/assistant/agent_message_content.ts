@@ -53,7 +53,7 @@ export type AgentProviderPassthroughContentType = {
     // completed for other lab support.
     provider: Exclude<
       ModelProviderIdType,
-      "xai" | "fireworks" | "auto" | "auto_quick" | "auto_deep"
+      "xai" | "fireworks" | "auto" | "auto_fast" | "auto_complex"
     >;
     block: unknown;
   };

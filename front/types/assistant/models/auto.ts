@@ -16,16 +16,16 @@ import type {
 
 // Auto-routing meta-models: sentinels that do not name a concrete model but are
 // resolved to one at message-send time. `auto` lets Dust pick any available
-// model; `auto_quick` / `auto_deep` route among a curated pool (a "stream").
+// model; `auto_fast` / `auto_complex` route among a curated pool (a "stream").
 // Both the provider id and the model id of a meta-model are the sentinel string.
 export const AUTO_MODEL_ID = "auto" as const;
-export const AUTO_QUICK_MODEL_ID = "auto_quick" as const;
-export const AUTO_DEEP_MODEL_ID = "auto_deep" as const;
+export const AUTO_FAST_MODEL_ID = "auto_fast" as const;
+export const AUTO_COMPLEX_MODEL_ID = "auto_complex" as const;
 
 export const META_MODEL_IDS = [
   AUTO_MODEL_ID,
-  AUTO_QUICK_MODEL_ID,
-  AUTO_DEEP_MODEL_ID,
+  AUTO_FAST_MODEL_ID,
+  AUTO_COMPLEX_MODEL_ID,
 ] as const;
 export type MetaModelIdType = (typeof META_MODEL_IDS)[number];
 
@@ -36,8 +36,8 @@ export function isMetaModelId(modelId: string): modelId is MetaModelIdType {
 // The stream meta-models (everything except plain `auto`): they route among a
 // curated, ordered pool of concrete models rather than the whole catalog.
 export const MODEL_STREAM_IDS = [
-  AUTO_QUICK_MODEL_ID,
-  AUTO_DEEP_MODEL_ID,
+  AUTO_FAST_MODEL_ID,
+  AUTO_COMPLEX_MODEL_ID,
 ] as const;
 export type ModelStreamIdType = (typeof MODEL_STREAM_IDS)[number];
 
@@ -56,7 +56,7 @@ export interface ModelStreamCandidate {
 
 export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
   {
-    [AUTO_QUICK_MODEL_ID]: [
+    [AUTO_FAST_MODEL_ID]: [
       {
         providerId: "openai",
         modelId: GPT_5_6_LUNA_MODEL_ID,
@@ -78,7 +78,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
         reasoningEffort: "none",
       },
     ],
-    [AUTO_DEEP_MODEL_ID]: [
+    [AUTO_COMPLEX_MODEL_ID]: [
       {
         providerId: "anthropic",
         modelId: CLAUDE_OPUS_4_8_MODEL_ID,
@@ -150,14 +150,14 @@ export const AUTO_MODEL_CONFIG: ModelConfigurationType = makeMetaModelConfig(
   }
 );
 
-export const AUTO_QUICK_MODEL_CONFIG: ModelConfigurationType =
-  makeMetaModelConfig(AUTO_QUICK_MODEL_ID, {
-    displayName: "Quick",
+export const AUTO_FAST_MODEL_CONFIG: ModelConfigurationType =
+  makeMetaModelConfig(AUTO_FAST_MODEL_ID, {
+    displayName: "Fast",
     description: "Fast models for simple tasks.",
   });
 
-export const AUTO_DEEP_MODEL_CONFIG: ModelConfigurationType =
-  makeMetaModelConfig(AUTO_DEEP_MODEL_ID, {
-    displayName: "Deep",
+export const AUTO_COMPLEX_MODEL_CONFIG: ModelConfigurationType =
+  makeMetaModelConfig(AUTO_COMPLEX_MODEL_ID, {
+    displayName: "Complex",
     description: "Powerful models for heavy tasks.",
   });

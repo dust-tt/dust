@@ -448,13 +448,13 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: false,
     high: false,
   },
-  auto_quick: {
+  auto_fast: {
     none: true,
     light: false,
     medium: false,
     high: false,
   },
-  auto_deep: {
+  auto_complex: {
     none: true,
     light: false,
     medium: false,

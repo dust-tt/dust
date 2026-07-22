@@ -341,8 +341,8 @@ const PROVIDER_ID_TO_LAB: Record<ModelProviderIdType, Lab | null> = {
   xai: "xai",
   noop: "noop",
   auto: null,
-  auto_quick: null,
-  auto_deep: null,
+  auto_fast: null,
+  auto_complex: null,
 };
 
 const PROVIDER_ID_TO_HOST: Record<ModelProviderIdType, Host | null> = {
@@ -355,8 +355,8 @@ const PROVIDER_ID_TO_HOST: Record<ModelProviderIdType, Host | null> = {
   xai: null,
   noop: null,
   auto: null,
-  auto_quick: null,
-  auto_deep: null,
+  auto_fast: null,
+  auto_complex: null,
 };
 
 // Whitelisting is keyed on the legacy provider id, which conflates a model's

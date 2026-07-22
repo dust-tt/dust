@@ -434,12 +434,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 0,
     cache_read_input_tokens: 0,
   },
-  auto_quick: {
+  auto_fast: {
     input: 0,
     output: 0,
     cache_read_input_tokens: 0,
   },
-  auto_deep: {
+  auto_complex: {
     input: 0,
     output: 0,
     cache_read_input_tokens: 0,

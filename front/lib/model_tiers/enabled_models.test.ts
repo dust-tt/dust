@@ -167,7 +167,7 @@ describe("getModelForStream", () => {
   });
 
   it("routes the Quick stream to its first available candidate + effort", async () => {
-    const resolved = await getModelForStream(adminAuth, "auto_quick");
+    const resolved = await getModelForStream(adminAuth, "auto_fast");
 
     expect(resolved).not.toBeNull();
     // In a full workspace every candidate is available, so the first one wins.
@@ -176,7 +176,7 @@ describe("getModelForStream", () => {
   });
 
   it("routes the Deep stream to its first available candidate + effort", async () => {
-    const resolved = await getModelForStream(adminAuth, "auto_deep");
+    const resolved = await getModelForStream(adminAuth, "auto_complex");
 
     expect(resolved).not.toBeNull();
     expect(resolved?.model.modelId).toBe(CLAUDE_OPUS_4_8_MODEL_ID);
@@ -184,7 +184,7 @@ describe("getModelForStream", () => {
   });
 
   it("only ever resolves to a candidate declared in the stream", async () => {
-    for (const streamId of ["auto_quick", "auto_deep"] as const) {
+    for (const streamId of ["auto_fast", "auto_complex"] as const) {
       const resolved = await getModelForStream(adminAuth, streamId);
       const candidate = MODEL_STREAMS[streamId].find(
         (c) =>

@@ -5,7 +5,7 @@ import {
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 
 // Canonical way to check if a provider is whitelisted.
-// Handle the special case of the routing sentinels (auto, auto_quick, auto_deep),
+// Handle the special case of the routing sentinels (auto, auto_fast, auto_complex),
 // which route to a concrete (whitelisted) model at message-send time.
 export function isProviderWhitelisted(
   whitelistedProviders: Set<ModelProviderIdType>,
