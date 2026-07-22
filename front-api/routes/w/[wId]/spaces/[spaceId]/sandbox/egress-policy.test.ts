@@ -70,7 +70,10 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     const response = await getPolicy(workspace.sId, pod.sId);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ policy: { allowedDomains: [] } });
+    expect(await response.json()).toEqual({
+      policy: { allowedDomains: [] },
+      requestedDomains: [],
+    });
   });
 
   it("persists domains and returns them on round-trip, normalized", async () => {
@@ -96,6 +99,7 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     const getResponse = await getPolicy(workspace.sId, pod.sId);
     expect(await getResponse.json()).toEqual({
       policy: { allowedDomains: ["api.github.com", "*.github.com"] },
+      requestedDomains: [],
     });
 
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(

@@ -15,14 +15,20 @@ interface PodNetworkSectionProps {
 // allowlist for the Pod's Shared Computer. Workspace-admin only (matching the
 // API), gated behind the `sandbox_functions` feature at the call site.
 export function PodNetworkSection({ owner, podId }: PodNetworkSectionProps) {
-  const { policy, isPodEgressPolicyLoading, isPodEgressPolicyError } =
-    usePodEgressPolicy({ owner, podId });
+  const {
+    policy,
+    requestedDomains,
+    isPodEgressPolicyLoading,
+    isPodEgressPolicyError,
+  } = usePodEgressPolicy({ owner, podId });
   const { updatePodEgressPolicy, isUpdatingPodEgressPolicy } =
     useUpdatePodEgressPolicy({ owner, podId });
 
   if (isPodEgressPolicyLoading) {
     return <Spinner />;
   }
+  const allowedDomainSet = new Set(policy.allowedDomains);
+
   if (isPodEgressPolicyError) {
     return (
       <ContentMessage
@@ -46,6 +52,17 @@ export function PodNetworkSection({ owner, podId }: PodNetworkSectionProps) {
 
       <EgressDomainListEditor
         allowedDomains={policy.allowedDomains}
+        pendingRequests={requestedDomains.filter(
+          (request) => !allowedDomainSet.has(request.domain)
+        )}
+        onApproveRequest={(domain) =>
+          updatePodEgressPolicy({
+            allowedDomains: [...new Set([...policy.allowedDomains, domain])],
+          })
+        }
+        // TODO(2026-07-22 SANDBOX_EGRESS): dismiss removes the request from
+        // the requested-domains manifest — no-op until the producer lands.
+        onRejectRequest={() => {}}
         onSave={(allowedDomains) => updatePodEgressPolicy({ allowedDomains })}
         isUpdating={isUpdatingPodEgressPolicy}
         emptyMessage="No Pod-specific domains are currently allowed."
