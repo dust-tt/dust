@@ -8,8 +8,8 @@ import { stripUnreplayableToolSearchBlocks } from "@app/lib/api/llm/clients/anth
 import type { Client } from "@app/lib/model_constructors/client";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import {
+  ANTHROPIC_TOOL_SEARCH_INSTRUCTION,
   includesToolSearchTool,
-  TOOL_SEARCH_INSTRUCTION,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import {
   assistantProviderPassthroughMessageToBlocks,
@@ -112,7 +112,10 @@ export function WithAnthropicAIInputConverter<
         max_tokens: this.constructor.maxOutputTokens,
         messages,
         system: includesToolSearchTool(anthropicTools)
-          ? [...system, { type: "text", text: TOOL_SEARCH_INSTRUCTION }]
+          ? [
+              ...system,
+              { type: "text", text: ANTHROPIC_TOOL_SEARCH_INSTRUCTION },
+            ]
           : system,
         thinking: thinkingConfig.thinking,
         tools: anthropicTools,

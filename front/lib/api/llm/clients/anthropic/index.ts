@@ -49,8 +49,8 @@ import type {
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import {
+  ANTHROPIC_TOOL_SEARCH_INSTRUCTION,
   includesToolSearchTool,
-  TOOL_SEARCH_INSTRUCTION,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -125,7 +125,9 @@ export function buildSystemBlocks(
   // byte-stable across the lifetime of the 1h block.
   const sharedText = [
     sharedContext.map((s) => s.content).join("\n"),
-    ...(includeToolSearchInstruction ? [TOOL_SEARCH_INSTRUCTION] : []),
+    ...(includeToolSearchInstruction
+      ? [ANTHROPIC_TOOL_SEARCH_INSTRUCTION]
+      : []),
   ]
     .filter(Boolean)
     .join("\n");

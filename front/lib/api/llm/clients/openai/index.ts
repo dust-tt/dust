@@ -4,6 +4,7 @@ import {
   overwriteLLMParameters,
   supportsOpenAIExplicitPromptCaching,
 } from "@app/lib/api/llm/clients/openai/types";
+import { includesOpenAIToolSearchTool } from "@app/lib/api/llm/clients/openai/utils/tool_search";
 import { LLM } from "@app/lib/api/llm/llm";
 import type {
   BatchDeletionOutcome,
@@ -19,6 +20,7 @@ import type {
   LLMStreamMetadata,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
@@ -31,6 +33,7 @@ import {
   responseToLLMEvents,
   streamLLMEvents,
 } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
+import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/api/llm/utils/tool_search";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -110,19 +113,30 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     const explicitPromptCaching = supportsOpenAIExplicitPromptCaching(
       this.modelId
     );
+    const tools = toToolsParam(specifications, {
+      forceToolCall,
+      toolSearchEnabled: toolSearchEnabled ?? false,
+    });
+    const normalizedPrompt = normalizePrompt(prompt);
+    const requestPrompt = includesOpenAIToolSearchTool(tools)
+      ? {
+          ...normalizedPrompt,
+          sharedContext: [
+            ...normalizedPrompt.sharedContext,
+            { role: "context" as const, content: TOOL_SEARCH_INSTRUCTION },
+          ],
+        }
+      : prompt;
 
     return {
       model: this.modelId,
-      input: toInput(prompt, conversation, "developer", {
+      input: toInput(requestPrompt, conversation, "developer", {
         cacheBreakpointOnLeadingMessage: explicitPromptCaching,
         cacheBreakpointsOnSystemPrompt: explicitPromptCaching,
       }),
       temperature: this.temperature ?? undefined,
       reasoning,
-      tools: toToolsParam(specifications, {
-        forceToolCall,
-        toolSearchEnabled: toolSearchEnabled ?? false,
-      }),
+      tools,
       text: {
         format: toResponseFormat(this.responseFormat, OPENAI_PROVIDER_ID),
       },
