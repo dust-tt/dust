@@ -1,5 +1,7 @@
+// Type-only import (erased at runtime) so the registry can name the resource shape `fromGrants`
+// consumes without a runtime cycle — `group_permission_resource` value-imports this module.
+import type { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import type {
-  CapabilitySpec,
   ConcreteResourceType,
   GrantType,
   GrantVerb,
@@ -8,6 +10,7 @@ import type {
 } from "@app/types/group_permissions";
 import {
   emptyWorkspacePermissions,
+  GRANT_VERBS,
   GROUP_PERMISSION_RESOURCE_TYPES,
   isConcreteResourceType,
   WHOLE_TYPE_RESOURCE_ID,
@@ -145,24 +148,28 @@ export function grantTypesForVerb(
   });
 }
 
-function typeLevelVerbsForGrant(
+// Verbs a grant type confers at `level`; empty when the role is not valid at that level, or the
+// resource type is unknown (e.g. a stale grant row for a removed type).
+function verbsForGrantAtLevel(
   grantType: ConcreteGrantType,
-  resourceType: ConcreteResourceType
+  resourceType: ConcreteResourceType,
+  level: GrantLevel
 ): GrantVerb[] {
   const role = ROLE_REGISTRY[resourceType]?.[grantType];
-  if (!role || !role.levels.includes("type")) {
+  if (!role || !role.levels.includes(level)) {
     return [];
   }
   return role.verbs;
 }
 
-function allTypeLevelVerbsForResource(
-  resourceType: ConcreteResourceType
+// Every verb valid at `level` on `resourceType` — used to expand a "*" grant.
+function allVerbsForResourceAtLevel(
+  resourceType: ConcreteResourceType,
+  level: GrantLevel
 ): GrantVerb[] {
   const verbs = new Set<GrantVerb>();
-  const roles = Object.values(ROLE_REGISTRY[resourceType]);
-  for (const role of roles) {
-    if (role.levels.includes("type")) {
+  for (const role of Object.values(ROLE_REGISTRY[resourceType] ?? {})) {
+    if (role.levels.includes(level)) {
       for (const verb of role.verbs) {
         verbs.add(verb);
       }
@@ -175,55 +182,222 @@ function allTypeLevelVerbsForResource(
 export function allWorkspacePermissions(): WorkspacePermissions {
   const permissions = emptyWorkspacePermissions();
   for (const resourceType of GROUP_PERMISSION_RESOURCE_TYPES) {
-    if (!isConcreteResourceType(resourceType)) {
-      continue;
+    if (isConcreteResourceType(resourceType)) {
+      permissions[resourceType] = allVerbsForResourceAtLevel(
+        resourceType,
+        "type"
+      );
     }
-    permissions[resourceType] = allTypeLevelVerbsForResource(resourceType);
   }
   return permissions;
 }
 
-// The workspace-level verbs a caller's type-wide (-1) grants confer, grouped by resource type. A
-// "*" grantType fans out to every type-level verb of the resource; a "*" resourceType fans out to
-// every concrete resource type.
-export function workspacePermissionsFromGrants(
-  grants: CapabilitySpec[]
-): WorkspacePermissions {
-  const verbsByResource: Record<ConcreteResourceType, Set<GrantVerb>> = {
-    space: new Set(),
-    agent: new Set(),
-    skill: new Set(),
-    frame: new Set(),
-    billing: new Set(),
-    security: new Set(),
-    models_tier: new Set(),
-    dust_app: new Set(),
-  };
+// The held verb set for a (resourceType, resourceId) is stored as a bitmask integer rather than a
+// `Set<GrantVerb>`, to keep the per-request footprint small — one primitive per entry instead of a
+// heap Set. There are <10 verbs, so a single bit each fits comfortably in an int.
+const VERB_BIT = new Map<GrantVerb, number>(
+  GRANT_VERBS.map((verb, index): [GrantVerb, number] => [verb, 1 << index])
+);
 
-  for (const { grantType, resourceType } of grants) {
-    const resources =
-      resourceType === "*"
-        ? GROUP_PERMISSION_RESOURCE_TYPES.filter(isConcreteResourceType)
-        : [resourceType];
+function verbsToMask(verbs: GrantVerb[]): number {
+  let mask = 0;
+  for (const verb of verbs) {
+    mask |= VERB_BIT.get(verb) ?? 0;
+  }
+  return mask;
+}
 
-    for (const resource of resources) {
-      if (!ROLE_REGISTRY[resource]) {
+function maskToVerbs(mask: number): GrantVerb[] {
+  return GRANT_VERBS.filter((verb) => (mask & (VERB_BIT.get(verb) ?? 0)) !== 0);
+}
+
+// The grant fields `fromGrants` reads. `GroupPermissionResource` satisfies this structurally, so
+// callers pass resources directly (no DTO conversion); typed as a Pick to avoid coupling to the
+// full resource and to keep the reference type-only.
+type GrantRow = Pick<
+  GroupPermissionResource,
+  "grantType" | "resourceType" | "resourceId"
+>;
+
+// JSON-serializable form of a PermissionSet, embedded in a serialized Authenticator so it can be
+// restored without re-querying `group_permissions`. Preserves the raw bitmask map exactly.
+export interface PermissionSetJSON {
+  isAdminAll: boolean;
+  // resourceType -> resourceId -> verb bitmask. resourceId keys become strings after a JSON
+  // round-trip; `fromJSON` coerces them back to numbers.
+  grants: Partial<Record<ConcreteResourceType, Record<number, number>>>;
+}
+
+/**
+ * The governance grants a caller holds, resolved once at auth construction. Grants are keyed by
+ * (resourceType, resourceId): resourceId is WHOLE_TYPE_RESOURCE_ID (-1) for type-wide capabilities
+ * (e.g. "create" on "agent") or a resource's model id for instance grants (e.g. "write" on a
+ * specific space). A type-wide grant satisfies an instance check on any id of that type.
+ */
+export class PermissionSet {
+  private constructor(
+    // resourceType -> resourceId -> verb bitmask. resourceId WHOLE_TYPE_RESOURCE_ID (-1) is the
+    // type-wide entry. Values are bitmasks (see VERB_BIT), not Sets, to keep the footprint small.
+    private readonly grants: Map<ConcreteResourceType, Map<number, number>>,
+    // Admins hold every capability on every resource/instance by default.
+    private readonly isAdminAll: boolean
+  ) {}
+
+  static empty(): PermissionSet {
+    return new PermissionSet(new Map(), false);
+  }
+
+  static all(): PermissionSet {
+    return new PermissionSet(new Map(), true);
+  }
+
+  // Rebuilds a set from its serialized form (see toJSON) — no DB access.
+  static fromJSON(json: PermissionSetJSON): PermissionSet {
+    const map = new Map<ConcreteResourceType, Map<number, number>>();
+    for (const resourceType of GROUP_PERMISSION_RESOURCE_TYPES) {
+      if (!isConcreteResourceType(resourceType)) {
         continue;
       }
-
-      const verbs =
-        grantType === "*"
-          ? allTypeLevelVerbsForResource(resource)
-          : typeLevelVerbsForGrant(grantType, resource);
-      verbs.forEach((verb) => verbsByResource[resource].add(verb));
+      const record = json.grants[resourceType];
+      if (!record) {
+        continue;
+      }
+      const byId = new Map<number, number>();
+      for (const [resourceId, mask] of Object.entries(record)) {
+        byId.set(Number(resourceId), mask);
+      }
+      map.set(resourceType, byId);
     }
+    return new PermissionSet(map, json.isAdminAll);
   }
 
-  const permissions = emptyWorkspacePermissions();
-  for (const resource of GROUP_PERMISSION_RESOURCE_TYPES.filter(
-    isConcreteResourceType
-  )) {
-    permissions[resource] = [...verbsByResource[resource]];
+  static fromGrants(grants: readonly GrantRow[]): PermissionSet {
+    const map = new Map<ConcreteResourceType, Map<number, number>>();
+    const add = (
+      resourceType: ConcreteResourceType,
+      resourceId: number,
+      mask: number
+    ) => {
+      if (mask === 0) {
+        return;
+      }
+      let byId = map.get(resourceType);
+      if (!byId) {
+        byId = new Map();
+        map.set(resourceType, byId);
+      }
+      byId.set(resourceId, (byId.get(resourceId) ?? 0) | mask);
+    };
+
+    for (const { grantType, resourceType, resourceId } of grants) {
+      // A "*" grant / -1 resourceId are always type-wide; concrete ids are instance-level.
+      const level: GrantLevel =
+        resourceId === WHOLE_TYPE_RESOURCE_ID ? "type" : "instance";
+      const resourceTypes =
+        resourceType === "*"
+          ? GROUP_PERMISSION_RESOURCE_TYPES.filter(isConcreteResourceType)
+          : [resourceType];
+
+      for (const rt of resourceTypes) {
+        // Skip stale grant rows for resource types no longer in the registry.
+        if (!isConcreteResourceType(rt) || !ROLE_REGISTRY[rt]) {
+          continue;
+        }
+        const verbs =
+          grantType === "*"
+            ? allVerbsForResourceAtLevel(rt, level)
+            : verbsForGrantAtLevel(grantType, rt, level);
+        add(rt, resourceId, verbsToMask(verbs));
+      }
+    }
+
+    return new PermissionSet(map, false);
   }
-  return permissions;
+
+  // Whether the caller holds `verb` on the given resource instance. A type-wide (-1) grant on the
+  // resource type satisfies the check for any instance.
+  has(
+    resourceType: ConcreteResourceType,
+    resourceId: number,
+    verb: GrantVerb
+  ): boolean {
+    // Admins hold every *type-wide* capability by default, but not implicit *instance* grants
+    // (e.g. write on a specific restricted space) — instance access stays role/group-based.
+    if (this.isAdminAll) {
+      return resourceId === WHOLE_TYPE_RESOURCE_ID;
+    }
+    const byId = this.grants.get(resourceType);
+    if (!byId) {
+      return false;
+    }
+    const bit = VERB_BIT.get(verb) ?? 0;
+    return (
+      ((byId.get(resourceId) ?? 0) & bit) !== 0 ||
+      ((byId.get(WHOLE_TYPE_RESOURCE_ID) ?? 0) & bit) !== 0
+    );
+  }
+
+  hasTypeWide(resourceType: ConcreteResourceType, verb: GrantVerb): boolean {
+    return this.has(resourceType, WHOLE_TYPE_RESOURCE_ID, verb);
+  }
+
+  // Serializes the full grant map (bitmasks intact) for embedding in a serialized Authenticator,
+  // so `fromJSON` can restore it without hitting the DB. Round-trips exactly (incl. the admin flag).
+  toJSON(): PermissionSetJSON {
+    const grants: Partial<
+      Record<ConcreteResourceType, Record<number, number>>
+    > = {};
+    for (const [resourceType, byId] of this.grants) {
+      const record: Record<number, number> = {};
+      for (const [resourceId, mask] of byId) {
+        record[resourceId] = mask;
+      }
+      grants[resourceType] = record;
+    }
+    return { isAdminAll: this.isAdminAll, grants };
+  }
+
+  // The type-wide (-1) capabilities the caller holds, as the flat per-resource-type record consumed
+  // by the auth context and the Workspace & Governance page. Admins, who hold everything
+  // implicitly, are materialized as every type-level verb on every resource type.
+  toTypeWideWorkspacePermissions(): WorkspacePermissions {
+    const result = emptyWorkspacePermissions();
+
+    if (this.isAdminAll) {
+      for (const resourceType of GROUP_PERMISSION_RESOURCE_TYPES) {
+        if (isConcreteResourceType(resourceType)) {
+          result[resourceType] = allVerbsForResourceAtLevel(
+            resourceType,
+            "type"
+          );
+        }
+      }
+      return result;
+    }
+
+    for (const [resourceType, byId] of this.grants) {
+      const typeWideMask = byId.get(WHOLE_TYPE_RESOURCE_ID);
+      if (typeWideMask) {
+        result[resourceType] = maskToVerbs(typeWideMask);
+      }
+    }
+    return result;
+  }
+
+  // Human-readable dump for debugging: decodes every bitmask back to verbs. resourceId -1 is
+  // rendered as "*" (type-wide). Not for production paths — inspection only.
+  toString(): string {
+    if (this.isAdminAll) {
+      return "PermissionSet(admin: all)";
+    }
+    const parts: string[] = [];
+    for (const [resourceType, byId] of this.grants) {
+      const entries = [...byId.entries()].map(([resourceId, mask]) => {
+        const id = resourceId === WHOLE_TYPE_RESOURCE_ID ? "*" : resourceId;
+        return `${id}: [${maskToVerbs(mask).join(", ")}]`;
+      });
+      parts.push(`${resourceType}: { ${entries.join(", ")} }`);
+    }
+    return `PermissionSet { ${parts.join("; ")} }`;
+  }
 }

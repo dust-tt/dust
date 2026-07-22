@@ -1,3 +1,4 @@
+import type { ConcreteResourceType } from "./group_permissions";
 import type { ModelId } from "./shared/model_id";
 import type { RoleType } from "./user";
 
@@ -37,11 +38,27 @@ export type GroupResourcePermissions = {
 };
 
 /**
- * Defines combined group and role-based permissions for a resource.
+ * Defines combined group, role, and governance-grant-based permissions for a resource.
+ *
+ * When `resourceType` is set, the resource is also checked against the caller's `group_permissions`
+ * grants (resolved at auth construction — see `Authenticator.resolvePermissions`): the caller
+ * passes if they hold the requested permission, used directly as a grant verb since
+ * `PermissionType` ⊆ `GrantVerb`, on this `(resourceType, resourceId)`. `resourceId` defaults to
+ * the type-wide grant when omitted, and a type-wide grant also satisfies an instance requirement
+ * (see `PermissionSet.has`).
+ *
+ * @property groups - Group-based grants: a caller in a listed group gets its permissions
+ * @property roles - Role-based grants: a caller whose workspace role matches gets its permissions
+ * @property resourceType - The governance resource domain to check (e.g. "space")
+ * @property resourceId - The resource's model id; omitted means the type-wide (-1) grant
+ * @property workspaceId - The resource's workspace; role and governance-grant checks only apply
+ *   when it matches the caller's workspace
  */
 export type CombinedResourcePermissions = {
   groups: GroupPermission[];
   roles: RolePermission[];
+  resourceType?: ConcreteResourceType;
+  resourceId?: number;
   workspaceId: ModelId;
 };
 
