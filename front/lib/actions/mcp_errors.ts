@@ -20,14 +20,19 @@ export function isRemoteMCPServerError(
 }
 
 export class MCPError extends Error {
-  // Whether the error should be tracked and reported on our observability stack.
+  // Whether the error should be tracked and reported on our observability stack. Defaults to
+  // false: tool errors are overwhelmingly driven by user data or model-generated inputs and
+  // are not actionable on our side. Failures that ARE actionable alert through other
+  // channels regardless of this flag: provider 5xx (throw `ProviderError` from the API
+  // client) and uncaught exceptions (report + rethrow in `withToolLogging`). Set
+  // `tracked: true` only for failures we should investigate that neither channel can catch.
   public readonly tracked: boolean;
   public readonly code?: number;
 
   constructor(
     message: string,
     {
-      tracked = true,
+      tracked = false,
       code,
       cause,
     }: { tracked?: boolean; code?: number; cause?: Error | APIError } = {}
