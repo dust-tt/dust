@@ -42,10 +42,9 @@ export const sendActivationNudgePlugin = createPlugin({
     id: "send-activation-nudge",
     name: "Send Activation Nudge",
     description:
-      "Nudge selected members members of this Activation Pod, " +
-      "starting a @dust conversation running the activation " +
-      "workflow. All members are selected by default: deselect to nudge only " +
-      "a subset.",
+      "Nudge selected members of this Activation Pod, starting a @dust " +
+      "conversation running the activation workflow. All members are selected " +
+      "by default: deselect to nudge only a subset.",
     resourceTypes: ["spaces"],
     args: {
       members: {
@@ -72,12 +71,19 @@ export const sendActivationNudgePlugin = createPlugin({
       { dangerouslyRequestAllGroups: true }
     );
 
+    // Re-fetch under admin auth so the pod's groups are attached;
+    // fetchDistinctActiveManualGroupMembersBySpaces reads space.groups.
+    const podWithGroups = await SpaceResource.fetchById(adminAuth, pod.sId);
+    if (!podWithGroups) {
+      return new Ok({ members: [] });
+    }
+
     const membersBySpaceModelId =
       await SpaceResource.fetchDistinctActiveManualGroupMembersBySpaces(
         adminAuth,
-        [pod]
+        [podWithGroups]
       );
-    const members = membersBySpaceModelId.get(pod.id) ?? [];
+    const members = membersBySpaceModelId.get(podWithGroups.id) ?? [];
 
     return new Ok({
       members: members.map((member) => ({
@@ -108,9 +114,9 @@ export const sendActivationNudgePlugin = createPlugin({
       { dangerouslyRequestAllGroups: true }
     );
 
-    // The activation conversation is created by a per-user trigger.
-    // So to nudge a member we ensure that member has an activation trigger,
-    // (provisioning one on their behalf if missing) then emit the event that fires it.
+    // The activation conversation is created by a per-user trigger. So to nudge
+    // a member we ensure that member has an activation trigger (provisioning one
+    // on their behalf if missing), then emit the event that fires it.
     const podViewResult = await getOrCreateActivationWebhookSourceView(
       adminAuth,
       pod
@@ -195,7 +201,7 @@ export const sendActivationNudgePlugin = createPlugin({
         nudgedCount: nudged.length,
         failedCount: failed.length,
       },
-      "Emitted activation nudge events via poke"
+      "Emitted activation nudge event via poke"
     );
 
     if (failed.length > 0) {
