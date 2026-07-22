@@ -38,6 +38,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -787,6 +788,7 @@ export async function deleteWorkspaceActivity({
   await FileResource.deleteAllForWorkspace(auth);
   await RunResource.deleteAllForWorkspace(auth);
   await MembershipResource.deleteAllForWorkspace(auth);
+  await GroupPermissionResource.deleteAllForWorkspace(auth);
   await GroupMembershipModel.destroy({
     where: { workspaceId: workspace.id },
   });
