@@ -14,6 +14,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import type { SuccessResponseBody } from "@front-api/routes/types";
 
+// Mounted at /api/w/:wId/skills/import/github-connection.
 const app = workspaceApp();
 
 /** @ignoreswagger */
