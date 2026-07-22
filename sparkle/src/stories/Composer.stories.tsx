@@ -719,8 +719,8 @@ function ComposerDemo({
         leftActions={
           voice.status !== "recording" && (
             <>
-              {agentPicker}
               {plusMenu}
+              {agentPicker}
             </>
           )
         }

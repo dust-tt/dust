@@ -256,35 +256,38 @@ export const InputBarButtons = React.memo(function InputBarButtons({
 
   return (
     <>
-      {agentButton}
       {hiddenFileInput}
       {isExtension ? (
         <>
+          {agentButton}
           {modelPickerButton}
           {!hideCapabilities && toolsButton}
         </>
       ) : (
-        <InputBarPlusMenu
-          owner={owner}
-          user={user}
-          buttonSize={buttonSize}
-          disabled={isInputDisabled}
-          hideCapabilities={
-            hideCapabilities || !actions.includes("capabilities")
-          }
-          hideAttachments={!actions.includes("attachment")}
-          selectedMCPServerViews={selectedMCPServerViews}
-          onMCPServerViewSelect={onMCPServerViewSelect}
-          onSkillSelect={onSkillSelect}
-          fileUploaderService={fileUploaderService}
-          onNodeSelect={onNodeSelect}
-          onNodeUnselect={onNodeUnselect}
-          attachedNodes={attachedNodes}
-          conversation={conversation}
-          spaceId={spaceId}
-          onCapabilitiesPickerOpenChange={onCapabilitiesPickerOpenChange}
-          onAttachmentsPickerOpenChange={onAttachmentsPickerOpenChange}
-        />
+        <>
+          <InputBarPlusMenu
+            owner={owner}
+            user={user}
+            buttonSize={buttonSize}
+            disabled={isInputDisabled}
+            hideCapabilities={
+              hideCapabilities || !actions.includes("capabilities")
+            }
+            hideAttachments={!actions.includes("attachment")}
+            selectedMCPServerViews={selectedMCPServerViews}
+            onMCPServerViewSelect={onMCPServerViewSelect}
+            onSkillSelect={onSkillSelect}
+            fileUploaderService={fileUploaderService}
+            onNodeSelect={onNodeSelect}
+            onNodeUnselect={onNodeUnselect}
+            attachedNodes={attachedNodes}
+            conversation={conversation}
+            spaceId={spaceId}
+            onCapabilitiesPickerOpenChange={onCapabilitiesPickerOpenChange}
+            onAttachmentsPickerOpenChange={onAttachmentsPickerOpenChange}
+          />
+          {agentButton}
+        </>
       )}
     </>
   );

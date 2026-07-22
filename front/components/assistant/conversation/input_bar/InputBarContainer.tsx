@@ -1824,13 +1824,6 @@ const InputBarContainer = ({
                       isWidthConstrained ? "gap-0.5" : "gap-1"
                     )}
                   >
-                    {conversation && (
-                      <ContextUsageIndicator
-                        buttonSize={buttonSize}
-                        owner={owner}
-                        conversationId={conversation?.sId}
-                      />
-                    )}
                     {clientType !== "extension" &&
                       actions.includes("model-picker") && (
                         <InputBarModelPicker
@@ -1848,6 +1841,13 @@ const InputBarContainer = ({
                           onSelectionChange={onModelSelectionChange}
                         />
                       )}
+                    {conversation && (
+                      <ContextUsageIndicator
+                        buttonSize={buttonSize}
+                        owner={owner}
+                        conversationId={conversation?.sId}
+                      />
+                    )}
                   </div>
                   {canShowVoicePicker && showMicInsteadOfSend ? (
                     <VoicePicker
