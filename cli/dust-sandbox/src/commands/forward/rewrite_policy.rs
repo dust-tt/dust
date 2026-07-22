@@ -337,6 +337,11 @@ fn is_unsafe_substitution_header(name: &str) -> bool {
             | "if-unmodified-since"
             | "if-range"
             | "range"
+            // CORS preflight — servers commonly echo these values back in
+            // `Access-Control-Allow-Headers` / `Access-Control-Allow-Methods`,
+            // which would round-trip a substituted secret to the client.
+            | "access-control-request-headers"
+            | "access-control-request-method"
     )
 }
 
@@ -602,6 +607,9 @@ mod tests {
             "if-unmodified-since",
             "if-range",
             "range",
+            // CORS preflight.
+            "access-control-request-headers",
+            "access-control-request-method",
             // Prefix families.
             "sec-ch-ua",
             "sec-ch-ua-platform",
