@@ -42,7 +42,7 @@ app.patch(
       });
     }
 
-    if (!agentConfiguration.canEdit && !auth.isBuilder()) {
+    if (!agentConfiguration.canEdit) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
