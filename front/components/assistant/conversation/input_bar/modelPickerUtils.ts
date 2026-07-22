@@ -2,9 +2,9 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import type { MetaModelIdType } from "@app/types/assistant/models/auto";
 import {
-  AUTO_DEEP_MODEL_ID,
+  AUTO_COMPLEX_MODEL_ID,
+  AUTO_FAST_MODEL_ID,
   AUTO_MODEL_ID,
-  AUTO_QUICK_MODEL_ID,
   isMetaModelId,
 } from "@app/types/assistant/models/auto";
 import type {
@@ -19,9 +19,9 @@ import capitalize from "lodash/capitalize";
 
 // The three primary picks of the model picker. Each tier is backed by a
 // meta-model that is resolved to a concrete model at message-send time:
-//   - Fast     -> auto_quick (curated pool of small, cheap models)
+//   - Fast     -> auto_fast (curated pool of small, cheap models)
 //   - Standard -> auto       (Dust picks any available model — the old "Auto")
-//   - Complex  -> auto_deep  (curated pool of powerful models)
+//   - Complex  -> auto_complex  (curated pool of powerful models)
 export type ModelTierId = "fast" | "standard" | "complex";
 
 export interface ModelTierDefinition {
@@ -35,7 +35,7 @@ export interface ModelTierDefinition {
 export const MODEL_TIERS: ModelTierDefinition[] = [
   {
     id: "fast",
-    metaModelId: AUTO_QUICK_MODEL_ID,
+    metaModelId: AUTO_FAST_MODEL_ID,
     name: "Fast",
     description: "Quick, low cost",
   },
@@ -47,16 +47,16 @@ export const MODEL_TIERS: ModelTierDefinition[] = [
   },
   {
     id: "complex",
-    metaModelId: AUTO_DEEP_MODEL_ID,
+    metaModelId: AUTO_COMPLEX_MODEL_ID,
     name: "Complex",
     description: "Slower, most capable",
   },
 ];
 
 const TIER_BY_META_MODEL_ID: Record<MetaModelIdType, ModelTierId> = {
-  [AUTO_QUICK_MODEL_ID]: "fast",
+  [AUTO_FAST_MODEL_ID]: "fast",
   [AUTO_MODEL_ID]: "standard",
-  [AUTO_DEEP_MODEL_ID]: "complex",
+  [AUTO_COMPLEX_MODEL_ID]: "complex",
 };
 
 export function getModelTier(tierId: ModelTierId): ModelTierDefinition {
