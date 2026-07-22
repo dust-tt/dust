@@ -40,9 +40,8 @@ export function PodNetworkSection({ owner, podId }: PodNetworkSectionProps) {
     <div className="flex w-full flex-col gap-4">
       <div className="heading-lg">Network</div>
       <p className="text-sm text-muted-foreground">
-        These domains apply to this Pod's Computer, in addition to the
-        workspace-wide allowlist. Changes are picked up by egress proxy cache
-        refreshes, typically within 60 seconds.
+        This Pod's Computer can reach these domains on top of the workspace
+        allowlist. Changes apply to running Computers within about a minute.
       </p>
 
       <EgressDomainListEditor
