@@ -51,13 +51,13 @@ async function createPodActivationTrigger(
     webhookSourceViewId: podView.id,
   });
 
-  await ActivationPodResource.makeNew(auth, {
+  const activationPod = await ActivationPodResource.makeNew(auth, {
     pod,
     user: auth.getNonNullableUser(),
     trigger,
   });
 
-  return trigger;
+  return { trigger, activationPod };
 }
 
 describe("getActivationNudgeFrequencyCapDays", () => {
@@ -114,14 +114,11 @@ describe("isEligibleForNudge", () => {
     const { authenticator, globalSpace } = await createResourceTest({
       role: "admin",
     });
-    const trigger = await createPodActivationTrigger(
+    const { activationPod } = await createPodActivationTrigger(
       authenticator,
       globalSpace
     );
-    await ActivationNudgeFactory.create(authenticator, {
-      pod: globalSpace,
-      trigger,
-    });
+    await ActivationNudgeFactory.create(authenticator, { activationPod });
 
     expect(await isEligibleForNudge(authenticator, globalSpace)).toBe(false);
   });
@@ -137,20 +134,18 @@ describe("isEligibleForNudge", () => {
       user.sId,
       workspace.sId
     );
-    const trigger = await createPodActivationTrigger(
+    const { activationPod } = await createPodActivationTrigger(
       refreshedAuth,
       globalSpace
     );
 
     // Two nudges, both outside the frequency cap window, with no reply.
     await ActivationNudgeFactory.create(refreshedAuth, {
-      pod: globalSpace,
-      trigger,
+      activationPod,
       createdAt: new Date(Date.now() - 10 * DAY_MS),
     });
     await ActivationNudgeFactory.create(refreshedAuth, {
-      pod: globalSpace,
-      trigger,
+      activationPod,
       createdAt: new Date(Date.now() - 5 * DAY_MS),
     });
 
@@ -168,19 +163,17 @@ describe("isEligibleForNudge", () => {
       user.sId,
       workspace.sId
     );
-    const trigger = await createPodActivationTrigger(
+    const { trigger, activationPod } = await createPodActivationTrigger(
       refreshedAuth,
       globalSpace
     );
 
     await ActivationNudgeFactory.create(refreshedAuth, {
-      pod: globalSpace,
-      trigger,
+      activationPod,
       createdAt: new Date(Date.now() - 10 * DAY_MS),
     });
     await ActivationNudgeFactory.create(refreshedAuth, {
-      pod: globalSpace,
-      trigger,
+      activationPod,
       createdAt: new Date(Date.now() - 5 * DAY_MS),
     });
 

@@ -1,11 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
-import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
+import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
-import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -46,9 +44,9 @@ export class ActivationNudgeResource extends BaseResource<ActivationNudgeModel> 
   // Records that the pod's activation trigger fired.
   static async makeNew(
     auth: Authenticator,
-    { pod, trigger }: { pod: SpaceResource; trigger: TriggerResource }
+    { activationPod }: { activationPod: ActivationPodResource }
   ): Promise<ActivationNudgeResource> {
-    const [nudge] = await this.bulkCreate(auth, [{ pod, trigger }]);
+    const [nudge] = await this.bulkCreate(auth, [{ activationPod }]);
     return nudge;
   }
 
@@ -56,31 +54,14 @@ export class ActivationNudgeResource extends BaseResource<ActivationNudgeModel> 
   // insert (avoids one query per pod when the scheduler processes many pods).
   static async bulkCreate(
     auth: Authenticator,
-    nudges: { pod: SpaceResource; trigger: TriggerResource }[]
+    nudges: { activationPod: ActivationPodResource }[]
   ): Promise<ActivationNudgeResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Best-effort link to the canonical ActivationPod, alongside the
-    // spaceId/triggerId/userId already denormalized below. Not every pod has
-    // one yet, so a lookup miss just leaves activationPodId null.
-    const activationPods = await ActivationPodResource.fetchBySpaceModelIds(
-      auth,
-      nudges.map(({ pod }) => pod.id)
-    );
-    const activationPodBySpaceId = new Map(
-      activationPods.map((activationPod) => [
-        activationPod.spaceId,
-        activationPod,
-      ])
-    );
-
     const created = await this.model.bulkCreate(
-      nudges.map(({ pod, trigger }) => ({
+      nudges.map(({ activationPod }) => ({
         workspaceId,
-        spaceId: pod.id,
-        triggerId: trigger.id,
-        userId: trigger.editor,
-        activationPodId: activationPodBySpaceId.get(pod.id)?.id ?? null,
+        activationPodId: activationPod.id,
       })),
       { returning: true }
     );
