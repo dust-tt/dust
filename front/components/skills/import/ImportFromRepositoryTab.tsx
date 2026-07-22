@@ -3,6 +3,7 @@ import { DetectedSkillsList } from "@app/components/skills/import/DetectedSkills
 import type { RepositoryImportFormValues } from "@app/components/skills/import/formSchema";
 import { GitHubConnectionRow } from "@app/components/skills/import/GitHubConnectionRow";
 import { isImportableSkillStatus } from "@app/lib/skill_detection";
+import { useWorkspaceGitHubConnection } from "@app/lib/swr/github_connection";
 import { useDetectSkillsFromRepo } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
@@ -65,10 +66,13 @@ export function ImportFromRepositoryTab({
     onDetectedCountChange(detectedSkills.length);
   }, [detectedSkills.length, onDetectedCountChange]);
 
+  const showRepositoryNotFound =
+    repositoryNotFound && !isConnectionLoading;
+
   const isEmpty =
     !isDetecting &&
     !detectError &&
-    !repositoryNotFound &&
+    !showRepositoryNotFound &&
     detectedSkills.length === 0;
 
   return (
@@ -89,8 +93,8 @@ export function ImportFromRepositoryTab({
       />
 
       <div className={cn("flex flex-col", !isEmpty && "min-h-40")}>
-        {repositoryNotFound &&
-          (hasConnection ? (
+        {showRepositoryNotFound &&
+          (connection ? (
             <ContentMessage
               variant="warning"
               size="lg"
@@ -107,6 +111,7 @@ export function ImportFromRepositoryTab({
             <ConnectWorkspaceGitHubMessage
               owner={owner}
               onConnected={() => {
+                void mutateConnection();
                 triggerDetect(repoUrlField.value);
               }}
             />
