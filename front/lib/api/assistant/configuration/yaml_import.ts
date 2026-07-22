@@ -166,6 +166,17 @@ async function importAgentConfiguration(
   yamlConfig: AgentYAMLConfig,
   agentConfigurationId?: string
 ): Promise<ImportResult> {
+  const canCreate = await auth.hasWorkspacePermission("create", "agent");
+  if (!canCreate) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "assistant_saving_error",
+        message: "Creating agents is restricted.",
+      },
+    });
+  }
+
   const saveEnabledResult = await ensureAgentConfigurationSavingEnabled();
   if (saveEnabledResult.isErr()) {
     return saveEnabledResult;
