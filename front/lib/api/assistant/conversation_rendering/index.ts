@@ -11,11 +11,7 @@ import type {
   MessageWithTokens,
 } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import { sumInteractionTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
-import { ConversationWindowState } from "@app/lib/api/assistant/conversation_rendering/window_state";
-import type {
-  ConversationPruningStats,
-  ConversationWindowStrategy,
-} from "@app/lib/api/assistant/conversation_rendering/window_types";
+import type { ConversationWindowResult } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -40,12 +36,14 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-export { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering/window_state";
-
 // Fixed number of tokens assumed for image contents
 const IMAGE_CONTENT_TOKEN_COUNT = 3100;
 export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
+
+// Compaction remains available once enough previous interactions exist, independently of how
+// tool results are pruned from the model context.
+export const PREVIOUS_INTERACTIONS_TO_PRESERVE = 3;
 
 // Proactive pruning target as a fraction of contextSize, picked to sit below the customer-facing
 // compaction warning (~70%) rather than the real ceiling (68-99% depending on model), which would
@@ -53,13 +51,9 @@ export const TOKENS_MARGIN = 1024;
 // conversation, current interaction included. No separate, looser budget for it.
 export const PRUNING_TARGET_CONTEXT_UTILIZATION = 0.6;
 
-export type { ConversationWindowStrategy } from "@app/lib/api/assistant/conversation_rendering/window_types";
-
 /**
- * Replays the conversation chronologically so cleanup decisions are deterministic for every
- * interaction prefix. The legacy strategy can drop interactions after pruning. The checkpointed
- * strategy only prunes consumed tool results and keeps serving intact history past the nominal
- * budget.
+ * Replays the conversation chronologically so consumed tool results are pruned at stable
+ * checkpoints without removing complete interactions.
  */
 function pruneConversationToBudget(
   interactions: InteractionWithTokens[],
@@ -67,32 +61,17 @@ function pruneConversationToBudget(
     pruningBudget,
     budgetForInteractions,
     logDetails,
-    windowStrategy,
   }: {
     pruningBudget: number;
     budgetForInteractions: number;
     logDetails: Record<string, unknown>;
-    windowStrategy: ConversationWindowStrategy;
   }
-): Result<
-  {
-    interactions: InteractionWithTokens[];
-    prunedContext: boolean;
-    stats: ConversationPruningStats;
-  },
-  Error
-> {
-  const options = { pruningBudget, budgetForInteractions, logDetails };
-  const state = (() => {
-    switch (windowStrategy) {
-      case "legacy":
-        return ConversationWindowState.empty(options);
-      case "checkpointed":
-        return CheckpointedConversationWindowState.empty(options);
-      default:
-        return assertNever(windowStrategy);
-    }
-  })();
+): Result<ConversationWindowResult, Error> {
+  const state = CheckpointedConversationWindowState.empty({
+    pruningBudget,
+    budgetForInteractions,
+    logDetails,
+  });
 
   for (const interaction of interactions) {
     state.append(interaction);
@@ -116,7 +95,6 @@ export async function renderConversationForModel(
     agentConfiguration,
     enabledSkills,
     metricsCaller,
-    windowStrategy = "legacy",
   }: {
     leadingMessages?: ModelMessageTypeMultiActionsWithoutContentFragment[];
     conversation: ConversationType;
@@ -134,7 +112,6 @@ export async function renderConversationForModel(
     // history injection, reinforcement batches, scripts) whose renders would skew the pruning
     // dashboards, so only callers that name themselves are measured.
     metricsCaller?: ConversationRenderingMetricsCaller;
-    windowStrategy?: ConversationWindowStrategy;
   }
 ): Promise<
   Result<
@@ -252,7 +229,6 @@ export async function renderConversationForModel(
     pruningBudget,
     budgetForInteractions,
     logDetails,
-    windowStrategy,
   });
   if (pruneRes.isErr()) {
     if (metricsCaller) {
@@ -261,7 +237,6 @@ export async function renderConversationForModel(
         caller: metricsCaller,
         providerId: model.providerId,
         modelId: model.modelId,
-        windowStrategy,
       });
     }
     return pruneRes;
@@ -325,7 +300,6 @@ export async function renderConversationForModel(
         caller: metricsCaller,
         providerId: model.providerId,
         modelId: model.modelId,
-        windowStrategy,
       });
     }
     return new Err(
@@ -355,7 +329,6 @@ export async function renderConversationForModel(
       modelId: model.modelId,
       contextSize: model.contextSize,
       tokensUsed,
-      windowStrategy,
     });
   }
 

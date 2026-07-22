@@ -308,8 +308,8 @@ describe("renderConversationForModel", () => {
       prompt: "PROMPT",
       enabledSkills: [],
       tools: "TOOLS",
-      // Total unpruned is 60_140. Crossing the 51k soft limit targets 31k, so pruning advances
-      // through the 40k prefix checkpoint while the latest result remains intact.
+      // Total unpruned is 60_140. The eligible prefix is pruned in one buffered batch while the
+      // latest unconsumed result batch remains intact.
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
         toolsTokens: 10,
@@ -344,7 +344,7 @@ describe("renderConversationForModel", () => {
     );
     expect(step1.content).toContain("This tool result is no longer available");
     expect(step2.content).toContain("This tool result is no longer available");
-    expect(step8.content).toContain("This tool result is no longer available");
+    expect(step8.content).toBe("step_8_result_big");
     expect(step9.content).toBe("step_9_result_big");
     expect(step12.content).toBe("step_12_result_big");
     expect(res.value.prunedContext).toBe(true);
@@ -402,10 +402,7 @@ describe("renderConversationForModel", () => {
     expect(tool12.content).toBe("result_12");
   });
 
-  it("drops a whole previous interaction entirely, not just its tool result, when pruning alone still doesn't fit", async () => {
-    // Ten previous interactions, each dominated by large USER/ASSISTANT text (never pruned by
-    // pruneToolResults) rather than tool output. Pruning alone cannot shrink these enough, so
-    // dropInteractionsToFit must remove some of them wholesale.
+  it("keeps complete interactions when non-tool history exceeds the nominal budget", async () => {
     const previousInteractions = [1, 2, 3, 4, 5].flatMap((i) => [
       userMessage(`old_user_${i}_big`),
       assistantMessage(`old_assistant_${i}_big`),
@@ -432,8 +429,6 @@ describe("renderConversationForModel", () => {
       prompt: "PROMPT",
       enabledSkills: [],
       tools: "TOOLS",
-      // Each old interaction costs 400 tokens. Budget only leaves room for the current (20) plus
-      // roughly one old interaction (400), nowhere near all 5 (2000).
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
         toolsTokens: 10,
@@ -449,63 +444,9 @@ describe("renderConversationForModel", () => {
     const survivingUserTexts = res.value.modelConversation.messages
       .filter(isUserMessage)
       .map((m) => textOf(m.content[0]));
-    // Oldest interactions are dropped first. The newest ones (closest to "new_user") survive.
-    expect(survivingUserTexts).not.toContain("old_user_1_big");
+    expect(survivingUserTexts).toContain("old_user_1_big");
     expect(survivingUserTexts).toContain("new_user");
-  });
-
-  it("drops a content fragment TOGETHER WITH its user message when the whole interaction is dropped, never separates them", async () => {
-    // The oldest interaction carries a content fragment (e.g. a file upload) immediately before
-    // its user message. When that whole interaction is dropped for space, the content fragment
-    // must go with it, never survive alone with no user message to merge into.
-    vi.mocked(renderAllMessages).mockResolvedValue([
-      contentFragmentMessage("uploaded_file_big"),
-      userMessage("old_user_big"),
-      assistantMessage("old_assistant_big"),
-      userMessage("new_user"),
-      assistantMessage("new_assistant"),
-    ]);
-    mockTokenCounter({
-      byContains: {
-        uploaded_file_big: 300,
-        old_user_big: 200,
-        old_assistant_big: 200,
-        new_user: 10,
-        new_assistant: 10,
-      },
-    });
-
-    const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
-      model,
-      prompt: "PROMPT",
-      enabledSkills: [],
-      tools: "TOOLS",
-      // Budget only fits the current interaction (20 tokens). The 700-token old interaction
-      // (content fragment + user + assistant) must be dropped as a whole.
-      allowedTokenCount: computeAllowedTokenCount({
-        promptTokens: 10,
-        toolsTokens: 10,
-        interactionTokens: 50,
-      }),
-    });
-
-    expect(res.isOk()).toBe(true);
-    if (res.isErr()) {
-      return;
-    }
-
-    const roles = res.value.modelConversation.messages.map((m) => m.role);
-    // No dangling content_fragment role should ever reach the final output (they're merged into
-    // user messages, or dropped together with them), this asserts the merge-or-drop invariant
-    // held even though the interaction carrying the fragment was entirely dropped.
-    expect(roles).not.toContain("content_fragment");
-
-    const survivingUserTexts = res.value.modelConversation.messages
-      .filter(isUserMessage)
-      .map((m) => textOf(m.content[0]));
-    expect(survivingUserTexts).not.toContain("old_user_big");
-    expect(survivingUserTexts).toContain("new_user");
+    expect(res.value.prunedContext).toBe(false);
   });
 
   it("merges content fragment into following user message when both survive", async () => {
@@ -554,7 +495,7 @@ describe("renderConversationForModel", () => {
     expect(textOf(firstUser.content[1])).toBe("user_text");
   });
 
-  it("returns an error when context window is still exceeded after every pruning layer", async () => {
+  it("keeps complete history past the nominal budget", async () => {
     vi.mocked(renderAllMessages).mockResolvedValue([
       userMessage("BIG_USER"),
       assistantMessage("BIG_ASSISTANT"),
@@ -579,12 +520,11 @@ describe("renderConversationForModel", () => {
       }),
     });
 
-    expect(res.isErr()).toBe(true);
+    expect(res.isOk()).toBe(true);
     if (res.isErr()) {
-      expect(res.error.message).toContain(
-        "Context window exceeded: at least one message is required"
-      );
+      return;
     }
+    expect(res.value.modelConversation.messages).toHaveLength(2);
   });
 
   it("returns a distinct error, not a context-window one, when the conversation has no messages at all", async () => {
@@ -690,7 +630,7 @@ describe("renderConversationForModel", () => {
     }
   });
 
-  it("keeps the most recent interactions first when limited by budget", async () => {
+  it("keeps every interaction when small tool results cannot reclaim a useful batch", async () => {
     vi.mocked(renderAllMessages).mockResolvedValue([
       userMessage("u_01"),
       assistantMessage("a_01"),
@@ -746,8 +686,6 @@ describe("renderConversationForModel", () => {
       },
     });
 
-    // The latest three interactions are protected from soft dropping, not from tool-result
-    // pruning. Older interactions are removed whole. Only the latest current result stays full.
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
       model,
@@ -769,16 +707,26 @@ describe("renderConversationForModel", () => {
     const functionMessages =
       res.value.modelConversation.messages.filter(isFunctionMessage);
     const names = functionMessages.map((m) => m.name);
-    expect(names).toEqual(["tool_05", "tool_06", "tool_07", "tool_08"]);
-    expect(names).not.toContain("tool_01");
-    expect(names).not.toContain("tool_02");
-    expect(names).not.toContain("tool_03");
-    expect(names).not.toContain("tool_04");
-
-    for (const message of functionMessages.slice(0, -1)) {
-      expect(message.content).toContain("no longer available");
-    }
-    expect(functionMessages.at(-1)?.content).toBe("f_08");
+    expect(names).toEqual([
+      "tool_01",
+      "tool_02",
+      "tool_03",
+      "tool_04",
+      "tool_05",
+      "tool_06",
+      "tool_07",
+      "tool_08",
+    ]);
+    expect(functionMessages.map((message) => message.content)).toEqual([
+      "f_01",
+      "f_02",
+      "f_03",
+      "f_04",
+      "f_05",
+      "f_06",
+      "f_07",
+      "f_08",
+    ]);
   });
 
   it("prepends leading messages", async () => {
@@ -822,7 +770,7 @@ describe("renderConversationForModel", () => {
     ]);
   });
 
-  it("never restores interactions dropped for an earlier conversation prefix", async () => {
+  it("keeps complete interaction history stable as the conversation grows", async () => {
     const nonPrunableHistory = Array.from(
       { length: 4 },
       (_, index) => index + 1
@@ -900,8 +848,8 @@ describe("renderConversationForModel", () => {
       .filter(isUserMessage)
       .map((message) => textOf(message.content[0]));
 
-    expect(firstUserTexts).not.toContain("old_user_1");
-    expect(secondUserTexts).not.toContain("old_user_1");
+    expect(firstUserTexts).toContain("old_user_1");
+    expect(secondUserTexts).toContain("old_user_1");
     expect(secondUserTexts).toContain("new_user_3");
   });
 });
