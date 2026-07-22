@@ -188,30 +188,21 @@ export function isSameSelection(
   return isSameDisplay(a, b);
 }
 
-// Slider stops for a model, in order. The three canonical levels
-// (Light/Medium/High) are always returned so the slider looks the same across
-// models; levels the model does not support natively (per its static config),
-// or that the workspace's tier does not grant, are flagged `locked` — the
-// "impossible" positions rendered with a padlock. `enabledModel` carries the
-// workspace-restricted support, so any native effort missing from it is locked.
-// Non-reasoning models (only "none") end up with all three levels locked, which
-// the slider renders as fully disabled with an explanatory tooltip.
+// Always returns the three canonical levels (Light/Medium/High) so the slider looks
+// the same across models. Levels the workspace's tier does not grant (already narrowed
+// in `enabledModel`) are flagged `locked` (padlock); non-reasoning models get all three.
 export function getEffortStops(
   enabledModel: ModelConfigurationType
 ): EffortStop[] {
-  const staticModel = getSupportedModelConfig(enabledModel);
-  const nativeEfforts = new Set(
-    getAvailableReasoningEfforts(
-      (staticModel ?? enabledModel).supportedReasoningEfforts
-    )
-  );
   const allowed = new Set(
     getAvailableReasoningEfforts(enabledModel.supportedReasoningEfforts)
   );
+  // Todo(models_picker): return reason for each stop (model does not support
+  // or workspace tier does not grant)
 
   return SLIDER_EFFORTS.map((effort) => ({
     effort,
-    locked: !nativeEfforts.has(effort) || !allowed.has(effort),
+    locked: !allowed.has(effort),
   }));
 }
 
@@ -231,9 +222,6 @@ export function getInitialEffort(
   return stops.find((stop) => !stop.locked)?.effort ?? "none";
 }
 
-// Narrower than `Selection`: label rendering only needs the display, so callers
-// without a `toSend` handy (e.g. a per-message model resolved after the fact)
-// can pass a plain literal.
 export function getModelWithReasoningEffortLabel(
   display: SelectionDisplay
 ): string {
@@ -273,10 +261,6 @@ function findAgentModel(
   );
 }
 
-// Maps a raw model selection (from sticky storage / last-requested / a fresh
-// pick) to a `Selection` with a concrete `toSend` payload. Meta-model ids map to
-// their tier; concrete ids map to the matching available model. Returns null
-// when the selection does not resolve to anything available.
 export function resolveRequestedSelection(
   models: ModelConfigurationType[],
   selection: ModelSelectionType | null | undefined
@@ -295,11 +279,6 @@ export function resolveRequestedSelection(
   if (!model) {
     return null;
   }
-  // FIXME(review): this takes the stored effort verbatim without checking that
-  // the workspace tier still grants it. If the effort is locked for this tier,
-  // the slider will display a padlocked stop and the backend (resolve_model)
-  // will silently downgrade to the model's default — display and sent effort
-  // then disagree. Consider clamping to an unlocked stop like getInitialEffort.
   const effort = selection.reasoningEffort ?? getInitialEffort(model);
   return {
     display: { kind: "model", model, effort },
@@ -307,10 +286,6 @@ export function resolveRequestedSelection(
   };
 }
 
-// The agent's own configured default, expressed as a `Selection` with a
-// `toSend` of `undefined` (so the untouched default sends no override). Agents
-// configured with the plain `auto` model — or with none at all — default to the
-// Standard tier.
 export function resolveAgentDefault({
   agentModel,
   models,
@@ -338,10 +313,7 @@ export function resolveAgentDefault({
   if (!model) {
     return standardDefault;
   }
-  // FIXME(review): same issue as resolveRequestedSelection — the agent's
-  // configured effort is used as-is even when the viewing user's tier locks it,
-  // so the picker can show an effort ("High") that resolve_model will silently
-  // downgrade when the message is sent.
+
   const effort = agentModel.reasoningEffort ?? getInitialEffort(model);
   return {
     display: { kind: "model", model, effort },

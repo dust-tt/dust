@@ -6,15 +6,12 @@ import {
 import { classNames } from "@app/lib/utils";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { SliderSteps, Tooltip } from "@dust-tt/sparkle";
-import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 
 interface ReasoningEffortSliderProps {
   stops: EffortStop[];
   value: ReasoningEffort;
   onChange: (effort: ReasoningEffort) => void;
 }
-
-const ARROW_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
 
 // A stepped slider for reasoning effort. It always shows the three canonical
 // levels (Light/Medium/High); efforts the model does not support or the
@@ -45,30 +42,18 @@ export function ReasoningEffortSlider({
     }
   };
 
-  const handleKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    // Arrow keys move the slider thumb; keep them from also driving the
-    // dropdown's focus navigation.
-    if (ARROW_KEYS.includes(e.key)) {
-      e.stopPropagation();
-    }
-  };
-
   const slider = (
     <div
       className="flex flex-col gap-1.5 px-2 py-1.5"
       // The slider lives inside a dropdown item region; stop the click from
       // bubbling to Radix (which would otherwise select/close).
       onClick={(e) => e.stopPropagation()}
-      onKeyDown={handleKeyDown}
     >
       <SliderSteps
         stepCount={stops.length}
         value={valueIndex}
         lockedSteps={lockedSteps}
         disabled={isDisabled}
-        // Hovering a step surfaces that effort's blurb. Skipped when disabled:
-        // the whole slider is then wrapped in the explanatory tooltip below,
-        // and nesting the two would double up.
         stepTooltips={
           isDisabled
             ? undefined
