@@ -12,7 +12,7 @@ This runbook provides step-by-step instructions for creating new internal MCP se
 For a minimal new server (no OAuth, no external API yet — just the skeleton to register and test):
 
 1. Create `front/lib/api/actions/servers/{provider}/metadata.ts` with a literal metadata array
-2. Create `front/lib/api/actions/servers/{provider}/tools/index.ts` with stub handlers
+2. Create `front/lib/api/actions/servers/{provider}/tools.ts` with stub handlers
 3. Create `front/lib/api/actions/servers/{provider}/index.ts` with `createServer`
 4. Register in `constants.ts` and `servers/index.ts`
 5. Add the server to `SERVER_SOURCES` in `bm25_tool_search_utils.test.ts`
@@ -28,11 +28,14 @@ with type-checked tool descriptions before writing any real API calls.
 ```text
 front/lib/api/actions/servers/{provider}/
 ├── metadata.ts           # Tool metadata array and server info
-├── tools/index.ts        # Schema-inferred handlers and built tools
+├── tools.ts              # Schema-inferred handlers and built tools
 ├── index.ts              # Provider-local server creation and registration
 ├── client.ts             # API client (optional)
 └── helpers.ts            # Helper functions (optional)
 ```
+
+Use a `tools/` directory with its own `index.ts` only once the tool implementation is split across
+multiple files.
 
 ### Registration Files
 
@@ -231,9 +234,9 @@ description: "Search Slack channels, messages, and threads by keyword or topic."
 expected tool doesn't score > 0 in its own server-scoped index, the description is too generic
 or missing the key tokens the user will type.
 
-### 2. Create `tools/index.ts`
+### 2. Create `tools.ts`
 
-Create `front/lib/api/actions/servers/{provider}/tools/index.ts`:
+Create `front/lib/api/actions/servers/{provider}/tools.ts`:
 
 ```typescript
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -435,7 +438,7 @@ export async function withAuth<T>(
 
 Use `client.ts` / `helpers.ts` based on complexity:
 
-- no external API: keep everything in `tools/index.ts`
+- no external API: keep everything in `tools.ts`
 - 1-2 simple API calls: inline, maybe add `helpers.ts`
 - several API endpoints: create `client.ts`
 - complex response formatting: add dedicated rendering helpers
@@ -445,7 +448,7 @@ Use `client.ts` / `helpers.ts` based on complexity:
 If handlers need access to `Authenticator` directly, create tools through a function instead of a
 constant.
 
-See `front/lib/api/actions/servers/github/tools/index.ts` for a full example.
+See `front/lib/api/actions/servers/github/tools.ts` for a full example.
 
 ## Icon
 
@@ -562,7 +565,7 @@ Before marking implementation complete:
 
 - every tool defines `stake`, `toolCostCategory`, `freeUsage`, and `displayLabels`
 - tool descriptions start with a bare infinitive/base verb
-- `tools/index.ts` exists and uses `ToolHandlers<typeof METADATA>`
+- `tools.ts` exists and uses `ToolHandlers<typeof METADATA>`
 - `buildTools(METADATA, handlers)` builds the runtime tool definitions
 - `index.ts` default-exports the server factory
 - the server is in `AVAILABLE_INTERNAL_MCP_SERVER_NAMES`

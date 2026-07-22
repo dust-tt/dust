@@ -3,7 +3,7 @@ import {
   doneAttribution,
   rationaleUpdate,
   statusTransitionUpdates,
-} from "@app/lib/api/actions/servers/pod_tasks/tools/index";
+} from "@app/lib/api/actions/servers/pod_tasks/tools";
 import type { Authenticator } from "@app/lib/auth";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";

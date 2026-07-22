@@ -123,7 +123,7 @@ import {
   buildDescribeToolsetOutput,
   getAvailableSandboxToolsMetadata,
   runSandboxBashTool,
-} from "./index";
+} from "./tools";
 
 describe("getAvailableSandboxToolsMetadata", () => {
   it("omits add_egress_domain by default", async () => {

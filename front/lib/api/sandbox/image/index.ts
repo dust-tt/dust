@@ -73,7 +73,7 @@ export function getSandboxImage(
   const image = imageResult.value;
 
   // Dev-only: bypass all egress restrictions. Pairs with skipping the dsbx
-  // forwarder + tearing down in-sandbox nftables in tools/index.ts.
+  // forwarder + tearing down in-sandbox nftables in tools.ts.
   if (config.getSandboxDevUnrestrictedEgress()) {
     return new Ok(image.withNetwork({ mode: "allow_all" }));
   }
