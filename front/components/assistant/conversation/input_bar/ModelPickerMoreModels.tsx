@@ -7,7 +7,7 @@ import {
   getEffortStops,
   getInitialEffort,
   getModelKey,
-  isModelDisplayed,
+  isModelSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -89,11 +89,7 @@ export function ModelPickerMoreModels({
       )
     : [];
 
-  // A concrete model (as opposed to a tier) is the active selection: mark the
-  // "More models" entry so the user knows their pick lives inside it.
-  const modelSelected = shown.display.kind === "model";
-  // The maker whose submenu holds the active model, so we can mark that
-  // provider entry too. Null when a tier (not a concrete model) is selected.
+  const isSpecificModelSelected = shown.display.kind === "model";
   const selectedModelMaker =
     shown.display.kind === "model" ? getModelMaker(shown.display.model) : null;
 
@@ -101,8 +97,8 @@ export function ModelPickerMoreModels({
     model: ModelConfigurationType,
     showMakerIcon: boolean
   ) => {
-    const isSelected = isModelDisplayed(model, shown.display);
-    const isDefault = isModelDisplayed(model, agentDefault.display);
+    const isSelected = isModelSelection(model, shown.display);
+    const isDefault = isModelSelection(model, agentDefault.display);
     const effort =
       isSelected && shown.display.kind === "model"
         ? shown.display.effort
@@ -238,7 +234,7 @@ export function ModelPickerMoreModels({
           label="More models"
           endComponent={
             <div className="flex items-center gap-1">
-              {modelSelected && (
+              {isSpecificModelSelected && (
                 <Icon
                   visual={Check}
                   size="sm"
@@ -270,7 +266,7 @@ export function ModelPickerMoreModels({
           built-in chevron (DropdownMenuSubTrigger has no endComponent slot). */}
       <DropdownMenuSubTrigger>
         <span className="flex-grow truncate text-left">More models</span>
-        {modelSelected && (
+        {isSpecificModelSelected && (
           <Icon visual={Check} size="sm" className="text-muted-foreground" />
         )}
         <Icon

@@ -138,7 +138,7 @@ export function getModelKey(providerId: string, modelId: string): string {
   return `${providerId}/${modelId}`;
 }
 
-export function isModelDisplayed(
+export function isModelSelection(
   model: ModelConfigurationType,
   display: SelectionDisplay
 ): boolean {
