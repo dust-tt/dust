@@ -48,6 +48,8 @@ function isTeamReviewerAccessError(error: unknown): boolean {
   );
 }
 
+// GitHub App tokens without organization Members access cannot resolve Team reviewers. Retry
+// without the Team fragment so valid pull request data is not discarded with the error.
 async function graphqlWithReviewerFallback<T>(
   octokit: Octokit,
   query: string,
