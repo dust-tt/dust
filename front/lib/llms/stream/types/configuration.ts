@@ -52,3 +52,16 @@ export function dropTemperature<C extends InputConfig>(config: C): C {
 export function dropReasoning<C extends InputConfig>(config: C): C {
   return { ...config, reasoning: undefined };
 }
+
+// `configParsers` helper: some providers (Anthropic) reject a forced tool call
+// while extended thinking is active, so disable reasoning when a tool is forced.
+// Apply before `dropTemperatureWhenReasoning` so the now-disabled reasoning keeps
+// any temperature the no-thinking branch allows.
+export function disableReasoningWhenForcingTool<C extends InputConfig>(
+  config: C
+): C {
+  if (config.forceTool !== undefined) {
+    return { ...config, reasoning: { effort: "none" } };
+  }
+  return config;
+}
