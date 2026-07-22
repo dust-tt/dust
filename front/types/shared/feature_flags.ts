@@ -28,11 +28,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",
     stage: "dust_only",
   },
-  openai_tool_search: {
-    description:
-      "Defer non-eager tools through OpenAI tool search until the model discovers them",
-    stage: "dust_only",
-  },
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
