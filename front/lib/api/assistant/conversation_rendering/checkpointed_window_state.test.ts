@@ -166,6 +166,40 @@ describe("CheckpointedConversationWindowState", () => {
       "pending_first_result",
       "pending_second_result",
     ]);
+
+    const result = state.fit();
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.prunedContext).toBe(true);
+  });
+
+  it("does not surface pruning from an earlier interaction", () => {
+    const state = makeState();
+
+    state.append(
+      interaction([
+        userMessage("first_question", 10),
+        assistantMessage("call_first"),
+        functionMessage("first", 11_000),
+        assistantMessage("call_second"),
+        functionMessage("second", 11_000),
+        assistantMessage("call_third"),
+        functionMessage("third", 11_000),
+      ])
+    );
+    state.append(interaction([userMessage("follow_up", 10)]));
+
+    expect(
+      toolResults(state).some((message) => isPruned(message.content))
+    ).toBe(true);
+    const result = state.fit();
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.prunedContext).toBe(false);
   });
 
   it("waits for a full checkpoint of reclaimable results before moving the frontier", () => {

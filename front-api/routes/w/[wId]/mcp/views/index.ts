@@ -67,7 +67,16 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
 
   const views = await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
     auth,
-    query.spaceIds
+    query.spaceIds,
+    {
+      includeHeavyAttributes: [
+        "authorization",
+        "cachedTools",
+        "customHeaders",
+        "lastError",
+        "sharedSecret",
+      ],
+    }
   );
 
   const flattenedServerViews = views

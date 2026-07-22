@@ -24,6 +24,7 @@ type ToolResultNode = {
   kind: "tool_result";
   message: Extract<MessageWithTokens, { role: "function" }>;
   tokenSavings: number;
+  pruned: boolean;
 };
 
 type PendingToolResult = {
@@ -52,6 +53,7 @@ function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
       kind: "tool_result",
       message,
       tokenSavings: getToolResultTokenSavings(message),
+      pruned: false,
     };
   }
 
@@ -169,9 +171,17 @@ export class CheckpointedConversationWindowState {
     // limit.
     return new Ok({
       interactions: this.renderedInteractions(),
-      prunedContext: this.prunedTokens > 0,
+      prunedContext: this.latestInteractionHasPrunedToolResults(),
       stats: this.stats(),
     });
+  }
+
+  private latestInteractionHasPrunedToolResults(): boolean {
+    const latestInteraction = this.interactions[this.interactions.length - 1];
+
+    return latestInteraction.messages.some(
+      (node) => node.kind === "tool_result" && node.pruned
+    );
   }
 
   private isModelInputCheckpoint(
@@ -228,6 +238,7 @@ export class CheckpointedConversationWindowState {
         this.eligibleToolResults[this.nextEligibleToolResultIndex];
 
       node.message = pruneToolResultMessage(node.message);
+      node.pruned = true;
       this.retainedTokens -= node.tokenSavings;
       this.prunedTokens += node.tokenSavings;
       this.eligibleToolResultTokenSavings -= node.tokenSavings;

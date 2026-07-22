@@ -270,11 +270,12 @@ export class AgentYAMLConverter {
       if (!mcpServerView) {
         return null;
       }
-      const json = mcpServerView.toJSON();
       // Match the precedence used to resolve names back on import
       // (see MCPServerViewResource.resolveAttachableByName): the view's
       // custom display name, if set, takes priority over the server's name.
-      return json.name ?? json.server.name;
+      return (
+        mcpServerView.name ?? mcpServerView.getServerDisplayMetadata().name
+      );
     } catch {
       return null;
     }

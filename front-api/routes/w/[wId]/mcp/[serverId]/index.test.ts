@@ -177,7 +177,18 @@ describe("DELETE /api/w/:wId/mcp/:serverId", () => {
 
     const stillExists = await RemoteMCPServerResource.fetchById(
       auth,
-      server.sId
+      server.sId,
+      // The factory returns the server with its heavy attributes — fetch it back the same way so the
+      // structural comparison holds.
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
     );
     expect(stillExists).toStrictEqual(server);
   });

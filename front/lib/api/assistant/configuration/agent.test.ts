@@ -12,6 +12,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -22,6 +23,7 @@ import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
@@ -37,8 +39,12 @@ describe("createAgentConfiguration with pending agent", () => {
     });
 
     // Create a pending agent using the helper function
-    const { sId: pendingId } =
+    const pendingAgentRes =
       await createPendingAgentConfiguration(authenticator);
+    if (pendingAgentRes.isErr()) {
+      throw pendingAgentRes.error;
+    }
+    const { sId: pendingId } = pendingAgentRes.value;
 
     // Convert the pending agent to active by passing its sId as agentConfigurationId
     const result = await createAgentConfiguration(authenticator, {
@@ -121,10 +127,12 @@ describe("createAgentConfiguration with pending agent", () => {
       role: "admin",
     });
 
-    // Create another user in the same workspace
+    // Create another user in the same workspace. Role is irrelevant to what this test asserts
+    // (ownership of the pending agent), so use "admin" to bypass the create-agent capability
+    // check in createPendingAgentConfiguration.
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, otherUser, {
-      role: "builder",
+      role: "admin",
     });
     const otherAuthenticator = await Authenticator.fromUserIdAndWorkspaceId(
       otherUser.sId,
@@ -132,8 +140,12 @@ describe("createAgentConfiguration with pending agent", () => {
     );
 
     // Create a pending agent owned by the other user using the helper function
-    const { sId: pendingId } =
+    const otherPendingAgentRes =
       await createPendingAgentConfiguration(otherAuthenticator);
+    if (otherPendingAgentRes.isErr()) {
+      throw otherPendingAgentRes.error;
+    }
+    const { sId: pendingId } = otherPendingAgentRes.value;
 
     // Should return an error because pending agents owned by other users cannot be updated
     const result = await createAgentConfiguration(authenticator, {
@@ -205,11 +217,17 @@ describe("createAgentConfiguration with pending agent", () => {
   });
 
   it("preserves suggestions when converting pending agent to active", async () => {
+    // Role is irrelevant to what this test asserts (suggestion preservation across the
+    // pending-to-active conversion), so use "admin" to bypass the create-agent capability check.
     const { authenticator, user } = await createResourceTest({
-      role: "builder",
+      role: "admin",
     });
-    const { sId: pendingId } =
+    const pendingAgentRes =
       await createPendingAgentConfiguration(authenticator);
+    if (pendingAgentRes.isErr()) {
+      throw pendingAgentRes.error;
+    }
+    const { sId: pendingId } = pendingAgentRes.value;
     const pendingAgent = await getAgentConfiguration(authenticator, {
       agentId: pendingId,
       variant: "light",
@@ -264,6 +282,195 @@ describe("createAgentConfiguration with pending agent", () => {
         );
       expect(suggestionsAfter).toHaveLength(1);
     }
+  });
+});
+
+describe("create agent capability", () => {
+  async function memberAuthInGroup(
+    workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"],
+    group?: Awaited<ReturnType<typeof GroupFactory.regularAuto>>
+  ) {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    if (group) {
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await GroupFactory.withMembers(adminAuth, group, [user]);
+    }
+    const authenticator = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    return { authenticator, user };
+  }
+
+  it("rejects creating a brand-new agent for a user without the capability", async () => {
+    const { workspace } = await createResourceTest({ role: "admin" });
+    const { authenticator, user } = await memberAuthInGroup(workspace);
+
+    const result = await createAgentConfiguration(authenticator, {
+      name: "Unauthorized Agent",
+      description: "Test",
+      instructions: null,
+      instructionsHtml: null,
+      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+      status: "active",
+      scope: "hidden",
+      model: {
+        providerId: "anthropic",
+        modelId: "claude-sonnet-4-5-20250929",
+        temperature: 0.7,
+      },
+      templateId: null,
+      requestedSpaceIds: [],
+      tags: [],
+      editors: [user.toJSON()],
+      authorId: user.id,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe("Creating agents is restricted.");
+    }
+  });
+
+  it("rejects a nonexistent agentConfigurationId used to bypass the capability check", async () => {
+    const { workspace } = await createResourceTest({ role: "admin" });
+    const { authenticator, user } = await memberAuthInGroup(workspace);
+
+    const result = await createAgentConfiguration(authenticator, {
+      name: "Unauthorized Agent",
+      description: "Test",
+      instructions: null,
+      instructionsHtml: null,
+      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+      status: "active",
+      scope: "hidden",
+      model: {
+        providerId: "anthropic",
+        modelId: "claude-sonnet-4-5-20250929",
+        temperature: 0.7,
+      },
+      // Doesn't match any real row, so this would otherwise take the "create new" branch.
+      agentConfigurationId: generateRandomModelSId(),
+      templateId: null,
+      requestedSpaceIds: [],
+      tags: [],
+      editors: [user.toJSON()],
+      authorId: user.id,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe("Creating agents is restricted.");
+    }
+  });
+
+  it("allows creating a brand-new agent for a user granted via a group", async () => {
+    const { workspace, authenticator: adminAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const group = await GroupFactory.regularAuto(workspace, "agent-creators");
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group,
+      grantType: "create",
+      resourceType: "agent",
+    });
+    const { authenticator, user } = await memberAuthInGroup(workspace, group);
+
+    const result = await createAgentConfiguration(authenticator, {
+      name: "Authorized Agent",
+      description: "Test",
+      instructions: null,
+      instructionsHtml: null,
+      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+      status: "active",
+      scope: "hidden",
+      model: {
+        providerId: "anthropic",
+        modelId: "claude-sonnet-4-5-20250929",
+        temperature: 0.7,
+      },
+      templateId: null,
+      requestedSpaceIds: [],
+      tags: [],
+      editors: [user.toJSON()],
+      authorId: user.id,
+    });
+
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("does not gate creating a new version of an existing agent", async () => {
+    const { workspace, authenticator: adminAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const existingAgent =
+      await AgentConfigurationFactory.createTestAgent(adminAuth);
+    const { authenticator, user } = await memberAuthInGroup(workspace);
+    // No capability grant for this user; only editing rights on the existing agent matter here.
+    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+      adminAuth,
+      existingAgent
+    );
+    if (editorGroupRes.isErr()) {
+      throw editorGroupRes.error;
+    }
+    await GroupFactory.withMembers(adminAuth, editorGroupRes.value, [user]);
+    await authenticator.refresh();
+
+    const result = await createAgentConfiguration(authenticator, {
+      name: "Updated Agent",
+      description: "Test",
+      instructions: null,
+      instructionsHtml: null,
+      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+      status: "active",
+      scope: "hidden",
+      model: {
+        providerId: "anthropic",
+        modelId: "claude-sonnet-4-5-20250929",
+        temperature: 0.7,
+      },
+      agentConfigurationId: existingAgent.sId,
+      templateId: null,
+      requestedSpaceIds: [],
+      tags: [],
+      editors: [user.toJSON()],
+      authorId: user.id,
+    });
+
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("rejects createPendingAgentConfiguration for a user without the capability", async () => {
+    const { workspace } = await createResourceTest({ role: "admin" });
+    const { authenticator } = await memberAuthInGroup(workspace);
+
+    const result = await createPendingAgentConfiguration(authenticator);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe("Creating agents is restricted.");
+    }
+  });
+
+  it("allows createPendingAgentConfiguration for a user granted via a group", async () => {
+    const { workspace, authenticator: adminAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const group = await GroupFactory.regularAuto(workspace, "agent-creators");
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group,
+      grantType: "create",
+      resourceType: "agent",
+    });
+    const { authenticator } = await memberAuthInGroup(workspace, group);
+
+    const result = await createPendingAgentConfiguration(authenticator);
+
+    expect(result.isOk()).toBe(true);
   });
 });
 

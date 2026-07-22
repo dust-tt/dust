@@ -51,7 +51,16 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   );
   const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
     auth,
-    mcpServerViewIds
+    mcpServerViewIds,
+    {
+      includeHeavyAttributes: [
+        "authorization",
+        "cachedTools",
+        "customHeaders",
+        "lastError",
+        "sharedSecret",
+      ],
+    }
   );
 
   const tools = mcpServerViews.map((v) => v.toJSON());

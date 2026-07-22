@@ -25,7 +25,15 @@ app.post(
     const auth = ctx.get("auth");
     const { serverId } = ctx.req.valid("param");
 
-    const server = await RemoteMCPServerResource.fetchById(auth, serverId);
+    const server = await RemoteMCPServerResource.fetchById(auth, serverId, {
+      includeHeavyAttributes: [
+        "authorization",
+        "cachedTools",
+        "customHeaders",
+        "lastError",
+        "sharedSecret",
+      ],
+    });
     if (!server) {
       return apiError(ctx, {
         status_code: 404,

@@ -3,6 +3,7 @@ import {
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
+import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import logger from "@app/logger/logger";
 import type {
@@ -291,10 +292,14 @@ app.get(
 
     const configVariant = variant ?? "light";
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: sId,
-      variant: configVariant,
-    });
+    // Retired global agents (e.g. gpt-4) stay resolvable internally for past conversations but
+    // must not be exposed through the public API.
+    const agentConfiguration = isRetiredGlobalAgent(sId)
+      ? null
+      : await getAgentConfiguration(auth, {
+          agentId: sId,
+          variant: configVariant,
+        });
 
     if (!agentConfiguration) {
       return apiError(ctx, {

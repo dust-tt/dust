@@ -25,7 +25,7 @@ import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
@@ -443,16 +443,10 @@ export function useDetectSkillsFromRepo({
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
   const [repositoryNotFound, setRepositoryNotFound] = useState(false);
-  const lastDetectedUrl = useRef<string | null>(null);
 
   const triggerDetect = useDebounceWithAbort(
     useCallback(
       async (repoUrl: string, signal: AbortSignal) => {
-        if (repoUrl === lastDetectedUrl.current) {
-          setDetectError(null);
-          setRepositoryNotFound(false);
-          return;
-        }
         setIsDetecting(true);
         setDetectError(null);
         setRepositoryNotFound(false);
@@ -468,7 +462,6 @@ export function useDetectSkillsFromRepo({
             }
           );
 
-          lastDetectedUrl.current = repoUrl;
           setDetectedSkills(response.skills);
         } catch (err) {
           if (signal.aborted) {
@@ -494,16 +487,7 @@ export function useDetectSkillsFromRepo({
     { delayMs: DETECT_SKILLS_DEBOUNCE_MS }
   );
 
-  const retryDetect = useCallback(
-    (repoUrl: string) => {
-      lastDetectedUrl.current = null;
-      triggerDetect(repoUrl);
-    },
-    [triggerDetect]
-  );
-
   const clearDetection = useCallback(() => {
-    lastDetectedUrl.current = null;
     setDetectedSkills([]);
     setDetectError(null);
     setRepositoryNotFound(false);
@@ -511,12 +495,11 @@ export function useDetectSkillsFromRepo({
   }, []);
 
   return {
-    detectedSkills,
     isDetecting,
-    detectError,
-    repositoryNotFound,
+    detectError: !isDetecting ? detectError : null,
+    detectedSkills: !isDetecting && !detectError ? detectedSkills : [],
+    repositoryNotFound: !isDetecting ? repositoryNotFound : false,
     triggerDetect,
-    retryDetect,
     clearDetection,
   };
 }

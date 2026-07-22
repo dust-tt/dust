@@ -1,4 +1,5 @@
 import { ModelTierPickerDropdown } from "@app/components/workspace/ModelTierPickerDropdown";
+import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getWorkspaceModelTierOptions } from "@app/lib/client/model_tier_options";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
@@ -29,8 +30,9 @@ export function ModelTiersSettingsCard({
 
   return (
     <Page.Vertical gap="sm" align="stretch">
-      <span className="heading-base text-foreground dark:text-foreground-night">
+      <span className="flex items-center gap-1 heading-base text-foreground dark:text-foreground-night">
         Models tier
+        <ModelTiersInfoButton />
       </span>
       <SettingsList>
         <SettingsList.Row

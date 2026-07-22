@@ -109,7 +109,12 @@ const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
  */
 export async function createPendingAgentConfiguration(
   auth: Authenticator
-): Promise<{ sId: string }> {
+): Promise<Result<{ sId: string }, Error>> {
+  const canCreate = await auth.hasWorkspacePermission("create", "agent");
+  if (!canCreate) {
+    return new Err(new Error("Creating agents is restricted."));
+  }
+
   const owner = auth.getNonNullableWorkspace();
   const user = auth.getNonNullableUser();
 
@@ -158,7 +163,7 @@ export async function createPendingAgentConfiguration(
     });
   });
 
-  return { sId };
+  return new Ok({ sId });
 }
 
 export async function getAgentConfigurationsWithVersion<
@@ -675,6 +680,16 @@ export async function createAgentConfiguration(
         }
 
         userFavorite = userRelation?.favorite ?? false;
+      }
+
+      // `existingAgent` is null both when no `agentConfigurationId` was given and when one was
+      // given but didn't match a real row — the latter would otherwise let a caller bypass the
+      // capability check by passing a nonexistent id and taking the "create new" branch below.
+      if (!existingAgent) {
+        const canCreate = await auth.hasWorkspacePermission("create", "agent");
+        if (!canCreate) {
+          throw new Error("Creating agents is restricted.");
+        }
       }
 
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

@@ -2613,9 +2613,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     user: UserResource;
     isBuilder: boolean;
   }): Promise<void> {
-    const existingGroup = await GroupModel.findOne({
-      where: { workspaceId: workspace.id, name: MANUAL_BUILDERS_GROUP_NAME },
-    });
+    const existingGroup =
+      await GroupResource.fetchManualBuildersGroup(workspace);
 
     if (!existingGroup && !isBuilder) {
       // Nothing to revoke from a group that doesn't exist yet.
@@ -2669,6 +2668,19 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
+   * Fetches the workspace's manual "Builders" group (MANUAL_BUILDERS_GROUP_NAME) if it has
+   * already been created, without creating it.
+   */
+  static async fetchManualBuildersGroup(
+    workspace: LightWorkspaceType
+  ): Promise<GroupResource | null> {
+    const existing = await GroupModel.findOne({
+      where: { workspaceId: workspace.id, name: MANUAL_BUILDERS_GROUP_NAME },
+    });
+    return existing ? new this(GroupModel, existing.get()) : null;
+  }
+
+  /**
    * Fetches the workspace's manual "Builders" group (MANUAL_BUILDERS_GROUP_NAME), creating it
    * empty if it doesn't exist yet. Governance capability seeding may need to grant a capability
    * to this group before any builder-role member has ever been synced into it — normally the
@@ -2677,11 +2689,9 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async fetchOrCreateManualBuildersGroup(
     workspace: LightWorkspaceType
   ): Promise<GroupResource> {
-    const existing = await GroupModel.findOne({
-      where: { workspaceId: workspace.id, name: MANUAL_BUILDERS_GROUP_NAME },
-    });
+    const existing = await GroupResource.fetchManualBuildersGroup(workspace);
     if (existing) {
-      return new this(GroupModel, existing.get());
+      return existing;
     }
 
     try {
@@ -2697,11 +2707,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       if (!(err instanceof UniqueConstraintError)) {
         throw err;
       }
-      const winner = await GroupModel.findOne({
-        where: { workspaceId: workspace.id, name: MANUAL_BUILDERS_GROUP_NAME },
-      });
+      const winner = await GroupResource.fetchManualBuildersGroup(workspace);
       assert(winner, "Builders group missing after unique constraint error");
-      return new this(GroupModel, winner.get());
+      return winner;
     }
   }
 

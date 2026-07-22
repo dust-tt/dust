@@ -6,7 +6,6 @@ import {
 } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -53,12 +52,7 @@ async function reconcileWorkspace(
   });
   const builderUserIds = new Set(builderMemberships.map((m) => m.userId));
 
-  const group = await GroupModel.findOne({
-    where: {
-      workspaceId: workspaceModelId,
-      name: MANUAL_BUILDERS_GROUP_NAME,
-    },
-  });
+  const group = await GroupResource.fetchManualBuildersGroup(lightWorkspace);
 
   let currentMemberIds = new Set<number>();
   if (group) {

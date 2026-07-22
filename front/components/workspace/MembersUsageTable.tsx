@@ -2,6 +2,7 @@ import {
   SEAT_TYPE_ICONS,
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
+import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
 import {
   getSeatBarClasses,
@@ -529,7 +530,12 @@ function buildConsumedAwuCreditsColumn(
 
 const modelTiersColumn: ColumnDef<RowData, string> = {
   id: "modelTiers" as const,
-  header: "Models tier",
+  header: () => (
+    <span className="flex items-center gap-1">
+      Models tier
+      <ModelTiersInfoButton />
+    </span>
+  ),
   enableSorting: false,
   accessorFn: (row) => row.modelTiersSummary,
   cell: (info: Info) => {

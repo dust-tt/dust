@@ -181,7 +181,10 @@ export function getMcpServerViewDescription(view: MCPServerViewType): string {
 }
 
 export function getMcpServerViewDisplayName(
-  view: MCPServerViewType,
+  view: {
+    name: string | null;
+    server: Pick<MCPServerType, "sId" | "name">;
+  },
   action?:
     | AgentBuilderMCPConfiguration
     | BuilderAction
@@ -194,7 +197,7 @@ export function getMcpServerViewDisplayName(
 }
 
 export function getMcpServerDisplayName(
-  server: MCPServerType,
+  server: Pick<MCPServerType, "sId" | "name">,
   action?:
     | AgentBuilderMCPConfiguration
     | BuilderAction

@@ -70,9 +70,37 @@ const IMAGE_LOAD_FAILED_TEXT = "Attachment: image could not be loaded.";
 const UNSUPPORTED_MEDIA_TYPE_TEXT =
   "Attachement: an unsupported media type was provided.";
 
-// The per-message leaf converters. Composites below take an object satisfying
-// this interface (`this`), so overriding one leaf on an endpoint changes how
-// every composite uses it.
+// This SDK client is shared across hosts and labs (direct Anthropic, Vertex,
+// Bedrock, ...). The goal is to let a specific endpoint override one small
+// conversion step (e.g. how a user text message becomes a text block) without
+// reimplementing the whole `buildRequestPayload`.
+//
+// To make that possible, conversions are split into two kinds:
+//
+//   - "leaf" converters (this interface): the smallest units, each turning one
+//     Base* message into one Anthropic block. E.g. `userTextMessageToTextBlock`,
+//     `imageUrlToImageBlock`. These are the override points.
+//
+//   - "composite" converters (defined below): higher-level converters that
+//     assemble blocks by delegating to leaves rather than doing the leaf work
+//     themselves. E.g. `userMessageToContentBlocks` switches on message type and
+//     calls `userTextMessageToTextBlock` / `imageUrlToImageBlock`.
+//
+// The link between them is that composites receive an object satisfying this
+// interface (`this` on the endpoint class — see `WithAnthropicAIInputConverter`)
+// and route every child call through it. So overriding a single leaf field on an
+// endpoint (e.g. Vertex swaps `imageUrlToImageBlock` for a base64 variant)
+// changes how every composite depending on it behaves — no need to touch the
+// composites or `buildRequestPayload`.
+//
+// This composes both ways: a composite is itself an override point. An endpoint
+// can override a composite method and still reach its children through
+// `this.<child>` (e.g. a custom `userMessageToContentBlocks` that calls
+// `this.userTextMessageToTextBlock`), so it picks up any leaf overrides too and
+// only the reassembly logic changes.
+//
+// "leaf" / "composite" naming lives only in comments; it's just a mental model
+// for how the pieces compose.
 export interface MessageBlockConverters {
   systemMessageToTextBlock(message: SystemTextMessage): TextBlockParam;
   userTextMessageToTextBlock(message: BaseUserTextMessage): TextBlockParam;

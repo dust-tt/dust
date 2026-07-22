@@ -1,4 +1,3 @@
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { sendMCPGlobalSharingReconfigurationEmail } from "@app/lib/api/email";
 import {
   oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
@@ -134,7 +133,15 @@ app.get(
     const { availability = "manual" } = r.data;
 
     const serverViews = (
-      await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space)
+      await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space, {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      })
     ).map((view) => view.toJSON());
 
     const filteredServerViews = serverViews.filter(
@@ -262,7 +269,7 @@ app.post(
     const affectedAgentNames = affectedAgents?.map((agent) => agent.name) ?? [];
 
     if (space.kind === "global" && affectedAgentNames.length > 0) {
-      const toolName = getMcpServerViewDisplayName(systemView.toJSON());
+      const toolName = systemView.getDisplayName();
 
       await notifyWorkspaceAdminsAboutAffectedAgents(auth, {
         toolName,

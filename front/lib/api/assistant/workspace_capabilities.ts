@@ -106,7 +106,19 @@ export async function listAvailableTools(
 
   // Fetch all MCP server views from those spaces.
   const mcpServerViews =
-    await MCPServerViewResource.listBySpacesEnsuringAutoViews(auth, userSpaces);
+    await MCPServerViewResource.listBySpacesEnsuringAutoViews(
+      auth,
+      userSpaces,
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
+    );
 
   return mcpServerViews
     .map((v) => v.toJSON())
@@ -154,6 +166,14 @@ export async function describeMcpServer(
   auth: Authenticator,
   mcpId: string
 ): Promise<MCPServerType | null> {
-  const [view] = await MCPServerViewResource.fetchByIds(auth, [mcpId]);
+  const [view] = await MCPServerViewResource.fetchByIds(auth, [mcpId], {
+    includeHeavyAttributes: [
+      "authorization",
+      "cachedTools",
+      "customHeaders",
+      "lastError",
+      "sharedSecret",
+    ],
+  });
   return view?.toJSON()?.server ?? null;
 }

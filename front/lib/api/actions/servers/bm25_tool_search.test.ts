@@ -239,6 +239,10 @@ const QUERIES: LabeledQuery[] = [
     expected: "jira.update_issue",
   },
   {
+    query: "jira update issue description",
+    expected: "jira.update_issue",
+  },
+  {
     query: "change the priority on jira issue PROJ-9",
     expected: "jira.update_issue",
     maxRank: 3,

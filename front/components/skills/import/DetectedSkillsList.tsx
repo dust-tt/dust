@@ -131,6 +131,7 @@ export function DetectedSkillsList({
 
   return (
     <>
+      {isDetecting && <DataTableLoadingSkeleton rows={3} />}
       {detectError && (
         <ContentMessage
           title="Detection failed"
@@ -141,7 +142,6 @@ export function DetectedSkillsList({
           {detectError}
         </ContentMessage>
       )}
-      {isDetecting && <DataTableLoadingSkeleton rows={3} />}
       {rows.length > 0 && (
         <ScrollableDataTable<SkillRowData>
           data={rows}

@@ -109,8 +109,7 @@ export async function updateNameAndDescriptionForMCPServerViews(
         if (v.mcpServerId === mcpServerId) {
           return false;
         }
-        const viewJson = v.toJSON();
-        return (viewJson.name ?? viewJson.server.name) === name;
+        return (v.name ?? v.getServerDisplayMetadata().name) === name;
       });
 
       if (hasConflict) {

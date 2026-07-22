@@ -1,5 +1,4 @@
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
   getInternalMCPServerNameFromSId,
   type InternalMCPServerNameType,
@@ -407,7 +406,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       getAgentConfigurationsWithVersion(auth, agentConfigVersionPairs, {
         variant: "extra_light",
       }),
-      MCPServerViewResource.fetchByIds(auth, mcpServerViewIds),
+      MCPServerViewResource.fetchByIds(auth, mcpServerViewIds, {
+        includeHeavyAttributes: ["authorization"],
+      }),
     ]);
 
     const agentConfigurationMap = new Map(
@@ -438,13 +439,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         ? mcpServerViewMap.get(action.toolConfiguration.mcpServerViewId)
         : null;
 
-      const authorizationInfo =
-        mcpServerView?.toJSON().server.authorization ?? null;
+      const authorizationInfo = mcpServerView?.getAuthorization() ?? null;
 
       const mcpServerId = mcpServerView?.mcpServerId;
-      const mcpServerDisplayName = mcpServerView
-        ? getMcpServerViewDisplayName(mcpServerView.toJSON())
-        : undefined;
+      const mcpServerDisplayName = mcpServerView?.getDisplayName();
 
       const parentUserMessage =
         parentUserMessageById[agentMessage.message.parentId!];

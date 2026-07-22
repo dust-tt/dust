@@ -11,7 +11,6 @@ import {
   promptCacheBreakpointFor,
   reasoningToOpenAIResponsesReasoning,
   systemMessagesToInputItems,
-  systemMessageToInputItem,
   toolCallResultMessageToInputItem,
   toolSpecsToOpenAITools,
   userImageMessageToInputItem,
@@ -40,7 +39,6 @@ export function WithOpenAIResponsesInputConverter<
     implements MessageItemConverters
   {
     promptCacheBreakpointFor = promptCacheBreakpointFor;
-    systemMessageToInputItem = systemMessageToInputItem;
     userImageMessageToInputItem = userImageMessageToInputItem;
     toolCallResultMessageToInputItem = toolCallResultMessageToInputItem;
     assistantTextMessageToInputItem = assistantTextMessageToInputItem;

@@ -104,7 +104,16 @@ export const conversationHandlers: ConversationHandlers = {
     if (server_view_id) {
       const mcpServerView = await MCPServerViewResource.fetchById(
         targetAuthResult.value,
-        server_view_id
+        server_view_id,
+        {
+          includeHeavyAttributes: [
+            "authorization",
+            "cachedTools",
+            "customHeaders",
+            "lastError",
+            "sharedSecret",
+          ],
+        }
       );
       if (!mcpServerView) {
         return new Err(
@@ -122,7 +131,16 @@ export const conversationHandlers: ConversationHandlers = {
 
     // List all MCP server views for the workspace.
     const mcpServerViews = await MCPServerViewResource.listByWorkspace(
-      targetAuthResult.value
+      targetAuthResult.value,
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
     );
 
     return jsonResponse({

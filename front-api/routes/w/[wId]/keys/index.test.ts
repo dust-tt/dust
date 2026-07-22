@@ -1,3 +1,4 @@
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { redactString } from "@app/types/shared/utils/string_utils";
@@ -62,5 +63,50 @@ describe("GET /api/w/:wId/keys — secret visibility", () => {
     );
     expect(returned.secret).toBe(redactString(key.secret, 4));
     expect(returned.secret).not.toBe(key.secret);
+  });
+});
+
+describe("POST /api/w/:wId/keys — role restrictions", () => {
+  it("rejects role: 'builder' — builder keys can no longer be created", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const res = await honoApp.request(`/api/w/${workspace.sId}/keys`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "builder-key", role: "builder" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("does not add a user-role key to the Builders group", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const res = await honoApp.request(`/api/w/${workspace.sId}/keys`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "user-key", role: "user" }),
+    });
+    expect(res.status).toBe(201);
+
+    const { key } = await res.json();
+    const group = await GroupResource.fetchManualBuildersGroup(workspace);
+    expect(group).toBeNull();
+    expect(key.groupIds).not.toContain(group?.id);
+  });
+
+  it("defaults to user role and does not add the Builders group", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const res = await honoApp.request(`/api/w/${workspace.sId}/keys`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "default-role-key" }),
+    });
+    expect(res.status).toBe(201);
+
+    const { key } = await res.json();
+    expect(key.role).toBe("user");
+    const group = await GroupResource.fetchManualBuildersGroup(workspace);
+    expect(group).toBeNull();
   });
 });

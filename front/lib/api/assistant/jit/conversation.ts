@@ -33,16 +33,16 @@ export async function getConversationMCPServers(
     mcpServerViewIds
   );
 
-  return mcpServerViews.map((mcpServerViewResource) => {
-    const mcpServerView = mcpServerViewResource.toJSON();
+  return mcpServerViews.map((mcpServerView) => {
+    const serverDisplayMetadata = mcpServerView.getServerDisplayMetadata();
 
     return {
       id: -1,
       sId: generateRandomModelSId(),
       type: "mcp_server_configuration",
-      name: mcpServerView.name ?? mcpServerView.server.name,
+      name: mcpServerView.name ?? serverDisplayMetadata.name,
       description:
-        mcpServerView.description ?? mcpServerView.server.description,
+        mcpServerView.description ?? serverDisplayMetadata.description,
       dataSources: null,
       tables: null,
       childAgentId: null,
@@ -55,7 +55,7 @@ export async function getConversationMCPServers(
       dustAppConfiguration: null,
       internalMCPServerId:
         mcpServerView.serverType === "internal"
-          ? mcpServerView.server.sId
+          ? mcpServerView.mcpServerId
           : null,
     };
   });
