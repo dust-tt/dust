@@ -2,11 +2,7 @@ import { ConnectWorkspaceGitHubMessage } from "@app/components/skills/import/Con
 import { DetectedSkillsList } from "@app/components/skills/import/DetectedSkillsList";
 import type { RepositoryImportFormValues } from "@app/components/skills/import/formSchema";
 import { GitHubConnectionRow } from "@app/components/skills/import/GitHubConnectionRow";
-import {
-  isImportableSkillStatus,
-  parseGitHubRepoUrl,
-} from "@app/lib/skill_detection";
-import { useWorkspaceGitHubConnection } from "@app/lib/swr/github_connection";
+import { isImportableSkillStatus } from "@app/lib/skill_detection";
 import { useDetectSkillsFromRepo } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
@@ -38,7 +34,6 @@ export function ImportFromRepositoryTab({
     detectError,
     repositoryNotFound,
     triggerDetect,
-    clearDetection,
   } = useDetectSkillsFromRepo({ owner });
 
   const { connection, isConnectionLoading, mutateConnection } =
