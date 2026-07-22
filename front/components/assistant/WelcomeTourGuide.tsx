@@ -160,7 +160,7 @@ export function WelcomeTourGuide({
 
   const { hasPermission } = useWorkspacePermissions(owner);
 
-  const isRestrictedFromAgentCreation = !hasPermission("create", "agent");
+  const canCreateAgent = hasPermission("create", "agent");
 
   const connections = useMemo(() => {
     return Object.values(CONNECTOR_CONFIGURATIONS)
@@ -199,8 +199,7 @@ export function WelcomeTourGuide({
             workspace.
           </div>
           <div className="copy-base px-3 text-muted-foreground">
-            Discover the basics of Dust in{" "}
-            {!isRestrictedFromAgentCreation ? "3" : "2"} steps.
+            Discover the basics of Dust in {canCreateAgent ? "3" : "2"} steps.
           </div>
         </>
       ),
@@ -311,7 +310,7 @@ export function WelcomeTourGuide({
         </>
       ),
     },
-    ...(!isRestrictedFromAgentCreation
+    ...(canCreateAgent
       ? [
           {
             anchorRef: createAgentButtonRef,

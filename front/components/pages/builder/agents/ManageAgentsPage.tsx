@@ -82,8 +82,8 @@ export function ManageAgentsPage() {
 
   const { hasPermission } = useWorkspacePermissions(owner);
 
-  const isRestrictedFromAgentCreation = !hasPermission("create", "agent");
-  const shouldDisableAgentFetching = isRestrictedFromAgentCreation;
+  const canCreateAgent = hasPermission("create", "agent");
+  const shouldDisableAgentFetching = !canCreateAgent;
   const isSearchActive = assistantSearch.trim() !== "";
 
   const activeTab = useMemo(() => {
@@ -215,7 +215,7 @@ export function ManageAgentsPage() {
   }, []);
 
   useEffect(() => {
-    if (isRestrictedFromAgentCreation) {
+    if (!canCreateAgent) {
       return;
     }
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -229,7 +229,7 @@ export function ManageAgentsPage() {
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [isRestrictedFromAgentCreation]);
+  }, [canCreateAgent]);
 
   const navChildren = useMemo(
     () => <AgentSidebarMenu owner={owner} />,
@@ -241,7 +241,7 @@ export function ManageAgentsPage() {
 
   return (
     <>
-      {isRestrictedFromAgentCreation ? (
+      {!canCreateAgent ? (
         <Custom404 />
       ) : (
         <>
@@ -284,7 +284,7 @@ export function ManageAgentsPage() {
                       setSelectedTags={setSelectedTags}
                       owner={owner}
                     />
-                    {!isRestrictedFromAgentCreation && (
+                    {canCreateAgent && (
                       <CreateDropdown
                         owner={owner}
                         dataGtmLocation="assistantsWorkspace"
@@ -366,7 +366,7 @@ export function ManageAgentsPage() {
                   />
                 ) : (
                   !assistantSearch &&
-                  !isRestrictedFromAgentCreation && (
+                  canCreateAgent && (
                     <div className="pt-2">
                       <EmptyCallToAction
                         href={`/w/${owner.sId}/builder/agents/create`}

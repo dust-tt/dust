@@ -53,7 +53,7 @@ export function WebAgentBrowser({
   const { createAgentButtonRef } = useWelcomeTourGuide();
   const { hasPermission } = useWorkspacePermissions(owner);
 
-  const isRestrictedFromAgentCreation = !hasPermission("create", "agent");
+  const canCreateAgent = hasPermission("create", "agent");
 
   const sortTypeLabel = useMemo(() => {
     switch (sortType) {
@@ -98,7 +98,7 @@ export function WebAgentBrowser({
 
         <div className="hidden sm:block">
           <div className="flex gap-2">
-            {!isRestrictedFromAgentCreation && (
+            {canCreateAgent && (
               <div ref={createAgentButtonRef}>
                 <CreateDropdown owner={owner} dataGtmLocation="homepage" />
               </div>
@@ -106,7 +106,7 @@ export function WebAgentBrowser({
             {isBuilder(owner) ? (
               <ManageDropdownMenu owner={owner} />
             ) : (
-              !isRestrictedFromAgentCreation && (
+              canCreateAgent && (
                 <Button
                   href={getAgentBuilderRoute(owner.sId, "manage")}
                   variant="primary"

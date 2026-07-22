@@ -36,7 +36,7 @@ export function NewAgentPage() {
   const templateId = useSearchParam("templateId");
   const conversationId = useSearchParam("conversationId");
 
-  const isRestrictedFromAgentCreation = !hasPermission("create", "agent");
+  const canCreateAgent = hasPermission("create", "agent");
 
   const {
     agentConfiguration,
@@ -68,7 +68,7 @@ export function NewAgentPage() {
 
   const isDuplicateLoading = !!duplicateAgentId && isAgentConfigurationLoading;
 
-  if (isRestrictedFromAgentCreation) {
+  if (!canCreateAgent) {
     return <Custom404 />;
   }
 

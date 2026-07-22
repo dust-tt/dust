@@ -175,11 +175,11 @@ export function ConversationMenu({
 
   const { hasPermission } = useWorkspacePermissions(owner);
 
-  const isRestrictedFromAgentCreation = !hasPermission("create", "agent");
+  const canCreateAgent = hasPermission("create", "agent");
   const canTurnIntoAgent =
     !!conversation &&
     !!user &&
-    !isRestrictedFromAgentCreation &&
+    canCreateAgent &&
     !isMobile &&
     clientType !== "extension";
   const sendNotification = useSendNotification();
