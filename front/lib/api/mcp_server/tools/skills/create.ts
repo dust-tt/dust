@@ -27,7 +27,7 @@ export function registerSkillsCreateTool(server: McpServer) {
       }
 
       const skill = result.value;
-      const workspace = auth.workspace();
+      const workspace = auth.getNonNullableWorkspace();
       return mcpJsonResponse({
         message: `Created skill "${skill.name}".`,
         skillId: skill.sId,
