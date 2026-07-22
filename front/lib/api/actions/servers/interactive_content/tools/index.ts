@@ -1,19 +1,12 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
 import { buildInteractiveContentFileNotification } from "@app/lib/api/actions/servers/interactive_content/helpers";
-import {
-  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-  INTERACTIVE_CONTENT_TOOLS_METADATA,
-} from "@app/lib/api/actions/servers/interactive_content/metadata";
+import type { INTERACTIVE_CONTENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { fetchTemplateContent } from "@app/lib/api/actions/servers/interactive_content/template_utils";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import {
@@ -37,10 +30,10 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 
-export async function createInteractiveContentTools(
+export function createInteractiveContentToolHandlers(
   auth: Authenticator,
   toolContext?: ToolContext
-): Promise<ToolDefinition[]> {
+): ToolHandlers<typeof INTERACTIVE_CONTENT_TOOLS_METADATA> {
   const handlers: ToolHandlers<typeof INTERACTIVE_CONTENT_TOOLS_METADATA> = {
     create_interactive_content_file: async (
       { file_name, mime_type, mode, source, description },
@@ -452,27 +445,5 @@ export async function createInteractiveContentTools(
     },
   };
 
-  const tools = buildTools(INTERACTIVE_CONTENT_TOOLS_METADATA, handlers);
-
-  // The file-id edit tool is deprecated in favor of editing the Frame's mounted source by path
-  // with the files server, then publishing. Conversations without the file system (created
-  // before it defaulted on) have no path tools, so they keep it.
-  //
-  // The file-id retrieve tool stays everywhere, including file-system conversations: unlike
-  // edit, it reads the canonical original directly by FileResource id rather than through the
-  // mount, so it still works for a Frame whose mountFilePath hasn't been resolved (e.g. one
-  // predating the mount system that has not gone through the backfill). The path-based files
-  // tools have no fallback for that case (files.resolve and the mount read both require
-  // mountFilePath to be set), so removing retrieve would leave such a Frame unreadable.
-  const { runContext } = toolContext ?? {};
-  const conversation = isAgentLoopRunContext(runContext)
-    ? runContext.conversation
-    : toolContext?.listToolsContext?.conversation;
-  if (conversation?.metadata?.useFileSystem === true) {
-    return tools.filter(
-      (tool) => tool.name !== EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME
-    );
-  }
-
-  return tools;
+  return handlers;
 }

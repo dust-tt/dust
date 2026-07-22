@@ -5,12 +5,11 @@ import {
 } from "@app/components/resources/resources_icon_names";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   CREATE_SKILL_TOOL_NAME,
   GET_SKILL_TOOL_NAME,
   LIST_SKILLS_TOOL_NAME,
-  SKILL_AUTHORING_TOOLS_METADATA,
+  type SKILL_AUTHORING_TOOLS_METADATA,
   UPDATE_SKILL_TOOL_NAME,
 } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import { makeSkillAuthoringResultOutput } from "@app/lib/api/actions/servers/skill_authoring/rendering";
@@ -217,7 +216,9 @@ function findDisallowedSpecialTagChanges(
   return disallowed;
 }
 
-const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
+export const SKILL_AUTHORING_TOOL_HANDLERS: ToolHandlers<
+  typeof SKILL_AUTHORING_TOOLS_METADATA
+> = {
   [LIST_SKILLS_TOOL_NAME]: async ({ filter, cursor, limit }, { auth }) => {
     const user = requireInteractiveBuilder(auth);
     if (user.isErr()) {
@@ -614,5 +615,3 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(SKILL_AUTHORING_TOOLS_METADATA, handlers);

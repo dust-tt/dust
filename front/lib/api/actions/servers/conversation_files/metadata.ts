@@ -1,6 +1,8 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import type { ToolContext } from "@app/lib/actions/types";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
+import { isFileSystemEnabledForContext } from "@app/lib/api/actions/servers/helpers";
 import { z } from "zod";
 
 export const CONVERSATION_FILES_SERVER_NAME = "conversation_files" as const;
@@ -64,6 +66,12 @@ const CAT_FILE_TOOL = {
 export const CONVERSATION_FILES_TOOLS_METADATA = [
   {
     name: CONVERSATION_LIST_FILES_ACTION_NAME,
+    isAvailableForContext: ({
+      toolContext,
+    }: {
+      toolContext?: ToolContext | undefined;
+    }) =>
+      toolContext !== undefined && !isFileSystemEnabledForContext(toolContext),
     description:
       "List all files attached to the current conversation, including " +
       "available conversation file attachments, fileIds, titles, and " +
@@ -80,6 +88,12 @@ export const CONVERSATION_FILES_TOOLS_METADATA = [
   { name: CONVERSATION_CAT_FILE_ACTION_NAME, ...CAT_FILE_TOOL },
   {
     name: CONVERSATION_SEARCH_FILES_ACTION_NAME,
+    isAvailableForContext: ({
+      toolContext,
+    }: {
+      toolContext?: ToolContext | undefined;
+    }) =>
+      toolContext !== undefined && !isFileSystemEnabledForContext(toolContext),
     description:
       "Search conversation files and content nodes semantically to find " +
       "relevant passages by meaning-based topic, concept, or terms.",
@@ -108,6 +122,12 @@ export const CONVERSATION_FILES_TOOLS_METADATA = [
 export const CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM = [
   {
     name: CONVERSATION_LIST_CONTENT_NODES_AND_TABLES_ACTION_NAME,
+    isAvailableForContext: ({
+      toolContext,
+    }: {
+      toolContext?: ToolContext | undefined;
+    }) =>
+      toolContext !== undefined && isFileSystemEnabledForContext(toolContext),
     description:
       "List content-node references (for example Notion pages and Slack " +
       "threads) and queryable tables available " +

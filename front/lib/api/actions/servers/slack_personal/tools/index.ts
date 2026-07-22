@@ -5,7 +5,6 @@ import type {
   ToolDefinition,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   isAgentLoopRunContext,
@@ -362,17 +361,11 @@ function handleSlackAuthError(error: unknown) {
   return null;
 }
 
-export interface SlackPersonalToolsResult {
-  searchMessagesTool: ToolDefinition;
-  semanticSearchMessagesTool: ToolDefinition;
-  commonTools: ToolDefinition[];
-}
-
 export function createSlackPersonalTools(
   auth: Authenticator,
   mcpServerId: string,
   toolContext?: ToolContext
-): SlackPersonalToolsResult {
+) {
   const allowFooterRemoval =
     auth.workspace()?.metadata?.slackPersonalAllowFooterRemoval ?? false;
 
@@ -1207,10 +1200,15 @@ export function createSlackPersonalTools(
     },
   };
 
-  const rawTools = buildTools(SLACK_PERSONAL_TOOLS_METADATA, handlers);
-
   // When footer removal is not allowed, strip show_sent_by_footer from the schema so
   // the LLM never sees the parameter — the handler already enforces true server-side.
+  const rawTools: ToolDefinition[] = SLACK_PERSONAL_TOOLS_METADATA.map(
+    (tool) => ({
+      ...tool,
+      handler: handlers[tool.name],
+    })
+  );
+
   const tools = allowFooterRemoval
     ? rawTools
     : rawTools.map((tool) => {

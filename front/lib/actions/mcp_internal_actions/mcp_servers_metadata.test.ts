@@ -112,8 +112,8 @@ function sortToolsStakes(
  * This mock is only used to instantiate MCP servers - the auth is not
  * actually used during tool registration, only during tool execution.
  *
- * Note: We include a mock user because some servers (e.g., agent_memory)
- * have conditional tool registration based on user presence.
+ * We include a mock user because some contextual handler factories inspect
+ * authentication state while the server is constructed.
  */
 function createMockAuthenticator(): Authenticator {
   const mockWorkspace = {

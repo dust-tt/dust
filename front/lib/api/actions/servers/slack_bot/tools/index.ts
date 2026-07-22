@@ -1,9 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolContext } from "@app/lib/actions/types";
 import {
   executeListPublicChannels,
@@ -12,16 +8,16 @@ import {
   executeUpdateMessage,
   getSlackClient,
 } from "@app/lib/api/actions/servers/slack/helpers";
-import { SLACK_BOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/slack_bot/metadata";
+import type { SLACK_BOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-export function createSlackBotTools(
+export function createSlackBotToolHandlers(
   auth: Authenticator,
   mcpServerId: string,
   toolContext?: ToolContext
-): ToolDefinition[] {
+): ToolHandlers<typeof SLACK_BOT_TOOLS_METADATA> {
   const handlers: ToolHandlers<typeof SLACK_BOT_TOOLS_METADATA> = {
     post_message: async (
       { to, message, threadTs, fileId, unfurlLinks, unfurlMedia },
@@ -293,5 +289,5 @@ export function createSlackBotTools(
     },
   };
 
-  return buildTools(SLACK_BOT_TOOLS_METADATA, handlers);
+  return handlers;
 }

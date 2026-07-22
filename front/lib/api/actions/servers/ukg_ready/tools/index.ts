@@ -1,6 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   createPTORequest,
   deletePTORequest,
@@ -12,7 +11,7 @@ import {
   getSchedules,
   withAuth,
 } from "@app/lib/api/actions/servers/ukg_ready/helpers";
-import { UKG_READY_TOOLS_METADATA } from "@app/lib/api/actions/servers/ukg_ready/metadata";
+import type { UKG_READY_TOOLS_METADATA } from "@app/lib/api/actions/servers/ukg_ready/metadata";
 import {
   renderAccrualBalances,
   renderCurrentEmployee,
@@ -25,7 +24,9 @@ import {
 import type { UkgReadyPTORequestObject } from "@app/lib/api/actions/servers/ukg_ready/types";
 import { Err, Ok } from "@app/types/shared/result";
 
-const handlers: ToolHandlers<typeof UKG_READY_TOOLS_METADATA> = {
+export const UKG_READY_TOOL_HANDLERS: ToolHandlers<
+  typeof UKG_READY_TOOLS_METADATA
+> = {
   get_my_info: async (_params, extra) => {
     return withAuth(extra, async (ctx) => {
       const result = await getCurrentEmployee(ctx);
@@ -251,5 +252,3 @@ const handlers: ToolHandlers<typeof UKG_READY_TOOLS_METADATA> = {
     });
   },
 };
-
-export const TOOLS = buildTools(UKG_READY_TOOLS_METADATA, handlers);

@@ -5,95 +5,110 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   ServerMetadata,
+  ToolDefinition,
   ToolHandlers,
   ToolMeta,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ToolContext } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
-import { default as activationRecommendationsServer } from "@app/lib/api/actions/servers/activation_recommendations";
-import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent_memory";
-import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
-import { default as agentSidekickAgentStateServer } from "@app/lib/api/actions/servers/agent_sidekick_agent_state";
-import { default as agentSidekickContextServer } from "@app/lib/api/actions/servers/agent_sidekick_context";
-import { default as agentTemplatesServer } from "@app/lib/api/actions/servers/agent_templates";
-import { default as ashbyServer } from "@app/lib/api/actions/servers/ashby";
-import { default as askUserQuestionServer } from "@app/lib/api/actions/servers/ask_user_question";
-import { default as clariCopilotServer } from "@app/lib/api/actions/servers/clari_copilot";
+import { ACTIVATION_RECOMMENDATIONS_TOOL_HANDLERS } from "@app/lib/api/actions/servers/activation_recommendations";
+import { AGENT_MEMORY_TOOL_HANDLERS } from "@app/lib/api/actions/servers/agent_memory/tools";
+import { AGENT_ROUTER_TOOL_HANDLERS } from "@app/lib/api/actions/servers/agent_router/tools";
+import { AGENT_SIDEKICK_AGENT_STATE_TOOL_HANDLERS } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/tools";
+import { AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS } from "@app/lib/api/actions/servers/agent_sidekick_context/tools";
+import { AGENT_TEMPLATES_TOOL_HANDLERS } from "@app/lib/api/actions/servers/agent_templates";
+import { ASHBY_TOOL_HANDLERS } from "@app/lib/api/actions/servers/ashby/tools";
+import { ASK_USER_QUESTION_TOOL_HANDLERS } from "@app/lib/api/actions/servers/ask_user_question/tools";
+import { CLARI_COPILOT_TOOL_HANDLERS } from "@app/lib/api/actions/servers/clari_copilot/tools";
 import { COMMON_UTILITIES_TOOL_HANDLERS } from "@app/lib/api/actions/servers/common_utilities/tools";
-import { default as confluenceServer } from "@app/lib/api/actions/servers/confluence";
-import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
-import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/servers/data_sources_file_system";
-import { default as dataWarehousesServer } from "@app/lib/api/actions/servers/data_warehouses";
-import { default as databricksServer } from "@app/lib/api/actions/servers/databricks";
-import { default as exaServer } from "@app/lib/api/actions/servers/exa";
-import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
-import { default as fathomServer } from "@app/lib/api/actions/servers/fathom";
-import { default as fileGenerationServer } from "@app/lib/api/actions/servers/file_generation";
-import { default as filesServer } from "@app/lib/api/actions/servers/files";
-import { default as freshserviceServer } from "@app/lib/api/actions/servers/freshservice";
-import { default as frontServer } from "@app/lib/api/actions/servers/front";
-import { default as githubServer } from "@app/lib/api/actions/servers/github";
-import { default as gmailServer } from "@app/lib/api/actions/servers/gmail";
-import { default as gongServer } from "@app/lib/api/actions/servers/gong";
-import { default as calendarServer } from "@app/lib/api/actions/servers/google_calendar";
-import { default as driveServer } from "@app/lib/api/actions/servers/google_drive";
-import { default as sheetsServer } from "@app/lib/api/actions/servers/google_sheets";
-import { default as httpClientServer } from "@app/lib/api/actions/servers/http_client";
-import { default as hubspotServer } from "@app/lib/api/actions/servers/hubspot";
-import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
-import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
-import { default as interactiveContentServer } from "@app/lib/api/actions/servers/interactive_content";
-import { default as jiraServer } from "@app/lib/api/actions/servers/jira";
-import { default as jitTestingServer } from "@app/lib/api/actions/servers/jit_testing";
-import { default as lumaServer } from "@app/lib/api/actions/servers/luma";
-import { default as microsoftDriveServer } from "@app/lib/api/actions/servers/microsoft_drive";
-import { default as microsoftExcelServer } from "@app/lib/api/actions/servers/microsoft_excel";
-import { default as microsoftTeamsServer } from "@app/lib/api/actions/servers/microsoft_teams";
-import { default as missingActionCatcherServer } from "@app/lib/api/actions/servers/missing_action_catcher";
-import { default as mondayServer } from "@app/lib/api/actions/servers/monday";
-import { default as notionServer } from "@app/lib/api/actions/servers/notion";
-import { default as openaiUsageServer } from "@app/lib/api/actions/servers/openai_usage";
-import { default as outlookCalendarServer } from "@app/lib/api/actions/servers/outlook/calendar_server";
-import { default as outlookMailServer } from "@app/lib/api/actions/servers/outlook/mail_server";
-import { default as planModeServer } from "@app/lib/api/actions/servers/plan_mode";
-import { default as podManagerServer } from "@app/lib/api/actions/servers/pod_manager";
-import { default as podTasksServer } from "@app/lib/api/actions/servers/pod_tasks";
-import { default as pokeServer } from "@app/lib/api/actions/servers/poke";
-import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
-import { default as productboardServer } from "@app/lib/api/actions/servers/productboard";
-import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
-import { default as runAgentServer } from "@app/lib/api/actions/servers/run_agent";
-import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
-import { default as salesforceServer } from "@app/lib/api/actions/servers/salesforce";
-import { default as salesloftServer } from "@app/lib/api/actions/servers/salesloft";
-import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
-import { default as sandboxFunctionsServer } from "@app/lib/api/actions/servers/sandbox_functions";
-import { default as schedulesManagementServer } from "@app/lib/api/actions/servers/schedules_management";
-import { default as searchServer } from "@app/lib/api/actions/servers/search";
-import { default as skillAuthoringServer } from "@app/lib/api/actions/servers/skill_authoring";
-import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
-import { default as slabServer } from "@app/lib/api/actions/servers/slab";
-import { default as slackBotServer } from "@app/lib/api/actions/servers/slack_bot";
-import { default as slackServer } from "@app/lib/api/actions/servers/slack_personal";
-import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
-import { default as soundStudio } from "@app/lib/api/actions/servers/sound_studio";
-import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_generator";
-import { default as statuspageServer } from "@app/lib/api/actions/servers/statuspage";
-import { default as toolsetsServer } from "@app/lib/api/actions/servers/toolsets";
-import { default as ukgReadyServer } from "@app/lib/api/actions/servers/ukg_ready";
-import { default as userAnalyticsServer } from "@app/lib/api/actions/servers/user_analytics";
-import { default as userMentionsServer } from "@app/lib/api/actions/servers/user_mentions";
-import { default as valtownServer } from "@app/lib/api/actions/servers/val_town";
-import { default as vantaServer } from "@app/lib/api/actions/servers/vanta";
-import { default as wakeupsServer } from "@app/lib/api/actions/servers/wakeups";
-import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
-import { default as workdayServer } from "@app/lib/api/actions/servers/workday";
-import { default as workspaceAnalyticsServer } from "@app/lib/api/actions/servers/workspace_analytics";
-import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
+import { CONFLUENCE_TOOL_HANDLERS } from "@app/lib/api/actions/servers/confluence/tools";
+import { CONVERSATION_FILES_TOOL_HANDLERS } from "@app/lib/api/actions/servers/conversation_files/tools";
+import { DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
+import {
+  DATA_SOURCES_FILE_SYSTEM_TOOL_HANDLERS,
+  DATA_SOURCES_FILE_SYSTEM_TOOL_HANDLERS_WITH_TAGS,
+} from "@app/lib/api/actions/servers/data_sources_file_system/tools";
+import { DATA_WAREHOUSES_TOOL_HANDLERS } from "@app/lib/api/actions/servers/data_warehouses/tools";
+import { DATABRICKS_TOOL_HANDLERS } from "@app/lib/api/actions/servers/databricks/tools";
+import { EXA_TOOL_HANDLERS } from "@app/lib/api/actions/servers/exa/tools";
+import { createExtractDataTools } from "@app/lib/api/actions/servers/extract_data/tools";
+import { FATHOM_TOOL_HANDLERS } from "@app/lib/api/actions/servers/fathom/tools";
+import { FILE_GENERATION_TOOL_HANDLERS } from "@app/lib/api/actions/servers/file_generation/tools";
+import { FILES_TOOL_HANDLERS } from "@app/lib/api/actions/servers/files/tools";
+import { FRESHSERVICE_TOOL_HANDLERS } from "@app/lib/api/actions/servers/freshservice/tools";
+import { FRONT_TOOL_HANDLERS } from "@app/lib/api/actions/servers/front/tools";
+import { GITHUB_TOOL_HANDLERS } from "@app/lib/api/actions/servers/github/tools";
+import { GMAIL_TOOL_HANDLERS } from "@app/lib/api/actions/servers/gmail/tools";
+import { GONG_TOOL_HANDLERS } from "@app/lib/api/actions/servers/gong/tools";
+import { GOOGLE_CALENDAR_TOOL_HANDLERS } from "@app/lib/api/actions/servers/google_calendar/tools";
+import { GOOGLE_DRIVE_TOOL_HANDLERS } from "@app/lib/api/actions/servers/google_drive/tools";
+import { GOOGLE_SHEETS_TOOL_HANDLERS } from "@app/lib/api/actions/servers/google_sheets/tools";
+import { HTTP_CLIENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/http_client/metadata";
+import { HTTP_CLIENT_TOOL_HANDLERS } from "@app/lib/api/actions/servers/http_client/tools";
+import { HUBSPOT_TOOL_HANDLERS } from "@app/lib/api/actions/servers/hubspot/tools";
+import { createImageGenerationToolHandlers } from "@app/lib/api/actions/servers/image_generation/tools";
+import { createIncludeDataTools } from "@app/lib/api/actions/servers/include_data/tools";
+import { createInteractiveContentToolHandlers } from "@app/lib/api/actions/servers/interactive_content/tools";
+import { JIRA_TOOL_HANDLERS } from "@app/lib/api/actions/servers/jira/tools";
+import { JIT_TESTING_TOOL_HANDLERS } from "@app/lib/api/actions/servers/jit_testing/tools";
+import { createLumaToolHandlers } from "@app/lib/api/actions/servers/luma/tools";
+import { MICROSOFT_DRIVE_TOOL_HANDLERS } from "@app/lib/api/actions/servers/microsoft_drive/tools";
+import { MICROSOFT_EXCEL_TOOL_HANDLERS } from "@app/lib/api/actions/servers/microsoft_excel/tools";
+import { MICROSOFT_TEAMS_TOOL_HANDLERS } from "@app/lib/api/actions/servers/microsoft_teams/tools";
+import { createMissingActionCatcherTools } from "@app/lib/api/actions/servers/missing_action_catcher/tools";
+import { MONDAY_TOOL_HANDLERS } from "@app/lib/api/actions/servers/monday/tools";
+import { createNotionToolHandlers } from "@app/lib/api/actions/servers/notion/tools";
+import { createOpenAIUsageToolHandlers } from "@app/lib/api/actions/servers/openai_usage/tools";
+import { OUTLOOK_CALENDAR_TOOL_HANDLERS } from "@app/lib/api/actions/servers/outlook/tools/calendar";
+import { OUTLOOK_TOOL_HANDLERS } from "@app/lib/api/actions/servers/outlook/tools/mail";
+import { PLAN_MODE_TOOL_HANDLERS } from "@app/lib/api/actions/servers/plan_mode/tools";
+import { createProjectManagerToolHandlers } from "@app/lib/api/actions/servers/pod_manager/tools";
+import { createProjectTasksToolHandlers } from "@app/lib/api/actions/servers/pod_tasks/tools";
+import { POKE_TOOL_HANDLERS } from "@app/lib/api/actions/servers/poke/tools";
+import { PRIMITIVE_TYPES_DEBUGGER_TOOL_HANDLERS } from "@app/lib/api/actions/servers/primitive_types_debugger/tools";
+import { createProductboardToolHandlers } from "@app/lib/api/actions/servers/productboard/tools";
+import { QUERY_TABLES_V2_TOOL_HANDLERS } from "@app/lib/api/actions/servers/query_tables_v2/tools";
+import { createRunAgentTools } from "@app/lib/api/actions/servers/run_agent";
+import { createRunDustAppTools } from "@app/lib/api/actions/servers/run_dust_app";
+import { createSalesforceToolHandlers } from "@app/lib/api/actions/servers/salesforce/tools";
+import { createSalesloftToolHandlers } from "@app/lib/api/actions/servers/salesloft/tools";
+import {
+  getAvailableSandboxToolsMetadata,
+  SANDBOX_TOOL_HANDLERS,
+} from "@app/lib/api/actions/servers/sandbox/tools";
+import { SANDBOX_FUNCTIONS_TOOL_HANDLERS } from "@app/lib/api/actions/servers/sandbox_functions/tools";
+import { createSchedulesManagementToolHandlers } from "@app/lib/api/actions/servers/schedules_management/tools";
+import { SEARCH_TOOL_METADATA_WITH_TAGS } from "@app/lib/api/actions/servers/search/metadata";
+import {
+  SEARCH_TOOL_HANDLERS,
+  SEARCH_TOOL_HANDLERS_WITH_TAGS,
+} from "@app/lib/api/actions/servers/search/tools";
+import { SKILL_AUTHORING_TOOL_HANDLERS } from "@app/lib/api/actions/servers/skill_authoring/tools";
+import { SKILL_MANAGEMENT_TOOL_HANDLERS } from "@app/lib/api/actions/servers/skill_management/tools";
+import { SLAB_TOOL_HANDLERS } from "@app/lib/api/actions/servers/slab/tools";
+import { createSlackBotToolHandlers } from "@app/lib/api/actions/servers/slack_bot/tools";
+import { createSlackPersonalToolsForContext } from "@app/lib/api/actions/servers/slack_personal";
+import { SNOWFLAKE_TOOL_HANDLERS } from "@app/lib/api/actions/servers/snowflake/tools";
+import { SOUND_STUDIO_TOOL_HANDLERS } from "@app/lib/api/actions/servers/sound_studio/tools";
+import { SPEECH_GENERATOR_TOOL_HANDLERS } from "@app/lib/api/actions/servers/speech_generator/tools";
+import { createStatuspageToolHandlers } from "@app/lib/api/actions/servers/statuspage/tools";
+import { TOOLSETS_TOOL_HANDLERS } from "@app/lib/api/actions/servers/toolsets/tools";
+import { UKG_READY_TOOL_HANDLERS } from "@app/lib/api/actions/servers/ukg_ready/tools";
+import { USER_ANALYTICS_TOOL_HANDLERS } from "@app/lib/api/actions/servers/user_analytics";
+import { USER_MENTIONS_TOOL_HANDLERS } from "@app/lib/api/actions/servers/user_mentions/tools";
+import { createValTownToolHandlers } from "@app/lib/api/actions/servers/val_town/tools";
+import { VANTA_TOOL_HANDLERS } from "@app/lib/api/actions/servers/vanta/tools";
+import { createWakeupsToolHandlers } from "@app/lib/api/actions/servers/wakeups/tools";
+import { WEB_SEARCH_BROWSE_TOOLS_METADATA } from "@app/lib/api/actions/servers/web_search_browse/metadata";
+import { WEB_SEARCH_BROWSE_TOOL_HANDLERS } from "@app/lib/api/actions/servers/web_search_browse/tools";
+import { WORKDAY_TOOL_HANDLERS } from "@app/lib/api/actions/servers/workday/tools";
+import { WORKSPACE_ANALYTICS_TOOL_HANDLERS } from "@app/lib/api/actions/servers/workspace_analytics/tools";
+import { ZENDESK_TOOL_HANDLERS } from "@app/lib/api/actions/servers/zendesk/tools";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -128,17 +143,36 @@ function createServer<
   auth: Authenticator,
   {
     serverMetadata,
-    toolHandlers,
     toolContext,
+    monitoringName = "server",
+    ...options
   }: {
     serverMetadata: ServerMetadata & { tools: T };
-    toolHandlers: ToolHandlers<T, ToolName>;
     toolContext: ToolContext | undefined;
-  }
+    monitoringName?: "server" | "tool";
+  } & (
+    | {
+        toolHandlers: ToolHandlers<T, ToolName>;
+        tools?: never;
+      }
+    | {
+        toolHandlers?: never;
+        tools: readonly ToolDefinition[];
+      }
+  )
 ) {
   const { serverInfo, tools } = serverMetadata;
 
   const server = new McpServer(serverInfo);
+
+  if (options.tools !== undefined) {
+    for (const tool of options.tools) {
+      registerTool(auth, toolContext, server, tool, {
+        monitoringName: monitoringName === "tool" ? tool.name : serverInfo.name,
+      });
+    }
+    return server;
+  }
 
   for (const tool of tools) {
     if (tool.isAvailableForContext?.({ auth, toolContext }) === false) {
@@ -151,15 +185,65 @@ function createServer<
       server,
       {
         ...tool,
-        handler: toolHandlers[tool.name],
+        handler: options.toolHandlers[tool.name],
       },
       {
-        monitoringName: serverInfo.name,
+        monitoringName: monitoringName === "tool" ? tool.name : serverInfo.name,
       }
     );
   }
 
   return server;
+}
+
+function createDataSourcesFileSystemServer(
+  auth: Authenticator,
+  toolContext: ToolContext | undefined
+) {
+  const serverMetadata = INTERNAL_MCP_SERVERS.data_sources_file_system.metadata;
+
+  if (toolContext && shouldAutoGenerateTags(toolContext)) {
+    return createServer(auth, {
+      serverMetadata: {
+        ...serverMetadata,
+        tools: DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA,
+      },
+      toolHandlers: DATA_SOURCES_FILE_SYSTEM_TOOL_HANDLERS_WITH_TAGS,
+      toolContext,
+      monitoringName: "tool",
+    });
+  }
+
+  return createServer(auth, {
+    serverMetadata,
+    toolHandlers: DATA_SOURCES_FILE_SYSTEM_TOOL_HANDLERS,
+    toolContext,
+    monitoringName: "tool",
+  });
+}
+
+function createSearchServer(
+  auth: Authenticator,
+  toolContext: ToolContext | undefined
+) {
+  const serverMetadata = INTERNAL_MCP_SERVERS.search.metadata;
+
+  if (toolContext && shouldAutoGenerateTags(toolContext)) {
+    return createServer(auth, {
+      serverMetadata: {
+        ...serverMetadata,
+        tools: SEARCH_TOOL_METADATA_WITH_TAGS,
+      },
+      toolHandlers: SEARCH_TOOL_HANDLERS_WITH_TAGS,
+      toolContext,
+    });
+  }
+
+  return createServer(auth, {
+    serverMetadata,
+    toolHandlers: SEARCH_TOOL_HANDLERS,
+    toolContext,
+  });
 }
 
 export async function getInternalMCPServer(
@@ -175,29 +259,77 @@ export async function getInternalMCPServer(
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "github":
-      return githubServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: GITHUB_TOOL_HANDLERS,
+        toolContext,
+      });
     case "ashby":
-      return ashbyServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: ASHBY_TOOL_HANDLERS,
+        toolContext,
+      });
     case "clari_copilot":
-      return clariCopilotServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: CLARI_COPILOT_TOOL_HANDLERS,
+        toolContext,
+      });
     case "hubspot":
-      return hubspotServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: HUBSPOT_TOOL_HANDLERS,
+        toolContext,
+      });
     case "image_generation":
-      return imageGenerationServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createImageGenerationToolHandlers(auth, toolContext),
+        toolContext,
+      });
     case "speech_generator":
-      return speechGenerator(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: SPEECH_GENERATOR_TOOL_HANDLERS,
+        toolContext,
+      });
     case "sound_studio":
-      return soundStudio(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: SOUND_STUDIO_TOOL_HANDLERS,
+        toolContext,
+      });
     case "file_generation":
-      return fileGenerationServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: FILE_GENERATION_TOOL_HANDLERS,
+        toolContext,
+      });
     case "interactive_content":
-      return interactiveContentServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createInteractiveContentToolHandlers(auth, toolContext),
+        toolContext,
+      });
     case "query_tables_v2":
-      return tablesQueryServerV2(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: QUERY_TABLES_V2_TOOL_HANDLERS,
+        toolContext,
+      });
     case "primitive_types_debugger":
-      return primitiveTypesDebuggerServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: PRIMITIVE_TYPES_DEBUGGER_TOOL_HANDLERS,
+        toolContext,
+      });
     case "jit_testing":
-      return jitTestingServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: JIT_TESTING_TOOL_HANDLERS,
+        toolContext,
+      });
     case "common_utilities":
       return createServer(auth, {
         serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
@@ -205,143 +337,425 @@ export async function getInternalMCPServer(
         toolContext,
       });
     case "web_search_&_browse":
-      return webSearchBrowseServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: WEB_SEARCH_BROWSE_TOOL_HANDLERS,
+        toolContext,
+      });
     case "search":
       // If we are in advanced search mode, we use the data_sources_file_system server instead.
       if (isAdvancedSearchMode(toolContext)) {
-        return dataSourcesFileSystemServer(auth, toolContext);
+        return createDataSourcesFileSystemServer(auth, toolContext);
       }
-      return searchServer(auth, toolContext);
+      return createSearchServer(auth, toolContext);
     case "missing_action_catcher":
-      return missingActionCatcherServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        tools: createMissingActionCatcherTools(toolContext),
+        toolContext,
+      });
     case "notion":
-      return notionServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createNotionToolHandlers(toolContext),
+        toolContext,
+      });
     case "openai_usage":
-      return openaiUsageServer(auth, toolContext);
-    case "include_data":
-      return includeDataServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createOpenAIUsageToolHandlers(auth, toolContext),
+        toolContext,
+      });
+    case "include_data": {
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        tools: createIncludeDataTools(auth, toolContext),
+        toolContext,
+      });
+    }
     case "run_agent":
-      return runAgentServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        tools: await createRunAgentTools(auth, toolContext),
+        toolContext,
+      });
     case "run_dust_app":
-      return dustAppServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        tools: await createRunDustAppTools(auth, toolContext),
+        toolContext,
+      });
     case "agent_router":
-      return agentRouterServer(auth, toolContext);
-    case "extract_data":
-      return extractDataServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: AGENT_ROUTER_TOOL_HANDLERS,
+        toolContext,
+      });
+    case "extract_data": {
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        tools: createExtractDataTools(auth, toolContext),
+        toolContext,
+      });
+    }
     case "salesforce":
-      return salesforceServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createSalesforceToolHandlers(auth),
+        toolContext,
+      });
     case "salesloft":
-      return salesloftServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createSalesloftToolHandlers(auth, toolContext),
+        toolContext,
+      });
     case "slab":
-      return slabServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: SLAB_TOOL_HANDLERS,
+        toolContext,
+      });
     case "snowflake":
-      return snowflakeServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: SNOWFLAKE_TOOL_HANDLERS,
+        toolContext,
+      });
     case "gmail":
-      return gmailServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: GMAIL_TOOL_HANDLERS,
+        toolContext,
+      });
     case "gong":
-      return gongServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: GONG_TOOL_HANDLERS,
+        toolContext,
+      });
     case "google_calendar":
-      return calendarServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: GOOGLE_CALENDAR_TOOL_HANDLERS,
+        toolContext,
+      });
     case "google_drive":
-      return driveServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: GOOGLE_DRIVE_TOOL_HANDLERS,
+        toolContext,
+      });
     case "google_sheets":
-      return sheetsServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: GOOGLE_SHEETS_TOOL_HANDLERS,
+        toolContext,
+      });
     case "data_sources_file_system":
-      return dataSourcesFileSystemServer(auth, toolContext);
+      return createDataSourcesFileSystemServer(auth, toolContext);
     case "conversation_files":
-      return conversationFilesServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: CONVERSATION_FILES_TOOL_HANDLERS,
+        toolContext,
+      });
     case "files":
-      return filesServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: FILES_TOOL_HANDLERS,
+        toolContext,
+      });
     case "databricks":
-      return databricksServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: DATABRICKS_TOOL_HANDLERS,
+        toolContext,
+      });
     case "jira":
-      return jiraServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: JIRA_TOOL_HANDLERS,
+        toolContext,
+      });
     case "luma":
-      return lumaServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createLumaToolHandlers(auth, toolContext),
+        toolContext,
+      });
     case "microsoft_drive":
-      return microsoftDriveServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: MICROSOFT_DRIVE_TOOL_HANDLERS,
+        toolContext,
+      });
     case "microsoft_excel":
-      return microsoftExcelServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: MICROSOFT_EXCEL_TOOL_HANDLERS,
+        toolContext,
+      });
     case "microsoft_teams":
-      return microsoftTeamsServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: MICROSOFT_TEAMS_TOOL_HANDLERS,
+        toolContext,
+      });
     case "monday":
-      return mondayServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: MONDAY_TOOL_HANDLERS,
+        toolContext,
+      });
     case "slack":
-      return slackServer(auth, mcpServerId, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        tools: await createSlackPersonalToolsForContext(
+          auth,
+          mcpServerId,
+          toolContext
+        ),
+        toolContext,
+      });
     case "slack_bot":
-      return slackBotServer(auth, mcpServerId, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createSlackBotToolHandlers(
+          auth,
+          mcpServerId,
+          toolContext
+        ),
+        toolContext,
+      });
     case "agent_memory":
-      return agentMemoryServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: AGENT_MEMORY_TOOL_HANDLERS,
+        toolContext,
+      });
     case "confluence":
-      return confluenceServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: CONFLUENCE_TOOL_HANDLERS,
+        toolContext,
+      });
     case "outlook":
-      return outlookMailServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: OUTLOOK_TOOL_HANDLERS,
+        toolContext,
+      });
     case "outlook_calendar":
-      return outlookCalendarServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: OUTLOOK_CALENDAR_TOOL_HANDLERS,
+        toolContext,
+      });
     case "agent_sidekick_agent_state":
-      return agentSidekickAgentStateServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: AGENT_SIDEKICK_AGENT_STATE_TOOL_HANDLERS,
+        toolContext,
+      });
     case "agent_sidekick_context":
-      return agentSidekickContextServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS,
+        toolContext,
+      });
     case "agent_templates":
-      return agentTemplatesServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: AGENT_TEMPLATES_TOOL_HANDLERS,
+        toolContext,
+      });
     case "exa_people_and_company":
-      return exaServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: EXA_TOOL_HANDLERS,
+        toolContext,
+      });
     case "fathom":
-      return fathomServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: FATHOM_TOOL_HANDLERS,
+        toolContext,
+      });
     case "freshservice":
-      return freshserviceServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: FRESHSERVICE_TOOL_HANDLERS,
+        toolContext,
+      });
     case "data_warehouses":
-      return dataWarehousesServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: DATA_WAREHOUSES_TOOL_HANDLERS,
+        toolContext,
+      });
     case "toolsets":
-      return toolsetsServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: TOOLSETS_TOOL_HANDLERS,
+        toolContext,
+      });
     case "val_town":
-      return valtownServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createValTownToolHandlers(auth, toolContext),
+        toolContext,
+      });
     case "vanta":
-      return vantaServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: VANTA_TOOL_HANDLERS,
+        toolContext,
+      });
     case "http_client":
-      return httpClientServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: {
+          ...INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+          tools: [
+            ...HTTP_CLIENT_TOOLS_METADATA,
+            ...WEB_SEARCH_BROWSE_TOOLS_METADATA,
+          ],
+        },
+        toolHandlers: {
+          ...HTTP_CLIENT_TOOL_HANDLERS,
+          ...WEB_SEARCH_BROWSE_TOOL_HANDLERS,
+        },
+        toolContext,
+      });
     case "front":
-      return frontServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: FRONT_TOOL_HANDLERS,
+        toolContext,
+      });
     case "zendesk":
-      return zendeskServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: ZENDESK_TOOL_HANDLERS,
+        toolContext,
+      });
     case "workspace_analytics":
-      return workspaceAnalyticsServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: WORKSPACE_ANALYTICS_TOOL_HANDLERS,
+        toolContext,
+      });
     case "skill_management":
-      return skillManagementServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: SKILL_MANAGEMENT_TOOL_HANDLERS,
+        toolContext,
+      });
     case "skill_authoring":
-      return skillAuthoringServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: SKILL_AUTHORING_TOOL_HANDLERS,
+        toolContext,
+      });
     case "schedules_management":
-      return schedulesManagementServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createSchedulesManagementToolHandlers(auth, toolContext),
+        toolContext,
+      });
     case "productboard":
-      return productboardServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createProductboardToolHandlers(),
+        toolContext,
+      });
     case "pod_manager":
-      return podManagerServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createProjectManagerToolHandlers(auth, toolContext),
+        toolContext,
+      });
     case "pod_tasks":
-      return podTasksServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createProjectTasksToolHandlers(auth, toolContext),
+        toolContext,
+      });
     case "poke":
-      return pokeServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: POKE_TOOL_HANDLERS,
+        toolContext,
+      });
     case "ask_user_question":
-      return askUserQuestionServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: ASK_USER_QUESTION_TOOL_HANDLERS,
+        toolContext,
+      });
     case "ukg_ready":
-      return ukgReadyServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: UKG_READY_TOOL_HANDLERS,
+        toolContext,
+      });
     case "user_mentions":
-      return userMentionsServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: USER_MENTIONS_TOOL_HANDLERS,
+        toolContext,
+      });
     case "statuspage":
-      return statuspageServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createStatuspageToolHandlers(auth, toolContext),
+        toolContext,
+      });
     case "sandbox":
-      return sandboxServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: {
+          ...INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+          tools: await getAvailableSandboxToolsMetadata(auth),
+        },
+        toolHandlers: SANDBOX_TOOL_HANDLERS,
+        toolContext,
+      });
     case "sandbox_functions":
-      return sandboxFunctionsServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: SANDBOX_FUNCTIONS_TOOL_HANDLERS,
+        toolContext,
+      });
     case "wakeups":
-      return wakeupsServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: createWakeupsToolHandlers(auth, toolContext),
+        toolContext,
+      });
     case "plan_mode":
-      return planModeServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: PLAN_MODE_TOOL_HANDLERS,
+        toolContext,
+      });
     case "workday":
-      return workdayServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: WORKDAY_TOOL_HANDLERS,
+        toolContext,
+      });
     case "user_analytics":
-      return userAnalyticsServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: USER_ANALYTICS_TOOL_HANDLERS,
+        toolContext,
+      });
     case "activation_recommendations":
-      return activationRecommendationsServer(auth, toolContext);
+      return createServer(auth, {
+        serverMetadata: INTERNAL_MCP_SERVERS[internalMCPServerName].metadata,
+        toolHandlers: ACTIVATION_RECOMMENDATIONS_TOOL_HANDLERS,
+        toolContext,
+      });
     default:
       assertNever(internalMCPServerName);
   }

@@ -1,13 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { BlockedAwaitingInputOutputResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
-  ToolDefinition,
   ToolHandlerExtra,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
-import type { ToolContext } from "@app/lib/actions/types";
 import {
   isAgentLoopRunContext,
   isSandboxResumeState,
@@ -224,27 +221,24 @@ function isSandboxAgentEgressRequestsAllowed(auth: Authenticator): boolean {
   );
 }
 
-export async function createSandboxTools(
-  auth: Authenticator,
-  _toolContext?: ToolContext
-): Promise<ToolDefinition[]> {
-  const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
-    bash: runSandboxBashTool,
-    describe_toolset: async ({ format }, { auth, runContext }) => {
-      const providerId = isAgentLoopRunContext(runContext)
-        ? runContext.model.providerId
-        : null;
-      if (!providerId) {
-        return new Err(new MCPError("Missing model provider ID"));
-      }
+export const SANDBOX_TOOL_HANDLERS: ToolHandlers<
+  typeof SANDBOX_TOOLS_METADATA
+> = {
+  bash: runSandboxBashTool,
+  describe_toolset: async ({ format }, { auth, runContext }) => {
+    const providerId = isAgentLoopRunContext(runContext)
+      ? runContext.model.providerId
+      : null;
+    if (!providerId) {
+      return new Err(new MCPError("Missing model provider ID"));
+    }
 
-      return buildDescribeToolsetOutput(auth, providerId, format ?? "yaml");
-    },
-    [ADD_EGRESS_DOMAIN_TOOL_NAME]: addEgressDomainTool,
-  };
+    return buildDescribeToolsetOutput(auth, providerId, format ?? "yaml");
+  },
+  [ADD_EGRESS_DOMAIN_TOOL_NAME]: addEgressDomainTool,
+};
 
-  const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
-
+export async function getAvailableSandboxToolsMetadata(auth: Authenticator) {
   // The add_egress_domain tool requires Computer access and the
   // per-workspace setting that admins toggle on top of it.
   const flags = await getFeatureFlags(auth);
@@ -252,10 +246,12 @@ export async function createSandboxTools(
     isComputerFeatureEnabled(flags) &&
     isSandboxAgentEgressRequestsAllowed(auth)
   ) {
-    return tools;
+    return SANDBOX_TOOLS_METADATA;
   }
 
-  return tools.filter((tool) => tool.name !== ADD_EGRESS_DOMAIN_TOOL_NAME);
+  return SANDBOX_TOOLS_METADATA.filter(
+    (tool) => tool.name !== ADD_EGRESS_DOMAIN_TOOL_NAME
+  );
 }
 
 export async function buildDescribeToolsetOutput(

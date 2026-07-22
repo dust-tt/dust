@@ -4,11 +4,10 @@ import type {
   ToolHandlerResult,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolContext } from "@app/lib/actions/types";
 import type { OpenAIUsageClient } from "@app/lib/api/actions/servers/openai_usage/client";
 import { getOpenAIUsageClient } from "@app/lib/api/actions/servers/openai_usage/client";
-import { OPENAI_USAGE_TOOLS_METADATA } from "@app/lib/api/actions/servers/openai_usage/metadata";
+import type { OPENAI_USAGE_TOOLS_METADATA } from "@app/lib/api/actions/servers/openai_usage/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -29,7 +28,7 @@ async function withClient(
   return action(clientResult.value);
 }
 
-export function createOpenAIUsageTools(
+export function createOpenAIUsageToolHandlers(
   _auth: Authenticator,
   _toolContext?: ToolContext
 ) {
@@ -116,5 +115,5 @@ export function createOpenAIUsageTools(
     },
   };
 
-  return buildTools(OPENAI_USAGE_TOOLS_METADATA, handlers);
+  return handlers;
 }

@@ -1,9 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createFreshserviceClient } from "@app/lib/api/actions/servers/freshservice/client";
 import { pickFields } from "@app/lib/api/actions/servers/freshservice/helpers";
-import { FRESHSERVICE_TOOLS_METADATA } from "@app/lib/api/actions/servers/freshservice/metadata";
+import type { FRESHSERVICE_TOOLS_METADATA } from "@app/lib/api/actions/servers/freshservice/metadata";
 import type {
   FreshserviceServiceItemField,
   FreshserviceTicket,
@@ -16,7 +15,9 @@ import {
 } from "@app/lib/api/actions/servers/freshservice/types";
 import { Err, Ok } from "@app/types/shared/result";
 
-const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
+export const FRESHSERVICE_TOOL_HANDLERS: ToolHandlers<
+  typeof FRESHSERVICE_TOOLS_METADATA
+> = {
   list_tickets: async ({ filter, fields, page, per_page }, { authInfo }) => {
     const clientResult = createFreshserviceClient(authInfo);
     if (clientResult.isErr()) {
@@ -1684,5 +1685,3 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
     }
   },
 };
-
-export const TOOLS = buildTools(FRESHSERVICE_TOOLS_METADATA, handlers);

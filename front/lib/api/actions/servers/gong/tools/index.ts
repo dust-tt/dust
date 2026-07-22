@@ -1,11 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   GongApiError,
   getGongClient,
 } from "@app/lib/api/actions/servers/gong/client";
-import { GONG_TOOLS_METADATA } from "@app/lib/api/actions/servers/gong/metadata";
+import type { GONG_TOOLS_METADATA } from "@app/lib/api/actions/servers/gong/metadata";
 import {
   renderCall,
   renderCalls,
@@ -19,7 +18,7 @@ function isTrackedError(error: Error): boolean {
   return !(error instanceof GongApiError && error.isInvalidInput);
 }
 
-const handlers: ToolHandlers<typeof GONG_TOOLS_METADATA> = {
+export const GONG_TOOL_HANDLERS: ToolHandlers<typeof GONG_TOOLS_METADATA> = {
   list_calls: async ({ fromDateTime, toDateTime, cursor }, { authInfo }) => {
     const clientResult = getGongClient(authInfo);
     if (clientResult.isErr()) {
@@ -160,5 +159,3 @@ const handlers: ToolHandlers<typeof GONG_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(GONG_TOOLS_METADATA, handlers);

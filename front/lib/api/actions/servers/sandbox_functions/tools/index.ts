@@ -1,5 +1,3 @@
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { SANDBOX_FUNCTIONS_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { callHandler } from "@app/lib/api/actions/servers/sandbox_functions/tools/call";
 import { dbListHandler } from "@app/lib/api/actions/servers/sandbox_functions/tools/db_list";
 import { dbQueryHandler } from "@app/lib/api/actions/servers/sandbox_functions/tools/db_query";
@@ -10,7 +8,7 @@ import { inspectInvocationsHandler } from "@app/lib/api/actions/servers/sandbox_
 import { listHandler } from "@app/lib/api/actions/servers/sandbox_functions/tools/list";
 import { publishHandler } from "@app/lib/api/actions/servers/sandbox_functions/tools/publish";
 
-const HANDLERS = {
+export const SANDBOX_FUNCTIONS_TOOL_HANDLERS = {
   list: listHandler,
   get: getHandler,
   publish: publishHandler,
@@ -21,5 +19,3 @@ const HANDLERS = {
   db_query: dbQueryHandler,
   db_reconcile: dbReconcileHandler,
 };
-
-export const TOOLS = buildTools(SANDBOX_FUNCTIONS_TOOLS_METADATA, HANDLERS);

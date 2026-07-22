@@ -1,23 +1,19 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolContext } from "@app/lib/actions/types";
 import {
   formatActionAsString,
   getActionsWithDetails,
   getBearerToken,
 } from "@app/lib/api/actions/servers/salesloft/helpers";
-import { SALESLOFT_TOOLS_METADATA } from "@app/lib/api/actions/servers/salesloft/metadata";
+import type { SALESLOFT_TOOLS_METADATA } from "@app/lib/api/actions/servers/salesloft/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
 
-export function createSalesloftTools(
+export function createSalesloftToolHandlers(
   auth: Authenticator,
   _toolContext?: ToolContext
-): ToolDefinition[] {
+): ToolHandlers<typeof SALESLOFT_TOOLS_METADATA> {
   const handlers: ToolHandlers<typeof SALESLOFT_TOOLS_METADATA> = {
     get_actions: async ({ include_due_actions_only }, extra) => {
       const bearerToken = getBearerToken(extra);
@@ -81,5 +77,5 @@ export function createSalesloftTools(
     },
   };
 
-  return buildTools(SALESLOFT_TOOLS_METADATA, handlers);
+  return handlers;
 }

@@ -132,16 +132,6 @@ export function buildClientTools<T extends Record<string, ClientToolMeta>>(
   );
 }
 
-export function buildTools<
-  const TName extends string,
-  const T extends readonly ToolMeta<TName>[],
->(metadata: T, handlers: ToolHandlers<T, TName>): ToolDefinition[] {
-  return metadata.map((tool) => ({
-    ...tool,
-    handler: handlers[tool.name],
-  }));
-}
-
 export type ServerMetadata = {
   serverInfo: InternalMCPServerDefinitionType;
   tools: readonly ToolMeta[];

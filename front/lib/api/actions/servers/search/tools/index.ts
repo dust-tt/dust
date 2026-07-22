@@ -2,7 +2,6 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
   applyNodeIdsFilterToCoreSearchArgs,
@@ -14,9 +13,9 @@ import {
 } from "@app/lib/actions/types";
 import { AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K } from "@app/lib/api/actions/servers/data_sources_file_system/tools/search";
 import {
-  SEARCH_TOOL_METADATA_WITH_TAGS,
+  type SEARCH_TOOL_METADATA_WITH_TAGS,
   SEARCH_TOOL_NAME,
-  SEARCH_TOOLS_METADATA,
+  type SEARCH_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/search/metadata";
 import { executeFindTags } from "@app/lib/api/actions/tools/find_tags";
 import { FIND_TAGS_TOOL_NAME } from "@app/lib/api/actions/tools/find_tags/metadata";
@@ -210,9 +209,5 @@ const handlersWithTags: ToolHandlers<typeof SEARCH_TOOL_METADATA_WITH_TAGS> = {
   },
 };
 
-export const TOOLS_WITHOUT_TAGS = buildTools(SEARCH_TOOLS_METADATA, handlers);
-
-export const TOOLS_WITH_TAGS = buildTools(
-  SEARCH_TOOL_METADATA_WITH_TAGS,
-  handlersWithTags
-);
+export const SEARCH_TOOL_HANDLERS = handlers;
+export const SEARCH_TOOL_HANDLERS_WITH_TAGS = handlersWithTags;

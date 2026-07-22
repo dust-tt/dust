@@ -1,6 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   buildUnavailableIntervals,
   computeAvailability,
@@ -13,7 +12,7 @@ import {
   isGoogleCalendarEvent,
   mergeIntervals,
 } from "@app/lib/api/actions/servers/google_calendar/helpers";
-import { GOOGLE_CALENDAR_TOOLS_METADATA } from "@app/lib/api/actions/servers/google_calendar/metadata";
+import type { GOOGLE_CALENDAR_TOOLS_METADATA } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
@@ -21,7 +20,9 @@ import { randomUUID } from "crypto";
 import { google } from "googleapis";
 import { DateTime, Interval } from "luxon";
 
-const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
+export const GOOGLE_CALENDAR_TOOL_HANDLERS: ToolHandlers<
+  typeof GOOGLE_CALENDAR_TOOLS_METADATA
+> = {
   list_calendars: async ({ pageToken, maxResults }, { authInfo }) => {
     const accessToken = authInfo?.token;
     assert(accessToken, "No access token provided");
@@ -474,5 +475,3 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(GOOGLE_CALENDAR_TOOLS_METADATA, handlers);

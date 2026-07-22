@@ -1,10 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   isAgentLoopRunContext,
@@ -30,7 +26,7 @@ import {
   EDIT_INFORMATION_TOOL_NAME,
   LIST_MEMBERS_TOOL_NAME,
   MOVE_CONVERSATION_TOOL_NAME,
-  POD_MANAGER_TOOLS_METADATA,
+  type POD_MANAGER_TOOLS_METADATA,
   SEMANTIC_SEARCH_TOOL_NAME,
   SET_PINNED_FRAME_TOOL_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
@@ -109,10 +105,10 @@ function formatListedConversationWithoutMessages(
   };
 }
 
-export function createProjectManagerTools(
+export function createProjectManagerToolHandlers(
   auth: Authenticator,
   toolContext?: ToolContext
-): ToolDefinition[] {
+): ToolHandlers<typeof POD_MANAGER_TOOLS_METADATA> {
   const handlers: ToolHandlers<typeof POD_MANAGER_TOOLS_METADATA> = {
     add_content_node: async (params) => {
       return withErrorHandling(async () => {
@@ -1644,5 +1640,5 @@ export function createProjectManagerTools(
     },
   };
 
-  return buildTools(POD_MANAGER_TOOLS_METADATA, handlers);
+  return handlers;
 }

@@ -1,7 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { EXA_TOOLS_METADATA } from "@app/lib/api/actions/servers/exa/metadata";
+import type { EXA_TOOLS_METADATA } from "@app/lib/api/actions/servers/exa/metadata";
 import logger from "@app/logger/logger";
 import { dustManagedServiceCredentials } from "@app/types/api/credentials";
 import { Err, Ok } from "@app/types/shared/result";
@@ -54,9 +53,7 @@ async function exaSearch({
   );
 }
 
-const handlers: ToolHandlers<typeof EXA_TOOLS_METADATA> = {
+export const EXA_TOOL_HANDLERS: ToolHandlers<typeof EXA_TOOLS_METADATA> = {
   search_people: (params) => exaSearch({ ...params, category: "people" }),
   search_companies: (params) => exaSearch({ ...params, category: "company" }),
 };
-
-export const TOOLS = buildTools(EXA_TOOLS_METADATA, handlers);

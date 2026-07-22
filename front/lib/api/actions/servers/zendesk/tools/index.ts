@@ -1,12 +1,11 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   getUniqueCustomFieldIds,
   getZendeskClient,
   ZendeskApiError,
 } from "@app/lib/api/actions/servers/zendesk/client";
-import { ZENDESK_TOOLS_METADATA } from "@app/lib/api/actions/servers/zendesk/metadata";
+import type { ZENDESK_TOOLS_METADATA } from "@app/lib/api/actions/servers/zendesk/metadata";
 import {
   renderTicket,
   renderTicketComments,
@@ -36,7 +35,9 @@ function isTrackedError(error: Error): boolean {
   return !(error instanceof ZendeskApiError && error.isInvalidInput);
 }
 
-const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
+export const ZENDESK_TOOL_HANDLERS: ToolHandlers<
+  typeof ZENDESK_TOOLS_METADATA
+> = {
   get_ticket: async (
     { ticketId, includeMetrics, includeConversation, includeAttachments },
     { authInfo, auth }
@@ -400,5 +401,3 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(ZENDESK_TOOLS_METADATA, handlers);

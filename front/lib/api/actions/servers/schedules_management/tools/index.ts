@@ -1,11 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
-import { SCHEDULES_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/schedules_management/metadata";
+import type { SCHEDULES_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { generateScheduleRule } from "@app/lib/api/assistant/configuration/triggers";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -59,7 +58,7 @@ function getUserTimezone(toolContext?: ToolContext): string | null {
   return userMessage?.context.timezone ?? null;
 }
 
-export function createSchedulesManagementTools(
+export function createSchedulesManagementToolHandlers(
   auth: Authenticator,
   toolContext?: ToolContext
 ) {
@@ -289,5 +288,5 @@ export function createSchedulesManagementTools(
     },
   };
 
-  return buildTools(SCHEDULES_MANAGEMENT_TOOLS_METADATA, handlers);
+  return handlers;
 }

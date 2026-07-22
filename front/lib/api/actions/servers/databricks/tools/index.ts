@@ -1,14 +1,15 @@
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   listWarehouses,
   renderWarehouse,
   withAuth,
 } from "@app/lib/api/actions/servers/databricks/helpers";
-import { DATABRICKS_TOOLS_METADATA } from "@app/lib/api/actions/servers/databricks/metadata";
+import type { DATABRICKS_TOOLS_METADATA } from "@app/lib/api/actions/servers/databricks/metadata";
 import { Ok } from "@app/types/shared/result";
 
-const handlers: ToolHandlers<typeof DATABRICKS_TOOLS_METADATA> = {
+export const DATABRICKS_TOOL_HANDLERS: ToolHandlers<
+  typeof DATABRICKS_TOOLS_METADATA
+> = {
   list_warehouses: async (_params, { authInfo }) => {
     return withAuth({
       authInfo,
@@ -37,5 +38,3 @@ const handlers: ToolHandlers<typeof DATABRICKS_TOOLS_METADATA> = {
     });
   },
 };
-
-export const TOOLS = buildTools(DATABRICKS_TOOLS_METADATA, handlers);

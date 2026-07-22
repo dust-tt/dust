@@ -1,15 +1,16 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   getElevenLabsClient,
   streamToBase64,
 } from "@app/lib/api/actions/servers/elevenlabs/utils";
-import { SOUND_STUDIO_TOOLS_METADATA } from "@app/lib/api/actions/servers/sound_studio/metadata";
+import type { SOUND_STUDIO_TOOLS_METADATA } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-const handlers: ToolHandlers<typeof SOUND_STUDIO_TOOLS_METADATA> = {
+export const SOUND_STUDIO_TOOL_HANDLERS: ToolHandlers<
+  typeof SOUND_STUDIO_TOOLS_METADATA
+> = {
   generate_sound_effects: async ({
     prompt,
     duration_s = 3,
@@ -56,5 +57,3 @@ const handlers: ToolHandlers<typeof SOUND_STUDIO_TOOLS_METADATA> = {
     }
   },
 };
-
-export const TOOLS = buildTools(SOUND_STUDIO_TOOLS_METADATA, handlers);

@@ -1,6 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   getPosts,
   getTopics,
@@ -13,7 +12,7 @@ import {
   formatPostSummary,
   formatTopicsAsText,
 } from "@app/lib/api/actions/servers/slab/helpers";
-import { SLAB_TOOLS_METADATA } from "@app/lib/api/actions/servers/slab/metadata";
+import type { SLAB_TOOLS_METADATA } from "@app/lib/api/actions/servers/slab/metadata";
 import {
   ERROR_MESSAGES,
   extractPostId,
@@ -24,7 +23,7 @@ import { Err, Ok } from "@app/types/shared/result";
 
 const MAX_CONTENT_SIZE = 32000;
 
-const handlers: ToolHandlers<typeof SLAB_TOOLS_METADATA> = {
+export const SLAB_TOOL_HANDLERS: ToolHandlers<typeof SLAB_TOOLS_METADATA> = {
   search_posts: async (
     { query, limit, topicId, includeArchived, publishedOnly },
     { authInfo }
@@ -157,5 +156,3 @@ const handlers: ToolHandlers<typeof SLAB_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(SLAB_TOOLS_METADATA, handlers);

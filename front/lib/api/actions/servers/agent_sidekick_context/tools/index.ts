@@ -2,7 +2,6 @@ import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp"
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { isToolWithKnowledge } from "@app/lib/actions/mcp_helper";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   MAX_PENDING_INSTRUCTIONS_SUGGESTIONS,
   MAX_PENDING_KNOWLEDGE_SUGGESTIONS,
@@ -10,11 +9,11 @@ import {
   MAX_PENDING_SUB_AGENT_SUGGESTIONS,
   MAX_PENDING_TOOLS_SUGGESTIONS,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
-import {
+import type {
   AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA,
-  type InstructionsSuggestionSchema,
-  type SkillsSuggestionSchema,
-  type ToolsSuggestionSchema,
+  InstructionsSuggestionSchema,
+  SkillsSuggestionSchema,
+  ToolsSuggestionSchema,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
@@ -543,7 +542,9 @@ async function listAllKnowledgeDataSourceViews(
   });
 }
 
-const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
+export const AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS: ToolHandlers<
+  typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA
+> = {
   get_available_models: async ({ providerId }, { auth }) => {
     let models = await getAvailableModelsForWorkspace(auth);
 
@@ -874,7 +875,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  // Suggestion handlers
+  // Suggestion AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS
   suggest_prompt_edits: async (params, { auth, runContext }) => {
     const agentConfigurationId = getAgentConfigurationIdFromContext({
       runContext,
@@ -1812,8 +1813,3 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(
-  AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA,
-  handlers
-);

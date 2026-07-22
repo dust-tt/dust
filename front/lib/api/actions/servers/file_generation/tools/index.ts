@@ -2,7 +2,6 @@ import { basename, extname } from "node:path";
 import { Readable } from "node:stream";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { resolveConversationFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
   getContentTypeFromOutputFormat,
@@ -10,7 +9,7 @@ import {
   isValidOutputType,
 } from "@app/lib/api/actions/servers/file_generation/helpers";
 import {
-  FILE_GENERATION_TOOLS_METADATA,
+  type FILE_GENERATION_TOOLS_METADATA,
   OUTPUT_FORMATS,
 } from "@app/lib/api/actions/servers/file_generation/metadata";
 import config from "@app/lib/api/config";
@@ -22,7 +21,9 @@ import { validateUrl } from "@app/types/shared/utils/url_utils";
 import ConvertAPI from "convertapi";
 import { marked } from "marked";
 
-const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
+export const FILE_GENERATION_TOOL_HANDLERS: ToolHandlers<
+  typeof FILE_GENERATION_TOOLS_METADATA
+> = {
   get_supported_source_formats_for_output_format: async ({ output_format }) => {
     const formats = await cacheWithRedis(
       async () => {
@@ -286,5 +287,3 @@ ${file_content
     ]);
   },
 };
-
-export const TOOLS = buildTools(FILE_GENERATION_TOOLS_METADATA, handlers);

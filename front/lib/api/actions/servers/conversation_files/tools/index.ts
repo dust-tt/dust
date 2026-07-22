@@ -5,12 +5,11 @@ import {
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   CONVERSATION_CAT_FILE_ACTION_NAME,
-  CONVERSATION_FILES_TOOLS_METADATA,
-  CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM,
+  type CONVERSATION_FILES_TOOLS_METADATA,
+  type CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM,
   CONVERSATION_LIST_CONTENT_NODES_AND_TABLES_ACTION_NAME,
   CONVERSATION_LIST_FILES_ACTION_NAME,
   CONVERSATION_SEARCH_FILES_ACTION_NAME,
@@ -398,8 +397,6 @@ async function getFileFromConversation(
   });
 }
 
-export const TOOLS = buildTools(CONVERSATION_FILES_TOOLS_METADATA, handlers);
-
 const handlersWithFilesystem: ToolHandlers<
   typeof CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM
 > = {
@@ -409,7 +406,7 @@ const handlersWithFilesystem: ToolHandlers<
     handlers[CONVERSATION_CAT_FILE_ACTION_NAME],
 };
 
-export const TOOLS_WITH_FILESYSTEM = buildTools(
-  CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM,
-  handlersWithFilesystem
-);
+export const CONVERSATION_FILES_TOOL_HANDLERS = {
+  ...handlers,
+  ...handlersWithFilesystem,
+};

@@ -1,9 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
   type ToolContext,
@@ -14,7 +10,7 @@ import {
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import {
   CREATE_TASKS_TOOL_NAME,
-  POD_TASKS_TOOLS_METADATA,
+  type POD_TASKS_TOOLS_METADATA,
   START_TASK_AGENT_TOOL_NAME,
   UPDATE_TASKS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_tasks/metadata";
@@ -202,10 +198,10 @@ function formatTaskListingLine(row: ProjectTaskResource): string {
   return lines.join("\n");
 }
 
-export function createProjectTasksTools(
+export function createProjectTasksToolHandlers(
   auth: Authenticator,
   toolContext?: ToolContext
-): ToolDefinition[] {
+): ToolHandlers<typeof POD_TASKS_TOOLS_METADATA> {
   const owner = auth.getNonNullableWorkspace();
   const handlers: ToolHandlers<typeof POD_TASKS_TOOLS_METADATA> = {
     list_tasks: async ({
@@ -530,5 +526,5 @@ export function createProjectTasksTools(
     },
   };
 
-  return buildTools(POD_TASKS_TOOLS_METADATA, handlers);
+  return handlers;
 }

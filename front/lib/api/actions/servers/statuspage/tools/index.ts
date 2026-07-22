@@ -4,11 +4,10 @@ import type {
   ToolHandlerResult,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolContext } from "@app/lib/actions/types";
 import type { StatuspageClient } from "@app/lib/api/actions/servers/statuspage/client";
 import { getStatuspageClient } from "@app/lib/api/actions/servers/statuspage/client";
-import { STATUSPAGE_TOOLS_METADATA } from "@app/lib/api/actions/servers/statuspage/metadata";
+import type { STATUSPAGE_TOOLS_METADATA } from "@app/lib/api/actions/servers/statuspage/metadata";
 import {
   renderComponentsList,
   renderIncidentDetails,
@@ -30,7 +29,7 @@ async function withClient(
   return action(clientResult.value);
 }
 
-export function createStatuspageTools(
+export function createStatuspageToolHandlers(
   _auth: Authenticator,
   _toolContext?: ToolContext
 ) {
@@ -220,5 +219,5 @@ export function createStatuspageTools(
     },
   };
 
-  return buildTools(STATUSPAGE_TOOLS_METADATA, handlers);
+  return handlers;
 }

@@ -1,6 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AshbyClient } from "@app/lib/api/actions/servers/ashby/client";
 import {
   AshbyAPIError,
@@ -15,7 +14,7 @@ import {
   resolveFieldSubmissions,
 } from "@app/lib/api/actions/servers/ashby/helpers";
 import {
-  ASHBY_TOOLS_METADATA,
+  type ASHBY_TOOLS_METADATA,
   CREATE_REFERRAL_TOOL_NAME,
   GET_REFERRAL_FORM_TOOL_NAME,
 } from "@app/lib/api/actions/servers/ashby/metadata";
@@ -39,7 +38,7 @@ import { validate as validateUuid } from "uuid";
 
 const DEFAULT_SEARCH_LIMIT = 20;
 
-const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
+export const ASHBY_TOOL_HANDLERS: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   search_candidates: async ({ email, name }, extra) => {
     if (!email && !name) {
       return new Err(
@@ -798,5 +797,3 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(ASHBY_TOOLS_METADATA, handlers);

@@ -1,8 +1,5 @@
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
-import {
-  buildTools,
-  type ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { workspaceAdminGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ToolContext } from "@app/lib/actions/types";
@@ -52,8 +49,6 @@ const handlers: ToolHandlers<typeof TEST_TOOLS_METADATA> = {
   open_tool: async () => new Ok([{ type: "text" as const, text: "open ok" }]),
 };
 
-const TEST_TOOLS = buildTools(TEST_TOOLS_METADATA, handlers);
-
 async function authForRole(role: MembershipRoleType): Promise<Authenticator> {
   const workspace = await WorkspaceFactory.basic();
   await GroupFactory.defaults(workspace);
@@ -77,11 +72,20 @@ async function callTestTool(auth: Authenticator, toolName: string) {
     },
   } as unknown as ToolContext;
   const server = new McpServer({ name: "admin_guard_test", version: "1.0.0" });
-  for (const tool of TEST_TOOLS) {
-    registerTool(auth, toolContext, server, tool, {
-      monitoringName: "admin_guard_test",
-    });
-  }
+  registerTool(
+    auth,
+    toolContext,
+    server,
+    { ...TEST_TOOLS_METADATA[0], handler: handlers.guarded_tool },
+    { monitoringName: "admin_guard_test" }
+  );
+  registerTool(
+    auth,
+    toolContext,
+    server,
+    { ...TEST_TOOLS_METADATA[1], handler: handlers.open_tool },
+    { monitoringName: "admin_guard_test" }
+  );
 
   const [clientTransport, serverTransport] =
     InMemoryWithAuthTransport.createLinkedPair();

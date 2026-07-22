@@ -1,11 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
-import { WAKEUPS_TOOLS_METADATA } from "@app/lib/api/actions/servers/wakeups/metadata";
+import type { WAKEUPS_TOOLS_METADATA } from "@app/lib/api/actions/servers/wakeups/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
@@ -125,7 +124,7 @@ function renderWakeUp(wakeUp: WakeUpType): string {
   );
 }
 
-export function createWakeupsTools(
+export function createWakeupsToolHandlers(
   auth: Authenticator,
   toolContext?: ToolContext
 ) {
@@ -332,5 +331,5 @@ export function createWakeupsTools(
     },
   };
 
-  return buildTools(WAKEUPS_TOOLS_METADATA, handlers);
+  return handlers;
 }

@@ -1,9 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolContext } from "@app/lib/actions/types";
 import {
   checkImageGenerationRateLimit,
@@ -13,7 +9,7 @@ import {
   trackTokenUsage,
   uploadAndFormatImageResponse,
 } from "@app/lib/api/actions/servers/image_generation/helpers";
-import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/image_generation/metadata";
+import type { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { getImageGenerationLLM } from "@app/lib/api/llm/getImageGenerationLLM";
 import type {
   ImageGenerationInput,
@@ -26,10 +22,10 @@ import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { startObservation } from "@langfuse/tracing";
 
-export function createImageGenerationTools(
+export function createImageGenerationToolHandlers(
   auth: Authenticator,
   toolContext?: ToolContext
-): ToolDefinition[] {
+): ToolHandlers<typeof IMAGE_GENERATION_TOOLS_METADATA> {
   const handlers: ToolHandlers<typeof IMAGE_GENERATION_TOOLS_METADATA> = {
     generate_image: async (
       { prompt, outputName, aspectRatio, referenceImages, quality },
@@ -181,5 +177,5 @@ export function createImageGenerationTools(
     },
   };
 
-  return buildTools(IMAGE_GENERATION_TOOLS_METADATA, handlers);
+  return handlers;
 }

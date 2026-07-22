@@ -1,11 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   GET_MENTION_MARKDOWN_TOOL_NAME,
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
-  USER_MENTIONS_TOOLS_METADATA,
+  type USER_MENTIONS_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/user_mentions/metadata";
 import config from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -15,7 +14,9 @@ import { Err, Ok } from "@app/types/shared/result";
 import { getHeaderFromUserEmail } from "@app/types/user";
 import { DustAPI } from "@dust-tt/client";
 
-const handlers: ToolHandlers<typeof USER_MENTIONS_TOOLS_METADATA> = {
+export const USER_MENTIONS_TOOL_HANDLERS: ToolHandlers<
+  typeof USER_MENTIONS_TOOLS_METADATA
+> = {
   [SEARCH_AVAILABLE_USERS_TOOL_NAME]: async (
     { searchTerm },
     { auth, runContext }
@@ -82,5 +83,3 @@ const handlers: ToolHandlers<typeof USER_MENTIONS_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(USER_MENTIONS_TOOLS_METADATA, handlers);

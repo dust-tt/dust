@@ -1,9 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { jsonToMarkdown } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   extractTextFromBuffer,
@@ -18,7 +14,7 @@ import {
   logAndReturnError,
   withAuth,
 } from "@app/lib/api/actions/servers/salesforce/helpers";
-import { SALESFORCE_TOOLS_METADATA } from "@app/lib/api/actions/servers/salesforce/metadata";
+import type { SALESFORCE_TOOLS_METADATA } from "@app/lib/api/actions/servers/salesforce/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
 import type { DescribeSObjectResult } from "jsforce";
@@ -37,7 +33,9 @@ interface DescribeFieldResult {
   picklistValues?: Array<{ active: boolean; value: string }> | null;
 }
 
-export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
+export function createSalesforceToolHandlers(
+  auth: Authenticator
+): ToolHandlers<typeof SALESFORCE_TOOLS_METADATA> {
   const handlers: ToolHandlers<typeof SALESFORCE_TOOLS_METADATA> = {
     execute_read_query: async ({ query }, extra) => {
       return withAuth(extra, async (conn) => {
@@ -389,5 +387,5 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
     },
   };
 
-  return buildTools(SALESFORCE_TOOLS_METADATA, handlers);
+  return handlers;
 }

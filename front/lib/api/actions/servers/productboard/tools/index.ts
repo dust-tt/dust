@@ -1,12 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
-  ToolDefinition,
   ToolHandlerExtra,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getProductboardClient } from "@app/lib/api/actions/servers/productboard/client";
-import { PRODUCTBOARD_TOOLS_METADATA } from "@app/lib/api/actions/servers/productboard/metadata";
+import type { PRODUCTBOARD_TOOLS_METADATA } from "@app/lib/api/actions/servers/productboard/metadata";
 import {
   renderEntitiesList,
   renderEntityConfigurationsList,
@@ -35,7 +33,9 @@ function getAccessToken(
   return new Ok(accessToken);
 }
 
-export function createProductboardTools(): ToolDefinition[] {
+export function createProductboardToolHandlers(): ToolHandlers<
+  typeof PRODUCTBOARD_TOOLS_METADATA
+> {
   const handlers: ToolHandlers<typeof PRODUCTBOARD_TOOLS_METADATA> = {
     create_note: async ({ type, fields, relationships }, { authInfo }) => {
       const accessTokenResult = getAccessToken(authInfo);
@@ -451,5 +451,5 @@ export function createProductboardTools(): ToolDefinition[] {
     },
   };
 
-  return buildTools(PRODUCTBOARD_TOOLS_METADATA, handlers);
+  return handlers;
 }

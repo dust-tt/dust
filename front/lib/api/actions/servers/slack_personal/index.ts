@@ -1,11 +1,8 @@
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolContext } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { SLACK_TOOL_LOG_NAME } from "./metadata";
 import type { SlackAIStatus } from "./tools";
 import {
   createSlackPersonalTools,
@@ -15,13 +12,11 @@ import {
 
 const localLogger = logger.child({ module: "mcp_slack_personal" });
 
-async function createServer(
+export async function createSlackPersonalToolsForContext(
   auth: Authenticator,
   mcpServerId: string,
   toolContext?: ToolContext
-): Promise<McpServer> {
-  const server = makeInternalMCPServer("slack");
-
+): Promise<ToolDefinition[]> {
   const c = await getSlackConnectionForMCPServer(auth, mcpServerId);
 
   const slackAIStatus: SlackAIStatus = c.isOk()
@@ -44,25 +39,8 @@ async function createServer(
   // If we're not connected to Slack, we arbitrarily include the keyword search tool,
   // just so there is one in the list. As soon as we're connected, it will show the correct one.
   if (slackAIStatus === "disabled" || slackAIStatus === "disconnected") {
-    registerTool(auth, toolContext, server, searchMessagesTool, {
-      monitoringName: SLACK_TOOL_LOG_NAME,
-    });
+    return [searchMessagesTool, ...commonTools];
   }
 
-  if (slackAIStatus === "enabled") {
-    registerTool(auth, toolContext, server, semanticSearchMessagesTool, {
-      monitoringName: SLACK_TOOL_LOG_NAME,
-    });
-  }
-
-  // Register all common tools.
-  for (const tool of commonTools) {
-    registerTool(auth, toolContext, server, tool, {
-      monitoringName: SLACK_TOOL_LOG_NAME,
-    });
-  }
-
-  return server;
+  return [semanticSearchMessagesTool, ...commonTools];
 }
-
-export default createServer;

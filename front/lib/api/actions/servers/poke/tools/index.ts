@@ -1,8 +1,7 @@
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   GET_WORKSPACE_METADATA_TOOL_NAME,
-  POKE_TOOLS_METADATA,
+  type POKE_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/poke/metadata";
 import { agentHandlers } from "@app/lib/api/actions/servers/poke/tools/agents";
 import { connectorHandlers } from "@app/lib/api/actions/servers/poke/tools/connectors";
@@ -19,7 +18,7 @@ import config from "@app/lib/api/config";
 import { getMetronomeCustomerUrl } from "@app/lib/metronome/urls";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
-const handlers: ToolHandlers<typeof POKE_TOOLS_METADATA> = {
+export const POKE_TOOL_HANDLERS: ToolHandlers<typeof POKE_TOOLS_METADATA> = {
   [GET_WORKSPACE_METADATA_TOOL_NAME]: async ({ workspace_id }, extra) => {
     const gateResult = await enforcePokeSecurityGates(
       extra,
@@ -77,5 +76,3 @@ const handlers: ToolHandlers<typeof POKE_TOOLS_METADATA> = {
   ...agentHandlers,
   ...skillHandlers,
 };
-
-export const TOOLS = buildTools(POKE_TOOLS_METADATA, handlers);

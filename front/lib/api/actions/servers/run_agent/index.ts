@@ -9,11 +9,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  makeInternalMCPServer,
-  makeMCPToolExit,
-} from "@app/lib/actions/mcp_internal_actions/utils";
-import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import { makeMCPToolExit } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   classifyToolAbortSignal,
   type HandledToolAbortClassification,
@@ -33,7 +29,6 @@ import { getOrCreateConversation } from "@app/lib/api/actions/servers/run_agent/
 import {
   getRunAgentToolDescription,
   RUN_AGENT_CONFIGURABLE_PROPERTIES,
-  RUN_AGENT_PLACEHOLDER_TOOL_NAME,
   RUN_AGENT_TOOL_SCHEMA,
 } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { isTransientStreamError } from "@app/lib/api/actions/servers/run_agent/network_errors";
@@ -74,7 +69,6 @@ import type {
 } from "@dust-tt/client";
 
 import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestMeta } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import maxBy from "lodash/maxBy";
@@ -843,12 +837,10 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
   };
 }
 
-async function createServer(
+export async function createRunAgentTools(
   auth: Authenticator,
   toolContext?: ToolContext
-): Promise<McpServer> {
-  const server = makeInternalMCPServer("run_agent");
-
+): Promise<ToolDefinition[]> {
   let childAgentId: string | null = null;
 
   if (
@@ -880,13 +872,10 @@ async function createServer(
     );
   }
 
-  // If we have no child ID (unexpected) or the child agent was archived, return a dummy server
-  // whose tool name and description informs the agent of the situation.
+  // If we have no child ID (unexpected) or the child agent was archived, return a dummy tool
+  // whose name and description informs the agent of the situation.
   if (!childAgentBlob) {
-    registerTool(
-      auth,
-      toolContext,
-      server,
+    return [
       {
         name: "run_agent_tool_not_available",
         description:
@@ -902,12 +891,7 @@ async function createServer(
         freeUsage: false,
         handler: async () => new Err(new MCPError("No child agent configured")),
       },
-      {
-        monitoringName: RUN_AGENT_PLACEHOLDER_TOOL_NAME,
-      }
-    );
-
-    return server;
+    ];
   }
 
   const isHandoffConfiguration = isRunAgentHandoffMode(toolContext);
@@ -960,11 +944,7 @@ async function createServer(
       }),
   } as unknown as ToolDefinition;
 
-  registerTool(auth, toolContext, server, toolDefinition, {
-    monitoringName: RUN_AGENT_PLACEHOLDER_TOOL_NAME,
-  });
-
-  return server;
+  return [toolDefinition];
 }
 
 function getLatestVersionByParentMessageId(
@@ -983,5 +963,3 @@ function getLatestVersionByParentMessageId(
       )
     : undefined;
 }
-
-export default createServer;

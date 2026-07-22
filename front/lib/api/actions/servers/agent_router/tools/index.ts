@@ -1,7 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { AGENT_ROUTER_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_router/metadata";
+import type { AGENT_ROUTER_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_suggestion";
 import apiConfig from "@app/lib/api/config";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -14,7 +13,9 @@ import { DustAPI } from "@dust-tt/client";
 
 const MAX_INSTRUCTIONS_LENGTH = 1000;
 
-const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
+export const AGENT_ROUTER_TOOL_HANDLERS: ToolHandlers<
+  typeof AGENT_ROUTER_TOOLS_METADATA
+> = {
   list_all_published_agents: async (_, { auth }) => {
     const owner = auth.getNonNullableWorkspace();
     const user = auth.user();
@@ -131,5 +132,3 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(AGENT_ROUTER_TOOLS_METADATA, handlers);

@@ -2,7 +2,6 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { TablesConfigurationToolType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { GET_DATABASE_SCHEMA_MARKER } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
@@ -13,7 +12,7 @@ import {
   EXECUTE_DATABASE_QUERY_TOOL_NAME,
   GET_DATABASE_SCHEMA_TOOL_NAME,
   LIST_TABLES_TOOL_NAME,
-  QUERY_TABLES_V2_TOOLS_METADATA,
+  type QUERY_TABLES_V2_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import {
   getDatabaseExampleRowsContent,
@@ -79,7 +78,9 @@ async function resolveTableConfigurations(
   });
 }
 
-const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
+export const QUERY_TABLES_V2_TOOL_HANDLERS: ToolHandlers<
+  typeof QUERY_TABLES_V2_TOOLS_METADATA
+> = {
   [LIST_TABLES_TOOL_NAME]: async ({ tables }, { auth }) => {
     const resolvedRes = await resolveTableConfigurations(auth, tables);
     if (resolvedRes.isErr()) {
@@ -287,5 +288,3 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
     });
   },
 };
-
-export const TOOLS = buildTools(QUERY_TABLES_V2_TOOLS_METADATA, handlers);

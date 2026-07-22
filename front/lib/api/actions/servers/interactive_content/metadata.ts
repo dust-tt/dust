@@ -1,4 +1,6 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolContext } from "@app/lib/actions/types";
+import { isFileSystemEnabledForContext } from "@app/lib/api/actions/servers/helpers";
 import type { InteractiveContentFileContentType } from "@app/types/files";
 import {
   frameContentType,
@@ -103,6 +105,12 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = [
   },
   {
     name: EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+    isAvailableForContext: ({
+      toolContext,
+    }: {
+      toolContext?: ToolContext | undefined;
+    }) =>
+      toolContext !== undefined && !isFileSystemEnabledForContext(toolContext),
     description:
       "Edit an existing Frame: change its code, for example to fix a chart, adjust colors, or " +
       "update text and layout. Replaces a specified text segment with new text; each edit creates " +

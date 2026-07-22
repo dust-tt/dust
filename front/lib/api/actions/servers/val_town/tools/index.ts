@@ -1,12 +1,11 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolContext } from "@app/lib/actions/types";
 import {
   getValTownClient,
   isValTownError,
 } from "@app/lib/api/actions/servers/val_town/helpers";
-import { VAL_TOWN_TOOLS_METADATA } from "@app/lib/api/actions/servers/val_town/metadata";
+import type { VAL_TOWN_TOOLS_METADATA } from "@app/lib/api/actions/servers/val_town/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { Err, Ok } from "@app/types/shared/result";
@@ -16,7 +15,7 @@ import type { RequestInit } from "undici";
 const API_KEY_NOT_CONFIGURED_ERROR =
   "Val Town API key not configured. Please configure a secret containing your Val Town API key in the agent settings.";
 
-export function createValTownTools(
+export function createValTownToolHandlers(
   auth: Authenticator,
   toolContext?: ToolContext
 ) {
@@ -530,5 +529,5 @@ export function createValTownTools(
     },
   };
 
-  return buildTools(VAL_TOWN_TOOLS_METADATA, handlers);
+  return handlers;
 }

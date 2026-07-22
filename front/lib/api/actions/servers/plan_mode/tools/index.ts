@@ -1,13 +1,12 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   CLOSE_PLAN_TOOL_NAME,
   CREATE_PLAN_TOOL_NAME,
   EDIT_PLAN_TOOL_NAME,
   PLAN_FILE_NAME,
-  PLAN_MODE_TOOLS_METADATA,
+  type PLAN_MODE_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/plan_mode/metadata";
 import {
   closeActivePlan,
@@ -22,7 +21,9 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 
-const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
+export const PLAN_MODE_TOOL_HANDLERS: ToolHandlers<
+  typeof PLAN_MODE_TOOLS_METADATA
+> = {
   create_plan: async ({ content }, { auth, runContext }) => {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
     const { conversation } = runContext;
@@ -164,5 +165,3 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(PLAN_MODE_TOOLS_METADATA, handlers);

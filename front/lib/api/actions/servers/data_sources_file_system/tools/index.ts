@@ -1,8 +1,7 @@
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA,
-  DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA,
+  type DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA,
+  type DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA,
   FILESYSTEM_CAT_TOOL_NAME,
   FILESYSTEM_FIND_TOOL_NAME,
   FILESYSTEM_LIST_TOOL_NAME,
@@ -17,7 +16,9 @@ import { locateTree } from "@app/lib/api/actions/servers/data_sources_file_syste
 import { search } from "@app/lib/api/actions/servers/data_sources_file_system/tools/search";
 import { executeFindTags } from "@app/lib/api/actions/tools/find_tags";
 
-const handlers: ToolHandlers<typeof DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA> = {
+export const DATA_SOURCES_FILE_SYSTEM_TOOL_HANDLERS: ToolHandlers<
+  typeof DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA
+> = {
   [FILESYSTEM_CAT_TOOL_NAME]: cat,
   [FILESYSTEM_LIST_TOOL_NAME]: list,
   [FILESYSTEM_FIND_TOOL_NAME]: find,
@@ -25,21 +26,11 @@ const handlers: ToolHandlers<typeof DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA> = {
   [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]: locateTree,
 };
 
-const handlersWithTags: ToolHandlers<
+export const DATA_SOURCES_FILE_SYSTEM_TOOL_HANDLERS_WITH_TAGS: ToolHandlers<
   typeof DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA
 > = {
-  ...handlers,
+  ...DATA_SOURCES_FILE_SYSTEM_TOOL_HANDLERS,
   [FIND_TAGS_TOOL_NAME]: async ({ query, dataSources }, { auth }) => {
     return executeFindTags(auth, query, dataSources);
   },
 };
-
-export const TOOLS_WITHOUT_TAGS = buildTools(
-  DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA,
-  handlers
-);
-
-export const TOOLS_WITH_TAGS = buildTools(
-  DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA,
-  handlersWithTags
-);

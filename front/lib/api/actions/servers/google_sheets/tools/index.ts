@@ -1,15 +1,16 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   withDriveAuth,
   withSheetsAuth,
 } from "@app/lib/api/actions/servers/google_sheets/helpers";
-import { GOOGLE_SHEETS_TOOLS_METADATA } from "@app/lib/api/actions/servers/google_sheets/metadata";
+import type { GOOGLE_SHEETS_TOOLS_METADATA } from "@app/lib/api/actions/servers/google_sheets/metadata";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
+export const GOOGLE_SHEETS_TOOL_HANDLERS: ToolHandlers<
+  typeof GOOGLE_SHEETS_TOOLS_METADATA
+> = {
   list_spreadsheets: async ({ nameFilter, pageToken, pageSize }, extra) => {
     return withDriveAuth(extra, async (drive) => {
       try {
@@ -400,5 +401,3 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
     });
   },
 };
-
-export const TOOLS = buildTools(GOOGLE_SHEETS_TOOLS_METADATA, handlers);

@@ -5,12 +5,11 @@ import {
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import { getToolNamePrefix } from "@app/lib/actions/tool_name_utils";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
-import { TOOLSETS_TOOLS_METADATA } from "@app/lib/api/actions/servers/toolsets/metadata";
+import type { TOOLSETS_TOOLS_METADATA } from "@app/lib/api/actions/servers/toolsets/metadata";
 import apiConfig from "@app/lib/api/config";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -21,7 +20,9 @@ import { getHeaderFromUserEmail } from "@app/types/user";
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 
-const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
+export const TOOLSETS_TOOL_HANDLERS: ToolHandlers<
+  typeof TOOLSETS_TOOLS_METADATA
+> = {
   list: async (_, { auth, runContext }) => {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
 
@@ -146,5 +147,3 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(TOOLSETS_TOOLS_METADATA, handlers);

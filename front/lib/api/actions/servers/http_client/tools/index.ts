@@ -3,12 +3,11 @@ import type {
   ToolHandlerExtra,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolContext } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
   DEFAULT_TIMEOUT_MS,
-  HTTP_CLIENT_TOOLS_METADATA,
+  type HTTP_CLIENT_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/http_client/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
@@ -192,8 +191,8 @@ async function handleSendRequest(
   }
 }
 
-const handlers: ToolHandlers<typeof HTTP_CLIENT_TOOLS_METADATA> = {
+export const HTTP_CLIENT_TOOL_HANDLERS: ToolHandlers<
+  typeof HTTP_CLIENT_TOOLS_METADATA
+> = {
   send_request: handleSendRequest,
 };
-
-export const TOOLS = buildTools(HTTP_CLIENT_TOOLS_METADATA, handlers);

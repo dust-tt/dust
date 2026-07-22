@@ -1,6 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   countObjectsByProperties,
   createAssociation,
@@ -49,7 +48,7 @@ import {
   validateRequests,
   withAuth,
 } from "@app/lib/api/actions/servers/hubspot/helpers";
-import { HUBSPOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/hubspot/metadata";
+import type { HUBSPOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/hubspot/metadata";
 import {
   formatHubSpotCreateSuccess,
   formatHubSpotSearchResults,
@@ -59,7 +58,9 @@ import {
 } from "@app/lib/api/actions/servers/hubspot/rendering";
 import { Err, Ok } from "@app/types/shared/result";
 
-const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
+export const HUBSPOT_TOOL_HANDLERS: ToolHandlers<
+  typeof HUBSPOT_TOOLS_METADATA
+> = {
   get_object_properties: async (
     { objectType, creatableOnly = true },
     extra
@@ -906,5 +907,3 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 };
-
-export const TOOLS = buildTools(HUBSPOT_TOOLS_METADATA, handlers);

@@ -4,7 +4,6 @@ import type {
   ToolHandlerExtra,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   extractTextFromBuffer,
   processAttachment,
@@ -14,7 +13,7 @@ import {
   sanitizeFilename,
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { getAllowedLabelsForMCPServer } from "@app/lib/api/actions/servers/microsoft/utils";
-import { OUTLOOK_TOOLS_METADATA } from "@app/lib/api/actions/servers/outlook/mail_metadata";
+import type { OUTLOOK_TOOLS_METADATA } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -807,7 +806,9 @@ function validateMailParams({
   return null;
 }
 
-const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
+export const OUTLOOK_TOOL_HANDLERS: ToolHandlers<
+  typeof OUTLOOK_TOOLS_METADATA
+> = {
   get_messages: async (
     { search, folderName, top = 10, skip = 0, select, sharedMailboxAddress },
     { authInfo, auth, runContext }
@@ -2149,5 +2150,3 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(OUTLOOK_TOOLS_METADATA, handlers);

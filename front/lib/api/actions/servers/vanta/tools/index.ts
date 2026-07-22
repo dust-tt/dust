@@ -1,11 +1,7 @@
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { vantaGet } from "@app/lib/api/actions/servers/vanta/api";
 import { buildQuery } from "@app/lib/api/actions/servers/vanta/helpers";
-import { VANTA_TOOLS_METADATA } from "@app/lib/api/actions/servers/vanta/metadata";
+import type { VANTA_TOOLS_METADATA } from "@app/lib/api/actions/servers/vanta/metadata";
 import {
   renderControls,
   renderDocumentResources,
@@ -30,7 +26,7 @@ import {
 } from "@app/lib/api/actions/servers/vanta/renderers";
 import { Ok } from "@app/types/shared/result";
 
-const handlers: ToolHandlers<typeof VANTA_TOOLS_METADATA> = {
+export const VANTA_TOOL_HANDLERS: ToolHandlers<typeof VANTA_TOOLS_METADATA> = {
   list_tests: async (params, { authInfo }) => {
     const result = await vantaGet({
       path: "/v1/tests",
@@ -247,8 +243,3 @@ const handlers: ToolHandlers<typeof VANTA_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS: ToolDefinition[] = buildTools(
-  VANTA_TOOLS_METADATA,
-  handlers
-);

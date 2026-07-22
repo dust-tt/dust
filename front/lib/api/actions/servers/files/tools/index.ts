@@ -1,4 +1,3 @@
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   FILES_CAT_ACTION_NAME,
   FILES_COPY_ACTION_NAME,
@@ -10,7 +9,6 @@ import {
   FILES_LIST_ACTION_NAME,
   FILES_MOVE_ACTION_NAME,
   FILES_RESOLVE_ACTION_NAME,
-  FILES_TOOLS_METADATA,
   FILES_UPLOAD_FROM_URL_ACTION_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
 import { catHandler } from "@app/lib/api/actions/servers/files/tools/cat";
@@ -25,7 +23,7 @@ import { moveHandler } from "@app/lib/api/actions/servers/files/tools/move";
 import { resolveHandler } from "@app/lib/api/actions/servers/files/tools/resolve";
 import { uploadFromUrlHandler } from "@app/lib/api/actions/servers/files/tools/upload_from_url";
 
-const HANDLERS = {
+export const FILES_TOOL_HANDLERS = {
   [FILES_CAT_ACTION_NAME]: catHandler,
   [FILES_COPY_ACTION_NAME]: copyHandler,
   [FILES_CREATE_ACTION_NAME]: createHandler,
@@ -38,5 +36,3 @@ const HANDLERS = {
   [FILES_MOVE_ACTION_NAME]: moveHandler,
   [FILES_RESOLVE_ACTION_NAME]: resolveHandler,
 };
-
-export const TOOLS = buildTools(FILES_TOOLS_METADATA, HANDLERS);

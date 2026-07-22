@@ -1,5 +1,7 @@
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ToolDefinition,
+  ToolHandlers,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
   isAgentLoopRunContext,
@@ -18,7 +20,7 @@ import type { Authenticator } from "@app/lib/auth";
 export function createIncludeDataTools(
   auth: Authenticator,
   toolContext?: ToolContext
-) {
+): ToolDefinition[] {
   const areTagsDynamic = toolContext
     ? shouldAutoGenerateTags(toolContext)
     : false;
@@ -30,27 +32,9 @@ export function createIncludeDataTools(
     : { retrievalTopK: AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K, citationsOffset: 0 };
 
   if (!areTagsDynamic) {
-    // Return base tools without tags
-    const handlers: ToolHandlers<typeof INCLUDE_DATA_BASE_TOOLS_METADATA> = {
-      retrieve_recent_documents: async (params, _extra) => {
-        if (!toolContext?.runContext) {
-          throw new Error(
-            "agentLoopRunContext is required where the tool is called."
-          );
-        }
-        return runIncludeDataRetrieval(auth, {
-          ...params,
-          citationsOffset,
-          retrievalTopK,
-        });
-      },
-    };
-    return buildTools(INCLUDE_DATA_BASE_TOOLS_METADATA, handlers);
-  }
-
-  // Return tools with tags support
-  const handlers: ToolHandlers<typeof INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA> = {
-    retrieve_recent_documents: async (params, _extra) => {
+    const handler: ToolHandlers<
+      typeof INCLUDE_DATA_BASE_TOOLS_METADATA
+    >["retrieve_recent_documents"] = async (params, _extra) => {
       if (!toolContext?.runContext) {
         throw new Error(
           "agentLoopRunContext is required where the tool is called."
@@ -61,10 +45,39 @@ export function createIncludeDataTools(
         citationsOffset,
         retrievalTopK,
       });
-    },
-    find_tags: async ({ query, dataSources }, _extra) => {
-      return executeFindTags(auth, query, dataSources);
-    },
+    };
+
+    return [{ ...INCLUDE_DATA_BASE_TOOLS_METADATA[0], handler }];
+  }
+
+  const retrieveHandler: ToolHandlers<
+    typeof INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA
+  >["retrieve_recent_documents"] = async (params, _extra) => {
+    if (!toolContext?.runContext) {
+      throw new Error(
+        "agentLoopRunContext is required where the tool is called."
+      );
+    }
+    return runIncludeDataRetrieval(auth, {
+      ...params,
+      citationsOffset,
+      retrievalTopK,
+    });
   };
-  return buildTools(INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA, handlers);
+  const findTagsHandler: ToolHandlers<
+    typeof INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA
+  >["find_tags"] = async ({ query, dataSources }, _extra) => {
+    return executeFindTags(auth, query, dataSources);
+  };
+
+  return [
+    {
+      ...INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA[0],
+      handler: retrieveHandler,
+    },
+    {
+      ...INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA[1],
+      handler: findTagsHandler,
+    },
+  ];
 }

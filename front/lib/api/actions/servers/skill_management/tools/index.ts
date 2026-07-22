@@ -1,9 +1,8 @@
 import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
-import { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/skill_management/metadata";
+import type { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { loadSkillFilesToConversation } from "@app/lib/api/skills/conversation_files";
 import type { Authenticator } from "@app/lib/auth";
@@ -97,7 +96,9 @@ async function findAvailableSkillForAgentLoop({
     : null;
 }
 
-const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
+export const SKILL_MANAGEMENT_TOOL_HANDLERS: ToolHandlers<
+  typeof SKILL_MANAGEMENT_TOOLS_METADATA
+> = {
   [ENABLE_SKILL_TOOL_NAME]: async ({ skillName }, { auth, runContext }) => {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
 
@@ -171,5 +172,3 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
     return new Ok([makeEnableSkillResultOutput({ skillId: skill.sId, text })]);
   },
 };
-
-export const TOOLS = buildTools(SKILL_MANAGEMENT_TOOLS_METADATA, handlers);

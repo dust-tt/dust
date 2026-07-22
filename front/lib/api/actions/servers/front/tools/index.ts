@@ -1,6 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   convertMarkdownToHTML,
   findChannelAddress,
@@ -11,7 +10,7 @@ import {
   makeFrontAPIRequest,
   parseFrontDraftsResponse,
 } from "@app/lib/api/actions/servers/front/helpers";
-import { FRONT_TOOLS_METADATA } from "@app/lib/api/actions/servers/front/metadata";
+import type { FRONT_TOOLS_METADATA } from "@app/lib/api/actions/servers/front/metadata";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -39,7 +38,7 @@ interface FrontInbox {
   is_private: boolean;
 }
 
-const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
+export const FRONT_TOOL_HANDLERS: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
   search_conversations: async ({ q, limit = 20 }, extra) => {
     try {
       const apiToken = await getFrontAPITokenFromExtra(extra);
@@ -721,5 +720,3 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
     }
   },
 };
-
-export const TOOLS = buildTools(FRONT_TOOLS_METADATA, handlers);

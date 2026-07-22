@@ -4,11 +4,10 @@ import type {
   ToolHandlerResult,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolContext } from "@app/lib/actions/types";
 import type { LumaClient } from "@app/lib/api/actions/servers/luma/client";
 import { getLumaClient } from "@app/lib/api/actions/servers/luma/client";
-import { LUMA_TOOLS_METADATA } from "@app/lib/api/actions/servers/luma/metadata";
+import type { LUMA_TOOLS_METADATA } from "@app/lib/api/actions/servers/luma/metadata";
 import {
   renderEvent,
   renderEventInsights,
@@ -31,7 +30,7 @@ async function withClient(
   return action(clientResult.value);
 }
 
-export function createLumaTools(
+export function createLumaToolHandlers(
   _auth: Authenticator,
   _toolContext?: ToolContext
 ) {
@@ -292,5 +291,5 @@ export function createLumaTools(
     },
   };
 
-  return buildTools(LUMA_TOOLS_METADATA, handlers);
+  return handlers;
 }

@@ -1,8 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { withAuth } from "@app/lib/api/actions/servers/workday/helpers";
-import { WORKDAY_TOOLS_METADATA } from "@app/lib/api/actions/servers/workday/metadata";
+import type { WORKDAY_TOOLS_METADATA } from "@app/lib/api/actions/servers/workday/metadata";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
@@ -17,7 +16,9 @@ const WorkersResponseSchema = z.object({
   ),
 });
 
-const handlers: ToolHandlers<typeof WORKDAY_TOOLS_METADATA> = {
+export const WORKDAY_TOOL_HANDLERS: ToolHandlers<
+  typeof WORKDAY_TOOLS_METADATA
+> = {
   get_workers: async ({ limit }, extra) =>
     withAuth(extra, async (accessToken, apiBaseUrl) => {
       const url = new URL(`${apiBaseUrl}/workers`);
@@ -64,5 +65,3 @@ const handlers: ToolHandlers<typeof WORKDAY_TOOLS_METADATA> = {
       ]);
     }),
 };
-
-export const TOOLS = buildTools(WORKDAY_TOOLS_METADATA, handlers);

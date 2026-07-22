@@ -1,19 +1,17 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
-  ToolDefinition,
   ToolHandlerExtra,
   ToolHandlerResult,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
 import { NOTION_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
-import { NOTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/notion/metadata";
+import type { NOTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/notion/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -69,7 +67,9 @@ async function withNotionClient<T>(
   }
 }
 
-export function createNotionTools(toolContext?: ToolContext): ToolDefinition[] {
+export function createNotionToolHandlers(
+  toolContext?: ToolContext
+): ToolHandlers<typeof NOTION_TOOLS_METADATA> {
   const handlers: ToolHandlers<typeof NOTION_TOOLS_METADATA> = {
     search: async (
       { query, type, relativeTimeFrame },
@@ -420,5 +420,5 @@ export function createNotionTools(toolContext?: ToolContext): ToolDefinition[] {
     },
   };
 
-  return buildTools(NOTION_TOOLS_METADATA, handlers);
+  return handlers;
 }

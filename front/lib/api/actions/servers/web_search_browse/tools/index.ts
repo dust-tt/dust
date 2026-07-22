@@ -9,11 +9,10 @@ import type {
   ToolHandlerExtra,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { summarizeWithLLM } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import { WEB_SEARCH_BROWSE_TOOLS_METADATA } from "@app/lib/api/actions/servers/web_search_browse/metadata";
+import type { WEB_SEARCH_BROWSE_TOOLS_METADATA } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
@@ -445,9 +444,9 @@ async function handleWebbrowser(
   return new Ok(toolContent);
 }
 
-const handlers: ToolHandlers<typeof WEB_SEARCH_BROWSE_TOOLS_METADATA> = {
+export const WEB_SEARCH_BROWSE_TOOL_HANDLERS: ToolHandlers<
+  typeof WEB_SEARCH_BROWSE_TOOLS_METADATA
+> = {
   websearch: handleWebsearch,
   webbrowser: handleWebbrowser,
 };
-
-export const TOOLS = buildTools(WEB_SEARCH_BROWSE_TOOLS_METADATA, handlers);

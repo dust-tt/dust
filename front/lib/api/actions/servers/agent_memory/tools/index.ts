@@ -1,6 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   AGENT_MEMORY_COMPACT_TOOL_NAME,
@@ -8,7 +7,7 @@ import {
   AGENT_MEMORY_ERASE_TOOL_NAME,
   AGENT_MEMORY_RECORD_TOOL_NAME,
   AGENT_MEMORY_RETRIEVE_TOOL_NAME,
-  AGENT_MEMORY_TOOLS_METADATA,
+  type AGENT_MEMORY_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { Result } from "@app/types/shared/result";
@@ -36,7 +35,9 @@ const renderMemory = (
   ]);
 };
 
-const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
+export const AGENT_MEMORY_TOOL_HANDLERS: ToolHandlers<
+  typeof AGENT_MEMORY_TOOLS_METADATA
+> = {
   [AGENT_MEMORY_RETRIEVE_TOOL_NAME]: async (_, { auth, runContext }) => {
     const user = auth.user();
     if (!user) {
@@ -163,5 +164,3 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     return renderMemory(result.value);
   },
 };
-
-export const TOOLS = buildTools(AGENT_MEMORY_TOOLS_METADATA, handlers);

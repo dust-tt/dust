@@ -3,9 +3,8 @@ import type {
   ToolHandlerResult,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { workspaceAdminGuard } from "@app/lib/actions/mcp_internal_actions/utils";
-import { WORKSPACE_ANALYTICS_TOOLS_METADATA } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
+import type { WORKSPACE_ANALYTICS_TOOLS_METADATA } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import type { ResolvedTimeWindow } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import {
   DEFAULT_CREDIT_GROUPS,
@@ -106,7 +105,9 @@ function renderExecutionSeries<
   ]);
 }
 
-const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
+export const WORKSPACE_ANALYTICS_TOOL_HANDLERS: ToolHandlers<
+  typeof WORKSPACE_ANALYTICS_TOOLS_METADATA
+> = {
   get_top_agents: async (
     {
       limit,
@@ -872,5 +873,3 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     }
   },
 };
-
-export const TOOLS = buildTools(WORKSPACE_ANALYTICS_TOOLS_METADATA, handlers);

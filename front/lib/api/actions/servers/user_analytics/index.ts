@@ -1,13 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { ToolContext } from "@app/lib/actions/types";
-import {
-  USER_ANALYTICS_SERVER_NAME,
-  USER_ANALYTICS_TOOLS_METADATA,
-} from "@app/lib/api/actions/servers/user_analytics/metadata";
+import type { USER_ANALYTICS_TOOLS_METADATA } from "@app/lib/api/actions/servers/user_analytics/metadata";
 import type { ResolvedTimeWindow } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { resolveTimeWindow } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
@@ -28,7 +21,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { JOB_TYPE_LABELS } from "@app/types/job_type";
 import { Err, Ok } from "@app/types/shared/result";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 const DAYS = 30;
 const TOP_ITEMS_LIMIT = 100;
@@ -138,7 +130,9 @@ async function buildDetailedUsageSections(
   return sections;
 }
 
-const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
+export const USER_ANALYTICS_TOOL_HANDLERS: ToolHandlers<
+  typeof USER_ANALYTICS_TOOLS_METADATA
+> = {
   get_personal_usage: async (
     { jobType, period, startDate, endDate, timezone },
     { auth }
@@ -322,21 +316,3 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
     ]);
   },
 };
-
-function createServer(
-  auth: Authenticator,
-  toolContext?: ToolContext
-): McpServer {
-  const server = makeInternalMCPServer(USER_ANALYTICS_SERVER_NAME);
-
-  const tools = buildTools(USER_ANALYTICS_TOOLS_METADATA, handlers);
-  for (const tool of tools) {
-    registerTool(auth, toolContext, server, tool, {
-      monitoringName: USER_ANALYTICS_SERVER_NAME,
-    });
-  }
-
-  return server;
-}
-
-export default createServer;

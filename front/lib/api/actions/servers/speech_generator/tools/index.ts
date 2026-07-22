@@ -1,6 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   getElevenLabsClient,
   resolveDefaultVoiceId,
@@ -8,12 +7,14 @@ import {
 } from "@app/lib/api/actions/servers/elevenlabs/utils";
 import {
   isAllowedAudioUrl,
-  SPEECH_GENERATOR_TOOLS_METADATA,
+  type SPEECH_GENERATOR_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
+export const SPEECH_GENERATOR_TOOL_HANDLERS: ToolHandlers<
+  typeof SPEECH_GENERATOR_TOOLS_METADATA
+> = {
   speech_to_text: async ({ audio_url, audio_blob, language_code }) => {
     if (!audio_url && !audio_blob) {
       return new Err(
@@ -155,5 +156,3 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
     }
   },
 };
-
-export const TOOLS = buildTools(SPEECH_GENERATOR_TOOLS_METADATA, handlers);

@@ -5,8 +5,6 @@ import type {
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import {
   isAgentLoopRunContext,
   type ToolContext,
@@ -31,11 +29,10 @@ import { getHeaderFromRole } from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
 import { getHeaderFromUserEmail } from "@app/types/user";
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 
 /**
- * Creates the run_dust_app MCP server.
+ * Creates the contextual tool exposed by the run_dust_app MCP server.
  *
  * This server is special because tools are dynamically created based on the Dust app
  * configuration. The server handles three different contexts:
@@ -49,11 +46,10 @@ import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
  * 3. Default context: Used during configuration to select which Dust app to use.
  *    Creates a configuration tool using the DUST_APP input schema.
  */
-export default async function createServer(
+export async function createRunDustAppTools(
   auth: Authenticator,
   toolContext?: ToolContext
-): Promise<McpServer> {
-  const server = makeInternalMCPServer("run_dust_app");
+): Promise<ToolDefinition[]> {
   const owner = auth.getNonNullableWorkspace();
 
   if (toolContext?.listToolsContext) {
@@ -98,9 +94,7 @@ export default async function createServer(
       },
     };
 
-    registerTool(auth, toolContext, server, toolDefinition, {
-      monitoringName: "run_dust_app",
-    });
+    return [toolDefinition];
   } else if (isAgentLoopRunContext(toolContext?.runContext)) {
     // Context: Running the Dust app
     const runContext = toolContext.runContext;
@@ -231,9 +225,7 @@ export default async function createServer(
       },
     };
 
-    registerTool(auth, toolContext, server, toolDefinition, {
-      monitoringName: "run_dust_app",
-    });
+    return [toolDefinition];
   } else {
     // Context: Configuration - selecting which Dust app to use
 
@@ -261,10 +253,6 @@ export default async function createServer(
       },
     };
 
-    registerTool(auth, toolContext, server, toolDefinition, {
-      monitoringName: "run_dust_app",
-    });
+    return [toolDefinition];
   }
-
-  return server;
 }

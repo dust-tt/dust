@@ -4,15 +4,16 @@ import {
   CLARI_CALL_LIST_MIME_TYPE,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   ClariCallNotFoundError,
   getClariClient,
 } from "@app/lib/api/actions/servers/clari_copilot/client";
-import { CLARI_COPILOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/clari_copilot/metadata";
+import type { CLARI_COPILOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/clari_copilot/metadata";
 import { Err, Ok } from "@app/types/shared/result";
 
-const handlers: ToolHandlers<typeof CLARI_COPILOT_TOOLS_METADATA> = {
+export const CLARI_COPILOT_TOOL_HANDLERS: ToolHandlers<
+  typeof CLARI_COPILOT_TOOLS_METADATA
+> = {
   search_calls: async (params, extra) => {
     const clientResult = getClariClient(extra);
     if (clientResult.isErr()) {
@@ -78,5 +79,3 @@ const handlers: ToolHandlers<typeof CLARI_COPILOT_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(CLARI_COPILOT_TOOLS_METADATA, handlers);

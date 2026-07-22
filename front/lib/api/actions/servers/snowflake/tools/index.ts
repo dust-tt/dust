@@ -1,6 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
   type ToolContext,
@@ -8,7 +7,7 @@ import {
 import { SnowflakeClient } from "@app/lib/api/actions/servers/snowflake/client";
 import {
   MAX_QUERY_ROWS,
-  SNOWFLAKE_TOOLS_METADATA,
+  type SNOWFLAKE_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/snowflake/metadata";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -134,7 +133,9 @@ async function getClientFromAuthInfo(
   );
 }
 
-const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
+export const SNOWFLAKE_TOOL_HANDLERS: ToolHandlers<
+  typeof SNOWFLAKE_TOOLS_METADATA
+> = {
   list_databases: async (_params, { authInfo, runContext, auth }) => {
     const clientRes = await getClientFromAuthInfo(
       authInfo,
@@ -348,5 +349,3 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(SNOWFLAKE_TOOLS_METADATA, handlers);

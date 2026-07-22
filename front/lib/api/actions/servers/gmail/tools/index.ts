@@ -3,7 +3,6 @@ import type {
   ToolHandlerExtra,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { jsonToMarkdown } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   extractTextFromBuffer,
@@ -35,7 +34,7 @@ import {
   MESSAGES_MAX_RESULTS,
   MESSAGES_WITH_ATTACHMENTS_MAX_RESULTS,
 } from "@app/lib/api/actions/servers/gmail/helpers";
-import { GMAIL_TOOLS_METADATA } from "@app/lib/api/actions/servers/gmail/metadata";
+import type { GMAIL_TOOLS_METADATA } from "@app/lib/api/actions/servers/gmail/metadata";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -293,7 +292,7 @@ async function fetchAttachment(
   return new Ok({ buffer, filename, contentType });
 }
 
-const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
+export const GMAIL_TOOL_HANDLERS: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   get_drafts: async ({ q, pageToken }, { authInfo }) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -1155,5 +1154,3 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     ]);
   },
 };
-
-export const TOOLS = buildTools(GMAIL_TOOLS_METADATA, handlers);

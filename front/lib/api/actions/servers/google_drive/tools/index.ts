@@ -4,7 +4,6 @@ import type {
   ToolHandlerResult,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   makeFileAuthorizationError,
   makePersonalAuthenticationError,
@@ -25,8 +24,8 @@ import {
 } from "@app/lib/api/actions/servers/google_drive/helpers";
 import {
   GOOGLE_DRIVE_SCOPES,
-  GOOGLE_DRIVE_TOOLS_METADATA,
-  GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
+  type GOOGLE_DRIVE_TOOLS_METADATA,
+  type GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
   MAX_CONTENT_SIZE,
   MAX_FILE_SIZE,
 } from "@app/lib/api/actions/servers/google_drive/metadata";
@@ -989,8 +988,6 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
   },
 };
 
-const readOnlyTools = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
-
 const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   create_document: async ({ title, parentId }, { authInfo }) => {
     const folderError = await ensureParentFolderWritable(parentId, authInfo);
@@ -1827,6 +1824,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 };
 
-const writeTools = buildTools(GOOGLE_DRIVE_WRITE_TOOLS_METADATA, writeHandlers);
-
-export const TOOLS = [...readOnlyTools, ...writeTools];
+export const GOOGLE_DRIVE_TOOL_HANDLERS = {
+  ...handlers,
+  ...writeHandlers,
+};

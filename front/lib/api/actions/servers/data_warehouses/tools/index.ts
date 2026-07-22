@@ -1,6 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
@@ -9,7 +8,7 @@ import {
   makeBrowseResource,
   validateTables,
 } from "@app/lib/api/actions/servers/data_warehouses/helpers";
-import { DATA_WAREHOUSES_TOOLS_METADATA } from "@app/lib/api/actions/servers/data_warehouses/metadata";
+import type { DATA_WAREHOUSES_TOOLS_METADATA } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { executeQuery } from "@app/lib/api/actions/servers/query_tables_v2/helpers";
 import {
   getDatabaseExampleRowsContent,
@@ -27,7 +26,9 @@ import assert from "assert";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
-const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
+export const DATA_WAREHOUSES_TOOL_HANDLERS: ToolHandlers<
+  typeof DATA_WAREHOUSES_TOOLS_METADATA
+> = {
   list: async ({ nodeId, limit, nextPageCursor, dataSources }, { auth }) => {
     const effectiveNodeId = !!nodeId ? nodeId : null;
     const effectiveCursor = !!nextPageCursor ? nextPageCursor : undefined;
@@ -264,5 +265,3 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     });
   },
 };
-
-export const TOOLS = buildTools(DATA_WAREHOUSES_TOOLS_METADATA, handlers);

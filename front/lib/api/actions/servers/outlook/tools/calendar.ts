@@ -1,7 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { OUTLOOK_CALENDAR_TOOLS_METADATA } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
+import type { OUTLOOK_CALENDAR_TOOLS_METADATA } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
 import * as OutlookApi from "@app/lib/api/actions/servers/outlook/outlook_api_helper";
 import {
   renderAvailabilityCheck,
@@ -10,7 +9,9 @@ import {
 } from "@app/lib/api/actions/servers/outlook/rendering";
 import { Err, Ok } from "@app/types/shared/result";
 
-const handlers: ToolHandlers<typeof OUTLOOK_CALENDAR_TOOLS_METADATA> = {
+export const OUTLOOK_CALENDAR_TOOL_HANDLERS: ToolHandlers<
+  typeof OUTLOOK_CALENDAR_TOOLS_METADATA
+> = {
   get_user_timezone: async (_, { authInfo }) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -320,5 +321,3 @@ const handlers: ToolHandlers<typeof OUTLOOK_CALENDAR_TOOLS_METADATA> = {
     return new Ok([{ type: "text" as const, text: formattedText }]);
   },
 };
-
-export const TOOLS = buildTools(OUTLOOK_CALENDAR_TOOLS_METADATA, handlers);

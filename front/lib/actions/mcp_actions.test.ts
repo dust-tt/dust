@@ -120,14 +120,9 @@ vi.mock("@app/lib/api/actions/servers/search/tools", async () => {
   const actual = await vi.importActual(
     "@app/lib/api/actions/servers/search/tools"
   );
-  const { buildTools } = await import(
-    "@app/lib/actions/mcp_internal_actions/tool_definition"
+  const { SEARCH_TOOL_NAME } = await import(
+    "@app/lib/api/actions/servers/search/metadata"
   );
-  const {
-    SEARCH_TOOL_METADATA_WITH_TAGS,
-    SEARCH_TOOLS_METADATA,
-    SEARCH_TOOL_NAME,
-  } = await import("@app/lib/api/actions/servers/search/metadata");
   const { executeFindTags } = await import(
     "@app/lib/api/actions/tools/find_tags"
   );
@@ -161,11 +156,8 @@ vi.mock("@app/lib/api/actions/servers/search/tools", async () => {
   return {
     ...actual,
     searchFunction: mockSearchFunction,
-    TOOLS_WITHOUT_TAGS: buildTools(SEARCH_TOOLS_METADATA, handlers as never),
-    TOOLS_WITH_TAGS: buildTools(
-      SEARCH_TOOL_METADATA_WITH_TAGS,
-      handlersWithTags as never
-    ),
+    SEARCH_TOOL_HANDLERS: handlers,
+    SEARCH_TOOL_HANDLERS_WITH_TAGS: handlersWithTags,
   };
 });
 

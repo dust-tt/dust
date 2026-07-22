@@ -1,10 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { GITHUB_TOOLS_METADATA } from "@app/lib/api/actions/servers/github/metadata";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { GITHUB_TOOLS_METADATA } from "@app/lib/api/actions/servers/github/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { Err, Ok } from "@app/types/shared/result";
@@ -58,11 +54,11 @@ export const createOctokit = async (
   });
 };
 
-export function createGithubTools(auth: Authenticator): ToolDefinition[] {
-  const handlers: ToolHandlers<typeof GITHUB_TOOLS_METADATA> = {
+export const GITHUB_TOOL_HANDLERS: ToolHandlers<typeof GITHUB_TOOLS_METADATA> =
+  {
     create_issue: async (
       { owner, repo, title, body, assignees, labels },
-      { authInfo }
+      { auth, authInfo }
     ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -93,7 +89,10 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
       }
     },
 
-    get_pull_request: async ({ owner, repo, pullNumber }, { authInfo }) => {
+    get_pull_request: async (
+      { owner, repo, pullNumber },
+      { auth, authInfo }
+    ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
       });
@@ -383,7 +382,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         labels,
         milestone,
       },
-      { authInfo }
+      { auth, authInfo }
     ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -420,7 +419,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
 
     create_pull_request_review: async (
       { owner, repo, pullNumber, body, event, comments = [] },
-      { authInfo }
+      { auth, authInfo }
     ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -454,7 +453,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
       }
     },
 
-    list_organization_projects: async ({ owner }, { authInfo }) => {
+    list_organization_projects: async ({ owner }, { auth, authInfo }) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
       });
@@ -560,7 +559,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
 
     add_issue_to_project: async (
       { owner, repo, issueNumber, projectId, field },
-      { authInfo }
+      { auth, authInfo }
     ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -653,7 +652,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
 
     comment_on_issue: async (
       { owner, repo, issueNumber, body },
-      { authInfo }
+      { auth, authInfo }
     ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -687,7 +686,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
 
     list_discussion_categories: async (
       { owner, repo, perPage = 25, after, before },
-      { authInfo }
+      { auth, authInfo }
     ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -779,7 +778,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
 
     create_discussion: async (
       { owner, repo, categoryId, title, body },
-      { authInfo }
+      { auth, authInfo }
     ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -861,7 +860,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
 
     comment_on_discussion: async (
       { owner, repo, discussionNumber, body, replyToId },
-      { authInfo }
+      { auth, authInfo }
     ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -946,7 +945,10 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
       }
     },
 
-    get_discussion: async ({ owner, repo, discussionNumber }, { authInfo }) => {
+    get_discussion: async (
+      { owner, repo, discussionNumber },
+      { auth, authInfo }
+    ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
       });
@@ -1062,7 +1064,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
 
     get_discussion_comments: async (
       { owner, repo, discussionNumber, perPage = 50, after, before },
-      { authInfo }
+      { auth, authInfo }
     ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -1227,7 +1229,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         after,
         before,
       },
-      { authInfo }
+      { auth, authInfo }
     ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -1366,7 +1368,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
       }
     },
 
-    get_issue: async ({ owner, repo, issueNumber }, { authInfo }) => {
+    get_issue: async ({ owner, repo, issueNumber }, { auth, authInfo }) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
       });
@@ -1487,7 +1489,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
 
     get_issue_custom_fields: async (
       { owner, repo, issueNumber, projectId },
-      { authInfo }
+      { auth, authInfo }
     ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -1995,7 +1997,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         after,
         before,
       },
-      { authInfo }
+      { auth, authInfo }
     ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -2132,7 +2134,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
 
     search_advanced: async (
       { query, first = 30, after, before },
-      { authInfo }
+      { auth, authInfo }
     ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -2437,7 +2439,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         after,
         before,
       },
-      { authInfo }
+      { auth, authInfo }
     ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -2636,6 +2638,3 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
       }
     },
   };
-
-  return buildTools(GITHUB_TOOLS_METADATA, handlers);
-}
