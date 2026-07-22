@@ -1653,6 +1653,9 @@ impl DataSource {
 
         info!(
             data_source_internal_id = self.internal_id(),
+            qdrant_shard_key = qdrant_client
+                .shard_key_name(&self.internal_id)
+                .unwrap_or_else(|_| "unknown".to_string()),
             document_count = documents.len(),
             chunk_count = documents.iter().map(|d| d.chunks.len()).sum::<usize>(),
             with_query = has_vector,
