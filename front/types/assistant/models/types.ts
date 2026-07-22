@@ -91,7 +91,6 @@ export const ModelConfigurationSchema = z.object({
   supportsVision: z.boolean(),
   supportedReasoningEfforts: ReasoningEffortSupportSchema,
   defaultReasoningEffort: z.string(),
-  useNativeLightReasoning: z.boolean().optional(),
   supportsResponseFormat: z.boolean().optional(),
   supportsPromptCaching: z.boolean().optional(),
   featureFlag: z.string().optional(),

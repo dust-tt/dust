@@ -113,7 +113,6 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
       thinkingConfig: toThinkingConfig({
         modelId: this.modelId,
         reasoningEffort: this.reasoningEffort,
-        useNativeLightReasoning: this.modelConfig.useNativeLightReasoning,
       }),
       toolConfig: toToolConfigParam(specifications, toolChoice),
       // Structured response format

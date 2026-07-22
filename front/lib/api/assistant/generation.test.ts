@@ -294,6 +294,23 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(sharedContext.every((s) => s.role === "context")).toBe(true);
   });
 
+  it("does not inject legacy reasoning delimiters for light reasoning", () => {
+    const sections = constructPromptMultiActions(authenticator1, {
+      userMessage: userMessage1,
+      agentConfiguration: withoutModel(agentConfig1),
+      model: {
+        ...agentLoopModel(agentConfig1, modelConfig),
+        reasoningEffort: "light",
+      },
+      hasAvailableActions: true,
+      systemSkills: [],
+    });
+
+    const prompt = systemPromptToText(sections);
+    expect(prompt).not.toContain("<thinking>");
+    expect(prompt).not.toContain("<response>");
+  });
+
   it("should return structured prompt with instructions for deep-dive agent", () => {
     const deepDiveConfig = {
       ...agentConfig1,

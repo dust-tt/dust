@@ -34,17 +34,11 @@ export const ANTHROPIC_THINKING_EFFORT_MAPPING: Record<
 
 export function toAutoThinkingConfig(
   reasoningEffort: ReasoningEffort | null,
-  useNativeLightReasoning?: boolean,
   omittedThinking: boolean = false
 ): {
   thinking: ThinkingConfigParam;
   output_config?: BetaOutputConfig;
 } {
-  // Use meta prompt chain of thoughts for performance
-  if (reasoningEffort === "light" && !useNativeLightReasoning) {
-    return { thinking: { type: "disabled" } };
-  }
-
   switch (reasoningEffort) {
     case null:
       return {
@@ -72,17 +66,9 @@ export function toAutoThinkingConfig(
   }
 }
 
-export function toThinkingConfig(
-  reasoningEffort: ReasoningEffort | null,
-  useNativeLightReasoning?: boolean
-): {
+export function toThinkingConfig(reasoningEffort: ReasoningEffort | null): {
   thinking?: ThinkingConfigParam;
 } {
-  // Use meta prompt chain of thoughts for performance
-  if (reasoningEffort === "light" && !useNativeLightReasoning) {
-    return { thinking: { type: "disabled" } };
-  }
-
   switch (reasoningEffort) {
     case null:
       return { thinking: undefined };

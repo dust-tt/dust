@@ -1,8 +1,5 @@
 import type { FireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
-import {
-  FIREWORKS_PROVIDER_ID,
-  overwriteLLMParameters,
-} from "@app/lib/api/llm/clients/fireworks/types";
+import { FIREWORKS_PROVIDER_ID } from "@app/lib/api/llm/clients/fireworks/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -34,8 +31,7 @@ export class FireworksLLM extends LLM<ChatCompletionCreateParamsStreaming> {
       modelId: FireworksWhitelistedModelId;
     }
   ) {
-    const params = overwriteLLMParameters(llmParameters);
-    super(auth, FIREWORKS_PROVIDER_ID, params);
+    super(auth, FIREWORKS_PROVIDER_ID, llmParameters);
 
     const { FIREWORKS_API_KEY } = llmParameters.credentials;
     assert(FIREWORKS_API_KEY, "FIREWORKS_API_KEY credential is required");
@@ -60,10 +56,7 @@ export class FireworksLLM extends LLM<ChatCompletionCreateParamsStreaming> {
         include_usage: true,
       },
       temperature: this.temperature ?? undefined,
-      reasoning_effort: toReasoningParam(
-        this.reasoningEffort,
-        this.modelConfig.useNativeLightReasoning
-      ),
+      reasoning_effort: toReasoningParam(this.reasoningEffort),
       tool_choice: toToolChoiceParam(specifications, streamParameters),
       ...(tools ? { tools } : {}),
       response_format: toOutputFormatParam(this.responseFormat),

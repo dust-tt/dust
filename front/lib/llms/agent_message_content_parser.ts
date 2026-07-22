@@ -6,9 +6,9 @@ import type {
   LightAgentConfigurationWithoutModelType,
 } from "@app/types/assistant/agent";
 import {
-  CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
-} from "@app/types/assistant/chain_of_thought_meta_prompt";
+  LEGACY_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
+} from "@app/types/assistant/chain_of_thought_delimiters";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 import { DEEPSEEK_CHAT_MODEL_ID } from "@app/types/assistant/models/deepseek";
 import type { ModelIdType } from "@app/types/assistant/models/types";
@@ -288,32 +288,18 @@ export function getDelimitersConfiguration({
 }: {
   model: AgentModelConfigurationType;
 }): DelimitersConfiguration {
-  const supportedModel = getSupportedModelConfig(model);
-  assert(
-    supportedModel,
-    "Model configuration not found in getDelimitersConfiguration"
-  );
-
   if (DEEPSEEK_MODELS.includes(model.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
   }
-  const reasoningEffort =
-    model.reasoningEffort ?? supportedModel.defaultReasoningEffort;
-  if (reasoningEffort !== "light") {
-    return {
-      delimiters: [],
-      incompleteDelimiterPatterns: [],
-    };
-  }
+
   return {
-    delimiters: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.delimiters,
-    incompleteDelimiterPatterns:
-      CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.incompleteDelimiterPatterns,
+    delimiters: [],
+    incompleteDelimiterPatterns: [],
   };
 }
 
 // For UI purpose we want to extract CoT possibly generated with previous reasoning configuration
-export function getCoTDelimitersConfiguration({
+export function getLegacyCoTDelimitersConfiguration({
   agentConfiguration,
 }: {
   agentConfiguration: LightAgentConfigurationType;
@@ -321,7 +307,7 @@ export function getCoTDelimitersConfiguration({
   const model = getSupportedModelConfig(agentConfiguration.model);
   assert(
     model,
-    "Model configuration not found in getCoTDelimitersConfiguration"
+    "Model configuration not found in getLegacyCoTDelimitersConfiguration"
   );
 
   if (DEEPSEEK_MODELS.includes(model.modelId)) {
@@ -329,8 +315,8 @@ export function getCoTDelimitersConfiguration({
   }
 
   return {
-    delimiters: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.delimiters,
+    delimiters: LEGACY_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.delimiters,
     incompleteDelimiterPatterns:
-      CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.incompleteDelimiterPatterns,
+      LEGACY_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.incompleteDelimiterPatterns,
   };
 }

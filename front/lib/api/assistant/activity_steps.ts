@@ -1,6 +1,6 @@
 import {
   AgentMessageContentParser,
-  getCoTDelimitersConfiguration,
+  getLegacyCoTDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
@@ -113,7 +113,7 @@ export async function renderAgentMessageContentView(
       const contentParser = new AgentMessageContentParser(
         agentConfiguration,
         messageId,
-        getCoTDelimitersConfiguration({ agentConfiguration })
+        getLegacyCoTDelimitersConfiguration({ agentConfiguration })
       );
       const parsedContent = await contentParser.parseContents([
         c.content.value,
@@ -204,7 +204,7 @@ async function selectBodyAndChainOfThought(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     messageId,
-    getCoTDelimitersConfiguration({ agentConfiguration })
+    getLegacyCoTDelimitersConfiguration({ agentConfiguration })
   );
   const parsedContent = await contentParser.parseContents(textFragments);
   return {

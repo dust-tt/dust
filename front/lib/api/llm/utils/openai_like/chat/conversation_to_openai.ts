@@ -192,19 +192,13 @@ const REASONING_EFFORT_TO_OPENAI: {
 };
 
 export function toReasoningParam(
-  reasoningEffort: ReasoningEffort | null,
-  useNativeLightReasoning?: boolean
+  reasoningEffort: ReasoningEffort | null
 ): ReasoningParam | undefined {
   if (!reasoningEffort) {
     return undefined;
   }
 
-  const effort = REASONING_EFFORT_TO_OPENAI[reasoningEffort];
-  if (reasoningEffort !== "light" || useNativeLightReasoning) {
-    // For light, we might not use native reasoning but Chain of Thought instead
-    return effort;
-  }
-  return undefined;
+  return REASONING_EFFORT_TO_OPENAI[reasoningEffort];
 }
 
 export function toToolChoiceParam(

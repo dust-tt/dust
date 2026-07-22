@@ -23,7 +23,6 @@ const MODEL_CONFIG = {
     high: true,
   },
   defaultReasoningEffort: "medium",
-  useNativeLightReasoning: true,
   supportsResponseFormat: true,
   supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "r50k_base" },
