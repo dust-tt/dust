@@ -18,6 +18,8 @@ import type {
 } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
+const DEFAULT_CONVERSATION_EVENT_TTL_SECONDS = 5;
+
 /**
  * Generic event publication interface.
  */
@@ -40,8 +42,10 @@ export async function publishConversationEvent(
   event: ConversationEvents,
   {
     conversationId,
+    ttlSeconds = DEFAULT_CONVERSATION_EVENT_TTL_SECONDS,
   }: {
     conversationId: string;
+    ttlSeconds?: number;
   }
 ) {
   const redisHybridManager = getRedisHybridManager();
@@ -52,9 +56,7 @@ export async function publishConversationEvent(
     conversationChannel,
     JSON.stringify(event),
     "user_message_events",
-    // Conversation & message initial states are setup before starting to listen to events so we really care about getting new events.
-    // We are setting a low value to accommodate for reconnections to the event stream.
-    5
+    ttlSeconds
   );
 }
 

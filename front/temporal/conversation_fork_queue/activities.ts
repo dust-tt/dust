@@ -5,6 +5,10 @@ import { ConversationForkResource } from "@app/lib/resources/conversation_fork_r
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 
+// The viewer delays its SSE connection until messages load, so retain this event
+// across slow initialization.
+const FORK_PREPARED_EVENT_TTL_SECONDS = 10 * 60;
+
 async function markForkPrepared(
   auth: Authenticator,
   conversation: ConversationResource
@@ -14,7 +18,10 @@ async function markForkPrepared(
   });
   await publishConversationEvent(
     { type: "conversation_fork_prepared", created: Date.now() },
-    { conversationId: conversation.sId }
+    {
+      conversationId: conversation.sId,
+      ttlSeconds: FORK_PREPARED_EVENT_TTL_SECONDS,
+    }
   );
 }
 
