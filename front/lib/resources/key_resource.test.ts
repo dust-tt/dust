@@ -76,10 +76,14 @@ vi.mock("@app/lib/utils/cache", () => ({
 }));
 
 import type { Authenticator } from "@app/lib/auth";
-import type { GroupResource } from "@app/lib/resources/group_resource";
+import {
+  GroupResource,
+  MANUAL_BUILDERS_GROUP_NAME,
+} from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
+import type { LightWorkspaceType } from "@app/types/user";
 
 function toCacheKey(secret: string): string {
   return `cacheWithRedis-_fetchBySecretUncached-${KeyResource.keyCacheKeyResolver(secret)}`;
@@ -88,12 +92,14 @@ function toCacheKey(secret: string): string {
 describe("KeyResource", () => {
   let authenticator: Authenticator;
   let globalGroup: GroupResource;
+  let workspace: LightWorkspaceType;
 
   beforeEach(async () => {
     inMemoryCache.clear();
     const testSetup = await createResourceTest({ role: "admin" });
     authenticator = testSetup.authenticator;
     globalGroup = testSetup.globalGroup;
+    workspace = testSetup.workspace;
   });
 
   describe("fetchBySecret", () => {
@@ -180,6 +186,95 @@ describe("KeyResource", () => {
       const fetched = await KeyResource.fetchBySecret(key.secret);
       expect(fetched).not.toBeNull();
       expect(fetched!.role).toBe("admin");
+    });
+
+    it("adds the key to the Builders group when the new role is builder", async () => {
+      const key = await KeyFactory.readOnly(globalGroup); // role: "user"
+
+      await key.updateRole({ newRole: "builder" });
+
+      const group = await GroupResource.fetchManualBuildersGroup(workspace);
+      expect(group).not.toBeNull();
+      const fetched = await KeyResource.fetchByWorkspaceAndId({
+        workspace,
+        id: key.id,
+      });
+      expect(fetched!.groupIds).toContain(group!.id);
+    });
+
+    it("removes the key from the Builders group when the role changes away from builder", async () => {
+      const key = await KeyFactory.regular(globalGroup); // role: "builder"
+      await key.updateRole({ newRole: "builder" }); // creates + adds
+
+      await key.updateRole({ newRole: "user" });
+
+      const group = await GroupResource.fetchManualBuildersGroup(workspace);
+      const fetched = await KeyResource.fetchByWorkspaceAndId({
+        workspace,
+        id: key.id,
+      });
+      expect(fetched!.groupIds).not.toContain(group!.id);
+    });
+  });
+
+  describe("setGroupMembership", () => {
+    it("is idempotent when adding a group the key already has", async () => {
+      const key = await KeyFactory.regular(globalGroup);
+
+      await key.setGroupMembership({ group: globalGroup, isMember: true });
+
+      const fetched = await KeyResource.fetchByWorkspaceAndId({
+        workspace,
+        id: key.id,
+      });
+      expect(fetched!.groupIds).toEqual([globalGroup.id]);
+    });
+
+    it("is idempotent when removing a group the key doesn't have", async () => {
+      const key = await KeyFactory.regular(globalGroup);
+      const otherGroup =
+        await GroupResource.fetchOrCreateManualBuildersGroup(workspace);
+
+      await key.setGroupMembership({ group: otherGroup, isMember: false });
+
+      const fetched = await KeyResource.fetchByWorkspaceAndId({
+        workspace,
+        id: key.id,
+      });
+      expect(fetched!.groupIds).toEqual([globalGroup.id]);
+    });
+  });
+
+  describe("syncBuilderGroupMembership", () => {
+    it("creates the Builders group lazily and adds the key when isBuilder is true", async () => {
+      const key = await KeyFactory.regular(globalGroup); // role: "builder"
+      const before = await GroupResource.fetchManualBuildersGroup(workspace);
+      expect(before).toBeNull();
+
+      await key.syncBuilderGroupMembership({ isBuilder: true });
+
+      const group = await GroupResource.fetchManualBuildersGroup(workspace);
+      expect(group).not.toBeNull();
+      expect(group!.name).toBe(MANUAL_BUILDERS_GROUP_NAME);
+      const fetched = await KeyResource.fetchByWorkspaceAndId({
+        workspace,
+        id: key.id,
+      });
+      expect(fetched!.groupIds).toContain(group!.id);
+    });
+
+    it("does not create the Builders group when isBuilder is false and none exists", async () => {
+      const key = await KeyFactory.regular(globalGroup);
+
+      await key.syncBuilderGroupMembership({ isBuilder: false });
+
+      const group = await GroupResource.fetchManualBuildersGroup(workspace);
+      expect(group).toBeNull();
+      const fetched = await KeyResource.fetchByWorkspaceAndId({
+        workspace,
+        id: key.id,
+      });
+      expect(fetched!.groupIds).toEqual([globalGroup.id]);
     });
   });
 
