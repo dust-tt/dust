@@ -53,6 +53,7 @@ import { useEditors, useUpdateEditors } from "@app/lib/swr/agent_editors";
 import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useModels } from "@app/lib/swr/models";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -64,7 +65,6 @@ import type { TemplateInfo } from "@app/types/assistant/templates";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import { isBuilder } from "@app/types/user";
 import {
   ContentMessage,
   ContentMessageAction,
@@ -239,14 +239,17 @@ function AgentBuilderForm({
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
 
+  const { hasPermission } = useWorkspacePermissions(owner);
+  const canPublishAgent = hasPermission("publish", "agent");
+
   const { slackChannels: slackChannelsLinkedWithAgent } =
     useSlackChannelsLinkedWithAgent({
       workspaceId: owner.sId,
-      disabled: !agentConfiguration || !isBuilder(owner),
+      disabled: !agentConfiguration || !canPublishAgent,
     });
 
   const slackProvider = useMemo(() => {
-    if (!isBuilder(owner)) {
+    if (!canPublishAgent) {
       return null;
     }
 
@@ -261,7 +264,7 @@ function AgentBuilderForm({
       (dsv) => dsv.dataSource.connectorProvider === "slack"
     );
     return slackProvider ? "slack" : null;
-  }, [supportedDataSourceViews, owner]);
+  }, [supportedDataSourceViews, canPublishAgent]);
 
   const processedActions = useMemo(() => {
     return processActionsFromStorage(actions ?? emptyArray());
