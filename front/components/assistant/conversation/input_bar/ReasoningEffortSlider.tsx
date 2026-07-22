@@ -1,5 +1,8 @@
 import type { EffortStop } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { getReasoningEffortLabel } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import {
+  getReasoningEffortLabel,
+  REASONING_EFFORT_INFO,
+} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { classNames } from "@app/lib/utils";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { SliderSteps, Tooltip } from "@dust-tt/sparkle";
@@ -63,6 +66,14 @@ export function ReasoningEffortSlider({
         value={valueIndex}
         lockedSteps={lockedSteps}
         disabled={isDisabled}
+        // Hovering a step surfaces that effort's blurb. Skipped when disabled:
+        // the whole slider is then wrapped in the explanatory tooltip below,
+        // and nesting the two would double up.
+        stepTooltips={
+          isDisabled
+            ? undefined
+            : stops.map((stop) => REASONING_EFFORT_INFO[stop.effort])
+        }
         onChange={(index) => {
           const next = stops[index];
           if (next) {
@@ -77,7 +88,7 @@ export function ReasoningEffortSlider({
           const isFirst = index === 0;
           const isLast = index === stops.length - 1;
           const buttonDisabled = stop.locked || isDisabled;
-          return (
+          const labelButton = (
             <button
               key={stop.effort}
               type="button"
@@ -105,6 +116,22 @@ export function ReasoningEffortSlider({
             >
               {getReasoningEffortLabel(stop.effort)}
             </button>
+          );
+
+          // When the whole slider is disabled it is already wrapped in the
+          // explanatory tooltip below; adding per-effort tooltips here would
+          // nest them, so only surface the blurbs on an interactive slider.
+          if (isDisabled) {
+            return labelButton;
+          }
+
+          return (
+            <Tooltip
+              key={stop.effort}
+              tooltipTriggerAsChild
+              trigger={labelButton}
+              label={REASONING_EFFORT_INFO[stop.effort]}
+            />
           );
         })}
       </div>

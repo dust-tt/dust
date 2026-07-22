@@ -45,7 +45,7 @@ export function isModelStreamId(modelId: string): modelId is ModelStreamIdType {
 // at. Ordered by preference — the router picks the first candidate available to
 // the workspace. Efforts default to each model's own default; they are only
 // overridden when a stream deliberately wants a different effort (e.g. `light`
-// for the Fast stream, `high` for the Deep stream).
+// for the Fast stream, `high` for the Complex stream).
 export interface ModelStreamCandidate {
   providerId: ModelProviderIdType;
   modelId: string;

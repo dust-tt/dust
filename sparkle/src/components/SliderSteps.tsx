@@ -1,4 +1,10 @@
 import * as SliderPrimitive from "@radix-ui/react-slider";
+import {
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+} from "@sparkle/components/Tooltip";
 import { Lock01 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
@@ -26,6 +32,7 @@ export interface SliderStepsProps {
   disabled?: boolean;
   className?: string;
   ariaLabel?: string;
+  stepTooltips?: React.ReactNode[];
 }
 
 export function SliderSteps({
@@ -36,6 +43,7 @@ export function SliderSteps({
   disabled = false,
   className,
   ariaLabel,
+  stepTooltips,
 }: SliderStepsProps) {
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
 
@@ -85,7 +93,12 @@ export function SliderSteps({
       ? hoveredIndex
       : null;
 
-  return (
+  const activeTooltip =
+    !disabled && hoveredIndex !== null
+      ? (stepTooltips?.[hoveredIndex] ?? null)
+      : null;
+
+  const root = (
     <SliderPrimitive.Root
       className={cn(
         "relative flex h-5 w-full touch-none select-none items-center",
@@ -160,6 +173,35 @@ export function SliderSteps({
       >
         <span className="block h-4 w-4 rounded-full bg-white drop-shadow" />
       </SliderPrimitive.Thumb>
+      {stepTooltips ? (
+        <TooltipTrigger asChild>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 h-0 w-0 -translate-y-1/2"
+            style={{
+              left:
+                hoveredIndex !== null
+                  ? stepCenter(hoveredIndex, lastIndex)
+                  : "50%",
+            }}
+          />
+        </TooltipTrigger>
+      ) : null}
     </SliderPrimitive.Root>
+  );
+
+  if (!stepTooltips) {
+    return root;
+  }
+
+  return (
+    <TooltipProvider delayDuration={0}>
+      <TooltipRoot open={activeTooltip !== null}>
+        {root}
+        {activeTooltip !== null ? (
+          <TooltipContent>{activeTooltip}</TooltipContent>
+        ) : null}
+      </TooltipRoot>
+    </TooltipProvider>
   );
 }
