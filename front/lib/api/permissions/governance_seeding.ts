@@ -1,3 +1,4 @@
+import { getPublishingRestrictionLevel } from "@app/lib/api/assistant/publishing_restrictions";
 import type { Authenticator } from "@app/lib/auth";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -47,6 +48,27 @@ export const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
   {
     capability: { grantType: "create", resourceType: "skill" },
     resolveTarget: async (_auth) => "builders",
+  },
+  {
+    capability: { grantType: "publish", resourceType: "agent" },
+    resolveTarget: async (auth) => {
+      const featureFlags = (
+        await FeatureFlagResource.listForWorkspace(
+          auth.getNonNullableWorkspace()
+        )
+      ).map((flag) => flag.name);
+      const level = getPublishingRestrictionLevel(featureFlags);
+      switch (level) {
+        case "admins_only":
+          return "admins_only";
+        case "builders_and_admins":
+          return "builders";
+        case null:
+          return "everyone";
+        default:
+          assertNever(level);
+      }
+    },
   },
 ];
 
