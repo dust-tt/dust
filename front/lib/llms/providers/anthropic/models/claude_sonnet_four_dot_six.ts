@@ -1,7 +1,4 @@
-import {
-  dropTemperatureOfOneWhenReasoningIsNone,
-  dropTemperatureWhenReasoning,
-} from "@app/lib/llms/stream/types/configuration";
+import { dropTemperatureWhenReasoning } from "@app/lib/llms/stream/types/configuration";
 
 export function WithDustClaudeSonnetFourDotSixConfig<
   TBase extends abstract new (
@@ -21,10 +18,7 @@ export function WithDustClaudeSonnetFourDotSixConfig<
     // Anthropic rejects a non-default temperature while thinking is active (drop
     // it → schema re-applies the required 1), and rejects temperature=1 while
     // thinking is disabled.
-    static readonly configParsers = [
-      dropTemperatureWhenReasoning,
-      dropTemperatureOfOneWhenReasoningIsNone,
-    ];
+    static readonly configParsers = [dropTemperatureWhenReasoning];
   }
 
   return DustClaudeSonnetFourDotSix;
