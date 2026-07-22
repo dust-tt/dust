@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -59,12 +60,27 @@ export class ActivationNudgeResource extends BaseResource<ActivationNudgeModel> 
   ): Promise<ActivationNudgeResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
+    // Best-effort link to the canonical ActivationPod, alongside the
+    // spaceId/triggerId/userId already denormalized below. Not every pod has
+    // one yet, so a lookup miss just leaves activationPodId null.
+    const activationPods = await ActivationPodResource.fetchBySpaceModelIds(
+      auth,
+      nudges.map(({ pod }) => pod.id)
+    );
+    const activationPodBySpaceId = new Map(
+      activationPods.map((activationPod) => [
+        activationPod.spaceId,
+        activationPod,
+      ])
+    );
+
     const created = await this.model.bulkCreate(
       nudges.map(({ pod, trigger }) => ({
         workspaceId,
         spaceId: pod.id,
         triggerId: trigger.id,
         userId: trigger.editor,
+        activationPodId: activationPodBySpaceId.get(pod.id)?.id ?? null,
       })),
       { returning: true }
     );

@@ -12,11 +12,13 @@ import {
 } from "@app/lib/api/projects/constants";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { activationSkill } from "@app/lib/resources/skill/code_defined/global/activation";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
@@ -382,6 +384,19 @@ export const joinActivationPodPlugin = createPlugin({
         )
       );
     }
+
+    // Record the canonical ActivationPod row now that the pod's owner and
+    // trigger are known. Best-effort: existing nudge/recommendation flows
+    // don't depend on it yet, so a lookup miss here shouldn't fail pod setup.
+    const activationTrigger = await TriggerResource.fetchById(
+      podMemberAuth,
+      triggerResult.value.triggerId
+    );
+    await ActivationPodResource.makeNew(auth, {
+      pod,
+      user: creator,
+      trigger: activationTrigger,
+    });
 
     // Fire the activation event so the trigger kicks off the initial conversation
     // as soon as the pod is provisioned.
