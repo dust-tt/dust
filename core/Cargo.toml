@@ -47,6 +47,10 @@ path = "bin/qdrant/create_collection.rs"
 name = "qdrant_shard_rebalance_suggestions"
 path = "bin/qdrant/qdrant_shard_rebalance_suggestions.rs"
 
+[[bin]]
+name = "qdrant_shard_key_breakdown"
+path = "bin/qdrant/shard_key_breakdown.rs"
+
 # [[bin]]
 # name = "qdrant_migrator"
 # path = "bin/qdrant/migrator.rs"

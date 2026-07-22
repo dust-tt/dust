@@ -175,13 +175,16 @@ impl DustQdrantClient {
         Ok(h % SHARD_KEY_COUNT)
     }
 
-    fn shard_key(&self, internal_id: &String) -> Result<shard_key::Key> {
+    pub fn shard_key_name(&self, internal_id: &String) -> Result<String> {
         Ok(format!(
             "{}_{}",
             self.shard_key_prefix(),
             Self::shard_key_id_from_internal_id(internal_id)?
-        )
-        .into())
+        ))
+    }
+
+    fn shard_key(&self, internal_id: &String) -> Result<shard_key::Key> {
+        Ok(self.shard_key_name(internal_id)?.into())
     }
 
     // Inject the `data_source_internal_id` to the filter to ensure tenant separation. This
