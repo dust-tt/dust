@@ -78,12 +78,17 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
+  SkillAvailability,
   SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
   SkillStatus,
   SkillType,
   UsedBySkillType,
+} from "@app/types/assistant/skill_configuration";
+import {
+  availabilityFromIsDefault,
+  isDefaultFromAvailability,
 } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 import { SKILL_GROUP_PREFIX } from "@app/types/groups";
@@ -417,11 +422,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<SkillResource> {
     const owner = auth.getNonNullableWorkspace();
 
+    // Transition (isDefault -> availability): dual-write both columns from whichever one the
+    // caller provided, so old code reading isDefault stays correct during the rollout.
+    const availability =
+      blob.availability ?? availabilityFromIsDefault(blob.isDefault ?? false);
+
     // Use a transaction to ensure all creations succeed or all are rolled back.
     return withTransaction(async (transaction) => {
       const skill = await this.model.create(
         {
           ...blob,
+          availability,
+          isDefault: isDefaultFromAvailability(availability),
           instructionsHtml: blob.instructionsHtml ?? null,
           workspaceId: owner.id,
         },
@@ -1987,6 +1999,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         source: null,
         sourceMetadata: null,
         isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
+        availability: SystemSkillsRegistry.isSystemSkill(def.sId)
+          ? "workspace_users"
+          : "users_and_agents",
         favoriteCount: 0,
         reinforcement: "auto",
         lastReinforcementAnalysisAt: null,
@@ -2274,6 +2289,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
           isDefault: versionModel.isDefault,
+          availability: versionModel.availability,
           favoriteCount: this.favoriteCount,
           reinforcement: "auto",
           lastReinforcementAnalysisAt: null,
@@ -2832,7 +2848,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(status ? { status } : {}),
           ...(source ? { source } : {}),
           ...(sourceMetadata ? { sourceMetadata } : {}),
-          ...(isDefault !== undefined ? { isDefault } : {}),
+          // Transition (isDefault -> availability): dual-write both columns until all code
+          // relies on availability and isDefault is dropped.
+          ...(isDefault !== undefined
+            ? { isDefault, availability: availabilityFromIsDefault(isDefault) }
+            : {}),
           ...(reinforcement !== undefined ? { reinforcement } : {}),
         },
         transaction
@@ -3987,8 +4007,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       })),
       canWrite: this.canWrite(auth),
       canAdministrate: this.canAdministrate(auth),
-      isDefault: this.isDefault,
+      isDefault: isDefaultFromAvailability(this.getAvailability()),
     };
+  }
+
+  getAvailability(): SkillAvailability {
+    // Transition (isDefault -> availability): NULL means the row predates the availability column
+    // and isDefault is authoritative.
+    return this.availability ?? availabilityFromIsDefault(this.isDefault);
   }
 
   private async saveVersion(
@@ -4055,6 +4081,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       isDefault: this.isDefault,
+      availability: this.availability,
     };
 
     await SkillVersionModel.create(versionData, {

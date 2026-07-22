@@ -563,6 +563,54 @@ describe("SkillResource", () => {
   });
 
   describe("updateSkill", () => {
+    it("keeps availability in sync when updating isDefault", async () => {
+      const skillResource = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Test Skill For Availability Sync" }
+      );
+
+      expect(skillResource.isDefault).toBe(false);
+      expect(skillResource.availability).toBe("workspace_users");
+
+      await skillResource.updateSkill(testContext.authenticator, {
+        name: skillResource.name,
+        agentFacingDescription: skillResource.agentFacingDescription,
+        userFacingDescription: skillResource.userFacingDescription,
+        instructions: skillResource.instructions,
+        icon: skillResource.icon,
+        isDefault: true,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [],
+      });
+
+      const updatedSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        skillResource.sId
+      );
+      expect(updatedSkill?.isDefault).toBe(true);
+      expect(updatedSkill?.availability).toBe("users_and_agents");
+
+      await skillResource.updateSkill(testContext.authenticator, {
+        name: skillResource.name,
+        agentFacingDescription: skillResource.agentFacingDescription,
+        userFacingDescription: skillResource.userFacingDescription,
+        instructions: skillResource.instructions,
+        icon: skillResource.icon,
+        isDefault: false,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [],
+      });
+
+      const revertedSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        skillResource.sId
+      );
+      expect(revertedSkill?.isDefault).toBe(false);
+      expect(revertedSkill?.availability).toBe("workspace_users");
+    });
+
     it("should add skill space requirements to agents using the skill", async () => {
       const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
 

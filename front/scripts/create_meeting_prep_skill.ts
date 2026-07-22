@@ -354,6 +354,7 @@ async function createMeetingPrepSkill(
         requestedSpaceIds: [],
         icon: SKILL_ICON,
         isDefault: false,
+        availability: "workspace_users",
       },
       { transaction }
     );

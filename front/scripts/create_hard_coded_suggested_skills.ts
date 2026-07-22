@@ -272,6 +272,7 @@ async function createSuggestedSkills(
               requestedSpaceIds: [],
               icon: skill.icon,
               isDefault: false,
+              availability: "workspace_users",
             },
             { transaction }
           );
