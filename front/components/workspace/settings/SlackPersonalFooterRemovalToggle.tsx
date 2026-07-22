@@ -6,7 +6,7 @@ import { ContextItem, SlackLogo, SliderToggle } from "@dust-tt/sparkle";
 
 const LABEL = '"Sent via Agent" Slack footer';
 const DESCRIPTION =
-  'Control whether agents can remove the attribution footer on Slack messages.';
+  "Control whether agents can remove the attribution footer on Slack messages.";
 
 export function SlackPersonalFooterRemovalToggle({
   owner,
