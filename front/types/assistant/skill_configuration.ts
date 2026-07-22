@@ -1,5 +1,6 @@
 import { MCPServerViewSchema } from "@app/lib/api/mcp_schemas";
 import type { AgentsUsageType } from "@app/types/data_source";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
 import { z } from "zod";
 
@@ -8,6 +9,35 @@ export type SkillStatus = (typeof SKILL_STATUSES)[number];
 
 export const SKILL_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
 export type SkillReinforcementMode = (typeof SKILL_REINFORCEMENT_MODES)[number];
+
+export const SKILL_AVAILABILITIES = [
+  "editors",
+  "workspace_users",
+  "users_and_agents",
+] as const;
+export type SkillAvailability = (typeof SKILL_AVAILABILITIES)[number];
+
+// Transition (isDefault -> availability): rows written before the availability column existed only
+// carry isDefault. Remove these mappings once the backfill has run and isDefault is dropped.
+export function availabilityFromIsDefault(
+  isDefault: boolean
+): SkillAvailability {
+  return isDefault ? "users_and_agents" : "workspace_users";
+}
+
+export function isDefaultFromAvailability(
+  availability: SkillAvailability
+): boolean {
+  switch (availability) {
+    case "users_and_agents":
+      return true;
+    case "workspace_users":
+    case "editors":
+      return false;
+    default:
+      return assertNever(availability);
+  }
+}
 
 export const SKILL_VIEWS = ["full", "summary"] as const;
 export type SkillViewType = (typeof SKILL_VIEWS)[number];

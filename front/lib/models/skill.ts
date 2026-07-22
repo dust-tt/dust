@@ -10,6 +10,7 @@ import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
+  SkillAvailability,
   SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
@@ -74,6 +75,13 @@ const SKILL_MODEL_ATTRIBUTES = {
     allowNull: false,
     defaultValue: false,
   },
+  // Transition (isDefault -> availability): nullable with no default on purpose. NULL means
+  // "written by code predating the column, derive from isDefault". Will become NOT NULL once
+  // the backfill has run and isDefault is dropped.
+  availability: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
 } as const satisfies ModelAttributes;
 
 /**
@@ -112,6 +120,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare source: SkillSourceType | null;
   declare sourceMetadata: SkillSourceMetadata | null;
   declare isDefault: boolean;
+  declare availability: SkillAvailability | null;
   declare favoriteCount: CreationOptional<number>;
 
   declare reinforcement: CreationOptional<SkillReinforcementMode>;
