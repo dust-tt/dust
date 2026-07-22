@@ -2,7 +2,6 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { PatchAgentTagsResponseBody } from "@app/types/api/assistant/configuration/agent_tags";
-import { isBuilder } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -83,7 +82,7 @@ app.patch(
     }
 
     if (
-      !isBuilder(auth.getNonNullableWorkspace()) &&
+      !(await auth.hasWorkspacePermission("publish", "agent")) &&
       (tagsToAdd.some((tag) => tag.kind === "protected") ||
         tagsToRemove.some((tag) => tag.kind === "protected"))
     ) {

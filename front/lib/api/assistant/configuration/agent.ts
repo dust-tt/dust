@@ -86,7 +86,7 @@ import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_util
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
-import { isAdmin, isBuilder } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import assert from "assert";
 import type { Transaction } from "sequelize";
 import {
@@ -774,6 +774,11 @@ export async function createAgentConfiguration(
         );
       }
 
+      const canManageProtectedTags = await auth.hasWorkspacePermission(
+        "publish",
+        "agent"
+      );
+
       const existingTags = existingAgent
         ? await TagResource.listForAgent(auth, existingAgent.id)
         : [];
@@ -781,7 +786,7 @@ export async function createAgentConfiguration(
         .filter((t) => t.kind === "protected")
         .map((t) => t.sId);
       if (
-        !isBuilder(owner) &&
+        !canManageProtectedTags &&
         !existingReservedTags.every((reservedTagId) =>
           tags.some((tag) => tag.sId === reservedTagId)
         )
@@ -802,7 +807,7 @@ export async function createAgentConfiguration(
           const tagResource = tagResourceById.get(tag.sId);
           if (tagResource) {
             if (
-              !isBuilder(owner) &&
+              !canManageProtectedTags &&
               tagResource.kind === "protected" &&
               !existingReservedTags.includes(tagResource.sId)
             ) {
