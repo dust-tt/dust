@@ -23,7 +23,7 @@
   --color-emerald-500: oklch(69.71% 0.1227 156.07);
   --color-emerald-600: oklch(57.64% 0.1041 153.7);
   --color-emerald-700: oklch(50.45% 0.1102 152.21);
-  --color-emerald-800: oklch(43.18% 0.0865 166.91);
+  --color-emerald-800: oklch(43.18% 0.0865 152);
   --color-emerald-900: oklch(29.52% 0.0689 151.38);
   --color-emerald-950: oklch(17.26% 0.0316 155.98);
 
@@ -272,7 +272,9 @@
   --color-hover: rgba(0, 0, 0, 0.02);
   --color-selected: rgba(0, 0, 0, 0.06);
   --color-loading: rgba(0, 0, 0, 0.06);
-  --color-faint: var(--color-stone-400);
+  /* stone-500, not 400: faint renders as text (breadcrumb separators), so it
+     must clear 4.5:1 on white while staying lighter than muted-foreground. */
+  --color-faint: var(--color-stone-500);
 
   /* Text */
   --color-foreground: var(--color-stone-950);
@@ -428,7 +430,9 @@
   --color-hover: rgba(255, 255, 255, 0.04);
   --color-selected: rgba(255, 255, 255, 0.08);
   --color-loading: rgba(255, 255, 255, 0.08);
-  --color-faint: var(--color-stone-600);
+  /* stone-500, not 600: clears the 3:1 non-text bar on the dark background.
+     stone-400 would tie with muted-foreground and erase the hierarchy. */
+  --color-faint: var(--color-stone-500);
 
   /* Text */
   --color-foreground: var(--color-stone-200);

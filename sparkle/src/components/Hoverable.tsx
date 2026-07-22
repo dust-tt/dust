@@ -23,11 +23,13 @@ const hoverableVariants: Record<HoverableVariantType, string> = {
     "hover:text-highlight-light",
     "active:text-highlight-dark"
   ),
+  // highlight-500 sits at 3.2:1 on white — below AA for body links.
+  // 700 clears 4.5:1; dark mode keeps 500 (5.8:1 on the dark bg).
   highlight: cn(
     "font-medium",
-    "text-highlight",
-    "hover:text-highlight-light",
-    "active:text-highlight-dark"
+    "text-highlight-700 dark:text-highlight-500",
+    "hover:text-highlight-600 dark:hover:text-highlight-light",
+    "active:text-highlight-800 dark:active:text-highlight-dark"
   ),
 };
 
