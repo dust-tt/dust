@@ -19,6 +19,55 @@ import type {
 import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
+const GITHUB_TEAM_REVIEWER_FRAGMENT = `... on Team {
+  slug
+}`;
+
+function isTeamReviewerAccessError(error: unknown): boolean {
+  if (
+    typeof error !== "object" ||
+    error === null ||
+    !("errors" in error) ||
+    !Array.isArray(error.errors)
+  ) {
+    return false;
+  }
+
+  return (
+    error.errors.length > 0 &&
+    error.errors.every(
+      (graphQLError) =>
+        typeof graphQLError === "object" &&
+        graphQLError !== null &&
+        "type" in graphQLError &&
+        graphQLError.type === "FORBIDDEN" &&
+        "path" in graphQLError &&
+        Array.isArray(graphQLError.path) &&
+        graphQLError.path.includes("reviewRequests")
+    )
+  );
+}
+
+// GitHub App tokens without organization Members access cannot resolve Team reviewers. Retry
+// without the Team fragment so valid pull request data is not discarded with the error.
+async function graphqlWithReviewerFallback<T>(
+  octokit: Octokit,
+  query: string,
+  variables: Record<string, unknown>
+): Promise<T> {
+  try {
+    return await octokit.graphql<T>(query, variables);
+  } catch (error) {
+    if (!isTeamReviewerAccessError(error)) {
+      throw error;
+    }
+
+    return octokit.graphql<T>(
+      query.replace(GITHUB_TEAM_REVIEWER_FRAGMENT, ""),
+      variables
+    );
+  }
+}
 
 function getReviewerIdentifier(
   reviewer: { login?: string; slug?: string } | null
@@ -2226,9 +2275,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                         ... on User {
                           login
                         }
-                        ... on Team {
-                          slug
-                        }
+                        ${GITHUB_TEAM_REVIEWER_FRAGMENT}
                       }
                     }
                   }
@@ -2243,12 +2290,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const results = (await octokit.graphql(searchQuery, {
-          searchQuery: query,
-          first,
-          after,
-          before,
-        })) as {
+        const results = await graphqlWithReviewerFallback<{
           search: {
             issueCount: number;
             pageInfo: {
@@ -2345,7 +2387,12 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                 }
             >;
           };
-        };
+        }>(octokit, searchQuery, {
+          searchQuery: query,
+          first,
+          after,
+          before,
+        });
 
         const formattedResults = results.search.nodes.map((node) => {
           const base = {
@@ -2487,9 +2534,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                         ... on User {
                           login
                         }
-                        ... on Team {
-                          slug
-                        }
+                        ${GITHUB_TEAM_REVIEWER_FRAGMENT}
                       }
                     }
                   }
@@ -2515,18 +2560,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           graphqlStates = ["MERGED"];
         }
 
-        const pullRequests = (await octokit.graphql(query, {
-          owner,
-          repo,
-          before,
-          after,
-          first: perPage,
-          orderBy: {
-            field: sort,
-            direction: direction,
-          },
-          states: graphqlStates,
-        })) as {
+        const pullRequests = await graphqlWithReviewerFallback<{
           repository: {
             pullRequests: {
               pageInfo: {
@@ -2579,7 +2613,18 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
               }[];
             };
           };
-        };
+        }>(octokit, query, {
+          owner,
+          repo,
+          before,
+          after,
+          first: perPage,
+          orderBy: {
+            field: sort,
+            direction: direction,
+          },
+          states: graphqlStates,
+        });
 
         const formattedPullRequests =
           pullRequests.repository.pullRequests.nodes.map((pr) => ({
