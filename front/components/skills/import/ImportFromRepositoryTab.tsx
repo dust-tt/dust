@@ -38,7 +38,6 @@ export function ImportFromRepositoryTab({
     detectError,
     repositoryNotFound,
     triggerDetect,
-    retryDetect,
     clearDetection,
   } = useDetectSkillsFromRepo({ owner });
 
@@ -106,7 +105,7 @@ export function ImportFromRepositoryTab({
         owner={owner}
         onConnected={() => {
           void mutateConnection();
-          retryDetect(repoUrlField.value);
+          triggerDetect(repoUrlField.value);
         }}
       />
     );
@@ -145,9 +144,7 @@ export function ImportFromRepositoryTab({
         className="bg-muted-background"
       />
 
-      <div
-        className={cn("flex flex-col", hasRepositoryContent && "min-h-[160px]")}
-      >
+      <div className={cn("flex flex-col", hasRepositoryContent && "min-h-40")}>
         {repositoryContent}
       </div>
 
@@ -157,7 +154,7 @@ export function ImportFromRepositoryTab({
           connection={connection}
           onDisconnected={() => {
             void mutateConnection();
-            retryDetect(repoUrlField.value);
+            triggerDetect(repoUrlField.value);
           }}
         />
       )}
