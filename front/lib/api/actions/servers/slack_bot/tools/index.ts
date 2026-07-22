@@ -22,10 +22,6 @@ export function createSlackBotTools(
   mcpServerId: string,
   toolContext?: ToolContext
 ): ToolDefinition[] {
-  // This setting predates Slack Bot support but is shared by both Slack MCPs.
-  const allowFooterRemoval =
-    auth.workspace()?.metadata?.slackPersonalAllowFooterRemoval ?? false;
-
   const handlers: ToolHandlers<typeof SLACK_BOT_TOOLS_METADATA> = {
     post_message: async (
       {
@@ -57,9 +53,7 @@ export function createSlackBotTools(
           unfurlLinks,
           unfurlMedia,
           accessToken,
-          showSentByFooter: allowFooterRemoval
-            ? (showSentByFooter ?? true)
-            : true,
+          showSentByFooter: showSentByFooter ?? true,
         });
       } catch (error) {
         return new Err(
@@ -308,21 +302,5 @@ export function createSlackBotTools(
     },
   };
 
-  const rawTools = buildTools(SLACK_BOT_TOOLS_METADATA, handlers);
-
-  // When footer removal is not allowed, strip showSentByFooter from the schema so
-  // the LLM never sees the parameter. The handler also enforces the default server-side.
-  const tools = allowFooterRemoval
-    ? rawTools
-    : rawTools.map((tool) => {
-        if (tool.name === "post_message") {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { showSentByFooter: _stripped, ...schemaWithoutFooter } =
-            tool.schema;
-          return { ...tool, schema: schemaWithoutFooter };
-        }
-        return tool;
-      });
-
-  return tools;
+  return buildTools(SLACK_BOT_TOOLS_METADATA, handlers);
 }
