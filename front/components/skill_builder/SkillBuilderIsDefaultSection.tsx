@@ -20,22 +20,23 @@ const MIN_DISCOVERABLE_DESCRIPTION_LENGTH = 150;
 export function SkillBuilderIsDefaultSection() {
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
   const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
-  const isDefault = watch("isDefault");
+  const availability = watch("availability");
+  const isDiscoverable = availability === "users_and_agents";
   const agentFacingDescription = watch("agentFacingDescription");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const isDescriptionTooShort =
     agentFacingDescription.trim().length < MIN_DISCOVERABLE_DESCRIPTION_LENGTH;
 
   const handleToggle = () => {
-    if (!isDefault) {
+    if (!isDiscoverable) {
       setShowConfirmDialog(true);
     } else {
-      setValue("isDefault", false, { shouldDirty: true });
+      setValue("availability", "workspace_users", { shouldDirty: true });
     }
   };
 
   const handleConfirm = () => {
-    setValue("isDefault", true, { shouldDirty: true });
+    setValue("availability", "users_and_agents", { shouldDirty: true });
     setShowConfirmDialog(false);
   };
 
@@ -44,7 +45,7 @@ export function SkillBuilderIsDefaultSection() {
       <div className="flex items-center gap-2">
         <SliderToggle
           disabled={isReadOnly}
-          selected={isDefault}
+          selected={isDiscoverable}
           onClick={handleToggle}
         />
         <span className="text-sm text-foreground">

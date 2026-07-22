@@ -557,7 +557,7 @@ describe("SkillResource", () => {
   });
 
   describe("updateSkill", () => {
-    it("keeps availability in sync when updating isDefault", async () => {
+    it("updates availability and derives the serialized isDefault from it", async () => {
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
         { name: "Test Skill For Availability Sync" }
@@ -574,7 +574,7 @@ describe("SkillResource", () => {
         userFacingDescription: skillResource.userFacingDescription,
         instructions: skillResource.instructions,
         icon: skillResource.icon,
-        isDefault: true,
+        availability: "users_and_agents",
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: [],
@@ -595,7 +595,7 @@ describe("SkillResource", () => {
         userFacingDescription: skillResource.userFacingDescription,
         instructions: skillResource.instructions,
         icon: skillResource.icon,
-        isDefault: false,
+        availability: "workspace_users",
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: [],

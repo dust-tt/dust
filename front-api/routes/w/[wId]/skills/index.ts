@@ -16,6 +16,7 @@ import type {
 } from "@app/types/api/skills";
 import {
   availabilityFromIsDefault,
+  SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
@@ -53,7 +54,9 @@ const PostSkillRequestBodySchema = z.intersection(
     instructionsHtml: z.string().nullable(),
     additionalRequestedSpaceIds: z.array(z.string()).optional(),
     fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
+    // @deprecated Use availability instead. Kept while old clients still send it.
     isDefault: z.boolean().optional(),
+    availability: z.enum(SKILL_AVAILABILITIES).optional(),
     reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
   }),
   z.union([
@@ -393,7 +396,9 @@ app.post(
         icon,
         source: body.source ?? "web_app",
         sourceMetadata: body.sourceMetadata ?? null,
-        availability: availabilityFromIsDefault(body.isDefault ?? false),
+        // isDefault is a deprecated alias; an explicit availability takes priority over it.
+        availability:
+          body.availability ?? availabilityFromIsDefault(body.isDefault ?? false),
         reinforcement: body.reinforcement ?? "on",
       },
       {

@@ -738,7 +738,12 @@
  *           description: Whether the authenticated actor can edit the skill
  *         isDefault:
  *           type: boolean
- *           description: Whether this skill is enabled by default
+ *           deprecated: true
+ *           description: Whether this skill is enabled by default. Deprecated, use availability instead.
+ *         availability:
+ *           type: string
+ *           enum: [editors, workspace_users, users_and_agents]
+ *           description: Who the skill is available to (users_and_agents makes it discoverable by agents)
  *         instructions:
  *           type: string
  *           nullable: true

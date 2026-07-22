@@ -358,6 +358,48 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     expect(updatedSkill?.agentFacingDescription).toBe(newDescription);
   });
 
+  it("updates availability, giving it priority over the deprecated isDefault", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    const basePayload = {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    };
+
+    // Old clients still send only isDefault.
+    let response = await patchSkill(workspace, skill.sId, {
+      ...basePayload,
+      isDefault: true,
+    });
+    expect(response.status).toBe(200);
+    let updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.availability).toBe("users_and_agents");
+
+    // New clients send availability; it wins over a contradicting isDefault.
+    response = await patchSkill(workspace, skill.sId, {
+      ...basePayload,
+      isDefault: true,
+      availability: "workspace_users",
+    });
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.availability).toBe("workspace_users");
+    expect(data.skill.isDefault).toBe(false);
+    updatedSkill = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(updatedSkill?.availability).toBe("workspace_users");
+  });
+
   it("recomputes nested skill references from instructions", async () => {
     const { workspace, skill, requestUserAuth } = await setupTest({
       requestUserRole: "admin",

@@ -78,6 +78,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
+  SkillAvailability,
   SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
@@ -2815,11 +2816,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentFacingDescription,
       attachedKnowledge,
+      availability,
       fileAttachments,
       icon,
       instructions,
       instructionsHtml,
-      isDefault,
       mcpServerViews,
       name,
       reinforcement,
@@ -2831,11 +2832,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }: {
       agentFacingDescription: string;
       attachedKnowledge: SkillAttachedKnowledge[];
+      availability?: SkillAvailability;
       fileAttachments?: FileResource[];
       icon: string | null;
       instructions: string;
       instructionsHtml?: string | null;
-      isDefault?: boolean;
       mcpServerViews: MCPServerViewResource[];
       name: string;
       reinforcement?: SkillReinforcementMode;
@@ -2881,10 +2882,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(status ? { status } : {}),
           ...(source ? { source } : {}),
           ...(sourceMetadata ? { sourceMetadata } : {}),
-          // isDefault is a legacy alias kept at the interface level; the column is availability.
-          ...(isDefault !== undefined
-            ? { availability: availabilityFromIsDefault(isDefault) }
-            : {}),
+          ...(availability !== undefined ? { availability } : {}),
           ...(reinforcement !== undefined ? { reinforcement } : {}),
         },
         transaction
@@ -4040,6 +4038,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       canWrite: this.canWrite(auth),
       canAdministrate: this.canAdministrate(auth),
       isDefault: isDefaultFromAvailability(this.availability),
+      availability: this.availability,
     };
   }
 

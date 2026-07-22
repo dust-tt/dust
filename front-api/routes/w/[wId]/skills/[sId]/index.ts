@@ -17,6 +17,10 @@ import type {
   PatchSkillResponseBody,
 } from "@app/types/api/skills";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import {
+  availabilityFromIsDefault,
+  SKILL_AVAILABILITIES,
+} from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -53,7 +57,9 @@ const PatchSkillRequestBodySchema = z.object({
   instructionsHtml: z.string().nullable(),
   additionalRequestedSpaceIds: z.array(z.string()).optional(),
   fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
+  // @deprecated Use availability instead. Kept while old clients still send it.
   isDefault: z.boolean().optional(),
+  availability: z.enum(SKILL_AVAILABILITIES).optional(),
   reinforcement: z.enum(["auto", "on", "off"]).optional(),
 });
 
@@ -385,7 +391,12 @@ app.patch(
       icon: body.icon,
       instructions: body.instructions,
       instructionsHtml: body.instructionsHtml,
-      isDefault: body.isDefault,
+      // isDefault is a deprecated alias; an explicit availability takes priority over it.
+      availability:
+        body.availability ??
+        (body.isDefault !== undefined
+          ? availabilityFromIsDefault(body.isDefault)
+          : undefined),
       mcpServerViews,
       name,
       reinforcement: body.reinforcement,
