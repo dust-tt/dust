@@ -461,7 +461,7 @@ Internal MCP servers must live in `lib/api/actions/servers/<server_name>/` and s
 tool implementation, and server wiring:
 
 - `metadata.ts` exports the literal tool metadata array and the server metadata.
-- `tools.ts` defines the schema-inferred `ToolHandlers<typeof TOOLS_METADATA>` and combines
+- `tools/index.ts` defines the schema-inferred `ToolHandlers<typeof TOOLS_METADATA>` and combines
   them with the metadata using `buildTools`.
 - `index.ts` creates the MCP server, registers its tools (binding the tool handlers to the server metadata), and default
   exports the McpServer.

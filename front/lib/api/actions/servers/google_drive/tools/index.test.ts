@@ -7,12 +7,12 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { Common } from "googleapis";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { BinaryFileResourceBlock } from "./tools";
+import type { BinaryFileResourceBlock } from "./index";
 import {
   buildBinaryFileResource,
   GOOGLE_DRIVE_TOOL_HANDLERS,
   handleFileAccessError,
-} from "./tools";
+} from "./index";
 
 vi.mock("@app/lib/api/actions/servers/google_drive/helpers", () => ({
   getDriveClient: vi.fn(),

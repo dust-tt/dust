@@ -34,7 +34,7 @@ vi.mock("@app/lib/resources/skill/skill_resource", () => ({
   },
 }));
 
-import { SKILL_MANAGEMENT_TOOL_HANDLERS } from "./tools";
+import { SKILL_MANAGEMENT_TOOL_HANDLERS } from "./index";
 
 describe("skill_management enable_skill tool", () => {
   type TestUserMessage = {

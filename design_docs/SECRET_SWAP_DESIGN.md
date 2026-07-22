@@ -295,7 +295,7 @@ root 0600, never readable by the agent UID). On any subsequent dsbx
 restart within the same sandbox VM, dsbx reads the existing CA from
 tmpfs and reuses it.
 
-Why this matters: `tools.ts` can restart the dsbx forwarder on
+Why this matters: `tools/index.ts` can restart the dsbx forwarder on
 health failure, and trust env vars like `NODE_EXTRA_CA_CERTS` and the
 Java keystore are read at process startup only. If dsbx rotated the CA
 on restart, every agent process that started against the old CA would
@@ -531,7 +531,7 @@ Out of scope for Phase 0:
 - The random-nonce `__DSEC_<32hex>__` format.
 - The `/run/dust/egress-secrets.json` per-sandbox file.
 - CA persistence on tmpfs (Phase 0 regenerates on dsbx start; if
-  `tools.ts` restarts dsbx mid-experiment the trust bundle goes
+  `tools/index.ts` restarts dsbx mid-experiment the trust bundle goes
   stale - acceptable for a controlled smoke test, not for production).
 - `allowedDomains` gating, deny-log enrichment.
 - Trust coverage beyond curl (Node, Python, Java, Rust, Bun, Deno, Go).
@@ -699,7 +699,7 @@ explicitly promote sensitive ones to `kind = 'https_secret'` and set
   agent code runs after a paused sandbox resumes). The file is
   plaintext with the schema documented above (`name`, `placeholder`,
   `value`, `allowedDomains`). dsbx reads the file on every startup
-  (initial and any subsequent restart by `tools.ts`
+  (initial and any subsequent restart by `tools/index.ts`
   health-recovery) from the same path.
 
 - **How `front` writes the file** (root-owned 0600, atomic, no

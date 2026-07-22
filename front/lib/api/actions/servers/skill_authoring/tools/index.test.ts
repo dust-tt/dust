@@ -31,7 +31,7 @@ vi.mock("@app/lib/api/skills/existing_skill_checker", () => ({
 }));
 
 import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
-import { SKILL_AUTHORING_TOOL_HANDLERS } from "./tools";
+import { SKILL_AUTHORING_TOOL_HANDLERS } from "./index";
 
 const mockGetSimilarSkills = vi.mocked(getSimilarSkills);
 

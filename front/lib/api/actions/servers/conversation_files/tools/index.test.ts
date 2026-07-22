@@ -1,7 +1,7 @@
 import type { FileAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import { describe, expect, it } from "vitest";
 
-import { contentFromAttachments } from "./tools";
+import { contentFromAttachments } from "./index";
 
 function makeFileAttachment(
   partial: Partial<FileAttachmentType> &
