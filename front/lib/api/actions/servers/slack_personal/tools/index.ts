@@ -601,9 +601,7 @@ export function createSlackPersonalTools(
           unfurlLinks,
           unfurlMedia,
           accessToken,
-          showSentByFooter: allowFooterRemoval
-            ? (show_sent_by_footer ?? true)
-            : true,
+          showSentByFooter: show_sent_by_footer ?? true,
         });
       } catch (error) {
         const authError = handleSlackAuthError(error);
@@ -648,9 +646,7 @@ export function createSlackPersonalTools(
           unfurlLinks,
           unfurlMedia,
           accessToken,
-          showSentByFooter: allowFooterRemoval
-            ? (show_sent_by_footer ?? true)
-            : true,
+          showSentByFooter: show_sent_by_footer ?? true,
         });
       } catch (error) {
         const authError = handleSlackAuthError(error);
