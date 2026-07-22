@@ -406,8 +406,10 @@ describe("create agent capability", () => {
     const { workspace, authenticator: adminAuth } = await createResourceTest({
       role: "admin",
     });
-    const existingAgent =
-      await AgentConfigurationFactory.createTestAgent(adminAuth);
+    const existingAgent = await AgentConfigurationFactory.createTestAgent(
+      adminAuth,
+      { scope: "hidden" }
+    );
     const { authenticator, user } = await memberAuthInGroup(workspace);
     // No capability grant for this user; only editing rights on the existing agent matter here.
     const editorGroupRes = await GroupResource.findEditorGroupForAgent(
@@ -906,5 +908,254 @@ describe("updateAgentConfigurationsScope", () => {
 
     expect(refreshedEditorTrigger!.status).toBe("enabled");
     expect(refreshedNonEditorTrigger!.status).toBe("disabled");
+  });
+});
+
+describe("publish agent capability", () => {
+  type TestAgent = Awaited<
+    ReturnType<typeof AgentConfigurationFactory.createTestAgent>
+  >;
+
+  // Builds a non-admin editor of `agent` (so they can save new versions and pass the canEdit
+  // filter). With `withPublishCapability`, grants the workspace-wide publish permission to a group
+  // the user belongs to. Editing an existing agent is not create-gated, so no create grant is
+  // needed here — this isolates the publish/unpublish check.
+  async function editorAuthFor(
+    workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"],
+    agent: TestAgent,
+    { withPublishCapability = false }: { withPublishCapability?: boolean } = {}
+  ) {
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+      adminAuth,
+      agent
+    );
+    if (editorGroupRes.isErr()) {
+      throw editorGroupRes.error;
+    }
+    await GroupFactory.withMembers(adminAuth, editorGroupRes.value, [user]);
+
+    if (withPublishCapability) {
+      const group = await GroupFactory.regularAuto(workspace, "publishers");
+      await GroupPermissionResource.grantTypeWide(adminAuth, {
+        group,
+        grantType: "publish",
+        resourceType: "agent",
+      });
+      await GroupFactory.withMembers(adminAuth, group, [user]);
+    }
+
+    // Created after all group memberships so the authenticator resolves them without a refresh.
+    const authenticator = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    return { authenticator, user };
+  }
+
+  async function saveVersionWithScope(
+    auth: Authenticator,
+    agent: TestAgent,
+    user: Awaited<ReturnType<typeof UserFactory.basic>>,
+    scope: "hidden" | "visible"
+  ) {
+    return createAgentConfiguration(auth, {
+      name: agent.name,
+      description: "Test",
+      instructions: null,
+      instructionsHtml: null,
+      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+      status: "active",
+      scope,
+      model: {
+        providerId: "anthropic",
+        modelId: "claude-sonnet-4-5-20250929",
+        temperature: 0.7,
+      },
+      agentConfigurationId: agent.sId,
+      templateId: null,
+      requestedSpaceIds: [],
+      tags: [],
+      editors: [user.toJSON()],
+      authorId: user.id,
+    });
+  }
+
+  it("rejects publishing (hidden → visible) for an editor without the publish capability", async () => {
+    const { workspace, authenticator: adminAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+      scope: "hidden",
+    });
+    const { authenticator, user } = await editorAuthFor(workspace, agent);
+
+    const result = await saveVersionWithScope(
+      authenticator,
+      agent,
+      user,
+      "visible"
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "You don't have permission to publish agents."
+      );
+    }
+  });
+
+  it("allows publishing (hidden → visible) for an editor granted the publish capability", async () => {
+    const { workspace, authenticator: adminAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+      scope: "hidden",
+    });
+    const { authenticator, user } = await editorAuthFor(workspace, agent, {
+      withPublishCapability: true,
+    });
+
+    const result = await saveVersionWithScope(
+      authenticator,
+      agent,
+      user,
+      "visible"
+    );
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("rejects unpublishing (visible → hidden) for an editor without the publish capability", async () => {
+    const { workspace, authenticator: adminAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+      scope: "visible",
+    });
+    const { authenticator, user } = await editorAuthFor(workspace, agent);
+
+    const result = await saveVersionWithScope(
+      authenticator,
+      agent,
+      user,
+      "hidden"
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "You don't have permission to publish agents."
+      );
+    }
+  });
+
+  it("allows unpublishing (visible → hidden) for an editor granted the publish capability", async () => {
+    const { workspace, authenticator: adminAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+      scope: "visible",
+    });
+    const { authenticator, user } = await editorAuthFor(workspace, agent, {
+      withPublishCapability: true,
+    });
+
+    const result = await saveVersionWithScope(
+      authenticator,
+      agent,
+      user,
+      "hidden"
+    );
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("does not gate a new version that keeps the agent visible", async () => {
+    const { workspace, authenticator: adminAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+      scope: "visible",
+    });
+    const { authenticator, user } = await editorAuthFor(workspace, agent);
+
+    // The published state does not change, so no publish permission is required to edit.
+    const result = await saveVersionWithScope(
+      authenticator,
+      agent,
+      user,
+      "visible"
+    );
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("rejects a bulk scope change to visible without the publish capability", async () => {
+    const { workspace, authenticator: adminAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+      scope: "hidden",
+    });
+    const { authenticator } = await editorAuthFor(workspace, agent);
+
+    const result = await updateAgentConfigurationsScope(
+      authenticator,
+      [agent.sId],
+      "visible"
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "You don't have permission to publish agents."
+      );
+    }
+  });
+
+  it("rejects a bulk scope change to hidden without the publish capability", async () => {
+    const { workspace, authenticator: adminAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+      scope: "visible",
+    });
+    const { authenticator } = await editorAuthFor(workspace, agent);
+
+    const result = await updateAgentConfigurationsScope(
+      authenticator,
+      [agent.sId],
+      "hidden"
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "You don't have permission to publish agents."
+      );
+    }
+  });
+
+  it("allows a bulk scope change for an editor granted the publish capability", async () => {
+    const { workspace, authenticator: adminAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+      scope: "hidden",
+    });
+    const { authenticator } = await editorAuthFor(workspace, agent, {
+      withPublishCapability: true,
+    });
+
+    const result = await updateAgentConfigurationsScope(
+      authenticator,
+      [agent.sId],
+      "visible"
+    );
+    expect(result.isOk()).toBe(true);
+
+    const row = await AgentConfigurationModel.findOne({
+      where: { sId: agent.sId, workspaceId: workspace.id },
+    });
+    expect(row!.scope).toBe("visible");
   });
 });
