@@ -19,7 +19,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("SpaceResource", () => {
   describe("updatePermissions", () => {
@@ -1158,6 +1158,49 @@ describe("SpaceResource", () => {
       expect(spaces.some((s) => s.id === regularSpace.id)).toBe(true);
     });
 
+    it("hydrates group references directly from group vaults", async () => {
+      const regularSpace = await SpaceFactory.regular(workspace);
+      const [groupReference] = regularSpace.groups;
+      const findAllSpy = vi.spyOn(SpaceModel, "findAll");
+
+      const fetchedSpace = await SpaceResource.fetchById(
+        adminAuth,
+        regularSpace.sId
+      );
+
+      expect(fetchedSpace).not.toBeNull();
+      expect(findAllSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.arrayContaining([
+            expect.objectContaining({
+              as: "groupSpaces",
+              model: GroupSpaceModel,
+            }),
+          ]),
+        })
+      );
+      expect(findAllSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.arrayContaining([
+            expect.objectContaining({ model: GroupResource.model }),
+          ]),
+        })
+      );
+      expect(fetchedSpace?.groups).toEqual([
+        expect.objectContaining({
+          groupId: groupReference.groupId,
+          groupKind: "regular_auto",
+          groupSpaceKind: "member",
+          workspaceId: workspace.id,
+        }),
+      ]);
+      expect(fetchedSpace?.toJSON().groupIds).toEqual([
+        groupReference.groupSId,
+      ]);
+
+      findAllSpy.mockRestore();
+    });
+
     it("should include conversations space when includeConversationsSpace is true", async () => {
       const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
         includeConversationsSpace: true,
@@ -1368,7 +1411,12 @@ describe("SpaceResource", () => {
 
     it("should return project spaces only for members", async () => {
       const projectSpace = await SpaceFactory.project(workspace);
-      const projectGroup = projectSpace.groups.find((g) => g.isRegularAuto());
+      const projectGroupReference = projectSpace.groups.find((group) =>
+        group.isRegularAuto()
+      );
+      const [projectGroup] = await projectSpace.fetchGroupResources(adminAuth, {
+        groupReferences: projectGroupReference ? [projectGroupReference] : [],
+      });
 
       // User is not a member, should not see it
       const userSpaces =

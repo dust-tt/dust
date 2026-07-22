@@ -28,6 +28,17 @@ import { Err, Ok } from "@app/types/shared/result";
 import { SPACE_KINDS } from "@app/types/space";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+async function fetchNonGlobalGroup(space: SpaceResource, auth: Authenticator) {
+  const groupReference = space.groups.find((group) => !group.isGlobal());
+  if (!groupReference) {
+    return null;
+  }
+  const [group] = await space.fetchGroupResources(auth, {
+    groupReferences: [groupReference],
+  });
+  return group;
+}
+
 describe("createSpaceAndGroup", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let adminAuth: Authenticator;
@@ -90,8 +101,9 @@ describe("createSpaceAndGroup", () => {
         expect(space.isRegularAndRestricted()).toBe(true);
 
         // Verify the space has a group
-        expect(space.groups.length).toBeGreaterThan(0);
-        const spaceGroup = space.groups.find((g) =>
+        const groups = await space.fetchGroupResources(adminAuth);
+        expect(groups.length).toBeGreaterThan(0);
+        const spaceGroup = groups.find((g) =>
           g.name.startsWith("Group for space Test Regular Space")
         );
         expect(spaceGroup).toBeDefined();
@@ -117,7 +129,8 @@ describe("createSpaceAndGroup", () => {
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        const memberGroup = result.value.groups.find((g) =>
+        const groups = await result.value.fetchGroupResources(adminAuth);
+        const memberGroup = groups.find((g) =>
           g.name.startsWith("Group for space Kind Check Space")
         );
         expect(memberGroup).toBeDefined();
@@ -1027,7 +1040,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const spaceGroup = space.groups.find((g) => !g.isGlobal());
+        const spaceGroup = await fetchNonGlobalGroup(space, adminAuth);
         expect(spaceGroup).toBeDefined();
 
         // Create an active API key for the space group
@@ -1062,7 +1075,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const spaceGroup = space.groups.find((g) => !g.isGlobal());
+        const spaceGroup = await fetchNonGlobalGroup(space, adminAuth);
         expect(spaceGroup).toBeDefined();
 
         // Create an active API key for the space group
@@ -1092,7 +1105,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       if (result.isOk()) {
         const space = result.value;
         // Get the space's non-global group
-        const spaceGroup = space.groups.find((g) => !g.isGlobal());
+        const spaceGroup = await fetchNonGlobalGroup(space, adminAuth);
         expect(spaceGroup).toBeDefined();
 
         // Create a disabled API key for the space group

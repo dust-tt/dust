@@ -58,3 +58,12 @@ GroupModel.belongsToMany(SpaceModel, {
   through: GroupSpaceModel,
   foreignKey: "groupId",
 });
+
+SpaceModel.hasMany(GroupSpaceModel, {
+  as: "groupSpaces",
+  foreignKey: "vaultId",
+});
+GroupSpaceModel.belongsTo(SpaceModel, {
+  as: "space",
+  foreignKey: "vaultId",
+});

@@ -46,10 +46,15 @@ describe("canAgentBeUsedInProjectConversation", () => {
       ReturnType<Authenticator["getNonNullableUser"]>["toJSON"]
     >
   ) {
-    const regularGroup = space.groups.find((g) => g.isRegularAuto());
-    if (!regularGroup) {
+    const regularGroupReference = space.groups.find((group) =>
+      group.isRegularAuto()
+    );
+    if (!regularGroupReference) {
       throw new Error("Expected a regular group on the space");
     }
+    const [regularGroup] = await space.fetchGroupResources(internalAdminAuth, {
+      groupReferences: [regularGroupReference],
+    });
     const addRes = await regularGroup.dangerouslyAddMember(internalAdminAuth, {
       user: userJson,
     });
@@ -724,12 +729,26 @@ describe("updateConversationRequirements", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
 
-    const projectSpaceGroup = projectSpace.groups.find((g) =>
-      g.isRegularAuto()
+    const projectSpaceGroupReference = projectSpace.groups.find((group) =>
+      group.isRegularAuto()
     );
-    const anotherProjectSpaceGroup = anotherProjectSpace.groups.find((g) =>
-      g.isRegularAuto()
+    const anotherProjectSpaceGroupReference = anotherProjectSpace.groups.find(
+      (group) => group.isRegularAuto()
     );
+    const [projectSpaceGroup] = await projectSpace.fetchGroupResources(
+      internalAdminAuth,
+      {
+        groupReferences: projectSpaceGroupReference
+          ? [projectSpaceGroupReference]
+          : [],
+      }
+    );
+    const [anotherProjectSpaceGroup] =
+      await anotherProjectSpace.fetchGroupResources(internalAdminAuth, {
+        groupReferences: anotherProjectSpaceGroupReference
+          ? [anotherProjectSpaceGroupReference]
+          : [],
+      });
 
     if (projectSpaceGroup) {
       const addRes = await projectSpaceGroup.dangerouslyAddMember(
@@ -1356,10 +1375,15 @@ describe("rebuildConversationRequirements", () => {
     const userJson = auth.getNonNullableUser().toJSON();
 
     for (const space of [projectSpace, regularSpace, anotherRegularSpace]) {
-      const group = space.groups.find((g) => g.isRegularAuto());
-      if (!group) {
+      const groupReference = space.groups.find((group) =>
+        group.isRegularAuto()
+      );
+      if (!groupReference) {
         continue;
       }
+      const [group] = await space.fetchGroupResources(internalAdminAuth, {
+        groupReferences: [groupReference],
+      });
       const addRes = await group.dangerouslyAddMember(internalAdminAuth, {
         user: userJson,
       });

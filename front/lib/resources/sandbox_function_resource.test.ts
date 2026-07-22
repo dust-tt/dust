@@ -137,10 +137,22 @@ describe("SandboxFunctionResource", () => {
 
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
-    const addMemberResult =
-      await accessibleSpace.groups[0].dangerouslyAddMember(adminAuth, {
+    const accessibleGroupReference = accessibleSpace.groups.find((group) =>
+      group.isRegularAuto()
+    );
+    if (!accessibleGroupReference) {
+      throw new Error("Expected a regular group on the accessible space");
+    }
+    const [accessibleGroup] = await accessibleSpace.fetchGroupResources(
+      adminAuth,
+      { groupReferences: [accessibleGroupReference] }
+    );
+    const addMemberResult = await accessibleGroup.dangerouslyAddMember(
+      adminAuth,
+      {
         user: user.toJSON(),
-      });
+      }
+    );
     expect(addMemberResult.isOk()).toBe(true);
 
     const userAuth = await Authenticator.fromUserIdAndWorkspaceId(

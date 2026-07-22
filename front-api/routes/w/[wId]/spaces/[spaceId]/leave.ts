@@ -40,8 +40,15 @@ app.post(
 
     const user = auth.getNonNullableUser();
 
-    const memberGroup = space.groups.find((g) => g.isRegularAuto());
-    const editorGroup = space.groups.find((g) => g.kind === "space_editors");
+    const groupReferencesToLeave = space.groups.filter(
+      (group) => group.isRegularAuto() || group.groupKind === "space_editors"
+    );
+    const groupsToLeave = await space.fetchGroupResources(auth, {
+      groupReferences: groupReferencesToLeave,
+    });
+    const editorGroup = groupsToLeave.find(
+      (group) => group.kind === "space_editors"
+    );
 
     if (editorGroup) {
       const activeEditors = await editorGroup.getActiveMembers(auth);
@@ -57,10 +64,6 @@ app.post(
         });
       }
     }
-
-    const groupsToLeave = [memberGroup, editorGroup].filter(
-      (g): g is NonNullable<typeof g> => g !== undefined
-    );
 
     for (const group of groupsToLeave) {
       const result = await group.leaveGroup(auth);

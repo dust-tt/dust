@@ -37,16 +37,17 @@ app.get(
 
     const members: Record<string, UserTypeWithWorkspaces[]> = {};
 
-    const allGroups = space.groups.filter((g) =>
+    const groupReferences = space.groups.filter((group) =>
       space.managementMode === "manual"
-        ? g.isRegularAuto() || g.kind === "space_editors"
-        : g.kind === "provisioned"
+        ? group.isRegularAuto() || group.groupKind === "space_editors"
+        : group.isProvisioned()
     );
+    const groups = await space.fetchGroupResources(auth, { groupReferences });
 
     const memberships = await getMembers(auth);
     const memberById = new Map(memberships.members.map((m) => [m.sId, m]));
 
-    for (const group of allGroups) {
+    for (const group of groups) {
       const groupMembers = await group.getActiveMembers(auth);
       members[group.name] = groupMembers.flatMap((user) => {
         const member = memberById.get(user.sId);
@@ -61,7 +62,7 @@ app.get(
     return ctx.json({
       members,
       metadata: metadata ? metadata.toJSON() : null,
-      space: spaceToPokeJSON(space),
+      space: await spaceToPokeJSON(auth, space),
     });
   }
 );

@@ -2173,8 +2173,17 @@ describe("agent_sidekick_context tools", () => {
         internalAuth,
         restrictedSpace.sId
       );
-      if (fetchedSpace?.groups[0]) {
-        await fetchedSpace.groups[0].dangerouslyAddMember(internalAuth, {
+      if (fetchedSpace) {
+        const groupReference = fetchedSpace.groups.find((group) =>
+          group.isRegularAuto()
+        );
+        if (!groupReference) {
+          throw new Error("Expected a regular group on the restricted space");
+        }
+        const [group] = await fetchedSpace.fetchGroupResources(internalAuth, {
+          groupReferences: [groupReference],
+        });
+        await group.dangerouslyAddMember(internalAuth, {
           user: user1.toJSON(),
         });
       }

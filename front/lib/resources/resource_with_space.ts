@@ -1,8 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceWithId } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type {
@@ -96,7 +96,8 @@ export abstract class ResourceWithSpace<
       },
       include: [
         {
-          model: GroupResource.model,
+          as: "groupSpaces",
+          model: GroupSpaceModel,
         },
       ],
       includeDeleted,

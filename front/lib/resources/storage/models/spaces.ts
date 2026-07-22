@@ -1,6 +1,6 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
-import type { GroupModel } from "@app/lib/resources/storage/models/groups";
+import type { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { SpaceKind } from "@app/types/space";
 import { isUniqueSpaceKind } from "@app/types/space";
@@ -21,7 +21,7 @@ export class SpaceModel extends SoftDeletableWorkspaceAwareModel<SpaceModel> {
   // But in both modes we have "groups" associated to the space to hold the members.
   declare managementMode: CreationOptional<"manual" | "group">;
 
-  declare groups: NonAttribute<GroupModel[]>;
+  declare groupSpaces: NonAttribute<GroupSpaceModel[]>;
 }
 SpaceModel.init(
   {

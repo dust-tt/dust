@@ -29,9 +29,28 @@ makeScript(
           const auth = await Authenticator.internalAdminForWorkspace(w.sId);
           const pods = await SpaceResource.listProjectSpaces(auth);
           for (const pod of pods) {
-            const regularGroups = pod.groups.filter((g) => g.isRegularAuto());
-            if (regularGroups.length === 1) {
-              const group = regularGroups[0];
+            const regularGroupReferences = pod.groups.filter((group) =>
+              group.isRegularAuto()
+            );
+            const spaceEditorGroupReferences = pod.groups.filter(
+              (group) => group.groupKind === "space_editors"
+            );
+            const groups = await pod.fetchGroupResources(auth, {
+              groupReferences: [
+                ...regularGroupReferences,
+                ...spaceEditorGroupReferences,
+              ],
+            });
+            const regularGroups = groups.slice(
+              0,
+              regularGroupReferences.length
+            );
+            const spaceEditorGroups = groups.slice(
+              regularGroupReferences.length
+            );
+
+            if (regularGroupReferences.length === 1) {
+              const [group] = regularGroups;
               const newName = `${pod.isProject() ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${pod.name}`;
               if (execute) {
                 await group.updateName(auth, newName);
@@ -42,11 +61,8 @@ makeScript(
               }
             }
 
-            const spaceEditorsGroups = pod.groups.filter(
-              (g) => g.kind === "space_editors"
-            );
-            if (spaceEditorsGroups.length === 1) {
-              const group = spaceEditorsGroups[0];
+            if (spaceEditorGroupReferences.length === 1) {
+              const [group] = spaceEditorGroups;
               const newName = `${PROJECT_EDITOR_GROUP_PREFIX} ${pod.name}`;
               if (execute) {
                 await group.updateName(auth, newName);

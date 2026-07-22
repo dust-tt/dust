@@ -72,11 +72,14 @@ describe("selected conversation Spaces", () => {
     await FeatureFlagFactory.basic(auth, "restricted_spaces_in_input_bar");
   }
 
-  function regularGroup(space: SpaceResource) {
-    const group = space.groups.find((g) => g.isRegularAuto());
-    if (!group) {
+  async function regularGroup(space: SpaceResource, auth: Authenticator) {
+    const groupReference = space.groups.find((group) => group.isRegularAuto());
+    if (!groupReference) {
       throw new Error("Expected regular member group on Space");
     }
+    const [group] = await space.fetchGroupResources(auth, {
+      groupReferences: [groupReference],
+    });
     return group;
   }
 
@@ -84,7 +87,8 @@ describe("selected conversation Spaces", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    await regularGroup(space).dangerouslyAddMembers(internalAdminAuth, {
+    const group = await regularGroup(space, internalAdminAuth);
+    await group.dangerouslyAddMembers(internalAdminAuth, {
       users: [user],
     });
     await auth.refresh();
@@ -94,7 +98,8 @@ describe("selected conversation Spaces", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    await regularGroup(space).dangerouslyRemoveMembers(internalAdminAuth, {
+    const group = await regularGroup(space, internalAdminAuth);
+    await group.dangerouslyRemoveMembers(internalAdminAuth, {
       users: [user],
     });
     await auth.refresh();

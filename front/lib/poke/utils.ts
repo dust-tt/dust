@@ -10,27 +10,32 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type {
   PokeDataSourceType,
   PokeDataSourceViewType,
+  PokeItemBase,
   PokeMCPServerViewType,
   PokeSpaceType,
 } from "@app/types/poke";
 
-export function spaceToPokeJSON(space: SpaceResource): PokeSpaceType {
+export async function spaceToPokeJSON(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<PokeSpaceType> {
+  const groups = await space.fetchGroupResources(auth);
   return {
     id: space.id,
     ...space.toJSON(),
-    groups: space.groups.map((group) => group.toJSON()),
+    groups: groups.map((group) => group.toJSON()),
   };
 }
 
-export async function dataSourceToPokeJSON(
+export async function dataSourceToPokeItem(
   dataSource: DataSourceResource
-): Promise<PokeDataSourceType> {
+): Promise<PokeItemBase> {
   const workspace = await WorkspaceResource.fetchByModelId(
     dataSource.workspaceId
   );
 
   return {
-    ...dataSource.toJSON(),
+    id: dataSource.id,
     link: workspace
       ? `${config.getPokeAppUrl()}/${workspace.sId}/data_sources/${dataSource.sId}`
       : null,
@@ -40,20 +45,29 @@ export async function dataSourceToPokeJSON(
         ? getDisplayNameForDataSource(dataSource.toJSON())
         : `folder (${dataSource.name})`),
     type: "Data Source",
-    space: spaceToPokeJSON(dataSource.space),
   };
 }
 
-export async function dataSourceViewToPokeJSON(
+export async function dataSourceToPokeJSON(
+  auth: Authenticator,
+  dataSource: DataSourceResource
+): Promise<PokeDataSourceType> {
+  return {
+    ...dataSource.toJSON(),
+    ...(await dataSourceToPokeItem(dataSource)),
+    space: await spaceToPokeJSON(auth, dataSource.space),
+  };
+}
+
+export async function dataSourceViewToPokeItem(
   dataSourceView: DataSourceViewResource
-): Promise<PokeDataSourceViewType> {
+): Promise<PokeItemBase> {
   const workspace = await WorkspaceResource.fetchByModelId(
     dataSourceView.workspaceId
   );
 
   return {
-    ...dataSourceView.toJSON(),
-    dataSource: await dataSourceToPokeJSON(dataSourceView.dataSource),
+    id: dataSourceView.id,
     link: workspace
       ? `${config.getPokeAppUrl()}/${workspace.sId}/spaces/${dataSourceView.space.sId}/data_source_views/${dataSourceView.sId}`
       : null,
@@ -63,7 +77,18 @@ export async function dataSourceViewToPokeJSON(
         ? getDisplayNameForDataSource(dataSourceView.dataSource.toJSON())
         : `folder (${dataSourceView.dataSource.name})`),
     type: "Data Source View",
-    space: spaceToPokeJSON(dataSourceView.space),
+  };
+}
+
+export async function dataSourceViewToPokeJSON(
+  auth: Authenticator,
+  dataSourceView: DataSourceViewResource
+): Promise<PokeDataSourceViewType> {
+  return {
+    ...dataSourceView.toJSON(),
+    dataSource: await dataSourceToPokeJSON(auth, dataSourceView.dataSource),
+    ...(await dataSourceViewToPokeItem(dataSourceView)),
+    space: await spaceToPokeJSON(auth, dataSourceView.space),
   };
 }
 
@@ -111,7 +136,7 @@ export async function mcpServerViewToPokeJSON(
     name: json.name ?? json.server.name,
     customName: json.name,
     type: "MCP Server View",
-    space: spaceToPokeJSON(mcpServerView.space),
+    space: await spaceToPokeJSON(auth, mcpServerView.space),
     connections: connections,
   };
 }

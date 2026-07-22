@@ -194,10 +194,22 @@ describe("MCPServerViewResource", () => {
       // - User is NOT in any group for restrictedSpace
 
       // Add user to the group that accesses accessibleSpace
-      const addMemberResult =
-        await accessibleSpace.groups[0].dangerouslyAddMember(adminAuth, {
+      const accessibleGroupReference = accessibleSpace.groups.find((group) =>
+        group.isRegularAuto()
+      );
+      if (!accessibleGroupReference) {
+        throw new Error("Expected a regular group on the accessible space");
+      }
+      const [accessibleGroup] = await accessibleSpace.fetchGroupResources(
+        adminAuth,
+        { groupReferences: [accessibleGroupReference] }
+      );
+      const addMemberResult = await accessibleGroup.dangerouslyAddMember(
+        adminAuth,
+        {
           user: user.toJSON(),
-        });
+        }
+      );
       expect(addMemberResult.isOk()).toBe(true);
 
       // Create auth for the regular user
@@ -349,10 +361,25 @@ describe("MCPServerViewResource", () => {
       await MembershipFactory.associate(workspace, user, { role: "user" });
 
       // Add user to both groups
-      await space1.groups[0].dangerouslyAddMember(adminAuth, {
+      const group1Reference = space1.groups.find((group) =>
+        group.isRegularAuto()
+      );
+      const group2Reference = space2.groups.find((group) =>
+        group.isRegularAuto()
+      );
+      if (!group1Reference || !group2Reference) {
+        throw new Error("Expected regular groups on both spaces");
+      }
+      const [group1] = await space1.fetchGroupResources(adminAuth, {
+        groupReferences: [group1Reference],
+      });
+      const [group2] = await space2.fetchGroupResources(adminAuth, {
+        groupReferences: [group2Reference],
+      });
+      await group1.dangerouslyAddMember(adminAuth, {
         user: user.toJSON(),
       });
-      await space2.groups[0].dangerouslyAddMember(adminAuth, {
+      await group2.dangerouslyAddMember(adminAuth, {
         user: user.toJSON(),
       });
 

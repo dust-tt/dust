@@ -35,7 +35,10 @@ app.get(
       });
     }
 
-    const dataSourceViewJSON = await dataSourceViewToPokeJSON(dataSourceView);
+    const dataSourceViewJSON = await dataSourceViewToPokeJSON(
+      auth,
+      dataSourceView
+    );
 
     return ctx.json({ dataSourceView: dataSourceViewJSON });
   }
