@@ -35,7 +35,7 @@ export function createSlackBotTools(
         fileId,
         unfurlLinks,
         unfurlMedia,
-        show_sent_by_footer,
+        showSentByFooter,
       },
       { authInfo }
     ) => {
@@ -58,7 +58,7 @@ export function createSlackBotTools(
           unfurlMedia,
           accessToken,
           showSentByFooter: allowFooterRemoval
-            ? (show_sent_by_footer ?? true)
+            ? (showSentByFooter ?? true)
             : true,
         });
       } catch (error) {
@@ -310,14 +310,14 @@ export function createSlackBotTools(
 
   const rawTools = buildTools(SLACK_BOT_TOOLS_METADATA, handlers);
 
-  // When footer removal is not allowed, strip show_sent_by_footer from the schema so
+  // When footer removal is not allowed, strip showSentByFooter from the schema so
   // the LLM never sees the parameter. The handler also enforces the default server-side.
   const tools = allowFooterRemoval
     ? rawTools
     : rawTools.map((tool) => {
         if (tool.name === "post_message") {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { show_sent_by_footer: _stripped, ...schemaWithoutFooter } =
+          const { showSentByFooter: _stripped, ...schemaWithoutFooter } =
             tool.schema;
           return { ...tool, schema: schemaWithoutFooter };
         }
