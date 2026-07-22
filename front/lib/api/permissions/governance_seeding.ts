@@ -51,6 +51,14 @@ export const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
     capability: { grantType: "create", resourceType: "skill" },
     resolveTarget: async (_auth) => "builders",
   },
+  {
+    capability: { grantType: "invite", resourceType: "frame" },
+    resolveTarget: async (_auth) => "everyone",
+  },
+  {
+    capability: { grantType: "publish", resourceType: "frame" },
+    resolveTarget: async (_auth) => "everyone",
+  },
 ];
 
 export type ApplyCapabilityOutcome =
