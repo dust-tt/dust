@@ -41,9 +41,38 @@ type PromptCacheBreakpoint =
     }
   | Record<string, never>;
 
-// The per-message leaf converters. Composites below take an object satisfying
-// this interface (`this`), so overriding one leaf on an endpoint changes how
-// every composite uses it.
+// This SDK client is shared across hosts and labs. The goal is to let a
+// specific endpoint override one small conversion step (e.g. how a user image
+// message becomes an input item) without reimplementing the whole
+// `buildRequestPayload`.
+//
+// To make that possible, conversions are split into two kinds:
+//
+//   - "leaf" converters (this interface): the smallest units, each turning one
+//     Base* message into one (or a few) Responses input item(s). E.g.
+//     `userImageMessageToInputItem`, `assistantTextMessageToInputItem`. These
+//     are the override points.
+//
+//   - "composite" converters (defined below): higher-level converters that
+//     assemble input items by delegating to leaves rather than doing the leaf
+//     work themselves. E.g. `userMessageToInputItems` switches on message type
+//     and calls `userImageMessageToInputItem` / `toolCallResultMessageToInputItem`.
+//
+// The link between them is that composites receive an object satisfying this
+// interface (`this` on the endpoint class — see
+// `WithOpenAIResponsesInputConverter`) and route every child call through it. So
+// overriding a single leaf field on an endpoint changes how every composite
+// depending on it behaves — no need to touch the composites or
+// `buildRequestPayload`.
+//
+// This composes both ways: a composite is itself an override point. An endpoint
+// can override a composite method and still reach its children through
+// `this.<child>` (e.g. a custom `userMessageToInputItems` that calls
+// `this.userImageMessageToInputItem`), so it picks up any leaf overrides too and
+// only the reassembly logic changes.
+//
+// "leaf" / "composite" naming lives only in comments; it's just a mental model
+// for how the pieces compose.
 export interface MessageItemConverters {
   systemMessageToInputItem(message: SystemTextMessage): ResponseInputItem;
   userImageMessageToInputItem(message: BaseUserImageMessage): ResponseInputItem;
