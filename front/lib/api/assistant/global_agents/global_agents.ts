@@ -986,6 +986,13 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
 ];
 
+// Retired global agents remain resolvable internally (to keep past conversations running) but
+// must not be surfaced to users/integrations. `getGlobalAgents` already filters them out of list
+// views; callers that fetch a specific agent by sId should use this to gate the public response.
+export function isRetiredGlobalAgent(sId: string): boolean {
+  return isGlobalAgentId(sId) && RETIRED_GLOBAL_AGENTS_SID.includes(sId);
+}
+
 const MODEL_ONLY_GLOBAL_AGENTS_SID: readonly GLOBAL_AGENTS_SID[] = [
   GLOBAL_AGENTS_SID.GPT35_TURBO,
   GLOBAL_AGENTS_SID.GPT4,
