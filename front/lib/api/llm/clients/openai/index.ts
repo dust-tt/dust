@@ -113,8 +113,6 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
 
     return {
       model: this.modelId,
-      // OpenAI renders tools before input messages, so the first system
-      // breakpoint also closes the reusable tools prefix.
       input: toInput(prompt, conversation, "developer", {
         cacheBreakpointOnLeadingMessage: explicitPromptCaching,
         cacheBreakpointsOnSystemPrompt: explicitPromptCaching,
