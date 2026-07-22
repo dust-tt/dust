@@ -747,6 +747,9 @@ abstract class BaseTransition extends LLM {
     // default to "none" when no effort is set, but models like GPT-5 reject the
     // "none" effort their schema drops, so an unsupported effort falls back to
     // the model's minimum supported one (mirrors the legacy Anthropic client).
+    // TODO(new_llm_router): this reliance on the legacy `supportedReasoningEfforts` is temporary.
+    // Once the new router is fully rolled out, drop this clamp and rely on each
+    // model constructor's own default reasoning effort instead.
     const supportedEfforts = this.modelConfig.supportedReasoningEfforts;
     const clampedReasoningEffort: ReasoningEffort | null =
       this.reasoningEffort !== null && !supportedEfforts[this.reasoningEffort]
