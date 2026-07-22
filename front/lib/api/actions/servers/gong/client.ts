@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import type {
   GongCall,
   GongCallTranscript,
@@ -75,6 +75,12 @@ export class GongClient {
     });
 
     if (!response.ok) {
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `Gong API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
       const errorText = await response.text();
       return new Err(
         new GongApiError(

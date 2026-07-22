@@ -1,4 +1,7 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnCoreAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import type { FilesystemPathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
@@ -92,6 +95,10 @@ export const locateTree = async (
     },
   });
 
+  if (searchResult.isErr()) {
+    throwOnCoreAPIInternalError(searchResult.error);
+  }
+
   if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
     return new Err(
       new MCPError(`Could not find node: ${nodeId}`, { tracked: false })
@@ -121,6 +128,7 @@ export const locateTree = async (
     });
 
     if (pathSearchResult.isErr()) {
+      throwOnCoreAPIInternalError(pathSearchResult.error);
       return new Err(new MCPError("Failed to fetch nodes in the path"));
     }
 

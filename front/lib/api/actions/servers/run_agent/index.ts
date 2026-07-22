@@ -1,4 +1,7 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnDustAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   MCPProgressNotificationType,
@@ -586,6 +589,14 @@ const runAgent = async (
     const abortClassification = classifyToolAbortSignal(abortSignal);
     if (abortClassification !== "none") {
       return handleAbortedSignal(abortClassification);
+    }
+
+    if (
+      !(streamRes.error instanceof Error) &&
+      !isTransientStreamError(streamRes.error)
+    ) {
+      // Transient network failures keep their existing handling below.
+      throwOnDustAPIInternalError(streamRes.error);
     }
 
     const errorMessage = `Failed to stream agent answer: ${streamRes.error.message}`;

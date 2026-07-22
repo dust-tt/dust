@@ -1,3 +1,4 @@
+import { ProviderError } from "@app/lib/actions/mcp_errors";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -86,6 +87,12 @@ export class FathomMCPClient {
       return new Ok({ meetings: [], nextCursor: null });
     } catch (error) {
       if (error instanceof FathomError) {
+        if (error.statusCode >= 500) {
+          throw new ProviderError(
+            `Fathom API returned an unexpected error (HTTP ${error.statusCode}).`,
+            { status: error.statusCode, cause: error }
+          );
+        }
         return new Err(new Error(`Fathom API error: ${error.message}`));
       }
       return new Err(normalizeError(error));
@@ -106,6 +113,12 @@ export class FathomMCPClient {
       return new Ok(null);
     } catch (error) {
       if (error instanceof FathomError) {
+        if (error.statusCode >= 500) {
+          throw new ProviderError(
+            `Fathom API returned an unexpected error (HTTP ${error.statusCode}).`,
+            { status: error.statusCode, cause: error }
+          );
+        }
         return new Err(new Error(`Fathom API error: ${error.message}`));
       }
       return new Err(normalizeError(error));
@@ -126,6 +139,12 @@ export class FathomMCPClient {
       return new Ok(response.transcript);
     } catch (error) {
       if (error instanceof FathomError) {
+        if (error.statusCode >= 500) {
+          throw new ProviderError(
+            `Fathom API returned an unexpected error (HTTP ${error.statusCode}).`,
+            { status: error.statusCode, cause: error }
+          );
+        }
         return new Err(new Error(`Fathom API error: ${error.message}`));
       }
       return new Err(normalizeError(error));

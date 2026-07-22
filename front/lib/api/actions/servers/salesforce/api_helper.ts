@@ -1,4 +1,8 @@
-import { SF_API_VERSION } from "@app/lib/api/actions/servers/salesforce/helpers";
+import { isProviderError, ProviderError } from "@app/lib/actions/mcp_errors";
+import {
+  SF_API_VERSION,
+  toSalesforceProviderError,
+} from "@app/lib/api/actions/servers/salesforce/helpers";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -63,6 +67,10 @@ async function getSalesforceAttachments(
 
     return new Ok(attachments);
   } catch (error) {
+    const providerError = toSalesforceProviderError(error);
+    if (providerError) {
+      throw providerError;
+    }
     return new Err(
       `Failed to get attachments: ${normalizeError(error).message}`
     );
@@ -123,6 +131,10 @@ async function getSalesforceFiles(
 
     return new Ok(files);
   } catch (error) {
+    const providerError = toSalesforceProviderError(error);
+    if (providerError) {
+      throw providerError;
+    }
     return new Err(`Failed to get files: ${normalizeError(error).message}`);
   }
 }
@@ -144,11 +156,21 @@ async function downloadSalesforceAttachment(
     });
 
     if (!response.ok) {
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `Salesforce API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
       return new Err(`Salesforce API error: ${response.status}`);
     }
 
     return new Ok(Buffer.from(await response.arrayBuffer()));
   } catch (error) {
+    // Salesforce-side failures must reach the tool wrapper, not be swallowed here.
+    if (isProviderError(error)) {
+      throw error;
+    }
     return new Err(
       `Failed to download attachment: ${normalizeError(error).message}`
     );
@@ -172,11 +194,21 @@ async function downloadSalesforceFile(
     });
 
     if (!response.ok) {
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `Salesforce API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
       return new Err(`Salesforce API error: ${response.status}`);
     }
 
     return new Ok(Buffer.from(await response.arrayBuffer()));
   } catch (error) {
+    // Salesforce-side failures must reach the tool wrapper, not be swallowed here.
+    if (isProviderError(error)) {
+      throw error;
+    }
     return new Err(`Failed to download file: ${normalizeError(error).message}`);
   }
 }

@@ -1,4 +1,5 @@
 import { createPrivateKey } from "node:crypto";
+import { isProviderError, ProviderError } from "@app/lib/actions/mcp_errors";
 import { parseOptionalInt } from "@app/lib/utils/parseOptionalInt";
 import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
 import logger from "@app/logger/logger";
@@ -63,6 +64,38 @@ function getRowStringMultiKey(
     }
   }
   return undefined;
+}
+
+/**
+ * Converts a snowflake-sdk error into a ProviderError when the Snowflake service itself
+ * failed. The SDK surfaces non-200 HTTP responses from Snowflake as errors named
+ * "RequestFailedError" carrying the HTTP response, while user-driven failures (SQL
+ * compilation/execution errors, invalid identifiers, permissions) surface as
+ * "OperationFailedError" on an HTTP 200 response and must not be treated as provider
+ * failures. The SDK does not export its error classes, so detection is structural,
+ * mirroring the SDK's own `isRequestFailedError` predicate. Only HTTP >= 500 is converted.
+ */
+function toSnowflakeProviderError(error: unknown): ProviderError | null {
+  if (!(error instanceof Error) || error.name !== "RequestFailedError") {
+    return null;
+  }
+  if (!("response" in error)) {
+    return null;
+  }
+  const { response } = error;
+  if (
+    typeof response !== "object" ||
+    response === null ||
+    !("statusCode" in response) ||
+    typeof response.statusCode !== "number" ||
+    response.statusCode < 500
+  ) {
+    return null;
+  }
+  return new ProviderError(
+    `Snowflake API returned an unexpected error (HTTP ${response.statusCode}).`,
+    { status: response.statusCode, cause: error }
+  );
 }
 
 export class SnowflakeClient {
@@ -188,6 +221,10 @@ export class SnowflakeClient {
       } catch (error) {
         // Clean up connection on USE WAREHOUSE failure
         await this.closeConnection(connection);
+        const providerError = toSnowflakeProviderError(error);
+        if (providerError) {
+          throw providerError;
+        }
         return new Err(normalizeError(error));
       }
 
@@ -199,11 +236,23 @@ export class SnowflakeClient {
         );
       } catch (error) {
         await this.closeConnection(connection);
+        const providerError = toSnowflakeProviderError(error);
+        if (providerError) {
+          throw providerError;
+        }
         return new Err(normalizeError(error));
       }
 
       return new Ok(connection);
     } catch (error) {
+      // ProviderErrors thrown by the inner catch blocks above must reach the tool wrapper.
+      if (isProviderError(error)) {
+        throw error;
+      }
+      const providerError = toSnowflakeProviderError(error);
+      if (providerError) {
+        throw providerError;
+      }
       return new Err(normalizeError(error));
     }
   }
@@ -285,6 +334,10 @@ export class SnowflakeClient {
         rowCount: rows.length,
       });
     } catch (error) {
+      const providerError = toSnowflakeProviderError(error);
+      if (providerError) {
+        throw providerError;
+      }
       return new Err(normalizeError(error));
     }
   }

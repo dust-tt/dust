@@ -1,4 +1,8 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  isMCPError,
+  isProviderError,
+  MCPError,
+} from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
@@ -289,6 +293,13 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         }
       }
     } catch (err) {
+      if (isProviderError(err)) {
+        // Unexpected provider failure: rethrow for the central tool wrapper to track.
+        throw err;
+      }
+      if (isMCPError(err)) {
+        return new Err(err);
+      }
       return new Err(
         new MCPError(
           `Failed to fetch objects from HubSpot: ${err instanceof Error ? err.message : String(err)}`

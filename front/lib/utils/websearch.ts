@@ -1,3 +1,4 @@
+import { ProviderError } from "@app/lib/actions/mcp_errors";
 import logger from "@app/logger/logger";
 import { dustManagedServiceCredentials } from "@app/types/api/credentials";
 import type { Result } from "@app/types/shared/result";
@@ -5,8 +6,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
-import FirecrawlApp from "@mendable/firecrawl-js";
-import Exa from "exa-js";
+import FirecrawlApp, { FirecrawlError } from "@mendable/firecrawl-js";
+import Exa, { ExaError } from "exa-js";
 import isNil from "lodash/isNil";
 import omitBy from "lodash/omitBy";
 
@@ -123,6 +124,14 @@ const serpapiSearch = async (
     return new Ok([]);
   }
 
+  // SERP_API_KEY is Dust-managed: a SerpAPI 5xx means our provider is down.
+  if (res.status >= 500) {
+    throw new ProviderError(
+      `SerpAPI returned an unexpected error (HTTP ${res.status}).`,
+      { status: res.status }
+    );
+  }
+
   // TODO: Remove once we have a proper error handling.
   logger.error(
     { status: res.status, statusText: res.statusText },
@@ -152,6 +161,14 @@ const serperSearch = async (
     const json = await res.json();
     // WARN: need to format Serper results before using
     return new Ok(json);
+  }
+
+  // The Serper API key is Dust-managed: a Serper 5xx means our provider is down.
+  if (res.status >= 500) {
+    throw new ProviderError(
+      `Serper API returned an unexpected error (HTTP ${res.status}).`,
+      { status: res.status }
+    );
   }
 
   // TODO: Remove once we have a proper error handling.
@@ -192,7 +209,14 @@ const firecrawlSearch = async ({
       country: "us",
       scrapeOptions: { formats: [] },
     });
-  } catch (error: any) {
+  } catch (error) {
+    // FIRECRAWL_API_KEY is Dust-managed: a Firecrawl 5xx means our provider is down.
+    if (error instanceof FirecrawlError && error.statusCode >= 500) {
+      throw new ProviderError(
+        `Firecrawl API returned an unexpected error (HTTP ${error.statusCode}).`,
+        { status: error.statusCode, cause: error }
+      );
+    }
     logger.error({ error }, "Unexpected error on Firecrawl search");
     return new Err(normalizeError(error));
   }
@@ -248,6 +272,13 @@ const exaSearch = async ({
       },
     });
   } catch (error) {
+    // EXA_API_KEY is Dust-managed: an Exa 5xx means our provider is down.
+    if (error instanceof ExaError && error.statusCode >= 500) {
+      throw new ProviderError(
+        `Exa API returned an unexpected error (HTTP ${error.statusCode}).`,
+        { status: error.statusCode, cause: error }
+      );
+    }
     logger.error({ error }, "Unexpected error on Exa search");
     return new Err(normalizeError(error));
   }

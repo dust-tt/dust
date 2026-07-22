@@ -1,4 +1,7 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnCoreAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import type {
   RenderedWarehouseNodeType,
   WarehousesBrowseType,
@@ -47,6 +50,7 @@ export async function getAvailableWarehouses(
     },
   });
   if (searchResult.isErr()) {
+    throwOnCoreAPIInternalError(searchResult.error);
     return new Err(new MCPError(searchResult.error.message));
   }
 
@@ -174,6 +178,7 @@ export async function getWarehouseNodes(
   });
 
   if (result.isErr()) {
+    throwOnCoreAPIInternalError(result.error);
     return new Err(new MCPError(result.error.message));
   }
 
@@ -340,6 +345,7 @@ export async function validateTables(
   });
 
   if (searchResult.isErr()) {
+    throwOnCoreAPIInternalError(searchResult.error);
     return new Err(new MCPError(searchResult.error.message));
   }
 

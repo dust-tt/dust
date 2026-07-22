@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
@@ -18,8 +18,25 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import { randomUUID } from "crypto";
-import { google } from "googleapis";
+import { Common, google } from "googleapis";
 import { DateTime, Interval } from "luxon";
+
+/**
+ * Rethrows Google 5xx responses as ProviderError so the tool-execution
+ * wrapper reports them as tracked provider failures; other errors are left
+ * untouched for the per-tool handling below.
+ */
+function throwIfGoogleServerError(err: unknown): void {
+  if (err instanceof Common.GaxiosError) {
+    const status = err.response?.status;
+    if (status !== undefined && status >= 500) {
+      throw new ProviderError(
+        `Google Calendar API returned an unexpected error (HTTP ${status}).`,
+        { status, cause: err }
+      );
+    }
+  }
+}
 
 const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
   list_calendars: async ({ pageToken, maxResults }, { authInfo }) => {
@@ -40,6 +57,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
+      throwIfGoogleServerError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to list calendars")
       );
@@ -82,6 +100,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
 
       return new Ok([{ type: "text" as const, text: formattedText }]);
     } catch (err) {
+      throwIfGoogleServerError(err);
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to list/search events"
@@ -119,6 +138,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
 
       return new Ok([{ type: "text" as const, text: formattedText }]);
     } catch (err) {
+      throwIfGoogleServerError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to get event")
       );
@@ -210,6 +230,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGoogleServerError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to create event")
       );
@@ -289,6 +310,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGoogleServerError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to update event")
       );
@@ -311,6 +333,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         { type: "text" as const, text: "Event deleted successfully" },
       ]);
     } catch (err) {
+      throwIfGoogleServerError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to delete event")
       );
@@ -419,6 +442,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
 
       return new Ok([{ type: "text" as const, text: formattedText }]);
     } catch (err) {
+      throwIfGoogleServerError(err);
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to check calendar availability"
@@ -445,6 +469,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
           calendarAccessible: true,
         });
       } catch (err) {
+        throwIfGoogleServerError(err);
         results.push({
           email,
           timeZone: null,

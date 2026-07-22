@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -84,6 +84,12 @@ export const makeFrontAPIRequest = async (
   }
 
   if (!response.ok) {
+    if (response.status >= 500) {
+      throw new ProviderError(
+        `Front API returned an unexpected error (HTTP ${response.status}).`,
+        { status: response.status }
+      );
+    }
     const errorBody = await response.text();
     if (response.status === 401) {
       throw new MCPError(

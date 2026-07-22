@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { isProviderError, MCPError } from "@app/lib/actions/mcp_errors";
 import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type {
   DataSourcesToolConfigurationType,
@@ -350,6 +350,11 @@ export async function withErrorHandling<T>(
   try {
     return await operation();
   } catch (error) {
+    if (isProviderError(error)) {
+      // Unexpected upstream failures must reach the tool-execution wrapper, which
+      // converts them to tracked MCPErrors that always alert.
+      throw error;
+    }
     return new Err(
       new MCPError(errorMessage, {
         cause: normalizeError(error),

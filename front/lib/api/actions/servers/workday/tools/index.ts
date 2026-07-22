@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { withAuth } from "@app/lib/api/actions/servers/workday/helpers";
@@ -30,6 +30,13 @@ const handlers: ToolHandlers<typeof WORKDAY_TOOLS_METADATA> = {
           "Content-Type": "application/json",
         },
       });
+
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `Workday API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
 
       if (!response.ok) {
         return new Err(

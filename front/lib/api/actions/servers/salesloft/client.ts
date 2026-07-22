@@ -1,3 +1,4 @@
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import type {
   SalesloftApiResponse,
   SalesloftSingleItemResponse,
@@ -10,6 +11,13 @@ async function handleSalesloftError(
   response: Response,
   errorText: string
 ): Promise<never> {
+  if (response.status >= 500) {
+    throw new ProviderError(
+      `Salesloft API returned an unexpected error (HTTP ${response.status}).`,
+      { status: response.status }
+    );
+  }
+
   let errorMessage = `Salesloft API error: ${response.status} ${response.statusText}`;
 
   if (errorText) {
@@ -37,12 +45,13 @@ async function handleSalesloftError(
   }
 
   if (response.status === 401 || response.status === 403) {
-    throw new Error(
-      `Authentication failed: ${errorMessage}. Please verify your bearer token is valid.`
+    throw new MCPError(
+      `Authentication failed: ${errorMessage}. Please verify your bearer token is valid.`,
+      { tracked: false }
     );
   }
 
-  throw new Error(errorMessage);
+  throw new MCPError(errorMessage, { tracked: false });
 }
 
 export async function makeSalesloftRequest<T>(

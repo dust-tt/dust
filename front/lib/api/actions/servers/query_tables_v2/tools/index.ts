@@ -1,4 +1,7 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnCoreAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import type { TablesConfigurationToolType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { GET_DATABASE_SCHEMA_MARKER } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -122,6 +125,7 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
         });
 
         if (tableResult.isErr()) {
+          throwOnCoreAPIInternalError(tableResult.error);
           return {
             uri,
             tableId: tableConfiguration.tableId,
@@ -202,6 +206,7 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
     });
 
     if (schemaResult.isErr()) {
+      throwOnCoreAPIInternalError(schemaResult.error);
       return new Err(
         new MCPError(
           `Error retrieving database schema: ${schemaResult.error.message}`,
@@ -270,8 +275,10 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
       tables: tableConfigurations.map((t) => {
         const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
         if (!dataSourceView || !dataSourceView.dataSource.dustAPIDataSourceId) {
-          throw new Error(
-            `Missing data source ID for view ${t.dataSourceViewId}`
+          // Outdated or inaccessible table configuration: not actionable on our side.
+          throw new MCPError(
+            `Missing data source ID for view ${t.dataSourceViewId}`,
+            { tracked: false }
           );
         }
         return {

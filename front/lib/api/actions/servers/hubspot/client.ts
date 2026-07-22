@@ -1,3 +1,4 @@
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Client } from "@hubspot/api-client";
@@ -42,11 +43,40 @@ async function hubspotApiFetch<T>({
   });
 
   if (!response.ok) {
+    if (response.status >= 500) {
+      throw new ProviderError(
+        `HubSpot API returned an unexpected error (HTTP ${response.status}).`,
+        { status: response.status }
+      );
+    }
     const body = await response.text().catch(() => "");
-    throw new Error(`HubSpot API error ${response.status} on ${path}: ${body}`);
+    throw new MCPError(
+      `HubSpot API error ${response.status} on ${path}: ${body}`,
+      { tracked: false }
+    );
   }
 
   return response.json() as Promise<T>;
+}
+
+/**
+ * Converts a HubSpot SDK error into a ProviderError when the underlying HTTP status is >= 500.
+ * The SDK generates one `ApiException` class per codegen namespace, so the HTTP status is
+ * detected structurally through the numeric `code` field rather than with `instanceof`.
+ */
+export function toHubspotProviderError(error: unknown): ProviderError | null {
+  if (
+    error instanceof Error &&
+    "code" in error &&
+    typeof error.code === "number" &&
+    error.code >= 500
+  ) {
+    return new ProviderError(
+      `HubSpot API returned an unexpected error (HTTP ${error.code}).`,
+      { status: error.code, cause: error }
+    );
+  }
+  return null;
 }
 
 const MAX_ENUM_OPTIONS_DISPLAYED = 50;
@@ -144,8 +174,9 @@ function buildHubspotFilters(
   return filters.map(({ propertyName, operator, value, values }) => {
     // Validate operator is supported
     if (!supportedOperators.includes(operator)) {
-      throw new Error(
-        `Unsupported filter operator: ${operator}. Supported operators: ${supportedOperators.join(", ")}`
+      throw new MCPError(
+        `Unsupported filter operator: ${operator}. Supported operators: ${supportedOperators.join(", ")}`,
+        { tracked: false }
       );
     }
 
@@ -182,7 +213,10 @@ function buildHubspotFilters(
               ? cleanValues
               : cleanValues.map((v) => v.toLowerCase());
         } else {
-          throw new Error(`Values array is required for ${operator} operator`);
+          throw new MCPError(
+            `Values array is required for ${operator} operator`,
+            { tracked: false }
+          );
         }
       } else if (operator === FilterOperatorEnum.Between) {
         // Date properties need to be converted to Unix timestamps in milliseconds
@@ -203,8 +237,9 @@ function buildHubspotFilters(
               // Convert ISO date string to timestamp
               const timestamp = new Date(dateStr).getTime();
               if (isNaN(timestamp)) {
-                throw new Error(
-                  `Invalid date format for BETWEEN operator: ${dateStr}`
+                throw new MCPError(
+                  `Invalid date format for BETWEEN operator: ${dateStr}`,
+                  { tracked: false }
                 );
               }
               return String(timestamp);
@@ -224,8 +259,9 @@ function buildHubspotFilters(
               if (!/^\d+$/.test(lowValue)) {
                 const timestamp = new Date(lowValue).getTime();
                 if (isNaN(timestamp)) {
-                  throw new Error(
-                    `Invalid date format for BETWEEN operator: ${lowValue}`
+                  throw new MCPError(
+                    `Invalid date format for BETWEEN operator: ${lowValue}`,
+                    { tracked: false }
                   );
                 }
                 lowValue = String(timestamp);
@@ -233,8 +269,9 @@ function buildHubspotFilters(
               if (!/^\d+$/.test(highValue)) {
                 const timestamp = new Date(highValue).getTime();
                 if (isNaN(timestamp)) {
-                  throw new Error(
-                    `Invalid date format for BETWEEN operator: ${highValue}`
+                  throw new MCPError(
+                    `Invalid date format for BETWEEN operator: ${highValue}`,
+                    { tracked: false }
                   );
                 }
                 highValue = String(timestamp);
@@ -244,13 +281,15 @@ function buildHubspotFilters(
             filter.value = lowValue;
             filter.highValue = highValue;
           } else {
-            throw new Error(
-              `BETWEEN operator with single value requires semicolon-separated format (e.g., "100;200")`
+            throw new MCPError(
+              `BETWEEN operator with single value requires semicolon-separated format (e.g., "100;200")`,
+              { tracked: false }
             );
           }
         } else {
-          throw new Error(
-            `BETWEEN operator requires either a values array with 2 elements or a semicolon-separated value string`
+          throw new MCPError(
+            `BETWEEN operator requires either a values array with 2 elements or a semicolon-separated value string`,
+            { tracked: false }
           );
         }
       } else {
@@ -278,7 +317,9 @@ function buildHubspotFilters(
             filter.value = stringValue;
           }
         } else {
-          throw new Error(`Value is required for ${operator} operator`);
+          throw new MCPError(`Value is required for ${operator} operator`, {
+            tracked: false,
+          });
         }
       }
     }
@@ -516,19 +557,25 @@ const getAssociationTypeId = async (
   );
 
   if (!response.ok) {
-    const e = new Error(
-      `Failed to fetch association types for ${fromObjectType} to ${toObjectType}: ${response.status} ${response.statusText}`
+    if (response.status >= 500) {
+      throw new ProviderError(
+        `HubSpot API returned an unexpected error (HTTP ${response.status}).`,
+        { status: response.status }
+      );
+    }
+    throw new MCPError(
+      `Failed to fetch association types for ${fromObjectType} to ${toObjectType}: ${response.status} ${response.statusText}`,
+      { tracked: false }
     );
-    throw normalizeError(e);
   }
 
   const data = await response.json();
 
   if (!data.results || data.results.length === 0) {
-    const e = new Error(
-      `No association types found for ${fromObjectType} to ${toObjectType}`
+    throw new MCPError(
+      `No association types found for ${fromObjectType} to ${toObjectType}`,
+      { tracked: false }
     );
-    throw normalizeError(e);
   }
 
   // Assuming the first result is the one needed for standard associations.
@@ -739,9 +786,9 @@ export const createNote = async ({
   const propertiesForApi = { ...properties };
 
   if (!propertiesForApi.hs_note_body) {
-    throw normalizeError(
-      new Error("hs_note_body is required to create a note.")
-    );
+    throw new MCPError("hs_note_body is required to create a note.", {
+      tracked: false,
+    });
   }
 
   // Use Unix milliseconds for hs_timestamp to ensure proper timeline placement.
@@ -806,7 +853,7 @@ export const createNote = async ({
       { error, noteInput, function: "createNote" },
       `Error creating note.`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -912,10 +959,9 @@ export const createCommunication = async ({
   const hubspotClient = new Client({ accessToken });
 
   if (!properties.hs_communication_channel_type) {
-    throw normalizeError(
-      new Error(
-        "hs_communication_channel_type is required in properties for createCommunication."
-      )
+    throw new MCPError(
+      "hs_communication_channel_type is required in properties for createCommunication.",
+      { tracked: false }
     );
   }
 
@@ -966,7 +1012,7 @@ export const createCommunication = async ({
       { error, communicationData, function: "createCommunication" },
       `Error creating communication (channel: ${properties.hs_communication_channel_type}).`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1032,7 +1078,7 @@ export const createMeeting = async ({
       { error, meetingInput, function: "createMeeting" },
       `Error creating meeting.`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1071,7 +1117,7 @@ export const getMeeting = async (
       { error, meetingId },
       `Error fetching meeting ${meetingId}:`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1115,7 +1161,7 @@ export const getFilePublicUrl = async (
       { error, fileId },
       `Error fetching file ${fileId} public URL:`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1167,7 +1213,7 @@ export const getAssociatedMeetings = async (
       { error, fromObjectType, fromObjectId },
       `Error fetching associated meetings for ${fromObjectType}/${fromObjectId}:`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1338,7 +1384,7 @@ export const searchCrmObjects = async ({
       return { results: [], paging: undefined };
     }
     localLogger.error({ error }, `Error searching ${objectType}:`);
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1479,7 +1525,7 @@ export const getUserActivity = async ({
       { error, ownerId, startDate, endDate },
       `Error getting user activity for owner ${ownerId}:`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1493,7 +1539,7 @@ export const getCurrentUserId = async (accessToken: string) => {
     };
   } catch (error) {
     localLogger.error({ error }, "Error getting current user ID:");
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1524,7 +1570,7 @@ export const updateContact = async ({
       { error, contactId },
       `Error updating contact with ID ${contactId}:`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1555,7 +1601,7 @@ export const updateCompany = async ({
       { error, companyId },
       `Error updating company with ID ${companyId}:`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1586,7 +1632,7 @@ export const updateDeal = async ({
       { error, dealId },
       `Error updating deal with ID ${dealId}:`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1618,7 +1664,7 @@ export const updateTask = async ({
       { error, taskId },
       `Error updating task with ID ${taskId}:`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1638,7 +1684,7 @@ export const deleteTask = async ({
       { error, taskId },
       `Error deleting task with ID ${taskId}:`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1738,7 +1784,7 @@ export const updateCustomObject = async ({
       { error, objectType, objectId },
       `Error updating custom object ${objectType} with ID ${objectId}:`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1757,7 +1803,15 @@ export const getUserDetails = async (accessToken: string) => {
     );
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `HubSpot API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
+      throw new MCPError(`HTTP error! status: ${response.status}`, {
+        tracked: false,
+      });
     }
 
     const data = await response.json();
@@ -1769,7 +1823,7 @@ export const getUserDetails = async (accessToken: string) => {
     };
   } catch (error) {
     localLogger.error({ error }, "Error getting user details:");
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1814,7 +1868,7 @@ export const createAssociation = async ({
       { error, fromObjectType, fromObjectId, toObjectType, toObjectId },
       `Error creating association between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}:`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1902,7 +1956,7 @@ export const listAssociations = async ({
       { error, objectType, objectId, toObjectType },
       `Error listing associations for ${objectType}:${objectId}:`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 
@@ -1935,7 +1989,7 @@ export const removeAssociation = async ({
       { error, fromObjectType, fromObjectId, toObjectType, toObjectId },
       `Error removing association between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}:`
     );
-    throw normalizeError(error);
+    throw toHubspotProviderError(error) ?? normalizeError(error);
   }
 };
 

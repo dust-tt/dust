@@ -1,4 +1,5 @@
 import type { MCPError } from "@app/lib/actions/mcp_errors";
+import { ProviderError } from "@app/lib/actions/mcp_errors";
 import type {
   ProductboardConfiguration,
   ProductboardEntity,
@@ -83,6 +84,12 @@ export class ProductboardClient {
     });
 
     if (!response.ok) {
+      if (response.status >= 500) {
+        throw new ProviderError(
+          `Productboard API returned an unexpected error (HTTP ${response.status}).`,
+          { status: response.status }
+        );
+      }
       const isInvalidInput = response.status === 400 || response.status === 422;
       const errorText = await response.text();
 

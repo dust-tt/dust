@@ -1,4 +1,8 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  isProviderError,
+  MCPError,
+  ProviderError,
+} from "@app/lib/actions/mcp_errors";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
   isAgentLoopRunContext,
@@ -17,8 +21,12 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { WebAPICallResult } from "@slack/web-api";
-import { WebClient } from "@slack/web-api";
+import type {
+  WebAPICallResult,
+  WebAPIHTTPError,
+  WebAPIPlatformError,
+} from "@slack/web-api";
+import { ErrorCode, WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/types/response/ConversationsListResponse";
 import type { Usergroup } from "@slack/web-api/dist/types/response/UsergroupsListResponse";
 import type { Member } from "@slack/web-api/dist/types/response/UsersListResponse";
@@ -54,9 +62,60 @@ export function isSlackMissingScope(error: unknown): boolean {
   );
 }
 
+// Slack platform error codes indicating a Slack-side failure rather than a user or
+// configuration issue (see the common errors table in Slack's Web API method docs).
+const SLACK_SERVER_SIDE_PLATFORM_ERRORS = [
+  "internal_error",
+  "fatal_error",
+  "service_unavailable",
+];
+
+function isSlackWebAPIHTTPError(error: unknown): error is WebAPIHTTPError {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    error.code === ErrorCode.HTTPError
+  );
+}
+
+function isSlackWebAPIPlatformError(
+  error: unknown
+): error is WebAPIPlatformError {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    error.code === ErrorCode.PlatformError
+  );
+}
+
+// Rethrow errors caught around Slack SDK calls as ProviderError when the failure is on
+// Slack's side: HTTP 5xx responses or server-side platform errors. User/config-driven
+// platform errors (channel_not_found, missing_scope, ...) pass through untouched.
+// ProviderError instances thrown from deeper call sites are rethrown as-is.
+export function throwIfSlackProviderError(error: unknown): void {
+  if (isProviderError(error)) {
+    throw error;
+  }
+  if (isSlackWebAPIHTTPError(error) && error.statusCode >= 500) {
+    throw new ProviderError(
+      `Slack API returned an unexpected error (HTTP ${error.statusCode}).`,
+      { status: error.statusCode, cause: error }
+    );
+  }
+  if (
+    isSlackWebAPIPlatformError(error) &&
+    SLACK_SERVER_SIDE_PLATFORM_ERRORS.includes(error.data.error)
+  ) {
+    throw new ProviderError(
+      `Slack API returned an unexpected error (${error.data.error}).`,
+      { cause: error }
+    );
+  }
+}
+
 export const getSlackClient = async (accessToken?: string) => {
   if (!accessToken) {
-    throw new Error("No access token provided");
+    throw new MCPError("No access token provided", { tracked: false });
   }
 
   return new WebClient(accessToken, {
@@ -233,7 +292,9 @@ export const getChannels = async (
           });
 
     if (!response.ok) {
-      throw new Error(`Failed to list ${scope} channels`);
+      throw new MCPError(`Failed to list ${scope} channels`, {
+        tracked: false,
+      });
     }
 
     channels.push(...(response.channels ?? []));
@@ -291,7 +352,7 @@ const getAllUsers = async ({
     });
 
     if (!response.ok) {
-      throw new Error("Failed to list users");
+      throw new MCPError("Failed to list users", { tracked: false });
     }
 
     users.push(
@@ -359,7 +420,8 @@ export async function resolveChannelId({
       if (openResp.ok && openResp.channel?.id) {
         return openResp.channel.id;
       }
-    } catch {
+    } catch (error) {
+      throwIfSlackProviderError(error);
       // conversations.open failed, user ID cannot be resolved.
     }
     return null;
@@ -374,9 +436,8 @@ export async function resolveChannelId({
       if (infoResp.ok && infoResp.channel?.id) {
         return infoResp.channel.id;
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
+      throwIfSlackProviderError(error);
       // Fall through to name-based search.
     }
   }
@@ -1100,7 +1161,8 @@ async function searchUserById(
       const user = cleanUserPayload(response.user);
       return new Ok(user);
     }
-  } catch (_error) {
+  } catch (error) {
+    throwIfSlackProviderError(error);
     return new Err(new MCPError(`User not found: ${originalQuery}`));
   }
   return new Err(new MCPError(`User not found: ${originalQuery}`));
@@ -1118,7 +1180,8 @@ async function searchUserByEmail(
       const user = cleanUserPayload(response.user);
       return new Ok(user);
     }
-  } catch (_error) {
+  } catch (error) {
+    throwIfSlackProviderError(error);
     return new Err(new MCPError(`User not found for email: ${originalQuery}`));
   }
   return new Err(new MCPError(`User not found for email: ${originalQuery}`));

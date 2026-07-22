@@ -371,7 +371,9 @@ describe("handleFileAccessError", () => {
   });
 
   it("should return generic message for GaxiosError without message", async () => {
-    const error = createGaxiosError(500, "Internal Server Error");
+    // 5xx statuses now throw ProviderError, so use a 4xx to exercise the
+    // generic message fallback.
+    const error = createGaxiosError(400, "Bad Request");
     // Simulate an error without a message
     error.message = undefined as any;
 

@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   ToolGeneratedFilePathType,
@@ -180,6 +180,17 @@ export default async function createServer(
         );
 
         if (runRes.isErr()) {
+          // `runAppStreamed` only exposes the upstream HTTP status inside the error
+          // message (`status_code=<n>`), so parse it to detect unexpected Dust API
+          // failures (HTTP >= 500).
+          const statusMatch = runRes.error.message.match(/status_code=(\d{3})/);
+          const statusCode = statusMatch ? parseInt(statusMatch[1], 10) : null;
+          if (statusCode !== null && statusCode >= 500) {
+            throw new ProviderError(
+              `Dust API returned an unexpected error (HTTP ${statusCode}).`,
+              { status: statusCode, cause: new Error(runRes.error.message) }
+            );
+          }
           return new Err(
             new MCPError(`Error running Dust app: ${runRes.error.message}`)
           );

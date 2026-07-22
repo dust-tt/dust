@@ -1,4 +1,7 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnCoreAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
@@ -91,6 +94,7 @@ export async function find(
       },
     });
     if (rootNodeSearchResult.isErr()) {
+      throwOnCoreAPIInternalError(rootNodeSearchResult.error);
       return new Err(
         new MCPError(
           `Failed to search content: ${rootNodeSearchResult.error.message}`
@@ -128,6 +132,7 @@ export async function find(
   });
 
   if (searchResult.isErr()) {
+    throwOnCoreAPIInternalError(searchResult.error);
     return new Err(
       new MCPError(`Failed to search content: ${searchResult.error.message}`)
     );

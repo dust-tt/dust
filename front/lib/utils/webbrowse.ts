@@ -1,3 +1,4 @@
+import { ProviderError } from "@app/lib/actions/mcp_errors";
 import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { clientFetch } from "@app/lib/egress/client";
 import { untrustedFetch } from "@app/lib/egress/server";
@@ -11,7 +12,7 @@ import type {
   ScrapeResponse,
 } from "@mendable/firecrawl-js";
 import FirecrawlApp, { FirecrawlError } from "@mendable/firecrawl-js";
-import Exa from "exa-js";
+import Exa, { ExaError } from "exa-js";
 
 const credentials = dustManagedServiceCredentials();
 
@@ -332,6 +333,16 @@ const browseUrlFirecrawl = async (
       };
     }
 
+    // FIRECRAWL_API_KEY is Dust-managed: a 5xx returned by the Firecrawl API itself is
+    // treated as a provider failure. Other scrape failures (driven by the target
+    // website) keep surfacing as per-URL error responses.
+    if (error instanceof FirecrawlError && error.statusCode >= 500) {
+      throw new ProviderError(
+        `Firecrawl API returned an unexpected error (HTTP ${error.statusCode}).`,
+        { status: error.statusCode, cause: error }
+      );
+    }
+
     logger.error(
       {
         error,
@@ -496,6 +507,16 @@ const browseUrlSpider = async (
     };
   }
 
+  // SPIDER_API_KEY is Dust-managed: a 5xx returned by the Spider API itself is treated
+  // as a provider failure. Per-page scrape failures (driven by the target website) are
+  // reported in the response body and keep surfacing as per-URL error responses.
+  if (res.status >= 500) {
+    throw new ProviderError(
+      `Spider API returned an unexpected error (HTTP ${res.status}).`,
+      { status: res.status }
+    );
+  }
+
   let json: unknown;
   try {
     json = await res.json();
@@ -625,6 +646,13 @@ const browseUrlExa = async (
       extras: { links: options?.links ? 10 : 0 },
     });
   } catch (error) {
+    // EXA_API_KEY is Dust-managed: an Exa 5xx means our provider is down.
+    if (error instanceof ExaError && error.statusCode >= 500) {
+      throw new ProviderError(
+        `Exa API returned an unexpected error (HTTP ${error.statusCode}).`,
+        { status: error.statusCode, cause: error }
+      );
+    }
     logger.error(
       { error, url },
       "[Exa] Network or fetch error while scraping URL"

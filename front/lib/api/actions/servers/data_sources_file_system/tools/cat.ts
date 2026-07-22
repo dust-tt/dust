@@ -1,4 +1,7 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnCoreAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { renderNode } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
@@ -110,6 +113,10 @@ export async function cat(
     },
   });
 
+  if (searchResult.isErr()) {
+    throwOnCoreAPIInternalError(searchResult.error);
+  }
+
   if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
     return new Err(
       new MCPError(
@@ -159,6 +166,7 @@ export async function cat(
   });
 
   if (readResult.isErr()) {
+    throwOnCoreAPIInternalError(readResult.error);
     return new Err(
       new MCPError(
         `Could not read node: ${nodeId} (error: ${readResult.error.message})`,

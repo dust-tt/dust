@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type {
   ClariCallDetails,
@@ -101,6 +101,12 @@ export class ClariCopilotClient {
       );
 
       if (!response.ok) {
+        if (response.status >= 500) {
+          throw new ProviderError(
+            `Clari API returned an unexpected error (HTTP ${response.status}).`,
+            { status: response.status }
+          );
+        }
         const errorText = await response.text();
         return new Err(
           new ClariHttpError(
@@ -125,6 +131,10 @@ export class ClariCopilotClient {
 
       return new Ok(parseResult.data);
     } catch (err) {
+      // Let provider 5xx errors escape to the tool-execution wrapper.
+      if (err instanceof ProviderError) {
+        throw err;
+      }
       return new Err(normalizeError(err));
     }
   }

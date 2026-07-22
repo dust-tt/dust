@@ -1,4 +1,7 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  MCPError,
+  throwOnDustAPIInternalError,
+} from "@app/lib/actions/mcp_errors";
 import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import {
   appendFilePathsHintToQuery,
@@ -95,6 +98,10 @@ async function postMessageAndFetchConversation(
   if (messageRes.isErr()) {
     const isUserSide = isUserSideError(messageRes.error);
     const isTransient = isTransientNetworkError(messageRes.error);
+    if (!isTransient) {
+      // Transient network failures keep their untracked handling below.
+      throwOnDustAPIInternalError(messageRes.error);
+    }
     if (isUserSide) {
       await onPostMessageError?.();
     }
@@ -180,6 +187,10 @@ export async function getOrCreateConversation(
     if (convRes.isErr()) {
       const isUserSide = isUserSideError(convRes.error);
       const isTransient = isTransientNetworkError(convRes.error);
+      if (!isTransient) {
+        // Transient network failures keep their untracked handling below.
+        throwOnDustAPIInternalError(convRes.error);
+      }
       const message = isUserSide
         ? convRes.error.message
         : "Failed to get conversation";
@@ -334,6 +345,11 @@ export async function getOrCreateConversation(
       },
       "Failed to create conversation"
     );
+
+    if (!isTransient) {
+      // Transient network failures keep their untracked handling below.
+      throwOnDustAPIInternalError(convRes.error);
+    }
 
     const message = isUserSide
       ? convRes.error.message

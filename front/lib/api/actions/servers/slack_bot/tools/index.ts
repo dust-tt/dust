@@ -11,6 +11,7 @@ import {
   executeSearchUser,
   executeUpdateMessage,
   getSlackClient,
+  throwIfSlackProviderError,
 } from "@app/lib/api/actions/servers/slack/helpers";
 import { SLACK_BOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import type { Authenticator } from "@app/lib/auth";
@@ -47,6 +48,7 @@ export function createSlackBotTools(
           accessToken,
         });
       } catch (error) {
+        throwIfSlackProviderError(error);
         return new Err(
           new MCPError(`Error posting message: ${normalizeError(error)}`)
         );
@@ -66,6 +68,7 @@ export function createSlackBotTools(
           message,
         });
       } catch (error) {
+        throwIfSlackProviderError(error);
         return new Err(
           new MCPError(`Error editing message: ${normalizeError(error)}`)
         );
@@ -84,6 +87,7 @@ export function createSlackBotTools(
           mcpServerId,
         });
       } catch (error) {
+        throwIfSlackProviderError(error);
         return new Err(
           new MCPError(`Error searching user: ${normalizeError(error)}`)
         );
@@ -103,6 +107,7 @@ export function createSlackBotTools(
           mcpServerId
         );
       } catch (error) {
+        throwIfSlackProviderError(error);
         return new Err(
           new MCPError(`Error listing channels: ${normalizeError(error)}`)
         );
@@ -151,6 +156,7 @@ export function createSlackBotTools(
           },
         ]);
       } catch (error) {
+        throwIfSlackProviderError(error);
         return new Err(
           new MCPError(
             `Error reading channel history: ${normalizeError(error)}`
@@ -214,6 +220,7 @@ export function createSlackBotTools(
           },
         ]);
       } catch (error) {
+        throwIfSlackProviderError(error);
         return new Err(
           new MCPError(
             `Error reading thread messages: ${normalizeError(error)}`
@@ -251,6 +258,7 @@ export function createSlackBotTools(
           { type: "text" as const, text: JSON.stringify(response, null, 2) },
         ]);
       } catch (error) {
+        throwIfSlackProviderError(error);
         return new Err(
           new MCPError(`Error adding reaction: ${normalizeError(error)}`)
         );
@@ -286,6 +294,7 @@ export function createSlackBotTools(
           { type: "text" as const, text: JSON.stringify(response, null, 2) },
         ]);
       } catch (error) {
+        throwIfSlackProviderError(error);
         return new Err(
           new MCPError(`Error removing reaction: ${normalizeError(error)}`)
         );

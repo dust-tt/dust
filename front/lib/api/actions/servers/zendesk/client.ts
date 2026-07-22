@@ -1,4 +1,4 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError, ProviderError } from "@app/lib/actions/mcp_errors";
 import type {
   ZendeskSearchResponse,
   ZendeskTicket,
@@ -115,6 +115,13 @@ class ZendeskClient {
       },
       body: body ? JSON.stringify(body) : undefined,
     });
+
+    if (response.status >= 500) {
+      throw new ProviderError(
+        `Zendesk API returned an unexpected error (HTTP ${response.status}).`,
+        { status: response.status }
+      );
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -368,6 +375,13 @@ class ZendeskClient {
       method: "GET",
       headers,
     });
+
+    if (response.status >= 500) {
+      throw new ProviderError(
+        `Zendesk API returned an unexpected error (HTTP ${response.status}).`,
+        { status: response.status }
+      );
+    }
 
     if (!response.ok) {
       return new Err(

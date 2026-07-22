@@ -1,3 +1,4 @@
+import { ProviderError } from "@app/lib/actions/mcp_errors";
 import {
   VOICE_LANGUAGES,
   type VoiceGender,
@@ -7,7 +8,7 @@ import {
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
 import { dustManagedServiceCredentials } from "@app/types/api/credentials";
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import { ElevenLabsClient, ElevenLabsError } from "@elevenlabs/elevenlabs-js";
 import type { Voice } from "@elevenlabs/elevenlabs-js/api/types";
 import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
 
@@ -255,6 +256,24 @@ export async function resolveDefaultVoiceId({
 
   // 5) Final safety fallback.
   return DEFAULT_GENDER_FALLBACK[gender];
+}
+
+/**
+ * Rethrows a caught error as `ProviderError` when the ElevenLabs API failed unexpectedly
+ * (HTTP 5xx), so it escapes the tool handlers' catch-all blocks and reaches the central
+ * tool wrapper, which always tracks it. No-op for anything else.
+ */
+export function throwIfElevenLabsProviderError(error: unknown): void {
+  if (
+    error instanceof ElevenLabsError &&
+    error.statusCode !== undefined &&
+    error.statusCode >= 500
+  ) {
+    throw new ProviderError(
+      `ElevenLabs API returned an unexpected error (HTTP ${error.statusCode}).`,
+      { status: error.statusCode, cause: error }
+    );
+  }
 }
 
 export function getElevenLabsClient() {

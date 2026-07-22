@@ -4,6 +4,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import {
   getElevenLabsClient,
   streamToBase64,
+  throwIfElevenLabsProviderError,
 } from "@app/lib/api/actions/servers/elevenlabs/utils";
 import { SOUND_STUDIO_TOOLS_METADATA } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { Err, Ok } from "@app/types/shared/result";
@@ -44,6 +45,7 @@ const handlers: ToolHandlers<typeof SOUND_STUDIO_TOOLS_METADATA> = {
         },
       ]);
     } catch (e) {
+      throwIfElevenLabsProviderError(e);
       const cause = normalizeError(e);
       return new Err(
         new MCPError(

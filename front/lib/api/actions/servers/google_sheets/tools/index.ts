@@ -2,6 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
+  throwIfGoogleServerError,
   withDriveAuth,
   withSheetsAuth,
 } from "@app/lib/api/actions/servers/google_sheets/helpers";
@@ -32,6 +33,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
         ]);
       } catch (err) {
+        throwIfGoogleServerError(err);
         return new Err(
           new MCPError(
             normalizeError(err).message || "Failed to list spreadsheets"
@@ -52,6 +54,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
         ]);
       } catch (err) {
+        throwIfGoogleServerError(err);
         return new Err(
           new MCPError(
             normalizeError(err).message || "Failed to get spreadsheet"
@@ -78,6 +81,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
         ]);
       } catch (err) {
+        throwIfGoogleServerError(err);
         return new Err(
           new MCPError(
             normalizeError(err).message || "Failed to get worksheet data"
@@ -107,6 +111,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
         ]);
       } catch (err) {
+        throwIfGoogleServerError(err);
         return new Err(
           new MCPError(normalizeError(err).message || "Failed to update cells")
         );
@@ -142,6 +147,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
         ]);
       } catch (err) {
+        throwIfGoogleServerError(err);
         return new Err(
           new MCPError(normalizeError(err).message || "Failed to append data")
         );
@@ -161,6 +167,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
         ]);
       } catch (err) {
+        throwIfGoogleServerError(err);
         return new Err(
           new MCPError(normalizeError(err).message || "Failed to clear range")
         );
@@ -187,6 +194,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
         ]);
       } catch (err) {
+        throwIfGoogleServerError(err);
         return new Err(
           new MCPError(
             normalizeError(err).message || "Failed to create spreadsheet"
@@ -225,6 +233,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
         ]);
       } catch (err) {
+        throwIfGoogleServerError(err);
         return new Err(
           new MCPError(normalizeError(err).message || "Failed to add worksheet")
         );
@@ -252,6 +261,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
         ]);
       } catch (err) {
+        throwIfGoogleServerError(err);
         return new Err(
           new MCPError(
             normalizeError(err).message || "Failed to delete worksheet"
@@ -302,6 +312,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
         ]);
       } catch (err) {
+        throwIfGoogleServerError(err);
         return new Err(
           new MCPError(normalizeError(err).message || "Failed to format cells")
         );
@@ -327,6 +338,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
         ]);
       } catch (err) {
+        throwIfGoogleServerError(err);
         return new Err(
           new MCPError(normalizeError(err).message || "Failed to copy sheet")
         );
@@ -358,6 +370,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
         ]);
       } catch (err) {
+        throwIfGoogleServerError(err);
         return new Err(
           new MCPError(
             normalizeError(err).message || "Failed to rename worksheet"
@@ -391,6 +404,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
           { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
         ]);
       } catch (err) {
+        throwIfGoogleServerError(err);
         return new Err(
           new MCPError(
             normalizeError(err).message || "Failed to move worksheet"

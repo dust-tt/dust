@@ -9,7 +9,10 @@ import type {
   TeamsMessage,
   TeamsUser,
 } from "@app/lib/api/actions/servers/microsoft/utils";
-import { getGraphClient } from "@app/lib/api/actions/servers/microsoft/utils";
+import {
+  getGraphClient,
+  throwIfGraphProviderError,
+} from "@app/lib/api/actions/servers/microsoft/utils";
 import { MICROSOFT_TEAMS_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
 import {
   renderChannels,
@@ -63,6 +66,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to search Teams messages"
@@ -89,6 +93,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to list teams")
       );
@@ -128,6 +133,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to list users")
       );
@@ -161,6 +167,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to list public channels"
@@ -210,6 +217,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to list chats")
       );
@@ -378,6 +386,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
 
       return new Ok(content);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to list threads")
       );
@@ -513,6 +522,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
               }
             }
           } catch (err) {
+            throwIfGraphProviderError(err);
             return new Err(
               new MCPError(
                 `Failed to create or find chat with users: ${normalizeError(err).message}`
@@ -593,6 +603,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to post message")
       );
@@ -659,6 +670,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to list meetings")
       );
@@ -759,6 +771,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
+      throwIfGraphProviderError(err);
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to get transcript content"
