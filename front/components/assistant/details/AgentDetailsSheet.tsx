@@ -211,7 +211,9 @@ export function AgentDetailsSheet({
     isServerSideMCPServerConfigurationWithName(arg, AGENT_MEMORY_SERVER_NAME)
   );
 
-  const showInsightsTabs = agentId != null && hasPermission("publish", "agent");
+  const showInsightsTabs =
+    agentId != null &&
+    (hasPermission("publish", "agent") || agentConfiguration?.canEdit);
 
   const DescriptionSection = () => {
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];
