@@ -1,4 +1,5 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { StructuredSystemPrompt } from "@app/lib/api/llm/types/options";
 import {
   toInput,
   toToolsParam,
@@ -73,6 +74,61 @@ describe("toInput", () => {
           }
         }
       }
+    });
+  });
+
+  describe("system prompt", () => {
+    const prompt: StructuredSystemPrompt = {
+      instructions: [{ role: "instruction", content: "Instructions" }],
+      sharedContext: [{ role: "context", content: "Shared context" }],
+      ephemeralContext: [{ role: "context", content: "Ephemeral context" }],
+    };
+
+    it("adds cache breakpoints after stable system prompt tiers", () => {
+      const messages = toInput(prompt, { messages: [] }, "developer", {
+        cacheBreakpointsOnSystemPrompt: true,
+      });
+
+      expect(messages).toEqual([
+        {
+          role: "developer",
+          content: [
+            {
+              type: "input_text",
+              text: "Instructions",
+              prompt_cache_breakpoint: { mode: "explicit" },
+            },
+          ],
+        },
+        {
+          role: "developer",
+          content: [
+            {
+              type: "input_text",
+              text: "Shared context",
+              prompt_cache_breakpoint: { mode: "explicit" },
+            },
+          ],
+        },
+        {
+          role: "developer",
+          content: [{ type: "input_text", text: "Ephemeral context" }],
+        },
+      ]);
+    });
+
+    it("keeps the flattened system prompt without explicit caching", () => {
+      expect(toInput(prompt, { messages: [] })).toEqual([
+        {
+          role: "developer",
+          content: [
+            {
+              type: "input_text",
+              text: "Instructions\nShared context\nEphemeral context",
+            },
+          ],
+        },
+      ]);
     });
   });
 

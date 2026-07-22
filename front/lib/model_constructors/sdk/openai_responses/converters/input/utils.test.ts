@@ -13,6 +13,7 @@ import type {
   BaseAssistantTextMessage,
   BaseAssistantToolCallRequestMessage,
   BaseUserTextMessage,
+  SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import { describe, expect, it } from "vitest";
 
@@ -96,6 +97,55 @@ describe("prompt cache breakpoints", () => {
             prompt_cache_breakpoint: { mode: "explicit" },
           },
         ],
+      },
+    ]);
+  });
+
+  it("serializes cache markers on stable system prompt tiers", () => {
+    const system: SystemTextMessage[] = [
+      {
+        role: "system",
+        type: "text",
+        content: { value: "Instructions" },
+        cache: "long",
+      },
+      {
+        role: "system",
+        type: "text",
+        content: { value: "Shared context" },
+        cache: "short",
+      },
+      {
+        role: "system",
+        type: "text",
+        content: { value: "Ephemeral context" },
+      },
+    ];
+
+    expect(supportedEndpoint.systemMessagesToInputItems(system)).toEqual([
+      {
+        role: "developer",
+        content: [
+          {
+            type: "input_text",
+            text: "Instructions",
+            prompt_cache_breakpoint: { mode: "explicit" },
+          },
+        ],
+      },
+      {
+        role: "developer",
+        content: [
+          {
+            type: "input_text",
+            text: "Shared context",
+            prompt_cache_breakpoint: { mode: "explicit" },
+          },
+        ],
+      },
+      {
+        role: "developer",
+        content: [{ type: "input_text", text: "Ephemeral context" }],
       },
     ]);
   });

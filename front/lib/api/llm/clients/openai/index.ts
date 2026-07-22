@@ -19,7 +19,6 @@ import type {
   LLMStreamMetadata,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
-import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
@@ -107,15 +106,18 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
       forceToolCall,
       toolSearchEnabled,
     } = streamParameters;
-    const promptText = systemPromptToText(prompt);
     const reasoning = toReasoning(this.modelId, this.reasoningEffort);
+    const explicitPromptCaching = supportsOpenAIExplicitPromptCaching(
+      this.modelId
+    );
 
     return {
       model: this.modelId,
-      input: toInput(promptText, conversation, "developer", {
-        cacheBreakpointOnLeadingMessage: supportsOpenAIExplicitPromptCaching(
-          this.modelId
-        ),
+      // OpenAI renders tools before input messages, so the first system
+      // breakpoint also closes the reusable tools prefix.
+      input: toInput(prompt, conversation, "developer", {
+        cacheBreakpointOnLeadingMessage: explicitPromptCaching,
+        cacheBreakpointsOnSystemPrompt: explicitPromptCaching,
       }),
       temperature: this.temperature ?? undefined,
       reasoning,

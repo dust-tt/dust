@@ -11,7 +11,6 @@ import {
   promptCacheBreakpointFor,
   reasoningToOpenAIResponsesReasoning,
   systemMessagesToInputItems,
-  systemMessageToInputItem,
   toolCallResultMessageToInputItem,
   toolSpecsToOpenAITools,
   userImageMessageToInputItem,
@@ -40,7 +39,6 @@ export function WithOpenAIResponsesInputConverter<
     implements MessageItemConverters
   {
     promptCacheBreakpointFor = promptCacheBreakpointFor;
-    systemMessageToInputItem = systemMessageToInputItem;
     userImageMessageToInputItem = userImageMessageToInputItem;
     toolCallResultMessageToInputItem = toolCallResultMessageToInputItem;
     assistantTextMessageToInputItem = assistantTextMessageToInputItem;
@@ -83,6 +81,8 @@ export function WithOpenAIResponsesInputConverter<
         model: this.constructor.model,
         max_output_tokens: this.constructor.maxOutputTokens,
         ...(cacheKey ? { prompt_cache_key: cacheKey } : {}),
+        // OpenAI renders tools before input messages, so the first system
+        // breakpoint also closes the reusable tools prefix.
         input: [
           ...this.systemMessagesToInputItems(conversation.system),
           ...this.conversationToInput(conversation),

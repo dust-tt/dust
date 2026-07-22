@@ -9,7 +9,12 @@ import {
   parseOpenAIToolSearchItem,
 } from "@app/lib/api/llm/clients/openai/utils/tool_search_passthrough";
 import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
-import type { ExclusiveToolChoiceParameters } from "@app/lib/api/llm/types/options";
+import {
+  type ExclusiveToolChoiceParameters,
+  normalizePrompt,
+  type SystemPromptInput,
+  systemPromptToText,
+} from "@app/lib/api/llm/types/options";
 import {
   parseReasoningMetadata,
   parseResponseFormatSchema,
@@ -158,16 +163,74 @@ function toToolCallOutputItem(
   };
 }
 
+function systemPromptToInputItems(
+  prompt: SystemPromptInput,
+  promptRole: "system" | "developer",
+  { cacheBreakpoints }: { cacheBreakpoints: boolean }
+): ResponseInputItem.Message[] {
+  if (!cacheBreakpoints) {
+    return [
+      {
+        role: promptRole,
+        content: [{ type: "input_text", text: systemPromptToText(prompt) }],
+      },
+    ];
+  }
+
+  const { instructions, sharedContext, ephemeralContext } =
+    normalizePrompt(prompt);
+  const tiers = [
+    { sections: instructions, cache: true },
+    { sections: sharedContext, cache: true },
+    { sections: ephemeralContext, cache: false },
+  ];
+  const inputs = tiers.flatMap(({ sections, cache }) => {
+    const text = sections
+      .map((section) => section.content.trim())
+      .filter(Boolean)
+      .join("\n");
+    if (!text) {
+      return [];
+    }
+
+    return [
+      {
+        role: promptRole,
+        content: [
+          {
+            type: "input_text" as const,
+            text,
+            ...(cache
+              ? { prompt_cache_breakpoint: { mode: "explicit" as const } }
+              : {}),
+          },
+        ],
+      },
+    ];
+  });
+
+  // Preserve the previous empty-prompt request shape.
+  return inputs.length > 0
+    ? inputs
+    : [
+        {
+          role: promptRole,
+          content: [{ type: "input_text", text: "" }],
+        },
+      ];
+}
+
 export function toInput(
-  prompt: string,
+  prompt: SystemPromptInput,
   conversation: ModelConversationTypeMultiActions,
   promptRole: "system" | "developer" = "developer",
-  { cacheBreakpointOnLeadingMessage = false } = {}
+  {
+    cacheBreakpointOnLeadingMessage = false,
+    cacheBreakpointsOnSystemPrompt = false,
+  } = {}
 ): ResponseInput {
-  const inputs: ResponseInput = [];
-  inputs.push({
-    role: promptRole,
-    content: [{ type: "input_text", text: prompt }],
+  const inputs: ResponseInput = systemPromptToInputItems(prompt, promptRole, {
+    cacheBreakpoints: cacheBreakpointsOnSystemPrompt,
   });
 
   for (const [index, message] of conversation.messages.entries()) {
