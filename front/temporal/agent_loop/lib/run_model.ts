@@ -571,6 +571,14 @@ export async function runModel(
     const allToolsets =
       await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(auth, [], {
         includeGlobalSpace: true,
+        // isJITMCPServerView inspects tool input schemas.
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
       });
     const filteredToolsets = allToolsets.filter((toolset) => {
       const mcpServerView = toolset.toJSON();

@@ -237,11 +237,14 @@ async function resolveRemoteServerOAuthToken(
     Error | MCPServerPersonalAuthenticationRequiredError
   >
 > {
+  const sharedSecret = remoteMCPServer.getSharedSecret();
+  const authorization = remoteMCPServer.getAuthorization();
+
   // Shared secret: no OAuth needed.
-  if (remoteMCPServer.sharedSecret) {
+  if (sharedSecret) {
     return new Ok({
       token: {
-        access_token: remoteMCPServer.sharedSecret,
+        access_token: sharedSecret,
         token_type: "bearer",
         expires_in: undefined,
         scope: "",
@@ -252,7 +255,7 @@ async function resolveRemoteServerOAuthToken(
   }
 
   // No authorization required.
-  if (!remoteMCPServer.authorization) {
+  if (!authorization) {
     return new Ok({
       token: undefined,
       oauthConnectionType: undefined,
@@ -307,7 +310,7 @@ async function resolveRemoteServerOAuthToken(
   }
 
   // Connection failed — return the appropriate error.
-  const { provider, scope } = remoteMCPServer.authorization;
+  const { provider, scope } = authorization;
 
   switch (connectionType) {
     case "personal": {
@@ -550,7 +553,16 @@ export async function connectToMCPServer(
         case "remote":
           const remoteMCPServer = await RemoteMCPServerResource.fetchById(
             auth,
-            params.mcpServerId
+            params.mcpServerId,
+            // Connecting only needs the auth material — skip `cachedTools`, the column
+            // whose detoasting this fetch is hot enough to care about.
+            {
+              includeHeavyAttributes: [
+                "authorization",
+                "customHeaders",
+                "sharedSecret",
+              ],
+            }
           );
 
           if (!remoteMCPServer) {
@@ -573,6 +585,9 @@ export async function connectToMCPServer(
           const { token, oauthConnectionType, oauthConnectionId } =
             tokenRes.value;
 
+          const authorization = remoteMCPServer.getAuthorization();
+          const customHeaders = remoteMCPServer.getCustomHeaders();
+
           const {
             dispatcher,
             fetch: proxyFetch,
@@ -583,7 +598,7 @@ export async function connectToMCPServer(
             const req = {
               requestInit: {
                 // Include stored custom headers
-                headers: remoteMCPServer.customHeaders ?? {},
+                headers: customHeaders ?? {},
                 dispatcher,
               },
               authProvider: new MCPOAuthProvider(token),
@@ -597,18 +612,18 @@ export async function connectToMCPServer(
             // MCPOAuthProviderError. This reliably indicates token rejection.
             if (
               e instanceof MCPOAuthProviderError &&
-              remoteMCPServer.authorization &&
+              authorization &&
               oauthConnectionType
             ) {
               if (oauthConnectionId) {
                 invalidateOAuthConnectionAccessTokenCache(oauthConnectionId);
               }
-              const scope = remoteMCPServer.authorization.scope;
+              const scope = authorization.scope;
               if (oauthConnectionType === "personal") {
                 return new Err(
                   new MCPServerPersonalAuthenticationRequiredError(
                     params.mcpServerId,
-                    remoteMCPServer.authorization.provider,
+                    authorization.provider,
                     scope
                   )
                 );
@@ -616,7 +631,7 @@ export async function connectToMCPServer(
               return new Err(
                 new MCPServerRequiresAdminAuthenticationError(
                   params.mcpServerId,
-                  remoteMCPServer.authorization.provider,
+                  authorization.provider,
                   scope,
                   "reconnect"
                 )

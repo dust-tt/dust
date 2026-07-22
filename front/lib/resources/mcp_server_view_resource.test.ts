@@ -836,7 +836,16 @@ describe("MCPServerViewResource", () => {
       // Fetch the system view through baseFetch.
       const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
         adminAuth,
-        remoteServer.sId
+        remoteServer.sId,
+        {
+          includeHeavyAttributes: [
+            "authorization",
+            "cachedTools",
+            "customHeaders",
+            "lastError",
+            "sharedSecret",
+          ],
+        }
       );
       expect(view).not.toBeNull();
 
@@ -854,7 +863,16 @@ describe("MCPServerViewResource", () => {
 
       const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
         adminAuth,
-        remoteServer.sId
+        remoteServer.sId,
+        {
+          includeHeavyAttributes: [
+            "authorization",
+            "cachedTools",
+            "customHeaders",
+            "lastError",
+            "sharedSecret",
+          ],
+        }
       );
       expect(view).not.toBeNull();
 

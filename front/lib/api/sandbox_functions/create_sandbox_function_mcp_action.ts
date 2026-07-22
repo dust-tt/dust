@@ -133,7 +133,15 @@ export async function createSandboxFunctionMCPAction(
     );
   }
 
-  const view = await MCPServerViewResource.fetchById(auth, serverViewId);
+  const view = await MCPServerViewResource.fetchById(auth, serverViewId, {
+    includeHeavyAttributes: [
+      "authorization",
+      "cachedTools",
+      "customHeaders",
+      "lastError",
+      "sharedSecret",
+    ],
+  });
   // `fetchById` is workspace-scoped, so reproduce the listing endpoint's confinement: the view
   // must be in the pod or global space (the spaces the listing queries) AND readable by the
   // caller. The permission check keeps this correct if pod access is revoked within the token

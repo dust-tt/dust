@@ -498,7 +498,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<Result<SkillResource, Error>> {
     const mcpServerViews = await MCPServerViewResource.fetchByIds(
       auth,
-      mcpServerViewIds
+      mcpServerViewIds,
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
     );
 
     if (mcpServerViews.length !== mcpServerViewIds.length) {
@@ -656,7 +665,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
           auth,
           removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
-          { includeMetadata: false }
+          {
+            includeMetadata: false,
+            includeHeavyAttributes: [
+              "authorization",
+              "cachedTools",
+              "customHeaders",
+              "lastError",
+              "sharedSecret",
+            ],
+          }
         );
       }
 
@@ -832,7 +850,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const allMCPServerViews = await MCPServerViewResource.listByMCPServers(
         auth,
         mcpServerIds,
-        transaction
+        {
+          transaction,
+          includeHeavyAttributes: [
+            "authorization",
+            "cachedTools",
+            "customHeaders",
+            "lastError",
+            "sharedSecret",
+          ],
+        }
       );
       mcpServerViews = allMCPServerViews.filter(
         (view) =>
@@ -2230,7 +2257,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
     const allMcpServerViews = await MCPServerViewResource.fetchByModelIds(
       auth,
-      allMcpServerViewIds
+      allMcpServerViewIds,
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
     );
     const mcpServerViewMap = new Map(
       allMcpServerViews.map((view) => [view.id, view])

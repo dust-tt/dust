@@ -51,7 +51,7 @@ app.get("/", async (ctx): HandlerResult<GetUserApprovalsResponseBody> => {
           validation.mcpServerId
         );
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        serverName = server?.toJSON().name || "Unknown Remote Server";
+        serverName = server?.cachedName || "Unknown Remote Server";
       }
     } catch {
       // If we can't parse the server ID or fetch the server, use default name.

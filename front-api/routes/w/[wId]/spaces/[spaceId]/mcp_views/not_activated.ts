@@ -40,6 +40,20 @@ app.get(
         (b.internalMCPServerId ?? b.remoteMCPServerId)
     );
 
+    // The lists above are fetched without the remote server heavy attributes (filtering only relies
+    // on view-level fields) — hydrate the activable subset before serializing it.
+    await MCPServerViewResource.hydrateRemoteServerHeavyAttributes(
+      auth,
+      activableMcpServerViews,
+      [
+        "authorization",
+        "cachedTools",
+        "customHeaders",
+        "lastError",
+        "sharedSecret",
+      ]
+    );
+
     return ctx.json({
       success: true,
       serverViews: removeNulls(activableMcpServerViews.map((s) => s.toJSON())),

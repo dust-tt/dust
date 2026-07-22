@@ -47,9 +47,8 @@ export async function createAgentActionConfiguration(
   if (!mcpServerView) {
     return new Err(new Error("MCP server view not found"));
   }
-  const {
-    server: { name: serverName, description: serverDescription },
-  } = mcpServerView.toJSON();
+  const { name: serverName, description: serverDescription } =
+    mcpServerView.getServerDisplayMetadata();
 
   return withTransaction(async (t) => {
     const mcpConfig = await AgentMCPServerConfigurationModel.create(

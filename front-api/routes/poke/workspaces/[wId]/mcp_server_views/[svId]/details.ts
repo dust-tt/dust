@@ -21,7 +21,15 @@ app.get(
     const auth = ctx.get("auth");
     const { svId } = ctx.req.valid("param");
 
-    const mcpServerView = await MCPServerViewResource.fetchById(auth, svId);
+    const mcpServerView = await MCPServerViewResource.fetchById(auth, svId, {
+      includeHeavyAttributes: [
+        "authorization",
+        "cachedTools",
+        "customHeaders",
+        "lastError",
+        "sharedSecret",
+      ],
+    });
     if (!mcpServerView) {
       return apiError(ctx, {
         status_code: 404,
@@ -39,7 +47,16 @@ app.get(
 
     const allViews = await MCPServerViewResource.listByMCPServer(
       auth,
-      mcpServerView.mcpServerId
+      mcpServerView.mcpServerId,
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
     );
     const spaceViews = allViews
       .filter((view) => view.space.kind !== "system")

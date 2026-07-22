@@ -51,7 +51,16 @@ export const getAccessibleSourcesAndAppsForActions = async (
       }),
       MCPServerViewResource.listBySpacesEnsuringAutoViews(
         auth,
-        accessibleSpaces
+        accessibleSpaces,
+        {
+          includeHeavyAttributes: [
+            "authorization",
+            "cachedTools",
+            "customHeaders",
+            "lastError",
+            "sharedSecret",
+          ],
+        }
       ),
     ]);
 
