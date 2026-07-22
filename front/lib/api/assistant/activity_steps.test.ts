@@ -44,6 +44,7 @@ function render(
   );
 }
 
+
 describe("renderAgentMessageContentView", () => {
   it("treats a single plain text content as the body, with no steps", async () => {
     expect(
@@ -104,6 +105,65 @@ describe("renderAgentMessageContentView", () => {
       chainOfThought: "pondering\n",
       activitySteps: [
         { type: "thinking", content: "pondering\n", id: "cot-0-0", step: 0 },
+      ],
+    });
+  });
+
+  it("keeps the body when a function call and trailing empty text follow it", async () => {
+    // Regression: a trailing empty text after a tool call used to steal the body
+    // slot, demoting the real answer to a content step in the Work timeline.
+    // The action step must still appear — the fix must not swallow it.
+    expect(
+      await renderAgentMessageContentView(
+        [
+          {
+            step: 0,
+            content: {
+              type: "reasoning",
+              value: { reasoning: "Let me think", metadata: "", tokens: 0, provider: "openai" },
+            },
+          },
+          { step: 0, content: { type: "text_content", value: "The answer" } },
+          {
+            step: 0,
+            content: {
+              type: "function_call",
+              value: { id: "fc_1", name: "save", arguments: "{}" },
+            },
+          },
+          { step: 1, content: { type: "text_content", value: "" } },
+        ],
+        [
+          {
+            id: 1,
+            sId: "act_1",
+            createdAt: 0,
+            updatedAt: 0,
+            agentMessageId: 1,
+            mcpServerId: null,
+            functionCallId: "fc_1",
+            functionCallName: "save",
+            internalMCPServerName: null,
+            toolName: "save",
+            step: 0,
+            params: {},
+            citationsAllocated: 0,
+            status: "succeeded",
+            executionDurationMs: null,
+            displayLabels: { running: "Saving", done: "Saved" },
+            generatedFiles: [],
+            output: null,
+          },
+        ],
+        agentConfiguration,
+        "msg_test"
+      )
+    ).toEqual({
+      content: "The answer",
+      chainOfThought: "Let me think",
+      activitySteps: [
+        { type: "thinking", content: "Let me think", id: "reasoning-0-0", step: 0 },
+        { type: "action", label: "Saved", id: "action-1", actionId: "act_1", internalMCPServerName: null, toolName: "save", step: 0 },
       ],
     });
   });

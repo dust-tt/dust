@@ -83,11 +83,33 @@ export async function renderAgentMessageContentView(
 ): Promise<AgentMessageContentView> {
   const actionsByCallId = new Map(actions.map((a) => [a.functionCallId, a]));
 
-  // Find the last text_content index — that item stays as the message body
-  // and should NOT become a content activity step.
+  // Parse each text_content once, stripping any inline chain-of-thought
+  // delimiters. The parsed result is the single notion of "user-facing content"
+  // shared by everything below.
+  const parsedTextByIndex = new Map<
+    number,
+    { content: string | null; chainOfThought: string | null }
+  >();
+  for (const [index, c] of contents.entries()) {
+    if (isAgentTextContent(c.content)) {
+      const contentParser = new AgentMessageContentParser(
+        agentConfiguration,
+        messageId,
+        getCoTDelimitersConfiguration({ agentConfiguration })
+      );
+      parsedTextByIndex.set(
+        index,
+        await contentParser.parseContents([c.content.value])
+      );
+    }
+  }
+
+  // The message body is the LAST text_content whose user-facing content is
+  // non-empty after trimming — it stays as the body and does NOT become a
+  // content activity step.
   let lastTextContentIndex = -1;
   for (let i = contents.length - 1; i >= 0; i--) {
-    if (isAgentTextContent(contents[i].content)) {
+    if (parsedTextByIndex.get(i)?.content?.trim()) {
       lastTextContentIndex = i;
       break;
     }
@@ -110,14 +132,10 @@ export async function renderAgentMessageContentView(
     }
 
     if (isAgentTextContent(c.content)) {
-      const contentParser = new AgentMessageContentParser(
-        agentConfiguration,
-        messageId,
-        getCoTDelimitersConfiguration({ agentConfiguration })
-      );
-      const parsedContent = await contentParser.parseContents([
-        c.content.value,
-      ]);
+      const parsedContent = parsedTextByIndex.get(index);
+      if (!parsedContent) {
+        continue;
+      }
 
       if (parsedContent.chainOfThought?.trim()) {
         activitySteps.push({
@@ -161,6 +179,8 @@ export async function renderAgentMessageContentView(
 
   const { content, chainOfThought } = await selectBodyAndChainOfThought(
     contents,
+    parsedTextByIndex,
+    lastTextContentIndex,
     agentConfiguration,
     messageId
   );
@@ -168,12 +188,21 @@ export async function renderAgentMessageContentView(
   return { content, chainOfThought, activitySteps };
 }
 
-// Body = the last text fragment (final answer); chain of thought = native
-// reasoning when present, otherwise the parsed CoT from the text fragments.
-// This branching is preserved exactly from the previous reload implementation
-// (messages.ts) so live === reload.
+// Body = the final answer; chain of thought = native reasoning when present,
+// otherwise the parsed CoT from the text fragments.
+//
+// When native reasoning is present, the body is the last NON-EMPTY text fragment
+// (identified by `lastTextContentIndex`).
+//
+// With multiple text fragments, only that last non-empty one is the body; every
+// earlier non-empty fragment is demoted to a content step.
 async function selectBodyAndChainOfThought(
   contents: Array<{ step: number; content: AgentContentItemType }>,
+  parsedTextByIndex: Map<
+    number,
+    { content: string | null; chainOfThought: string | null }
+  >,
+  lastTextContentIndex: number,
   agentConfiguration: LightAgentConfigurationType,
   messageId: string
 ): Promise<{ content: string | null; chainOfThought: string | null }> {
@@ -187,14 +216,12 @@ async function selectBodyAndChainOfThought(
     }
   }
 
-  const textFragments = interleaveConditionalNewlines(textValues);
-
   if (reasoningValues.length > 0) {
     return {
-      // For multiple steps outputting text content, we want to display only the
-      // last one as the final answer.
       content:
-        textFragments.length > 0 ? textFragments[textFragments.length - 1] : "",
+        lastTextContentIndex >= 0
+          ? (parsedTextByIndex.get(lastTextContentIndex)?.content ?? "")
+          : "",
       chainOfThought: reasoningValues
         .filter((r): r is string => !!r)
         .join("\n\n"),
@@ -206,7 +233,9 @@ async function selectBodyAndChainOfThought(
     messageId,
     getCoTDelimitersConfiguration({ agentConfiguration })
   );
-  const parsedContent = await contentParser.parseContents(textFragments);
+  const parsedContent = await contentParser.parseContents(
+    interleaveConditionalNewlines(textValues)
+  );
   return {
     content: parsedContent.content,
     chainOfThought: parsedContent.chainOfThought,
