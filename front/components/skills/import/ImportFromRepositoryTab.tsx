@@ -66,8 +66,7 @@ export function ImportFromRepositoryTab({
     onDetectedCountChange(detectedSkills.length);
   }, [detectedSkills.length, onDetectedCountChange]);
 
-  const showRepositoryNotFound =
-    repositoryNotFound && !isConnectionLoading;
+  const showRepositoryNotFound = repositoryNotFound && !isConnectionLoading;
 
   const isEmpty =
     !isDetecting &&
