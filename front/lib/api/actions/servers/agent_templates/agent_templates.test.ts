@@ -1,3 +1,4 @@
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import type { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -5,7 +6,7 @@ import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TOOLS } from "./index";
+import { AGENT_TEMPLATES_TOOL_HANDLERS } from "./index";
 
 vi.mock("@app/lib/api/assistant/template_suggestion", () => ({
   getSuggestedTemplatesForQuery: vi.fn(),
@@ -18,20 +19,12 @@ beforeEach(async () => {
   vi.mocked(templateSuggestion.getSuggestedTemplatesForQuery).mockReset();
 });
 
-function getToolByName(name: string) {
-  const tool = TOOLS.find((t) => t.name === name);
-  if (!tool) {
-    throw new Error(`Tool ${name} not found`);
-  }
-  return tool;
-}
-
 function createTestExtra(auth: Authenticator, runContext?: unknown) {
   return {
     signal: new AbortController().signal,
     auth,
     runContext,
-  } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
+  } as ToolHandlerExtra;
 }
 
 describe("agent_templates tools", () => {
@@ -44,8 +37,10 @@ describe("agent_templates tools", () => {
       }
       await TemplateFactory.draft();
 
-      const tool = getToolByName("search_agent_templates");
-      const result = await tool.handler({}, createTestExtra(authenticator));
+      const result = await AGENT_TEMPLATES_TOOL_HANDLERS.search_agent_templates(
+        {},
+        createTestExtra(authenticator)
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -67,8 +62,7 @@ describe("agent_templates tools", () => {
       const engineeringTemplate = await TemplateFactory.published();
       await engineeringTemplate.updateAttributes({ tags: ["ENGINEERING"] });
 
-      const tool = getToolByName("search_agent_templates");
-      const result = await tool.handler(
+      const result = await AGENT_TEMPLATES_TOOL_HANDLERS.search_agent_templates(
         { jobType: "sales" },
         createTestExtra(authenticator)
       );
@@ -91,8 +85,7 @@ describe("agent_templates tools", () => {
         await TemplateFactory.published();
       }
 
-      const tool = getToolByName("search_agent_templates");
-      const result = await tool.handler(
+      const result = await AGENT_TEMPLATES_TOOL_HANDLERS.search_agent_templates(
         { jobType: "unknown_type" },
         createTestExtra(authenticator)
       );
@@ -116,8 +109,7 @@ describe("agent_templates tools", () => {
         sidekickInstructions: "Test sidekick instructions",
       });
 
-      const tool = getToolByName("search_agent_templates");
-      const result = await tool.handler(
+      const result = await AGENT_TEMPLATES_TOOL_HANDLERS.search_agent_templates(
         { jobType: "sales" },
         createTestExtra(authenticator)
       );
@@ -151,8 +143,7 @@ describe("agent_templates tools", () => {
         new Ok([template1])
       );
 
-      const tool = getToolByName("search_agent_templates");
-      const result = await tool.handler(
+      const result = await AGENT_TEMPLATES_TOOL_HANDLERS.search_agent_templates(
         { query: "help me draft sales emails" },
         createTestExtra(authenticator)
       );
@@ -179,8 +170,7 @@ describe("agent_templates tools", () => {
         new Err(new Error("LLM call failed"))
       );
 
-      const tool = getToolByName("search_agent_templates");
-      const result = await tool.handler(
+      const result = await AGENT_TEMPLATES_TOOL_HANDLERS.search_agent_templates(
         { query: "something" },
         createTestExtra(authenticator)
       );
@@ -204,8 +194,7 @@ describe("agent_templates tools", () => {
         new Ok([salesTemplate])
       );
 
-      const tool = getToolByName("search_agent_templates");
-      const result = await tool.handler(
+      const result = await AGENT_TEMPLATES_TOOL_HANDLERS.search_agent_templates(
         { jobType: "sales", query: "sales email drafter" },
         createTestExtra(authenticator)
       );
@@ -229,8 +218,7 @@ describe("agent_templates tools", () => {
         sidekickInstructions: "Test sidekick instructions for this template",
       });
 
-      const tool = getToolByName("get_agent_template");
-      const result = await tool.handler(
+      const result = await AGENT_TEMPLATES_TOOL_HANDLERS.get_agent_template(
         { templateId: template.sId },
         createTestExtra(authenticator)
       );
@@ -255,8 +243,7 @@ describe("agent_templates tools", () => {
       const template = await TemplateFactory.published();
       await template.updateAttributes({ sidekickInstructions: null });
 
-      const tool = getToolByName("get_agent_template");
-      const result = await tool.handler(
+      const result = await AGENT_TEMPLATES_TOOL_HANDLERS.get_agent_template(
         { templateId: template.sId },
         createTestExtra(authenticator)
       );
@@ -275,8 +262,7 @@ describe("agent_templates tools", () => {
     it("returns error for non-existent template", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const tool = getToolByName("get_agent_template");
-      const result = await tool.handler(
+      const result = await AGENT_TEMPLATES_TOOL_HANDLERS.get_agent_template(
         { templateId: "non-existent-template-id" },
         createTestExtra(authenticator)
       );

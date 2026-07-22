@@ -1,4 +1,5 @@
 import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
@@ -26,7 +27,7 @@ import type {
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TOOLS } from "./tools";
+import { AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS } from "./tools";
 
 // Mock analytics dependencies.
 vi.mock("@app/lib/api/assistant/observability/overview", () => ({
@@ -56,21 +57,13 @@ beforeEach(async () => {
   vi.mocked(sidekickHelpers.getAgentConfigurationIdFromContext).mockReset();
 });
 
-function getToolByName(name: string) {
-  const tool = TOOLS.find((t) => t.name === name);
-  if (!tool) {
-    throw new Error(`Tool ${name} not found`);
-  }
-  return tool;
-}
-
 // Create a minimal extra object for testing.
 function createTestExtra(auth: Authenticator, runContext?: unknown) {
   return {
     signal: new AbortController().signal,
     auth,
     runContext,
-  } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
+  } as ToolHandlerExtra;
 }
 
 async function createFeedback({
@@ -119,8 +112,11 @@ describe("agent_sidekick_context tools", () => {
 
       await DataSourceViewFactory.folder(workspace, globalSpace);
 
-      const tool = getToolByName("search_knowledge");
-      const result = await tool.handler({}, createTestExtra(authenticator));
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.search_knowledge(
+          { topK: 5 },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -146,11 +142,11 @@ describe("agent_sidekick_context tools", () => {
 
       await DataSourceViewFactory.folder(workspace, globalSpace);
 
-      const tool = getToolByName("search_knowledge");
-      const result = await tool.handler(
-        { category: "folder" },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.search_knowledge(
+          { category: "folder", topK: 5 },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -175,8 +171,11 @@ describe("agent_sidekick_context tools", () => {
 
       await DataSourceViewFactory.folder(workspace, restrictedSpace);
 
-      const tool = getToolByName("search_knowledge");
-      const result = await tool.handler({}, createTestExtra(authenticator));
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.search_knowledge(
+          { topK: 5 },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -208,8 +207,11 @@ describe("agent_sidekick_context tools", () => {
         writable: true,
       });
 
-      const tool = getToolByName("get_available_models");
-      const result = await tool.handler({}, createTestExtra(authenticator));
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_available_models(
+          {},
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -231,8 +233,11 @@ describe("agent_sidekick_context tools", () => {
     it("returns all non-legacy models when no provider filter is applied", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const tool = getToolByName("get_available_models");
-      const result = await tool.handler({}, createTestExtra(authenticator));
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_available_models(
+          {},
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -250,11 +255,11 @@ describe("agent_sidekick_context tools", () => {
     it("filters by providerId when specified", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const tool = getToolByName("get_available_models");
-      const result = await tool.handler(
-        { providerId: "openai" },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_available_models(
+          { providerId: "openai" },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -282,8 +287,11 @@ describe("agent_sidekick_context tools", () => {
         agentFacingDescription: "Agent facing description",
       });
 
-      const tool = getToolByName("get_available_skills");
-      const result = await tool.handler({}, createTestExtra(authenticator));
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_available_skills(
+          {},
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -323,8 +331,11 @@ describe("agent_sidekick_context tools", () => {
         restrictedSpace
       );
 
-      const tool = getToolByName("get_available_tools");
-      const result = await tool.handler({}, createTestExtra(authenticator));
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_available_tools(
+          {},
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -351,8 +362,11 @@ describe("agent_sidekick_context tools", () => {
         globalSpace
       );
 
-      const tool = getToolByName("get_available_tools");
-      const result = await tool.handler({}, createTestExtra(authenticator));
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_available_tools(
+          {},
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -372,8 +386,11 @@ describe("agent_sidekick_context tools", () => {
       // Create all auto internal tools so knowledge tools exist.
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(authenticator);
 
-      const tool = getToolByName("get_available_tools");
-      const result = await tool.handler({}, createTestExtra(authenticator));
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_available_tools(
+          {},
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -405,8 +422,11 @@ describe("agent_sidekick_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const tool = getToolByName("get_available_agents");
-      const result = await tool.handler({}, createTestExtra(authenticator));
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_available_agents(
+          { limit: 100 },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -444,11 +464,11 @@ describe("agent_sidekick_context tools", () => {
         name: "BetaBot",
       });
 
-      const tool = getToolByName("get_available_agents");
-      const result = await tool.handler(
-        { agentPrefix: "Alpha" },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_available_agents(
+          { agentPrefix: "Alpha", limit: 100 },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -512,11 +532,11 @@ describe("agent_sidekick_context tools", () => {
         agentConfigurationId: agentConfiguration.id,
       });
 
-      const tool = getToolByName("inspect_available_agent");
-      const result = await tool.handler(
-        { agentId: agentConfiguration.sId },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.inspect_available_agent(
+          { agentId: agentConfiguration.sId },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -541,11 +561,11 @@ describe("agent_sidekick_context tools", () => {
     it("returns error for non-existent agent", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const tool = getToolByName("inspect_available_agent");
-      const result = await tool.handler(
-        { agentId: "non-existent-agent-id" },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.inspect_available_agent(
+          { agentId: "non-existent-agent-id" },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -567,14 +587,13 @@ describe("agent_sidekick_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(auth1);
 
-      const tool = getToolByName("inspect_available_agent");
-
       // User 2 attempts to access User 1's agent using User 1's agent ID
       // but with User 2's auth (from workspace 2).
-      const result = await tool.handler(
-        { agentId: agentConfiguration.sId },
-        createTestExtra(auth2)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.inspect_available_agent(
+          { agentId: agentConfiguration.sId },
+          createTestExtra(auth2)
+        );
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -593,11 +612,11 @@ describe("agent_sidekick_context tools", () => {
       );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
-      const tool = getToolByName("get_agent_feedback");
-      const result = await tool.handler(
-        { limit: 10, filter: "active" },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_agent_feedback(
+          { limit: 10, filter: "active", latestVersionOnly: true },
+          createTestExtra(authenticator)
+        );
 
       // Should return an error when no agent config ID is available.
       expect(result.isErr()).toBe(true);
@@ -628,11 +647,11 @@ describe("agent_sidekick_context tools", () => {
         value: [],
       } as never);
 
-      const tool = getToolByName("get_agent_feedback");
-      const result = await tool.handler(
-        { limit: 10, filter: "active" },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_agent_feedback(
+          { limit: 10, filter: "active", latestVersionOnly: true },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -671,9 +690,8 @@ describe("agent_sidekick_context tools", () => {
         value: [],
       } as never);
 
-      const tool = getToolByName("get_agent_feedback");
-      await tool.handler(
-        { limit: 5, filter: "active" },
+      await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_agent_feedback(
+        { limit: 5, filter: "active", latestVersionOnly: true },
         createTestExtra(authenticator)
       );
 
@@ -711,8 +729,10 @@ describe("agent_sidekick_context tools", () => {
         value: [],
       } as never);
 
-      const tool = getToolByName("get_agent_feedback");
-      await tool.handler({ filter: "active" }, createTestExtra(authenticator));
+      await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_agent_feedback(
+        { filter: "active", latestVersionOnly: true, limit: 50 },
+        createTestExtra(authenticator)
+      );
 
       expect(mockedGetAgentFeedbacks).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -745,8 +765,10 @@ describe("agent_sidekick_context tools", () => {
         value: [],
       } as never);
 
-      const tool = getToolByName("get_agent_feedback");
-      await tool.handler({ filter: "all" }, createTestExtra(authenticator));
+      await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_agent_feedback(
+        { filter: "all", latestVersionOnly: true, limit: 50 },
+        createTestExtra(authenticator)
+      );
 
       expect(mockedGetAgentFeedbacks).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -813,11 +835,11 @@ describe("agent_sidekick_context tools", () => {
         agentV1.sId
       );
 
-      const tool = getToolByName("get_agent_feedback");
-      const result = await tool.handler(
-        { latestVersionOnly: true },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_agent_feedback(
+          { filter: "active", latestVersionOnly: true, limit: 50 },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -906,11 +928,11 @@ describe("agent_sidekick_context tools", () => {
         agentV1.sId
       );
 
-      const tool = getToolByName("get_agent_feedback");
-      const result = await tool.handler(
-        { latestVersionOnly: false },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.get_agent_feedback(
+          { filter: "active", latestVersionOnly: false, limit: 50 },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -945,19 +967,19 @@ describe("agent_sidekick_context tools", () => {
       );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
-      const tool = getToolByName("suggest_prompt_edits");
-      const result = await tool.handler(
-        {
-          suggestions: [
-            {
-              content: "<p>new text</p>",
-              targetBlockId: "block123",
-              type: "replace",
-            },
-          ],
-        },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_prompt_edits(
+          {
+            suggestions: [
+              {
+                content: "<p>new text</p>",
+                targetBlockId: "block123",
+                type: "replace",
+              },
+            ],
+          },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isErr()).toBe(true);
     });
@@ -976,19 +998,19 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_prompt_edits");
-      const result = await tool.handler(
-        {
-          suggestions: [
-            {
-              content: "<p>new text</p>",
-              targetBlockId: "block123",
-              type: "replace",
-            },
-          ],
-        },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_prompt_edits(
+          {
+            suggestions: [
+              {
+                content: "<p>new text</p>",
+                targetBlockId: "block123",
+                type: "replace",
+              },
+            ],
+          },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1032,19 +1054,19 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_prompt_edits");
-      const result = await tool.handler(
-        {
-          suggestions: [
-            {
-              content: "<p>exceeds limit</p>",
-              targetBlockId: "blockExtra",
-              type: "replace",
-            },
-          ],
-        },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_prompt_edits(
+          {
+            suggestions: [
+              {
+                content: "<p>exceeds limit</p>",
+                targetBlockId: "blockExtra",
+                type: "replace",
+              },
+            ],
+          },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -1065,8 +1087,7 @@ describe("agent_sidekick_context tools", () => {
       );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
-      const tool = getToolByName("suggest_tools");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_tools(
         {
           suggestions: [
             {
@@ -1104,8 +1125,7 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_tools");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_tools(
         {
           suggestions: [
             {
@@ -1144,8 +1164,7 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_tools");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_tools(
         {
           suggestions: [
             {
@@ -1198,8 +1217,7 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_tools");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_tools(
         {
           suggestions: [
             {
@@ -1257,8 +1275,7 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_tools");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_tools(
         {
           suggestions: [
             {
@@ -1326,8 +1343,7 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_tools");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_tools(
         {
           suggestions: [
             {
@@ -1363,18 +1379,18 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_knowledge");
-      const result = await tool.handler(
-        {
-          suggestion: {
-            action: "add",
-            dataSourceViewId: dsv.sId,
-            method: "search",
-            description: "Search documentation",
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_knowledge(
+          {
+            suggestion: {
+              action: "add",
+              dataSourceViewId: dsv.sId,
+              method: "search",
+              description: "Search documentation",
+            },
           },
-        },
-        createTestExtra(authenticator)
-      );
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk() && result.value[0].type === "text") {
@@ -1409,15 +1425,15 @@ describe("agent_sidekick_context tools", () => {
         mainAgentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_sub_agent");
-      const result = await tool.handler(
-        {
-          action: "add",
-          subAgentId: subAgentConfiguration.sId,
-          analysis: "Adding sub-agent for delegation",
-        },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_sub_agent(
+          {
+            action: "add",
+            subAgentId: subAgentConfiguration.sId,
+            analysis: "Adding sub-agent for delegation",
+          },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1455,15 +1471,15 @@ describe("agent_sidekick_context tools", () => {
         mainAgentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_sub_agent");
-      const result = await tool.handler(
-        {
-          action: "remove",
-          subAgentId: subAgentConfiguration.sId,
-          analysis: "Removing sub-agent",
-        },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_sub_agent(
+          {
+            action: "remove",
+            subAgentId: subAgentConfiguration.sId,
+            analysis: "Removing sub-agent",
+          },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1488,8 +1504,7 @@ describe("agent_sidekick_context tools", () => {
       );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
-      const tool = getToolByName("suggest_skills");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_skills(
         {
           suggestions: [
             {
@@ -1525,8 +1540,7 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_skills");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_skills(
         {
           suggestions: [
             {
@@ -1565,8 +1579,7 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_skills");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_skills(
         {
           suggestions: [
             {
@@ -1617,8 +1630,7 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_skills");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_skills(
         {
           suggestions: [
             {
@@ -1672,8 +1684,7 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_skills");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_skills(
         {
           suggestions: [
             {
@@ -1729,8 +1740,7 @@ describe("agent_sidekick_context tools", () => {
       );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
-      const tool = getToolByName("suggest_model");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_model(
         {
           suggestion: {
             modelId: "claude-sonnet-4-5-20250929",
@@ -1756,8 +1766,7 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_model");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_model(
         {
           suggestion: {
             modelId: "claude-sonnet-4-6",
@@ -1793,9 +1802,8 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_model");
       // claude-sonnet-4-6 does not support reasoningEffort "none".
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_model(
         {
           suggestion: {
             modelId: "claude-sonnet-4-6",
@@ -1827,9 +1835,8 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_model");
       // gpt-4o-mini is in SUPPORTED_MODEL_CONFIGS but not in USED_MODEL_CONFIGS
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_model(
         {
           suggestion: {
             modelId: "gpt-4o-mini",
@@ -1869,12 +1876,11 @@ describe("agent_sidekick_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_model");
       // gpt-5.6-sol is in USED_MODEL_CONFIGS but openai is not whitelisted
       expect(USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-5.6-sol")).toBe(
         true
       );
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.suggest_model(
         {
           suggestion: {
             modelId: "gpt-5.6-sol",
@@ -1901,8 +1907,11 @@ describe("agent_sidekick_context tools", () => {
       // Reset and set return value to ensure isolation from other tests.
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValue(null);
 
-      const tool = getToolByName("list_suggestions");
-      const result = await tool.handler({}, createTestExtra(authenticator));
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.list_suggestions(
+          { limit: 50 },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isErr()).toBe(true);
     });
@@ -1918,8 +1927,11 @@ describe("agent_sidekick_context tools", () => {
         "test-agent-id"
       );
 
-      const tool = getToolByName("list_suggestions");
-      const result = await tool.handler({}, createTestExtra(authenticator));
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.list_suggestions(
+          { limit: 50 },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1945,14 +1957,15 @@ describe("agent_sidekick_context tools", () => {
         "test-agent-id"
       );
 
-      const tool = getToolByName("list_suggestions");
-      const result = await tool.handler(
-        {
-          states: ["pending", "rejected"],
-          kind: "tools",
-        },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.list_suggestions(
+          {
+            states: ["pending", "rejected"],
+            kind: "tools",
+            limit: 50,
+          },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1971,13 +1984,15 @@ describe("agent_sidekick_context tools", () => {
     it("returns error in results when suggestion is not found", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const tool = getToolByName("update_suggestions_state");
-      const result = await tool.handler(
-        {
-          suggestions: [{ suggestionId: "non-existent-id", state: "rejected" }],
-        },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.update_suggestions_state(
+          {
+            suggestions: [
+              { suggestionId: "non-existent-id", state: "rejected" },
+            ],
+          },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -2009,11 +2024,11 @@ describe("agent_sidekick_context tools", () => {
         { state: "pending", analysis: "Test analysis for skills" }
       );
 
-      const tool = getToolByName("update_suggestions_state");
-      const result = await tool.handler(
-        { suggestions: [{ suggestionId: suggestion.sId, state }] },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.update_suggestions_state(
+          { suggestions: [{ suggestionId: suggestion.sId, state }] },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -2044,16 +2059,16 @@ describe("agent_sidekick_context tools", () => {
         { state: "pending" }
       );
 
-      const tool = getToolByName("update_suggestions_state");
-      const result = await tool.handler(
-        {
-          suggestions: [
-            { suggestionId: suggestion1.sId, state: "outdated" },
-            { suggestionId: suggestion2.sId, state: "outdated" },
-          ],
-        },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.update_suggestions_state(
+          {
+            suggestions: [
+              { suggestionId: suggestion1.sId, state: "outdated" },
+              { suggestionId: suggestion2.sId, state: "outdated" },
+            ],
+          },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -2086,11 +2101,11 @@ describe("agent_sidekick_context tools", () => {
         messagesCreatedAt: [new Date(), new Date()],
       });
 
-      const tool = getToolByName("inspect_conversation");
-      const result = await tool.handler(
-        { conversationId: conversation.sId },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.inspect_conversation(
+          { conversationId: conversation.sId },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -2110,11 +2125,11 @@ describe("agent_sidekick_context tools", () => {
     it("returns error for non-existent conversation", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const tool = getToolByName("inspect_conversation");
-      const result = await tool.handler(
-        { conversationId: "non-existent-conversation-id" },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.inspect_conversation(
+          { conversationId: "non-existent-conversation-id" },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isErr()).toBe(true);
     });
@@ -2137,14 +2152,13 @@ describe("agent_sidekick_context tools", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const tool = getToolByName("inspect_conversation");
-
       // User 2 attempts to access User 1's conversation using User 1's conversation ID
       // but with User 2's auth (from workspace 2).
-      const result = await tool.handler(
-        { conversationId: conversation.sId },
-        createTestExtra(auth2)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.inspect_conversation(
+          { conversationId: conversation.sId },
+          createTestExtra(auth2)
+        );
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.message).toContain("not found or not accessible");
@@ -2206,20 +2220,20 @@ describe("agent_sidekick_context tools", () => {
         spaceId: restrictedSpace.id,
       });
 
-      const tool = getToolByName("inspect_conversation");
-
       // User 2 should be able to access the public conversation
-      const publicResult = await tool.handler(
-        { conversationId: publicConversation.sId },
-        createTestExtra(user2)
-      );
+      const publicResult =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.inspect_conversation(
+          { conversationId: publicConversation.sId },
+          createTestExtra(user2)
+        );
       expect(publicResult.isOk()).toBe(true);
 
       // User 2 should NOT be able to access the restricted space conversation
-      const restrictedResult = await tool.handler(
-        { conversationId: restrictedConversation.sId },
-        createTestExtra(user2)
-      );
+      const restrictedResult =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.inspect_conversation(
+          { conversationId: restrictedConversation.sId },
+          createTestExtra(user2)
+        );
       expect(restrictedResult.isErr()).toBe(true);
       if (restrictedResult.isErr()) {
         expect(restrictedResult.error.message).toContain(
@@ -2240,17 +2254,16 @@ describe("agent_sidekick_context tools", () => {
         messagesCreatedAt: [new Date(), new Date(), new Date()],
       });
 
-      const tool = getToolByName("inspect_conversation");
-
       // Request only messages at index 1 and 2.
-      const result = await tool.handler(
-        {
-          conversationId: conversation.sId,
-          fromMessageIndex: 1,
-          toMessageIndex: 3,
-        },
-        createTestExtra(authenticator)
-      );
+      const result =
+        await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.inspect_conversation(
+          {
+            conversationId: conversation.sId,
+            fromMessageIndex: 1,
+            toMessageIndex: 3,
+          },
+          createTestExtra(authenticator)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -2289,8 +2302,7 @@ describe("agent_sidekick_context tools", () => {
         content: "Hello world",
       });
 
-      const tool = getToolByName("inspect_message");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.inspect_message(
         { conversationId: conversation.sId, messageId: userMsgRow.sId },
         createTestExtra(authenticator)
       );
@@ -2338,8 +2350,7 @@ describe("agent_sidekick_context tools", () => {
         .find((m) => m.type === "agent_message")?.sId;
       expect(agentMessageId).toBeDefined();
 
-      const tool = getToolByName("inspect_message");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.inspect_message(
         { conversationId: conversation.sId, messageId: agentMessageId! },
         createTestExtra(authenticator)
       );
@@ -2368,8 +2379,7 @@ describe("agent_sidekick_context tools", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const tool = getToolByName("inspect_message");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.inspect_message(
         {
           conversationId: conversation.sId,
           messageId: "non-existent-message-id",
@@ -2387,8 +2397,7 @@ describe("agent_sidekick_context tools", () => {
     it("returns error for non-existent conversation", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const tool = getToolByName("inspect_message");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.inspect_message(
         {
           conversationId: "non-existent-conversation-id",
           messageId: "some-message-id",
@@ -2427,8 +2436,7 @@ describe("agent_sidekick_context tools", () => {
         content: "Secret message",
       });
 
-      const tool = getToolByName("inspect_message");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.inspect_message(
         { conversationId: conversation.sId, messageId: userMsgRow.sId },
         createTestExtra(auth2)
       );
@@ -2486,8 +2494,7 @@ describe("agent_sidekick_context tools", () => {
         globalSpace
       );
 
-      const tool = getToolByName("describe_mcp");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.describe_mcp(
         { mcpId: view.sId },
         createTestExtra(authenticator)
       );
@@ -2512,8 +2519,7 @@ describe("agent_sidekick_context tools", () => {
     it("returns a not-found message for an unknown MCP id", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const tool = getToolByName("describe_mcp");
-      const result = await tool.handler(
+      const result = await AGENT_SIDEKICK_CONTEXT_TOOL_HANDLERS.describe_mcp(
         { mcpId: "mcp_does_not_exist" },
         createTestExtra(authenticator)
       );

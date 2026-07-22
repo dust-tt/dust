@@ -1,3 +1,4 @@
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -8,7 +9,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { describe, expect, it, vi } from "vitest";
 
-import { TOOLS } from "./tools";
+import { AGENT_SIDEKICK_AGENT_STATE_TOOL_HANDLERS } from "./tools";
 
 // Mock the helper that extracts agent configuration ID from context.
 vi.mock("@app/lib/api/actions/servers/agent_sidekick_helpers", () => ({
@@ -16,21 +17,13 @@ vi.mock("@app/lib/api/actions/servers/agent_sidekick_helpers", () => ({
   getAgentConfigurationVersionFromContext: vi.fn(),
 }));
 
-function getToolByName(name: string) {
-  const tool = TOOLS.find((t) => t.name === name);
-  if (!tool) {
-    throw new Error(`Tool ${name} not found`);
-  }
-  return tool;
-}
-
 // Create a minimal extra object for testing.
 function createTestExtra(auth: Authenticator, runContext?: unknown) {
   return {
     signal: new AbortController().signal,
     auth,
     runContext,
-  } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
+  } as ToolHandlerExtra;
 }
 
 describe("agent_sidekick_agent_state tools", () => {
@@ -49,8 +42,11 @@ describe("agent_sidekick_agent_state tools", () => {
       );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
-      const tool = getToolByName("get_agent_info");
-      const result = await tool.handler({}, createTestExtra(auth));
+      const result =
+        await AGENT_SIDEKICK_AGENT_STATE_TOOL_HANDLERS.get_agent_info(
+          {},
+          createTestExtra(auth)
+        );
 
       expect(result.isErr()).toBe(true);
     });
@@ -71,8 +67,11 @@ describe("agent_sidekick_agent_state tools", () => {
         "non-existent-agent-id"
       );
 
-      const tool = getToolByName("get_agent_info");
-      const result = await tool.handler({}, createTestExtra(auth));
+      const result =
+        await AGENT_SIDEKICK_AGENT_STATE_TOOL_HANDLERS.get_agent_info(
+          {},
+          createTestExtra(auth)
+        );
 
       expect(result.isErr()).toBe(true);
     });
@@ -105,8 +104,11 @@ describe("agent_sidekick_agent_state tools", () => {
         agent.sId
       );
 
-      const tool = getToolByName("get_agent_info");
-      const result = await tool.handler({}, createTestExtra(userAuth));
+      const result =
+        await AGENT_SIDEKICK_AGENT_STATE_TOOL_HANDLERS.get_agent_info(
+          {},
+          createTestExtra(userAuth)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -164,8 +166,11 @@ describe("agent_sidekick_agent_state tools", () => {
         agent.sId
       );
 
-      const tool = getToolByName("get_agent_info");
-      const result = await tool.handler({}, createTestExtra(userAuth));
+      const result =
+        await AGENT_SIDEKICK_AGENT_STATE_TOOL_HANDLERS.get_agent_info(
+          {},
+          createTestExtra(userAuth)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -210,8 +215,11 @@ describe("agent_sidekick_agent_state tools", () => {
         agent.sId
       );
 
-      const tool = getToolByName("get_agent_info");
-      const result = await tool.handler({}, createTestExtra(userAuth));
+      const result =
+        await AGENT_SIDEKICK_AGENT_STATE_TOOL_HANDLERS.get_agent_info(
+          {},
+          createTestExtra(userAuth)
+        );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
