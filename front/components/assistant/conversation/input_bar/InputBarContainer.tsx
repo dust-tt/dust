@@ -90,6 +90,7 @@ import {
   DropdownMenuTrigger,
   FilePlus03,
   Globe01,
+  Planet,
   Plus,
   Toolbar,
   TooltipContent,
@@ -311,6 +312,18 @@ const InputBarContainer = ({
 
   const [startsWithUserMention, setStartsWithUserMention] = useState(false);
   const canSubmitEmpty = !!selectedSingleAgent;
+
+  // Selected via the "+" menu's Spaces picker. Fetched here (separately
+  // from the picker's own lazy fetch) purely to resolve names for the
+  // chips rendered below the editor — SWR dedupes with the picker's own
+  // call when both are enabled at once, so this doesn't add a request
+  // beyond what's needed once a Space is actually selected.
+  const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
+  const { spaces: selectableSpaces } = useSpaces({
+    workspaceId: owner.sId,
+    kinds: "all",
+    disabled: selectedSpaceIds.length === 0,
+  });
   const [isBlockTooltipOpen, setIsBlockTooltipOpen] = useState(false);
   const blockTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
@@ -1652,6 +1665,22 @@ const InputBarContainer = ({
                   />
                 </React.Fragment>
               ))}
+              {selectableSpaces
+                .filter((space) => selectedSpaceIds.includes(space.sId))
+                .map((space) => (
+                  <Chip
+                    key={space.sId}
+                    size="xs"
+                    label={space.name}
+                    icon={Planet}
+                    className="m-0.5 bg-background text-foreground"
+                    onRemove={() => {
+                      setSelectedSpaceIds((prev) =>
+                        prev.filter((id) => id !== space.sId)
+                      );
+                    }}
+                  />
+                ))}
             </div>
             <div className="flex min-h-7 w-full items-center">
               <div className={cn("flex w-full items-center px-3")}>
@@ -1687,6 +1716,8 @@ const InputBarContainer = ({
                       owner={owner}
                       selectedAgent={selectedSingleAgent}
                       selectedMCPServerViews={selectedMCPServerViews}
+                      selectedSpaceIds={selectedSpaceIds}
+                      onSelectedSpaceIdsChange={setSelectedSpaceIds}
                       space={space}
                       user={user}
                       onAgentPickerOpenChange={(open) =>

@@ -21,17 +21,22 @@ interface InputBarSpacesPickerProps {
   // fetch as soon as IT opens, instead of waterfalling on this picker's
   // own click.
   prefetch?: boolean;
+  // Controlled from the parent so the selection can also be rendered as
+  // chips below the text editor, like the other selectable items.
+  selectedSpaceIds: string[];
+  onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
 }
 
 // Shell: lets users see which Spaces are accessible from the input bar.
-// Selection is local-only for now (not yet wired into message submission).
+// Selection isn't yet wired into message submission.
 export function InputBarSpacesPicker({
   owner,
   disabled = false,
   prefetch = false,
+  selectedSpaceIds,
+  onSelectedSpaceIdsChange,
 }: InputBarSpacesPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
@@ -83,10 +88,10 @@ export function InputBarSpacesPicker({
                 label={space.name}
                 checked={checked}
                 onCheckedChange={(nextChecked) => {
-                  setSelectedSpaceIds((prev) =>
+                  onSelectedSpaceIdsChange(
                     nextChecked
-                      ? [...prev, space.sId]
-                      : prev.filter((id) => id !== space.sId)
+                      ? [...selectedSpaceIds, space.sId]
+                      : selectedSpaceIds.filter((id) => id !== space.sId)
                   );
                 }}
                 onSelect={(event) => event.preventDefault()}

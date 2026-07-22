@@ -66,6 +66,8 @@ interface InputBarButtonsProps {
   owner: WorkspaceType;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
+  selectedSpaceIds: string[];
+  onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
   space: SpaceType | undefined;
   user: UserType | null;
   onAgentPickerOpenChange?: (open: boolean) => void;
@@ -98,6 +100,8 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   owner,
   selectedAgent,
   selectedMCPServerViews,
+  selectedSpaceIds,
+  onSelectedSpaceIdsChange,
   space,
   user,
   onAgentPickerOpenChange,
@@ -283,6 +287,8 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             attachedNodes={attachedNodes}
             conversation={conversation}
             spaceId={spaceId}
+            selectedSpaceIds={selectedSpaceIds}
+            onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
             onCapabilitiesPickerOpenChange={onCapabilitiesPickerOpenChange}
             onAttachmentsPickerOpenChange={onAttachmentsPickerOpenChange}
           />

@@ -699,21 +699,39 @@ function ComposerDemo({
             : undefined
         }
         chips={
-          selectedTools.length > 0
-            ? selectedTools.map((tool) => (
-                <Chip
-                  key={tool.id}
-                  size="xs"
-                  label={tool.label}
-                  icon={tool.icon}
-                  className="bg-background text-foreground"
-                  onRemove={() =>
-                    setSelectedTools((prev) =>
-                      prev.filter((t) => t.id !== tool.id)
-                    )
-                  }
-                />
-              ))
+          selectedTools.length > 0 || selectedSpaceIds.length > 0
+            ? [
+                ...selectedTools.map((tool) => (
+                  <Chip
+                    key={tool.id}
+                    size="xs"
+                    label={tool.label}
+                    icon={tool.icon}
+                    className="bg-background text-foreground"
+                    onRemove={() =>
+                      setSelectedTools((prev) =>
+                        prev.filter((t) => t.id !== tool.id)
+                      )
+                    }
+                  />
+                )),
+                ...MOCK_SPACES.filter((space) =>
+                  selectedSpaceIds.includes(space.id)
+                ).map((space) => (
+                  <Chip
+                    key={space.id}
+                    size="xs"
+                    label={space.name}
+                    icon={Planet}
+                    className="bg-background text-foreground"
+                    onRemove={() =>
+                      setSelectedSpaceIds((prev) =>
+                        prev.filter((id) => id !== space.id)
+                      )
+                    }
+                  />
+                )),
+              ]
             : undefined
         }
         leftActions={

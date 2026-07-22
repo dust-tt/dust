@@ -39,6 +39,8 @@ interface InputBarPlusMenuProps {
   attachedNodes: DataSourceViewContentNode[];
   conversation?: ConversationWithoutContentType;
   spaceId?: string;
+  selectedSpaceIds: string[];
+  onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
   onOpenChange?: (open: boolean) => void;
   onCapabilitiesPickerOpenChange?: (open: boolean) => void;
   onAttachmentsPickerOpenChange?: (open: boolean) => void;
@@ -60,6 +62,8 @@ export function InputBarPlusMenu({
   attachedNodes,
   conversation,
   spaceId,
+  selectedSpaceIds,
+  onSelectedSpaceIdsChange,
   onOpenChange,
   onCapabilitiesPickerOpenChange,
   onAttachmentsPickerOpenChange,
@@ -132,6 +136,8 @@ export function InputBarPlusMenu({
           owner={owner}
           disabled={disabled}
           prefetch={shouldPrefetch}
+          selectedSpaceIds={selectedSpaceIds}
+          onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
         />
       </DropdownMenuContent>
     </DropdownMenu>
