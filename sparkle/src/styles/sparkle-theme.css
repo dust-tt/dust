@@ -135,6 +135,25 @@
   }
 }
 
+/* Perpetual decorative animations stop under reduced motion. Loading
+ * indicators (`animate-pulse`, `animate-opacity-pulse`) keep animating: they
+ * convey state and are opacity-only. `breathing`/`move-square` keyframes live
+ * in the shared theme.css but are neutralized here so the policy has a single
+ * home. Unlayered CSS wins over Tailwind's `utilities` layer, so no
+ * !important is needed. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-shiny-text,
+  .animate-rainbow,
+  .animate-ring-pulse,
+  .animate-ring-pulse-soft,
+  .animate-background-position-spin,
+  .animate-breathing,
+  .animate-breathing-scale,
+  .animate-move-square {
+    animation: none;
+  }
+}
+
 /* ─── Spinner ────────────────────────────────────────────────────────────────
  * Styles for the <Spinner> component. The square path in the 0%/100% frame of
  * `sss-morph` must stay in sync with the SQ constant in `components/Spinner.tsx`
