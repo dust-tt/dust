@@ -75,8 +75,9 @@ export async function resolveModel(
     }
   );
 
-  // Effort chosen by a stream tier (Quick/Deep) for its resolved model. When set,
-  // it takes precedence over any effort carried by the (sentinel) selection.
+  // Effort chosen by a stream tier (Fast/Standard/Complex) for its resolved
+  // model. When set, it takes precedence over any effort carried by the
+  // (sentinel) selection.
   let streamEffort: ReasoningEffort | undefined;
 
   // `auto`, `auto_fast` and `auto_complex` are all streams: walk the stream's
@@ -90,8 +91,15 @@ export async function resolveModel(
     } else {
       // None of the stream's candidates are available: fall back to a preferred
       // large model supported by the workspace.
+      // FIXME(review): getAutoModelForAuth re-runs getEnabledModelsForAuth even
+      // though getModelForStream just fetched the same list — consider threading
+      // the already-fetched available models through to avoid the double query.
       enabled = await getAutoModelForAuth(auth);
     }
+    // FIXME(review): on the fallback branch above the model did NOT come from the
+    // stream, yet we still record modelResolutionMethod as the streamId. This
+    // mislabels analytics/telemetry (a plain fallback pick attributed to e.g.
+    // "auto_complex").
     modelResolutionMethod = streamId;
   }
 

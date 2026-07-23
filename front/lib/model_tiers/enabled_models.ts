@@ -124,7 +124,7 @@ export async function getAutoModelForAuth(
   };
 }
 
-// Resolve a stream tier (Quick/Deep) to a concrete model + reasoning effort.
+// Resolve a stream tier (Fast/Standard/Complex) to a concrete model + reasoning effort.
 // Walks the stream's ordered candidate pool and picks the first one available
 // (selectable) to the workspace that supports the requested effort. Returns null
 // when none of the stream's candidates are available — the caller falls back to
