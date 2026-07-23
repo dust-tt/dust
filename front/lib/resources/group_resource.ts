@@ -10,6 +10,7 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -644,6 +645,79 @@ export class GroupResource extends BaseResource<GroupModel> {
           r[agentConfiguration.sId] = group;
         }
       }
+    }
+
+    return new Ok(r);
+  }
+
+  /**
+   * Fetches the active members of the editor groups for a set of agents in a
+   * single query (group_agents → groups → group_memberships → users).
+   */
+  static async listAgentEditorUsers(
+    auth: Authenticator,
+    agents: LightAgentConfigurationType[]
+  ): Promise<Result<Record<string, UserResource[]>, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+    if (agents.length === 0) {
+      return new Ok({});
+    }
+
+    const now = new Date();
+    const groupAgents = await GroupAgentModel.findAll({
+      where: {
+        agentConfigurationId: { [Op.in]: agents.map((a) => a.id) },
+        workspaceId: owner.id,
+      },
+      include: [
+        {
+          model: GroupModel,
+          required: true,
+          include: [
+            {
+              model: GroupMembershipModel,
+              as: "memberships",
+              // `required: false` with `where` keeps the LEFT OUTER join (the
+              // conditions land in the ON clause), so editor groups with no
+              // active member still come back, with an empty editors list.
+              required: false,
+              where: {
+                workspaceId: owner.id,
+                status: "active",
+                startAt: { [Op.lte]: now },
+                [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+              },
+              include: [{ model: UserModel, required: true }],
+            },
+          ],
+        },
+      ],
+    });
+
+    const agentIdByModelId = new Map(agents.map((a) => [a.id, a.sId]));
+
+    const r: Record<string, UserResource[]> = {};
+    for (const groupAgent of groupAgents) {
+      const agentId = agentIdByModelId.get(groupAgent.agentConfigurationId);
+      const groupModel = groupAgent.group;
+      if (!agentId || !groupModel) {
+        continue;
+      }
+      if (groupModel.kind !== "agent_editors") {
+        return new Err(
+          new DustError(
+            "group_not_found",
+            "Associated group is not an agent_editors group."
+          )
+        );
+      }
+      const group = new this(GroupModel, groupModel.get());
+      if (!group.canRead(auth)) {
+        continue;
+      }
+      r[agentId] = (groupModel.memberships ?? []).map(
+        (membership) => new UserResource(UserModel, membership.user.get())
+      );
     }
 
     return new Ok(r);

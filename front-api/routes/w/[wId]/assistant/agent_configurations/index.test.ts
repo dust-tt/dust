@@ -176,6 +176,74 @@ describe("GET /api/w/:wId/assistant/agent_configurations", () => {
     expect(data.agentConfigurations[0].feedbacks).toBeDefined();
   });
 
+  it("returns agent configurations with recent authors (cold then warm cache)", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
+
+    await setupTestAgents(workspace, user);
+
+    // First call: Redis is cold, authors are backfilled from the DB.
+    const coldResponse = await listAgents(workspace, {
+      view: "list",
+      withAuthors: "true",
+    });
+
+    expect(coldResponse.status).toBe(200);
+    const coldData: { agentConfigurations: LightAgentConfigurationType[] } =
+      await coldResponse.json();
+    const coldAgents = coldData.agentConfigurations.filter(
+      (a) => a.scope !== "global"
+    );
+    expect(coldAgents.length).toBe(testAgents.length);
+    for (const agent of coldAgents) {
+      // The requester authored all test agents, rendered as "Me".
+      expect(agent.lastAuthors).toEqual(["Me"]);
+    }
+
+    // Second call: authors are read back from Redis.
+    const warmResponse = await listAgents(workspace, {
+      view: "list",
+      withAuthors: "true",
+    });
+
+    expect(warmResponse.status).toBe(200);
+    const warmData: { agentConfigurations: LightAgentConfigurationType[] } =
+      await warmResponse.json();
+    const warmAgents = warmData.agentConfigurations.filter(
+      (a) => a.scope !== "global"
+    );
+    expect(warmAgents.length).toBe(testAgents.length);
+    for (const agent of warmAgents) {
+      expect(agent.lastAuthors).toEqual(["Me"]);
+    }
+  });
+
+  it("returns agent configurations with editors", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
+
+    await setupTestAgents(workspace, user);
+
+    const response = await listAgents(workspace, {
+      view: "list",
+      withEditors: "true",
+    });
+
+    expect(response.status).toBe(200);
+    const data: { agentConfigurations: LightAgentConfigurationType[] } =
+      await response.json();
+    const nonGlobalAgents = data.agentConfigurations.filter(
+      (a) => a.scope !== "global"
+    );
+    expect(nonGlobalAgents.length).toBe(testAgents.length);
+    for (const agent of nonGlobalAgents) {
+      // The creating user is the sole member of each agent's editor group.
+      expect(agent.editors?.map((editor) => editor.sId)).toEqual([user.sId]);
+    }
+  });
+
   it("returns 400 for invalid query parameters", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "GET",

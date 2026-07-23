@@ -3,7 +3,9 @@ import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { GroupKind } from "@app/types/groups";
 import { isGlobalGroupKind, isSystemGroupKind } from "@app/types/groups";
-import type { CreationOptional, Transaction } from "sequelize";
+import type { CreationOptional, NonAttribute, Transaction } from "sequelize";
+
+import type { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 
 export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   declare createdAt: CreationOptional<Date>;
@@ -18,6 +20,9 @@ export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // null means the group carries no cap (falls back to the workspace default).
   declare poolCapAwuCredits: CreationOptional<number | null>;
+
+  // Present when fetched with the "memberships" include.
+  declare memberships?: NonAttribute<GroupMembershipModel[]>;
 }
 
 GroupModel.init(

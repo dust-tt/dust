@@ -38,31 +38,18 @@ export const getAgentsEditors = async (
   auth: Authenticator,
   agentConfigurations: LightAgentConfigurationType[]
 ): Promise<Record<string, UserType[]>> => {
-  const editorGroups = await GroupResource.findEditorGroupsForAgents(
+  const editorUsers = await GroupResource.listAgentEditorUsers(
     auth,
     agentConfigurations
   );
-  if (editorGroups.isErr()) {
+  if (editorUsers.isErr()) {
     return {};
   }
 
-  const activeMemberships = await GroupResource.getActiveMembershipsForGroups(
-    auth,
-    Object.values(editorGroups.value)
-  );
-
-  const users = await UserResource.fetchByModelIds([
-    ...new Set(Object.values(activeMemberships).flat()),
-  ]);
-
-  // Create a map from userId to UserType for quick lookup
-  const userMap = new Map(users.map((u) => [u.id, u.toJSON()]));
-
   // Build the result map: { agentId: [editors] }
   const result: Record<string, UserType[]> = {};
-  for (const [agentId, group] of Object.entries(editorGroups.value)) {
-    const userIds = activeMemberships[group.id] || [];
-    result[agentId] = removeNulls(userIds.map((userId) => userMap.get(userId)));
+  for (const [agentId, users] of Object.entries(editorUsers.value)) {
+    result[agentId] = users.map((user) => user.toJSON());
   }
 
   return result;

@@ -13,8 +13,54 @@ import { afterEach, beforeEach, vi } from "vitest";
 // runOnRedis uses a shared in-memory store so that set/get/del/ttl persist across calls
 // (needed for OTP challenge generate → validate flows). runOnRedisCache stays stateless.
 const redisStore = new Map<string, { value: string; expiresAtMs: number }>();
+// Sorted sets for the stateful client, key → (member → score).
+const redisZStore = new Map<string, Map<string, number>>();
 
 function createStatefulMockRedisClient() {
+  const zAdd = vi.fn(
+    async (
+      key: string,
+      members:
+        | { score: number; value: string }
+        | { score: number; value: string }[],
+      opts?: { GT?: boolean }
+    ) => {
+      const entries = Array.isArray(members) ? members : [members];
+      const zset = redisZStore.get(key) ?? new Map<string, number>();
+      for (const { score, value } of entries) {
+        const existing = zset.get(value);
+        if (opts?.GT && existing !== undefined && existing >= score) {
+          continue;
+        }
+        zset.set(value, score);
+      }
+      redisZStore.set(key, zset);
+      return entries.length;
+    }
+  );
+  const zRange = vi.fn(
+    async (
+      key: string,
+      start: number,
+      stop: number,
+      opts?: { REV?: boolean }
+    ) => {
+      const zset = redisZStore.get(key);
+      if (!zset) {
+        return [];
+      }
+      const values = [...zset.entries()]
+        .sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]))
+        .map(([value]) => value);
+      if (opts?.REV) {
+        values.reverse();
+      }
+      const end = stop === -1 ? values.length - 1 : stop;
+      return values.slice(start, end + 1);
+    }
+  );
+  const expire = vi.fn(async (_key: string, _seconds: number) => true);
+
   return {
     get: vi.fn(async (key: string) => {
       const entry = redisStore.get(key);
@@ -42,9 +88,35 @@ function createStatefulMockRedisClient() {
       const remainingMs = entry.expiresAtMs - Date.now();
       return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : -2;
     }),
-    zAdd: vi.fn(),
-    expire: vi.fn(),
-    zRange: vi.fn(),
+    zAdd,
+    expire,
+    zRange,
+    // Minimal MULTI support: queue commands, run them in order on exec.
+    multi: vi.fn(() => {
+      const queued: (() => Promise<unknown>)[] = [];
+      const multi = {
+        zAdd(...args: Parameters<typeof zAdd>) {
+          queued.push(async () => zAdd(...args));
+          return multi;
+        },
+        zRange(...args: Parameters<typeof zRange>) {
+          queued.push(async () => zRange(...args));
+          return multi;
+        },
+        expire(...args: Parameters<typeof expire>) {
+          queued.push(async () => expire(...args));
+          return multi;
+        },
+        async exec() {
+          const results: unknown[] = [];
+          for (const run of queued) {
+            results.push(await run());
+          }
+          return results;
+        },
+      };
+      return multi;
+    }),
     zCount: vi.fn().mockResolvedValue(0),
     hGetAll: vi.fn().mockResolvedValue([]),
     hGet: vi.fn(),
@@ -228,6 +300,7 @@ beforeEach(async (c) => {
   vi.clearAllMocks();
   fileStorageMock.reset();
   redisStore.clear();
+  redisZStore.clear();
 
   const namespace = createNamespace("test-namespace");
 

@@ -1,3 +1,4 @@
+import type { AgentUsageCount } from "@app/lib/api/assistant/agent_usage";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
@@ -6,6 +7,7 @@ import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { runOnRedis } from "@app/lib/api/redis";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,
@@ -14,6 +16,9 @@ import type {
   GetAgentConfigurationsResponseBody,
   PostAgentConfigurationResponseBody,
 } from "@app/types/api/assistant/configuration";
+import type { AgentRecentAuthors } from "@app/types/assistant/agent";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { UserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -35,6 +40,21 @@ import webhookFilterGenerator from "./webhook_filter_generator";
 // Mounted at /api/w/:wId/assistant/agent_configurations. workspaceAuth is
 // applied by the parent workspace sub-app.
 const app = workspaceApp();
+
+// One optional enrichment of the agent list, fetched concurrently with the
+// others and merged into the response after all of them resolved.
+type AgentListEnrichment =
+  | { kind: "usage"; usage: AgentUsageCount[] }
+  | { kind: "authors"; authors: AgentRecentAuthors[] }
+  | { kind: "editors"; editors: Record<string, UserType[]> }
+  | {
+      kind: "feedbacks";
+      feedbacks: Awaited<
+        ReturnType<
+          typeof AgentMessageFeedbackResource.getFeedbackCountForAssistants
+        >
+      >;
+    };
 
 /**
  * @swagger
@@ -212,77 +232,112 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
     // Stripped to stay under Next.js' 4MB API response limit.
     omitInstructions: true,
   });
+  // The enrichments below only depend on the base agent list; fetch them
+  // concurrently, then merge sequentially.
+  const enrichments: (() => Promise<AgentListEnrichment>)[] = [];
   if (withUsage === "true") {
-    const mentionCounts = await runOnRedis(
-      { origin: "agent_usage" },
-      async (redis) => {
-        return getAgentsUsage({
+    enrichments.push(async () => ({
+      kind: "usage",
+      usage: await runOnRedis({ origin: "agent_usage" }, (redis) =>
+        getAgentsUsage({
           providedRedis: redis,
           workspaceId: owner.sId,
           limit:
             typeof rawQuery.limit === "string"
               ? parseInt(rawQuery.limit, 10)
               : -1,
-        });
-      }
-    );
-    const usageMap = keyBy(mentionCounts, "agentId");
-    agentConfigurations = agentConfigurations.map((agentConfiguration) =>
-      usageMap[agentConfiguration.sId]
-        ? {
-            ...agentConfiguration,
-            usage: omit(usageMap[agentConfiguration.sId], ["agentId"]),
-          }
-        : agentConfiguration
-    );
+        })
+      ),
+    }));
   }
   if (withAuthors === "true") {
-    const recentAuthors = await getAgentsRecentAuthors({
-      auth,
-      agents: agentConfigurations,
-    });
-    agentConfigurations = agentConfigurations.map(
-      (agentConfiguration, index) => ({
-        ...agentConfiguration,
-        lastAuthors: recentAuthors[index],
-      })
-    );
-  }
-
-  if (withEditors === "true") {
-    const editors = await getAgentsEditors(auth, agentConfigurations);
-    agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
-      ...agentConfiguration,
-      editors: editors[agentConfiguration.sId],
-    }));
-  }
-
-  if (withFeedbacks === "true") {
-    const feedbacks =
-      await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
+    enrichments.push(async () => ({
+      kind: "authors",
+      authors: await getAgentsRecentAuthors({
         auth,
-        agentConfigurations
-          .filter((agent) => agent.scope !== "global")
-          .map((agent) => agent.sId),
-        30
-      );
-    agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
-      ...agentConfiguration,
-      feedbacks: {
-        up:
-          feedbacks.find(
-            (f) =>
-              f.agentConfigurationId === agentConfiguration.sId &&
-              f.thumbDirection === "up"
-          )?.count ?? 0,
-        down:
-          feedbacks.find(
-            (f) =>
-              f.agentConfigurationId === agentConfiguration.sId &&
-              f.thumbDirection === "down"
-          )?.count ?? 0,
-      },
+        agents: agentConfigurations,
+      }),
     }));
+  }
+  if (withEditors === "true") {
+    enrichments.push(async () => ({
+      kind: "editors",
+      editors: await getAgentsEditors(auth, agentConfigurations),
+    }));
+  }
+  if (withFeedbacks === "true") {
+    enrichments.push(async () => ({
+      kind: "feedbacks",
+      feedbacks:
+        await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
+          auth,
+          agentConfigurations
+            .filter((agent) => agent.scope !== "global")
+            .map((agent) => agent.sId),
+          30
+        ),
+    }));
+  }
+  const enrichmentResults = await concurrentExecutor(
+    enrichments,
+    (task) => task(),
+    { concurrency: 4 }
+  );
+
+  for (const enrichment of enrichmentResults) {
+    switch (enrichment.kind) {
+      case "usage": {
+        const usageMap = keyBy(enrichment.usage, "agentId");
+        agentConfigurations = agentConfigurations.map((agentConfiguration) =>
+          usageMap[agentConfiguration.sId]
+            ? {
+                ...agentConfiguration,
+                usage: omit(usageMap[agentConfiguration.sId], ["agentId"]),
+              }
+            : agentConfiguration
+        );
+        break;
+      }
+      case "authors": {
+        const { authors } = enrichment;
+        agentConfigurations = agentConfigurations.map(
+          (agentConfiguration, index) => ({
+            ...agentConfiguration,
+            lastAuthors: authors[index],
+          })
+        );
+        break;
+      }
+      case "editors": {
+        const { editors } = enrichment;
+        agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
+          ...agentConfiguration,
+          editors: editors[agentConfiguration.sId],
+        }));
+        break;
+      }
+      case "feedbacks": {
+        const feedbackCounts = new Map<string, { up: number; down: number }>();
+        for (const feedback of enrichment.feedbacks) {
+          const counts = feedbackCounts.get(feedback.agentConfigurationId) ?? {
+            up: 0,
+            down: 0,
+          };
+          counts[feedback.thumbDirection] = feedback.count;
+          feedbackCounts.set(feedback.agentConfigurationId, counts);
+        }
+        agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
+          ...agentConfiguration,
+          feedbacks: feedbackCounts.get(agentConfiguration.sId) ?? {
+            up: 0,
+            down: 0,
+          },
+        }));
+        break;
+      }
+      default:
+        assertNever(enrichment);
+    }
   }
 
   return ctx.json({ agentConfigurations });

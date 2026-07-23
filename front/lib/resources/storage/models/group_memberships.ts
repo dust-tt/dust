@@ -3,7 +3,7 @@ import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
 export class GroupMembershipModel extends WorkspaceAwareModel<GroupMembershipModel> {
   declare createdAt: CreationOptional<Date>;
@@ -15,6 +15,8 @@ export class GroupMembershipModel extends WorkspaceAwareModel<GroupMembershipMod
   declare groupId: ForeignKey<GroupModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
   declare status: "active" | "suspended";
+
+  declare user: NonAttribute<UserModel>;
 }
 GroupMembershipModel.init(
   {
@@ -67,6 +69,7 @@ UserModel.hasMany(GroupMembershipModel, {
   onDelete: "RESTRICT",
 });
 GroupModel.hasMany(GroupMembershipModel, {
+  as: "memberships",
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });

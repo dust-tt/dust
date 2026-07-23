@@ -2,13 +2,12 @@ import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   AgentRecentAuthors,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { getGlobalAgentAuthorName } from "@app/types/assistant/assistant";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isStringArray, removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import { Op, Sequelize } from "sequelize";
 
@@ -125,21 +124,34 @@ async function populateAuthorIdsFromDbForAgents(
     (agentId) => (recentAuthorsByAgentId.get(agentId) ?? []).length > 0
   );
 
-  await concurrentExecutor(
-    agentsWithAuthors,
-    async (agentId) => {
-      const authors = recentAuthorsByAgentId.get(agentId) ?? [];
-      await setAuthorIdsWithVersionInRedis(auth, {
-        agentId,
-        authorIdsWithScore: authors.map((a) => ({
-          // Redis only supports strings.
-          value: a.authorId.toString(),
-          score: a.version,
-        })),
-      });
-    },
-    { concurrency: 8 }
-  );
+  if (agentsWithAuthors.length > 0) {
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+    // Backfill all cold-cache agents in a single pipeline (one round trip
+    // instead of two per agent).
+    await runOnRedis({ origin: "update_authors" }, async (redis) => {
+      const pipeline = redis.multi();
+      for (const agentId of agentsWithAuthors) {
+        const agentRecentAuthorIdsKey = _getRecentAuthorIdsKey({
+          agentId,
+          workspaceId,
+        });
+        const authors = recentAuthorsByAgentId.get(agentId) ?? [];
+        // Add <authorId:version> pairs to the sorted set, only if the version
+        // is greater than the one stored.
+        pipeline.zAdd(
+          agentRecentAuthorIdsKey,
+          authors.map((a) => ({
+            // Redis only supports strings.
+            value: a.authorId.toString(),
+            score: a.version,
+          })),
+          { GT: true }
+        );
+        pipeline.expire(agentRecentAuthorIdsKey, recentAuthorIdsKeyTTL);
+      }
+      await pipeline.exec();
+    });
+  }
 
   return result;
 }
@@ -174,23 +186,29 @@ export async function getAgentsRecentAuthors({
 
   const nonGlobalAgents = agents.filter((agent) => agent.scope !== "global");
 
-  // First pass: read Redis for all non-global agents concurrently.
-  const redisResults = await concurrentExecutor(
-    nonGlobalAgents,
-    async (agent): Promise<[string, string[]]> => {
-      const { sId: agentId } = agent;
-      const agentRecentAuthorIdsKey = _getRecentAuthorIdsKey({
-        agentId,
-        workspaceId: owner.sId,
+  // First pass: read Redis for all non-global agents in a single pipeline (one
+  // round trip instead of one per agent).
+  const redisResults = await runOnRedis(
+    { origin: "agent_recent_authors" },
+    async (redis) => {
+      const pipeline = redis.multi();
+      for (const agent of nonGlobalAgents) {
+        pipeline.zRange(
+          _getRecentAuthorIdsKey({
+            agentId: agent.sId,
+            workspaceId: owner.sId,
+          }),
+          0,
+          2,
+          { REV: true }
+        );
+      }
+      const replies = await pipeline.exec();
+      return nonGlobalAgents.map((agent, i): [string, string[]] => {
+        const reply = replies[i];
+        return [agent.sId, isStringArray(reply) ? reply : []];
       });
-      const recentAuthorIds = await runOnRedis(
-        { origin: "agent_recent_authors" },
-        async (redis) =>
-          redis.zRange(agentRecentAuthorIdsKey, 0, 2, { REV: true })
-      );
-      return [agentId, recentAuthorIds];
-    },
-    { concurrency: 8 }
+    }
   );
 
   // Collect cold-cache agent IDs and batch-fetch them in a single SQL query.

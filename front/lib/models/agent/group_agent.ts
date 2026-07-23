@@ -7,6 +7,7 @@ import type {
   BelongsToGetAssociationMixin,
   CreationOptional,
   ForeignKey,
+  NonAttribute,
 } from "sequelize";
 
 export class GroupAgentModel extends WorkspaceAwareModel<GroupAgentModel> {
@@ -17,6 +18,9 @@ export class GroupAgentModel extends WorkspaceAwareModel<GroupAgentModel> {
   declare groupId: ForeignKey<GroupModel["id"]>;
   declare agentConfigurationId: ForeignKey<AgentConfigurationModel["id"]>;
   // workspaceId is inherited from WorkspaceAwareModel
+
+  // Present when fetched with the group include.
+  declare group?: NonAttribute<GroupModel>;
 
   declare getGroup: BelongsToGetAssociationMixin<GroupModel>;
   declare getAgentConfiguration: BelongsToGetAssociationMixin<AgentConfigurationModel>;

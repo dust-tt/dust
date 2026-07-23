@@ -134,6 +134,8 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       : Promise.resolve([]),
   ]);
 
+  const editorIdsSet = new Set(editorIds);
+
   const agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
     const actions =
@@ -144,8 +146,8 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const model = getModelForAgentConfiguration(agent);
     const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
-    const isAuthor = agent.authorId === auth.user()?.id;
-    const isMember = editorIds.includes(agent.id);
+    const isAuthor = agent.authorId === user?.id;
+    const isMember = editorIdsSet.has(agent.id);
 
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
