@@ -60,7 +60,6 @@ const SandboxFunctionInvocationDataSchema = z.object({
     .object({
       timezone: z.string().optional(),
     })
-    .strict()
     .optional(),
   result: z.unknown().optional(),
   error: z.string().optional(),

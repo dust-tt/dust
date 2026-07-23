@@ -43,7 +43,6 @@ const PostSandboxFunctionInvocationBodySchema = z
       .object({
         timezone: z.string().optional(),
       })
-      .strict()
       .optional(),
   })
   .strict();
