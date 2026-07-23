@@ -281,7 +281,7 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
         };
       }),
       query,
-      conversationId: agentLoopRunContext.conversation.sId,
+      runContext: agentLoopRunContext,
       fileName,
       connectorProvider,
     });

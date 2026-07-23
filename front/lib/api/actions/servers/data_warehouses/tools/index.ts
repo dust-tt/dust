@@ -258,7 +258,7 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
         table_id: node.node_id,
       })),
       query,
-      conversationId: agentLoopRunContext.conversation.sId,
+      runContext: agentLoopRunContext,
       fileName,
       connectorProvider,
     });
