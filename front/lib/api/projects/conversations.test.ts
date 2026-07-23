@@ -11,6 +11,7 @@ import {
   UserConversationReadsModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -139,6 +140,75 @@ describe("moveConversationToProject", () => {
     expect(updatedConversation.requestedSpaceIds).toHaveLength(1);
     expect(updatedConversation.requestedSpaceIds[0]).toBe(projectSpace.sId);
     expect(isPodConversation(updatedConversation)).toBe(true);
+  });
+
+  it("removes the selected Spaces of the conversation being moved", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    // The user selected a restricted Space from the input bar before the move.
+    const selectedSpace = await SpaceFactory.regular(workspace);
+    const selectedSpaceGroup = await fetchRegularAutoGroup(
+      selectedSpace,
+      internalAdminAuth
+    );
+    if (!selectedSpaceGroup) {
+      throw new Error("Selected space regular group not found");
+    }
+    await selectedSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: userJson,
+    });
+    await ConversationSelectedSpaceResource.upsertForConversation(auth, {
+      conversation,
+      origin: "input_bar",
+      spaces: [selectedSpace],
+    });
+
+    const projectSpace = await SpaceFactory.project(workspace);
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
+    );
+    if (!projectSpaceGroup) {
+      throw new Error("Project space regular group not found");
+    }
+    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: userJson,
+    });
+
+    await auth.refresh();
+
+    const result = await moveConversationToProject(auth, {
+      conversation,
+      spaceId: projectSpace.sId,
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    // The project ACL cannot carry the selected Space requirement, so the selection is dropped.
+    const activeSelections =
+      await ConversationSelectedSpaceResource.listByConversation(auth, {
+        conversation,
+      });
+    expect(activeSelections).toEqual([]);
+
+    const allSelections =
+      await ConversationSelectedSpaceResource.listByConversation(auth, {
+        activeOnly: false,
+        conversation,
+      });
+    expect(allSelections).toHaveLength(1);
+    expect(allSelections[0].removedAt).not.toBeNull();
   });
 
   it("returns conversation_agent_running when an agent loop is running", async () => {
