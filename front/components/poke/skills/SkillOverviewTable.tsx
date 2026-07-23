@@ -57,8 +57,8 @@ export function SkillOverviewTable({
             </PokeTableCell>
           </PokeTableRow>
           <PokeTableRow>
-            <PokeTableCell>Default</PokeTableCell>
-            <PokeTableCell>{skill.isDefault ? "Yes" : "No"}</PokeTableCell>
+            <PokeTableCell>Availability</PokeTableCell>
+            <PokeTableCell>{skill.availability}</PokeTableCell>
           </PokeTableRow>
           <PokeTableRow>
             <PokeTableCell>Tools count</PokeTableCell>

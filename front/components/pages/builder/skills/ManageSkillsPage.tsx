@@ -11,7 +11,7 @@ import {
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { SKILL_ICON } from "@app/lib/skill";
+import { isDustProvidedSkill, SKILL_ICON } from "@app/lib/skill";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
@@ -154,13 +154,16 @@ export function ManageSkillsPage() {
       ),
       default: filteredList(
         sortedActiveSkills
-          .filter((s) => s.isDefault || s.relations.editors === null)
+          .filter(
+            (s) =>
+              s.availability === "users_and_agents" || isDustProvidedSkill(s)
+          )
           .sort((a, b) => {
-            // Display first the skills that have no editor (Dust-managed ones).
-            const aNoEditors = a.relations.editors === null;
-            const bNoEditors = b.relations.editors === null;
-            if (aNoEditors !== bNoEditors) {
-              return aNoEditors ? -1 : 1;
+            // Display Dust-managed skills first.
+            const aIsDustProvided = isDustProvidedSkill(a);
+            const bIsDustProvided = isDustProvidedSkill(b);
+            if (aIsDustProvided !== bIsDustProvided) {
+              return aIsDustProvided ? -1 : 1;
             }
             // Fallback to a name sort.
             return a.name.localeCompare(b.name);
