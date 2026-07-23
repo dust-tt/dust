@@ -28,7 +28,6 @@ import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import assert from "assert";
 
 function tablesFromUris(tableUris: string[]): TablesConfigurationToolType {
   return tableUris.map((uri) => ({
@@ -241,7 +240,9 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
     { auth, runContext }
   ) => {
     // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
-    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+    if (!isAgentLoopRunContext(runContext)) {
+      return new Err(new MCPError("AgentLoopRunContext expected"));
+    }
 
     const agentLoopRunContext = runContext;
 

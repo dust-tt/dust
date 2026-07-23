@@ -22,7 +22,6 @@ import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import assert from "assert";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
@@ -208,7 +207,9 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     { auth, runContext }
   ) => {
     // TODO(spolu): move query CSV output to DFS
-    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+    if (!isAgentLoopRunContext(runContext)) {
+      return new Err(new MCPError("AgentLoopRunContext expected"));
+    }
 
     const agentLoopRunContext = runContext;
 
