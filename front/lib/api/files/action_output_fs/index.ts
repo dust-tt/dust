@@ -49,7 +49,7 @@ async function getDustFileSystemForRunContext(
   }
 }
 
-export function getToolOutputsScopedPath(
+function getToolOutputsScopedPath(
   runContext: ToolRunContext,
   fileName: string
 ): string {

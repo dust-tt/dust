@@ -11,8 +11,7 @@ import type {
   ToolContext,
 } from "@app/lib/actions/types";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { getToolOutputsScopedPath } from "@app/lib/api/files/action_output_fs";
+import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { ReferenceImageFile } from "@app/lib/api/llm/imageGeneration";
@@ -288,19 +287,6 @@ async function writeSandboxFunctionImageResponse(
     MCPError
   >
 > {
-  const fileSystemResult = await DustFileSystem.forPod(
-    auth,
-    runContext.invocation.sandboxFunction.space
-  );
-  if (fileSystemResult.isErr()) {
-    return new Err(
-      new MCPError(
-        `Error accessing generated image files: ${fileSystemResult.error.message}`,
-        { cause: fileSystemResult.error }
-      )
-    );
-  }
-
   const baseFileName = stripFileExtension(fileName);
   const resources: Array<{
     type: "resource";
@@ -324,14 +310,13 @@ async function writeSandboxFunctionImageResponse(
       name: outputBaseName,
       ext: extension,
     });
-    const scopedPath = getToolOutputsScopedPath(runContext, outputFileName);
     const base64Data = image.base64.replace(/^data:image\/[^;]+;base64,/, "");
     const content = Buffer.from(base64Data, "base64");
-    const writeResult = await fileSystemResult.value.write(
-      scopedPath,
+    const writeResult = await writeToToolOutputsFolder(auth, runContext, {
+      fileName: outputFileName,
       content,
-      mimeType
-    );
+      contentType: mimeType,
+    });
     if (writeResult.isErr()) {
       return new Err(
         new MCPError(
@@ -340,6 +325,7 @@ async function writeSandboxFunctionImageResponse(
         )
       );
     }
+    const scopedPath = writeResult.value;
 
     resources.push({
       type: "resource",
@@ -373,7 +359,7 @@ export async function uploadAndFormatImageResponse(
 > {
   if (!toolContext?.runContext) {
     return new Err(
-      new MCPError("No conversation context available for file upload", {
+      new MCPError("No tool run context available for file upload", {
         tracked: false,
       })
     );
