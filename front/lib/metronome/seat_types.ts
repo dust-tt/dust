@@ -667,23 +667,30 @@ export function getAwuAllocationForNormalizedSeatType(
 
 /**
  * Resolve the seat AWU allowance for each normalized pool-limit seat type of
- * the workspace's active contract. Returns an empty record when the workspace
- * has no active contract. Used to derive total per-user cap thresholds (pool
- * override + seat allowance) from the pool-only override persisted on
- * memberships.
+ * a contract. Returns an empty record when the workspace has no active
+ * contract. Used to derive total per-user cap thresholds (pool override + seat
+ * allowance) from the pool-only override persisted on memberships.
+ *
+ * Pass an explicit `contract` when the caller already holds the contract to
+ * reconcile against and it may differ from the workspace's DB-active contract
+ * — e.g. the `contract.start` webhook, which reconciles per-user state against
+ * the newly-started contract *before* the DB subscription swap (and cache
+ * flush) has happened, so `getActiveContract` would still resolve the previous
+ * contract and yield the wrong (often zero) allowance.
  */
 export async function getSeatAllowancesByNormalizedSeatType(
-  workspaceId: string
+  workspaceId: string,
+  contract?: CachedContract | null
 ): Promise<Partial<Record<NormalizedPoolLimitSeatType, number>>> {
-  const contract = await getActiveContract(workspaceId);
-  if (!contract) {
+  const resolvedContract = contract ?? (await getActiveContract(workspaceId));
+  if (!resolvedContract) {
     return {};
   }
   const productSeatTypes = await getProductSeatTypes();
   const allowances: Partial<Record<NormalizedPoolLimitSeatType, number>> = {};
   for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
     allowances[seatType] = getAwuAllocationForNormalizedSeatType(
-      contract,
+      resolvedContract,
       seatType,
       productSeatTypes
     );
