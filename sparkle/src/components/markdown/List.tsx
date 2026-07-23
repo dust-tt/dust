@@ -8,22 +8,44 @@ import { cn } from "@sparkle/lib";
 import { cva } from "class-variance-authority";
 import React, { memo } from "react";
 
-export const ulBlockVariants = cva(["list-disc pb-2 pl-6 flex flex-col gap-1"]);
+export const ulBlockVariants = cva("pb-2 flex flex-col gap-1", {
+  variants: {
+    taskList: {
+      false: "list-disc pl-6",
+      true: "",
+    },
+  },
+  defaultVariants: {
+    taskList: false,
+  },
+});
 
 interface UlBlockProps {
   children: React.ReactNode;
+  className?: string;
   node?: MarkdownNode;
 }
 
 export const UlBlock = memo(
-  ({ children }: UlBlockProps) => {
+  ({ children, className }: UlBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
     const textSize = forcedTextSize ?? markdownParagraphSize;
+    const isTaskList = className?.includes("contains-task-list");
     return (
-      <ul className={cn(ulBlockVariants(), textColor, textSize)}>{children}</ul>
+      <ul
+        className={cn(
+          ulBlockVariants({ taskList: isTaskList }),
+          textColor,
+          textSize,
+          className
+        )}
+      >
+        {children}
+      </ul>
     );
   },
-  (prev, next) => sameNodePosition(prev.node, next.node)
+  (prev, next) =>
+    sameNodePosition(prev.node, next.node) && prev.className === next.className
 );
 UlBlock.displayName = "UlBlock";
 
