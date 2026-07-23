@@ -164,7 +164,11 @@ export async function mergeConversationBranch(
     );
   }
 
-  const branch = await ConversationBranchResource.fetchById(auth, branchId);
+  const branch = await ConversationBranchResource.fetchById(
+    auth,
+    branchId,
+    transaction
+  );
 
   if (!branch) {
     return new Err(new DustError("branch_not_found", "Branch not found."));
@@ -400,7 +404,11 @@ export async function closeConversationBranch(
       );
     }
 
-    const branch = await ConversationBranchResource.fetchById(auth, branchId);
+    const branch = await ConversationBranchResource.fetchById(
+      auth,
+      branchId,
+      effectiveTransaction
+    );
 
     if (!branch) {
       return new Err(new DustError("branch_not_found", "Branch not found."));
