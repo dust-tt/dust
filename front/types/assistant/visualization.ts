@@ -118,6 +118,7 @@ const VisualizationRPCRequestSchema = z.union([
 export type VisualizationRPCRequest = z.infer<
   typeof VisualizationRPCRequestSchema
 >;
+export type CallFunctionRequest = z.infer<typeof CallFunctionRequestSchema>;
 export type VisualizationRPCCommand = VisualizationRPCRequest["command"];
 
 // Define a mapped type for backward compatibility.

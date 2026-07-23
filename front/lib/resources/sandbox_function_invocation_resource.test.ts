@@ -160,7 +160,10 @@ describe("SandboxFunctionInvocationResource", () => {
       secondInvocation.sId,
     ]);
     expect(recentInvocations[0]?.result).toEqual({ commentId: "comment-3" });
-    expect(recentInvocations[1]?.error).toBe("second invocation failed");
+    expect(recentInvocations[1]?.error).toEqual({
+      code: "invocation_failed",
+      message: "second invocation failed",
+    });
     expect(recentInvocations[0]?.toJSONForLLM()).toMatchObject({
       invocationId: thirdInvocation.sId,
       status: "succeeded",
@@ -171,7 +174,10 @@ describe("SandboxFunctionInvocationResource", () => {
       invocationId: secondInvocation.sId,
       status: "errored",
       input: { message: "second" },
-      error: "second invocation failed",
+      error: {
+        code: "invocation_failed",
+        message: "second invocation failed",
+      },
     });
 
     const formatted = formatSandboxFunctionInvocations(
@@ -181,7 +187,8 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(formatted).toContain('"status": "succeeded"');
     expect(formatted).toContain('"input": {');
     expect(formatted).toContain('"result": {');
-    expect(formatted).toContain('"error": "second invocation failed"');
+    expect(formatted).toContain('"message": "second invocation failed"');
+    expect(formatted).toContain('"code": "invocation_failed"');
     expect(formatted).toContain('"createdAt":');
     expect(formatted).toContain('"updatedAt":');
   });
@@ -318,13 +325,19 @@ describe("SandboxFunctionInvocationResource", () => {
 
     expect(invocation.status).toBe("errored");
     expect(invocation.result).toBeUndefined();
-    expect(invocation.error).toBe("sandbox unavailable");
+    expect(invocation.error).toEqual({
+      code: "invocation_failed",
+      message: "sandbox unavailable",
+    });
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.result).toBeUndefined();
-    expect(refetched?.error).toBe("sandbox unavailable");
+    expect(refetched?.error).toEqual({
+      code: "invocation_failed",
+      message: "sandbox unavailable",
+    });
     expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "sandbox_function_invocation_error",
@@ -333,6 +346,51 @@ describe("SandboxFunctionInvocationResource", () => {
       }),
       { invocationId: invocation.sId }
     );
+  });
+
+  it("keeps the code and status of a classified failure", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+
+    await invocation.fail({
+      code: "http_error",
+      message: "Function returned HTTP 503.",
+      status: 503,
+    });
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.error).toEqual({
+      code: "http_error",
+      message: "Function returned HTTP 503.",
+      status: 503,
+    });
+  });
+
+  it("reads a blob written before the code was persisted", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+
+    await invocation.fail(new Error("sandbox unavailable"));
+    fileStorageMock.setObject(
+      invocation.gcsPath!,
+      JSON.stringify({
+        version: 1,
+        input: { message: "hello" },
+        error: "sandbox unavailable",
+      })
+    );
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.error).toEqual({
+      code: "invocation_failed",
+      message: "sandbox unavailable",
+    });
   });
 
   it("executes an invocation on the pod sandbox", async () => {

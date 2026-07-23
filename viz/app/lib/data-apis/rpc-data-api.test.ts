@@ -1,46 +1,9 @@
-import { readFileSync } from "node:fs";
 import { CacheDataAPI } from "@viz/app/lib/data-apis/cache-data-api";
 import { RPCDataAPI } from "@viz/app/lib/data-apis/rpc-data-api";
-import {
-  SANDBOX_FUNCTION_CALL_ERROR_CODES,
-  SandboxFunctionCallError,
-} from "@viz/app/lib/data-apis/sandbox-function-call-error";
+import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import { describe, expect, it } from "vitest";
 
-function extractStringArray(source: string, constantName: string): string[] {
-  const match = source.match(
-    new RegExp(`export const ${constantName} = \\[([\\s\\S]*?)\\] as const;`)
-  );
-  if (!match?.[1]) {
-    throw new Error(`Could not find ${constantName}.`);
-  }
-  return Array.from(match[1].matchAll(/"([^"]+)"/g), ([, value]) => value);
-}
-
 describe("sandbox function data APIs", () => {
-  it("keeps Frame error codes aligned with front", () => {
-    const runnerSource = readFileSync(
-      new URL(
-        "../../../../cli/dust-sandbox/functions-runner/protocol.ts",
-        import.meta.url
-      ),
-      "utf8"
-    );
-    const frontSource = readFileSync(
-      new URL(
-        "../../../../front/types/api/sandbox_functions.ts",
-        import.meta.url
-      ),
-      "utf8"
-    );
-    const frontCodes = [
-      ...extractStringArray(runnerSource, "RUNNER_ERROR_CODES"),
-      ...extractStringArray(frontSource, "SANDBOX_FUNCTION_CALL_ERROR_CODES"),
-    ];
-
-    expect(SANDBOX_FUNCTION_CALL_ERROR_CODES).toEqual(frontCodes);
-  });
-
   it("rejects RPC calls with a typed sandbox function error", async () => {
     const api = new RPCDataAPI(async () => {
       throw {
@@ -53,6 +16,32 @@ describe("sandbox function data APIs", () => {
 
     await expect(promise).rejects.toBeInstanceOf(SandboxFunctionCallError);
     await expect(promise).rejects.toMatchObject({ code: "invalid_output" });
+  });
+
+  it("forwards a code viz does not know about instead of relabelling it", async () => {
+    const api = new RPCDataAPI(async () => {
+      throw {
+        code: "sandbox_function_not_found",
+        message: "Sandbox function not found.",
+        status: 404,
+      };
+    });
+
+    await expect(api.callFunction("pod/function")).rejects.toMatchObject({
+      code: "sandbox_function_not_found",
+      status: 404,
+    });
+  });
+
+  it("falls back to transport_error when the payload is not a call error", async () => {
+    const api = new RPCDataAPI(async () => {
+      throw new Error("The iframe channel closed.");
+    });
+
+    await expect(api.callFunction("pod/function")).rejects.toMatchObject({
+      code: "transport_error",
+      message: "The iframe channel closed.",
+    });
   });
 
   it("rejects calls from public frames as unsupported", async () => {

@@ -18,12 +18,14 @@ import type {
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
 import type {
+  CallFunctionRequest,
   CommandResultMap,
   EditTextFn,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types/assistant/visualization";
 import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
+import { isAPIError } from "@app/types/error";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import {
   assertNever,
@@ -91,10 +93,20 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
 };
 
 const sendErrorToIframe = (
-  request: { command: "callFunction" } & VisualizationRPCRequest,
+  request: CallFunctionRequest,
   error: SandboxFunctionCallError,
   target: MessageEventSource
 ) => {
+  // Once handed over, the error belongs to Frame code and only comes back if the Frame reports it
+  // itself, so log here to keep a trace of every failed call.
+  datadogLogger.info("Sandbox function call failed", {
+    code: error.code,
+    errorMessage: error.message,
+    functionIdOrSlug: request.params.functionIdOrSlug,
+    identifier: request.identifier,
+    status: error.status,
+  });
+
   target.postMessage(
     {
       command: "answer",
@@ -676,10 +688,10 @@ export const VisualizationActionIframe = forwardRef<
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
           return new Err({
-            code:
-              "type" in error && error.type === "sandbox_function_not_found"
-                ? "function_not_found"
-                : "invocation_failed",
+            // Forward the API error type verbatim. Re-deriving a code here would collapse every
+            // failure but one into `invocation_failed` and drop the only classification the
+            // endpoint produced.
+            code: isAPIError(error) ? error.type : "invocation_failed",
             message: error.message,
             status: response.status,
           });

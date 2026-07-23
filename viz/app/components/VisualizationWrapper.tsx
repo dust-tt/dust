@@ -407,6 +407,23 @@ export function VisualizationWrapper({
     [ref, downloadFile, identifier]
   );
 
+  // A rejected promise nothing catches never reaches the ErrorBoundary, which only sees throws
+  // during render. Frame code is async throughout — a `callFunction` awaited without a `catch`,
+  // a failed fetch — so without this the Frame renders nothing and reports nothing.
+  useEffect(() => {
+    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const { reason } = event;
+      setErrorMessage(
+        reason instanceof Error ? reason : new Error(String(reason))
+      );
+    };
+
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+
+    return () =>
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+  }, []);
+
   useEffect(() => {
     const loadCode = async () => {
       try {
