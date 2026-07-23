@@ -19,6 +19,10 @@ import {
   type SelectedConversationSpacesError,
   validateSelectableSpaces,
 } from "@app/lib/api/assistant/conversation/selected_spaces";
+import {
+  moveConversationOutOfProject,
+  moveConversationToProject,
+} from "@app/lib/api/projects/conversations";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
@@ -32,7 +36,10 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import {
+  type ConversationWithoutContentType,
+  isPodConversation,
+} from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 
@@ -173,6 +180,12 @@ describe("selected conversation Spaces", () => {
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, otherUser, { role: "user" });
     return Authenticator.fromUserIdAndWorkspaceId(otherUser.sId, workspace.sId);
+  }
+
+  async function memberProjectSpace() {
+    const space = await SpaceFactory.project(workspace, user.id);
+    await addCurrentUser(space);
+    return space;
   }
 
   it("rejects selected Spaces when the feature flag is disabled", async () => {
@@ -623,6 +636,121 @@ describe("selected conversation Spaces", () => {
     expect(childSelectedSpaces.map((space) => space.sId)).toEqual([
       selectedSpace.sId,
     ]);
+  });
+
+  it("ignores selected Spaces at runtime for pod conversations", async () => {
+    await enableFeature();
+    const selectedSpace = await memberRestrictedSpace();
+    const projectSpace = await memberProjectSpace();
+    const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      { requestedSpaceIds: [globalSpace.id] }
+    );
+    const podConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      spaceId: projectSpace.id,
+      visibility: "unlisted",
+    });
+
+    // Selections cannot be created through the service in a pod conversation, so go through the
+    // resource directly to reproduce rows left over from before the conversation was moved.
+    await ConversationSelectedSpaceResource.upsertForConversation(auth, {
+      conversation: podConversation,
+      origin: "input_bar",
+      spaces: [selectedSpace],
+    });
+
+    await expect(
+      getEffectiveSpaceIdsForAgentRun(auth, {
+        agentConfiguration,
+        conversation: podConversation,
+      })
+    ).resolves.toEqual([globalSpace.sId]);
+  });
+
+  it("removes selected Spaces when the conversation moves into a project", async () => {
+    await enableFeature();
+    const selectedSpace = await memberRestrictedSpace();
+    const projectSpace = await memberProjectSpace();
+    const conv = await conversation();
+
+    unwrapResult(
+      await addSelectedConversationSpaces(auth, {
+        conversation: conv,
+        enforceCreatorOnly: false,
+        origin: "input_bar",
+        spaceIds: [selectedSpace.sId],
+      })
+    );
+
+    const moveResult = await moveConversationToProject(auth, {
+      conversation: conv,
+      spaceId: projectSpace.sId,
+    });
+    expect(moveResult.isOk()).toBe(true);
+
+    expect(
+      await ConversationSelectedSpaceResource.listActiveSpacesByConversation(
+        auth,
+        { conversation: conv }
+      )
+    ).toEqual([]);
+    const allSelections =
+      await ConversationSelectedSpaceResource.listByConversation(auth, {
+        activeOnly: false,
+        conversation: conv,
+      });
+    expect(allSelections).toHaveLength(1);
+    expect(allSelections[0].removedAt).not.toBeNull();
+  });
+
+  it("does not resurrect selected Spaces when the conversation moves back out of a project", async () => {
+    await enableFeature();
+    const selectedSpace = await memberRestrictedSpace();
+    const projectSpace = await memberProjectSpace();
+    const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      { requestedSpaceIds: [globalSpace.id] }
+    );
+    const conv = await conversation();
+
+    unwrapResult(
+      await addSelectedConversationSpaces(auth, {
+        conversation: conv,
+        enforceCreatorOnly: false,
+        origin: "input_bar",
+        spaceIds: [selectedSpace.sId],
+      })
+    );
+
+    const moveInResult = await moveConversationToProject(auth, {
+      conversation: conv,
+      spaceId: projectSpace.sId,
+    });
+    expect(moveInResult.isOk()).toBe(true);
+
+    const podConversation = await refetchConversation(auth, conv.sId);
+    expect(isPodConversation(podConversation)).toBe(true);
+
+    const moveOutResult = await moveConversationOutOfProject(auth, {
+      conversation: podConversation,
+    });
+    expect(moveOutResult.isOk()).toBe(true);
+
+    // Moving out rebuilds requestedSpaceIds from agents and content fragments only: the selected
+    // Space has no ACL backing anymore, so it must not come back into the runtime scope either.
+    const movedOutConversation = await refetchConversation(auth, conv.sId);
+    expect(isPodConversation(movedOutConversation)).toBe(false);
+    expect(movedOutConversation.requestedSpaceIds).not.toContain(
+      selectedSpace.sId
+    );
+    await expect(
+      getEffectiveSpaceIdsForAgentRun(auth, {
+        agentConfiguration,
+        conversation: movedOutConversation,
+      })
+    ).resolves.toEqual([globalSpace.sId]);
   });
 
   it("ignores selected Spaces at runtime when the feature flag is disabled", async () => {

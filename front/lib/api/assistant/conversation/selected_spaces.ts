@@ -392,6 +392,15 @@ export async function getValidSelectedSpaceIdsForAgentRun(
     transaction?: Transaction;
   }
 ): Promise<string[]> {
+  // A pod conversation's ACL is pinned to its project space, so it cannot express the extra space
+  // requirements a selection implies. Honouring selections here would decouple the agent's runtime
+  // scope from the conversation's visibility: every project member would read retrieved content
+  // from Spaces they may not have access to. Selection write paths already bail out for pod
+  // conversations, and so does updateConversationRequirementsForSkills.
+  if (isPodConversation(conversation)) {
+    return [];
+  }
+
   const featureFlags = await getFeatureFlags(auth);
   if (!featureFlags.includes("restricted_spaces_in_input_bar")) {
     return [];
