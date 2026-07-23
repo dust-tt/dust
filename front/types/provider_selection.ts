@@ -12,6 +12,8 @@ export const ALL_PROVIDERS_SELECTED: ProvidersSelection = {
   xai: true,
   noop: true,
   auto: true,
+  auto_fast: true,
+  auto_complex: true,
 };
 
 export const NO_PROVIDERS_SELECTED: ProvidersSelection = {
@@ -24,6 +26,8 @@ export const NO_PROVIDERS_SELECTED: ProvidersSelection = {
   xai: false,
   noop: false,
   auto: true,
+  auto_fast: true,
+  auto_complex: true,
 };
 
 export const PRETTIFIED_PROVIDER_NAMES: Record<ModelProviderIdType, string> = {
@@ -36,4 +40,6 @@ export const PRETTIFIED_PROVIDER_NAMES: Record<ModelProviderIdType, string> = {
   xai: "xAI",
   noop: "noop",
   auto: "Auto",
+  auto_fast: "Fast",
+  auto_complex: "Complex",
 };

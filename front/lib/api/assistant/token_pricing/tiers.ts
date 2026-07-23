@@ -392,4 +392,10 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   auto: {
     none: "balanced",
   },
+  auto_fast: {
+    none: "balanced",
+  },
+  auto_complex: {
+    none: "balanced",
+  },
 } satisfies StaticModelTiersMap;

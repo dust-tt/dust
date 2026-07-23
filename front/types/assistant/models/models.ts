@@ -38,7 +38,14 @@ import {
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "./anthropic";
-import { AUTO_MODEL_CONFIG, AUTO_MODEL_ID } from "./auto";
+import {
+  AUTO_COMPLEX_MODEL_CONFIG,
+  AUTO_COMPLEX_MODEL_ID,
+  AUTO_FAST_MODEL_CONFIG,
+  AUTO_FAST_MODEL_ID,
+  AUTO_MODEL_CONFIG,
+  AUTO_MODEL_ID,
+} from "./auto";
 // Custom models (generated at build time from GCS, empty in dev).
 import {
   CUSTOM_MODEL_CONFIGS,
@@ -245,6 +252,8 @@ export const STATIC_MODEL_IDS = [
   GROK_4_1_FAST_REASONING_MODEL_ID,
   NOOP_MODEL_ID,
   AUTO_MODEL_ID,
+  AUTO_FAST_MODEL_ID,
+  AUTO_COMPLEX_MODEL_ID,
 ] as const;
 
 // Type for static model IDs only (excludes custom models from GCS).
@@ -353,6 +362,8 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
   NOOP_MODEL_CONFIG,
   AUTO_MODEL_CONFIG,
+  AUTO_FAST_MODEL_CONFIG,
+  AUTO_COMPLEX_MODEL_CONFIG,
   // Custom models (generated at build time from GCS).
   ...CUSTOM_MODEL_CONFIGS,
 ];

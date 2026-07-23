@@ -397,7 +397,7 @@ describe("resolveModel", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     await FeatureFlagFactory.basic(auth, "models_picker");
 
-    const getAutoModelSpy = vi.spyOn(enabledModels, "getAutoModelForAuth");
+    const getModelForStreamSpy = vi.spyOn(enabledModels, "getModelForStream");
 
     const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
       configuration: makeAgentConfiguration({
@@ -407,7 +407,9 @@ describe("resolveModel", () => {
       featureFlags: ["models_picker"],
     });
 
-    expect(getAutoModelSpy).toHaveBeenCalledOnce();
+    // `auto` is a stream like `auto_fast` / `auto_complex`: it routes through
+    // getModelForStream and resolves to its first available candidate.
+    expect(getModelForStreamSpy).toHaveBeenCalledWith(auth, AUTO_MODEL_ID);
     expect(modelResolutionMethod).toBe("auto");
     expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
     expect(resolvedModel).toEqual({
@@ -423,7 +425,7 @@ describe("resolveModel", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     await FeatureFlagFactory.basic(auth, "models_picker");
 
-    const getAutoModelSpy = vi.spyOn(enabledModels, "getAutoModelForAuth");
+    const getModelForStreamSpy = vi.spyOn(enabledModels, "getModelForStream");
 
     const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
       selection: {
@@ -437,7 +439,7 @@ describe("resolveModel", () => {
       featureFlags: ["models_picker"],
     });
 
-    expect(getAutoModelSpy).toHaveBeenCalledOnce();
+    expect(getModelForStreamSpy).toHaveBeenCalledWith(auth, AUTO_MODEL_ID);
     expect(modelResolutionMethod).toBe("auto");
     expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
     expect(resolvedModel).toEqual({
