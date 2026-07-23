@@ -695,10 +695,14 @@ describe("processMetronomeWebhook — swap webhook ordering", () => {
     expect(oldSub!.status).toBe("ended");
   });
 
-  it("keeps a shadow-billed (Stripe-backed) old sub as ended_backend_only so Stripe converges it", async () => {
-    // The fix is scoped to Metronome-only subs. A sub with a Stripe
-    // subscription must still wait for Stripe's customer.subscription.deleted
-    // webhook, so it ends as ended_backend_only.
+  it("converges a shadow-billed (Stripe-backed) old sub to ended on activation (does not strand in ended_backend_only)", async () => {
+    // A pending-row cutover races Stripe's customer.subscription.deleted (the
+    // scheduled cancel_at). When the Stripe event lands first it is consumed by
+    // the "active + pending → skip" branch, leaving contract.start's
+    // activatePending as the only handler that can finalize the old sub. It must
+    // therefore end directly as `ended` rather than waiting on a Stripe webhook
+    // that already fired, otherwise the old sub is stranded in
+    // `ended_backend_only`.
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID, {
       stripeSubscriptionId: "sub_shadow_xxx",
     });
@@ -719,7 +723,7 @@ describe("processMetronomeWebhook — swap webhook ordering", () => {
       refreshed!,
       OLD_CONTRACT_ID
     );
-    expect(oldSub!.status).toBe("ended_backend_only");
+    expect(oldSub!.status).toBe("ended");
   });
 });
 
