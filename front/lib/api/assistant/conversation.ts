@@ -701,6 +701,7 @@ export async function postUserMessage(
     return canInteractRes;
   }
 
+  // Versions partition the message rows by rank, so this stays linear in conversation size.
   let runningAgentMessage = conversation.content
     .map((versions) =>
       versions.reduce((latest, message) =>
