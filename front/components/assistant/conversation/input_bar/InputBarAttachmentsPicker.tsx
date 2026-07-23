@@ -107,10 +107,9 @@ interface InputBarAttachmentsPickerProps {
   onExternalOpenChange?: (open: boolean) => void;
   onOpenChange?: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement | null>;
-  // When true, start fetching spaces even before this picker's own
-  // dropdown opens — lets a parent menu (e.g. the "+" menu) kick off the
-  // fetch as soon as IT opens, instead of waterfalling on this picker's
-  // own click.
+  // See the identical `prefetch` prop on CapabilitiesPicker: lets a parent
+  // menu kick off the fetch on its own open/hover instead of waterfalling
+  // on this picker's own click.
   prefetch?: boolean;
 }
 

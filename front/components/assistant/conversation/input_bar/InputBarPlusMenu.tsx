@@ -1,6 +1,10 @@
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarSpacesPicker } from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
+import {
+  INPUT_BAR_PILL_HOVER_CLASSNAME,
+  INPUT_BAR_PILL_SURFACE_CLASSNAME,
+} from "@app/components/assistant/conversation/input_bar/inputBarPillStyles";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -9,6 +13,7 @@ import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Button,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
@@ -18,10 +23,10 @@ import { useState } from "react";
 
 // Same border/background/shadow treatment as the agent pill, so both trigger
 // buttons in the input bar's left cluster read as one consistent set.
-const PLUS_BUTTON_CLASSNAME =
-  "border-[0.5px] border-border-dark bg-background dark:bg-[#3c3934] " +
-  "shadow-[inset_2px_-2px_7px_0px_rgba(0,0,0,0.02),0px_0.5px_0.5px_0px_rgba(0,0,0,0.04)] " +
-  "hover:bg-primary-100 dark:hover:bg-[#4a453e]";
+const PLUS_BUTTON_CLASSNAME = cn(
+  INPUT_BAR_PILL_SURFACE_CLASSNAME,
+  INPUT_BAR_PILL_HOVER_CLASSNAME
+);
 
 interface InputBarPlusMenuProps {
   owner: WorkspaceType;

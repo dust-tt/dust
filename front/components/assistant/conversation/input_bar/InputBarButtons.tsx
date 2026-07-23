@@ -3,6 +3,10 @@ import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import { InputBarPlusMenu } from "@app/components/assistant/conversation/input_bar/InputBarPlusMenu";
+import {
+  INPUT_BAR_PILL_HOVER_CLASSNAME,
+  INPUT_BAR_PILL_SURFACE_CLASSNAME,
+} from "@app/components/assistant/conversation/input_bar/inputBarPillStyles";
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -73,6 +77,7 @@ interface InputBarButtonsProps {
   onAgentPickerOpenChange?: (open: boolean) => void;
   onCapabilitiesPickerOpenChange?: (open: boolean) => void;
   onAttachmentsPickerOpenChange?: (open: boolean) => void;
+  onPlusMenuOpenChange?: (open: boolean) => void;
 }
 
 export const InputBarButtons = React.memo(function InputBarButtons({
@@ -107,6 +112,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   onAgentPickerOpenChange,
   onCapabilitiesPickerOpenChange,
   onAttachmentsPickerOpenChange,
+  onPlusMenuOpenChange,
 }: InputBarButtonsProps) {
   const router = useAppRouter();
   const isWidthConstrained = useIsMobile() || clientType === "extension";
@@ -150,12 +156,11 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             aria-disabled={isInputDisabled}
             className={cn(
               "inline-flex box-border items-center rounded-full h-7 heading-xs px-2 gap-1.5 text-primary-900 transition-colors duration-200",
-              "border-[0.5px] border-border-dark bg-background dark:bg-[oklch(0.346_0.009_80.674)]",
-              "shadow-[inset_2px_-2px_7px_0px_rgba(0,0,0,0.02),0px_0.5px_0.5px_0px_rgba(0,0,0,0.04)]",
+              INPUT_BAR_PILL_SURFACE_CLASSNAME,
               isWidthConstrained && "pl-1",
               isInputDisabled
                 ? "opacity-50 pointer-events-none"
-                : "cursor-pointer hover:bg-primary-100 dark:hover:bg-[oklch(0.393_0.013_76.451)]"
+                : cn("cursor-pointer", INPUT_BAR_PILL_HOVER_CLASSNAME)
             )}
           >
             <Avatar size="3xs" visual={selectedAgent.pictureUrl} />
@@ -195,8 +200,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             disabled={isInputDisabled}
             isRounded
             className={cn(
-              "border-[0.5px] border-border-dark bg-background dark:bg-[oklch(0.346_0.009_80.674)]",
-              "shadow-[inset_2px_-2px_7px_0px_rgba(0,0,0,0.02),0px_0.5px_0.5px_0px_rgba(0,0,0,0.04)]",
+              INPUT_BAR_PILL_SURFACE_CLASSNAME,
               "hover:bg-primary-100",
               disableAgentSelector && "bg-primary-150"
             )}
@@ -289,6 +293,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             spaceId={spaceId}
             selectedSpaceIds={selectedSpaceIds}
             onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
+            onOpenChange={onPlusMenuOpenChange}
             onCapabilitiesPickerOpenChange={onCapabilitiesPickerOpenChange}
             onAttachmentsPickerOpenChange={onAttachmentsPickerOpenChange}
           />

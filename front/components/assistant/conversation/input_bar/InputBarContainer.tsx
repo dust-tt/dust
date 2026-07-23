@@ -846,6 +846,12 @@ const InputBarContainer = ({
     },
     [setOverlayOpen]
   );
+  const handlePlusMenuOpenChange = useCallback(
+    (open: boolean) => {
+      setOverlayOpen("plus-menu", open);
+    },
+    [setOverlayOpen]
+  );
 
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor
@@ -1754,6 +1760,7 @@ const InputBarContainer = ({
                       onAttachmentsPickerOpenChange={
                         handleAttachmentsPickerOpenChange
                       }
+                      onPlusMenuOpenChange={handlePlusMenuOpenChange}
                     />
                   </div>
                 )}
