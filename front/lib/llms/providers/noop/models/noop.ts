@@ -5,19 +5,16 @@ export function WithDustNoopConfig<
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  // Spread the legacy model config onto the class statics (see
-  // `DustStreamEndpointConfiguration`). `Object.assign` returns
-  // `class & ModelConfigurationType`, so the fields are visible to the type
-  // checker without an unsafe cast.
-  abstract class DustNoopConfig extends Base {}
-  const WithConfig = Object.assign(DustNoopConfig, NOOP_MODEL_CONFIG);
-
-  // Declared last so these own statics shadow (take precedence over) the spread
-  // config values.
-  abstract class DustNoop extends WithConfig {
+  abstract class DustNoop extends Base {
     static readonly displayName = "Noop";
     static readonly description = "Noop model that does nothing.";
     static readonly byok = false;
+
+    // Nest the legacy model config under a single `modelConfig` static (see
+    // `DustStreamEndpointConfiguration`) so consumers can retrieve the full
+    // `ModelConfigurationType` off the endpoint without spreading its fields
+    // onto the class statics.
+    static readonly modelConfig = NOOP_MODEL_CONFIG;
   }
 
   return DustNoop;

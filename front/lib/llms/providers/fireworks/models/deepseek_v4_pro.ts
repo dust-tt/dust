@@ -5,23 +5,17 @@ export function WithDustDeepSeekDeepSeekV4ProConfig<
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  // Spread the legacy model config onto the class statics (see
-  // `DustStreamEndpointConfiguration`). `Object.assign` returns
-  // `class & ModelConfigurationType`, so the fields are visible to the type
-  // checker without an unsafe cast.
-  abstract class DustDeepSeekDeepSeekV4ProConfig extends Base {}
-  const WithConfig = Object.assign(
-    DustDeepSeekDeepSeekV4ProConfig,
-    FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG
-  );
-
-  // Declared last so these own statics shadow (take precedence over) the spread
-  // config values.
-  abstract class DustDeepSeekDeepSeekV4Pro extends WithConfig {
+  abstract class DustDeepSeekDeepSeekV4Pro extends Base {
     static readonly displayName = "DeepSeek V4 Pro (Fireworks)";
     static readonly description =
       "DeepSeek's V4 Pro Mixture-of-Experts model with frontier reasoning, advanced coding, and 1M context (served via Fireworks).";
     static readonly byok = false;
+
+    // Nest the legacy model config under a single `modelConfig` static (see
+    // `DustStreamEndpointConfiguration`) so consumers can retrieve the full
+    // `ModelConfigurationType` off the endpoint without spreading its fields
+    // onto the class statics.
+    static readonly modelConfig = FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG;
   }
 
   return DustDeepSeekDeepSeekV4Pro;
