@@ -1,3 +1,4 @@
+import { getAvailableScopeOptions } from "@app/components/assistant/conversation/interactive_content/frame/shareFrameScopeOptions";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import type {
   ShareFrameViewerFile,
@@ -16,11 +17,7 @@ import {
   MAX_EMAILS_PER_INVITE,
   type SharingGrantType,
 } from "@app/types/files";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type {
-  LightWorkspaceType,
-  WorkspaceSharingPolicy,
-} from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -30,13 +27,11 @@ import {
   ContextItem,
   Cube01,
   File02,
-  Globe01,
   Icon,
   IconButton,
   InfoCircle,
   Input,
   Label,
-  Lock01,
   MessageChatSquare,
   Sheet,
   SheetContainer,
@@ -45,7 +40,6 @@ import {
   SheetTitle,
   Spinner,
   Upload01,
-  Users01,
   useCopyToClipboard,
   XClose,
 } from "@dust-tt/sparkle";
@@ -54,42 +48,6 @@ import { intlFormatDistance } from "date-fns";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-
-function getScopeOptions(isExternalInviteOff: boolean): {
-  icon: typeof Lock01;
-  label: string;
-  description: string;
-  value: FileShareScope;
-}[] {
-  return [
-    {
-      icon: Lock01,
-      label: isExternalInviteOff
-        ? "Invited workspace members only"
-        : "Invite only",
-      description: isExternalInviteOff
-        ? "Only the workspace members you invite"
-        : "Only the people you invite",
-      value: "emails_only",
-    },
-    {
-      icon: Users01,
-      label: isExternalInviteOff
-        ? "All workspace members"
-        : "All workspace members + invites",
-      description: isExternalInviteOff
-        ? "Everyone in your workspace"
-        : "Everyone in your workspace, plus anyone you invite",
-      value: "workspace_and_emails",
-    },
-    {
-      icon: Globe01,
-      label: "Anyone with the link",
-      description: "No sign-in required",
-      value: "public",
-    },
-  ];
-}
 
 const baseScopeOptionClassNames =
   "flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors";
@@ -112,16 +70,6 @@ function getScopeOptionClassName({
 
   return `${baseScopeOptionClassNames} ${cursor} ${state}`;
 }
-
-// Scopes allowed by each workspace sharing policy.
-const ALLOWED_SCOPES_BY_POLICY: Record<
-  WorkspaceSharingPolicy,
-  FileShareScope[]
-> = {
-  workspace_only: ["emails_only", "workspace_and_emails"],
-  workspace_and_emails: ["emails_only", "workspace_and_emails"],
-  all_scopes: ["emails_only", "workspace_and_emails", "public"],
-};
 
 const inviteFormSchema = z.object({
   emailsRaw: z
@@ -221,39 +169,15 @@ export function ShareFrameSheet({
   const canPublish =
     !externalSharingDisabledByPolicy && hasPermission("publish", "frame");
 
-  const isExternalInviteOff = !canInviteExternal;
-
   const lostPublishPermission =
     currentScope === "public" && !canPublish && !isWorkspacePermissionsLoading;
 
-  const allowedScopes = ALLOWED_SCOPES_BY_POLICY[owner.sharingPolicy];
-  const availableScopeOptions = getScopeOptions(isExternalInviteOff).flatMap(
-    (option) => {
-      if (!allowedScopes.includes(option.value)) {
-        return [];
-      }
-      switch (option.value) {
-        case "emails_only":
-        case "workspace_and_emails":
-        case "workspace":
-          // Internal email invites are always available.
-          return [{ ...option, disabled: false }];
-        case "public":
-          if (canPublish) {
-            return [{ ...option, disabled: false }];
-          }
-          // Without the publish permission, keep the public option visible (disabled) only when
-          // the frame is already public, so its current state stays visible and the user can
-          // downgrade it but not re-publish. Otherwise hide it entirely.
-          return currentScope === "public"
-            ? [{ ...option, disabled: true }]
-            : [];
-        default:
-          assertNeverAndIgnore(option.value);
-          return [];
-      }
-    }
-  );
+  const availableScopeOptions = getAvailableScopeOptions({
+    sharingPolicy: owner.sharingPolicy,
+    canInviteExternal,
+    canPublish,
+    currentScope,
+  });
 
   const showEmailOption =
     currentScope === "emails_only" || currentScope === "workspace_and_emails";
@@ -337,7 +261,7 @@ export function ShareFrameSheet({
               </div>
             ) : (
               <div className="flex flex-col gap-6">
-                {isExternalInviteOff && (
+                {!canInviteExternal && (
                   <ContentMessage
                     icon={InfoCircle}
                     variant="info"
@@ -431,7 +355,7 @@ export function ShareFrameSheet({
                       className="flex flex-col gap-2"
                       onSubmit={handleSubmit(onInviteSubmit)}
                     >
-                      <Label htmlFor="email-invite">{`Invite ${isExternalInviteOff ? "workspace members " : ""}by email`}</Label>
+                      <Label htmlFor="email-invite">{`Invite ${!canInviteExternal ? "workspace members " : ""}by email`}</Label>
                       <div className="flex items-start gap-2">
                         <div className="flex-1">
                           <Input
