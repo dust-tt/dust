@@ -470,11 +470,11 @@ function* handleContentBlockStop(
   stateContainer.state = null;
 }
 
-// StatsD tags for the tool search counter, derived from this client's metadata.
+// Keep the legacy router aligned with model_constructors tool-search tags.
 function toolSearchTags(metadata: LLMClientMetadata): string[] {
   return [
-    `client_id:${metadata.clientId}`,
-    `inference_provider:${metadata.inferenceProvider}`,
+    `provider_id:${metadata.clientId}`,
+    `api:${metadata.inferenceProvider}`,
     `model_id:${metadata.modelId}`,
   ];
 }
