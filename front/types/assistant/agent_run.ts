@@ -5,9 +5,14 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
+import { getWorkspaceFilter, legacyModelIdToModel } from "@app/lib/api/llm";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { getStreamEndpoints } from "@app/lib/llms/stream";
+import {
+  isCreditPricedPlanPrefix,
+  isEnterpriseOrDust,
+} from "@app/lib/plans/plan_codes";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import type {
@@ -26,11 +31,11 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
 import { isGlobalAgentId } from "./assistant";
 import { ConversationError } from "./conversation";
-import type { ModelConfigurationType } from "./models/types";
 
 /**
  * Error types for getAgentLoopData that indicate deleted or unavailable resources.
@@ -339,12 +344,32 @@ export async function getAgentLoopDataWithAuth(
     ...resolvedModel,
   };
 
-  const modelConfig = getSupportedModelConfig(resolvedModelConfig);
+  // Select the endpoint by its router-native `model` id (bare `Model`), 1-to-1
+  // with legacy model selection.
+  const model = legacyModelIdToModel(resolvedModelConfig.modelId);
 
-  if (!modelConfig) {
+  const workspaceFilters = await getWorkspaceFilter(auth);
+  const plan = auth.getNonNullablePlan();
+  const endpoints = model
+    ? getStreamEndpoints(
+        {
+          featureFlags: await getFeatureFlags(auth),
+          isEnterprise: isEnterpriseOrDust(plan),
+          isCreditPriced: isCreditPricedPlanPrefix(plan.code),
+        },
+        {
+          ...workspaceFilters,
+          model: { eq: model },
+        }
+      )
+    : [];
+
+  const endpoint = endpoints[0];
+
+  if (!endpoint) {
     return new Err(
       new Error(
-        `The model you selected does not support multi-actions ${resolvedModelConfig.modelId}.`
+        `The selected model was not found ${resolvedModelConfig.modelId}.`
       )
     );
   }
@@ -353,11 +378,11 @@ export async function getAgentLoopDataWithAuth(
     agentConfiguration: agentConfigurationWithoutModel,
     model: {
       // This contains general configuration for the model, like the provider and model ID.
-      ...modelConfig,
+      ...endpoint.modelConfig,
       // This contains specific configuration for reasoning effort, temperature, etc.
       ...resolvedModelConfig,
       // Cleanup unsupported settings
-      ...(modelConfig?.supportsResponseFormat
+      ...(endpoint.modelConfig.supportsResponseFormat
         ? { responseFormat: resolvedModelConfig.responseFormat }
         : { responseFormat: undefined }),
     },
