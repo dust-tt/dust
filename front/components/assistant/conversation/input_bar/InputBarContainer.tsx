@@ -822,6 +822,31 @@ const InputBarContainer = ({
     setOverlayOpen("toolbar", isToolbarOpen);
   }, [isToolbarOpen, setOverlayOpen]);
 
+  // Stable references so InputBarButtons's React.memo isn't defeated by a
+  // fresh closure on every keystroke (handleEditorUpdate re-renders this
+  // component on every editor update, e.g. for the mic/send toggle).
+  const handleAgentRemove = useCallback(() => {
+    setSelectedSingleAgent(null);
+  }, [setSelectedSingleAgent]);
+  const handleAgentPickerOpenChange = useCallback(
+    (open: boolean) => {
+      setOverlayOpen("agent-picker", open);
+    },
+    [setOverlayOpen]
+  );
+  const handleCapabilitiesPickerOpenChange = useCallback(
+    (open: boolean) => {
+      setOverlayOpen("capabilities-picker", open);
+    },
+    [setOverlayOpen]
+  );
+  const handleAttachmentsPickerOpenChange = useCallback(
+    (open: boolean) => {
+      setOverlayOpen("attachments-picker", open);
+    },
+    [setOverlayOpen]
+  );
+
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor
     const currentPastedIds = new Set(
@@ -1013,7 +1038,9 @@ const InputBarContainer = ({
 
     // Sync: when a dataSourceLink chip is deleted from the editor, remove
     // the corresponding attached node so the attachment card disappears.
-    if (currentEditor) {
+    // Skip the full-document walk when there's nothing to unselect — this
+    // runs on every keystroke, and most messages have no attachments.
+    if (currentEditor && attachedNodesRef.current.length > 0) {
       const chipNodeIds = new Set<string>();
       currentEditor.state.doc.descendants((node) => {
         if (node.type.name === "dataSourceLink" && node.attrs?.nodeId) {
@@ -1707,7 +1734,7 @@ const InputBarContainer = ({
                       isDefaultAgentUnavailable={isDefaultAgentUnavailable}
                       isInputDisabled={disableInput}
                       lastRequestedModel={lastRequestedModel}
-                      onAgentRemove={() => setSelectedSingleAgent(null)}
+                      onAgentRemove={handleAgentRemove}
                       onMCPServerViewSelect={onMCPServerViewSelect}
                       onModelSelectionChange={onModelSelectionChange}
                       onNodeSelect={onNodeSelect}
@@ -1720,14 +1747,12 @@ const InputBarContainer = ({
                       onSelectedSpaceIdsChange={setSelectedSpaceIds}
                       space={space}
                       user={user}
-                      onAgentPickerOpenChange={(open) =>
-                        setOverlayOpen("agent-picker", open)
+                      onAgentPickerOpenChange={handleAgentPickerOpenChange}
+                      onCapabilitiesPickerOpenChange={
+                        handleCapabilitiesPickerOpenChange
                       }
-                      onCapabilitiesPickerOpenChange={(open) =>
-                        setOverlayOpen("capabilities-picker", open)
-                      }
-                      onAttachmentsPickerOpenChange={(open) =>
-                        setOverlayOpen("attachments-picker", open)
+                      onAttachmentsPickerOpenChange={
+                        handleAttachmentsPickerOpenChange
                       }
                     />
                   </div>
