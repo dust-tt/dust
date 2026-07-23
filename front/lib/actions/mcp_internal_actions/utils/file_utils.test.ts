@@ -1,4 +1,8 @@
-import type { ToolContext } from "@app/lib/actions/types";
+import {
+  type AgentLoopRunContext,
+  isAgentLoopRunContext,
+  type ToolContext,
+} from "@app/lib/actions/types";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -379,41 +383,6 @@ describe("resolveConversationFileRef", () => {
       expect(await result.value.getSignedUrl()).toBe(signedUrl);
     });
 
-    it("does not require toolContext", async () => {
-      const { authenticator: auth } = await createResourceTest({
-        role: "admin",
-      });
-
-      const conversation = await createConversation(auth, {
-        title: "Test",
-        visibility: "unlisted",
-        spaceId: null,
-      });
-
-      mockFromScopedPath.mockResolvedValue(
-        new Ok({
-          stat: vi
-            .fn()
-            .mockResolvedValue(
-              new Ok({ contentType: "text/plain", sizeBytes: 10 })
-            ),
-          read: vi.fn().mockResolvedValue(new Ok(makeReadableStream("hello"))),
-          getDownloadUrl: vi
-            .fn()
-            .mockResolvedValue(new Ok("https://example.com/url")),
-        })
-      );
-
-      // Pass undefined — should succeed for canonical paths.
-      const result = await resolveConversationFileRef(
-        auth,
-        `conversation-${conversation.sId}/file.txt`,
-        undefined
-      );
-
-      expect(result.isOk()).toBe(true);
-    });
-
     it("returns Err when the file is not found", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",
@@ -507,7 +476,7 @@ describe("resolveConversationFileRef", () => {
       useCaseMetadata: { conversationId: conversationA.sId },
     });
 
-    // But toolContext points to conversation B.
+    // But the run context points to conversation B.
     const result = await resolveConversationFileRef(
       auth,
       file.sId,
