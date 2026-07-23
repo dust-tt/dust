@@ -186,6 +186,7 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages/:mId/reactions"
       status: "created",
       content: null,
       workspaceId: workspace.id,
+      conversationId: conversation.id,
     });
     const compactionMsg = await MessageModel.create({
       sId: generateRandomModelSId(),

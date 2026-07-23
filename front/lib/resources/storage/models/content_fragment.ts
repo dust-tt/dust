@@ -149,15 +149,6 @@ ContentFragmentModel.init(
         name: "content_fragments_node_dsv_id",
       },
       { fields: ["workspaceId", "conversationId"], concurrently: true },
-      // Backfill scaffolding: serves the keyset probe on rows not yet backfilled. Dropped with
-      // the sibling tables' indexes once their conversationId flips NOT NULL (this one stays
-      // nullable but is no longer backfill-probed).
-      {
-        fields: ["id"],
-        where: { conversationId: null },
-        name: "content_fragments_id_conversation_id_null",
-        concurrently: true,
-      },
     ],
   }
 );

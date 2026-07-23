@@ -307,8 +307,8 @@ export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
 
   declare userId: ForeignKey<UserModel["id"]> | null;
   // Denormalized from messages for conversation-scoped fetches (plain column, no FK — the value
-  // is derived from messages at write time). Nullable until backfilled.
-  declare conversationId: CreationOptional<ModelId | null>;
+  // is derived from messages at write time).
+  declare conversationId: ModelId;
 
   declare user?: NonAttribute<UserModel>;
   declare key?: NonAttribute<KeyModel>;
@@ -407,7 +407,7 @@ UserMessageModel.init(
     },
     conversationId: {
       type: DataTypes.BIGINT,
-      allowNull: true,
+      allowNull: false,
     },
   },
   {
@@ -417,14 +417,6 @@ UserMessageModel.init(
       { fields: ["userContextOrigin"], concurrently: true },
       { fields: ["workspaceId"], concurrently: true },
       { fields: ["workspaceId", "conversationId"], concurrently: true },
-      // Backfill scaffolding: serves the keyset probe on rows not yet backfilled. Dropped once
-      // conversationId flips NOT NULL.
-      {
-        fields: ["id"],
-        where: { conversationId: null },
-        name: "user_messages_id_conversation_id_null",
-        concurrently: true,
-      },
       { fields: ["userContextApiKeyId"], concurrently: true },
       {
         fields: ["workspaceId", "agenticOriginMessageId"],
@@ -507,8 +499,8 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare modelResolutionMethod: ModelResolutionMethodType | null;
 
   // Denormalized from messages for conversation-scoped fetches (plain column, no FK — the value
-  // is derived from messages at write time). Nullable until backfilled.
-  declare conversationId: CreationOptional<ModelId | null>;
+  // is derived from messages at write time).
+  declare conversationId: ModelId;
 }
 
 AgentMessageModel.init(
@@ -624,7 +616,7 @@ AgentMessageModel.init(
     },
     conversationId: {
       type: DataTypes.BIGINT,
-      allowNull: true,
+      allowNull: false,
     },
   },
   {
@@ -633,14 +625,6 @@ AgentMessageModel.init(
     indexes: [
       { fields: ["workspaceId"], concurrently: true },
       { fields: ["workspaceId", "conversationId"], concurrently: true },
-      // Backfill scaffolding: serves the keyset probe on rows not yet backfilled. Dropped once
-      // conversationId flips NOT NULL.
-      {
-        fields: ["id"],
-        where: { conversationId: null },
-        name: "agent_messages_id_conversation_id_null",
-        concurrently: true,
-      },
       // Index for agent-based data retention queries.
       { fields: ["workspaceId", "agentConfigurationId"], concurrently: true },
     ],
@@ -774,8 +758,8 @@ export class CompactionMessageModel extends WorkspaceAwareModel<CompactionMessag
   declare content: string | null;
 
   // Denormalized from messages for conversation-scoped fetches (the conversation this compaction
-  // message belongs to — sourceConversationId is the compacted one). Nullable until backfilled.
-  declare conversationId: CreationOptional<ModelId | null>;
+  // message belongs to — sourceConversationId is the compacted one).
+  declare conversationId: ModelId;
 }
 
 CompactionMessageModel.init(
@@ -809,7 +793,7 @@ CompactionMessageModel.init(
     },
     conversationId: {
       type: DataTypes.BIGINT,
-      allowNull: true,
+      allowNull: false,
     },
   },
   {
@@ -821,14 +805,6 @@ CompactionMessageModel.init(
         concurrently: true,
       },
       { fields: ["workspaceId", "conversationId"], concurrently: true },
-      // Backfill scaffolding: serves the keyset probe on rows not yet backfilled. Dropped once
-      // conversationId flips NOT NULL.
-      {
-        fields: ["id"],
-        where: { conversationId: null },
-        name: "compaction_messages_id_conversation_id_null",
-        concurrently: true,
-      },
     ],
   }
 );
