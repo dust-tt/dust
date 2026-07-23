@@ -376,24 +376,20 @@ describe("selected conversation Spaces", () => {
     const secondSpace = await memberRestrictedSpace();
     const conv = await conversation();
 
-    // Snapshot taken before the first add, as an overlapping request would hold.
-    const staleConversation = {
-      ...conv,
-      requestedSpaceIds: [...conv.requestedSpaceIds],
-    };
-
     unwrapResult(
       await addSelectedConversationSpaces(auth, {
-        conversation: conv,
+        conversation: await refetchConversation(auth, conv.sId),
         enforceCreatorOnly: false,
         origin: "input_bar",
         spaceIds: [firstSpace.sId],
       })
     );
 
+    // `conv` still carries its pre-add `requestedSpaceIds`: the stale snapshot an overlapping
+    // request would hold.
     const staleResult = unwrapResult(
       await addSelectedConversationSpaces(auth, {
-        conversation: staleConversation,
+        conversation: conv,
         enforceCreatorOnly: false,
         origin: "input_bar",
         spaceIds: [secondSpace.sId],
