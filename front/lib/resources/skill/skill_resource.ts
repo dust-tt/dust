@@ -87,10 +87,7 @@ import type {
   SkillType,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
-import {
-  availabilityFromIsDefault,
-  isDefaultFromAvailability,
-} from "@app/types/assistant/skill_configuration";
+import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 import { SKILL_GROUP_PREFIX } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -1439,7 +1436,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       limit,
       globalSpaceOnly,
       onlyCustom,
-      isDefault,
+      availability,
       updatedAfter,
       reinforcementNotOff,
       withInstructions = true,
@@ -1450,7 +1447,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       limit?: number;
       globalSpaceOnly?: boolean;
       onlyCustom?: boolean;
-      isDefault?: boolean;
+      availability?: SkillAvailability | SkillAvailability[];
       updatedAfter?: Date;
       reinforcementNotOff?: boolean;
       withInstructions?: boolean;
@@ -1461,10 +1458,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const skills = await this.baseFetch(auth, {
       where: {
         status,
-        // isDefault is a legacy alias kept at the interface level; the column is availability.
-        ...(isDefault !== undefined
-          ? { availability: availabilityFromIsDefault(isDefault) }
-          : {}),
+        ...(availability !== undefined ? { availability } : {}),
         ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
         ...(reinforcementNotOff ? { reinforcement: { [Op.ne]: "off" } } : {}),
       },

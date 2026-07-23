@@ -40,6 +40,10 @@ const SkillStatusSchema = z
   .enum(["active", "archived", "suggested"])
   .optional();
 
+const SkillAvailabilitiesSchema = z
+  .array(z.enum(SKILL_AVAILABILITIES))
+  .optional();
+
 // Request body schema for POST.
 const PostSkillRequestBodySchema = z.intersection(
   z.object({
@@ -125,7 +129,10 @@ app.get(
     const status = ctx.req.query("status");
     const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
     const onlyCustom = ctx.req.query("onlyCustom");
+    // @deprecated Use availability instead. Kept while old clients still send it.
     const isDefault = ctx.req.query("isDefault");
+    // Repeatable: ?availability=workspace_users&availability=users_and_agents.
+    const availabilityParams = ctx.req.queries("availability");
 
     const statusValidation = SkillStatusSchema.safeParse(status);
     if (!statusValidation.success) {
@@ -139,11 +146,30 @@ app.get(
     }
     const skillStatus = statusValidation.data;
 
+    const availabilityValidation =
+      SkillAvailabilitiesSchema.safeParse(availabilityParams);
+    if (!availabilityValidation.success) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid availability: ${availabilityParams}. Expected "editors", "workspace_users", or "users_and_agents".`,
+        },
+      });
+    }
+    // An explicit availability takes priority over the deprecated isDefault alias.
+    const availability =
+      availabilityValidation.data && availabilityValidation.data.length > 0
+        ? availabilityValidation.data
+        : isDefault === "true"
+          ? ["users_and_agents" as const]
+          : undefined;
+
     const allSkills = await SkillResource.listByWorkspace(auth, {
       status: skillStatus,
       globalSpaceOnly: globalSpaceOnly === "true",
       onlyCustom: onlyCustom === "true",
-      isDefault: isDefault === "true" ? true : undefined,
+      availability,
       withInstructions: false,
       withTools: false,
       withFileAttachments: false,
