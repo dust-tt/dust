@@ -64,7 +64,9 @@ function getScopeOptions(isExternalInviteOff: boolean): {
   return [
     {
       icon: Lock01,
-      label: isExternalInviteOff ? "Invited workspace members only" : "Invite only",
+      label: isExternalInviteOff
+        ? "Invited workspace members only"
+        : "Invite only",
       description: isExternalInviteOff
         ? "Only the workspace members you invite"
         : "Only the people you invite",
@@ -184,11 +186,11 @@ export function ShareFrameSheet({
   const viewerFiles = fileShare?.viewerFiles ?? [];
 
   const externalSharingDisabledByPolicy =
-  owner.sharingPolicy === "workspace_only";
+    owner.sharingPolicy === "workspace_only";
 
   // When the workspace policy forbids external sharing, we can skip the permission fetch entirely.
   const { hasPermission } = useWorkspacePermissions(owner, {
-    disabled: externalSharingDisabledByPolicy,  
+    disabled: externalSharingDisabledByPolicy,
   });
 
   // Inviting people outside the workspace requires both the workspace policy to allow it and the
