@@ -295,6 +295,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to admin governance features, including assigning the business_admin role from the UI",
     stage: "dust_only",
   },
+  admin_governance_skill_publication: {
+    description:
+      "Admin Governance: govern skill publication. Shows the skill state (availability) dropdown in the UI, defaults new skills to unpublished (editors-only), and allows unpublishing a skill.",
+    stage: "dust_only",
+  },
   use_new_llm_router: {
     description: "Use the new LLM router for model selection and routing",
     stage: "dust_only",
