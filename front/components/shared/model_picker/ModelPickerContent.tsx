@@ -1,44 +1,38 @@
-import { ModelPickerMoreModels } from "@app/components/assistant/conversation/input_bar/ModelPickerMoreModels";
-import { ModelPickerSelectionIndicator } from "@app/components/assistant/conversation/input_bar/ModelPickerSelectionIndicator";
+import { ModelPickerMoreModels } from "@app/components/shared/model_picker/ModelPickerMoreModels";
+import { ModelPickerSelectionIndicator } from "@app/components/shared/model_picker/ModelPickerSelectionIndicator";
 import type {
   MakerGroup,
   ModelTierId,
   Selection,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+} from "@app/components/shared/model_picker/modelPickerUtils";
 import {
   isTierDisplayed,
+  MODEL_TIER_ICONS,
   MODEL_TIERS,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+} from "@app/components/shared/model_picker/modelPickerUtils";
 import type {
   ModelConfigurationType,
   ModelMakerIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import {
-  BarFull,
-  BarHalf,
-  BarLow,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
 
-// Tier trigger icons: rising bars from Fast to Complex.
-const TIER_ICON: Record<ModelTierId, ComponentType> = {
-  fast: BarLow,
-  standard: BarHalf,
-  complex: BarFull,
-};
-
-interface ModelPickerContentProps {
-  side: "top" | "bottom";
+interface ModelPickerItemsProps {
   // Vetoes the interaction-outside dismissal that a model/effort pick triggers
   // on the open submenus, so they stay reachable after a pick.
   shouldBlockDismiss: () => boolean;
   shown: Selection;
-  agentDefault: Selection;
-  canRevert: boolean;
+  // The agent's own default, when there is one to compare against (input bar).
+  // Absent in the agent builder, which edits the default itself: no "(Default)"
+  // suffix is shown then.
+  agentDefault?: Selection;
+  // Whether the active selection differs from the agent default and can be
+  // reverted. Always false in the agent builder (no default to revert to).
+  canRevert?: boolean;
   makerGroups: MakerGroup[];
   allModels: ModelConfigurationType[];
   search: string;
@@ -51,15 +45,18 @@ interface ModelPickerContentProps {
   onSelectTier: (tierId: ModelTierId) => void;
   onSelectModel: (model: ModelConfigurationType) => void;
   onChangeEffort: (effort: ReasoningEffort) => void;
-  onRevert: () => void;
+  onRevert?: () => void;
 }
 
-export function ModelPickerContent({
-  side,
+const noop = () => {};
+
+// The picker body — tier rows + "More models" — without the surrounding
+// DropdownMenuContent, so it can be embedded in another menu (agent builder).
+export function ModelPickerItems({
   shouldBlockDismiss,
   shown,
   agentDefault,
-  canRevert,
+  canRevert = false,
   makerGroups,
   allModels,
   search,
@@ -73,22 +70,24 @@ export function ModelPickerContent({
   onSelectModel,
   onChangeEffort,
   onRevert,
-}: ModelPickerContentProps) {
+}: ModelPickerItemsProps) {
   return (
-    <DropdownMenuContent className="w-72" align="start" side={side}>
+    <>
       {MODEL_TIERS.map((tier) => {
         const isSelected = isTierDisplayed(tier.id, shown.display);
-        const isDefault = isTierDisplayed(tier.id, agentDefault.display);
+        const isDefault = agentDefault
+          ? isTierDisplayed(tier.id, agentDefault.display)
+          : false;
         return (
           <DropdownMenuItem
             key={tier.id}
-            icon={TIER_ICON[tier.id]}
+            icon={MODEL_TIER_ICONS[tier.id]}
             label={`${tier.name}${isDefault ? " (Default)" : ""}`}
             endComponent={
               isSelected ? (
                 <ModelPickerSelectionIndicator
                   canRevert={canRevert}
-                  onRevert={onRevert}
+                  onRevert={onRevert ?? noop}
                 />
               ) : (
                 <span className="whitespace-nowrap text-xs text-muted-foreground">
@@ -122,6 +121,21 @@ export function ModelPickerContent({
         onChangeEffort={onChangeEffort}
         onRevert={onRevert}
       />
+    </>
+  );
+}
+
+interface ModelPickerContentProps extends ModelPickerItemsProps {
+  side: "top" | "bottom";
+}
+
+export function ModelPickerContent({
+  side,
+  ...items
+}: ModelPickerContentProps) {
+  return (
+    <DropdownMenuContent className="w-72" align="start" side={side}>
+      <ModelPickerItems {...items} />
     </DropdownMenuContent>
   );
 }

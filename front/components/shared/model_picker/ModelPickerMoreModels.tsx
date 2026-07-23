@@ -1,15 +1,15 @@
-import { ModelPickerModelRow } from "@app/components/assistant/conversation/input_bar/ModelPickerModelRow";
+import { getModelMakerLogo } from "@app/components/providers/types";
+import { ModelPickerModelRow } from "@app/components/shared/model_picker/ModelPickerModelRow";
 import type {
   MakerGroup,
   Selection,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+} from "@app/components/shared/model_picker/modelPickerUtils";
 import {
   getEffortStops,
   getInitialEffort,
   getModelKey,
   isModelSelection,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { getModelMakerLogo } from "@app/components/providers/types";
+} from "@app/components/shared/model_picker/modelPickerUtils";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   getModelMaker,
@@ -37,9 +37,11 @@ interface ModelPickerMoreModelsProps {
   makerGroups: MakerGroup[];
   allModels: ModelConfigurationType[];
   shown: Selection;
-  agentDefault: Selection;
+  // The agent's own default, when there is one to compare against (input bar).
+  // Absent in the agent builder, which edits the default itself.
+  agentDefault?: Selection;
   // Whether the active selection differs from the agent default.
-  canRevert: boolean;
+  canRevert?: boolean;
   search: string;
   onSearchChange: (value: string) => void;
   // On width-constrained clients (mobile, extension) there are no submenus:
@@ -51,7 +53,7 @@ interface ModelPickerMoreModelsProps {
   onToggleMaker: (makerId: ModelMakerIdType) => void;
   onSelectModel: (model: ModelConfigurationType) => void;
   onChangeEffort: (effort: ReasoningEffort) => void;
-  onRevert: () => void;
+  onRevert?: () => void;
   // Vetoes the interaction-outside dismissal that a model/effort pick triggers
   // on the open submenus, so they stay reachable after a pick.
   shouldBlockDismiss: () => boolean;
@@ -98,7 +100,9 @@ export function ModelPickerMoreModels({
     showMakerIcon: boolean
   ) => {
     const isSelected = isModelSelection(model, shown.display);
-    const isDefault = isModelSelection(model, agentDefault.display);
+    const isDefault = agentDefault
+      ? isModelSelection(model, agentDefault.display)
+      : false;
     const effort =
       isSelected && shown.display.kind === "model"
         ? shown.display.effort

@@ -3,14 +3,32 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { ModelSelectionSubmenu } from "@app/components/agent_builder/instructions/ModelSelectionSubmenu";
 import { ReasoningEffortSubmenu } from "@app/components/agent_builder/instructions/ReasoningEffortSubmenu";
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
+import { ModelPickerItems } from "@app/components/shared/model_picker/ModelPickerContent";
+import type {
+  ModelTierId,
+  Selection,
+} from "@app/components/shared/model_picker/modelPickerUtils";
+import {
+  getInitialEffort,
+  getModelTier,
+  groupModelsByMaker,
+  resolveAgentDefault,
+} from "@app/components/shared/model_picker/modelPickerUtils";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useClientType } from "@app/lib/context/clientType";
 import { useModels } from "@app/lib/swr/models";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { isSupportingResponseFormat } from "@app/types/assistant/assistant";
-import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
+import type {
+  ModelConfigurationType,
+  ModelMakerIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import {
   Button,
-  Chip,
   cn,
   Dialog,
   DialogContainer,
@@ -26,10 +44,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   File04,
-  SliderToggle,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useMemo } from "react";
-import { useController } from "react-hook-form";
+import React, { useMemo, useRef, useState } from "react";
+import { useController, useWatch } from "react-hook-form";
 
 function getResponseFormatError(value: string): string | null {
   if (value.trim() === "") {
@@ -61,14 +78,13 @@ const RESPONSE_FORMAT_PLACEHOLDER =
 export function AdvancedSettings() {
   const { isDark } = useTheme();
   const { owner } = useAgentBuilderContext();
-  const { models } = useModels({ owner });
+  const { hasFeature } = useFeatureFlags();
+  const hasModelsPicker = hasFeature("models_picker");
+  const isMobile = useIsMobile();
+  const clientType = useClientType();
+  const isWidthConstrained = isMobile || clientType === "extension";
 
-  const [autoModel, otherModels] = useMemo(() => {
-    return [
-      models.find((model) => model.modelId === AUTO_MODEL_ID),
-      models.filter((model) => model.modelId !== AUTO_MODEL_ID),
-    ];
-  }, [models]);
+  const { models } = useModels({ owner });
 
   const { field: modelSettingsField } = useController<
     AgentBuilderFormData,
@@ -76,44 +92,102 @@ export function AdvancedSettings() {
   >({
     name: "generationSettings.modelSettings",
   });
+  const { field: reasoningEffortField } = useController<
+    AgentBuilderFormData,
+    "generationSettings.reasoningEffort"
+  >({
+    name: "generationSettings.reasoningEffort",
+  });
   const { field: responseFormatField } = useController<
     AgentBuilderFormData,
     "generationSettings.responseFormat"
   >({
     name: "generationSettings.responseFormat",
   });
+
+  const modelSettings = useWatch<
+    AgentBuilderFormData,
+    "generationSettings.modelSettings"
+  >({ name: "generationSettings.modelSettings" });
+  const reasoningEffort = useWatch<
+    AgentBuilderFormData,
+    "generationSettings.reasoningEffort"
+  >({ name: "generationSettings.reasoningEffort" });
+  const temperature = useWatch<
+    AgentBuilderFormData,
+    "generationSettings.temperature"
+  >({ name: "generationSettings.temperature" });
+
   const [isResponseFormatDialogOpen, setIsResponseFormatDialogOpen] =
     React.useState(false);
   const [tempResponseFormat, setTempResponseFormat] = React.useState<
     string | null
   >(null);
 
-  const [modelSettingsBeforeAuto, setModelSettingsBeforeAuto] = React.useState<
-    AgentBuilderFormData["generationSettings"]["modelSettings"] | null
-  >(null);
-
-  const isAutoModelSelected =
-    modelSettingsField.value?.modelId === AUTO_MODEL_ID || false;
-
-  const handleAutoModelSelection = useCallback(
-    (e: React.MouseEvent<HTMLElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (!isAutoModelSelected) {
-        setModelSettingsBeforeAuto(modelSettingsField.value);
-        modelSettingsField.onChange({ ...autoModel });
-      } else {
-        modelSettingsField.onChange(modelSettingsBeforeAuto ?? null);
-      }
-    },
-    [
-      modelSettingsField,
-      modelSettingsBeforeAuto,
-      autoModel,
-      isAutoModelSelected,
-    ]
+  // Model picker state (mirrors InputBarModelPicker), scoped to the dropdown.
+  const [search, setSearch] = useState("");
+  const [moreModelsExpanded, setMoreModelsExpanded] = useState(false);
+  const [expandedMaker, setExpandedMaker] = useState<ModelMakerIdType | null>(
+    null
   );
+
+  // Concrete, selectable models (meta-models surface as tiers instead).
+  const allModels = useMemo<ModelConfigurationType[]>(
+    () =>
+      models.filter(
+        (model) => !isModelStreamId(model.modelId) && model.isSelectable
+      ),
+    [models]
+  );
+  const makerGroups = useMemo(() => groupModelsByMaker(allModels), [allModels]);
+
+  // The picker's current selection, derived from the form's model settings.
+  const shown = useMemo<Selection>(
+    () =>
+      resolveAgentDefault({
+        agentModel: modelSettings
+          ? {
+              providerId: modelSettings.providerId,
+              modelId: modelSettings.modelId,
+              temperature,
+              reasoningEffort: reasoningEffort ?? undefined,
+            }
+          : null,
+        models,
+      }),
+    [modelSettings, reasoningEffort, temperature, models]
+  );
+
+  // Picking a concrete model (or nudging its effort slider) must keep the menu
+  // and its open submenus visible; the click briefly moves focus/pointer in a
+  // way Radix treats as an interaction-outside. Record the pick time and veto
+  // the close that immediately follows it (same pattern as InputBarModelPicker).
+  const lastModelInteractionAtMsRef = useRef(0);
+  const shouldBlockDismiss = () =>
+    Date.now() - lastModelInteractionAtMsRef.current < 300;
+
+  const onSelectTier = (tierId: ModelTierId) => {
+    const { metaModelId } = getModelTier(tierId);
+    modelSettingsField.onChange({
+      modelId: metaModelId,
+      providerId: metaModelId,
+    });
+    reasoningEffortField.onChange("none");
+  };
+
+  const onSelectModel = (model: ModelConfigurationType) => {
+    lastModelInteractionAtMsRef.current = Date.now();
+    modelSettingsField.onChange({
+      modelId: model.modelId,
+      providerId: model.providerId,
+    });
+    reasoningEffortField.onChange(getInitialEffort(model));
+  };
+
+  const onChangeEffort = (effort: ReasoningEffort) => {
+    lastModelInteractionAtMsRef.current = Date.now();
+    reasoningEffortField.onChange(effort);
+  };
 
   if (!models) {
     return null;
@@ -125,39 +199,48 @@ export function AdvancedSettings() {
   const supportsResponseFormat =
     modelSettingsField.value &&
     isSupportingResponseFormat(modelSettingsField.value.modelId);
+
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button label="Advanced" variant="outline" size="sm" isSelect />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
+        <DropdownMenuContent
+          align="start"
+          onInteractOutside={(e) => {
+            if (shouldBlockDismiss()) {
+              e.preventDefault();
+            }
+          }}
+        >
           <DropdownMenuLabel label="Model selection" />
-          {autoModel && (
-            <DropdownMenuItem onClick={handleAutoModelSelection}>
-              <div className="flex w-full items-center gap-x-2.5">
-                <div className="flex grow flex-col">
-                  <span className="flex items-center gap-2">
-                    Auto
-                    <Chip size="xs" color="highlight" label="Recommended" />
-                  </span>
-                  <span className="text-xs font-normal text-muted-foreground">
-                    Switches model depending on current availability for
-                    balanced performance.
-                  </span>
-                </div>
-                <SliderToggle
-                  selected={isAutoModelSelected}
-                  onClick={handleAutoModelSelection}
-                />
-              </div>
-            </DropdownMenuItem>
-          )}
 
-          {!isAutoModelSelected && (
+          {hasModelsPicker ? (
+            <ModelPickerItems
+              shouldBlockDismiss={shouldBlockDismiss}
+              shown={shown}
+              makerGroups={makerGroups}
+              allModels={allModels}
+              search={search}
+              onSearchChange={setSearch}
+              isWidthConstrained={isWidthConstrained}
+              moreModelsExpanded={moreModelsExpanded}
+              onToggleMoreModels={() => setMoreModelsExpanded((v) => !v)}
+              expandedMaker={expandedMaker}
+              onToggleMaker={(makerId) =>
+                setExpandedMaker((current) =>
+                  current === makerId ? null : makerId
+                )
+              }
+              onSelectTier={onSelectTier}
+              onSelectModel={onSelectModel}
+              onChangeEffort={onChangeEffort}
+            />
+          ) : (
             <>
-              <ModelSelectionSubmenu models={otherModels} />
-              <ReasoningEffortSubmenu models={otherModels} />
+              <ModelSelectionSubmenu models={models} />
+              <ReasoningEffortSubmenu models={models} />
             </>
           )}
 

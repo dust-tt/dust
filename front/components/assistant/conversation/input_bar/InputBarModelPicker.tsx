@@ -1,20 +1,21 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { ModelPickerContent } from "@app/components/assistant/conversation/input_bar/ModelPickerContent";
+import { getModelMakerLogo } from "@app/components/providers/types";
+import { ModelPickerContent } from "@app/components/shared/model_picker/ModelPickerContent";
 import type {
-  MakerGroup,
   ModelTierId,
   Selection,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+} from "@app/components/shared/model_picker/modelPickerUtils";
 import {
   buildModelSelection,
   buildTierSelection,
   getInitialEffort,
   getModelTier,
   getModelWithReasoningEffortLabel,
+  groupModelsByMaker,
   isSameSelection,
+  MODEL_TIER_ICONS,
   resolveShownSelection,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { getModelMakerLogo } from "@app/components/providers/types";
+} from "@app/components/shared/model_picker/modelPickerUtils";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
@@ -30,22 +31,8 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  BarFull,
-  BarHalf,
-  BarLow,
-  Button,
-  DropdownMenu,
-  DropdownMenuTrigger,
-} from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
+import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-
-const TIER_BUTTON_ICON: Record<ModelTierId, ComponentType> = {
-  fast: BarLow,
-  standard: BarHalf,
-  complex: BarFull,
-};
 
 interface InputBarModelPickerProps {
   agentModel: AgentModelConfigurationType | null;
@@ -142,24 +129,7 @@ export function InputBarModelPicker({
     [models]
   );
 
-  // Group models by maker, preserving first-seen order of both makers and
-  // models within each maker.
-  const makerGroups = useMemo<MakerGroup[]>(() => {
-    const groups = new Map<ModelMakerIdType, ModelConfigurationType[]>();
-    for (const model of allModels) {
-      const makerId = getModelMaker(model);
-      const existing = groups.get(makerId);
-      if (existing) {
-        existing.push(model);
-      } else {
-        groups.set(makerId, [model]);
-      }
-    }
-    return Array.from(groups.entries()).map(([makerId, makerModels]) => ({
-      makerId,
-      models: makerModels,
-    }));
-  }, [allModels]);
+  const makerGroups = useMemo(() => groupModelsByMaker(allModels), [allModels]);
 
   const commit = (selection: Selection) => {
     if (isSameSelection(selection.display, agentDefault.display)) {
@@ -223,7 +193,7 @@ export function InputBarModelPicker({
 
   const buttonIcon =
     shown.display.kind === "tier"
-      ? TIER_BUTTON_ICON[shown.display.tierId]
+      ? MODEL_TIER_ICONS[shown.display.tierId]
       : getModelMakerLogo(getModelMaker(shown.display.model), isDark);
 
   const tooltip =
