@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   GithubMonoLogo,
+  Tooltip,
 } from "@dust-tt/sparkle";
 
 interface GitHubConnectionRowProps {
@@ -46,10 +47,15 @@ export function GitHubConnectionRow({
       </div>
       <Chip size="xs" color="success" label="Connected" />
       {connection.connectedBy && (
-        <Avatar
-          size="xxs"
-          name={connection.connectedBy.fullName}
-          visual={connection.connectedBy.imageUrl ?? undefined}
+        <Tooltip
+          label={connection.connectedBy.fullName}
+          trigger={
+            <Avatar
+              size="xxs"
+              name={connection.connectedBy.fullName}
+              visual={connection.connectedBy.imageUrl ?? undefined}
+            />
+          }
         />
       )}
       {isAdmin(owner) && (
