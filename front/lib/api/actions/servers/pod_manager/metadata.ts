@@ -21,6 +21,8 @@ export const SEMANTIC_SEARCH_TOOL_NAME = "semantic_search" as const;
 export const EDIT_INFORMATION_TOOL_NAME = "edit_information" as const;
 export const SET_PINNED_FRAME_TOOL_NAME = "set_pinned_frame" as const;
 export const MOVE_CONVERSATION_TOOL_NAME = "move_conversation" as const;
+export const ADD_MESSAGE_TO_CONVERSATION_TOOL_NAME =
+  "add_message_to_conversation" as const;
 
 export const POD_MANAGER_TOOLS_METADATA = [
   {
@@ -514,7 +516,7 @@ export const POD_MANAGER_TOOLS_METADATA = [
     freeUsage: true,
   },
   {
-    name: "add_message_to_conversation",
+    name: ADD_MESSAGE_TO_CONVERSATION_TOOL_NAME,
     description:
       "Send or post a follow-up user message to an existing conversation " +
       "in this Pod. Default for Pod work: pass an agentName so a Pod agent " +

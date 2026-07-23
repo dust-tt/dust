@@ -8,6 +8,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   isAgentLoopRunContext,
+  isSandboxFunctionRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
 import {
@@ -27,6 +28,7 @@ import {
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import {
+  ADD_MESSAGE_TO_CONVERSATION_TOOL_NAME,
   EDIT_INFORMATION_TOOL_NAME,
   LIST_MEMBERS_TOOL_NAME,
   MOVE_CONVERSATION_TOOL_NAME,
@@ -1644,5 +1646,13 @@ export function createProjectManagerTools(
     },
   };
 
-  return buildTools(POD_MANAGER_TOOLS_METADATA, handlers);
+  const tools = buildTools(POD_MANAGER_TOOLS_METADATA, handlers);
+
+  if (isSandboxFunctionRunContext(toolContext?.runContext)) {
+    return tools.filter(
+      (tool) => tool.name !== ADD_MESSAGE_TO_CONVERSATION_TOOL_NAME
+    );
+  }
+
+  return tools;
 }
