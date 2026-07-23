@@ -33,6 +33,7 @@ import {
   responseToLLMEvents,
   streamLLMEvents,
 } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
+import { getOpenAIPromptCacheKey } from "@app/lib/api/llm/utils/prompt_cache_key";
 import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/api/llm/utils/tool_search";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -146,7 +147,9 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
           ? ["reasoning.encrypted_content"]
           : [],
       tool_choice: toToolOption(specifications, streamParameters),
-      ...(metadata ? { prompt_cache_key: metadata.conversationId } : {}),
+      ...(metadata
+        ? { prompt_cache_key: getOpenAIPromptCacheKey(metadata) }
+        : {}),
     };
   }
 
@@ -185,9 +188,10 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     const lines = Array.from(conversations.entries()).map(
       ([customId, streamParams]) => {
         const body = {
-          ...this.buildRequestPayload(streamParams, {
-            conversationId: customId,
-          }),
+          ...this.buildRequestPayload(streamParams),
+          // Batch inputs do not carry agent configuration metadata, so preserve
+          // the existing per-conversation cache routing for this surface.
+          prompt_cache_key: customId,
           stream: false,
         };
         return JSON.stringify({
