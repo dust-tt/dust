@@ -692,7 +692,7 @@ export async function prepareDeletionActivity({
       [WorkspaceResource.KILL_SWITCH_METADATA_KEY]:
         WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE,
     };
-    const blockResult = await WorkspaceResource.updateMetadata(
+    const blockResult = await WorkspaceResource.updateDeletionMetadata(
       workspace.id,
       metadata,
       transaction
@@ -716,7 +716,7 @@ export async function prepareDeletionActivity({
           metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY] =
             previousKillSwitch;
         }
-        const unblockResult = await WorkspaceResource.updateMetadata(
+        const unblockResult = await WorkspaceResource.updateDeletionMetadata(
           workspace.id,
           metadata,
           transaction

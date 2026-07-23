@@ -24,6 +24,7 @@ import {
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { terminateAllAgentLoopWorkflowsForConversation } from "@app/temporal/agent_loop/terminate";
@@ -333,10 +334,10 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   static async fetchForUpdate(
-    id: ModelId,
+    workspaceModelId: ModelId,
     transaction: Transaction
   ): Promise<WorkspaceResource | null> {
-    const workspace = await this.model.findByPk(id, {
+    const workspace = await this.model.findByPk(workspaceModelId, {
       transaction,
       lock: transaction.LOCK.UPDATE,
     });
@@ -764,11 +765,46 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   static async updateMetadata(
-    id: ModelId,
-    metadata: Record<string, string | number | boolean | object> | null,
-    transaction?: Transaction
+    workspaceModelId: ModelId,
+    metadata: Record<string, string | number | boolean | object> | null
   ): Promise<Result<void, Error>> {
-    return this.updateByModelIdAndCheckExistence(id, { metadata }, transaction);
+    return withTransaction(async (transaction) => {
+      // Metadata updates may use stale snapshots, so serialize them to preserve deletion guards.
+      const workspace = await this.fetchForUpdate(
+        workspaceModelId,
+        transaction
+      );
+      if (!workspace) {
+        return new Err(new Error("Workspace not found."));
+      }
+
+      const deletionState =
+        workspace.metadata?.[WorkspaceResource.DELETION_METADATA_KEY];
+      const nextMetadata =
+        deletionState === undefined
+          ? metadata
+          : {
+              ...(metadata ?? {}),
+              [WorkspaceResource.DELETION_METADATA_KEY]: deletionState,
+              [WorkspaceResource.KILL_SWITCH_METADATA_KEY]:
+                WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE,
+            };
+
+      await workspace.update({ metadata: nextMetadata }, transaction);
+      return new Ok(undefined);
+    });
+  }
+
+  static async updateDeletionMetadata(
+    workspaceModelId: ModelId,
+    metadata: Record<string, string | number | boolean | object>,
+    transaction: Transaction
+  ): Promise<Result<void, Error>> {
+    return this.updateByModelIdAndCheckExistence(
+      workspaceModelId,
+      { metadata },
+      transaction
+    );
   }
 
   async removeMetadataKeys(keys: string[]): Promise<Result<void, Error>> {

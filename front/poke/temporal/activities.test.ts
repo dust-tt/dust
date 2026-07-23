@@ -125,33 +125,25 @@ describe("prepareDeletionActivity", () => {
     expect(reloadedWorkspace?.metadata?.deletionInProgress).toBeUndefined();
   });
 
-  it("reapplies the workspace block when preparation is retried", async () => {
+  it("preserves deletion state across workspace metadata updates", async () => {
     const workspace = await WorkspaceFactory.byok();
 
-    const firstPreparation = await prepareDeletionActivity({
+    const preparation = await prepareDeletionActivity({
       deleteDataSources: true,
       workspaceId: workspace.sId,
     });
-    expect(firstPreparation.canDelete).toBe(true);
+    expect(preparation.canDelete).toBe(true);
 
-    const preparedWorkspace = await WorkspaceResource.fetchById(workspace.sId);
-    expect(preparedWorkspace).not.toBeNull();
-    const metadata = { ...(preparedWorkspace?.metadata ?? {}) };
-    delete metadata.killSwitched;
-    const updateResult = await WorkspaceResource.updateMetadata(
-      workspace.id,
-      metadata
-    );
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      ...(workspace.metadata ?? {}),
+      allowVoiceTranscription: true,
+    });
     expect(updateResult.isOk()).toBe(true);
 
-    const retryPreparation = await prepareDeletionActivity({
-      deleteDataSources: true,
-      workspaceId: workspace.sId,
-    });
-
-    expect(retryPreparation.canDelete).toBe(true);
     const reloadedWorkspace = await WorkspaceResource.fetchById(workspace.sId);
     expect(reloadedWorkspace?.metadata?.killSwitched).toBe("full");
+    expect(reloadedWorkspace?.metadata?.deletionInProgress).toBeDefined();
+    expect(reloadedWorkspace?.metadata?.allowVoiceTranscription).toBe(true);
   });
 
   it("prevents data source insertion after preparation", async () => {

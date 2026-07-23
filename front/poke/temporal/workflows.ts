@@ -1,5 +1,5 @@
 import type * as activities from "@app/poke/temporal/activities";
-import { proxyActivities } from "@temporalio/workflow";
+import { ApplicationFailure, proxyActivities } from "@temporalio/workflow";
 
 // Create a single proxy with all normal and long activities
 const normalActivityProxies = proxyActivities<typeof activities>({
@@ -77,7 +77,10 @@ export async function deleteWorkspaceWorkflow({
     workspaceId,
   });
   if (!canDelete) {
-    return;
+    throw ApplicationFailure.nonRetryable(
+      "Workspace deletion refused because data sources exist without explicit opt-in.",
+      "WORKSPACE_DELETION_REFUSED"
+    );
   }
 
   await deleteMembersActivity({ workspaceId });
@@ -91,7 +94,9 @@ export async function deleteWorkspaceWorkflow({
   await deleteTagsActivity({ workspaceId });
   await deleteWebhookSourcesActivity({ workspaceId });
   await deleteSpacesActivity({ workspaceId });
-  await sendGitHubNoticesActivity({ adminEmails: githubAdminEmails });
+  if (!workspaceHasBeenRelocated) {
+    await sendGitHubNoticesActivity({ adminEmails: githubAdminEmails });
+  }
   await deleteTranscriptsActivity({ workspaceId });
   await deletePluginRunsActivity({ workspaceId });
   await deleteWorkspaceActivity({ workspaceId });
