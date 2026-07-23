@@ -199,7 +199,7 @@ export function PodConversationsTab({
             <div className="flex items-center gap-2">
               <h2
                 className={cn(
-                  "heading-2xl text-foreground",
+                  "heading-2xl font-medium text-foreground",
                   podInfo.archivedAt && "text-muted-foreground"
                 )}
               >
@@ -224,6 +224,7 @@ export function PodConversationsTab({
                 draftKey={`space-${podInfo.sId}-new-conversation`}
                 space={podInfo}
                 disableAutoFocus={false}
+                isFloating={false}
                 placeholder={`Get work done in ${podInfo.name}`}
                 defaultAgentId={defaultAgentId}
                 isDefaultAgentLoading={isPodMetadataLoading}

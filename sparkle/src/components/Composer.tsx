@@ -1,0 +1,113 @@
+import { cn } from "@sparkle/lib/utils";
+import React, { useMemo } from "react";
+
+import { CitationGrid } from "./Citation";
+
+export const COMPOSER_VARIANTS = ["floating", "flat"] as const;
+export type ComposerVariantType = (typeof COMPOSER_VARIANTS)[number];
+
+interface ComposerProps {
+  children?: React.ReactNode;
+  attachments?: React.ReactNode;
+  chips?: React.ReactNode;
+  leftActions?: React.ReactNode;
+  rightActions?: React.ReactNode;
+  variant?: ComposerVariantType;
+  isFocused?: boolean;
+  onContentClick?: () => void;
+  className?: string;
+}
+
+export function Composer({
+  children,
+  attachments,
+  chips,
+  leftActions,
+  rightActions,
+  variant = "floating",
+  isFocused = false,
+  onContentClick,
+  className,
+}: ComposerProps) {
+  const cardClassName = useMemo(
+    () =>
+      cn(
+        "relative flex w-full flex-col items-stretch overflow-hidden rounded-[40px] [corner-shape:squircle]",
+        variant === "floating" && [
+          "border border-white/90",
+          "transition-[background-color,box-shadow] duration-150 ease-emphasized",
+          isFocused
+            ? "shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.07),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]"
+            : "shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.04),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]",
+          isFocused ? "bg-[#fdfdfc]" : "bg-[#fbfbfb]",
+          "dark:border-transparent",
+          isFocused ? "dark:bg-[#322f2a]" : "dark:bg-[#2e2c28]",
+          isFocused
+            ? "dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.035),inset_0px_0px_0px_1px_rgba(255,255,255,0.055),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]"
+            : "dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.02),inset_0px_0px_0px_1px_rgba(255,255,255,0.04),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]",
+        ],
+        variant === "flat" && [
+          "border bg-background",
+          "transition-colors duration-100 ease-emphasized",
+          isFocused
+            ? "border-border-dark dark:border-stone-750"
+            : "border-border",
+        ],
+        className
+      ),
+    [variant, isFocused, className]
+  );
+
+  return (
+    <div className={cardClassName}>
+      {variant === "floating" && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-px rounded-[inherit] [corner-shape:inherit] shadow-[inset_0px_-3px_29px_2px_rgba(0,0,0,0.01)] dark:hidden"
+        />
+      )}
+
+      {attachments != null && (
+        <CitationGrid className="border-b border-separator px-3 pb-3 pt-3">
+          {attachments}
+        </CitationGrid>
+      )}
+
+      <div
+        className={cn(
+          "flex flex-1 flex-col items-stretch",
+          onContentClick && "cursor-text"
+        )}
+        onClick={onContentClick}
+        onKeyDown={
+          onContentClick
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  onContentClick();
+                }
+              }
+            : undefined
+        }
+        role={onContentClick ? "button" : undefined}
+        tabIndex={onContentClick ? 0 : undefined}
+      >
+        <div className="flex flex-col items-start pl-4 pr-4 pt-4">
+          {children}
+        </div>
+
+        {chips != null && (
+          <div className="flex flex-wrap items-center gap-1 px-3 pt-2">
+            {chips}
+          </div>
+        )}
+      </div>
+
+      {(leftActions != null || rightActions != null) && (
+        <div className="flex items-center justify-between px-3 pb-3 pt-2">
+          <div className="flex items-center gap-1">{leftActions}</div>
+          <div className="flex items-center gap-1.5">{rightActions}</div>
+        </div>
+      )}
+    </div>
+  );
+}

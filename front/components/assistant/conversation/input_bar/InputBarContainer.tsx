@@ -1677,7 +1677,7 @@ const InputBarContainer = ({
                 contentEditableClasses,
                 "scrollbar-hide",
                 "overflow-y-auto",
-                "max-h-[40vh] min-h-14 md:min-h-16"
+                "max-h-[40vh] min-h-11"
               )}
             />
           </div>
@@ -1692,12 +1692,12 @@ const InputBarContainer = ({
             )}
           </BubbleMenu>
           <div
-            className={cn("mt-auto flex w-full flex-col", "pt-1.5 pb-2")}
+            className={cn("mt-auto flex w-full flex-col", "pt-2 pb-3")}
             style={{
               transition: `padding ${COLLAPSE_TRANSITION}`,
             }}
           >
-            <div className="mb-1 flex flex-wrap items-center px-2">
+            <div className="mb-1 flex flex-wrap items-center px-3">
               {selectedMCPServerViews.map((msv) => (
                 <React.Fragment key={msv.sId}>
                   {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
@@ -1744,7 +1744,7 @@ const InputBarContainer = ({
               ))}
             </div>
             <div className="flex min-h-7 w-full items-center">
-              <div className={cn("flex w-full items-center px-2")}>
+              <div className={cn("flex w-full items-center px-3")}>
                 {!isRecording && (
                   <div
                     className={cn(

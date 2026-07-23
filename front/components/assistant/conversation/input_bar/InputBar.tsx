@@ -712,22 +712,34 @@ export const InputBar = React.memo(function InputBar({
                 !disableInput && "cursor-pointer"
               )
             : classNames(
-                "w-full rounded-2xl",
-                "bg-muted-background",
-                "border",
-                "border-border-dark",
-                "md:border-border-dark/50 md:has-[.tiptap:focus]:border-border-dark",
-                "md:has-[.tiptap:focus]:border-border-dark",
+                "w-full overflow-hidden rounded-[40px] [corner-shape:squircle]",
+                "border bg-background",
                 isFloating
-                  ? classNames(
-                      "has-[.tiptap:focus]:ring-1",
-                      "has-[.tiptap:focus]:ring-highlight/30",
-                      "md:has-[.tiptap:focus]:ring-2"
-                    )
-                  : classNames("has-[.tiptap:focus]:border-highlight-300")
+                  ? "max-md:border-border max-md:has-[.tiptap:focus]:border-border-dark max-md:dark:has-[.tiptap:focus]:border-stone-750"
+                  : "border-border has-[.tiptap:focus]:border-border-dark dark:has-[.tiptap:focus]:border-stone-750",
+                "transition-colors duration-100 ease-emphasized",
+                isFloating &&
+                  classNames(
+                    "md:border-white/90",
+                    "md:transition-[background-color,box-shadow] md:duration-150 md:ease-emphasized",
+                    "md:shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.04),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]",
+                    "md:has-[.tiptap:focus]:shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.07),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]",
+                    "md:bg-[#fbfbfb]",
+                    "md:has-[.tiptap:focus]:bg-[#fdfdfc]",
+                    "md:dark:border-transparent md:dark:bg-[#2e2c28]",
+                    "md:dark:has-[.tiptap:focus]:bg-[#322f2a]",
+                    "md:dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.02),inset_0px_0px_0px_1px_rgba(255,255,255,0.04),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]",
+                    "md:dark:has-[.tiptap:focus]:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.035),inset_0px_0px_0px_1px_rgba(255,255,255,0.055),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]"
+                  )
               )
         )}
       >
+        {!effectiveIsCompact && isFloating && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -inset-px hidden rounded-[inherit] [corner-shape:inherit] shadow-[inset_0px_-3px_29px_2px_rgba(0,0,0,0.01)] md:block dark:hidden"
+          />
+        )}
         <div
           className={classNames(
             "relative flex flex-col",
