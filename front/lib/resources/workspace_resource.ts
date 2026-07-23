@@ -118,6 +118,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   static model: ModelStatic<WorkspaceModel> = WorkspaceModel;
   private static workspaceDomainModel: ModelStaticWorkspaceAware<WorkspaceHasDomainModel> =
     WorkspaceHasDomainModel;
+  static readonly DELETION_METADATA_KEY = "deletionInProgress";
   static readonly KILL_SWITCH_METADATA_KEY = "killSwitched";
   static readonly FULL_WORKSPACE_KILL_SWITCH_VALUE = "full";
 
@@ -329,6 +330,17 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       ...cached,
       whiteListedProviders: whiteListedProviders,
     });
+  }
+
+  static async fetchForUpdate(
+    id: ModelId,
+    transaction: Transaction
+  ): Promise<WorkspaceResource | null> {
+    const workspace = await this.model.findByPk(id, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    return workspace ? new this(this.model, workspace.get()) : null;
   }
 
   static async fetchByName(name: string): Promise<WorkspaceResource | null> {
@@ -753,9 +765,10 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async updateMetadata(
     id: ModelId,
-    metadata: Record<string, string | number | boolean | object> | null
+    metadata: Record<string, string | number | boolean | object> | null,
+    transaction?: Transaction
   ): Promise<Result<void, Error>> {
-    return this.updateByModelIdAndCheckExistence(id, { metadata });
+    return this.updateByModelIdAndCheckExistence(id, { metadata }, transaction);
   }
 
   async removeMetadataKeys(keys: string[]): Promise<Result<void, Error>> {
@@ -1016,7 +1029,8 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async updateByModelIdAndCheckExistence(
     id: ModelId,
-    updateValues: Partial<Attributes<WorkspaceModel>>
+    updateValues: Partial<Attributes<WorkspaceModel>>,
+    transaction?: Transaction
   ): Promise<Result<void, Error>> {
     if (updateValues.conversationsRetentionDays !== undefined) {
       const retentionDays = updateValues.conversationsRetentionDays;
@@ -1035,6 +1049,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
     const workspace = await this.model.findOne({
       where: { id },
+      transaction,
     });
 
     if (!workspace) {
@@ -1042,7 +1057,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     }
 
     const workspaceResource = new this(this.model, workspace.get());
-    await workspaceResource.update(updateValues);
+    await workspaceResource.update(updateValues, transaction);
 
     return new Ok(undefined);
   }

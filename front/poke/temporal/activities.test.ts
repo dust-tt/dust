@@ -101,6 +101,73 @@ describe("prepareDeletionActivity", () => {
     ).toBe(true);
     expect(reloadedWorkspace?.metadata?.deletionInProgress).toBeUndefined();
   });
+
+  it("restores conversation blocks when deletion is refused", async () => {
+    const workspace = await WorkspaceFactory.byok();
+    const previousKillSwitch = { conversationIds: ["conversation-1"] };
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      killSwitched: previousKillSwitch,
+    });
+    expect(updateResult.isOk()).toBe(true);
+    const globalSpace = await SpaceFactory.global(workspace);
+    await DataSourceViewFactory.folder(workspace, globalSpace);
+
+    const preparation = await prepareDeletionActivity({
+      deleteDataSources: false,
+      workspaceId: workspace.sId,
+    });
+
+    expect(preparation.canDelete).toBe(false);
+    const reloadedWorkspace = await WorkspaceResource.fetchById(workspace.sId);
+    expect(reloadedWorkspace?.metadata?.killSwitched).toEqual(
+      previousKillSwitch
+    );
+    expect(reloadedWorkspace?.metadata?.deletionInProgress).toBeUndefined();
+  });
+
+  it("reapplies the workspace block when preparation is retried", async () => {
+    const workspace = await WorkspaceFactory.byok();
+
+    const firstPreparation = await prepareDeletionActivity({
+      deleteDataSources: true,
+      workspaceId: workspace.sId,
+    });
+    expect(firstPreparation.canDelete).toBe(true);
+
+    const preparedWorkspace = await WorkspaceResource.fetchById(workspace.sId);
+    expect(preparedWorkspace).not.toBeNull();
+    const metadata = { ...(preparedWorkspace?.metadata ?? {}) };
+    delete metadata.killSwitched;
+    const updateResult = await WorkspaceResource.updateMetadata(
+      workspace.id,
+      metadata
+    );
+    expect(updateResult.isOk()).toBe(true);
+
+    const retryPreparation = await prepareDeletionActivity({
+      deleteDataSources: true,
+      workspaceId: workspace.sId,
+    });
+
+    expect(retryPreparation.canDelete).toBe(true);
+    const reloadedWorkspace = await WorkspaceResource.fetchById(workspace.sId);
+    expect(reloadedWorkspace?.metadata?.killSwitched).toBe("full");
+  });
+
+  it("prevents data source insertion after preparation", async () => {
+    const workspace = await WorkspaceFactory.byok();
+    const globalSpace = await SpaceFactory.global(workspace);
+
+    const preparation = await prepareDeletionActivity({
+      deleteDataSources: true,
+      workspaceId: workspace.sId,
+    });
+    expect(preparation.canDelete).toBe(true);
+
+    await expect(
+      DataSourceViewFactory.folder(workspace, globalSpace)
+    ).rejects.toThrow("Workspace deletion is in progress.");
+  });
 });
 
 describe("deleteMembersActivity", () => {

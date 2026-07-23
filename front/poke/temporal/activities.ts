@@ -85,10 +85,14 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import {
+  type WorkspaceConversationKillSwitchValue,
+  WorkspaceResource,
+} from "@app/lib/resources/workspace_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteActivationWorkspaceSchedule } from "@app/temporal/activation_scheduler/client";
@@ -98,7 +102,24 @@ import assert from "assert";
 import { Op } from "sequelize";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
-const WORKSPACE_DELETION_METADATA_KEY = "deletionInProgress";
+
+type PreviousKillSwitch =
+  | typeof WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE
+  | WorkspaceConversationKillSwitchValue
+  | null;
+
+function parsePreviousKillSwitch(value: unknown): PreviousKillSwitch {
+  if (value === null) {
+    return null;
+  }
+  if (WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(value)) {
+    return WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE;
+  }
+  if (WorkspaceResource.isWorkspaceConversationKillSwitchValue(value)) {
+    return value;
+  }
+  throw new Error("Invalid previous workspace kill switch.");
+}
 
 export async function scrubDataSourceActivity({
   dataSourceId,
@@ -638,57 +659,81 @@ export async function prepareDeletionActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  assert(workspace, "Workspace not found.");
-
-  // Remember the previous block state so retries can safely roll back an aborted deletion.
-  const existingDeletionState =
-    workspace.metadata?.[WORKSPACE_DELETION_METADATA_KEY];
-  let wasKillSwitched: boolean;
-  if (existingDeletionState === undefined) {
-    wasKillSwitched = WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(
-      workspace.metadata?.[WorkspaceResource.KILL_SWITCH_METADATA_KEY]
+  const canDelete = await withTransaction(async (transaction) => {
+    // This row lock is also taken by data source insertion, making the opt-in check atomic.
+    const workspace = await WorkspaceResource.fetchForUpdate(
+      auth.getNonNullableWorkspace().id,
+      transaction
     );
-    const blockResult = await WorkspaceResource.updateMetadata(workspace.id, {
+    assert(workspace, "Workspace not found.");
+
+    const existingDeletionState =
+      workspace.metadata?.[WorkspaceResource.DELETION_METADATA_KEY];
+    let previousKillSwitch: PreviousKillSwitch;
+    if (existingDeletionState === undefined) {
+      previousKillSwitch = parsePreviousKillSwitch(
+        workspace.metadata?.[WorkspaceResource.KILL_SWITCH_METADATA_KEY] ?? null
+      );
+    } else {
+      assert(
+        typeof existingDeletionState === "object" &&
+          existingDeletionState !== null &&
+          "previousKillSwitch" in existingDeletionState,
+        "Invalid workspace deletion state."
+      );
+      previousKillSwitch = parsePreviousKillSwitch(
+        existingDeletionState.previousKillSwitch
+      );
+    }
+
+    const metadata: Record<string, string | number | boolean | object> = {
       ...(workspace.metadata ?? {}),
-      [WORKSPACE_DELETION_METADATA_KEY]: { wasKillSwitched },
+      [WorkspaceResource.DELETION_METADATA_KEY]: { previousKillSwitch },
       [WorkspaceResource.KILL_SWITCH_METADATA_KEY]:
         WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE,
-    });
+    };
+    const blockResult = await WorkspaceResource.updateMetadata(
+      workspace.id,
+      metadata,
+      transaction
+    );
     if (blockResult.isErr()) {
       throw blockResult.error;
     }
-  } else {
-    assert(
-      typeof existingDeletionState === "object" &&
-        existingDeletionState !== null &&
-        "wasKillSwitched" in existingDeletionState &&
-        typeof existingDeletionState.wasKillSwitched === "boolean",
-      "Invalid workspace deletion state."
-    );
-    wasKillSwitched = existingDeletionState.wasKillSwitched;
-  }
 
-  if (!deleteDataSources) {
-    const dataSources = await DataSourceResource.listByWorkspace(auth);
-    if (dataSources.length > 0) {
-      const blockedWorkspace = await WorkspaceResource.fetchById(workspaceId);
-      assert(blockedWorkspace, "Workspace not found.");
-      const metadata = { ...(blockedWorkspace.metadata ?? {}) };
-      delete metadata[WORKSPACE_DELETION_METADATA_KEY];
-      if (!wasKillSwitched) {
-        delete metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
-      }
-      const unblockResult = await WorkspaceResource.updateMetadata(
-        blockedWorkspace.id,
-        metadata
+    if (!deleteDataSources) {
+      const dataSources = await DataSourceResource.listByWorkspace(
+        auth,
+        undefined,
+        undefined,
+        transaction
       );
-      if (unblockResult.isErr()) {
-        throw unblockResult.error;
-      }
+      if (dataSources.length > 0) {
+        delete metadata[WorkspaceResource.DELETION_METADATA_KEY];
+        if (previousKillSwitch === null) {
+          delete metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
+        } else {
+          metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY] =
+            previousKillSwitch;
+        }
+        const unblockResult = await WorkspaceResource.updateMetadata(
+          workspace.id,
+          metadata,
+          transaction
+        );
+        if (unblockResult.isErr()) {
+          throw unblockResult.error;
+        }
 
-      return { canDelete: false, githubAdminEmails: [] };
+        return false;
+      }
     }
+
+    return true;
+  });
+
+  if (!canDelete) {
+    return { canDelete: false, githubAdminEmails: [] };
   }
 
   // The workspace/provider index makes this existence check cheap.

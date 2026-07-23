@@ -15,6 +15,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
@@ -25,6 +26,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import { formatUserFullName } from "@app/types/user";
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -87,9 +89,22 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       "editedAt" | "editedByUserId" | "vaultId"
     >,
     space: SpaceResource,
-    editedByUser?: UserType | null,
-    transaction?: Transaction
+    editedByUser: UserType | null | undefined,
+    transaction: Transaction
   ) {
+    // Serialize with workspace deletion so a data source cannot be inserted after its opt-in check.
+    assert(blob.workspaceId !== undefined, "Workspace id is required.");
+    const workspace = await WorkspaceResource.fetchForUpdate(
+      blob.workspaceId,
+      transaction
+    );
+    assert(workspace, "Workspace not found.");
+    assert(
+      workspace.metadata?.[WorkspaceResource.DELETION_METADATA_KEY] ===
+        undefined,
+      "Workspace deletion is in progress."
+    );
+
     const dataSource = await DataSourceModel.create(
       {
         ...blob,
