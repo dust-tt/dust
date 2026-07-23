@@ -9,6 +9,7 @@ import { getWorkspaceFilter, legacyModelIdToModel } from "@app/lib/api/llm";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getStreamEndpoints } from "@app/lib/llms/stream";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import {
   isCreditPricedPlanPrefix,
   isEnterpriseOrDust,
@@ -31,7 +32,7 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
 import { isGlobalAgentId } from "./assistant";
@@ -139,10 +140,18 @@ export type AgentMessageRef = {
   conversationId: string;
 };
 
+export type ModelInfo = {
+  endpoint: DustStreamEndpointConstructor;
+  temperature: number;
+  reasoningEffort?: ReasoningEffort;
+  responseFormat?: string;
+  metaData?: Record<string, unknown>;
+};
+
 export type AgentLoopExecutionData = {
   // No models on the agent configuration as it might be different at run time (eg: auto mode, override by inputbar picker)
   agentConfiguration: AgentConfigurationWithoutModelType;
-  modelInfo: AgentModelConfigurationType & ModelConfigurationType;
+  modelInfo: ModelInfo;
   agentMessage: AgentMessageType;
   conversation: ConversationType;
   userMessage: UserMessageType;
@@ -374,17 +383,18 @@ export async function getAgentLoopDataWithAuth(
     );
   }
 
+  const { temperature, reasoningEffort, responseFormat } = resolvedModelConfig;
+
   return new Ok({
     agentConfiguration: agentConfigurationWithoutModel,
     modelInfo: {
-      // This contains general configuration for the model, like the provider and model ID.
-      ...endpoint.modelConfig,
-      // This contains specific configuration for reasoning effort, temperature, etc.
-      ...resolvedModelConfig,
+      endpoint,
+      temperature,
+      reasoningEffort,
       // Cleanup unsupported settings
-      ...(endpoint.modelConfig.supportsResponseFormat
-        ? { responseFormat: resolvedModelConfig.responseFormat }
-        : { responseFormat: undefined }),
+      responseFormat: endpoint.modelConfig.supportsResponseFormat
+        ? responseFormat
+        : undefined,
     },
     agentMessage,
     auth,

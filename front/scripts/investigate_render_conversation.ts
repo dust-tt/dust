@@ -9,9 +9,10 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import { legacyModelIdToModel } from "@app/lib/api/llm";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { getStreamEndpoints } from "@app/lib/llms/stream";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -76,14 +77,23 @@ makeScript(
       return;
     }
 
-    const model = getSupportedModelConfig(agentConfiguration.model);
-    if (!model) {
+    // Script-only: no workspace routing needed, so pass permissive filters and
+    // just select any endpoint for the agent's model.
+    const routerModel = legacyModelIdToModel(agentConfiguration.model.modelId);
+    const endpoint = routerModel
+      ? getStreamEndpoints(
+          { featureFlags: [], isEnterprise: true, isCreditPriced: false },
+          { model: { eq: routerModel } }
+        )[0]
+      : undefined;
+    if (!endpoint) {
       logger.error(
         { modelId: agentConfiguration.model.modelId },
         "Unsupported model"
       );
       return;
     }
+    const model = endpoint.modelConfig;
 
     const lastUserMessage = conversation.content
       .map((tuple) => tuple[0])
@@ -186,7 +196,7 @@ makeScript(
       agentConfiguration,
       fallbackPrompt,
       modelInfo: {
-        ...model,
+        endpoint,
         ...agentConfiguration.model,
       },
       hasAvailableActions: availableActions.length > 0,

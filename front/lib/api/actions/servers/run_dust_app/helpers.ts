@@ -295,12 +295,13 @@ export async function prepareParamsWithHistory(
     const modelInfo = agentLoopRunContext.modelInfo;
 
     if (modelInfo) {
-      const allowedTokenCount = modelInfo.contextSize - MIN_GENERATION_TOKENS;
+      const allowedTokenCount =
+        modelInfo.endpoint.modelConfig.contextSize - MIN_GENERATION_TOKENS;
 
       const convoRes = await renderConversationForModel(auth, {
         conversation: agentLoopRunContext.conversation,
         enabledSkills: [],
-        model: modelInfo,
+        model: modelInfo.endpoint.modelConfig,
         prompt: "",
         tools: "",
         allowedTokenCount,

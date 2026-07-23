@@ -71,8 +71,9 @@ function constructContextSection({
     context += `workspace: ${owner.name}\n`;
   }
 
-  if (modelInfo.formattingMetaPrompt && !disableFormattingPrompt) {
-    context += `# RESPONSE FORMAT\n${modelInfo.formattingMetaPrompt}\n`;
+  const { modelConfig } = modelInfo.endpoint;
+  if (modelConfig.formattingMetaPrompt && !disableFormattingPrompt) {
+    context += `# RESPONSE FORMAT\n${modelConfig.formattingMetaPrompt}\n`;
   }
 
   return context;
@@ -153,14 +154,15 @@ function constructToolsSection({
 }): string {
   let toolsSection = "# TOOLS\n";
 
+  const { modelConfig } = modelInfo.endpoint;
   toolsSection += "\n## TOOL USE DIRECTIVES\n";
-  if (hasAvailableActions && modelInfo.toolUseMetaPrompt) {
-    toolsSection += `${modelInfo.toolUseMetaPrompt}\\n`;
+  if (hasAvailableActions && modelConfig.toolUseMetaPrompt) {
+    toolsSection += `${modelConfig.toolUseMetaPrompt}\\n`;
   }
   if (
     hasAvailableActions &&
     modelInfo.reasoningEffort === "light" &&
-    !modelInfo.useNativeLightReasoning
+    !modelConfig.useNativeLightReasoning
   ) {
     toolsSection += `${CHAIN_OF_THOUGHT_META_PROMPT}\n`;
   }

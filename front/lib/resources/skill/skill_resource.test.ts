@@ -1,6 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   SkillConfigurationModel,
@@ -26,6 +25,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -1881,10 +1881,7 @@ describe("SkillResource", () => {
       );
 
       const { model: agentModel, ...agentConfiguration } = agent;
-      const modelConfig = getSupportedModelConfig(agentModel);
-      if (!modelConfig) {
-        throw new Error("Supported model config should exist");
-      }
+      const endpoint = getTestStreamEndpoint(agentModel.modelId);
 
       const skills = await SkillResource.fetchByIds(
         testContext.authenticator,
@@ -1893,8 +1890,8 @@ describe("SkillResource", () => {
           agentLoopData: {
             agentConfiguration,
             modelInfo: {
+              endpoint,
               ...agentModel,
-              ...modelConfig,
             },
             agentMessage,
             conversation,

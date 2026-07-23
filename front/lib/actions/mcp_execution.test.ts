@@ -18,7 +18,6 @@ import type {
 import type { ToolContext } from "@app/lib/actions/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -30,6 +29,7 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -131,16 +131,14 @@ async function setupTest({
   });
 
   const { model: agentModel, ...agentConfiguration } = agentConfig;
-  const modelConfig = getSupportedModelConfig(agentModel);
-  assert(modelConfig, "Supported model config should exist");
 
   const toolContext: ToolContext = {
     runContext: {
       contextType: "agent_loop",
       agentConfiguration,
       modelInfo: {
+        endpoint: getTestStreamEndpoint(agentModel.modelId),
         ...agentModel,
-        ...modelConfig,
       },
       agentMessage,
       action,

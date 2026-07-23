@@ -92,7 +92,8 @@ export function createExtractDataTools(
       isAgentLoopRunContext(toolContext?.runContext),
       "AgentLoopRunContext expected"
     );
-    const { agentConfiguration, modelInfo, conversation } = toolContext.runContext;
+    const { agentConfiguration, modelInfo, conversation } =
+      toolContext.runContext;
 
     // Defensive handling: parse jsonSchema if it arrives as a JSON string.
     // This can happen when the LLM generates a stringified JSON schema instead of an object,

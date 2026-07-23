@@ -225,7 +225,7 @@ async function executeToolStreaming(
   {
     action,
     agentConfiguration,
-    model,
+    model: modelInfo,
     agentMessage,
     conversation,
     deferredEvents,
@@ -264,7 +264,7 @@ async function executeToolStreaming(
       contextType: "agent_loop",
       action,
       agentConfiguration,
-      modelInfo: model,
+      modelInfo,
       agentMessage,
       conversation,
       stepContext: action.stepContext,
