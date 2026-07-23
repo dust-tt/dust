@@ -5,7 +5,6 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -23,7 +22,7 @@ import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import {
-  type ConversationType,
+  type ConversationWithoutContentType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
@@ -49,7 +48,9 @@ async function createConversationForAgentConfiguration({
   trigger: TriggerType;
   lastRunAt: Date | null;
   webhookRequest: WebhookRequestResource | null;
-}): Promise<Result<ConversationType, APIErrorWithContentfulStatusCode>> {
+}): Promise<
+  Result<ConversationWithoutContentType, APIErrorWithContentfulStatusCode>
+> {
   let spaceModelId: ModelId | null = null;
   if (trigger.spaceId) {
     const pod = await SpaceResource.fetchById(auth, trigger.spaceId);
@@ -149,7 +150,7 @@ async function createConversationForAgentConfiguration({
   }
 
   const messageRes = await postUserMessage(auth, {
-    conversation: newConversation,
+    conversationResource: newConversation,
     content:
       serializeMention(agentConfiguration) +
       (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : ""),
@@ -172,7 +173,7 @@ async function createConversationForAgentConfiguration({
     return messageRes;
   }
 
-  return new Ok(newConversation);
+  return new Ok(newConversation.toJSON());
 }
 
 export async function runTriggeredAgentsActivity({
@@ -379,7 +380,7 @@ function buildWakeUpMessageContent(wakeUp: WakeUpType): string {
 }
 
 function getWakeUpClientSideMCPServerIds(
-  conversation: ConversationType
+  conversation: ConversationResource
 ): string[] {
   const previousUserMessageVersions = conversation.content.findLast(
     (versions) => {
@@ -442,14 +443,17 @@ export async function runWakeUpActivity({
     return;
   }
 
-  const conversationRes = await getConversation(auth, c.sId);
-  if (conversationRes.isErr()) {
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    c.sId
+  );
+  if (!conversationResource) {
     logger.info(
       {
         status: wakeUp.status,
         wakeUpId,
         workspaceId,
-        error: normalizeError(conversationRes.error),
+        error: "Conversation not found",
       },
       "Cancelling wake-up: conversation not accessible."
     );
@@ -457,11 +461,11 @@ export async function runWakeUpActivity({
     return;
   }
 
-  const conversation = conversationRes.value;
-  const clientSideMCPServerIds = getWakeUpClientSideMCPServerIds(conversation);
+  const clientSideMCPServerIds =
+    getWakeUpClientSideMCPServerIds(conversationResource);
 
   const postMessageResult = await postUserMessage(auth, {
-    conversation,
+    conversationResource: conversationResource,
     content: buildWakeUpMessageContent(wakeUp.toJSON()),
     mentions: [{ configurationId: wakeUp.agentConfigurationId }],
     context: {

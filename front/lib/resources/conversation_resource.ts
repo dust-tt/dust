@@ -2631,7 +2631,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
       lastReadAt,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       transaction?: Transaction;
       // Optional override; defaults to now. Callers can pass a timestamp in the
       // future to keep the conversation marked as read through an imminent
@@ -2807,7 +2807,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
       lastReadAt = new Date(),
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       action: ParticipantActionType;
       user: UserType | null;
       transaction?: Transaction;
@@ -3766,6 +3766,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
       transaction
     );
+  }
+
+  isPodConversation() {
+    return this.spaceId !== null;
   }
 
   async updateSpaceId(

@@ -133,7 +133,6 @@ import type {
   CitationType,
   CompactionMessageType,
   ConversationMetadata,
-  ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
   MessageVisibility,
@@ -161,7 +160,6 @@ import type {
   ContentFragmentContextType,
   ContentFragmentType,
 } from "@app/types/content_fragment";
-import { isContentFragmentType } from "@app/types/content_fragment";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -229,8 +227,7 @@ export async function createConversation(
     spaceId: ModelId | null;
     metadata?: ConversationMetadata;
   }
-): Promise<ConversationType> {
-  const owner = auth.getNonNullableWorkspace();
+): Promise<ConversationResource> {
   let space: SpaceResource | null = null;
 
   if (spaceId) {
@@ -266,27 +263,7 @@ export async function createConversation(
     });
   }
 
-  return {
-    id: conversation.id,
-    owner,
-    created: conversation.createdAt.getTime(),
-    updated: conversation.updatedAt.getTime(),
-    sId: conversation.sId,
-    title: conversation.title,
-    depth: conversation.depth,
-    content: [],
-    lastReadMs: Date.now(),
-    unread: false,
-    actionRequired: false,
-    hasError: false,
-    visibility: conversation.visibility,
-    requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
-    spaceId: space?.sId ?? null,
-    triggerId: conversation.triggerSId,
-    metadata: conversation.metadata,
-    branchId: null,
-    isRunningAgentLoop: conversation.isRunningAgentLoop,
-  };
+  return conversation;
 }
 
 /**
@@ -545,7 +522,7 @@ export function isUserMessageContextValid(
 export async function postUserMessage(
   auth: Authenticator,
   {
-    conversation,
+    conversationResource,
     content,
     mentions,
     context,
@@ -555,7 +532,7 @@ export async function postUserMessage(
     doNotAssociateUser,
     modelSelection,
   }: {
-    conversation: ConversationType;
+    conversationResource: ConversationResource;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
@@ -578,8 +555,9 @@ export async function postUserMessage(
   const owner = auth.workspace();
   const subscription = auth.subscription();
   const plan = subscription?.plan;
+  const conversation = conversationResource.toJSON();
 
-  if (!owner || owner.id !== conversation.owner.id || !subscription || !plan) {
+  if (!owner || !subscription || !plan) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -1072,7 +1050,7 @@ export async function postUserMessage(
 
   void ServerSideTracking.trackUserMessage({
     userMessage,
-    workspace: conversation.owner,
+    workspace: owner,
     userId: user ? `user-${user.id}` : `api-${context.username}`,
     conversationId: conversation.sId,
     agentMessages,
@@ -1093,7 +1071,7 @@ export async function postUserMessage(
       auth,
       action: "agent.executed",
       targets: [
-        buildAuditLogTarget("workspace", conversation.owner),
+        buildAuditLogTarget("workspace", owner),
         buildAuditLogTarget("agent", agentMessage.configuration),
       ],
       metadata: {
@@ -1186,13 +1164,13 @@ class UserMessageError extends Error {}
 export async function editUserMessage(
   auth: Authenticator,
   {
-    conversation,
+    conversationResource,
     message,
     content,
     mentions,
     skipToolsValidation,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationResource;
     message: UserMessageType;
     content: string;
     mentions: MentionType[];
@@ -1207,7 +1185,7 @@ export async function editUserMessage(
   const user = auth.user();
   const owner = auth.workspace();
 
-  if (!owner || owner.id !== conversation.owner.id) {
+  if (!owner) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -1226,6 +1204,8 @@ export async function editUserMessage(
       },
     });
   }
+
+  const conversation = conversationResource.toJSON();
 
   const canInteractRes = await WakeUpResource.canUserInteract(
     auth,
@@ -1535,7 +1515,7 @@ export async function createAgentMessageFromText(
     skipToolsValidation = true,
     citationsAndFilesFromOutputItems,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     parentId: ModelId;
     rank: number;
     content: string;
@@ -1763,7 +1743,7 @@ export async function retryAgentMessage(
     conversation,
     message,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithContentfulStatusCode>> {
@@ -1983,7 +1963,7 @@ export async function retryAgentMessage(
 // Injects a new content fragment in the conversation.
 export async function postNewContentFragment(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType,
+  conversation: ConversationWithoutContentType | ConversationResource,
   cf: ContentFragmentInputWithFileIdType | ContentFragmentInputWithContentNode,
   context: ContentFragmentContextType | null
 ): Promise<Result<ContentFragmentType, Error>> {
@@ -2192,7 +2172,7 @@ export async function postNewContentFragment(
  * single turn, which is why the return type is an array.
  */
 function getAgentRepliesToCascadeOnUserDelete(
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   userMessage: UserMessageType
 ): AgentMessageType[] {
   const orphans: AgentMessageType[] = [];
@@ -2233,7 +2213,7 @@ export async function softDeleteUserMessageAndReplies(
     conversation,
   }: {
     message: UserMessageType;
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
   if (message.visibility === "deleted") {
@@ -2361,7 +2341,7 @@ export async function softDeleteAgentMessage(
     conversation,
   }: {
     message: AgentMessageType;
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
   if (message.visibility === "deleted") {

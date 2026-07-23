@@ -16,6 +16,7 @@ import {
 } from "@app/types/assistant/agent_run";
 import type {
   ConversationType,
+  LightConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
@@ -152,7 +153,7 @@ const specifications: AgentActionSpecification[] = [
 
 async function generateConversationTitle(
   auth: Authenticator,
-  conversation: ConversationType
+  conversation: ConversationType | LightConversationType
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 

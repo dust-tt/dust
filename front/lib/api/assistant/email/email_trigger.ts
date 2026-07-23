@@ -4,7 +4,6 @@ import {
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 import config from "@app/lib/api/config";
 import { sendEmail, sendEmailToRecipients } from "@app/lib/api/email";
@@ -16,6 +15,7 @@ import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -26,7 +26,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -37,7 +37,6 @@ import fs from "fs";
 import sanitizeHtml from "sanitize-html";
 import { Op } from "sequelize";
 import { Readable } from "stream";
-
 import { toFileContentFragment } from "../conversation/content_fragment";
 import type { InboundEmailDkimResult } from "./inbound_auth";
 
@@ -779,7 +778,7 @@ export async function triggerFromEmail(
 ): Promise<
   Result<
     {
-      conversation: ConversationType;
+      conversation: ConversationWithoutContentType;
     },
     EmailTriggerError
   >
@@ -802,28 +801,32 @@ export async function triggerFromEmail(
     email.threadingHeaders
   );
 
-  let conversation: ConversationType | null = null;
+  let conversationResource: ConversationResource | null = null;
   if (threadConversationId) {
-    const conversationRes = await getConversation(auth, threadConversationId);
-    if (conversationRes.isOk()) {
-      conversation = conversationRes.value;
+    const threadConversation = await ConversationResource.fetchById(
+      auth,
+      threadConversationId
+    );
+    if (threadConversation) {
+      conversationResource = threadConversation;
     } else {
       localLogger.warn(
         {
           conversationId: threadConversationId,
-          errorType: conversationRes.error.type,
         },
         "[email] Cannot access conversation matching inbound email, creating a new one."
       );
     }
   }
-  if (!conversation) {
-    conversation = await createConversation(auth, {
+  if (!conversationResource) {
+    conversationResource = await createConversation(auth, {
       title: `Email: ${email.subject}`,
       visibility: "unlisted",
       spaceId: null,
     });
   }
+
+  const conversation = conversationResource.toJSON();
 
   // Map this email's Message-ID to the conversation (on create and on continue) so any later
   // reply in the thread keeps routing to it.
@@ -872,21 +875,6 @@ export async function triggerFromEmail(
           `Error creating file for content fragment: ` +
           contentFragmentRes.error.message,
       });
-    }
-
-    const updatedConversationRes = await getConversation(
-      auth,
-      conversation.sId
-    );
-    if (updatedConversationRes.isErr()) {
-      if (updatedConversationRes.error.type !== "conversation_not_found") {
-        return new Err({
-          type: "unexpected_error",
-          message: "Failed to update conversation with email thread.",
-        });
-      }
-    } else {
-      conversation = updatedConversationRes.value;
     }
   }
 
@@ -967,17 +955,6 @@ export async function triggerFromEmail(
     }
   }
 
-  // Refresh conversation after adding attachments.
-  if (email.attachments.length > 0) {
-    const updatedConversationRes = await getConversation(
-      auth,
-      conversation.sId
-    );
-    if (updatedConversationRes.isOk()) {
-      conversation = updatedConversationRes.value;
-    }
-  }
-
   const content =
     agentConfigurations
       .map((agent) => {
@@ -999,7 +976,7 @@ export async function triggerFromEmail(
   // Post message WITHOUT waiting for completion - the reply will be sent
   // by the agent loop finalization activity.
   const messageRes = await postUserMessage(auth, {
-    conversation,
+    conversationResource,
     content,
     mentions,
     context: {

@@ -4,7 +4,6 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
@@ -311,7 +310,7 @@ export async function createSkillSuggestionsConversation(
   );
 
   const conversationTitle = `Reinforced suggestions for ${skillType.name} skill`;
-  const conversation = await createConversation(auth, {
+  const conversationResource = await createConversation(auth, {
     title: conversationTitle,
     visibility: "unlisted",
     spaceId: null,
@@ -326,11 +325,11 @@ export async function createSkillSuggestionsConversation(
   await SkillSuggestionResource.bulkSetNotificationConversation(
     auth,
     pendingSuggestions,
-    conversation.id
+    conversationResource.id
   );
 
   const contentFragmentRes = await toFileContentFragment(auth, {
-    conversation,
+    conversation: conversationResource,
     contentFragment: {
       title: `${pendingSuggestions.length} pending suggestions for ${skillType.name} skill`,
       content: formattedSuggestions,
@@ -356,7 +355,7 @@ export async function createSkillSuggestionsConversation(
 
   const contentFragmentPostRes = await postNewContentFragment(
     auth,
-    conversation,
+    conversationResource,
     contentFragmentRes.value,
     {
       username: author.username,
@@ -385,7 +384,7 @@ export async function createSkillSuggestionsConversation(
   );
 
   const messageRes = await postUserMessage(auth, {
-    conversation,
+    conversationResource,
     content,
     mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
     context: {
@@ -414,7 +413,7 @@ export async function createSkillSuggestionsConversation(
     editors,
     (editor) =>
       ConversationResource.upsertParticipation(auth, {
-        conversation,
+        conversation: conversationResource,
         action: "posted",
         user: editor,
         lastReadAt: null,
@@ -469,18 +468,20 @@ export async function postSkillSuggestionStatusUpdate(
   };
 
   for (const [conversationId, items] of byConversation) {
-    const conversationRes = await getConversation(auth, conversationId);
-    if (conversationRes.isErr()) {
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversationResource) {
       logger.warn(
         {
           conversationId,
-          error: conversationRes.error.message,
+          error: "Conversation not found",
         },
         "ReinforcedSkills: failed to fetch notification conversation for status update"
       );
       continue;
     }
-    const conversation = conversationRes.value;
 
     const titles = items.map((s) => s.title ?? s.sId);
     const content =
@@ -489,7 +490,7 @@ export async function postSkillSuggestionStatusUpdate(
         : `${actorName} ${verb}:\n${titles.map((t) => `${marker} ${t}`).join("\n")}`;
 
     const postRes = await postUserMessage(auth, {
-      conversation,
+      conversationResource,
       content,
       mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
       context: messageContext,
@@ -513,7 +514,7 @@ export async function postSkillSuggestionStatusUpdate(
     // future so the ack holds through the imminent agent completion — the
     // NOOP reply lands within milliseconds.
     await ConversationResource.markAsReadForAuthUser(auth, {
-      conversation,
+      conversation: conversationResource,
       lastReadAt: new Date(Date.now() + 60_000),
     });
   }
