@@ -48,6 +48,7 @@ import {
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
+import { AUTO_MODEL_CONFIG } from "@app/types/assistant/models/auto";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import {
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
@@ -469,18 +470,25 @@ export function _getDustGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
+  let preferredModelConfiguration: ModelConfigurationType =
+    CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+  let preferredReasoningEffort: ReasoningEffort = "medium";
+
+  if (args.preferSonnet5DefaultModel) {
+    preferredModelConfiguration = CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG;
+    preferredReasoningEffort = "medium";
+  } else if (args.preferGpt56LunaDefaultModel) {
+    preferredModelConfiguration = GPT_5_6_LUNA_MODEL_CONFIG;
+    preferredReasoningEffort = "high";
+  } else if (args.featureFlags.includes("models_picker")) {
+    preferredModelConfiguration = AUTO_MODEL_CONFIG;
+    preferredReasoningEffort = "none";
+  }
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
-    preferredModelConfiguration: args.preferSonnet5DefaultModel
-      ? CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG
-      : args.preferGpt56LunaDefaultModel
-        ? GPT_5_6_LUNA_MODEL_CONFIG
-        : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort:
-      args.preferGpt56LunaDefaultModel && !args.preferSonnet5DefaultModel
-        ? "high"
-        : "medium",
+    preferredModelConfiguration,
+    preferredReasoningEffort,
   });
 }
 
