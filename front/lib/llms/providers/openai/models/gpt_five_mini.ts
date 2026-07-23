@@ -22,7 +22,6 @@ export function WithDustGptFiveMiniConfig<
     static readonly displayName = "GPT-5 Mini";
     static readonly description =
       "OpenAI's faster, cost-efficient GPT-5 for well-defined tasks (400k context).";
-    static readonly defaultReasoningEffort = "medium";
     static readonly byok = true;
     // The Responses API rejects an explicit temperature for this model.
     static readonly configParsers = [dropTemperature];

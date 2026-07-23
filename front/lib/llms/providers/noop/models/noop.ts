@@ -17,7 +17,6 @@ export function WithDustNoopConfig<
   abstract class DustNoop extends WithConfig {
     static readonly displayName = "Noop";
     static readonly description = "Noop model that does nothing.";
-    static readonly defaultReasoningEffort = "none";
     static readonly byok = false;
   }
 

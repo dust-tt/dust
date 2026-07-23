@@ -21,8 +21,6 @@ export function WithDustMistralLargeConfig<
   abstract class DustMistralLarge extends WithConfig {
     static readonly displayName = "Mistral Large";
     static readonly description = "Mistral's `large` model (256k context).";
-    // Mistral Large is a non-reasoning model.
-    static readonly defaultReasoningEffort = "none";
     // Legacy product value; the model has no separate output cap.
     static readonly maxOutputTokens = 2_048;
     static readonly byok = true;

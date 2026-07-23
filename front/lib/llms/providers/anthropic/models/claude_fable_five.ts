@@ -22,7 +22,6 @@ export function WithDustClaudeFableFiveConfig<
     static readonly displayName = "Claude Fable 5";
     static readonly description =
       "Anthropic's Claude Fable 5 model, their most intelligent model, a new tier above Opus (250k context).";
-    static readonly defaultReasoningEffort = "medium";
     // Dust caps usable context at 250k; the model itself supports 1M.
     static readonly contextSize = 250_000;
     // Dust caps output at 64k; the model itself supports 128k.

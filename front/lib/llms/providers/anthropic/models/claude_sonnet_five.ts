@@ -25,7 +25,6 @@ export function WithDustClaudeSonnetFiveConfig<
     static readonly displayName = "Claude Sonnet 5";
     static readonly description =
       "Anthropic's Claude Sonnet 5 model, reaching near-Opus quality on coding and agentic work while balancing power and efficiency (250k context).";
-    static readonly defaultReasoningEffort = "medium";
     // Dust caps usable context at 250k; the model itself supports 1M.
     static readonly contextSize = 250_000;
     // Dust caps output at 64k; the model itself supports 128k.

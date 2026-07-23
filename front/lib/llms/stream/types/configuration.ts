@@ -21,7 +21,8 @@ export type DustStreamEndpointConfiguration<C extends InputConfig> =
       description: string;
 
       // Behavior
-      defaultReasoningEffort: ReasoningEffortOf<C>;
+      // Commented out during transition
+      // defaultReasoningEffort: ReasoningEffortOf<C>;
 
       // Parsers applied in order to the config before it is validated by the
       // endpoint's schema. Omitted means identity; override per endpoint for

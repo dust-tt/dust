@@ -19,7 +19,6 @@ export function WithDustGptFiveConfig<
     static readonly displayName = "GPT-5";
     static readonly description =
       "OpenAI's GPT-5 reasoning model (400k context).";
-    static readonly defaultReasoningEffort = "medium";
     static readonly byok = true;
     // The Responses API rejects an explicit temperature for this model.
     static readonly configParsers = [dropTemperature];

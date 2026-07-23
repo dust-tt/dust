@@ -18,7 +18,6 @@ export function WithDustGrok45Config<
     static readonly displayName = "Grok 4.5";
     static readonly description =
       "xAI's Grok 4.5 flagship model (500k context, reasoning, vision).";
-    static readonly defaultReasoningEffort = "high";
     static readonly byok = false;
   }
 

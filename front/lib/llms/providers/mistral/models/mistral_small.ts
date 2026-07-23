@@ -21,8 +21,6 @@ export function WithDustMistralSmallConfig<
   abstract class DustMistralSmall extends WithConfig {
     static readonly displayName = "Mistral Small";
     static readonly description = "Mistral's `small` model (128k context).";
-    // Mistral Small is a non-reasoning model.
-    static readonly defaultReasoningEffort = "none";
     // Legacy product value; the model has no separate output cap.
     static readonly maxOutputTokens = 2_048;
     static readonly byok = true;

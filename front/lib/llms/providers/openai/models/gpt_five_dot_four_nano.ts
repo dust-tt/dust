@@ -22,7 +22,6 @@ export function WithDustGptFiveDotFourNanoConfig<
     static readonly displayName = "GPT-5.4 Nano";
     static readonly description =
       "OpenAI's fastest, most cost-efficient GPT-5.4 (400k context).";
-    static readonly defaultReasoningEffort = "none";
     static readonly byok = true;
     // The Responses API rejects an explicit temperature while reasoning is on.
     static readonly configParsers = [dropTemperatureWhenReasoning];

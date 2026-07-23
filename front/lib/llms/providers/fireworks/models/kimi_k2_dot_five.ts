@@ -21,7 +21,6 @@ export function WithDustMoonshotAiKimiK2Dot5Config<
     static readonly displayName = "Kimi K2.5 (Fireworks)";
     static readonly description =
       "Moonshot AI's flagship agentic model with 262k context and vision support (served via Fireworks).";
-    static readonly defaultReasoningEffort = "low";
     static readonly byok = false;
   }
 

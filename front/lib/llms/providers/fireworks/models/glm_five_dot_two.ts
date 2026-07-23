@@ -21,7 +21,6 @@ export function WithDustZAiGlm52Config<
     static readonly displayName = "GLM-5.2 (Fireworks)";
     static readonly description =
       "Z.ai's GLM-5.2 Mixture-of-Experts model with advanced coding and long-horizon agentic capabilities (1M context, served via Fireworks).";
-    static readonly defaultReasoningEffort = "low";
     static readonly byok = false;
   }
 

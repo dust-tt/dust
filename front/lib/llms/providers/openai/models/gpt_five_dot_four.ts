@@ -22,7 +22,6 @@ export function WithDustGptFiveDotFourConfig<
     static readonly displayName = "GPT-5.4";
     static readonly description =
       "OpenAI's GPT-5.4 reasoning model for complex reasoning and agentic tasks (1M context).";
-    static readonly defaultReasoningEffort = "none";
     static readonly byok = true;
     // The Responses API rejects an explicit temperature while reasoning is on.
     static readonly configParsers = [dropTemperatureWhenReasoning];
