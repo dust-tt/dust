@@ -2,7 +2,11 @@ import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
-import { getSkillAvatarIcon, hasRelations } from "@app/lib/skill";
+import {
+  getSkillAvatarIcon,
+  hasRelations,
+  isDustProvidedSkill,
+} from "@app/lib/skill";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type {
   SkillRelations,
@@ -104,8 +108,9 @@ export function SkillDetailsSheetContent({
 
   // The editors tab is shown to everyone (non-editors get a read-only list,
   // SkillEditorsTab hides the remove column for them), except for global
-  // skills which are not editable.
-  const showEditorsTabs = skill.status !== "suggested" && !skill.isDefault;
+  // skills which have no editor group.
+  const showEditorsTabs =
+    skill.status !== "suggested" && !isDustProvidedSkill(skill);
 
   if (showEditorsTabs) {
     return (
