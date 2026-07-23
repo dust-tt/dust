@@ -162,7 +162,8 @@ export async function validateSelectableSpaces(
  * widening the scope of a conversation that already exists. It is only false on paths where there
  * is no one to evict: conversation creation (the conversation is brand new, and has no participant
  * row yet) and sub-agent inheritance (the child conversation is system-created and its Spaces were
- * already validated against the same user on the parent).
+ * already validated against the same user on the parent). Even when it is true, the gate only fires
+ * on calls that actually widen `conversation.requestedSpaceIds`.
  */
 export async function addSelectedConversationSpaces(
   auth: Authenticator,
@@ -210,7 +211,15 @@ export async function addSelectedConversationSpaces(
     });
   }
 
-  if (enforceCreatorOnly) {
+  // The input bar resends the conversation's whole current selection with every message, so most
+  // calls do not actually widen anything. Re-selecting a Space the conversation already requires
+  // cannot evict anyone, so the creator gate only applies to a real widening of the ACL.
+  const requestedSpaceIds = new Set(conversation.requestedSpaceIds);
+  const widensConversationAcl = dedupedSpaceIds.some(
+    (spaceId) => !requestedSpaceIds.has(spaceId)
+  );
+
+  if (enforceCreatorOnly && widensConversationAcl) {
     const conversationResource = await ConversationResource.fetchById(
       auth,
       conversation.sId

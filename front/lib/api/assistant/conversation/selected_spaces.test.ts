@@ -152,6 +152,23 @@ describe("selected conversation Spaces", () => {
     });
   }
 
+  // `addSelectedConversationSpaces` materializes the new ACL on the row, so callers that need the
+  // updated `requestedSpaceIds` have to re-read the conversation, like the routes do.
+  async function refetchConversation(
+    readerAuth: Authenticator,
+    conversationId: string
+  ) {
+    const conversationRes =
+      await ConversationResource.fetchConversationWithoutContent(
+        readerAuth,
+        conversationId
+      );
+    if (conversationRes.isErr()) {
+      throw conversationRes.error;
+    }
+    return conversationRes.value;
+  }
+
   async function otherWorkspaceMember() {
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, otherUser, { role: "user" });
@@ -387,6 +404,42 @@ describe("selected conversation Spaces", () => {
       expect.objectContaining({ sId: selectedSpace.sId, selected: true }),
     ]);
     expect(result.effectiveAcl.spaceIds).toContain(selectedSpace.sId);
+  });
+
+  it("lets a non-creator participant re-send the Spaces the conversation already requires", async () => {
+    await enableFeature();
+    const selectedSpace = await memberOpenSpace();
+    const conv = await conversation();
+    await participate(conv, auth);
+
+    const otherAuth = await otherWorkspaceMember();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await participate(conv, otherAuth);
+
+    unwrapResult(
+      await addSelectedConversationSpaces(auth, {
+        conversation: conv,
+        enforceCreatorOnly: true,
+        origin: "input_bar",
+        spaceIds: [selectedSpace.sId],
+      })
+    );
+
+    // The input bar resends the conversation's whole selection on every message, so a non-creator
+    // participant must not be locked out of posting by the creator gate.
+    const result = unwrapResult(
+      await addSelectedConversationSpaces(otherAuth, {
+        conversation: await refetchConversation(otherAuth, conv.sId),
+        enforceCreatorOnly: true,
+        origin: "input_bar",
+        spaceIds: [selectedSpace.sId],
+      })
+    );
+
+    expect(result.effectiveAcl.spaceIds).toContain(selectedSpace.sId);
+    expect(result.selectedSpaces).toEqual([
+      expect.objectContaining({ sId: selectedSpace.sId, selected: true }),
+    ]);
   });
 
   it("selects Spaces on the conversation creation path, before any participant exists", async () => {
