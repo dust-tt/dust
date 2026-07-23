@@ -1,30 +1,39 @@
 import type { Where, WorkspaceConfig } from "@app/lib/llms/types/filter";
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 
-type ReasoningEffortOf<C extends InputConfig> = NonNullable<
+export type ReasoningEffortOf<C extends InputConfig> = NonNullable<
   C["reasoning"]
 >["effort"];
 
+// `ModelConfigurationType` is the legacy model config. Endpoints port it onto
+// the new router by spreading the corresponding `*_DEFAULT_MODEL_CONFIG` onto
+// their statics. This is a transitional step: over time we want each endpoint to
+// declare its properties explicitly and drop the ones that are deprecated in the
+// new router (e.g. `regionalAvailability`, `recommendedTopK`, ...) rather than
+// carrying the whole legacy config forward.
 export type DustStreamEndpointConfiguration<C extends InputConfig> =
-  BaseEndpointConfiguration<C> & {
-    // Description
-    displayName: string;
-    description: string;
+  ModelConfigurationType &
+    BaseEndpointConfiguration<C> & {
+      // Description
+      displayName: string;
+      description: string;
 
-    // Behavior
-    defaultReasoningEffort: ReasoningEffortOf<C>;
+      // Behavior
+      // Commented out during transition
+      // defaultReasoningEffort: ReasoningEffortOf<C>;
 
-    // Parsers applied in order to the config before it is validated by the
-    // endpoint's schema. Omitted means identity; override per endpoint for
-    // provider quirks — e.g. dropping a non-default temperature when reasoning is
-    // active, which some schemas reject outright (Anthropic requires
-    // temperature=1 with thinking).
-    configParsers?: Array<(config: InputConfig) => InputConfig>;
+      // Parsers applied in order to the config before it is validated by the
+      // endpoint's schema. Omitted means identity; override per endpoint for
+      // provider quirks — e.g. dropping a non-default temperature when reasoning is
+      // active, which some schemas reject outright (Anthropic requires
+      // temperature=1 with thinking).
+      configParsers?: Array<(config: InputConfig) => InputConfig>;
 
-    // Filter
-    endpointFilter: Where<WorkspaceConfig>;
-  };
+      // Filter
+      endpointFilter: Where<WorkspaceConfig>;
+    };
 
 // `configParsers` helper: some providers reject any explicit temperature while
 // reasoning is active, so drop it when reasoning is on. Providers that require a
