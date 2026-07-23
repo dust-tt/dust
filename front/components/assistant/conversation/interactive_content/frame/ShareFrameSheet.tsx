@@ -91,6 +91,28 @@ function getScopeOptions(isExternalInviteOff: boolean): {
   ];
 }
 
+const baseScopeOptionClassNames =
+  "flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors";
+
+function getScopeOptionClassName({
+  isSelected,
+  isDisabled,
+}: {
+  isSelected: boolean;
+  isDisabled: boolean;
+}): string {
+  const cursor = isDisabled
+    ? "cursor-not-allowed opacity-60"
+    : "cursor-pointer";
+  const state = isSelected
+    ? "border-highlight-300 bg-muted-background"
+    : isDisabled
+      ? "border-transparent"
+      : "border-transparent hover:bg-muted-background/50";
+
+  return `${baseScopeOptionClassNames} ${cursor} ${state}`;
+}
+
 // Scopes allowed by each workspace sharing policy.
 const ALLOWED_SCOPES_BY_POLICY: Record<
   WorkspaceSharingPolicy,
@@ -189,9 +211,10 @@ export function ShareFrameSheet({
     owner.sharingPolicy === "workspace_only";
 
   // When the workspace policy forbids external sharing, we can skip the permission fetch entirely.
-  const { hasPermission } = useWorkspacePermissions(owner, {
-    disabled: externalSharingDisabledByPolicy,
-  });
+  const { hasPermission, isWorkspacePermissionsLoading } =
+    useWorkspacePermissions(owner, {
+      disabled: externalSharingDisabledByPolicy,
+    });
 
   const canInviteExternal =
     !externalSharingDisabledByPolicy && hasPermission("invite", "frame");
@@ -200,24 +223,34 @@ export function ShareFrameSheet({
 
   const isExternalInviteOff = !canInviteExternal;
 
+  const lostPublishPermission =
+    currentScope === "public" && !canPublish && !isWorkspacePermissionsLoading;
+
   const allowedScopes = ALLOWED_SCOPES_BY_POLICY[owner.sharingPolicy];
-  const availableScopeOptions = getScopeOptions(isExternalInviteOff).filter(
+  const availableScopeOptions = getScopeOptions(isExternalInviteOff).flatMap(
     (option) => {
       if (!allowedScopes.includes(option.value)) {
-        return false;
+        return [];
       }
-
       switch (option.value) {
         case "emails_only":
         case "workspace_and_emails":
         case "workspace":
-          // Internal email invites are always available
-          return true;
+          // Internal email invites are always available.
+          return [{ ...option, disabled: false }];
         case "public":
-          return canPublish;
+          if (canPublish) {
+            return [{ ...option, disabled: false }];
+          }
+          // Without the publish permission, keep the public option visible (disabled) only when
+          // the frame is already public, so its current state stays visible and the user can
+          // downgrade it but not re-publish. Otherwise hide it entirely.
+          return currentScope === "public"
+            ? [{ ...option, disabled: true }]
+            : [];
         default:
           assertNeverAndIgnore(option.value);
-          return false;
+          return [];
       }
     }
   );
@@ -315,6 +348,16 @@ export function ShareFrameSheet({
                       : "You don’t have permission to invite people outside your workspace. You can only invite people already in your workspace."}
                   </ContentMessage>
                 )}
+                {lostPublishPermission && (
+                  <ContentMessage
+                    icon={InfoCircle}
+                    variant="info"
+                    title="You no longer have permission to share frames publicly"
+                  >
+                    This frame is currently shared publicly. You can restrict
+                    access, but you won’t be able to make it public again.
+                  </ContentMessage>
+                )}
                 {shareBlockError && shareBlockError.length > 0 && (
                   <ContentMessage
                     icon={InfoCircle}
@@ -333,16 +376,16 @@ export function ShareFrameSheet({
                   <div className="flex flex-col gap-1">
                     {availableScopeOptions.map((option) => {
                       const isSelected = option.value === currentScope;
+                      const isDisabled = option.disabled;
                       const inputId = `share-scope-${option.value}`;
                       return (
                         <Label
                           key={option.value}
                           htmlFor={inputId}
-                          className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
-                            isSelected
-                              ? "border-highlight-300 bg-muted-background"
-                              : "border-transparent hover:bg-muted-background/50"
-                          }`}
+                          className={getScopeOptionClassName({
+                            isSelected,
+                            isDisabled,
+                          })}
                         >
                           <input
                             type="radio"
@@ -350,6 +393,7 @@ export function ShareFrameSheet({
                             name="share-scope"
                             value={option.value}
                             checked={isSelected}
+                            disabled={isDisabled}
                             onChange={async () => {
                               setShareBlockError(null);
                               const result = await doShare(option.value);
