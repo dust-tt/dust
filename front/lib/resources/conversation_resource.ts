@@ -1458,7 +1458,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const messageWithAgent = await MessageModel.findAll({
       attributes: [
         [
-          Sequelize.fn("DISTINCT", Sequelize.col("conversationId")),
+          // Qualified: agent_messages also carries a conversationId column since the
+          // side-table denormalization, so the bare name is ambiguous in this join.
+          Sequelize.fn("DISTINCT", Sequelize.col("message.conversationId")),
           "conversationId",
         ],
       ],
