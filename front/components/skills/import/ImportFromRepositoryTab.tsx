@@ -2,10 +2,7 @@ import { ConnectWorkspaceGitHubMessage } from "@app/components/skills/import/Con
 import { DetectedSkillsList } from "@app/components/skills/import/DetectedSkillsList";
 import type { RepositoryImportFormValues } from "@app/components/skills/import/formSchema";
 import { GitHubConnectionRow } from "@app/components/skills/import/GitHubConnectionRow";
-import {
-  isImportableSkillStatus,
-  parseGitHubRepoUrl,
-} from "@app/lib/skill_detection";
+import { isImportableSkillStatus } from "@app/lib/skill_detection";
 import { useWorkspaceGitHubConnection } from "@app/lib/swr/github_connection";
 import { useDetectSkillsFromRepo } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -38,7 +35,6 @@ export function ImportFromRepositoryTab({
     detectError,
     repositoryNotFound,
     triggerDetect,
-    clearDetection,
   } = useDetectSkillsFromRepo({ owner });
 
   const { connection, isConnectionLoading, mutateConnection } =
@@ -72,56 +68,11 @@ export function ImportFromRepositoryTab({
 
   const showRepositoryNotFound = repositoryNotFound && !isConnectionLoading;
 
-  const hasRepositoryContent =
-    isDetecting ||
-    !!detectError ||
-    showRepositoryNotFound ||
-    detectedSkills.length > 0;
-
-  let repositoryContent = (
-    <DetectedSkillsList
-      detectedSkills={detectedSkills}
-      isDetecting={isDetecting}
-      detectError={detectError}
-    />
-  );
-  if (showRepositoryNotFound && connection) {
-    repositoryContent = (
-      <ContentMessage
-        variant="warning"
-        size="lg"
-        icon={InfoCircle}
-        title="GitHub connection can't access this repository"
-      >
-        The currently connected GitHub account can't access this repository.{" "}
-        {isAdmin(owner)
-          ? "Check the URL or reconnect with an account that has access."
-          : "Check the URL or ask an admin to reconnect with an account that has access."}
-      </ContentMessage>
-    );
-  } else if (showRepositoryNotFound && isAdmin(owner)) {
-    repositoryContent = (
-      <ConnectWorkspaceGitHubMessage
-        owner={owner}
-        onConnected={() => {
-          void mutateConnection();
-          triggerDetect(repoUrlField.value);
-        }}
-      />
-    );
-  } else if (showRepositoryNotFound) {
-    repositoryContent = (
-      <ContentMessage
-        variant="warning"
-        size="lg"
-        icon={InfoCircle}
-        title="Repository not found"
-      >
-        Check the URL. For private repos, ask an admin to connect a GitHub
-        account with access.
-      </ContentMessage>
-    );
-  }
+  const isEmpty =
+    !isDetecting &&
+    !detectError &&
+    !showRepositoryNotFound &&
+    detectedSkills.length === 0;
 
   return (
     <div className="flex flex-col gap-3 pt-4">
@@ -132,11 +83,7 @@ export function ImportFromRepositoryTab({
         onChange={(e) => {
           const trimmed = e.target.value.trim();
           repoUrlField.onChange(trimmed);
-          if (trimmed && parseGitHubRepoUrl(trimmed).isOk()) {
-            triggerDetect(trimmed);
-          } else {
-            clearDetection();
-          }
+          triggerDetect(trimmed);
         }}
         onBlur={repoUrlField.onBlur}
         placeholder="https://github.com/owner/repo"
@@ -144,8 +91,45 @@ export function ImportFromRepositoryTab({
         className="bg-muted-background"
       />
 
-      <div className={cn("flex flex-col", hasRepositoryContent && "min-h-40")}>
-        {repositoryContent}
+      <div className={cn("flex flex-col", !isEmpty && "min-h-40")}>
+        {showRepositoryNotFound &&
+          (connection ? (
+            <ContentMessage
+              variant="warning"
+              size="lg"
+              icon={InfoCircle}
+              title="GitHub connection can't access this repository"
+            >
+              The currently connected GitHub account can't access this
+              repository.&nbsp;
+              {isAdmin(owner)
+                ? "Check the URL or reconnect with an account that has access."
+                : "Check the URL or ask an admin to reconnect with an account that has access."}
+            </ContentMessage>
+          ) : isAdmin(owner) ? (
+            <ConnectWorkspaceGitHubMessage
+              owner={owner}
+              onConnected={() => {
+                void mutateConnection();
+                triggerDetect(repoUrlField.value);
+              }}
+            />
+          ) : (
+            <ContentMessage
+              variant="warning"
+              size="lg"
+              icon={InfoCircle}
+              title="Repository not found"
+            >
+              Check the URL. For private repos, ask an admin to connect a GitHub
+              account with access.
+            </ContentMessage>
+          ))}
+        <DetectedSkillsList
+          detectedSkills={detectedSkills}
+          isDetecting={isDetecting}
+          detectError={detectError}
+        />
       </div>
 
       {connection && (

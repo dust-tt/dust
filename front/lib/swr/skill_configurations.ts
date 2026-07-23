@@ -2,9 +2,10 @@ import type { ImportFormValues } from "@app/components/skills/import/formSchema"
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
-import type {
-  DetectedSkillSummary,
-  DetectSkillsResponseBody,
+import {
+  type DetectedSkillSummary,
+  type DetectSkillsResponseBody,
+  parseGitHubRepoUrl,
 } from "@app/lib/skill_detection";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
@@ -442,11 +443,19 @@ export function useDetectSkillsFromRepo({
   );
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
-  const [repositoryNotFound, setRepositoryNotFound] = useState(false);
+  const [repositoryNotFound, setRepositoryNotFound] = useState<boolean>(false);
 
   const triggerDetect = useDebounceWithAbort(
     useCallback(
       async (repoUrl: string, signal: AbortSignal) => {
+        if (!repoUrl || parseGitHubRepoUrl(repoUrl).isErr()) {
+          setDetectedSkills([]);
+          setDetectError(null);
+          setRepositoryNotFound(false);
+          setIsDetecting(false);
+          return;
+        }
+
         setIsDetecting(true);
         setDetectError(null);
         setRepositoryNotFound(false);
@@ -469,9 +478,14 @@ export function useDetectSkillsFromRepo({
           }
           setDetectedSkills([]);
           if (isAPIErrorResponse(err)) {
-            setDetectError(err.error.message);
             setRepositoryNotFound(
               err.error.type === "skill_github_repository_not_found"
+            );
+            // Detect errors are errors we want to expose to consumers: repository not found is singled out above.
+            setDetectError(
+              err.error.type === "skill_github_repository_not_found"
+                ? null
+                : err.error.message
             );
           } else {
             setDetectError("Failed to detect skills from this repository.");
@@ -487,20 +501,12 @@ export function useDetectSkillsFromRepo({
     { delayMs: DETECT_SKILLS_DEBOUNCE_MS }
   );
 
-  const clearDetection = useCallback(() => {
-    setDetectedSkills([]);
-    setDetectError(null);
-    setRepositoryNotFound(false);
-    setIsDetecting(false);
-  }, []);
-
   return {
     isDetecting,
-    detectError: !isDetecting ? detectError : null,
-    detectedSkills: !isDetecting && !detectError ? detectedSkills : [],
-    repositoryNotFound: !isDetecting ? repositoryNotFound : false,
+    detectError: isDetecting ? null : detectError,
+    repositoryNotFound: !isDetecting && repositoryNotFound,
+    detectedSkills: isDetecting || detectError ? [] : detectedSkills,
     triggerDetect,
-    clearDetection,
   };
 }
 
