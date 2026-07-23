@@ -148,6 +148,66 @@ describe("GET /api/w/:wId/skills", () => {
     expect(skillNames).not.toContain("Someone Else's Unpublished Skill");
   });
 
+  it("filters by availability, with isDefault=true as a deprecated alias", async () => {
+    const { workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    await SkillFactory.create(auth, {
+      name: "Workspace Skill",
+      availability: "workspace_users",
+    });
+    await SkillFactory.create(auth, {
+      name: "Discoverable Skill",
+      availability: "users_and_agents",
+    });
+
+    const equivalentQueries: Record<string, string>[] = [
+      { availability: "users_and_agents" },
+      { isDefault: "true" },
+    ];
+    for (const query of equivalentQueries) {
+      const response = await getSkills(workspace, query);
+      expect(response.status).toBe(200);
+      const skillNames = (await response.json()).skills.map(
+        (s: SkillWithoutInstructionsAndToolsType) => s.name
+      );
+      expect(skillNames).toContain("Discoverable Skill");
+      expect(skillNames).not.toContain("Workspace Skill");
+    }
+
+    // An explicit availability takes priority over the deprecated alias.
+    const response = await getSkills(workspace, {
+      availability: "workspace_users",
+      isDefault: "true",
+    });
+    expect(response.status).toBe(200);
+    const skillNames = (await response.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).toContain("Workspace Skill");
+    expect(skillNames).not.toContain("Discoverable Skill");
+
+    // Several availabilities can be requested at once (repeated query param).
+    const multiResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/skills?availability=workspace_users&availability=users_and_agents&onlyCustom=true`
+    );
+    expect(multiResponse.status).toBe(200);
+    const multiSkillNames = (await multiResponse.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(multiSkillNames).toContain("Workspace Skill");
+    expect(multiSkillNames).toContain("Discoverable Skill");
+
+    const invalidResponse = await getSkills(workspace, {
+      availability: "everyone",
+    });
+    expect(invalidResponse.status).toBe(400);
+  });
+
   it("should only return active skills", async () => {
     const { workspace, user } = await setupTest();
 

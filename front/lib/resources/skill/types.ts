@@ -15,7 +15,7 @@ export type AllSkillConfigurationFindOptions = Omit<
     sId?: string | string[];
     id?: number | number[];
     status?: SkillStatus | SkillStatus[];
-    availability?: SkillAvailability;
+    availability?: SkillAvailability | SkillAvailability[];
   };
   onlyCustom?: false; // Default: include global skills.
 };
