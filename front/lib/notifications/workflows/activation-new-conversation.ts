@@ -157,8 +157,8 @@ export const activationNewConversationWorkflow = workflow(
             id: payload.workspaceId,
             name: details.workspaceName,
           },
-          content: `Test test test! Hi you are recieving a secret message from Phoebe :)" +
-          "There's something new waiting for you: "${details.subject}".`,
+          content: `Test test test! Hi you are recieving a secret message from Phoebe :)
+          There's something new waiting for you: "${details.subject}".`,
           action: {
             label: "Open conversation",
             url:
