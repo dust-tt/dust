@@ -42,9 +42,6 @@ export async function getModelTierAccessErrorForAgentConfiguration(
     model: ModelConfigurationType;
     reasoningEffort?: ReasoningEffort;
     featureFlags: WhitelistableFeature[];
-    // Only passed on the run path. The create/upgrade path deliberately omits
-    // it: the published-agents override must not let members configure agents
-    // with models above their own tier.
     agentScope?: AgentConfigurationScope;
   }
 ): Promise<GenericErrorContent | null> {
