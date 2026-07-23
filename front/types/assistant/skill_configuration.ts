@@ -88,7 +88,9 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
   ),
   canWrite: z.boolean(),
   canAdministrate: z.boolean(),
+  // @deprecated Use availability instead. Kept while old clients still read it.
   isDefault: z.boolean(),
+  availability: z.enum(SKILL_AVAILABILITIES),
 });
 
 export type SkillWithoutInstructionsAndToolsType = z.infer<

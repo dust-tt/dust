@@ -4073,6 +4073,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       canWrite: this.canWrite(auth),
       canAdministrate: this.canAdministrate(auth),
       isDefault: isDefaultFromAvailability(this.availability),
+      availability: this.availability,
     };
   }
 

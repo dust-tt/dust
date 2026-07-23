@@ -4,6 +4,7 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -16,7 +17,10 @@ import type {
 } from "@app/types/api/skills";
 import {
   availabilityFromIsDefault,
+  DEFAULT_SKILL_AVAILABILITY,
+  SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
+  type SkillAvailability,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -53,7 +57,9 @@ const PostSkillRequestBodySchema = z.intersection(
     instructionsHtml: z.string().nullable(),
     additionalRequestedSpaceIds: z.array(z.string()).optional(),
     fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
+    // @deprecated Use availability instead. Kept while old clients still send it.
     isDefault: z.boolean().optional(),
+    availability: z.enum(SKILL_AVAILABILITIES).optional(),
     reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
   }),
   z.union([
@@ -74,6 +80,24 @@ const PostSkillRequestBodySchema = z.intersection(
     }),
   ])
 );
+
+// isDefault is a deprecated alias; an explicit availability takes priority over it. Returns
+// undefined when the caller did not request any availability.
+function resolveRequestedAvailability({
+  availability,
+  isDefault,
+}: {
+  availability?: SkillAvailability;
+  isDefault?: boolean;
+}): SkillAvailability | undefined {
+  if (availability !== undefined) {
+    return availability;
+  }
+  if (isDefault !== undefined) {
+    return availabilityFromIsDefault(isDefault);
+  }
+  return undefined;
+}
 
 // Mounted at /api/w/:wId/skills.
 const app = workspaceApp();
@@ -229,6 +253,46 @@ app.post(
         },
       });
     }
+
+    const hasSkillPublicationGovernance = await hasFeatureFlag(
+      auth,
+      "admin_governance_skill_publication"
+    );
+
+    // Without skill publication governance, keep the previous behavior: only the two
+    // legacy availability values are accepted.
+    if (!hasSkillPublicationGovernance && body.availability === "editors") {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            'Availability "editors" requires skill publication governance to be enabled.',
+        },
+      });
+    }
+
+    const requestedAvailability = resolveRequestedAvailability(body);
+
+    // With skill publication governance, explicitly creating a skill already published
+    // (anything other than editors-only) requires the workspace-level permission to publish
+    // skills. The default availability is exempt so plain creation keeps working.
+    if (
+      hasSkillPublicationGovernance &&
+      requestedAvailability !== undefined &&
+      requestedAvailability !== "editors" &&
+      !(await auth.hasWorkspacePermission("publish", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "You don't have permission to publish skills.",
+        },
+      });
+    }
+
+    const availability = requestedAvailability ?? DEFAULT_SKILL_AVAILABILITY;
 
     const existingSkill = await SkillResource.fetchByName(auth, name);
 
@@ -393,7 +457,7 @@ app.post(
         icon,
         source: body.source ?? "web_app",
         sourceMetadata: body.sourceMetadata ?? null,
-        availability: availabilityFromIsDefault(body.isDefault ?? false),
+        availability,
         reinforcement: body.reinforcement ?? "on",
       },
       {

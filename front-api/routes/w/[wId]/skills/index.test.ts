@@ -9,6 +9,7 @@ import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/system
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
@@ -665,6 +666,86 @@ describe("POST /api/w/:wId/skills", () => {
       responseData.skill.sId
     );
     expect(createdSkill).not.toBeNull();
+  });
+
+  it("rejects the editors availability when skill publication governance is off", async () => {
+    const { workspace } = await setupTest("admin");
+
+    const response = await postSkill(workspace, {
+      name: "Unpublished Skill",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A skill",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      availability: "editors",
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("keeps the default availability without requiring the publish permission when governance is on", async () => {
+    const { auth, workspace, user } = await setupTest("builder");
+    await grantCreateSkillCapability(workspace, user);
+    await FeatureFlagFactory.basic(auth, "admin_governance_skill_publication");
+
+    const response = await postSkill(workspace, {
+      name: "Draft Skill",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A skill",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(200);
+    const responseData = await response.json();
+    expect(responseData.skill.availability).toBe("workspace_users");
+  });
+
+  it("requires the publish permission to create a published skill when governance is on", async () => {
+    const { auth, workspace, user } = await setupTest("builder");
+    await grantCreateSkillCapability(workspace, user);
+    await FeatureFlagFactory.basic(auth, "admin_governance_skill_publication");
+
+    const response = await postSkill(workspace, {
+      name: "Published Skill",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A skill",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      availability: "workspace_users",
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("lets an admin create a published skill when governance is on", async () => {
+    const { auth, workspace } = await setupTest("admin");
+    await FeatureFlagFactory.basic(auth, "admin_governance_skill_publication");
+
+    const response = await postSkill(workspace, {
+      name: "Published Skill",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A skill",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      availability: "users_and_agents",
+    });
+
+    expect(response.status).toBe(200);
+    const responseData = await response.json();
+    expect(responseData.skill.availability).toBe("users_and_agents");
   });
 
   it("creates skill references", async () => {
