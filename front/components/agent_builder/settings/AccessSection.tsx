@@ -114,7 +114,7 @@ export function AccessSection({
               disabled={!canPublishAgent}
               tooltip={
                 !canPublishAgent
-                  ? "You don't have permission to publish agents."
+                  ? "You don’t have permission to publish agents."
                   : undefined
               }
             />
