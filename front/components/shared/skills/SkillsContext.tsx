@@ -36,8 +36,10 @@ export const SkillsProvider = ({ owner, children }: SkillsProviderProps) => {
       // Dust-managed non-default skills are displayed first: these are the baseline Discover capabilities.
       // Default skills are the ones that are discoverable.
       skills: skills.toSorted((a, b) => {
-        const aIsDiscover = a.editedBy === null && !a.isDefault;
-        const bIsDiscover = b.editedBy === null && !b.isDefault;
+        const aIsDiscover =
+          a.editedBy === null && a.availability !== "users_and_agents";
+        const bIsDiscover =
+          b.editedBy === null && b.availability !== "users_and_agents";
         if (aIsDiscover !== bIsDiscover) {
           return aIsDiscover ? -1 : 1;
         }

@@ -154,7 +154,11 @@ export function ManageSkillsPage() {
       ),
       default: filteredList(
         sortedActiveSkills
-          .filter((s) => s.isDefault || s.relations.editors === null)
+          .filter(
+            (s) =>
+              s.availability === "users_and_agents" ||
+              s.relations.editors === null
+          )
           .sort((a, b) => {
             // Display first the skills that have no editor (Dust-managed ones).
             const aNoEditors = a.relations.editors === null;

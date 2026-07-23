@@ -4,6 +4,7 @@ import type {
   SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { UserType } from "@app/types/user";
 
 /**
@@ -23,7 +24,7 @@ export function transformSkillTypeToFormData(
     tools: skill.tools.map(getDefaultMCPAction),
     fileAttachments: skill.fileAttachments,
     icon: skill.icon ?? null,
-    isDefault: skill.isDefault,
+    availability: skill.availability,
     reinforcement: skill.reinforcement,
     additionalSpaces: [],
     referencedSkills:
@@ -54,7 +55,7 @@ export function getDefaultSkillFormData({
     tools: [],
     fileAttachments: [],
     icon: null,
-    isDefault: false,
+    availability: DEFAULT_SKILL_AVAILABILITY,
     reinforcement: "on",
     additionalSpaces: [],
     referencedSkills: [],
