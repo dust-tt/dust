@@ -1,9 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationModel } from "@app/lib/models/agent/conversation";
 import {
   ActivationRecommendationModel,
   type ActivationRecommendationStatus,
 } from "@app/lib/models/activation/activation_recommendation";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -116,7 +116,12 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
   static async listSuggestedByUser(
     auth: Authenticator,
     { limit = 5, sinceDaysAgo }: { limit?: number; sinceDaysAgo?: number } = {}
-  ): Promise<{ resource: ActivationRecommendationResource; conversationSId: string | null }[]> {
+  ): Promise<
+    {
+      resource: ActivationRecommendationResource;
+      conversationSId: string | null;
+    }[]
+  > {
     const user = auth.getNonNullableUser();
 
     const where: WhereOptions<ActivationRecommendationModel> = {
