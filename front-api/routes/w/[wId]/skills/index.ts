@@ -139,7 +139,7 @@ app.get(
     }
     const skillStatus = statusValidation.data;
 
-    const skills = await SkillResource.listByWorkspace(auth, {
+    const allSkills = await SkillResource.listByWorkspace(auth, {
       status: skillStatus,
       globalSpaceOnly: globalSpaceOnly === "true",
       onlyCustom: onlyCustom === "true",
@@ -148,6 +148,12 @@ app.get(
       withTools: false,
       withFileAttachments: false,
     });
+
+    // Skills with editors-only availability (unpublished) are only listed for members of
+    // their editor group.
+    const skills = allSkills.filter(
+      (skill) => skill.availability !== "editors" || skill.canWrite(auth)
+    );
 
     if (withRelations === "true") {
       const usageMap = await SkillResource.batchFetchUsage(auth, skills);

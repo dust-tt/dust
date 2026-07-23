@@ -15,9 +15,11 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
   SkillWithoutInstructionsAndToolsType,
   SkillWithoutInstructionsAndToolsWithRelationsType,
@@ -100,6 +102,50 @@ describe("GET /api/w/:wId/skills", () => {
     );
     expect(skillNames).toContain("Test Skill 1");
     expect(skillNames).toContain("Test Skill 2");
+  });
+
+  it("only lists editors-only skills to members of their editor group", async () => {
+    const { workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    // Skill whose editor group the requester belongs to (creator is an editor).
+    await SkillFactory.create(auth, {
+      name: "My Unpublished Skill",
+      availability: "editors",
+    });
+
+    // Skills created by another user: the requester is not in their editor groups.
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, {
+      role: "builder",
+    });
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+    await SkillFactory.create(otherAuth, {
+      name: "Someone Else's Unpublished Skill",
+      availability: "editors",
+    });
+    await SkillFactory.create(otherAuth, {
+      name: "Someone Else's Published Skill",
+      availability: "workspace_users",
+    });
+
+    const response = await getSkills(workspace);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    const skillNames = data.skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).toContain("My Unpublished Skill");
+    expect(skillNames).toContain("Someone Else's Published Skill");
+    expect(skillNames).not.toContain("Someone Else's Unpublished Skill");
   });
 
   it("should only return active skills", async () => {
