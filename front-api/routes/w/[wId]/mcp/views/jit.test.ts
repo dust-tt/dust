@@ -88,14 +88,14 @@ describe("GET /api/w/:wId/mcp/views/jit", () => {
       (v) => v.server.sId === configurableServer.sId
     );
 
-    // The view whose tool has a required Dust configurable input is excluded.
+    // The view whose tool has a required Dust configurable input is excluded, based on the
+    // precomputed cachedToolsRequireConfiguration flag.
     expect(configurableView).toBeUndefined();
 
-    // The JIT-attachable view is returned with tool names and descriptions only.
+    // The JIT-attachable remote view is returned without its tools nor any remote specifics
+    // (surfaces needing the tools fetch the full server on demand).
     expect(plainView).toBeDefined();
-    expect(plainView?.server.tools).toEqual([
-      { name: "search", description: "Search things" },
-    ]);
+    expect(plainView?.server.tools).toEqual([]);
     expect(plainView?.server.authorization).toBeNull();
     expect(plainView?.server).not.toHaveProperty("url");
     expect(plainView?.server).not.toHaveProperty("sharedSecret");

@@ -9,12 +9,14 @@ import {
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useMCPServer } from "@app/lib/swr/mcp_servers";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  LoadingBlock,
   Separator,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
@@ -38,12 +40,30 @@ export function MCPServerDetailsInfo({
     return d.toLocaleDateString();
   }, [mcpServerView?.editedByUser]);
 
+  // Views listed by the JIT views endpoint come without their remote server tools, so in
+  // read-only mode the tools are fetched on demand (deduped by SWR with the parent's fetch).
+  const { server: fetchedServer, isMCPServerLoading } = useMCPServer({
+    owner,
+    serverId: mcpServerView?.server.sId ?? "",
+    disabled: !readOnly || !mcpServerView,
+  });
+
   if (!mcpServerView) {
     return null;
   }
 
   if (readOnly) {
-    const tools = mcpServerView.server.tools ?? [];
+    if (isMCPServerLoading) {
+      return (
+        <div className="flex flex-col gap-2">
+          <LoadingBlock className="h-6 w-[50%]" />
+          <LoadingBlock className="h-4 w-[80%]" />
+          <LoadingBlock className="h-4 w-[80%]" />
+        </div>
+      );
+    }
+
+    const tools = fetchedServer?.tools ?? mcpServerView.server.tools ?? [];
     return (
       <div className="flex flex-col gap-2">
         <div className="heading-lg">Available Tools ({tools.length})</div>

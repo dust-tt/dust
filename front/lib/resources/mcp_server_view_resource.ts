@@ -20,13 +20,10 @@ import {
   INTERNAL_MCP_SERVERS,
   isAutoInternalMCPServerName,
   isValidInternalMCPServerId,
+  matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
-import type {
-  MCPServerType,
-  MCPServerViewType,
-  MCPToolType,
-} from "@app/lib/api/mcp";
+import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
@@ -47,6 +44,7 @@ import type {
   ResourceFindOptions,
 } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { hasNoRequiredProperties } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import { tracer } from "@app/logger/tracer";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
@@ -1259,12 +1257,21 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   }
 
   /**
-   * The server's tools. For remote servers this requires the `cachedTools` heavy attribute.
+   * Server-side counterpart of `isJITMCPServerView`: true when the view's tools can be enabled
+   * directly in a conversation. Cheap — remote servers carry the precomputed
+   * `cachedToolsRequireConfiguration` flag, internal tools live in memory — so no heavy
+   * attribute is needed at fetch time.
    */
-  getTools(): MCPToolType[] {
-    return this.serverType === "remote"
-      ? this.getRemoteMCPServerResource().getCachedTools()
-      : this.getInternalMCPServerResource().toJSON().tools;
+  isJITAttachable(): boolean {
+    if (matchesInternalMCPServerName(this.mcpServerId, "agent_memory")) {
+      return false;
+    }
+    if (this.serverType === "remote") {
+      return !this.getRemoteMCPServerResource().cachedToolsRequireConfiguration;
+    }
+    return hasNoRequiredProperties({
+      server: { tools: this.getInternalMCPServerResource().toJSON().tools },
+    });
   }
 
   /**
@@ -1698,15 +1705,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   /**
    * Light serialization for list surfaces (conversation capabilities picker, slash menu) that
    * only render names, descriptions and icons. Tool input schemas, authorization and the remote
-   * server specifics (url, secrets, lastError) are omitted; for remote servers only the
-   * `cachedTools` heavy attribute is required at fetch time.
+   * server specifics (url, secrets, lastError) are omitted, and remote tools are not included
+   * at all (surfaces needing them fetch the full server on demand), so no heavy attribute is
+   * required at fetch time.
    */
   toJSONLight(): MCPServerViewType {
-    const tools = this.getTools().map(({ name, description }) => ({
-      name,
-      description,
-    }));
-
     let server: MCPServerType;
     if (this.serverType === "remote") {
       const remoteServer = this.getRemoteMCPServerResource();
@@ -1718,17 +1721,21 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         version: remoteServer.version,
         icon: remoteServer.icon,
         authorization: null,
-        tools,
+        tools: [],
         availability: "manual",
         allowMultipleInstances: true,
         documentationUrl: null,
         meta: remoteServer.meta,
       };
     } else {
+      const internalServer = this.getInternalMCPServerResource().toJSON();
       server = {
-        ...this.getInternalMCPServerResource().toJSON(),
+        ...internalServer,
         authorization: null,
-        tools,
+        tools: internalServer.tools.map(({ name, description }) => ({
+          name,
+          description,
+        })),
       };
     }
 

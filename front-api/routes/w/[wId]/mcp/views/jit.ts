@@ -1,4 +1,3 @@
-import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { GetMCPServerViewsListResponseBody } from "@app/lib/api/mcp";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -45,21 +44,15 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
     });
   }
 
+  // The JIT filter relies on the precomputed `cachedToolsRequireConfiguration` flag and the
+  // light serialization ships no remote tools, so no heavy attribute is fetched.
   const views = await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
     auth,
-    queryValidation.data.spaceIds,
-    {
-      // The JIT filter inspects the tools of the views' servers.
-      includeHeavyAttributes: ["cachedTools"],
-    }
+    queryValidation.data.spaceIds
   );
 
   const serverViews = views
-    .filter((v) =>
-      isJITMCPServerView({
-        server: { sId: v.mcpServerId, tools: v.getTools() },
-      })
-    )
+    .filter((v) => v.isJITAttachable())
     .map((v) => v.toJSONLight())
     // Same availabilities as the full listing exposes: "auto_hidden_builder" is never served.
     .filter(
