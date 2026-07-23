@@ -1,15 +1,19 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   MCPProgressNotificationType,
+  ToolGeneratedFilePathType,
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { resolveConversationFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import {
-  type AgentLoopRunContext,
-  isAgentLoopRunContext,
-  type ToolContext,
+import type {
+  AgentLoopRunContext,
+  SandboxFunctionRunContext,
+  ToolContext,
 } from "@app/lib/actions/types";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { getToolOutputsScopedPath } from "@app/lib/api/files/action_output_fs";
+import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { ReferenceImageFile } from "@app/lib/api/llm/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
@@ -28,6 +32,7 @@ import {
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
@@ -272,15 +277,101 @@ async function uploadAndFormatAgentLoopImageResponse(
   return new Ok(resources);
 }
 
+async function writeSandboxFunctionImageResponse(
+  auth: Authenticator,
+  runContext: SandboxFunctionRunContext,
+  images: Base64ImageData[],
+  fileName: string
+): Promise<
+  Result<
+    Array<{ type: "resource"; resource: ToolGeneratedFilePathType }>,
+    MCPError
+  >
+> {
+  const fileSystemResult = await DustFileSystem.forPod(
+    auth,
+    runContext.invocation.sandboxFunction.space
+  );
+  if (fileSystemResult.isErr()) {
+    return new Err(
+      new MCPError(
+        `Error accessing generated image files: ${fileSystemResult.error.message}`,
+        { cause: fileSystemResult.error }
+      )
+    );
+  }
+
+  const baseFileName = stripFileExtension(fileName);
+  const resources: Array<{
+    type: "resource";
+    resource: ToolGeneratedFilePathType;
+  }> = [];
+
+  for (const [index, image] of images.entries()) {
+    const mimeType = image.mimeType ?? DEFAULT_IMAGE_MIME_TYPE;
+    if (!isSupportedImageContentType(mimeType)) {
+      return new Err(
+        new MCPError(`Unsupported image type: ${mimeType}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const extension = extensionsForContentType(mimeType)[0] ?? ".png";
+    const outputBaseName =
+      images.length > 1 ? `${baseFileName}-${index + 1}` : baseFileName;
+    const outputFileName = makeFileName({
+      name: outputBaseName,
+      ext: extension,
+    });
+    const scopedPath = getToolOutputsScopedPath(runContext, outputFileName);
+    const base64Data = image.base64.replace(/^data:image\/[^;]+;base64,/, "");
+    const content = Buffer.from(base64Data, "base64");
+    const writeResult = await fileSystemResult.value.write(
+      scopedPath,
+      content,
+      mimeType
+    );
+    if (writeResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Error saving generated image: ${writeResult.error.message}`,
+          { cause: writeResult.error }
+        )
+      );
+    }
+
+    resources.push({
+      type: "resource",
+      resource: {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
+        uri: scopedPath,
+        path: scopedPath,
+        title: outputFileName,
+        contentType: mimeType,
+        text: `Generated image: ${outputFileName}`,
+      },
+    });
+  }
+
+  return new Ok(resources);
+}
+
 export async function uploadAndFormatImageResponse(
   auth: Authenticator,
   toolContext: ToolContext | undefined,
   images: Base64ImageData[],
   fileName: string
 ): Promise<
-  Result<Array<{ type: "resource"; resource: ToolGeneratedFileType }>, MCPError>
+  Result<
+    Array<{
+      type: "resource";
+      resource: ToolGeneratedFileType | ToolGeneratedFilePathType;
+    }>,
+    MCPError
+  >
 > {
-  if (!isAgentLoopRunContext(toolContext?.runContext)) {
+  if (!toolContext?.runContext) {
     return new Err(
       new MCPError("No conversation context available for file upload", {
         tracked: false,
@@ -288,12 +379,25 @@ export async function uploadAndFormatImageResponse(
     );
   }
 
-  return uploadAndFormatAgentLoopImageResponse(
-    auth,
-    toolContext.runContext,
-    images,
-    fileName
-  );
+  const { runContext } = toolContext;
+  switch (runContext.contextType) {
+    case "agent_loop":
+      return uploadAndFormatAgentLoopImageResponse(
+        auth,
+        runContext,
+        images,
+        fileName
+      );
+    case "sandbox_function":
+      return writeSandboxFunctionImageResponse(
+        auth,
+        runContext,
+        images,
+        fileName
+      );
+    default:
+      return assertNever(runContext);
+  }
 }
 
 async function processSingleImageFile(
