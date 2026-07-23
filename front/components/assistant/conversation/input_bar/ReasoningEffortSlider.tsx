@@ -1,6 +1,7 @@
 import type { EffortStop } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import {
   getReasoningEffortLabel,
+  PREMIUM_MODEL_LOCKED_TOOLTIP,
   REASONING_EFFORT_INFO,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { classNames } from "@app/lib/utils";
@@ -35,6 +36,12 @@ export function ReasoningEffortSlider({
   // With a single (or no) selectable level there is nothing to slide, so the
   // slider is shown disabled with an explanatory tooltip.
   const isDisabled = unlockedStops.length <= 1;
+  const hasPremiumLock = stops.some((stop) => stop.lockedReason === "premium");
+
+  const stopTooltip = (stop: EffortStop) =>
+    stop.lockedReason === "premium"
+      ? PREMIUM_MODEL_LOCKED_TOOLTIP
+      : REASONING_EFFORT_INFO[stop.effort];
 
   const selectStop = (stop: EffortStop) => {
     if (!isDisabled && !stop.locked && stop.effort !== value) {
@@ -54,11 +61,7 @@ export function ReasoningEffortSlider({
         value={valueIndex}
         lockedSteps={lockedSteps}
         disabled={isDisabled}
-        stepTooltips={
-          isDisabled
-            ? undefined
-            : stops.map((stop) => REASONING_EFFORT_INFO[stop.effort])
-        }
+        stepTooltips={isDisabled ? undefined : stops.map(stopTooltip)}
         onChange={(index) => {
           const next = stops[index];
           if (next) {
@@ -115,7 +118,7 @@ export function ReasoningEffortSlider({
               key={stop.effort}
               tooltipTriggerAsChild
               trigger={labelButton}
-              label={REASONING_EFFORT_INFO[stop.effort]}
+              label={stopTooltip(stop)}
             />
           );
         })}
@@ -128,9 +131,11 @@ export function ReasoningEffortSlider({
   }
 
   const soleEffort = unlockedStops[0]?.effort;
-  const tooltipLabel = soleEffort
-    ? `${getReasoningEffortLabel(soleEffort)} is the only reasoning effort available for this model.`
-    : "Reasoning effort can't be adjusted for this model.";
+  const tooltipLabel = hasPremiumLock
+    ? PREMIUM_MODEL_LOCKED_TOOLTIP
+    : soleEffort
+      ? `${getReasoningEffortLabel(soleEffort)} is the only reasoning effort available for this model.`
+      : "Reasoning effort can't be adjusted for this model.";
 
   return (
     <Tooltip tooltipTriggerAsChild trigger={slider} label={tooltipLabel} />

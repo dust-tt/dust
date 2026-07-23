@@ -1,3 +1,5 @@
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
+import { STATIC_MODEL_TIERS } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
@@ -7,8 +9,10 @@ import {
   AUTO_MODEL_ID,
   isModelStreamId,
 } from "@app/types/assistant/models/auto";
+import { isStaticModelId } from "@app/types/assistant/models/models";
 import type {
   ModelConfigurationType,
+  ModelIdType,
   ModelMakerIdType,
   ModelSelectionType,
   ReasoningEffort,
@@ -16,6 +20,12 @@ import type {
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import capitalize from "lodash/capitalize";
+
+// Shown when a whole-premium model row or a premium reasoning-effort stop is
+// locked because the workspace is not on a credit-based (usage-based) plan.
+export const PREMIUM_MODEL_LOCKED_TOOLTIP =
+  "Premium models are available via this picker on the new usage-based plans. " +
+  "Contact your administrator to upgrade to access these models.";
 
 // The three primary picks of the model picker. Each tier is backed by a
 // meta-model that is resolved to a concrete model at message-send time:
@@ -101,12 +111,14 @@ export interface MakerGroup {
   models: ModelConfigurationType[];
 }
 
+export type EffortLockReason = "unsupported" | "premium";
+
 // One stop of the reasoning-effort slider. A stop is `locked` when the level is
-// not selectable — either the model does not support it natively, or the
-// workspace's tier does not grant access to it.
+// not selectable; `lockedReason` says why.
 export interface EffortStop {
   effort: ReasoningEffort;
   locked: boolean;
+  lockedReason?: EffortLockReason;
 }
 
 // The reasoning-effort slider always presents these three canonical levels so
@@ -188,30 +200,51 @@ export function isSameSelection(
   return isSameDisplay(a, b);
 }
 
-// Always returns the three canonical levels (Light/Medium/High) so the slider looks
-// the same across models. Levels the workspace's tier does not grant (already narrowed
-// in `enabledModel`) are flagged `locked` (padlock); non-reasoning models get all three.
+interface LockPremiumOptions {
+  lockPremiumEfforts?: boolean;
+}
+
+// Client-safe mirror of `ModelsTierResource.getTierForModel`
+export function getModelEffortTier(
+  modelId: ModelIdType,
+  effort: ReasoningEffort
+): ModelsTierName | null {
+  if (!isStaticModelId(modelId)) {
+    return "premium";
+  }
+  return STATIC_MODEL_TIERS[modelId][effort] ?? null;
+}
+
+// The single authority for whether a reasoning-effort level is selectable.
 export function getEffortStops(
-  enabledModel: ModelConfigurationType
+  enabledModel: ModelConfigurationType,
+  { lockPremiumEfforts = false }: LockPremiumOptions = {}
 ): EffortStop[] {
   const allowed = new Set(
     getAvailableReasoningEfforts(enabledModel.supportedReasoningEfforts)
   );
-  // Todo(models_picker): return reason for each stop (model does not support
-  // or workspace tier does not grant)
 
-  return SLIDER_EFFORTS.map((effort) => ({
-    effort,
-    locked: !allowed.has(effort),
-  }));
+  return SLIDER_EFFORTS.map((effort) => {
+    if (!allowed.has(effort)) {
+      return { effort, locked: true, lockedReason: "unsupported" };
+    }
+    if (
+      lockPremiumEfforts &&
+      getModelEffortTier(enabledModel.modelId, effort) === "premium"
+    ) {
+      return { effort, locked: true, lockedReason: "premium" };
+    }
+    return { effort, locked: false };
+  });
 }
 
 // The reasoning effort to use when a model is freshly selected: its default when
 // that is allowed, otherwise the first unlocked stop.
 export function getInitialEffort(
-  enabledModel: ModelConfigurationType
+  enabledModel: ModelConfigurationType,
+  { lockPremiumEfforts = false }: LockPremiumOptions = {}
 ): ReasoningEffort {
-  const stops = getEffortStops(enabledModel);
+  const stops = getEffortStops(enabledModel, { lockPremiumEfforts });
   const preferred = stops.find(
     (stop) =>
       stop.effort === enabledModel.defaultReasoningEffort && !stop.locked
@@ -220,6 +253,24 @@ export function getInitialEffort(
     return preferred.effort;
   }
   return stops.find((stop) => !stop.locked)?.effort ?? "none";
+}
+
+// Whether a whole model row must be locked
+export function isPremiumModel(
+  enabledModel: ModelConfigurationType,
+  { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
+): boolean {
+  if (!lockPremiumEfforts) {
+    return false;
+  }
+  const stops = getEffortStops(enabledModel, { lockPremiumEfforts });
+  const supportedSlider = stops.filter(
+    (stop) => stop.lockedReason !== "unsupported"
+  );
+  if (supportedSlider.length > 0) {
+    return supportedSlider.every((stop) => stop.lockedReason === "premium");
+  }
+  return getModelEffortTier(enabledModel.modelId, "none") === "premium";
 }
 
 export function getModelWithReasoningEffortLabel(
@@ -314,6 +365,8 @@ export function resolveAgentDefault({
     return standardDefault;
   }
 
+  // Keep `toSend` undefined so the agent runs its own configured model/effort
+  // server-side; the slider surfaces the agent's configured effort as-is.
   const effort = agentModel.reasoningEffort ?? getInitialEffort(model);
   return {
     display: { kind: "model", model, effort },

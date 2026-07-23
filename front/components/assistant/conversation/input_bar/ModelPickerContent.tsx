@@ -39,6 +39,7 @@ interface ModelPickerContentProps {
   shown: Selection;
   agentDefault: Selection;
   canRevert: boolean;
+  lockPremiumEfforts: boolean;
   makerGroups: MakerGroup[];
   allModels: ModelConfigurationType[];
   search: string;
@@ -60,6 +61,7 @@ export function ModelPickerContent({
   shown,
   agentDefault,
   canRevert,
+  lockPremiumEfforts,
   makerGroups,
   allModels,
   search,
@@ -111,6 +113,7 @@ export function ModelPickerContent({
         shown={shown}
         agentDefault={agentDefault}
         canRevert={canRevert}
+        lockPremiumEfforts={lockPremiumEfforts}
         search={search}
         onSearchChange={onSearchChange}
         isWidthConstrained={isWidthConstrained}
