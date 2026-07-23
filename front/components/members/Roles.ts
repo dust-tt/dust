@@ -1,7 +1,8 @@
 import type { ActiveRoleType, RoleType } from "@app/types/user";
 
 export function displayRole(role: RoleType): string {
-  if (role === "user") {
+  // `builder` is deprecated; surface it as a regular member to end users.
+  if (role === "user" || role === "builder") {
     return "member";
   }
   return role;
@@ -25,10 +26,10 @@ export const ROLES_DATA: Record<
     description: "",
     color: "highlight",
   },
+  // `builder` is deprecated; mirror the regular member appearance.
   builder: {
-    description:
-      "Can use, create agents and manage folders, websites and dust apps in the company space.",
-    color: "info",
+    description: "Can use and create agents in conversations.",
+    color: "success",
   },
   user: {
     description: "Can use and create agents in conversations.",
