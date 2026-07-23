@@ -67,6 +67,14 @@ path = "bin/qdrant/delete_orphaned_points.rs"
 name = "qdrant_count_points_per_data_source"
 path = "bin/qdrant/count_points_per_data_source.rs"
 
+[[bin]]
+name = "qdrant_reshard"
+path = "bin/qdrant/qdrant_reshard.rs"
+
+[[bin]]
+name = "qdrant_fill_random_points"
+path = "bin/qdrant/test/fill_random_points.rs"
+
 # [[bin]]
 # name = "oauth_generate_key"
 # path = "bin/oauth_generate_key.rs"
