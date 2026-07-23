@@ -202,7 +202,7 @@ export const GovernancePage = () => {
       <ContentMessage>
         This page is WIP. Do not change unless you know what you are doing.
       </ContentMessage>
-      <WorkspaceNameEditor owner={owner} />
+      {isAdmin && <WorkspaceNameEditor owner={owner} />}
       <LinkedSectionNotice
         description="Groups assigned here are managed in"
         linkLabel="People → Groups"
