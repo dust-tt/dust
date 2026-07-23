@@ -6,24 +6,26 @@ import { isInteractiveContentType } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
 import React from "react";
 
-interface useAutoOpenInteractiveContentProps {
+interface UseAutoOpenSidePanelProps {
   isLastMessage: boolean;
   agentMessage: AgentMessageWithStreaming;
 }
 
 /**
- * Custom hook to automatically open interactive content drawer based on agent message state.
- * Also returns the interactive files that were generated in the agent message.
+ * Auto-opens the appropriate side panel when the agent generates files.
  *
- * Logic:
- * - Progress notifications (real-time): Always open drawer with updatedAt timestamp.
- * - Generated files (completed): Only open drawer on last message, skip updatedAt.
+ * Priority (highest first):
+ *   1. Interactive content (Frame/slideshow) — opens the interactive content drawer.
+ *   2. Regular files — opens the file explorer, but only when no interactive
+ *      content is being opened for this message.
+ *
+ * Returns the completed interactive files so callers can render the content panel.
  */
-export function useAutoOpenInteractiveContent({
+export function useAutoOpenSidePanel({
   isLastMessage,
   agentMessage,
-}: useAutoOpenInteractiveContentProps) {
-  const { openPanel } = useConversationSidePanelContext();
+}: UseAutoOpenSidePanelProps) {
+  const { openPanel, currentPanel } = useConversationSidePanelContext();
   const isMobile = useIsMobile();
 
   // Track the last opened fileId to prevent double-opening glitch.
@@ -41,7 +43,9 @@ export function useAutoOpenInteractiveContent({
   // allowing generated→progress refreshes (when file is updated with new timestamp).
   const lastOpenedFileIdRef = React.useRef<string | null>(null);
 
-  // Get interactive files from progress notifications.
+  // Track which message sId last triggered file-panel auto-open to open only once per message.
+  const autoOpenedFilesForRef = React.useRef<string | null>(null);
+
   const interactiveFilesFromProgress = React.useMemo(
     () =>
       removeNulls(
@@ -58,7 +62,6 @@ export function useAutoOpenInteractiveContent({
     [agentMessage.streaming.actionProgress]
   );
 
-  // Get completed interactive files from generatedFiles.
   const completedInteractiveFiles = React.useMemo(
     () =>
       agentMessage.generatedFiles.filter((file) =>
@@ -67,36 +70,35 @@ export function useAutoOpenInteractiveContent({
     [agentMessage.generatedFiles]
   );
 
+  const regularGeneratedFiles = React.useMemo(
+    () =>
+      agentMessage.generatedFiles.filter(
+        (file) => !file.hidden && !isInteractiveContentType(file.contentType)
+      ),
+    [agentMessage.generatedFiles]
+  );
+
+  // Priority 1: interactive content drawer (covers both streaming and completed states).
   React.useEffect(() => {
     if (isMobile) {
       return;
     }
 
-    // Handle progress notifications - always open drawer (supports generated->progress refresh).
     if (interactiveFilesFromProgress.length > 0) {
       const [firstFile] = interactiveFilesFromProgress;
       if (firstFile?.fileId) {
         lastOpenedFileIdRef.current = firstFile.fileId;
-        // Always use updatedAt for real-time updates to trigger refresh.
         openPanel({
           type: "interactive_content",
           fileId: firstFile.fileId,
           timestamp: firstFile.updatedAt,
         });
       }
-    }
-    // Handle completed files - only open drawer on last message.
-    else if (completedInteractiveFiles.length > 0 && isLastMessage) {
+    } else if (completedInteractiveFiles.length > 0 && isLastMessage) {
       const [firstFile] = completedInteractiveFiles;
-      const isNotAlreadyOpenedOnFile =
-        lastOpenedFileIdRef.current !== firstFile.fileId;
-      if (firstFile?.fileId && isNotAlreadyOpenedOnFile) {
+      if (firstFile?.fileId && lastOpenedFileIdRef.current !== firstFile.fileId) {
         lastOpenedFileIdRef.current = firstFile.fileId;
-        // Skip updatedAt for completed files since they're final state.
-        openPanel({
-          type: "interactive_content",
-          fileId: firstFile.fileId,
-        });
+        openPanel({ type: "interactive_content", fileId: firstFile.fileId });
       }
     }
   }, [
@@ -107,13 +109,43 @@ export function useAutoOpenInteractiveContent({
     isMobile,
   ]);
 
-  // Reset tracking when message changes.
+  // Reset interactive tracking when the message changes.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   React.useEffect(() => {
     lastOpenedFileIdRef.current = null;
   }, [agentMessage.sId]);
 
-  return {
-    interactiveFiles: completedInteractiveFiles,
-  };
+  // Whether this message is opening (or will open) the interactive content panel.
+  // Used to suppress the lower-priority file-explorer auto-open.
+  const willOpenInteractiveContent =
+    !isMobile &&
+    (interactiveFilesFromProgress.length > 0 ||
+      (completedInteractiveFiles.length > 0 && isLastMessage));
+
+  // Priority 2: file explorer — only when no interactive content is taking the panel.
+  React.useEffect(() => {
+    if (
+      isMobile ||
+      regularGeneratedFiles.length === 0 ||
+      !isLastMessage ||
+      autoOpenedFilesForRef.current === agentMessage.sId ||
+      currentPanel === "files" ||
+      willOpenInteractiveContent
+    ) {
+      return;
+    }
+
+    autoOpenedFilesForRef.current = agentMessage.sId;
+    openPanel({ type: "files" });
+  }, [
+    regularGeneratedFiles,
+    willOpenInteractiveContent,
+    isLastMessage,
+    agentMessage.sId,
+    openPanel,
+    currentPanel,
+    isMobile,
+  ]);
+
+  return { interactiveFiles: completedInteractiveFiles };
 }
