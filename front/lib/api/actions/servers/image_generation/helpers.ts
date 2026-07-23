@@ -30,7 +30,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import assert from "assert";
 
 export type ImageGenerationErrorCode =
   | "api_error"
@@ -281,11 +280,7 @@ export async function uploadAndFormatImageResponse(
 ): Promise<
   Result<Array<{ type: "resource"; resource: ToolGeneratedFileType }>, MCPError>
 > {
-  assert(
-    isAgentLoopRunContext(toolContext?.runContext),
-    "AgentLoopRunContext expected"
-  );
-  if (!toolContext?.runContext) {
+  if (!isAgentLoopRunContext(toolContext?.runContext)) {
     return new Err(
       new MCPError("No conversation context available for file upload", {
         tracked: false,
