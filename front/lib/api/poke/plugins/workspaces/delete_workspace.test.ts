@@ -1,5 +1,7 @@
 import { deleteWorkspacePlugin } from "@app/lib/api/poke/plugins/workspaces/delete_workspace";
 import { Authenticator } from "@app/lib/auth";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -47,9 +49,11 @@ describe("deleteWorkspacePlugin.execute", () => {
     expect(mockDeleteWorkspace).not.toHaveBeenCalled();
   });
 
-  it("proceeds when the workspace is on a free plan with no Metronome contract", async () => {
+  it("proceeds with data sources on a free plan with no Metronome contract", async () => {
     const workspace = await WorkspaceFactory.byok();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const globalSpace = await SpaceFactory.global(workspace);
+    await DataSourceViewFactory.folder(workspace, globalSpace);
 
     const result = await deleteWorkspacePlugin.execute(auth, workspace, {
       confirmation: "DELETE",
