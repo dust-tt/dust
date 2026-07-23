@@ -1,6 +1,7 @@
 [Unit]
-Description=Dust local DNS resolver for agent-proxied
-After=network.target
+Description=Dust synthetic DNS resolver for sandbox-controlled accounts
+Wants=systemd-resolved.service
+After=network.target systemd-resolved.service
 Before=dust-egress-nftables.service
 
 [Service]
