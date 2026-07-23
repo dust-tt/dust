@@ -701,16 +701,19 @@ export async function postUserMessage(
     return canInteractRes;
   }
 
-  let runningAgentMessage = conversation.content
-    .map((versions) =>
-      versions.reduce((latest, message) =>
-        message.version > latest.version ? message : latest
-      )
-    )
-    .find(
-      (m): m is AgentMessageType =>
-        isAgentMessageType(m) && m.status === "created"
+  let runningAgentMessage: AgentMessageType | undefined;
+  for (const versions of conversation.content) {
+    const latestMessage = versions.reduce((latest, message) =>
+      message.version > latest.version ? message : latest
     );
+    if (
+      isAgentMessageType(latestMessage) &&
+      latestMessage.status === "created"
+    ) {
+      runningAgentMessage = latestMessage;
+      break;
+    }
+  }
 
   // Steering invariants: enforce single agent loop per conversation.
   if (explicitAgentMentions.length > 1) {
