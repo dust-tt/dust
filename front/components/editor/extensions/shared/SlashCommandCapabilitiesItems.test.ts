@@ -27,7 +27,7 @@ function toolSuggestion({
   serverIcon?: MCPServerViewType["server"]["icon"];
   serverName?: string;
   sId: string;
-}): SlashCommandToolSuggestion {
+}): SlashCommandToolSuggestion<MCPServerViewType> {
   return {
     id: 1,
     sId,

@@ -4,7 +4,7 @@ import {
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
@@ -87,7 +87,9 @@ export type SlashCommandSkillSuggestion = Pick<
   | "userFacingDescription"
 >;
 
-export type SlashCommandToolSuggestion = MCPServerViewType & {
+export type SlashCommandToolSuggestion<
+  V extends MCPServerViewLightType = MCPServerViewLightType,
+> = V & {
   label?: string;
 };
 
@@ -100,14 +102,16 @@ export interface SkillSlashCommand extends SlashCommand {
   };
 }
 
-export interface ToolSlashCommand extends SlashCommand {
+export interface ToolSlashCommand<
+  V extends MCPServerViewLightType = MCPServerViewLightType,
+> extends SlashCommand {
   action: typeof SELECT_TOOL_SLASH_COMMAND_ACTION;
   data: {
     tool: {
       icon: string | null;
       id: string;
       name: string;
-      view: MCPServerViewType;
+      view: V;
     };
   };
 }
@@ -130,9 +134,9 @@ export function isSkillSlashCommand(
   return item.action === SELECT_SKILL_SLASH_COMMAND_ACTION;
 }
 
-export function isToolSlashCommand(
-  item: SlashCommand
-): item is ToolSlashCommand {
+export function isToolSlashCommand<
+  V extends MCPServerViewLightType = MCPServerViewLightType,
+>(item: SlashCommand): item is ToolSlashCommand<V> {
   return item.action === SELECT_TOOL_SLASH_COMMAND_ACTION;
 }
 
@@ -187,9 +191,9 @@ export function getSkillSlashCommandItem(
   };
 }
 
-export function getToolSlashCommandItem(
-  tool: SlashCommandToolSuggestion
-): ToolSlashCommand {
+export function getToolSlashCommandItem<V extends MCPServerViewLightType>(
+  tool: SlashCommandToolSuggestion<V>
+): ToolSlashCommand<V> {
   const name = getToolSlashCommandLabel(tool);
   const description = getMcpServerViewDescription(tool);
 

@@ -3,10 +3,12 @@ import {
   isToolWithKnowledge,
 } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
-import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
+import {
+  useJITMCPServerViewsFromSpaces,
+  useMCPServerViewsFromSpaces,
+} from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -76,8 +78,14 @@ export function useInputBarSlashCommandCapabilities({
     status: "active",
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
+  // The JIT views endpoint only returns views whose tools can be enabled directly in a
+  // conversation, no further filtering needed here.
   const { serverViews, isLoading: isServerViewsLoading } =
-    useMCPServerViewsFromSpaces(owner, globalSpaces, CAPABILITIES_SWR_OPTIONS);
+    useJITMCPServerViewsFromSpaces(
+      owner,
+      globalSpaces,
+      CAPABILITIES_SWR_OPTIONS
+    );
 
   const capabilityItems = useMemo(
     () =>
@@ -87,7 +95,6 @@ export function useInputBarSlashCommandCapabilities({
         skills,
         tools: serverViews,
         toolFilter: (serverView) =>
-          isJITMCPServerView(serverView) &&
           !(selectedMCPServerViewIdsRef?.current ?? new Set()).has(
             serverView.sId
           ),

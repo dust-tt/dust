@@ -176,7 +176,10 @@ export function isRemoteMCPServerType(
   return serverType === "remote";
 }
 
-export function getMcpServerViewDescription(view: MCPServerViewType): string {
+export function getMcpServerViewDescription(view: {
+  description: string | null;
+  server: Pick<MCPServerType, "description">;
+}): string {
   return view.description ?? view.server.description;
 }
 

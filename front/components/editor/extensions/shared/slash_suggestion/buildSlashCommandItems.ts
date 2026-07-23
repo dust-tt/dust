@@ -8,6 +8,7 @@ import {
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
+import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export function filterSlashCommandItems(
@@ -28,7 +29,9 @@ export function filterSlashCommandItems(
   );
 }
 
-export function buildCapabilitySlashCommandItems({
+export function buildCapabilitySlashCommandItems<
+  V extends MCPServerViewLightType,
+>({
   excludeSkillId,
   query,
   skillFilter,
@@ -40,8 +43,8 @@ export function buildCapabilitySlashCommandItems({
   query: string;
   skillFilter?: (skill: SlashCommandSkillSuggestion) => boolean;
   skills: SlashCommandSkillSuggestion[];
-  toolFilter?: (tool: SlashCommandToolSuggestion) => boolean;
-  tools: SlashCommandToolSuggestion[];
+  toolFilter?: (tool: SlashCommandToolSuggestion<V>) => boolean;
+  tools: SlashCommandToolSuggestion<V>[];
 }): SlashCommand[] {
   const normalizedQuery = query.trim().toLowerCase();
 

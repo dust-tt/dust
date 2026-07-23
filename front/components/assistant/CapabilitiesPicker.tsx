@@ -11,13 +11,12 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
+import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
 import {
   useAvailableMCPServers,
-  useMCPServerViewsFromSpaces,
+  useJITMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -64,7 +63,7 @@ type CapabilityPickerSearchItem = CapabilityPickerItemBase &
       }
     | {
         kind: "tool";
-        serverView: MCPServerViewType;
+        serverView: MCPServerViewLightType;
       }
     | {
         kind: "uninstalled_tool";
@@ -99,7 +98,7 @@ interface CapabilitiesPickerItemsListProps {
   items: CapabilityPickerItem[];
   onItemSelect: (item: CapabilityPickerItem) => void;
   onSkillDetails?: (skillId: string) => void;
-  onToolDetails?: (serverView: MCPServerViewType) => void;
+  onToolDetails?: (serverView: MCPServerViewLightType) => void;
 }
 
 export function CapabilitiesPickerItemsList({
@@ -163,8 +162,8 @@ export function CapabilitiesPickerItemsList({
 interface CapabilitiesPickerProps {
   owner: WorkspaceType;
   user: UserType | null;
-  selectedMCPServerViews: MCPServerViewType[];
-  onSelect: (serverView: MCPServerViewType) => void;
+  selectedMCPServerViews: MCPServerViewLightType[];
+  onSelect: (serverView: MCPServerViewLightType) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   isLoading?: boolean;
   disabled?: boolean;
@@ -197,7 +196,7 @@ export function CapabilitiesPicker({
     string | null
   >(null);
   const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
-    useState<MCPServerViewType | null>(null);
+    useState<MCPServerViewLightType | null>(null);
 
   // Load capabilities when the picker mounts so the picker and slash menu share a warm SWR cache.
   const { spaces: globalSpaces } = useSpaces({
@@ -212,7 +211,7 @@ export function CapabilitiesPicker({
     serverViews,
     isLoading: isServerViewsLoading,
     mutateServerViews,
-  } = useMCPServerViewsFromSpaces(
+  } = useJITMCPServerViewsFromSpaces(
     owner,
     globalSpaces,
     CAPABILITIES_SWR_OPTIONS
@@ -288,7 +287,7 @@ export function CapabilitiesPicker({
     closeDropdown();
   };
 
-  const selectTool = (serverView: MCPServerViewType) => {
+  const selectTool = (serverView: MCPServerViewLightType) => {
     trackEvent({
       area: TRACKING_AREAS.TOOLS,
       object: "tool_select",
@@ -352,14 +351,13 @@ export function CapabilitiesPicker({
         });
       }
 
+      // The JIT views endpoint only returns views whose tools can be enabled directly in a
+      // conversation, no further filtering needed here.
       for (const serverView of serverViews) {
         const label = getMcpServerViewDisplayName(serverView);
         const description = getMcpServerViewDescription(serverView);
 
-        if (
-          !isJITMCPServerView(serverView) ||
-          selectedMCPServerViewIds.has(serverView.sId)
-        ) {
+        if (selectedMCPServerViewIds.has(serverView.sId)) {
           continue;
         }
 
@@ -527,7 +525,8 @@ export function CapabilitiesPicker({
             const updatedData = await mutateServerViews();
 
             const newServerView = updatedData?.serverViews?.find(
-              (v: MCPServerViewType) => v.server.name === createdServer.name
+              (v: MCPServerViewLightType) =>
+                v.server.name === createdServer.name
             );
 
             if (newServerView) {
