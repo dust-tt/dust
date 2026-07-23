@@ -20,8 +20,7 @@ import type {
 import config from "@app/lib/api/config";
 import type { CSVRecord } from "@app/lib/api/csv";
 import { toCsv } from "@app/lib/api/csv";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { getToolOutputsScopedPath } from "@app/lib/api/files/action_output_fs";
+import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -209,30 +208,16 @@ async function writeSandboxFunctionQueryResultFile(
     runContext: SandboxFunctionRunContext;
   }
 ): Promise<Result<ToolGeneratedFilePathType, MCPError>> {
-  const fileSystemResult = await DustFileSystem.forPod(
-    auth,
-    runContext.invocation.sandboxFunction.space
-  );
-  if (fileSystemResult.isErr()) {
-    return new Err(
-      new MCPError(
-        `Error accessing query result files: ${fileSystemResult.error.message}`,
-        { cause: fileSystemResult.error }
-      )
-    );
-  }
-
   const outputFileName = makeFileName({
     name: queryTitle,
     ext: ".csv",
   });
-  const scopedPath = getToolOutputsScopedPath(runContext, outputFileName);
   const csvContent = await toCsv(results);
-  const writeResult = await fileSystemResult.value.write(
-    scopedPath,
-    csvContent,
-    "text/csv"
-  );
+  const writeResult = await writeToToolOutputsFolder(auth, runContext, {
+    fileName: outputFileName,
+    content: csvContent,
+    contentType: "text/csv",
+  });
   if (writeResult.isErr()) {
     return new Err(
       new MCPError(
@@ -241,6 +226,7 @@ async function writeSandboxFunctionQueryResultFile(
       )
     );
   }
+  const scopedPath = writeResult.value;
 
   return new Ok({
     text: "Your query results were generated successfully. They are available as a structured CSV file.",
