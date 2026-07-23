@@ -34,3 +34,16 @@ export type PokeGetProjectWorkflow = {
   workflowId: string;
   latestWorkflow: PokeProjectWorkflowInfo | null;
 };
+
+export type PokePodFunction = {
+  sId: string;
+  slug: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  author: string | null;
+};
+
+export type PokeListProjectPodFunctions = {
+  items: PokePodFunction[];
+};
