@@ -13,7 +13,7 @@ import type {
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -69,7 +69,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   async (ctx): HandlerResult<GetUpgradeRequestsResponseBody> => {
     const auth = ctx.get("auth");
     const requests = await listPendingUpgradeRequests(auth);
@@ -93,7 +93,7 @@ app.post("/", async (ctx): HandlerResult<PostUpgradeRequestResponseBody> => {
 /** @ignoreswagger */
 app.patch(
   "/:requestId",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   validate("param", ParamsSchema),
   validate("json", ResolveBodySchema),
   async (ctx): HandlerResult<PatchUpgradeRequestResponseBody> => {

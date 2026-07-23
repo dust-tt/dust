@@ -123,11 +123,11 @@ describe("PATCH /api/w/:wId/members/:uId/seat-type", () => {
       expect((await response.json()).seatType).toBe("pro");
     });
 
-    it("returns 200 when a business admin upgrades another member to pro", async () => {
+    it("returns 200 when a manager upgrades another member to pro", async () => {
       const workspace = await WorkspaceFactory.metronome();
       await createPrivateApiMockRequest({
         method: "PATCH",
-        role: "business_admin",
+        role: "manager",
         workspace,
       });
 

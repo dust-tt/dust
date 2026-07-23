@@ -10,7 +10,7 @@ import { PatchCreditUsageConfigurationRequestBody } from "@app/types/api/credits
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import {
   ensureIsAdmin,
-  ensureIsBusinessAdmin,
+  ensureIsManager,
 } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -21,7 +21,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   async (ctx): HandlerResult<GetCreditUsageConfigurationResponseBody> => {
     const auth = ctx.get("auth");
 

@@ -3,7 +3,7 @@ import {
   stringifyExportTableAsCsv,
 } from "@app/lib/api/analytics/export_tables";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -47,48 +47,43 @@ const QuerySchema = z
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  ensureIsBusinessAdmin(),
-  validate("query", QuerySchema),
-  async (ctx) => {
-    const auth = ctx.get("auth");
+app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
 
-    const { table, startDate, endDate, timezone, format } =
-      ctx.req.valid("query");
+  const { table, startDate, endDate, timezone, format } =
+    ctx.req.valid("query");
 
-    const owner = auth.getNonNullableWorkspace();
-    const result = await exportTable({
-      auth,
-      table,
-      startDate,
-      endDate,
-      timezone: timezone ?? "UTC",
-      owner,
-      includeHiddenAgents: false,
+  const owner = auth.getNonNullableWorkspace();
+  const result = await exportTable({
+    auth,
+    table,
+    startDate,
+    endDate,
+    timezone: timezone ?? "UTC",
+    owner,
+    includeHiddenAgents: false,
+  });
+
+  if (result.isErr()) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: result.error.message,
+      },
     });
-
-    if (result.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: result.error.message,
-        },
-      });
-    }
-
-    if (format === "json") {
-      return ctx.json(result.value.rows);
-    }
-
-    ctx.header("Content-Type", "text/csv");
-    ctx.header(
-      "Content-Disposition",
-      `attachment; filename="dust_${table}_${startDate}_${endDate}.csv"`
-    );
-    return ctx.body(stringifyExportTableAsCsv(result.value));
   }
-);
+
+  if (format === "json") {
+    return ctx.json(result.value.rows);
+  }
+
+  ctx.header("Content-Type", "text/csv");
+  ctx.header(
+    "Content-Disposition",
+    `attachment; filename="dust_${table}_${startDate}_${endDate}.csv"`
+  );
+  return ctx.body(stringifyExportTableAsCsv(result.value));
+});
 
 export default app;

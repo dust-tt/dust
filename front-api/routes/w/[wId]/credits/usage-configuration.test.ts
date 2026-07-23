@@ -21,10 +21,10 @@ describe("/api/w/[wId]/credits/usage-configuration", () => {
     expect((await response.json()).error.type).toBe("workspace_auth_error");
   });
 
-  it("GET allows a business admin to read the configuration", async () => {
+  it("GET allows a manager to read the configuration", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
-      role: "business_admin",
+      role: "manager",
     });
 
     const response = await honoApp.request(
@@ -36,10 +36,10 @@ describe("/api/w/[wId]/credits/usage-configuration", () => {
     expect(configuration.allowMemberUpgradeRequests).toBe(true);
   });
 
-  it("PATCH returns 403 for a business admin (admin-only write)", async () => {
+  it("PATCH returns 403 for a manager (admin-only write)", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
-      role: "business_admin",
+      role: "manager",
     });
 
     const response = await honoApp.request(

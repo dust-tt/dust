@@ -8,7 +8,7 @@ import {
 } from "@app/lib/api/users/spend_limit";
 import { runBulkSetUserSpendLimitWorkflow } from "@app/temporal/bulk_spend_limit/client";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -41,7 +41,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   validate("json", BodySchema),
   async (ctx): HandlerResult<BulkSetUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");

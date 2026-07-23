@@ -41,7 +41,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { BUSINESS_ADMIN_ROLE_NAME } from "@app/types/user";
+import { MANAGER_ROLE_NAME } from "@app/types/user";
 import type { DirectoryGroup } from "@workos-inc/node";
 import assert from "assert";
 import type {
@@ -429,7 +429,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   /**
    * Creates a new regular_manual group. These groups are created and managed
-   * manually by workspace admins and business admins from the UI to grant
+   * manually by workspace admins and managers from the UI to grant
    * permissions to their members.
    */
   static async makeNewRegularManual(
@@ -448,11 +448,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.isBusinessAdmin()) {
+    if (!auth.isManager()) {
       return new Err(
         new DustError(
           "unauthorized",
-          `Only workspace admins and ${BUSINESS_ADMIN_ROLE_NAME}s can create groups.`
+          `Only workspace admins and ${MANAGER_ROLE_NAME}s can create groups.`
         )
       );
     }
@@ -2221,11 +2221,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.isBusinessAdmin()) {
+    if (!auth.isManager()) {
       return new Err(
         new DustError(
           "unauthorized",
-          `Only workspace admins and ${BUSINESS_ADMIN_ROLE_NAME}s can update groups.`
+          `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
         )
       );
     }
@@ -2279,11 +2279,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       DustError<"unauthorized" | "group_not_found" | "internal_error">
     >
   > {
-    if (!auth.isBusinessAdmin()) {
+    if (!auth.isManager()) {
       return new Err(
         new DustError(
           "unauthorized",
-          `Only workspace admins and ${BUSINESS_ADMIN_ROLE_NAME}s can delete groups.`
+          `Only workspace admins and ${MANAGER_ROLE_NAME}s can delete groups.`
         )
       );
     }
@@ -2478,7 +2478,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           ],
           roles: [
             { role: "admin", permissions: ["read", "write", "admin"] },
-            { role: "business_admin", permissions: ["read", "write", "admin"] },
+            { role: "manager", permissions: ["read", "write", "admin"] },
           ],
           workspaceId: this.workspaceId,
         },
@@ -2486,7 +2486,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     // Provisioned groups are directory-synced (SCIM), so membership is not editable in-app:
-    // business admins get read (e.g. to grant them governance capabilities) but not write/admin.
+    // managers get read (e.g. to grant them governance capabilities) but not write/admin.
     if (this.isProvisioned()) {
       return [
         {
@@ -2498,7 +2498,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           ],
           roles: [
             { role: "admin", permissions: ["read", "write", "admin"] },
-            { role: "business_admin", permissions: ["read"] },
+            { role: "manager", permissions: ["read"] },
           ],
           workspaceId: this.workspaceId,
         },

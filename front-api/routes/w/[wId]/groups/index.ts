@@ -7,7 +7,7 @@ import type { GroupKind, GroupType } from "@app/types/groups";
 import { GroupKindCodec } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -62,7 +62,7 @@ app.get(
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   validate("json", CreateGroupBodySchema),
   async (ctx): HandlerResult<PostGroupResponseBody> => {
     const auth = ctx.get("auth");

@@ -216,7 +216,7 @@ interface UsageSectionProps {
 }
 
 function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
-  const { isAdmin, isBusinessAdmin, subscription } = useAuth();
+  const { isAdmin, isManager, subscription } = useAuth();
 
   const isCreditBased = isCreditPricedPlan(subscription.plan);
 
@@ -231,7 +231,7 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
 
   const { hasPendingUpgradeRequest } = useWorkspaceUsageStatus({
     owner,
-    disabled: isBusinessAdmin || !isCreditBased,
+    disabled: isManager || !isCreditBased,
   });
 
   const seatName =
@@ -264,8 +264,8 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
               owner={owner}
               hasPendingUpgradeRequest={hasPendingUpgradeRequest}
               variant="button"
-              isBusinessAdmin={isBusinessAdmin}
-              onBusinessAdminNavigate={onClose}
+              isManager={isManager}
+              onManagerNavigate={onClose}
             />
           </div>
           <Separator />

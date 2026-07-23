@@ -63,9 +63,9 @@ app.get(
       query
     );
 
-    // Non business admin callers receive only minimal
+    // Non manager callers receive only minimal
     // essential user data (LightUserType).
-    if (auth.isBusinessAdmin()) {
+    if (auth.isManager()) {
       return ctx.json({ members, total });
     }
 

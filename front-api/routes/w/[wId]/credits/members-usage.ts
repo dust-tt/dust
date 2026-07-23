@@ -4,7 +4,7 @@ import {
   MembersUsagePaginationSchema,
 } from "@app/lib/api/credits/members_usage";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
@@ -14,7 +14,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   validate("query", MembersUsagePaginationSchema),
   async (ctx): HandlerResult<GetMembersUsageResponseBody> => {
     const auth = ctx.get("auth");

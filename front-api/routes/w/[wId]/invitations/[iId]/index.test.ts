@@ -147,10 +147,10 @@ describe("POST /api/w/:wId/invitations/:iId", () => {
     expect(reloaded?.status).toBe("pending");
   });
 
-  it("returns 403 when a business admin tries to elevate an invitation to admin", async () => {
+  it("returns 403 when a manager tries to elevate an invitation to admin", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "business_admin",
+      role: "manager",
     });
     const invitation = await MembershipInvitationFactory.create(workspace, {
       inviteEmail: "to-elevate@example.com",
@@ -185,10 +185,10 @@ describe("POST /api/w/:wId/invitations/:iId", () => {
     expect(reloaded?.initialRole).toBe("user");
   });
 
-  it("returns 403 when a business admin tries to modify an existing admin invitation", async () => {
+  it("returns 403 when a manager tries to modify an existing admin invitation", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "business_admin",
+      role: "manager",
     });
     const invitation = await MembershipInvitationFactory.create(workspace, {
       inviteEmail: "existing-admin@example.com",
@@ -221,10 +221,10 @@ describe("POST /api/w/:wId/invitations/:iId", () => {
     expect(reloaded?.status).toBe("pending");
   });
 
-  it("allows a business admin to revoke a non-admin invitation", async () => {
+  it("allows a manager to revoke a non-admin invitation", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "business_admin",
+      role: "manager",
     });
     const invitation = await MembershipInvitationFactory.create(workspace, {
       inviteEmail: "to-revoke@example.com",

@@ -9,7 +9,7 @@ interface InputBarUsageBannerProps {
 }
 
 export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
-  const { isBusinessAdmin } = useAuth();
+  const { isManager } = useAuth();
   const {
     userNearCreditLimit,
     canRequestUpgrade,
@@ -20,8 +20,7 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
     owner,
   });
 
-  const showUpgradeCta =
-    !willAutoUpgrade && (canRequestUpgrade || isBusinessAdmin);
+  const showUpgradeCta = !willAutoUpgrade && (canRequestUpgrade || isManager);
 
   if (userBlockedReason === "no_seat") {
     return (
@@ -39,7 +38,7 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
             <UsageUpgradeButton
               owner={owner}
               hasPendingUpgradeRequest={hasPendingUpgradeRequest}
-              isBusinessAdmin={isBusinessAdmin}
+              isManager={isManager}
             />
           </div>
         )}
@@ -83,7 +82,7 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
           <UsageUpgradeButton
             owner={owner}
             hasPendingUpgradeRequest={hasPendingUpgradeRequest}
-            isBusinessAdmin={isBusinessAdmin}
+            isManager={isManager}
           />
         </div>
       )}

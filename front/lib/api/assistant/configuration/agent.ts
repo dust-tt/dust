@@ -424,7 +424,7 @@ export async function getAgentLabelsByIds(
   auth: Authenticator,
   agentIds: string[]
 ): Promise<AgentLabel[]> {
-  if (!auth.isBusinessAdmin()) {
+  if (!auth.isManager()) {
     return [];
   }
 

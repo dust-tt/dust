@@ -28,9 +28,9 @@ export function RoleDropDown({
   const canManageAdminRole = isAdmin(workspace);
 
   const availableRoles = ACTIVE_ROLES.filter((role) => {
-    // `business_admin` can only be assigned when the workspace has the
+    // `manager` can only be assigned when the workspace has the
     // `admin_governance` feature flag.
-    if (role === "business_admin" && !hasFeature("admin_governance")) {
+    if (role === "manager" && !hasFeature("admin_governance")) {
       return false;
     }
     // `admin` can only be assigned by those allowed to manage the admin role

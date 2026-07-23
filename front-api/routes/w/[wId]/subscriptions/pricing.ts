@@ -1,6 +1,6 @@
 import type { GetSubscriptionPricingResponseBody } from "@app/lib/resources/subscription_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/subscriptions/pricing.
@@ -9,7 +9,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   async (ctx): HandlerResult<GetSubscriptionPricingResponseBody> => {
     const auth = ctx.get("auth");
 

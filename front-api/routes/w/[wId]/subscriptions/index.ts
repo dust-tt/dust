@@ -19,7 +19,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import {
   ensureIsAdmin,
-  ensureIsBusinessAdmin,
+  ensureIsManager,
 } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -46,7 +46,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   async (ctx): HandlerResult<GetSubscriptionsResponseBody> => {
     const auth = ctx.get("auth");
 

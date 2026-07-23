@@ -10,7 +10,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { runBulkChangeSeatTypeWorkflow } from "@app/temporal/bulk_seat_change/client";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
@@ -56,7 +56,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   validate("json", BodySchema),
   async (ctx): HandlerResult<BulkChangeSeatTypeResponseBody> => {
     const auth = ctx.get("auth");
@@ -118,7 +118,7 @@ app.post(
 /** @ignoreswagger */
 app.post(
   "/preview",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   validate("json", BodySchema),
   async (ctx): HandlerResult<BulkSeatChangePreviewResponseBody> => {
     const auth = ctx.get("auth");

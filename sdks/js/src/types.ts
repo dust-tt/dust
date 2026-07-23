@@ -807,13 +807,7 @@ export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
 const WorkspaceSegmentationSchema =
   FlexibleEnumSchema<"interesting">().nullable();
 
-const RoleSchema = z.enum([
-  "admin",
-  "business_admin",
-  "builder",
-  "user",
-  "none",
-]);
+const RoleSchema = z.enum(["admin", "manager", "builder", "user", "none"]);
 
 const LightWorkspaceSchema = z.object({
   id: ModelIdSchema,

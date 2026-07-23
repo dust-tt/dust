@@ -102,8 +102,8 @@ const GovernancePage = withSuspense(
 
 export const adminRoutes: RouteObject[] = [
   {
-    // Accessible to admins and business admins.
-    element: <RequireRoleLayout requiredRole="business_admin" />,
+    // Accessible to admins and managers.
+    element: <RequireRoleLayout requiredRole="manager" />,
     children: [
       { path: "members", element: <MembersPage /> },
       { path: "analytics", element: <AnalyticsPage /> },

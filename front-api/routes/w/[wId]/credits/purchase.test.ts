@@ -57,11 +57,11 @@ describe("/api/w/[wId]/credits/purchase", () => {
       expect((await response.json()).error.type).toBe("workspace_auth_error");
     });
 
-    it("allows a business admin to read purchase info", async () => {
+    it("allows a manager to read purchase info", async () => {
       const workspace = await WorkspaceFactory.creditPriced();
       await createPrivateApiMockRequest({
         method: "GET",
-        role: "business_admin",
+        role: "manager",
         workspace,
       });
 
@@ -93,10 +93,10 @@ describe("/api/w/[wId]/credits/purchase", () => {
   });
 
   describe("POST (admin-only write)", () => {
-    it("returns 403 for a business admin", async () => {
+    it("returns 403 for a manager", async () => {
       const { workspace } = await createPrivateApiMockRequest({
         method: "POST",
-        role: "business_admin",
+        role: "manager",
       });
 
       const response = await honoApp.request(purchaseUrl(workspace.sId), {

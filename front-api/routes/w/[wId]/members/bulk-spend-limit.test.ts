@@ -58,11 +58,11 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
     expect(bulkClient.runBulkSetUserSpendLimitWorkflow).not.toHaveBeenCalled();
   });
 
-  it("allows a business admin to launch the workflow", async () => {
+  it("allows a manager to launch the workflow", async () => {
     const workspace = await makeMetronomeWorkspace();
     await createPrivateApiMockRequest({
       method: "POST",
-      role: "business_admin",
+      role: "manager",
       workspace,
     });
 

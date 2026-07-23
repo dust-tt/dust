@@ -74,7 +74,7 @@ import type {
   RoleType,
   WorkspaceType,
 } from "@app/types/user";
-import { isAdmin, isBuilder, isBusinessAdmin, isUser } from "@app/types/user";
+import { isAdmin, isBuilder, isManager, isUser } from "@app/types/user";
 import assert from "assert";
 import { TokenExpiredError } from "jsonwebtoken";
 import memoizer from "lru-memoizer";
@@ -1098,8 +1098,8 @@ export class Authenticator {
     return isBuilder(this.workspace());
   }
 
-  isBusinessAdmin(): boolean {
-    return isBusinessAdmin(this.workspace());
+  isManager(): boolean {
+    return isManager(this.workspace());
   }
 
   isAdmin(): boolean {

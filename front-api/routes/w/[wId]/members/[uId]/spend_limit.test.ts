@@ -83,7 +83,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       expect((await response.json()).error.type).toBe("workspace_auth_error");
     });
 
-    it("allows a business admin to read and set the spend limit", async () => {
+    it("allows a manager to read and set the spend limit", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const targetUser = await UserFactory.basic();
       await MembershipFactory.associate(workspace, targetUser, {
@@ -92,7 +92,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
 
       await createPrivateApiMockRequest({
         method: "PUT",
-        role: "business_admin",
+        role: "manager",
         workspace,
       });
 
