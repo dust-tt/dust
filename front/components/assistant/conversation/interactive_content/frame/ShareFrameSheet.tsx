@@ -8,6 +8,7 @@ import {
   useShareInteractiveContentFile,
   useSharingGrants,
 } from "@app/lib/swr/files";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { isEmailValid } from "@app/lib/utils";
 import {
@@ -15,6 +16,7 @@ import {
   MAX_EMAILS_PER_INVITE,
   type SharingGrantType,
 } from "@app/types/files";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   LightWorkspaceType,
   WorkspaceSharingPolicy,
@@ -53,29 +55,28 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-function getScopeOptions(sharingPolicy: WorkspaceSharingPolicy): {
+function getScopeOptions(isExternalOff: boolean): {
   icon: typeof Lock01;
   label: string;
   description: string;
   value: FileShareScope;
 }[] {
-  const externalOff = sharingPolicy === "workspace_only";
   return [
     {
       icon: Lock01,
-      label: externalOff ? "Invited members only" : "Invite only",
-      description: externalOff
+      label: isExternalOff ? "Invited workspace members only" : "Invite only",
+      description: isExternalOff
         ? "Only the workspace members you invite"
         : "Only the people you invite",
       value: "emails_only",
     },
     {
       icon: Users01,
-      label: externalOff
-        ? "All workspace members + invited members"
+      label: isExternalOff
+        ? "All workspace members"
         : "All workspace members + invites",
-      description: externalOff
-        ? "Everyone in your workspace, plus members you invite individually"
+      description: isExternalOff
+        ? "Everyone in your workspace"
         : "Everyone in your workspace, plus anyone you invite",
       value: "workspace_and_emails",
     },
@@ -182,12 +183,47 @@ export function ShareFrameSheet({
   const shareURL = fileShare?.shareUrl ?? "";
   const viewerFiles = fileShare?.viewerFiles ?? [];
 
+  const externalSharingDisabledByPolicy =
+  owner.sharingPolicy === "workspace_only";
+
+  // When the workspace policy forbids external sharing, we can skip the permission fetch entirely.
+  const { hasPermission } = useWorkspacePermissions(owner, {
+    disabled: externalSharingDisabledByPolicy,  
+  });
+
+  // Inviting people outside the workspace requires both the workspace policy to allow it and the
+  // "invite" frame permission. You can still invite internal members regardless of your permission.
+  const canInviteExternal =
+    !externalSharingDisabledByPolicy && hasPermission("invite", "frame");
+  const canPublish =
+    !externalSharingDisabledByPolicy && hasPermission("publish", "frame");
+
+  // The UI reflects internal-only sharing whenever external invites aren't available.
+  const isExternalOff = !canInviteExternal;
+
   const allowedScopes = ALLOWED_SCOPES_BY_POLICY[owner.sharingPolicy];
-  const availableScopeOptions = getScopeOptions(owner.sharingPolicy).filter(
-    (o) => allowedScopes.includes(o.value)
+  const availableScopeOptions = getScopeOptions(isExternalOff).filter(
+    (option) => {
+      if (!allowedScopes.includes(option.value)) {
+        return false;
+      }
+
+      switch (option.value) {
+        case "emails_only":
+        case "workspace_and_emails":
+        case "workspace":
+          // Internal email invites are always available
+          return true;
+        case "public":
+          return canPublish;
+        default:
+          assertNeverAndIgnore(option.value);
+          return false;
+      }
+    }
   );
 
-  const showEmailSection =
+  const showEmailOption =
     currentScope === "emails_only" || currentScope === "workspace_and_emails";
 
   const activeGrants = grants
@@ -269,14 +305,15 @@ export function ShareFrameSheet({
               </div>
             ) : (
               <div className="flex flex-col gap-6">
-                {owner.sharingPolicy === "workspace_only" && (
+                {isExternalOff && (
                   <ContentMessage
                     icon={InfoCircle}
                     variant="info"
                     title="Only workspace members can be added"
                   >
-                    Your admin has disabled external sharing. You can only share
-                    with people already in your workspace.
+                    {externalSharingDisabledByPolicy
+                      ? "Your admin has disabled external sharing. You can only invite people already in your workspace."
+                      : "You don’t have permission to invite people outside your workspace. You can only invite people already in your workspace."}
                   </ContentMessage>
                 )}
                 {shareBlockError && shareBlockError.length > 0 && (
@@ -345,13 +382,13 @@ export function ShareFrameSheet({
                   </div>
                 </fieldset>
 
-                {showEmailSection && (
+                {showEmailOption && (
                   <div className="flex flex-col gap-4">
                     <form
                       className="flex flex-col gap-2"
                       onSubmit={handleSubmit(onInviteSubmit)}
                     >
-                      <Label htmlFor="email-invite">Invite by email</Label>
+                      <Label htmlFor="email-invite">{`Invite ${isExternalOff ? "workspace members " : ""}by email`}</Label>
                       <div className="flex items-start gap-2">
                         <div className="flex-1">
                           <Input
