@@ -78,12 +78,19 @@ export function useAutoOpenSidePanel({
     [agentMessage.generatedFiles]
   );
 
-  // Priority 1: interactive content drawer (covers both streaming and completed states).
+  // Reset interactive tracking when the message changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+  React.useEffect(() => {
+    lastOpenedFileIdRef.current = null;
+  }, [agentMessage.sId]);
+
+  // Single effect with explicit priority: interactive content (1) > file explorer (2).
   React.useEffect(() => {
     if (isMobile) {
       return;
     }
 
+    // Priority 1: interactive content drawer (covers streaming and completed states).
     if (interactiveFilesFromProgress.length > 0) {
       const [firstFile] = interactiveFilesFromProgress;
       if (firstFile?.fileId) {
@@ -94,7 +101,10 @@ export function useAutoOpenSidePanel({
           timestamp: firstFile.updatedAt,
         });
       }
-    } else if (completedInteractiveFiles.length > 0 && isLastMessage) {
+      return;
+    }
+
+    if (completedInteractiveFiles.length > 0 && isLastMessage) {
       const [firstFile] = completedInteractiveFiles;
       if (
         firstFile?.fileId &&
@@ -103,37 +113,15 @@ export function useAutoOpenSidePanel({
         lastOpenedFileIdRef.current = firstFile.fileId;
         openPanel({ type: "interactive_content", fileId: firstFile.fileId });
       }
+      return;
     }
-  }, [
-    completedInteractiveFiles,
-    interactiveFilesFromProgress,
-    isLastMessage,
-    openPanel,
-    isMobile,
-  ]);
 
-  // Reset interactive tracking when the message changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  React.useEffect(() => {
-    lastOpenedFileIdRef.current = null;
-  }, [agentMessage.sId]);
-
-  // Whether this message is opening (or will open) the interactive content panel.
-  // Used to suppress the lower-priority file-explorer auto-open.
-  const willOpenInteractiveContent =
-    !isMobile &&
-    (interactiveFilesFromProgress.length > 0 ||
-      (completedInteractiveFiles.length > 0 && isLastMessage));
-
-  // Priority 2: file explorer — only when no interactive content is taking the panel.
-  React.useEffect(() => {
+    // Priority 2: file explorer — only when no interactive content is taking the panel.
     if (
-      isMobile ||
       regularGeneratedFiles.length === 0 ||
       !isLastMessage ||
       autoOpenedFilesForRef.current === agentMessage.sId ||
-      currentPanel === "files" ||
-      willOpenInteractiveContent
+      currentPanel === "files"
     ) {
       return;
     }
@@ -141,8 +129,9 @@ export function useAutoOpenSidePanel({
     autoOpenedFilesForRef.current = agentMessage.sId;
     openPanel({ type: "files" });
   }, [
+    completedInteractiveFiles,
+    interactiveFilesFromProgress,
     regularGeneratedFiles,
-    willOpenInteractiveContent,
     isLastMessage,
     agentMessage.sId,
     openPanel,
