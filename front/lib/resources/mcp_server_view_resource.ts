@@ -22,7 +22,11 @@ import {
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
-import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
+import type {
+  MCPServerType,
+  MCPServerViewType,
+  MCPToolType,
+} from "@app/lib/api/mcp";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
@@ -1255,6 +1259,15 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   }
 
   /**
+   * The server's tools. For remote servers this requires the `cachedTools` heavy attribute.
+   */
+  getTools(): MCPToolType[] {
+    return this.serverType === "remote"
+      ? this.getRemoteMCPServerResource().getCachedTools()
+      : this.getInternalMCPServerResource().toJSON().tools;
+  }
+
+  /**
    * The server's authorization config with the view's admin-configured scope restriction
    * applied. For remote servers this only needs the `authorization` heavy attribute.
    */
@@ -1676,11 +1689,53 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     // Override the server's default authorization scope with the admin-configured
     // restriction if one has been set. This ensures personal connections and
     // platform OAuth setup both use the restricted scope.
-    const serverWithScope = {
+    return this.toJSONWithServer({
       ...server,
       authorization: this.getAuthorization(),
-    };
+    });
+  }
 
+  /**
+   * Light serialization for list surfaces (conversation capabilities picker, slash menu) that
+   * only render names, descriptions and icons. Tool input schemas, authorization and the remote
+   * server specifics (url, secrets, lastError) are omitted; for remote servers only the
+   * `cachedTools` heavy attribute is required at fetch time.
+   */
+  toJSONLight(): MCPServerViewType {
+    const tools = this.getTools().map(({ name, description }) => ({
+      name,
+      description,
+    }));
+
+    let server: MCPServerType;
+    if (this.serverType === "remote") {
+      const remoteServer = this.getRemoteMCPServerResource();
+      server = {
+        sId: remoteServer.sId,
+        name: remoteServer.cachedName,
+        description:
+          remoteServer.cachedDescription ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+        version: remoteServer.version,
+        icon: remoteServer.icon,
+        authorization: null,
+        tools,
+        availability: "manual",
+        allowMultipleInstances: true,
+        documentationUrl: null,
+        meta: remoteServer.meta,
+      };
+    } else {
+      server = {
+        ...this.getInternalMCPServerResource().toJSON(),
+        authorization: null,
+        tools,
+      };
+    }
+
+    return this.toJSONWithServer(server);
+  }
+
+  private toJSONWithServer(server: MCPServerType): MCPServerViewType {
     return {
       id: this.id,
       sId: this.sId,
@@ -1690,7 +1745,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,
       serverType: this.serverType,
-      server: serverWithScope,
+      server,
       oAuthUseCase: this.oAuthUseCase,
       editedByUser: this.makeEditedBy(
         this.editedByUser,

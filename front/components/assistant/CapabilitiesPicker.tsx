@@ -11,13 +11,12 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
 import {
   useAvailableMCPServers,
-  useMCPServerViewsFromSpaces,
+  useJITMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -212,7 +211,7 @@ export function CapabilitiesPicker({
     serverViews,
     isLoading: isServerViewsLoading,
     mutateServerViews,
-  } = useMCPServerViewsFromSpaces(
+  } = useJITMCPServerViewsFromSpaces(
     owner,
     globalSpaces,
     CAPABILITIES_SWR_OPTIONS
@@ -352,14 +351,13 @@ export function CapabilitiesPicker({
         });
       }
 
+      // The JIT views endpoint only returns views whose tools can be enabled directly in a
+      // conversation, no further filtering needed here.
       for (const serverView of serverViews) {
         const label = getMcpServerViewDisplayName(serverView);
         const description = getMcpServerViewDescription(serverView);
 
-        if (
-          !isJITMCPServerView(serverView) ||
-          selectedMCPServerViewIds.has(serverView.sId)
-        ) {
+        if (selectedMCPServerViewIds.has(serverView.sId)) {
           continue;
         }
 

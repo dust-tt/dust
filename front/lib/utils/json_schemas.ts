@@ -1,5 +1,5 @@
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import logger from "@app/logger/logger";
 import { isRecord } from "@app/types/shared/utils/general";
 import Ajv from "ajv";
@@ -576,7 +576,9 @@ export function jsonSchemaHasRequiredDustToolInput(
  * True when no tool input schema forces a Dust configurable input on an all-required path
  * from the root (see {@link jsonSchemaHasRequiredDustToolInput}).
  */
-export function hasNoRequiredProperties(view: MCPServerViewType): boolean {
+export function hasNoRequiredProperties(view: {
+  server: Pick<MCPServerType, "tools">;
+}): boolean {
   const tools = view.server.tools;
   for (let t = 0; t < tools.length; t++) {
     const sch = tools[t].inputSchema;

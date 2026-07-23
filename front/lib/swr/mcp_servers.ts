@@ -1287,6 +1287,36 @@ export function useMCPServerViewsFromSpaces(
   );
 }
 
+/**
+ * JIT-attachable server views only (tools requiring configuration are filtered out
+ * server-side), in a light serialization without tool input schemas nor authorization.
+ * This is the cheap variant for always-mounted surfaces (conversation capabilities
+ * picker, slash menu).
+ */
+export function useJITMCPServerViewsFromSpaces(
+  owner: LightWorkspaceType,
+  spaces: SpaceType[],
+  swrOptions?: SWRConfiguration & { disabled?: boolean }
+) {
+  const { fetcher } = useFetcher();
+  const configFetcher: Fetcher<GetMCPServerViewsListResponseBody> = fetcher;
+
+  const spaceIds = spaces.map((s) => s.sId).join(",");
+
+  const url = `/api/w/${owner.sId}/mcp/views/jit?spaceIds=${spaceIds}`;
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
+    ...swrOptions,
+    ...(!spaces.length ? { disabled: true } : {}),
+  });
+
+  return {
+    serverViews: data?.serverViews ?? emptyArray(),
+    isLoading: !error && !data && spaces.length !== 0,
+    isError: error,
+    mutateServerViews: mutate,
+  };
+}
+
 export function useManualMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
   spaces: SpaceType[],

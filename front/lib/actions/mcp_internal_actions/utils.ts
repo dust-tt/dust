@@ -10,7 +10,7 @@ import type {
   FileAuthRequiredOutputResourceType,
   SingleResourceToolOutput,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { hasNoRequiredProperties } from "@app/lib/utils/json_schemas";
 import type { OAuthProvider } from "@app/types/oauth/lib";
@@ -114,7 +114,9 @@ export function makeMCPToolExit({
   };
 }
 
-export function isJITMCPServerView(view: MCPServerViewType): boolean {
+export function isJITMCPServerView(view: {
+  server: Pick<MCPServerType, "sId" | "tools">;
+}): boolean {
   return (
     !matchesInternalMCPServerName(view.server.sId, "agent_memory") &&
     // Only tools that do not require any configuration can be enabled directly in a conversation.
