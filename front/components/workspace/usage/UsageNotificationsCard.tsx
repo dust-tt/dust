@@ -112,7 +112,7 @@ export function UsageNotificationsCard({
         <SettingsList.Row
           title="Upgrade request emails"
           description={`Email all workspace ${
-            isAdminGovernanceEnabled ? "admins and business admins" : "admins"
+            isAdminGovernanceEnabled ? "admins and managers" : "admins"
           } when a member requests a spend-limit upgrade.`}
           action={
             <SliderToggle

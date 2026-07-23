@@ -99,11 +99,11 @@ describe("POST /api/w/[wId]/members/bulk-seat-type", () => {
     expect(bulkClient.runBulkChangeSeatTypeWorkflow).not.toHaveBeenCalled();
   });
 
-  it("allows a business admin to launch the workflow", async () => {
+  it("allows a manager to launch the workflow", async () => {
     const workspace = await makeMetronomeWorkspace();
     await createPrivateApiMockRequest({
       method: "POST",
-      role: "business_admin",
+      role: "manager",
       workspace,
     });
 
@@ -169,11 +169,11 @@ describe("POST /api/w/[wId]/members/bulk-seat-type", () => {
 });
 
 describe("POST /api/w/[wId]/members/bulk-seat-type/preview", () => {
-  it("returns the computed preview for a business admin", async () => {
+  it("returns the computed preview for a manager", async () => {
     const workspace = await makeMetronomeWorkspace();
     await createPrivateApiMockRequest({
       method: "POST",
-      role: "business_admin",
+      role: "manager",
       workspace,
     });
 

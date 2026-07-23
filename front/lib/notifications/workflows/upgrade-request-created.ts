@@ -107,7 +107,7 @@ export const upgradeRequestCreatedWorkflow = workflow(
 );
 
 /**
- * Email a workspace's admins and business admins that a member requested a spend-limit
+ * Email a workspace's admins and managers that a member requested a spend-limit
  * upgrade. One Novu event is triggered per admin (subscribed by their Dust user sId),
  * deduped via a `transactionId` keyed on the upgrade-request sId so redeliveries don't
  * re-send. Fire-and-forget — errors are logged but don't block the caller.

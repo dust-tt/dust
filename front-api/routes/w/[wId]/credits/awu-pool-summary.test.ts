@@ -51,11 +51,11 @@ describe("GET /api/w/[wId]/credits/awu-pool-summary", () => {
     expect(metronomeClient.listMetronomeBalances).not.toHaveBeenCalled();
   });
 
-  it("allows a business admin to read the AWU pool summary", async () => {
+  it("allows a manager to read the AWU pool summary", async () => {
     const workspace = await WorkspaceFactory.creditPriced();
     await createPrivateApiMockRequest({
       method: "GET",
-      role: "business_admin",
+      role: "manager",
       workspace,
     });
 

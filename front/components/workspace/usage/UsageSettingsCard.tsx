@@ -131,7 +131,7 @@ export function UsageSettingsCard({
         </LockedSection>
         <SettingsList.Row
           title="Upgrade request"
-          description={`Allow members who reach their limit to request an upgrade. Workspace ${isAdminGovernanceEnabled ? "admins and business admins" : "admins"} review requests on the this page.`}
+          description={`Allow members who reach their limit to request an upgrade. Workspace ${isAdminGovernanceEnabled ? "admins and managers" : "admins"} review requests on the this page.`}
           action={
             <SliderToggle
               selected={usageSettings.allowUpgradeRequest}

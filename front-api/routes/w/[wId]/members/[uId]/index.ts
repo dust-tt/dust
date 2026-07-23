@@ -111,7 +111,7 @@ app.post(
       auth.isDustSuperUser() &&
       body.force === "true";
 
-    if (!auth.isBusinessAdmin() && !allowForSuperUserTesting) {
+    if (!auth.isManager() && !allowForSuperUserTesting) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -204,21 +204,18 @@ app.post(
           api_error: {
             type: "invalid_request_error",
             message:
-              "The request body is invalid, expects { role: 'admin' | 'business_admin' | 'builder' | 'user' }.",
+              "The request body is invalid, expects { role: 'admin' | 'manager' | 'builder' | 'user' }.",
           },
         });
       }
 
-      if (
-        role === "business_admin" &&
-        !featureFlags.includes("admin_governance")
-      ) {
+      if (role === "manager" && !featureFlags.includes("admin_governance")) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
             message:
-              "You cannot assign the business_admin role as the feature is not enabled for your workspace.",
+              "You cannot assign the manager role as the feature is not enabled for your workspace.",
           },
         });
       }
@@ -312,7 +309,7 @@ app.post(
 
     switch (body.role) {
       case "admin":
-      case "business_admin":
+      case "manager":
       case "builder":
       case "user":
         w.role = body.role;

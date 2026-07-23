@@ -7,7 +7,7 @@ import {
 } from "@app/lib/api/assistant/observability/utils";
 import { timezoneSchema } from "@app/lib/api/timezone";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -23,46 +23,41 @@ const QuerySchema = z.object({
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  ensureIsBusinessAdmin(),
-  validate("query", QuerySchema),
-  async (ctx) => {
-    const auth = ctx.get("auth");
+app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
 
-    const { days, interval, timezone } = ctx.req.valid("query");
-    const owner = auth.getNonNullableWorkspace();
+  const { days, interval, timezone } = ctx.req.valid("query");
+  const owner = auth.getNonNullableWorkspace();
 
-    const { startDate, endDate } = daysToInstantRange(days, timezone);
-    const baseQuery = buildAgentAnalyticsBaseQuery({
-      workspaceId: owner.sId,
-      startDate,
-      endDate,
+  const { startDate, endDate } = daysToInstantRange(days, timezone);
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: owner.sId,
+    startDate,
+    endDate,
+  });
+
+  const usageMetricsResult = await fetchMessageMetrics(
+    baseQuery,
+    interval,
+    ["conversations", "activeUsers"] as const,
+    timezone
+  );
+
+  if (usageMetricsResult.isErr()) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to retrieve usage metrics: ${fromError(usageMetricsResult.error).toString()}`,
+      },
     });
-
-    const usageMetricsResult = await fetchMessageMetrics(
-      baseQuery,
-      interval,
-      ["conversations", "activeUsers"] as const,
-      timezone
-    );
-
-    if (usageMetricsResult.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: `Failed to retrieve usage metrics: ${fromError(usageMetricsResult.error).toString()}`,
-        },
-      });
-    }
-
-    const body: GetWorkspaceUsageMetricsResponse = {
-      interval,
-      points: usageMetricsResult.value,
-    };
-    return ctx.json(body);
   }
-);
+
+  const body: GetWorkspaceUsageMetricsResponse = {
+    interval,
+    points: usageMetricsResult.value,
+  };
+  return ctx.json(body);
+});
 
 export default app;

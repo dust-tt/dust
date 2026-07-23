@@ -282,11 +282,11 @@ describe("POST /api/w/:wId/members/:uId", () => {
     });
   });
 
-  describe("business admin escalation guard", () => {
-    it("should return 403 when business admin tries to change an admin's role", async () => {
+  describe("manager escalation guard", () => {
+    it("should return 403 when manager tries to change an admin's role", async () => {
       const { workspace } = await createPrivateApiMockRequest({
         method: "POST",
-        role: "business_admin",
+        role: "manager",
       });
 
       const targetAdmin = await UserFactory.basic();
@@ -311,10 +311,10 @@ describe("POST /api/w/:wId/members/:uId", () => {
       );
     });
 
-    it("should return 403 when business admin tries to promote a user to admin", async () => {
+    it("should return 403 when manager tries to promote a user to admin", async () => {
       const { workspace } = await createPrivateApiMockRequest({
         method: "POST",
-        role: "business_admin",
+        role: "manager",
       });
 
       const targetUser = await UserFactory.basic();
@@ -339,10 +339,10 @@ describe("POST /api/w/:wId/members/:uId", () => {
       );
     });
 
-    it("should return 403 when business admin tries to revoke an admin", async () => {
+    it("should return 403 when manager tries to revoke an admin", async () => {
       const { workspace } = await createPrivateApiMockRequest({
         method: "POST",
-        role: "business_admin",
+        role: "manager",
       });
 
       const targetAdmin = await UserFactory.basic();
@@ -367,10 +367,10 @@ describe("POST /api/w/:wId/members/:uId", () => {
       );
     });
 
-    it("should return 200 when business admin changes a non-admin user's role", async () => {
+    it("should return 200 when manager changes a non-admin user's role", async () => {
       const { workspace } = await createPrivateApiMockRequest({
         method: "POST",
-        role: "business_admin",
+        role: "manager",
       });
 
       const targetUser = await UserFactory.basic();

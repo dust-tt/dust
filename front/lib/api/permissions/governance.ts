@@ -19,8 +19,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 
-// Capabilities every business admin (and admin) can manage.
-const BUSINESS_ADMIN_CAPABILITIES: CapabilitySpec[] = [
+// Capabilities every manager (and admin) can manage.
+const MANAGER_CAPABILITIES: CapabilitySpec[] = [
   ...GOVERNANCE_CAPABILITIES.agent,
   ...GOVERNANCE_CAPABILITIES.skill,
   ...GOVERNANCE_CAPABILITIES.frame,
@@ -28,7 +28,7 @@ const BUSINESS_ADMIN_CAPABILITIES: CapabilitySpec[] = [
 
 // Capabilities every admin can manage.
 const ADMIN_CAPABILITIES: CapabilitySpec[] = [
-  ...BUSINESS_ADMIN_CAPABILITIES,
+  ...MANAGER_CAPABILITIES,
   ...GOVERNANCE_CAPABILITIES.billingAndSecurity,
 ];
 
@@ -39,8 +39,8 @@ function capabilitiesForRole(auth: Authenticator): CapabilitySpec[] {
   switch (role) {
     case "admin":
       return ADMIN_CAPABILITIES;
-    case "business_admin":
-      return BUSINESS_ADMIN_CAPABILITIES;
+    case "manager":
+      return MANAGER_CAPABILITIES;
     case "builder":
     case "user":
     case "none":
@@ -66,7 +66,7 @@ function toConfiguration(
 }
 
 // Governance capabilities shown on the page, keyed by `${grantType}:${resourceType}`
-// Business admins receive every domain except billing/identity; admins receive all.
+// Managers receive every domain except billing/identity; admins receive all.
 export async function getWorkspaceGovernancePermissions(
   auth: Authenticator
 ): Promise<GovernancePermissionsByKey> {

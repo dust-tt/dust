@@ -287,7 +287,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   admin_governance: {
     description:
-      "Access to admin governance features, including assigning the business_admin role from the UI",
+      "Access to admin governance features, including assigning the manager role from the UI",
     stage: "dust_only",
   },
   admin_governance_skill_publication: {

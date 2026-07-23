@@ -116,10 +116,10 @@ describe("POST /api/w/:wId/invitations", () => {
     expect((await response.json()).error.type).toBe("workspace_auth_error");
   });
 
-  it("returns 403 when a business admin tries to invite a new admin", async () => {
+  it("returns 403 when a manager tries to invite a new admin", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "business_admin",
+      role: "manager",
     });
 
     const response = await honoApp.request(invitationsUrl(workspace.sId), {
@@ -147,10 +147,10 @@ describe("POST /api/w/:wId/invitations", () => {
     expect(invitations).toHaveLength(0);
   });
 
-  it("allows a business admin to invite non-admin members", async () => {
+  it("allows a manager to invite non-admin members", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "business_admin",
+      role: "manager",
     });
 
     const response = await honoApp.request(invitationsUrl(workspace.sId), {

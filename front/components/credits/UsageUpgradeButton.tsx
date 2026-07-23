@@ -19,8 +19,8 @@ interface UsageUpgradeButtonProps {
   owner: LightWorkspaceType;
   hasPendingUpgradeRequest: boolean;
   variant?: UsageUpgradeButtonVariant;
-  isBusinessAdmin?: boolean;
-  onBusinessAdminNavigate?: () => void;
+  isManager?: boolean;
+  onManagerNavigate?: () => void;
 }
 
 // Member-initiated upgrade-request CTA. Opens a confirmation dialog and posts
@@ -30,8 +30,8 @@ export function UsageUpgradeButton({
   owner,
   hasPendingUpgradeRequest,
   variant = "link",
-  isBusinessAdmin = false,
-  onBusinessAdminNavigate,
+  isManager = false,
+  onManagerNavigate,
 }: UsageUpgradeButtonProps) {
   const { hasFeature } = useFeatureFlags();
   const isAdminGovernanceEnabled = hasFeature("admin_governance");
@@ -56,7 +56,7 @@ export function UsageUpgradeButton({
   }
 
   function renderTrigger() {
-    if (isBusinessAdmin) {
+    if (isManager) {
       const usageHref = `/w/${owner.sId}/usage`;
 
       if (variant === "button") {
@@ -66,7 +66,7 @@ export function UsageUpgradeButton({
             size="xs"
             label="Go to workspace usage"
             href={usageHref}
-            onClick={onBusinessAdminNavigate}
+            onClick={onManagerNavigate}
           />
         );
       }
@@ -76,7 +76,7 @@ export function UsageUpgradeButton({
           variant="primary"
           className="copy-sm underline underline-offset-2"
           href={usageHref}
-          onClick={onBusinessAdminNavigate}
+          onClick={onManagerNavigate}
         >
           Go to workspace usage
         </Hoverable>
@@ -126,11 +126,9 @@ export function UsageUpgradeButton({
           <DialogContainer>
             <p className="text-sm text-muted-foreground">
               Your workspace{" "}
-              {isAdminGovernanceEnabled
-                ? "admins and business admins"
-                : "admins"}{" "}
-              will be notified that you'd like your usage limit increased.
-              They'll review your request and get back to you.
+              {isAdminGovernanceEnabled ? "admins and managers" : "admins"} will
+              be notified that you'd like your usage limit increased. They'll
+              review your request and get back to you.
             </p>
           </DialogContainer>
           <DialogFooter

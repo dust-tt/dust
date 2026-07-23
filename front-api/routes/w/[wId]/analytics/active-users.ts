@@ -4,7 +4,7 @@ import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/ac
 import { daysToDateRange } from "@app/lib/api/assistant/observability/utils";
 import { timezoneSchema } from "@app/lib/api/timezone";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -18,39 +18,34 @@ const QuerySchema = z.object({
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  ensureIsBusinessAdmin(),
-  validate("query", QuerySchema),
-  async (ctx) => {
-    const auth = ctx.get("auth");
+app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
 
-    const { days, timezone } = ctx.req.valid("query");
-    const owner = auth.getNonNullableWorkspace();
+  const { days, timezone } = ctx.req.valid("query");
+  const owner = auth.getNonNullableWorkspace();
 
-    const { startDate, endDate } = daysToDateRange(days, timezone);
-    const result = await fetchActiveUsersMetrics(
-      owner,
-      startDate,
-      endDate,
-      timezone
-    );
+  const { startDate, endDate } = daysToDateRange(days, timezone);
+  const result = await fetchActiveUsersMetrics(
+    owner,
+    startDate,
+    endDate,
+    timezone
+  );
 
-    if (result.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: `Failed to retrieve active users metrics: ${result.error.message}`,
-        },
-      });
-    }
-
-    const body: GetWorkspaceActiveUsersResponse = {
-      points: result.value,
-    };
-    return ctx.json(body);
+  if (result.isErr()) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to retrieve active users metrics: ${result.error.message}`,
+      },
+    });
   }
-);
+
+  const body: GetWorkspaceActiveUsersResponse = {
+    points: result.value,
+  };
+  return ctx.json(body);
+});
 
 export default app;

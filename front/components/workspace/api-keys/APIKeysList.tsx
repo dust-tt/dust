@@ -36,7 +36,7 @@ const formatKeyScope = (role: RoleType): string => {
   switch (role) {
     case "user":
       return "Read-only";
-    case "business_admin":
+    case "manager":
     case "builder":
       return "Read & write";
     case "admin":

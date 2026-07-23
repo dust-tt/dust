@@ -8,7 +8,7 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import type { PostMemberInvitationsResponseBody } from "@app/types/api/invitation";
 import { PostMemberInvitationBodySchema } from "@app/types/api/invitation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -20,7 +20,7 @@ const ParamsSchema = z.object({
 // Mounted under /api/w/:wId/invitations/:iId.
 const app = workspaceApp();
 
-app.use("*", ensureIsBusinessAdmin());
+app.use("*", ensureIsManager());
 
 /** @ignoreswagger */
 app.post(
@@ -63,7 +63,7 @@ app.post(
       });
     }
 
-    if (body.initialRole === "business_admin") {
+    if (body.initialRole === "manager") {
       const featureFlags = await getFeatureFlags(auth);
       if (!featureFlags.includes("admin_governance")) {
         return apiError(ctx, {
@@ -71,7 +71,7 @@ app.post(
           api_error: {
             type: "workspace_auth_error",
             message:
-              "You cannot assign the business admin role as the feature is not enabled for this workspace.",
+              "You cannot assign the manager role as the feature is not enabled for this workspace.",
           },
         });
       }

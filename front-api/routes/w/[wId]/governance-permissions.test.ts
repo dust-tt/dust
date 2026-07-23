@@ -64,10 +64,10 @@ describe("GET /api/w/:wId/governance-permissions", () => {
     });
   });
 
-  it("returns every capability except billing and identity for a business admin", async () => {
+  it("returns every capability except billing and identity for a manager", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
-      role: "business_admin",
+      role: "manager",
     });
 
     const response = await getGovernancePermissions(workspace);
@@ -76,7 +76,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
     const { governancePermissions }: GetGovernancePermissionsResponseBody =
       await response.json();
 
-    // Business admin sees agent/skill/frame but never the admin-only billing/identity.
+    // Manager sees agent/skill/frame but never the admin-only billing/identity.
     expect(governancePermissions).toEqual({
       "create:agent": adminsOnly("create", "agent"),
       "publish:agent": adminsOnly("publish", "agent"),
@@ -238,10 +238,10 @@ describe("PATCH /api/w/:wId/governance-permissions", () => {
     });
   });
 
-  it("lets a business admin manage an agent capability", async () => {
+  it("lets a manager manage an agent capability", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
-      role: "business_admin",
+      role: "manager",
     });
 
     const response = await patchGovernancePermission(workspace, {
@@ -253,10 +253,10 @@ describe("PATCH /api/w/:wId/governance-permissions", () => {
     expect(response.status).toBe(200);
   });
 
-  it("forbids a business admin from managing billing", async () => {
+  it("forbids a manager from managing billing", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
-      role: "business_admin",
+      role: "manager",
     });
 
     const response = await patchGovernancePermission(workspace, {

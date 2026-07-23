@@ -14,8 +14,8 @@ import { createMiddleware } from "hono/factory";
 export const ENSURE_IS_ADMIN_ERROR_MESSAGE =
   "Only admin users can perform this action.";
 
-export const ENSURE_IS_BUSINESS_ADMIN_ERROR_MESSAGE =
-  "Only business admin users can perform this action.";
+export const ENSURE_IS_MANAGER_ERROR_MESSAGE =
+  "Only managers can perform this action.";
 
 export const ENSURE_IS_BUILDER_ERROR_MESSAGE =
   "Only builder users can perform this action.";
@@ -37,16 +37,16 @@ export const ensureIsAdmin = () =>
     await next();
   });
 
-export const ensureIsBusinessAdmin = () =>
+export const ensureIsManager = () =>
   createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
     const auth = ctx.get("auth");
 
-    if (!auth.isBusinessAdmin()) {
+    if (!auth.isManager()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message: ENSURE_IS_BUSINESS_ADMIN_ERROR_MESSAGE,
+          message: ENSURE_IS_MANAGER_ERROR_MESSAGE,
         },
       });
     }

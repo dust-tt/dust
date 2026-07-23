@@ -12,7 +12,7 @@ import {
 } from "@app/types/group_permissions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -23,7 +23,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   async (ctx): HandlerResult<GetGovernancePermissionsResponseBody> => {
     const auth = ctx.get("auth");
 
@@ -46,7 +46,7 @@ const PatchGovernancePermissionRequestBodySchema = z.object({
 /** @ignoreswagger */
 app.patch(
   "/",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   validate("json", PatchGovernancePermissionRequestBodySchema),
   async (ctx): HandlerResult<PatchGovernancePermissionResponseBody> => {
     const auth = ctx.get("auth");

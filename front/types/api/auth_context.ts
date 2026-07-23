@@ -13,7 +13,7 @@ export type GetWorkspaceAuthContextResponseType = {
   workspace: LightWorkspaceType;
   subscription: SubscriptionType;
   isAdmin: boolean;
-  isBusinessAdmin: boolean;
+  isManager: boolean;
   isBuilder: boolean;
   featureFlags: WhitelistableFeature[];
   isEligibleForTrial?: boolean;

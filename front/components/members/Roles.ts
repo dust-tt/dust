@@ -4,9 +4,6 @@ export function displayRole(role: RoleType): string {
   if (role === "user") {
     return "member";
   }
-  if (role === "business_admin") {
-    return "business admin";
-  }
   return role;
 }
 
@@ -19,8 +16,8 @@ export const ROLES_DATA: Record<
       "Can use and create agents, manage settings, members, spaces, connections, and tools.",
     color: "warning",
   },
-  business_admin: {
-    description: "Business administrator.",
+  manager: {
+    description: "",
     color: "primary",
   },
   builder: {

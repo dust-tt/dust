@@ -51,7 +51,7 @@ async function isUpgradeRequestEmailEnabled(
   return config?.upgradeRequestEmailEnabled ?? true;
 }
 
-async function notifyBusinessAdminsAndAdminsOfUpgradeRequest(
+async function notifyManagersAndAdminsOfUpgradeRequest(
   auth: Authenticator,
   { request }: { request: MembershipUpgradeRequestResource }
 ): Promise<void> {
@@ -63,7 +63,7 @@ async function notifyBusinessAdminsAndAdminsOfUpgradeRequest(
 
     const workspace = auth.getNonNullableWorkspace();
     const { members: usersToNotify } = await getMembers(auth, {
-      roles: ["admin", "business_admin"],
+      roles: ["admin", "manager"],
       activeOnly: true,
     });
 
@@ -164,7 +164,7 @@ export async function createUpgradeRequest(
     metadata: { request_sid: request.sId },
   });
 
-  void notifyBusinessAdminsAndAdminsOfUpgradeRequest(auth, { request });
+  void notifyManagersAndAdminsOfUpgradeRequest(auth, { request });
 
   return new Ok(request.toJSON());
 }
@@ -198,7 +198,7 @@ export async function getUpgradeRequestAvailabilityForUser(
     };
   }
 
-  if (auth.isBusinessAdmin()) {
+  if (auth.isManager()) {
     return unavailable;
   }
 
