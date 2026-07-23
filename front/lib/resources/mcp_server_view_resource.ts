@@ -2,7 +2,10 @@ import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
-import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
+import {
+  DEFAULT_MCP_ACTION_DESCRIPTION,
+  type MCPToolStakeLevelType,
+} from "@app/lib/actions/constants";
 import {
   autoInternalMCPServerNameToSId,
   getMcpServerViewDisplayName,
@@ -17,6 +20,7 @@ import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerById,
   getAvailabilityOfInternalMCPServerByName,
+  getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
   isAutoInternalMCPServerName,
   isValidInternalMCPServerId,
@@ -1689,6 +1693,37 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       ...(this.internalToolsMetadata ?? []),
       ...(this.remoteToolsMetadata ?? []),
     ];
+  }
+
+  get getToolPermissions(): {
+    toolName: string;
+    permission: MCPToolStakeLevelType;
+    enabled: boolean;
+  }[] {
+    if (this.serverType === "internal" && this.internalMCPServerId) {
+      const nameResult = getInternalMCPServerNameAndWorkspaceId(
+        this.internalMCPServerId
+      );
+      if (nameResult.isOk()) {
+        const tools = INTERNAL_MCP_SERVERS[nameResult.value.name].metadata.tools;
+        const overrides = new Map(
+          this.allToolsMetadata.map((m) => [m.toolName, m])
+        );
+        return tools.map((tool) => {
+          const override = overrides.get(tool.name);
+          return {
+            toolName: tool.name,
+            permission: override?.permission ?? tool.stake,
+            enabled: override?.enabled ?? true,
+          };
+        });
+      }
+    }
+    return this.allToolsMetadata.map((t) => ({
+      toolName: t.toolName,
+      permission: t.permission,
+      enabled: t.enabled,
+    }));
   }
 
   // Serialization.

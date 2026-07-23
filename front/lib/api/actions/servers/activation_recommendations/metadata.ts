@@ -86,6 +86,30 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
       done: "Recommendation history fetched",
     },
   },
+  {
+    name: "get_tool_execution_modes",
+    description:
+      "Get the resolved execution mode for each tool available in the current run. " +
+      "Returns one of three modes for each tool: " +
+      "'auto' — runs silently without user approval; " +
+      "'requires_approval' — pauses execution until the user approves; " +
+      "'not_connected' — the user has not connected to this server yet (OAuth required).",
+    schema: {
+      executionModes: z
+        .array(z.enum(["auto", "requires_approval", "not_connected"]))
+        .optional()
+        .describe(
+          "When set, only return tools whose execution mode is one of these values. Omit to return all tools."
+        ),
+    },
+    stake: "never_ask",
+    toolCostCategory: "basic",
+    freeUsage: true,
+    displayLabels: {
+      running: "Checking tool execution modes",
+      done: "Tool execution modes ready",
+    },
+  },
 ] as const;
 
 export const ACTIVATION_RECOMMENDATIONS_SERVER = {
