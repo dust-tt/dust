@@ -42,8 +42,8 @@ async function processMessageForMentions(
 }
 
 // Single entry point to turn a Slack message into its upsert body text: resolves
-// mentions, splits forwarded (unfurl) attachments from regular ones, reconstructs
-// the content from text/blocks/attachments/files, and appends forwarded messages.
+// mentions, uses the top-level `text` when present (else reconstructs the content
+// from its Block Kit blocks/attachments), and appends forwarded (unfurl) messages.
 async function formatSlackMessageBody(
   message: MessageElement,
   connectorId: ModelId,
@@ -66,14 +66,19 @@ async function formatSlackMessageBody(
     files: message.files,
   });
 
-  // `content` has a single text slot, so flatten the reconstructed sections into
-  // one string, dropping the ones the formatter marked empty.
-  const body = [
-    formatted.text,
-    formatted.blocks,
-    formatted.attachments,
-    formatted.files,
-  ]
+  // `text` is Slack's fallback for `blocks`: a message typed in Slack repeats its
+  // content in both, so rendering both would duplicate it. When `text` is present
+  // it is also the better-rendered version (mentions resolved to names), so we use
+  // it alone. Only when `text` is empty (bot alerts whose content lives entirely in
+  // Block Kit) do we reconstruct from blocks/attachments.
+  const messageContent =
+    formatted.text !== EMPTY_SECTION
+      ? [formatted.text]
+      : [formatted.blocks, formatted.attachments];
+
+  // `content` has a single text slot, so flatten the sections into one string,
+  // dropping the ones the formatter marked empty.
+  const body = [...messageContent, formatted.files]
     .filter((s) => s !== EMPTY_SECTION)
     .join("\n");
 
