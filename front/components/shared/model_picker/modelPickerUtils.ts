@@ -7,6 +7,7 @@ import {
   AUTO_MODEL_ID,
   isModelStreamId,
 } from "@app/types/assistant/models/auto";
+import { getModelMaker } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
   ModelMakerIdType,
@@ -15,7 +16,9 @@ import type {
 } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { BarFull, BarHalf, BarLow } from "@dust-tt/sparkle";
 import capitalize from "lodash/capitalize";
+import type { ComponentType } from "react";
 
 // The three primary picks of the model picker. Each tier is backed by a
 // meta-model that is resolved to a concrete model at message-send time:
@@ -53,10 +56,18 @@ export const MODEL_TIERS: ModelTierDefinition[] = [
   },
 ];
 
-const TIER_BY_META_MODEL_ID: Record<ModelStreamIdType, ModelTierId> = {
+export const TIER_BY_META_MODEL_ID: Record<ModelStreamIdType, ModelTierId> = {
   [AUTO_FAST_MODEL_ID]: "fast",
   [AUTO_MODEL_ID]: "standard",
   [AUTO_COMPLEX_MODEL_ID]: "complex",
+};
+
+// Tier icons: rising bars from Fast to Complex. Shared by every surface that
+// renders a tier (input bar trigger + dropdown, agent builder).
+export const MODEL_TIER_ICONS: Record<ModelTierId, ComponentType> = {
+  fast: BarLow,
+  standard: BarHalf,
+  complex: BarFull,
 };
 
 export function getModelTier(tierId: ModelTierId): ModelTierDefinition {
@@ -99,6 +110,27 @@ export interface Selection {
 export interface MakerGroup {
   makerId: ModelMakerIdType;
   models: ModelConfigurationType[];
+}
+
+// Group models by maker, preserving first-seen order of both makers and models
+// within each maker.
+export function groupModelsByMaker(
+  models: ModelConfigurationType[]
+): MakerGroup[] {
+  const groups = new Map<ModelMakerIdType, ModelConfigurationType[]>();
+  for (const model of models) {
+    const makerId = getModelMaker(model);
+    const existing = groups.get(makerId);
+    if (existing) {
+      existing.push(model);
+    } else {
+      groups.set(makerId, [model]);
+    }
+  }
+  return Array.from(groups.entries()).map(([makerId, makerModels]) => ({
+    makerId,
+    models: makerModels,
+  }));
 }
 
 // One stop of the reasoning-effort slider. A stop is `locked` when the level is

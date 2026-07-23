@@ -1,6 +1,6 @@
-import { ModelPickerSelectionIndicator } from "@app/components/assistant/conversation/input_bar/ModelPickerSelectionIndicator";
-import type { EffortStop } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { ReasoningEffortSlider } from "@app/components/assistant/conversation/input_bar/ReasoningEffortSlider";
+import { ModelPickerSelectionIndicator } from "@app/components/shared/model_picker/ModelPickerSelectionIndicator";
+import type { EffortStop } from "@app/components/shared/model_picker/modelPickerUtils";
+import { ReasoningEffortSlider } from "@app/components/shared/model_picker/ReasoningEffortSlider";
 import type {
   ModelConfigurationType,
   ReasoningEffort,
@@ -18,8 +18,8 @@ interface ModelPickerModelRowProps {
   icon?: ComponentType;
   onSelectModel: (model: ModelConfigurationType) => void;
   onChangeEffort: (effort: ReasoningEffort) => void;
-  canRevert: boolean;
-  onRevert: () => void;
+  canRevert?: boolean;
+  onRevert?: () => void;
 }
 
 export function ModelPickerModelRow({
@@ -46,8 +46,8 @@ export function ModelPickerModelRow({
         endComponent={
           isSelected ? (
             <ModelPickerSelectionIndicator
-              canRevert={canRevert}
-              onRevert={onRevert}
+              canRevert={canRevert ?? false}
+              onRevert={onRevert ?? (() => {})}
             />
           ) : undefined
         }
