@@ -83,16 +83,25 @@ export function SliderSteps({
       Math.max((e.clientX - rect.left) / rect.width, 0),
       1
     );
-    setHoveredIndex(nearestUnlocked(Math.round(ratio * lastIndex)));
+    // Track the raw step under the pointer (locked ones included) so a locked
+    // step surfaces its OWN tooltip on hover. Selection/preview snap to the
+    // nearest unlocked step separately.
+    setHoveredIndex(Math.round(ratio * lastIndex));
   };
+
+  // Where selecting would land: the nearest unlocked step to the raw hover.
+  const snappedHoverIndex =
+    hoveredIndex !== null ? nearestUnlocked(hoveredIndex) : null;
 
   // Decided at render time so the preview vanishes as soon as the hovered step
   // becomes the value (click/drag), without waiting for the next pointer move.
   const previewIndex =
-    !disabled && hoveredIndex !== null && hoveredIndex > value
-      ? hoveredIndex
+    !disabled && snappedHoverIndex !== null && snappedHoverIndex > value
+      ? snappedHoverIndex
       : null;
 
+  // The tooltip reflects the raw hovered step (so a locked step explains why it
+  // is locked), not the step selection would snap to.
   const activeTooltip =
     !disabled && hoveredIndex !== null
       ? (stepTooltips?.[hoveredIndex] ?? null)

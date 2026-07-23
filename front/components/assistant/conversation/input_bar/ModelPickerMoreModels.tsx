@@ -7,6 +7,7 @@ import {
   getEffortStops,
   getInitialEffort,
   getModelKey,
+  getModelLockReason,
   isModelSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
@@ -40,6 +41,9 @@ interface ModelPickerMoreModelsProps {
   agentDefault: Selection;
   // Whether the active selection differs from the agent default.
   canRevert: boolean;
+  // When true, premium (model, effort) picks are locked (workspace not on a
+  // credit-based plan).
+  lockPremiumEfforts: boolean;
   search: string;
   onSearchChange: (value: string) => void;
   // On width-constrained clients (mobile, extension) there are no submenus:
@@ -63,6 +67,7 @@ export function ModelPickerMoreModels({
   shown,
   agentDefault,
   canRevert,
+  lockPremiumEfforts,
   search,
   onSearchChange,
   isWidthConstrained,
@@ -99,18 +104,20 @@ export function ModelPickerMoreModels({
   ) => {
     const isSelected = isModelSelection(model, shown.display);
     const isDefault = isModelSelection(model, agentDefault.display);
+    const lockReason = getModelLockReason(model, { lockPremiumEfforts });
     const effort =
       isSelected && shown.display.kind === "model"
         ? shown.display.effort
-        : getInitialEffort(model);
+        : getInitialEffort(model, { lockPremiumEfforts });
     return (
       <ModelPickerModelRow
         key={getModelKey(model.providerId, model.modelId)}
         model={model}
         isSelected={isSelected}
         isDefault={isDefault}
+        lockReason={lockReason}
         effort={effort}
-        effortStops={getEffortStops(model)}
+        effortStops={getEffortStops(model, { lockPremiumEfforts })}
         icon={
           showMakerIcon
             ? getModelMakerLogo(getModelMaker(model), isDark)

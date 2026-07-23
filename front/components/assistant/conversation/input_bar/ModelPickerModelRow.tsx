@@ -1,11 +1,15 @@
 import { ModelPickerSelectionIndicator } from "@app/components/assistant/conversation/input_bar/ModelPickerSelectionIndicator";
-import type { EffortStop } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import type {
+  EffortStop,
+  ModelLockReason,
+} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import { getModelLockTooltip } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { ReasoningEffortSlider } from "@app/components/assistant/conversation/input_bar/ReasoningEffortSlider";
 import type {
   ModelConfigurationType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import { DropdownMenuItem } from "@dust-tt/sparkle";
+import { DropdownMenuItem, Icon, Lock01 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useRef } from "react";
 
@@ -13,6 +17,7 @@ interface ModelPickerModelRowProps {
   model: ModelConfigurationType;
   isSelected: boolean;
   isDefault: boolean;
+  lockReason: ModelLockReason | null;
   effort: ReasoningEffort;
   effortStops: EffortStop[];
   icon?: ComponentType;
@@ -26,6 +31,7 @@ export function ModelPickerModelRow({
   model,
   isSelected,
   isDefault,
+  lockReason,
   effort,
   effortStops,
   icon,
@@ -35,6 +41,23 @@ export function ModelPickerModelRow({
   onRevert,
 }: ModelPickerModelRowProps) {
   const itemRef = useRef<HTMLDivElement>(null);
+
+  if (lockReason) {
+    return (
+      <DropdownMenuItem
+        ref={itemRef}
+        label={model.displayName}
+        icon={icon}
+        truncateText
+        disabled
+        tooltip={getModelLockTooltip(lockReason)}
+        endComponent={
+          <Icon visual={Lock01} size="sm" className="text-muted-foreground" />
+        }
+        onSelect={(e) => e.preventDefault()}
+      />
+    );
+  }
 
   return (
     <>
