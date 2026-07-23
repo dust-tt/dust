@@ -23,6 +23,7 @@ import {
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
+import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import {
   batchRenderMessages,
   batchRenderUserMessagesWithoutMentions,
@@ -767,7 +768,21 @@ export async function postUserMessage(
   let agentConfigurations = removeNulls(results[0]);
   let shouldCreateBranch = false;
 
+  // Retired global agents can't be invoked (new conversations or new messages).
+  // The internal `run_agent` path is exempt: some hidden sub-agents are retired.
+  const isInternalRunAgent = agenticMessageData?.type === "run_agent";
+
   for (const agentConfig of agentConfigurations) {
+    if (!isInternalRunAgent && isRetiredGlobalAgent(agentConfig.sId)) {
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "agent_inaccessible",
+          message: `Assistant ${agentConfig.name} is retired and can no longer be used.`,
+        },
+      });
+    }
+
     if (!canAccessAgent(agentConfig)) {
       return new Err({
         status_code: 400,

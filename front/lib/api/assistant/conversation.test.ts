@@ -1573,6 +1573,37 @@ describe("postUserMessage", () => {
     rateLimiterSpy.mockRestore();
   });
 
+  it("should reject mentions of a retired global agent", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const result = await postUserMessage(auth, {
+      conversation,
+      content: `Hello @claude-4-sonnet`,
+      mentions: [
+        {
+          configurationId: GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
+        } satisfies AgentMention,
+      ],
+      context: {
+        username: userJson.username,
+        timezone: "UTC",
+        fullName: userJson.fullName,
+        email: userJson.email,
+        profilePictureUrl: userJson.image,
+        origin: "zapier",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(400);
+      expect(result.error.api_error.type).toBe("agent_inaccessible");
+    }
+    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+  });
+
   it("should preserve agent mentions in the returned userMessage", async () => {
     const mentions: MentionType[] = [
       {
