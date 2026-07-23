@@ -5,6 +5,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   deleteMembersActivity,
   deleteSpacesActivity,
+  getGitHubAdminEmailsActivity,
 } from "@app/poke/temporal/activities";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -49,9 +50,10 @@ describe("deleteMembersActivity", () => {
     const globalSpace = await SpaceFactory.global(workspace);
     await DataSourceViewFactory.fromConnector(workspace, globalSpace, "github");
 
-    const githubAdminEmails = await deleteMembersActivity({
+    const githubAdminEmails = await getGitHubAdminEmailsActivity({
       workspaceId: workspace.sId,
     });
+    await deleteMembersActivity({ workspaceId: workspace.sId });
     expect(mockSendGitHubDeletionEmail).not.toHaveBeenCalled();
 
     await deleteSpacesActivity({

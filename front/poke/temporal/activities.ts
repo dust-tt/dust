@@ -574,21 +574,6 @@ export async function deleteMembersActivity({
     workspace,
   });
 
-  // The workspace/provider index makes this existence check cheap.
-  const githubDataSources = await DataSourceResource.listByConnectorProvider(
-    auth,
-    "github",
-    { limit: 1 }
-  );
-  let githubAdminEmails: string[] = [];
-  if (githubDataSources.length > 0) {
-    const { members } = await getMembers(auth, {
-      roles: ["admin"],
-      activeOnly: true,
-    });
-    githubAdminEmails = members.map((member) => member.email);
-  }
-
   for (const membership of memberships) {
     const user = await UserResource.fetchByModelId(membership.userId);
     if (user) {
@@ -634,6 +619,29 @@ export async function deleteMembersActivity({
       );
       await membership.delete(auth, {});
     }
+  }
+}
+
+export async function getGitHubAdminEmailsActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+
+  // The workspace/provider index makes this existence check cheap.
+  const githubDataSources = await DataSourceResource.listByConnectorProvider(
+    auth,
+    "github",
+    { limit: 1 }
+  );
+  let githubAdminEmails: string[] = [];
+  if (githubDataSources.length > 0) {
+    const { members } = await getMembers(auth, {
+      roles: ["admin"],
+      activeOnly: true,
+    });
+    githubAdminEmails = members.map((member) => member.email);
   }
 
   return githubAdminEmails;

@@ -22,6 +22,7 @@ const {
   deleteTranscriptsActivity,
   deleteWorkOSOrganization,
   deleteWorkspaceUserMetadataActivity,
+  getGitHubAdminEmailsActivity,
   isWorkflowDeletableActivity,
   scrubDataSourceActivity,
   scrubSpaceActivity,
@@ -74,7 +75,8 @@ export async function deleteWorkspaceWorkflow({
   await deleteAgentsActivity({ workspaceId });
   await deleteRunOnDustAppsActivity({ workspaceId });
   await deleteAppsActivity({ workspaceId });
-  const githubAdminEmails = await deleteMembersActivity({ workspaceId });
+  const githubAdminEmails = await getGitHubAdminEmailsActivity({ workspaceId });
+  await deleteMembersActivity({ workspaceId });
   await deleteWorkspaceUserMetadataActivity({ workspaceId });
   await deleteTagsActivity({ workspaceId });
   await deleteWebhookSourcesActivity({ workspaceId });
