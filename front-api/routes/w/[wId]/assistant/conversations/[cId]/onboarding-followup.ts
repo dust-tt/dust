@@ -1,11 +1,10 @@
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { buildOnboardingFollowUpPrompt } from "@app/lib/api/assistant/onboarding";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isString } from "@app/types/shared/utils/general";
-import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -46,12 +45,19 @@ app.post(
       });
     }
 
-    const conversationRes = await getConversation(auth, conversationId);
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversationResource) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "conversation_not_found",
+          message: "Conversation not found",
+        },
+      });
     }
-
-    const conversation = conversationRes.value;
 
     // Extract user's preferred language from Accept-Language header.
     const acceptLanguage = ctx.req.header("accept-language");
@@ -60,7 +66,7 @@ app.post(
     const followUpPrompt = buildOnboardingFollowUpPrompt(toolId, language);
 
     const messageRes = await postUserMessage(auth, {
-      conversation,
+      conversationResource,
       content: followUpPrompt,
       mentions: [
         {

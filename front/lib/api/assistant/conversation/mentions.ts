@@ -299,8 +299,8 @@ export async function validateUserMention(
     });
   }
   if (isApproval) {
-    const auditMessage = conversation.spaceId
-      ? "User approved a mention and added user to project"
+    const auditMessage = isPodConversation(conversation)
+      ? "User approved a mention and added user to Pod"
       : "User approved a mention";
     auditLog(
       {

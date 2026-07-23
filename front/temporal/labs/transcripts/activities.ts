@@ -4,7 +4,7 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
@@ -25,10 +25,7 @@ import {
   retrieveGoogleTranscriptContent,
   retrieveGoogleTranscripts,
 } from "@app/temporal/labs/transcripts/utils/google";
-import type {
-  AgentMessageType,
-  UserMessageContext,
-} from "@app/types/assistant/conversation";
+import type { UserMessageContext } from "@app/types/assistant/conversation";
 import { CoreAPI } from "@app/types/core/core_api";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
 import { Err } from "@app/types/shared/result";
@@ -515,11 +512,13 @@ export async function processTranscriptActivity(
       return new Err(new Error("username must be a non-empty string"));
     }
 
-    const initialConversation = await createConversation(auth, {
+    const conversationResource = await createConversation(auth, {
       title: transcriptTitle,
       visibility: "unlisted",
       spaceId: null,
     });
+
+    const conversation = conversationResource.toJSON();
 
     const baseContext: UserMessageContext = {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
@@ -531,7 +530,7 @@ export async function processTranscriptActivity(
     };
 
     const cfRes = await toFileContentFragment(auth, {
-      conversation: initialConversation,
+      conversation,
       contentFragment: {
         title: transcriptTitle,
         content: transcriptContent,
@@ -543,7 +542,7 @@ export async function processTranscriptActivity(
     if (cfRes.isErr()) {
       localLogger.error(
         {
-          conversationId: initialConversation.sId,
+          conversationId: conversation.sId,
           error: cfRes.error,
         },
         "[processTranscriptActivity] Error creating file for content fragment. Stopping."
@@ -553,7 +552,7 @@ export async function processTranscriptActivity(
 
     const contentFragmentRes = await postNewContentFragment(
       auth,
-      initialConversation,
+      conversation,
       cfRes.value,
       baseContext
     );
@@ -562,7 +561,7 @@ export async function processTranscriptActivity(
       localLogger.error(
         {
           agentConfigurationId,
-          conversationId: initialConversation.sId,
+          conversationId: conversation.sId,
           error: contentFragmentRes.error,
         },
         "[processTranscriptActivity] Error creating content fragment. Stopping."
@@ -570,30 +569,8 @@ export async function processTranscriptActivity(
       return;
     }
 
-    // Initial conversation is stale, so we need to reload it.
-    const conversationRes = await getConversation(
-      auth,
-      initialConversation.sId
-    );
-
-    if (conversationRes.isErr()) {
-      localLogger.error(
-        {
-          agentConfigurationId,
-          conversationId: initialConversation.sId,
-          panic: true,
-          error: conversationRes.error,
-        },
-        "[processTranscriptActivity] Unreachable: Error getting conversation after creation."
-      );
-
-      return;
-    }
-
-    let conversation = conversationRes.value;
-
     const messageRes = await postUserMessageAndWaitForCompletion(auth, {
-      conversation,
+      conversationResource,
       content: `Transcript: ${transcriptTitle}`,
       mentions: [{ configurationId: agentConfigurationId }],
       context: baseContext,
@@ -615,22 +592,6 @@ export async function processTranscriptActivity(
       return;
     }
 
-    const updatedRes = await getConversation(auth, conversation.sId);
-
-    if (updatedRes.isErr()) {
-      localLogger.error(
-        {
-          agentConfigurationId,
-          conversationId: conversation.sId,
-          error: updatedRes.error,
-        },
-        "[processTranscriptActivity] Error getting conversation after creation. Stopping."
-      );
-      return;
-    }
-
-    conversation = updatedRes.value;
-
     localLogger.info(
       {
         agentConfigurationId,
@@ -640,16 +601,29 @@ export async function processTranscriptActivity(
     );
 
     // Get first from array with type='agent_message' in conversation.content;
-    const agentMessage = <AgentMessageType[]>conversation.content.find(
-      (innerArray) => {
-        return innerArray.find((item) => item.type === "agent_message");
-      }
+    const lightConversationRes = await getLightConversation(
+      auth,
+      conversation.sId
+    );
+    if (lightConversationRes.isErr()) {
+      localLogger.error(
+        {
+          agentConfigurationId,
+          conversationId: conversation.sId,
+          error: lightConversationRes.error,
+        },
+        "[processTranscriptActivity] Error getting light conversation. Stopping."
+      );
+      return;
+    }
+    const agentMessage = lightConversationRes.value.content.find(
+      (item) => item.type === "agent_message"
     );
 
     // Usage
     const markDownAnswer =
-      agentMessage && agentMessage[0].content
-        ? convertCitationsToLinks(agentMessage[0].content, conversation)
+      agentMessage && agentMessage.content
+        ? convertCitationsToLinks(agentMessage.content, conversation)
         : "";
 
     const htmlAnswer = sanitizeHtml(await marked.parse(markDownAnswer), {
