@@ -21,10 +21,7 @@ import { getWebhookRequestPayloadFromGCS } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import {
-  type ConversationWithoutContentType,
-  isUserMessageType,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -379,27 +376,6 @@ function buildWakeUpMessageContent(wakeUp: WakeUpType): string {
   return content;
 }
 
-function getWakeUpClientSideMCPServerIds(
-  conversation: ConversationResource
-): string[] {
-  const previousUserMessageVersions = conversation.content.findLast(
-    (versions) => {
-      const message = versions.at(-1);
-      return (
-        !!message &&
-        isUserMessageType(message) &&
-        message.context.origin !== "wakeup"
-      );
-    }
-  );
-
-  const previousUserMessage = previousUserMessageVersions?.at(-1);
-
-  return previousUserMessage && isUserMessageType(previousUserMessage)
-    ? (previousUserMessage.context.clientSideMCPServerIds ?? [])
-    : [];
-}
-
 export async function runWakeUpActivity({
   workspaceId,
   wakeUpId,
@@ -462,7 +438,9 @@ export async function runWakeUpActivity({
   }
 
   const clientSideMCPServerIds =
-    getWakeUpClientSideMCPServerIds(conversationResource);
+    await conversationResource.getClientSideMCPServerIdsFromLatestNonWakeUpUserMessage(
+      auth
+    );
 
   const postMessageResult = await postUserMessage(auth, {
     conversationResource: conversationResource,

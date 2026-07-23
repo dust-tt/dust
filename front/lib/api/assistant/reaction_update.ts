@@ -159,13 +159,10 @@ export async function publishReactionUpdate(
     // message on this event, so omitting contentFragments would wipe the
     // attachments from the UI. A dedicated `reactions_updated` event carrying
     // just { messageId, reactions } would remove the need for this fetch.
-    const contentFragments = await fetchPrecedingContentFragments(
-      auth,
-      conversation,
-      {
-        targetRank: message.rank,
-      }
-    );
+    const contentFragments = await fetchPrecedingContentFragments(auth, {
+      conversationResource: conversation,
+      targetRank: message.rank,
+    });
     await publishMessageEventsOnMessagePostOrEdit(
       conversationJSON,
       { ...message, contentFragments },

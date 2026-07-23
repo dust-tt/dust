@@ -1,16 +1,18 @@
-import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolRunContext } from "@app/lib/actions/types";
 import { listHandler } from "@app/lib/api/actions/servers/files/tools/list";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import {
+  makeExtra,
+  setupProjectConversation,
+} from "@app/tests/utils/conversation_test_factories";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -53,17 +55,6 @@ async function sessionAuthForUser(
   );
 }
 
-function makeExtra(
-  auth: Authenticator,
-  conversation: ConversationType
-): ToolHandlerExtra {
-  const runContext = {
-    contextType: "agent_loop",
-    conversation,
-  } as unknown as ToolRunContext;
-  return { auth, runContext } as unknown as ToolHandlerExtra;
-}
-
 function makeStorageFile(
   name: string,
   contentType = "text/plain",
@@ -79,37 +70,9 @@ function makeStorageFile(
   };
 }
 
-async function setupProjectConversation(): Promise<{
-  auth: Authenticator;
-  conversation: ConversationType;
-  projectId: string;
-}> {
-  const { authenticator: auth, workspace } = await createResourceTest({
-    role: "admin",
-  });
-  const user = auth.getNonNullableUser();
-
-  const space = await SpaceFactory.project(workspace, user.id);
-  const addRes = await space.addMembers(auth, { userIds: [user.sId] });
-  assert(addRes.isOk(), "Failed to add user to project space");
-
-  const projectAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    user.sId,
-    workspace.sId
-  );
-
-  const conversation = await createConversation(projectAuth, {
-    title: "Test",
-    visibility: "unlisted",
-    spaceId: space.id,
-  });
-
-  return { auth: projectAuth, conversation, projectId: space.sId };
-}
-
 async function setupProjectWithRegularConversation(): Promise<{
   auth: Authenticator;
-  conversation: ConversationType;
+  conversation: ConversationResource;
   projectId: string;
   workspaceId: string;
 }> {

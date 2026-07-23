@@ -846,12 +846,19 @@ describe("createAgentMessages", () => {
       );
       expect(restrictedSpaceModelId).not.toBeNull();
 
-      const restrictedConversation = await ConversationFactory.create(auth, {
-        agentConfigurationId: "test-agent",
-        messagesCreatedAt: [],
+      const restrictedConversationResource = await createConversation(auth, {
+        title: "Test Conversation",
         visibility: "unlisted",
-        requestedSpaceIds: [restrictedSpaceModelId!],
+        spaceId: null,
       });
+      await ConversationModel.update(
+        { requestedSpaceIds: [restrictedSpaceModelId!] },
+        { where: { id: restrictedConversationResource.id } }
+      );
+      const restrictedConversation = {
+        ...restrictedConversationResource.toJSON(),
+        requestedSpaceIds: [refreshedRestrictedSpace!.sId],
+      };
 
       // Verify the mentioned user cannot access the conversation
       const canAccess = await ConversationResource.canAccess(
@@ -1039,12 +1046,19 @@ describe("createAgentMessages", () => {
       );
       expect(restrictedSpaceModelId).not.toBeNull();
 
-      const restrictedConversation = await ConversationFactory.create(auth, {
-        agentConfigurationId: "test-agent",
-        messagesCreatedAt: [],
+      const restrictedConversationResource = await createConversation(auth, {
+        title: "Test Conversation",
         visibility: "unlisted",
-        requestedSpaceIds: [restrictedSpaceModelId!],
+        spaceId: null,
       });
+      await ConversationModel.update(
+        { requestedSpaceIds: [restrictedSpaceModelId!] },
+        { where: { id: restrictedConversationResource.id } }
+      );
+      const restrictedConversation = {
+        ...restrictedConversationResource.toJSON(),
+        requestedSpaceIds: [refreshedRestrictedSpace!.sId],
+      };
 
       // Add user as participant first (which would normally auto-approve)
       await ConversationResource.upsertParticipation(auth, {
@@ -1130,11 +1144,13 @@ describe("createAgentMessages", () => {
       );
       expect(refreshedProjectSpace).not.toBeNull();
 
-      const projectConversation = await createConversation(userAuth, {
+      const projectConversationResource = await createConversation(userAuth, {
         title: "Project Conversation",
         visibility: "unlisted",
         spaceId: refreshedProjectSpace!.id,
       });
+
+      const projectConversation = projectConversationResource.toJSON();
 
       // Create an agent message
       const agentConfig = await AgentConfigurationFactory.createTestAgent(
@@ -1207,11 +1223,13 @@ describe("createAgentMessages", () => {
       );
       expect(refreshedProjectSpace).not.toBeNull();
 
-      const projectConversation = await createConversation(userAuth, {
+      const projectConversationResource = await createConversation(userAuth, {
         title: "Project Conversation",
         visibility: "unlisted",
         spaceId: refreshedProjectSpace!.id,
       });
+
+      const projectConversation = projectConversationResource.toJSON();
 
       // Create an agent message
       const agentConfig = await AgentConfigurationFactory.createTestAgent(
@@ -1527,12 +1545,19 @@ describe("createAgentMessages", () => {
 
       // Create a conversation in a restricted space
       const restrictedSpace = await SpaceFactory.regular(workspace);
-      const regularConversation = await ConversationFactory.create(auth, {
-        agentConfigurationId: "test-agent",
-        messagesCreatedAt: [],
+      const regularConversationResource = await createConversation(auth, {
+        title: "Test Conversation",
         visibility: "unlisted",
-        requestedSpaceIds: [restrictedSpace.id],
+        spaceId: null,
       });
+      await ConversationModel.update(
+        { requestedSpaceIds: [restrictedSpace.id] },
+        { where: { id: regularConversationResource.id } }
+      );
+      const regularConversation = {
+        ...regularConversationResource.toJSON(),
+        requestedSpaceIds: [restrictedSpace.sId],
+      };
 
       const restrictedUserResource = await getUserForWorkspace(auth, {
         userId: restrictedUser.sId,
@@ -1858,7 +1883,7 @@ describe("createUserMessage", () => {
       const userJson = adminUser.toJSON();
       const userMessage = await withTransaction(async (transaction) => {
         return createUserMessage(userAuth, {
-          conversation: projectConversation,
+          conversation: projectConversation.toJSON(),
           content: `Hello @${mentionedUser.sId}`,
           metadata: {
             type: "create",

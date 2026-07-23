@@ -38,12 +38,13 @@ export function getRelatedContentFragments(
  */
 export async function fetchPrecedingContentFragments(
   auth: Authenticator,
-  conversationResource: ConversationResource,
   {
+    conversationResource,
     targetRank,
     branchId,
     transaction,
   }: {
+    conversationResource: ConversationResource;
     targetRank: number;
     branchId?: string | null;
     transaction?: Transaction;

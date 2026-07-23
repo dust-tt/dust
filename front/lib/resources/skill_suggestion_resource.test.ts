@@ -8,7 +8,6 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -715,8 +714,8 @@ describe("SkillSuggestionResource", () => {
   });
 
   describe("visibleSourceConversationIds", () => {
-    let conversation1: ConversationType;
-    let conversation2: ConversationType;
+    let conversation1: ConversationResource;
+    let conversation2: ConversationResource;
 
     beforeEach(async () => {
       conversation1 = await createConversation(authenticator, {

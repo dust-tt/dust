@@ -8,61 +8,24 @@ import {
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
 } from "@app/lib/api/file_system";
-import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import {
+  setupPlainConversation,
+  setupProjectConversation,
+} from "@app/tests/utils/conversation_test_factories";
 import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
-
-async function setupProjectConversation(): Promise<{
-  auth: Authenticator;
-  conversation: ConversationType;
-  projectId: string;
-}> {
-  const { authenticator: auth, workspace } = await createResourceTest({
-    role: "admin",
-  });
-  const user = auth.getNonNullableUser();
-
-  const space = await SpaceFactory.project(workspace, user.id);
-  const addRes = await space.addMembers(auth, { userIds: [user.sId] });
-  assert(addRes.isOk(), "Failed to add user to project space");
-
-  const projectAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    user.sId,
-    workspace.sId
-  );
-
-  const conversation = await createConversation(projectAuth, {
-    title: "Test",
-    visibility: "unlisted",
-    spaceId: space.id,
-  });
-
-  return { auth: projectAuth, conversation, projectId: space.sId };
-}
-
-async function setupPlainConversation(): Promise<{
-  auth: Authenticator;
-  conversation: ConversationType;
-}> {
-  const { authenticator: auth } = await createResourceTest({ role: "admin" });
-  const conversation = await createConversation(auth, {
-    title: "Test",
-    visibility: "unlisted",
-    spaceId: null,
-  });
-  return { auth, conversation };
-}
 
 describe("resolveFilePathsInParentScope", () => {
   it("resolves a conversation-scoped path in a plain conversation", async () => {
     const { auth, conversation } = await setupPlainConversation();
     const path = `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/foo.md`;
 
-    const res = await resolveFilePathsInParentScope(auth, conversation, [path]);
+    const res = await resolveFilePathsInParentScope(
+      auth,
+      conversation.toJSON(),
+      [path]
+    );
 
     assert(res.isOk());
     expect(res.value).toEqual([path]);
@@ -71,10 +34,14 @@ describe("resolveFilePathsInParentScope", () => {
   it("resolves both conversation and Pod paths in a Pod conversation", async () => {
     const { auth, conversation, projectId } = await setupProjectConversation();
 
-    const res = await resolveFilePathsInParentScope(auth, conversation, [
-      `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/a.txt`,
-      `${SCOPED_PREFIX_POD}${projectId}/b.txt`,
-    ]);
+    const res = await resolveFilePathsInParentScope(
+      auth,
+      conversation.toJSON(),
+      [
+        `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/a.txt`,
+        `${SCOPED_PREFIX_POD}${projectId}/b.txt`,
+      ]
+    );
 
     assert(res.isOk());
     expect(res.value).toHaveLength(2);
@@ -83,9 +50,11 @@ describe("resolveFilePathsInParentScope", () => {
   it("returns Err for a path with no scope prefix", async () => {
     const { auth, conversation } = await setupPlainConversation();
 
-    const res = await resolveFilePathsInParentScope(auth, conversation, [
-      "other/foo.md",
-    ]);
+    const res = await resolveFilePathsInParentScope(
+      auth,
+      conversation.toJSON(),
+      ["other/foo.md"]
+    );
 
     expect(res.isErr()).toBe(true);
     if (res.isErr()) {
@@ -96,9 +65,11 @@ describe("resolveFilePathsInParentScope", () => {
   it("returns Err for a Pod path in a non-Pod conversation", async () => {
     const { auth, conversation } = await setupPlainConversation();
 
-    const res = await resolveFilePathsInParentScope(auth, conversation, [
-      `${SCOPED_PREFIX_POD}somepodid/spec.md`,
-    ]);
+    const res = await resolveFilePathsInParentScope(
+      auth,
+      conversation.toJSON(),
+      [`${SCOPED_PREFIX_POD}somepodid/spec.md`]
+    );
 
     expect(res.isErr()).toBe(true);
     if (res.isErr()) {
@@ -115,9 +86,11 @@ describe("resolveFilePathsInParentScope", () => {
       })),
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
 
-    const res = await resolveFilePathsInParentScope(auth, conversation, [
-      `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/missing.md`,
-    ]);
+    const res = await resolveFilePathsInParentScope(
+      auth,
+      conversation.toJSON(),
+      [`${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/missing.md`]
+    );
 
     expect(res.isErr()).toBe(true);
     if (res.isErr()) {
@@ -147,7 +120,7 @@ describe("copyConversationFilesIntoSub", () => {
     const { auth, conversation, projectId } = await setupProjectConversation();
 
     const res = await copyConversationFilesIntoSub(auth, {
-      parentConversation: conversation,
+      parentConversation: conversation.toJSON(),
       subConversationId: "sub_sid",
       filePaths: [`${SCOPED_PREFIX_POD}${projectId}/spec.md`],
     });
@@ -164,7 +137,7 @@ describe("copyConversationFilesIntoSub", () => {
     });
 
     const res = await copyConversationFilesIntoSub(auth, {
-      parentConversation: conversation,
+      parentConversation: conversation.toJSON(),
       subConversationId: subConversation.sId,
       filePaths: [
         `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/a.md`,
@@ -191,7 +164,7 @@ describe("copyConversationFilesIntoSub", () => {
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
 
     const res = await copyConversationFilesIntoSub(auth, {
-      parentConversation: conversation,
+      parentConversation: conversation.toJSON(),
       subConversationId: subConversation.sId,
       filePaths: [
         `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/missing.md`,

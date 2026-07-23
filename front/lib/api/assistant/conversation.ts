@@ -617,7 +617,7 @@ export async function postUserMessage(
   ) {
     const hasOtherHumans =
       await conversationResource.hasUserMessageFromOtherUser(auth, {
-        excludeUserSId: user?.sId,
+        excludeUserId: user?.id,
         branchId: conversation.branchId,
       });
 
@@ -657,8 +657,8 @@ export async function postUserMessage(
   // we don't currently re-check the existence of a compaction message inside the critical section
   // below which means an agent loop could be triggered whle a compaction is running. This is not
   // that problematic if it happens (agent message after the compaction message).
-  const runningCompactionMessage =
-    await conversationResource.getRunningCompactionMessage(auth, {
+  const { runningAgentMessage: runningAgentContext, runningCompactionMessage } =
+    await conversationResource.getInFlightMessages(auth, {
       branchId: conversation.branchId,
     });
   if (runningCompactionMessage) {
@@ -681,9 +681,7 @@ export async function postUserMessage(
   }
 
   let runningAgentMessage: RunningAgentMessageContext | undefined =
-    (await conversationResource.getRunningAgentMessage(auth, {
-      branchId: conversation.branchId,
-    })) ?? undefined;
+    runningAgentContext ?? undefined;
 
   // Steering invariants: enforce single agent loop per conversation.
   if (explicitAgentMentions.length > 1) {
@@ -1104,14 +1102,11 @@ export async function postUserMessage(
       conversation,
       {
         ...userMessage,
-        contentFragments: await fetchPrecedingContentFragments(
-          auth,
+        contentFragments: await fetchPrecedingContentFragments(auth, {
           conversationResource,
-          {
-            targetRank: userMessage.rank,
-            branchId: conversation.branchId,
-          }
-        ),
+          targetRank: userMessage.rank,
+          branchId: conversation.branchId,
+        }),
       },
       agentMessages
     ),
@@ -1444,14 +1439,11 @@ export async function editUserMessage(
     conversation,
     {
       ...userMessage,
-      contentFragments: await fetchPrecedingContentFragments(
-        auth,
+      contentFragments: await fetchPrecedingContentFragments(auth, {
         conversationResource,
-        {
-          targetRank: userMessage.rank,
-          branchId: conversation.branchId,
-        }
-      ),
+        targetRank: userMessage.rank,
+        branchId: conversation.branchId,
+      }),
     },
     agentMessages
   );
@@ -2251,15 +2243,12 @@ export async function softDeleteUserMessageAndReplies(
   const userMessage = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    const relatedContentFragments = await fetchPrecedingContentFragments(
-      auth,
+    const relatedContentFragments = await fetchPrecedingContentFragments(auth, {
       conversationResource,
-      {
-        targetRank: message.rank,
-        branchId,
-        transaction: t,
-      }
-    );
+      targetRank: message.rank,
+      branchId,
+      transaction: t,
+    });
 
     const userMessage = await createUserMessage(auth, {
       conversation,

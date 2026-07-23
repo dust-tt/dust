@@ -2,7 +2,7 @@ import { retryAgentMessage } from "@app/lib/api/assistant/conversation";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
 import type { RetryMessageResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { streamingTag } from "@front-api/middlewares/streaming";
@@ -103,7 +103,7 @@ app.post(
     }
 
     const message = renderRes.value[0];
-    if (!message) {
+    if (!message || !isAgentMessageType(message)) {
       return apiError(ctx, {
         status_code: 500,
         api_error: {
@@ -116,7 +116,7 @@ app.post(
     const retriedMessageRes = await retryAgentMessage(auth, {
       conversationResource,
       branchId,
-      message: message as AgentMessageType,
+      message,
     });
     if (retriedMessageRes.isErr()) {
       return apiError(ctx, retriedMessageRes.error);

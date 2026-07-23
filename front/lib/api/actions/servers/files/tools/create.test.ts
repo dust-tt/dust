@@ -1,57 +1,12 @@
-import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolRunContext } from "@app/lib/actions/types";
 import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
 import { createHandler } from "@app/lib/api/actions/servers/files/tools/create";
-import { createConversation } from "@app/lib/api/assistant/conversation";
-import { Authenticator } from "@app/lib/auth";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import {
+  makeExtra,
+  setupProjectConversation,
+} from "@app/tests/utils/conversation_test_factories";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import assert from "assert";
 import { beforeEach, describe, expect, it } from "vitest";
-
-function makeExtra(
-  auth: Authenticator,
-  conversation: ConversationResource
-): ToolHandlerExtra {
-  const runContext = {
-    contextType: "agent_loop",
-    conversation: {
-      ...conversation.toJSON(),
-      visibility: conversation.visibility,
-      content: [],
-    },
-  } as unknown as ToolRunContext;
-  return { auth, runContext } as unknown as ToolHandlerExtra;
-}
-
-async function setupProjectConversation(): Promise<{
-  auth: Authenticator;
-  conversation: ConversationResource;
-}> {
-  const { authenticator: auth, workspace } = await createResourceTest({
-    role: "admin",
-  });
-  const user = auth.getNonNullableUser();
-
-  const space = await SpaceFactory.project(workspace, user.id);
-  const addRes = await space.addMembers(auth, { userIds: [user.sId] });
-  assert(addRes.isOk(), "Failed to add user to project space");
-
-  const projectAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    user.sId,
-    workspace.sId
-  );
-
-  const conversation = await createConversation(projectAuth, {
-    title: "Test",
-    visibility: "unlisted",
-    spaceId: space.id,
-  });
-
-  return { auth: projectAuth, conversation };
-}
 
 describe("createHandler", () => {
   beforeEach(() => {

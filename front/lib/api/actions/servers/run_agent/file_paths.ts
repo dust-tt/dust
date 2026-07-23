@@ -7,7 +7,7 @@ import {
 } from "@app/lib/api/file_system";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -21,7 +21,7 @@ import { Err, Ok } from "@app/types/shared/result";
  */
 export async function resolveFilePathsInParentScope(
   auth: Authenticator,
-  mainConversation: ConversationType,
+  mainConversation: ConversationWithoutContentType,
   filePaths: string[]
 ): Promise<Result<string[], MCPError>> {
   const fsResult = await DustFileSystem.forConversation(auth, mainConversation);
@@ -85,7 +85,7 @@ export async function copyConversationFilesIntoSub(
     subConversationId,
     filePaths,
   }: {
-    parentConversation: ConversationType;
+    parentConversation: ConversationWithoutContentType;
     subConversationId: string;
     filePaths: string[];
   }

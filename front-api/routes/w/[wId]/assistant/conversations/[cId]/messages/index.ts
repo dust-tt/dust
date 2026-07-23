@@ -1,5 +1,6 @@
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
+import { fetchPrecedingContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { addSelectedConversationSpaces } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
@@ -23,7 +24,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
 import { apiErrorForSelectedSpaces } from "../selected_spaces_errors";
 import message from "./[mId]";
 
@@ -401,10 +401,10 @@ app.post(
       return apiError(ctx, messageRes.error);
     }
 
-    const contentFragments =
-      await conversationResource.fetchPrecedingContentFragments(auth, {
-        targetRank: messageRes.value.userMessage.rank,
-      });
+    const contentFragments = await fetchPrecedingContentFragments(auth, {
+      conversationResource,
+      targetRank: messageRes.value.userMessage.rank,
+    });
 
     return ctx.json({
       message: messageRes.value.userMessage,
