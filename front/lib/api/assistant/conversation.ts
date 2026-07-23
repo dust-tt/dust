@@ -702,7 +702,7 @@ export async function postUserMessage(
   }
 
   let runningAgentMessage = conversation.content
-    .flat()
+    .map((versions) => versions[versions.length - 1])
     .find(
       (m): m is AgentMessageType =>
         isAgentMessageType(m) && m.status === "created"
@@ -2213,41 +2213,6 @@ function getAgentRepliesToCascadeOnUserDelete(
   return orphans;
 }
 
-async function stopDeletedAgentMessages(
-  auth: Authenticator,
-  conversation: ConversationType,
-  agentMessages: AgentMessageType[]
-): Promise<void> {
-  const runningAgentMessages = agentMessages.filter(
-    (message) => message.status === "created"
-  );
-  if (runningAgentMessages.length === 0) {
-    return;
-  }
-
-  await gracefullyStopAgentLoop(auth, {
-    messageIds: runningAgentMessages.map((message) => message.sId),
-    conversationId: conversation.sId,
-  });
-
-  let finalizedMessage = false;
-  for (const agentMessage of runningAgentMessages) {
-    const result = await updateAgentMessageWithFinalStatus(auth, {
-      conversation,
-      agentMessage,
-      status: "cancelled",
-    });
-    finalizedMessage ||= result.applied;
-  }
-
-  if (finalizedMessage) {
-    await ConversationResource.setIsRunningAgentLoop(auth, {
-      conversation,
-      isRunningAgentLoop: false,
-    });
-  }
-}
-
 /**
  * Soft-delete a user message and the agent replies that followed it.
  *
@@ -2355,9 +2320,18 @@ export async function softDeleteUserMessageAndReplies(
     await publishAgentMessagesEvents(conversation, cascadedAgentMessages);
   }
 
-  // Stop any still-running agent loops and finalize the hidden original versions. The workflow
-  // finalizer cannot load an agent message after its deleted v+1 becomes the latest version.
-  await stopDeletedAgentMessages(auth, conversation, orphanAgentMessages);
+  // Signal any still-running agent loops to stop. Orphans with status "created" have a live
+  // Temporal workflow that would otherwise keep streaming to a deleted message. The gracefully-
+  // stopped event also lets the client flip the message status and hide the Stop button.
+  const runningOrphans = orphanAgentMessages.filter(
+    (m) => m.status === "created"
+  );
+  if (runningOrphans.length > 0) {
+    await gracefullyStopAgentLoop(auth, {
+      messageIds: runningOrphans.map((m) => m.sId),
+      conversationId: conversation.sId,
+    });
+  }
 
   auditLog(
     {
@@ -2436,7 +2410,14 @@ export async function softDeleteAgentMessage(
 
   await publishAgentMessagesEvents(conversation, agentMessages);
 
-  await stopDeletedAgentMessages(auth, conversation, [message]);
+  // Stop the underlying agent loop if it's still running so the Temporal workflow doesn't keep
+  // streaming to a deleted message and the client sees the Stop button disappear.
+  if (message.status === "created") {
+    await gracefullyStopAgentLoop(auth, {
+      messageIds: [message.sId],
+      conversationId: conversation.sId,
+    });
+  }
 
   auditLog(
     {
