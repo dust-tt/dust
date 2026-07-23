@@ -1,5 +1,5 @@
 import type * as activities from "@app/poke/temporal/activities";
-import { patched, proxyActivities } from "@temporalio/workflow";
+import { proxyActivities } from "@temporalio/workflow";
 
 // Create a single proxy with all normal and long activities
 const normalActivityProxies = proxyActivities<typeof activities>({
@@ -68,26 +68,17 @@ export async function deleteWorkspaceWorkflow({
     return;
   }
 
-  // Data source deletion may notify workspace admins, so keep memberships until spaces are deleted.
-  // The patch preserves replay compatibility for in-flight workflows using the previous order.
-  const deleteMembersAfterSpaces = patched("delete-members-after-spaces");
-
   await deleteConversationsActivity({ workspaceId });
   await deleteSkillsActivity({ workspaceId });
   await deleteRemoteMCPServersActivity({ workspaceId });
   await deleteAgentsActivity({ workspaceId });
   await deleteRunOnDustAppsActivity({ workspaceId });
   await deleteAppsActivity({ workspaceId });
-  if (!deleteMembersAfterSpaces) {
-    await deleteMembersActivity({ workspaceId });
-  }
   await deleteWorkspaceUserMetadataActivity({ workspaceId });
   await deleteTagsActivity({ workspaceId });
   await deleteWebhookSourcesActivity({ workspaceId });
   await deleteSpacesActivity({ workspaceId });
-  if (deleteMembersAfterSpaces) {
-    await deleteMembersActivity({ workspaceId });
-  }
+  await deleteMembersActivity({ workspaceId });
   await deleteTranscriptsActivity({ workspaceId });
   await deletePluginRunsActivity({ workspaceId });
   await deleteWorkspaceActivity({ workspaceId });

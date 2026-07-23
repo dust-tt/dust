@@ -40,6 +40,7 @@ describe("deleteWorkspacePlugin.execute", () => {
     const result = await deleteWorkspacePlugin.execute(auth, workspace, {
       confirmation: "DELETE",
       workspaceHasBeenRelocated: false,
+      deleteDataSources: false,
     });
 
     expect(result.isErr()).toBe(true);
@@ -49,7 +50,7 @@ describe("deleteWorkspacePlugin.execute", () => {
     expect(mockDeleteWorkspace).not.toHaveBeenCalled();
   });
 
-  it("proceeds with data sources on a free plan with no Metronome contract", async () => {
+  it("blocks deletion with data sources unless explicitly requested", async () => {
     const workspace = await WorkspaceFactory.byok();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const globalSpace = await SpaceFactory.global(workspace);
@@ -58,6 +59,23 @@ describe("deleteWorkspacePlugin.execute", () => {
     const result = await deleteWorkspacePlugin.execute(auth, workspace, {
       confirmation: "DELETE",
       workspaceHasBeenRelocated: false,
+      deleteDataSources: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(mockDeleteWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("proceeds with data sources when explicitly requested", async () => {
+    const workspace = await WorkspaceFactory.byok();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const globalSpace = await SpaceFactory.global(workspace);
+    await DataSourceViewFactory.folder(workspace, globalSpace);
+
+    const result = await deleteWorkspacePlugin.execute(auth, workspace, {
+      confirmation: "DELETE",
+      workspaceHasBeenRelocated: false,
+      deleteDataSources: true,
     });
 
     expect(result.isOk()).toBe(true);

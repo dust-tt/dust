@@ -9,6 +9,7 @@ import {
   isWorkspaceRelocationDone,
 } from "@app/lib/api/workspace";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const deleteWorkspacePlugin = createPlugin({
@@ -30,13 +31,19 @@ export const deleteWorkspacePlugin = createPlugin({
           "subscription checks.",
         label: "Workspace has been relocated?",
       },
+      deleteDataSources: {
+        type: "boolean",
+        description:
+          "Delete all data sources as part of the workspace deletion.",
+        label: "Delete all data sources",
+      },
     },
     requiredRoles: ["engineering"],
   },
   execute: async (
     auth,
     workspace,
-    { confirmation, workspaceHasBeenRelocated }
+    { confirmation, workspaceHasBeenRelocated, deleteDataSources }
   ) => {
     if (!workspace) {
       return new Err(new Error("Workspace not found"));
@@ -44,6 +51,17 @@ export const deleteWorkspacePlugin = createPlugin({
 
     if (confirmation !== "DELETE") {
       return new Err(new Error("Invalid confirmation, must type 'DELETE'"));
+    }
+
+    if (!deleteDataSources) {
+      const dataSources = await DataSourceResource.listByWorkspace(auth);
+      if (dataSources.length > 0) {
+        return new Err(
+          new Error(
+            'Workspace has data sources. Check "Delete all data sources" to delete them with the workspace.'
+          )
+        );
+      }
     }
 
     // If the workspace has been relocated, we can delete it immediately.
