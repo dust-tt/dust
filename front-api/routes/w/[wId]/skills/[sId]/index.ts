@@ -17,6 +17,7 @@ import type {
   PatchSkillResponseBody,
 } from "@app/types/api/skills";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import { availabilityFromIsDefault } from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -385,7 +386,11 @@ app.patch(
       icon: body.icon,
       instructions: body.instructions,
       instructionsHtml: body.instructionsHtml,
-      isDefault: body.isDefault,
+      // isDefault is a deprecated alias in the API contract; the resource takes availability.
+      availability:
+        body.isDefault !== undefined
+          ? availabilityFromIsDefault(body.isDefault)
+          : undefined,
       mcpServerViews,
       name,
       reinforcement: body.reinforcement,
