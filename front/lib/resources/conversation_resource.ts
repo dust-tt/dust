@@ -3306,6 +3306,66 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
   }
 
+  /**
+   * Returns the latest message row per rank for consecutive agent-message ranks
+   * immediately following `afterRank`, stopping at the first non-agent rank.
+   * Includes already-deleted agent placeholders (caller filters for cascade).
+   */
+  async getConsecutiveAgentReplyModelsAfterRank(
+    auth: Authenticator,
+    {
+      afterRank,
+      branchId,
+      transaction,
+    }: {
+      afterRank: number;
+      branchId?: string | null;
+      transaction?: Transaction;
+    }
+  ): Promise<MessageModel[]> {
+    const scopeWhere = await this.getMessageScopeWhere(auth, {
+      branchId,
+      transaction,
+    });
+
+    const messages = await MessageModel.findAll({
+      where: {
+        ...scopeWhere,
+        rank: { [Op.gt]: afterRank },
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: false,
+        },
+      ],
+      order: [
+        ["rank", "ASC"],
+        ["version", "DESC"],
+      ],
+      transaction,
+    });
+
+    const latestPerRank = new Map<number, MessageModel>();
+    for (const message of messages) {
+      if (!latestPerRank.has(message.rank)) {
+        latestPerRank.set(message.rank, message);
+      }
+    }
+
+    const consecutiveAgentReplies: MessageModel[] = [];
+    for (const rank of [...latestPerRank.keys()].sort((a, b) => a - b)) {
+      const message = latestPerRank.get(rank);
+      if (!message?.agentMessage) {
+        break;
+      }
+      consecutiveAgentReplies.push(message);
+    }
+
+    return consecutiveAgentReplies;
+  }
+
   async getRunningAgentMessage(
     auth: Authenticator,
     {

@@ -1,15 +1,13 @@
 import type { ToolContext } from "@app/lib/actions/types";
 import { createConversation } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import { Err, Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import {
   getFileFromConversationAttachment,
   resolveConversationFileRef,
@@ -46,7 +44,7 @@ vi.mock("@app/lib/api/file_system", async (importOriginal) => {
   };
 });
 
-function makeToolContext(conversation: ConversationType): ToolContext {
+function makeToolContext(conversation: ConversationResource): ToolContext {
   return {
     runContext: { contextType: "agent_loop", conversation },
   } as unknown as ToolContext;
@@ -97,7 +95,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         canonicalPath,
-        makeToolContext({ ...conversation, content: [] })
+        makeToolContext(conversation)
       );
 
       expect(result.isOk()).toBe(true);
@@ -130,7 +128,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         `conversation-${conversation.sId}/missing.pdf`,
-        makeToolContext({ ...conversation, content: [] })
+        makeToolContext(conversation)
       );
 
       expect(result.isErr()).toBe(true);
@@ -158,7 +156,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         `conversation-${conversation.sId}/file.txt`,
-        makeToolContext({ ...conversation, content: [] })
+        makeToolContext(conversation)
       );
 
       expect(result.isErr()).toBe(true);
@@ -197,12 +195,6 @@ describe("getFileFromConversationAttachment", () => {
         fileName: "report.pdf",
       });
 
-      const conversationResult = await getConversation(auth, conversation.sId);
-      if (conversationResult.isErr()) {
-        throw new Error("Failed to fetch conversation");
-      }
-      const fullConversation = conversationResult.value;
-
       const expectedContent = "pdf bytes";
       vi.spyOn(FileResource.prototype, "getReadStream").mockReturnValue(
         makeReadableStream(expectedContent)
@@ -211,7 +203,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         file.sId,
-        makeToolContext(fullConversation)
+        makeToolContext(conversation)
       );
 
       expect(result.isOk()).toBe(true);
@@ -235,15 +227,10 @@ describe("getFileFromConversationAttachment", () => {
         spaceId: null,
       });
 
-      const conversationResult = await getConversation(auth, conversation.sId);
-      if (conversationResult.isErr()) {
-        throw new Error("Failed to fetch conversation");
-      }
-
       const result = await getFileFromConversationAttachment(
         auth,
         "fil_notfound",
-        makeToolContext(conversationResult.value)
+        makeToolContext(conversation)
       );
 
       expect(result.isErr()).toBe(true);
@@ -278,7 +265,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         "conversation/notes.txt",
-        makeToolContext({ ...conversation, content: [] })
+        makeToolContext(conversation)
       );
 
       expect(result.isOk()).toBe(true);
@@ -308,7 +295,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         "conversation/missing.pdf",
-        makeToolContext({ ...conversation, content: [] })
+        makeToolContext(conversation)
       );
 
       expect(result.isErr()).toBe(true);
@@ -425,7 +412,7 @@ describe("resolveConversationFileRef", () => {
       const result = await resolveConversationFileRef(
         auth,
         `conversation-${conversation.sId}/missing.png`,
-        makeToolContext({ ...conversation, content: [] })
+        makeToolContext(conversation)
       );
 
       expect(result.isErr()).toBe(true);
@@ -459,7 +446,7 @@ describe("resolveConversationFileRef", () => {
     const result = await resolveConversationFileRef(
       auth,
       file.sId,
-      makeToolContext({ ...conversation, content: [] })
+      makeToolContext(conversation)
     );
 
     expect(result.isOk()).toBe(true);
@@ -502,7 +489,7 @@ describe("resolveConversationFileRef", () => {
     const result = await resolveConversationFileRef(
       auth,
       file.sId,
-      makeToolContext({ ...conversationB, content: [] })
+      makeToolContext(conversationB)
     );
 
     expect(result.isErr()).toBe(true);

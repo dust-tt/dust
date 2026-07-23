@@ -4,27 +4,31 @@ import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/met
 import { createHandler } from "@app/lib/api/actions/servers/files/tools/create";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import assert from "assert";
 import { beforeEach, describe, expect, it } from "vitest";
 
 function makeExtra(
   auth: Authenticator,
-  conversation: ConversationType
+  conversation: ConversationResource
 ): ToolHandlerExtra {
   const runContext = {
     contextType: "agent_loop",
-    conversation,
+    conversation: {
+      ...conversation.toJSON(),
+      visibility: conversation.visibility,
+      content: [],
+    },
   } as unknown as ToolRunContext;
   return { auth, runContext } as unknown as ToolHandlerExtra;
 }
 
 async function setupProjectConversation(): Promise<{
   auth: Authenticator;
-  conversation: ConversationType;
+  conversation: ConversationResource;
 }> {
   const { authenticator: auth, workspace } = await createResourceTest({
     role: "admin",

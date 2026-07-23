@@ -5,19 +5,23 @@ import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
 
 function makeExtra(
   auth: Authenticator,
-  conversation: ConversationType
+  conversation: ConversationResource
 ): ToolHandlerExtra {
   const runContext = {
     contextType: "agent_loop",
-    conversation,
+    conversation: {
+      ...conversation.toJSON(),
+      visibility: conversation.visibility,
+      content: [],
+    },
   } as unknown as ToolRunContext;
   return { auth, runContext } as unknown as ToolHandlerExtra;
 }
@@ -26,7 +30,7 @@ async function setupProjectConversation(
   role: "admin" | "user" = "admin"
 ): Promise<{
   auth: Authenticator;
-  conversation: ConversationType;
+  conversation: ConversationResource;
   spaceId: string;
 }> {
   const { authenticator: auth, workspace } = await createResourceTest({ role });

@@ -1286,6 +1286,7 @@ describe("softDeleteAgentMessage", () => {
 describe("softDeleteUserMessageAndReplies", () => {
   let auth: Authenticator;
   let conversation: ConversationType;
+  let conversationResource: ConversationResource;
   let agentConfig: LightAgentConfigurationType;
 
   beforeEach(async () => {
@@ -1313,6 +1314,10 @@ describe("softDeleteUserMessageAndReplies", () => {
       throw new Error("Failed to fetch conversation");
     }
     conversation = fetchedConversationResult.value;
+    conversationResource = await fetchConversationResource(
+      auth,
+      conversationWithoutContent.sId
+    );
   });
 
   it("cascade-deletes the agent message that replied to the deleted user message", async () => {
@@ -1325,7 +1330,7 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: firstUserMessage,
-      conversation,
+      conversationResource,
     });
 
     expect(result.isOk()).toBe(true);
@@ -1369,7 +1374,7 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: lastUser,
-      conversation,
+      conversationResource,
     });
     expect(result.isOk()).toBe(true);
 
@@ -1392,7 +1397,7 @@ describe("softDeleteUserMessageAndReplies", () => {
     // Pre-delete the agent directly.
     const preDelete = await softDeleteAgentMessage(auth, {
       message: firstAgent,
-      conversation,
+      conversation: conversationResource.toJSON(),
     });
     expect(preDelete.isOk()).toBe(true);
 
@@ -1402,6 +1407,10 @@ describe("softDeleteUserMessageAndReplies", () => {
       throw new Error("Failed to refetch conversation");
     }
     const refetchedConversation = refetched.value;
+    const refetchedConversationResource = await fetchConversationResource(
+      auth,
+      conversation.sId
+    );
     const firstUser = refetchedConversation.content
       .flat()
       .find((m): m is UserMessageType => isUserMessageType(m));
@@ -1414,7 +1423,7 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: firstUser,
-      conversation: refetchedConversation,
+      conversationResource: refetchedConversationResource,
     });
     expect(result.isOk()).toBe(true);
 
@@ -1445,7 +1454,7 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: firstUserMessage,
-      conversation,
+      conversationResource,
     });
     expect(result.isOk()).toBe(true);
 
@@ -1482,7 +1491,10 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: firstUserMessage,
-      conversation: refetched.value,
+      conversationResource: await fetchConversationResource(
+        auth,
+        conversation.sId
+      ),
     });
     expect(result.isOk()).toBe(true);
 

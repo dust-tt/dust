@@ -4,7 +4,6 @@ import {
   getAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
-import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { cleanupDeniedBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
@@ -2171,42 +2170,6 @@ export async function postNewContentFragment(
 }
 
 /**
- * Returns the agent replies that follow `userMessage` in the conversation and would be orphaned
- * by soft-deleting it. These are agent messages at subsequent ranks up to (but not including) the
- * next non-agent rank. Already-deleted agent messages are skipped.
- *
- * Invariant: agent replies are immediately contiguous to the user message they respond to (no
- * compaction, content fragment, or another user message inserted in between). If that ever
- * changes, this walk will stop short and leave orphans that re-introduce the trailing-assistant
- * bug this cascade is meant to fix.
- *
- * New conversations are capped at one mention per user message (enforced in postUserMessage) so
- * in practice there's at most one, but legacy conversations can have multiple agent replies in a
- * single turn, which is why the return type is an array.
- */
-function getAgentRepliesToCascadeOnUserDelete(
-  conversation: ConversationWithoutContentType,
-  userMessage: UserMessageType
-): AgentMessageType[] {
-  const orphans: AgentMessageType[] = [];
-  let sawUserMessage = false;
-  for (const versions of conversation.content) {
-    const latest = versions[versions.length - 1];
-    if (!sawUserMessage) {
-      sawUserMessage = latest.sId === userMessage.sId;
-      continue;
-    }
-    if (!isAgentMessageType(latest)) {
-      break;
-    }
-    if (latest.visibility !== "deleted") {
-      orphans.push(latest);
-    }
-  }
-  return orphans;
-}
-
-/**
  * Soft-delete a user message and the agent replies that followed it.
  *
  * Both deletions are represented as new v+1 `messages` rows with `visibility: "deleted"` rather
@@ -2223,15 +2186,22 @@ export async function softDeleteUserMessageAndReplies(
   auth: Authenticator,
   {
     message,
-    conversation,
+    conversationResource,
+    branchId: initialBranchId = null,
   }: {
     message: UserMessageType;
-    conversation: ConversationWithoutContentType;
+    conversationResource: ConversationResource;
+    branchId?: string | null;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
   if (message.visibility === "deleted") {
     return new Ok({ success: true });
   }
+
+  const conversation: ConversationWithoutContentType = {
+    ...conversationResource.toJSON(),
+    branchId: initialBranchId,
+  };
 
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
@@ -2241,22 +2211,45 @@ export async function softDeleteUserMessageAndReplies(
     return new Err(new ConversationError("message_deletion_not_authorized"));
   }
 
-  // Known small race: this snapshot of `conversation.content` is taken before the rank lock
-  // below. A concurrent retry/edit that takes the lock first and writes a v+1 at the same rank
-  // could cause the cascade insert to hit the (rank, version) unique constraint.
-  const orphanAgentMessages = getAgentRepliesToCascadeOnUserDelete(
-    conversation,
-    message
+  const branchId = message.branchId ?? initialBranchId;
+
+  // Known small race: this snapshot is taken before the rank lock below. A concurrent retry/edit
+  // that takes the lock first and writes a v+1 at the same rank could cause the cascade insert to
+  // hit the (rank, version) unique constraint.
+  const orphanAgentMessageModels =
+    await conversationResource.getConsecutiveAgentReplyModelsAfterRank(auth, {
+      afterRank: message.rank,
+      branchId,
+    });
+
+  const orphanModelsToCascade = orphanAgentMessageModels.filter(
+    (m) => m.visibility !== "deleted"
   );
+
+  let orphanAgentMessages: AgentMessageType[] = [];
+  if (orphanModelsToCascade.length > 0) {
+    const orphanRenderRes = await batchRenderMessages(
+      auth,
+      conversationResource,
+      orphanModelsToCascade,
+      "full"
+    );
+    if (orphanRenderRes.isErr()) {
+      throw new Error("Failed to render agent replies to cascade on delete");
+    }
+    orphanAgentMessages = orphanRenderRes.value.filter(isAgentMessageType);
+  }
 
   const cascadedAgentMessages: AgentMessageType[] = [];
   const userMessage = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    const relatedContentFragments = getRelatedContentFragments(
-      conversation,
-      message
-    );
+    const relatedContentFragments =
+      await conversationResource.fetchPrecedingContentFragments(auth, {
+        targetRank: message.rank,
+        branchId,
+        transaction: t,
+      });
 
     const userMessage = await createUserMessage(auth, {
       conversation,
