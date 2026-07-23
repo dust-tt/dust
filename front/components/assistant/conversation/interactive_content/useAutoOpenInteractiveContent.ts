@@ -113,7 +113,17 @@ export function useAutoOpenInteractiveContent({
     lastOpenedFileIdRef.current = null;
   }, [agentMessage.sId]);
 
+  // Mirrors the open conditions in the effect above: a Frame opens from
+  // streaming progress at any time, or from a completed file on the last
+  // message. Consumers (e.g. the files panel) use this to defer to the Frame
+  // instead of opening a competing panel for the same message.
+  const willOpenInteractiveContent =
+    !isMobile &&
+    (interactiveFilesFromProgress.length > 0 ||
+      (completedInteractiveFiles.length > 0 && isLastMessage));
+
   return {
     interactiveFiles: completedInteractiveFiles,
+    willOpenInteractiveContent,
   };
 }

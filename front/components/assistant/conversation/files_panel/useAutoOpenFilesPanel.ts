@@ -7,6 +7,11 @@ import React from "react";
 interface UseAutoOpenFilesPanelProps {
   isLastMessage: boolean;
   agentMessage: AgentMessageWithStreaming;
+  // When the same message is opening an interactive content file (a Frame) in
+  // the side panel, defer to it instead of stealing the panel for the file
+  // explorer. Owned by useAutoOpenInteractiveContent, the single source of
+  // truth for that decision.
+  deferToInteractiveContent: boolean;
 }
 
 /**
@@ -16,6 +21,7 @@ interface UseAutoOpenFilesPanelProps {
 export function useAutoOpenFilesPanel({
   isLastMessage,
   agentMessage,
+  deferToInteractiveContent,
 }: UseAutoOpenFilesPanelProps) {
   const { openPanel, currentPanel } = useConversationSidePanelContext();
   const isMobile = useIsMobile();
@@ -38,7 +44,8 @@ export function useAutoOpenFilesPanel({
       regularGeneratedFiles.length === 0 ||
       !isLastMessage ||
       autoOpenedForRef.current === agentMessage.sId ||
-      currentPanel === "files"
+      currentPanel === "files" ||
+      deferToInteractiveContent
     ) {
       return;
     }
@@ -47,6 +54,7 @@ export function useAutoOpenFilesPanel({
     openPanel({ type: "files" });
   }, [
     regularGeneratedFiles,
+    deferToInteractiveContent,
     isLastMessage,
     agentMessage.sId,
     openPanel,

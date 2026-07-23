@@ -1388,13 +1388,19 @@ function AgentMessageContent({
   );
 
   // Auto-open interactive content drawer when interactive files are available.
-  const { interactiveFiles } = useAutoOpenInteractiveContent({
+  const { interactiveFiles, willOpenInteractiveContent } =
+    useAutoOpenInteractiveContent({
+      agentMessage,
+      isLastMessage,
+    });
+
+  // Auto-open file explorer panel when regular generated files are available,
+  // unless the same message is opening a Frame in the side panel.
+  useAutoOpenFilesPanel({
     agentMessage,
     isLastMessage,
+    deferToInteractiveContent: willOpenInteractiveContent,
   });
-
-  // Auto-open file explorer panel when regular generated files are available.
-  useAutoOpenFilesPanel({ agentMessage, isLastMessage });
 
   const blockedActionElement = blockedAction ? (
     <BlockedAction
