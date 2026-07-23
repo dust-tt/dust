@@ -3433,6 +3433,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     });
 
+    const owner = auth.getNonNullableWorkspace();
     const message = await MessageModel.findOne({
       attributes: ["sId", "rank"],
       where: {
@@ -3445,7 +3446,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           as: "agentMessage",
           required: true,
           attributes: ["id", "agentConfigurationId"],
-          where: { status: "created", conversationId: this.id },
+          where: {
+            status: "created",
+            conversationId: this.id,
+            workspaceId: owner.id,
+          },
         },
       ],
       order: [
@@ -3482,6 +3487,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     });
 
+    const owner = auth.getNonNullableWorkspace();
     const message = await MessageModel.findOne({
       attributes: ["sId", "rank"],
       where: {
@@ -3494,7 +3500,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           as: "compactionMessage",
           required: true,
           attributes: ["id"],
-          where: { status: "created", conversationId: this.id },
+          where: {
+            status: "created",
+            conversationId: this.id,
+            workspaceId: owner.id,
+          },
         },
       ],
       order: [
