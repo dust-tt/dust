@@ -30,6 +30,7 @@ import type {
   MembershipRoleType,
 } from "@app/types/memberships";
 import type { SubscriptionType } from "@app/types/plan";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -494,12 +495,14 @@ export async function areAllSubscriptionsCanceled(
 export async function deleteWorkspace(
   owner: LightWorkspaceType,
   {
-    deleteDataSources = true,
+    deleteDataSources,
+    deletedByUserModelId,
     workspaceHasBeenRelocated = false,
   }: {
-    deleteDataSources?: boolean;
+    deleteDataSources: boolean;
+    deletedByUserModelId?: ModelId;
     workspaceHasBeenRelocated?: boolean;
-  } = {}
+  }
 ): Promise<Result<void, Error>> {
   // If the workspace has not been relocated, we expect all subscriptions to be canceled.
   if (!workspaceHasBeenRelocated) {
@@ -515,6 +518,7 @@ export async function deleteWorkspace(
 
   const res = await launchDeleteWorkspaceWorkflow({
     deleteDataSources,
+    deletedByUserModelId,
     workspaceId: owner.sId,
     workspaceHasBeenRelocated,
   });

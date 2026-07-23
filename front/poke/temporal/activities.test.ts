@@ -63,6 +63,7 @@ describe("prepareDeletionActivity", () => {
 
     const preparation = await prepareDeletionActivity({
       deleteDataSources: false,
+      notifyGitHubAdmins: false,
       workspaceId: workspace.sId,
     });
 
@@ -89,6 +90,7 @@ describe("prepareDeletionActivity", () => {
 
     const preparation = await prepareDeletionActivity({
       deleteDataSources: false,
+      notifyGitHubAdmins: false,
       workspaceId: workspace.sId,
     });
 
@@ -114,6 +116,7 @@ describe("prepareDeletionActivity", () => {
 
     const preparation = await prepareDeletionActivity({
       deleteDataSources: false,
+      notifyGitHubAdmins: false,
       workspaceId: workspace.sId,
     });
 
@@ -130,6 +133,7 @@ describe("prepareDeletionActivity", () => {
 
     const preparation = await prepareDeletionActivity({
       deleteDataSources: true,
+      notifyGitHubAdmins: false,
       workspaceId: workspace.sId,
     });
     expect(preparation.canDelete).toBe(true);
@@ -152,6 +156,7 @@ describe("prepareDeletionActivity", () => {
 
     const preparation = await prepareDeletionActivity({
       deleteDataSources: true,
+      notifyGitHubAdmins: false,
       workspaceId: workspace.sId,
     });
     expect(preparation.canDelete).toBe(true);
@@ -159,6 +164,22 @@ describe("prepareDeletionActivity", () => {
     await expect(
       DataSourceViewFactory.folder(workspace, globalSpace)
     ).rejects.toThrow("Workspace deletion is in progress.");
+  });
+
+  it("does not collect GitHub admins for relocation purges", async () => {
+    const workspace = await WorkspaceFactory.byok();
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const globalSpace = await SpaceFactory.global(workspace);
+    await DataSourceViewFactory.fromConnector(workspace, globalSpace, "github");
+
+    const preparation = await prepareDeletionActivity({
+      deleteDataSources: true,
+      notifyGitHubAdmins: false,
+      workspaceId: workspace.sId,
+    });
+
+    expect(preparation.githubAdminModelIds).toEqual([]);
   });
 });
 
@@ -200,8 +221,9 @@ describe("deleteMembersActivity", () => {
     await githubView.delete(auth, { hardDelete: false });
     await githubView.dataSource.delete(auth, { hardDelete: false });
 
-    const { canDelete, githubAdminEmails } = await prepareDeletionActivity({
+    const { canDelete, githubAdminModelIds } = await prepareDeletionActivity({
       deleteDataSources: true,
+      notifyGitHubAdmins: true,
       workspaceId: workspace.sId,
     });
     expect(canDelete).toBe(true);
@@ -216,7 +238,7 @@ describe("deleteMembersActivity", () => {
       { warnAdmins: false }
     );
 
-    await sendGitHubNoticesActivity({ adminEmails: githubAdminEmails });
+    await sendGitHubNoticesActivity({ githubAdminModelIds });
 
     expect(mockSendGitHubDeletionEmail).toHaveBeenCalledWith(admin.email);
   });

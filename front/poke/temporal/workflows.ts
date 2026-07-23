@@ -1,4 +1,5 @@
 import type * as activities from "@app/poke/temporal/activities";
+import type { ModelId } from "@app/types/shared/model_id";
 import { ApplicationFailure, proxyActivities } from "@temporalio/workflow";
 
 // Create a single proxy with all normal and long activities
@@ -22,6 +23,7 @@ const {
   deleteTranscriptsActivity,
   deleteWorkOSOrganization,
   deleteWorkspaceUserMetadataActivity,
+  emitDeletionAuditActivity,
   isWorkflowDeletableActivity,
   prepareDeletionActivity,
   scrubDataSourceActivity,
@@ -56,11 +58,13 @@ export async function scrubSpaceWorkflow({
 }
 
 export async function deleteWorkspaceWorkflow({
-  deleteDataSources = true,
+  deleteDataSources,
+  deletedByUserModelId,
   workspaceId,
   workspaceHasBeenRelocated = false,
 }: {
-  deleteDataSources?: boolean;
+  deleteDataSources: boolean;
+  deletedByUserModelId?: ModelId;
   workspaceId: string;
   workspaceHasBeenRelocated?: boolean;
 }) {
@@ -72,8 +76,9 @@ export async function deleteWorkspaceWorkflow({
     return;
   }
 
-  const { canDelete, githubAdminEmails } = await prepareDeletionActivity({
+  const { canDelete, githubAdminModelIds } = await prepareDeletionActivity({
     deleteDataSources,
+    notifyGitHubAdmins: !workspaceHasBeenRelocated,
     workspaceId,
   });
   if (!canDelete) {
@@ -83,6 +88,11 @@ export async function deleteWorkspaceWorkflow({
     );
   }
 
+  await emitDeletionAuditActivity({
+    deletedByUserModelId,
+    relocated: workspaceHasBeenRelocated,
+    workspaceId,
+  });
   await deleteMembersActivity({ workspaceId });
   await deleteConversationsActivity({ workspaceId });
   await deleteSkillsActivity({ workspaceId });
@@ -94,8 +104,8 @@ export async function deleteWorkspaceWorkflow({
   await deleteTagsActivity({ workspaceId });
   await deleteWebhookSourcesActivity({ workspaceId });
   await deleteSpacesActivity({ workspaceId });
-  if (!workspaceHasBeenRelocated) {
-    await sendGitHubNoticesActivity({ adminEmails: githubAdminEmails });
+  if (githubAdminModelIds.length > 0) {
+    await sendGitHubNoticesActivity({ githubAdminModelIds });
   }
   await deleteTranscriptsActivity({ workspaceId });
   await deletePluginRunsActivity({ workspaceId });

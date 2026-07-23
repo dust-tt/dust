@@ -48,6 +48,7 @@ async function scrubWorkspaceBatch(
     toScrub,
     async (workspace) => {
       const res = await launchDeleteWorkspaceWorkflow({
+        deleteDataSources: true,
         workspaceId: workspace.sId,
       });
       if (res.isErr()) {

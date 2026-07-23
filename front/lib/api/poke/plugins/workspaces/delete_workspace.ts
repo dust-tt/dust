@@ -1,8 +1,3 @@
-import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
   deleteWorkspace,
@@ -67,9 +62,7 @@ export const deleteWorkspacePlugin = createPlugin({
       }
     }
 
-    // If the workspace has been relocated, we can delete it immediately.
     if (workspaceHasBeenRelocated) {
-      // Ensure that the workspace has been relocated.
       if (!isWorkspaceRelocationDone(workspace)) {
         return new Err(
           new Error(
@@ -77,13 +70,7 @@ export const deleteWorkspacePlugin = createPlugin({
           )
         );
       }
-
-      await deleteWorkspace(workspace, {
-        deleteDataSources,
-        workspaceHasBeenRelocated,
-      });
     } else {
-      // If the workspace has not been relocated, we need to check its subscription.
       const subscription = auth.getNonNullableSubscription();
       if (!isFreePlan(subscription.plan.code)) {
         return new Err(
@@ -99,19 +86,17 @@ export const deleteWorkspacePlugin = createPlugin({
           )
         );
       }
-
-      await deleteWorkspace(workspace, { deleteDataSources });
     }
 
-    void emitAuditLogEvent({
-      auth,
-      action: "workspace.deleted",
-      targets: [buildAuditLogTarget("workspace", workspace)],
-      context: getAuditLogContext(auth),
-      metadata: {
-        relocated: String(workspaceHasBeenRelocated ?? false),
-      },
+    const deletedByUser = auth.user();
+    const deletionResult = await deleteWorkspace(workspace, {
+      deleteDataSources,
+      ...(deletedByUser ? { deletedByUserModelId: deletedByUser.id } : {}),
+      ...(workspaceHasBeenRelocated ? { workspaceHasBeenRelocated } : {}),
     });
+    if (deletionResult.isErr()) {
+      return new Err(deletionResult.error);
+    }
 
     return new Ok({
       display: "text",

@@ -3,6 +3,7 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
+import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -67,11 +68,13 @@ export async function launchScrubSpaceWorkflow(
 }
 
 export async function launchDeleteWorkspaceWorkflow({
-  deleteDataSources = true,
+  deleteDataSources,
+  deletedByUserModelId,
   workspaceId,
   workspaceHasBeenRelocated = false,
 }: {
-  deleteDataSources?: boolean;
+  deleteDataSources: boolean;
+  deletedByUserModelId?: ModelId;
   workspaceId: string;
   workspaceHasBeenRelocated?: boolean;
 }) {
@@ -82,6 +85,7 @@ export async function launchDeleteWorkspaceWorkflow({
       args: [
         {
           deleteDataSources,
+          deletedByUserModelId,
           workspaceId,
           workspaceHasBeenRelocated,
         },

@@ -1,5 +1,9 @@
 import { hardDeleteApp } from "@app/lib/api/apps";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import {
   hardDeleteDataSource,
@@ -98,6 +102,7 @@ import logger from "@app/logger/logger";
 import { deleteActivationWorkspaceSchedule } from "@app/temporal/activation_scheduler/client";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import { Op } from "sequelize";
 
@@ -653,9 +658,11 @@ export async function deleteMembersActivity({
 
 export async function prepareDeletionActivity({
   deleteDataSources,
+  notifyGitHubAdmins,
   workspaceId,
 }: {
   deleteDataSources: boolean;
+  notifyGitHubAdmins: boolean;
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
@@ -733,7 +740,12 @@ export async function prepareDeletionActivity({
   });
 
   if (!canDelete) {
-    return { canDelete: false, githubAdminEmails: [] };
+    return { canDelete: false, githubAdminModelIds: [] };
+  }
+
+  let githubAdminModelIds: ModelId[] = [];
+  if (!notifyGitHubAdmins) {
+    return { canDelete: true, githubAdminModelIds };
   }
 
   // The workspace/provider index makes this existence check cheap.
@@ -742,24 +754,66 @@ export async function prepareDeletionActivity({
     "github",
     { includeDeleted: true, limit: 1 }
   );
-  let githubAdminEmails: string[] = [];
   if (githubDataSources.length > 0) {
     const { members } = await getMembers(auth, {
       roles: ["admin"],
       activeOnly: true,
     });
-    githubAdminEmails = members.map((member) => member.email);
+    githubAdminModelIds = members.map((member) => member.id);
   }
 
-  return { canDelete: true, githubAdminEmails };
+  return { canDelete: true, githubAdminModelIds };
 }
 
 export async function sendGitHubNoticesActivity({
-  adminEmails,
+  githubAdminModelIds,
 }: {
-  adminEmails: string[];
+  githubAdminModelIds: ModelId[];
 }) {
-  await sendGitHubDeletionEmails(adminEmails);
+  const admins = await UserResource.fetchByModelIds(githubAdminModelIds);
+  await sendGitHubDeletionEmails(admins.map((admin) => admin.email));
+}
+
+export async function emitDeletionAuditActivity({
+  deletedByUserModelId,
+  relocated,
+  workspaceId,
+}: {
+  deletedByUserModelId?: ModelId;
+  relocated: boolean;
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const workspace = auth.getNonNullableWorkspace();
+  const deletedByUser =
+    deletedByUserModelId === undefined
+      ? null
+      : await UserResource.fetchByModelId(deletedByUserModelId);
+  assert(
+    deletedByUserModelId === undefined || deletedByUser,
+    "Workspace deletion actor not found."
+  );
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "workspace.deleted",
+    actor: deletedByUser
+      ? {
+          type: "user",
+          id: deletedByUser.sId,
+          name: deletedByUser.fullName() ?? undefined,
+        }
+      : {
+          type: "system",
+          id: "temporal",
+          name: "Workspace deletion workflow",
+        },
+    targets: [buildAuditLogTarget("workspace", workspace)],
+    context: { location: "internal" },
+    metadata: {
+      relocated: String(relocated),
+    },
+  });
 }
 
 export async function deleteSkillsActivity({

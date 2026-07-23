@@ -328,6 +328,7 @@ makeScript(
 
           // 2) Delete the workspace in the source region.
           const deleteWorkspaceRes = await deleteWorkspace(owner, {
+            deleteDataSources: true,
             workspaceHasBeenRelocated: true,
           });
           if (deleteWorkspaceRes.isErr()) {

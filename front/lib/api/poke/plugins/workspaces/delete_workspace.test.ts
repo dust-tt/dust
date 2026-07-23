@@ -4,12 +4,11 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { createZodSchemaFromArgs } from "@app/types/poke/plugins";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockDeleteWorkspace, mockEmitAuditLogEvent } = vi.hoisted(() => ({
+const { mockDeleteWorkspace } = vi.hoisted(() => ({
   mockDeleteWorkspace: vi.fn(),
-  mockEmitAuditLogEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@app/lib/api/workspace", async (importOriginal) => {
@@ -18,17 +17,9 @@ vi.mock("@app/lib/api/workspace", async (importOriginal) => {
   return { ...actual, deleteWorkspace: mockDeleteWorkspace };
 });
 
-vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
-  return { ...actual, emitAuditLogEvent: mockEmitAuditLogEvent };
-});
-
 beforeEach(() => {
   mockDeleteWorkspace.mockReset();
-  mockEmitAuditLogEvent.mockReset();
   mockDeleteWorkspace.mockResolvedValue(new Ok(undefined));
-  mockEmitAuditLogEvent.mockResolvedValue(undefined);
 });
 
 describe("deleteWorkspacePlugin.execute", () => {
@@ -92,6 +83,25 @@ describe("deleteWorkspacePlugin.execute", () => {
     expect(mockDeleteWorkspace).toHaveBeenCalledWith(workspace, {
       deleteDataSources: false,
     });
+  });
+
+  it("returns workspace deletion scheduling errors", async () => {
+    const workspace = await WorkspaceFactory.byok();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    mockDeleteWorkspace.mockResolvedValue(
+      new Err(new Error("Failed to start deletion workflow."))
+    );
+
+    const result = await deleteWorkspacePlugin.execute(auth, workspace, {
+      confirmation: "DELETE",
+      workspaceHasBeenRelocated: false,
+      deleteDataSources: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe("Failed to start deletion workflow.");
+    }
   });
 
   it("proceeds with data sources when explicitly requested", async () => {
