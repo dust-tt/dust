@@ -26,6 +26,7 @@ import {
   isResourceSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { mcpToolsRequireConfiguration } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { MCPOAuthConnectionMetadataType } from "@app/types/api/oauth/providers/mcp";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
@@ -219,7 +220,12 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     auth: Authenticator,
     blob: Omit<
       CreationAttributes<RemoteMCPServerModel>,
-      "name" | "description" | "spaceId" | "sId" | "lastSyncAt"
+      | "name"
+      | "description"
+      | "spaceId"
+      | "sId"
+      | "lastSyncAt"
+      | "cachedToolsRequireConfiguration"
     > & {
       oAuthUseCase: MCPOAuthUseCase | null;
     },
@@ -237,6 +243,9 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       sharedSecret: blob.sharedSecret,
       lastSyncAt: new Date(),
       authorization: blob.authorization,
+      cachedToolsRequireConfiguration: mcpToolsRequireConfiguration(
+        blob.cachedTools
+      ),
     };
 
     const server = await RemoteMCPServerModel.create(serverData, {
@@ -549,6 +558,12 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       cachedName,
       cachedDescription,
       cachedTools,
+      ...(cachedTools
+        ? {
+            cachedToolsRequireConfiguration:
+              mcpToolsRequireConfiguration(cachedTools),
+          }
+        : {}),
       lastSyncAt,
       ...(clearError ? { lastError: null } : {}),
     });
