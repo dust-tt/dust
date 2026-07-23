@@ -1,8 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { ActivationRecommendationStatus } from "@app/lib/models/activation/activation_recommendation";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { removeNulls } from "@app/types/shared/utils/general";
 
 const NEXT_STEPS_WINDOW_DAYS = 30;
 const NEXT_STEPS_LIMIT = 5;
@@ -33,23 +31,11 @@ export async function listActivationRecommendationsForUser(
     }
   );
 
-  const conversationModelIds = removeNulls(
-    recs.map((rec) => rec.conversationId)
-  );
-  const conversations =
-    conversationModelIds.length === 0
-      ? []
-      : await ConversationResource.fetchByModelIds(auth, conversationModelIds);
-  const sIdByModelId = new Map(conversations.map((c) => [c.id, c.sId]));
-
-  return recs.map((rec) => ({
-    sId: rec.sId,
-    title: rec.title,
-    content: rec.content,
-    conversationId:
-      rec.conversationId !== null
-        ? (sIdByModelId.get(rec.conversationId) ?? null)
-        : null,
+  return recs.map(({ resource, conversationSId }) => ({
+    sId: resource.sId,
+    title: resource.title,
+    content: resource.content,
+    conversationId: conversationSId,
   }));
 }
 
