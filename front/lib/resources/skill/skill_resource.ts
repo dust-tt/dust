@@ -10,6 +10,7 @@ import {
   hasSharedMembership,
 } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -78,6 +79,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
+  SkillAvailability,
   SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
@@ -2815,11 +2817,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentFacingDescription,
       attachedKnowledge,
+      availability,
       fileAttachments,
       icon,
       instructions,
       instructionsHtml,
-      isDefault,
       mcpServerViews,
       name,
       reinforcement,
@@ -2831,11 +2833,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }: {
       agentFacingDescription: string;
       attachedKnowledge: SkillAttachedKnowledge[];
+      availability?: SkillAvailability;
       fileAttachments?: FileResource[];
       icon: string | null;
       instructions: string;
       instructionsHtml?: string | null;
-      isDefault?: boolean;
       mcpServerViews: MCPServerViewResource[];
       name: string;
       reinforcement?: SkillReinforcementMode;
@@ -2847,6 +2849,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   ): Promise<void> {
     assert(this.canWrite(auth), "User is not authorized to update this skill");
+
+    // With skill publication governance, changing the availability requires the
+    // workspace-level publish permission — even for editors.
+    if (
+      availability !== undefined &&
+      availability !== this.availability &&
+      (await hasFeatureFlag(auth, "admin_governance_skill_publication"))
+    ) {
+      assert(
+        await auth.hasWorkspacePermission("publish", "skill"),
+        "User is not authorized to update this skill's availability"
+      );
+    }
 
     // Snapshot the previous name and icon before updating to detect changes below.
     const previousName = this.name;
@@ -2881,10 +2896,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(status ? { status } : {}),
           ...(source ? { source } : {}),
           ...(sourceMetadata ? { sourceMetadata } : {}),
-          // isDefault is a legacy alias kept at the interface level; the column is availability.
-          ...(isDefault !== undefined
-            ? { availability: availabilityFromIsDefault(isDefault) }
-            : {}),
+          ...(availability !== undefined ? { availability } : {}),
           ...(reinforcement !== undefined ? { reinforcement } : {}),
         },
         transaction
@@ -2933,6 +2945,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     await this.upsertCurrentUserAsEditor(auth);
+  }
+
+  /**
+   * Update only the availability of the skill. Requires the workspace-level "publish"
+   * permission on skills — being an editor is neither required nor sufficient. Does not
+   * touch editedBy.
+   */
+  async updateAvailability(
+    auth: Authenticator,
+    availability: SkillAvailability
+  ): Promise<void> {
+    assert(
+      await auth.hasWorkspacePermission("publish", "skill"),
+      "User is not authorized to update this skill's availability"
+    );
+
+    await withTransaction(async (transaction) => {
+      // Save the current version before updating.
+      await this.saveVersion(auth, { transaction });
+      await this.update({ availability }, transaction);
+    });
   }
 
   /**

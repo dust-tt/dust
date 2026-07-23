@@ -20,13 +20,16 @@ import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("SkillResource", () => {
@@ -557,7 +560,7 @@ describe("SkillResource", () => {
   });
 
   describe("updateSkill", () => {
-    it("keeps availability in sync when updating isDefault", async () => {
+    it("updates availability and derives the serialized isDefault from it", async () => {
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
         { name: "Test Skill For Availability Sync" }
@@ -574,7 +577,7 @@ describe("SkillResource", () => {
         userFacingDescription: skillResource.userFacingDescription,
         instructions: skillResource.instructions,
         icon: skillResource.icon,
-        isDefault: true,
+        availability: "users_and_agents",
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: [],
@@ -595,7 +598,7 @@ describe("SkillResource", () => {
         userFacingDescription: skillResource.userFacingDescription,
         instructions: skillResource.instructions,
         icon: skillResource.icon,
-        isDefault: false,
+        availability: "workspace_users",
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: [],
@@ -1270,6 +1273,87 @@ describe("SkillResource", () => {
       await expect(
         parentSkill.fetchChildSkills(testContext.authenticator)
       ).resolves.toHaveLength(0);
+    });
+  });
+
+  describe("updateAvailability", () => {
+    it("updates the availability for a caller with the publish permission", async () => {
+      // Admins hold every workspace-level capability, including publish on skills.
+      const skillResource = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Publishable Skill" }
+      );
+
+      await skillResource.updateAvailability(
+        testContext.authenticator,
+        "editors"
+      );
+
+      const updatedSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        skillResource.sId
+      );
+      expect(updatedSkill?.availability).toBe("editors");
+      expect(updatedSkill?.editedBy).toBe(skillResource.editedBy);
+    });
+
+    it("rejects a caller without the publish permission, even an editor", async () => {
+      const builder = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, builder, {
+        role: "builder",
+      });
+      const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        builder.sId,
+        testContext.workspace.sId
+      );
+
+      // The builder creates the skill, so they are an editor — editing rights are
+      // not sufficient to change availability.
+      const skillResource = await SkillFactory.create(builderAuth, {
+        name: "Non Publishable Skill",
+      });
+
+      await expect(
+        skillResource.updateAvailability(builderAuth, "users_and_agents")
+      ).rejects.toThrow(
+        "User is not authorized to update this skill's availability"
+      );
+    });
+
+    it("requires the publish permission to change availability through updateSkill when governance is on", async () => {
+      await FeatureFlagFactory.basic(
+        testContext.authenticator,
+        "admin_governance_skill_publication"
+      );
+
+      const builder = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, builder, {
+        role: "builder",
+      });
+      const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        builder.sId,
+        testContext.workspace.sId
+      );
+
+      const skillResource = await SkillFactory.create(builderAuth, {
+        name: "Governed Skill",
+      });
+
+      await expect(
+        skillResource.updateSkill(builderAuth, {
+          name: skillResource.name,
+          agentFacingDescription: skillResource.agentFacingDescription,
+          userFacingDescription: skillResource.userFacingDescription,
+          instructions: skillResource.instructions,
+          icon: skillResource.icon,
+          availability: "users_and_agents",
+          mcpServerViews: [],
+          attachedKnowledge: [],
+          requestedSpaceIds: [],
+        })
+      ).rejects.toThrow(
+        "User is not authorized to update this skill's availability"
+      );
     });
   });
 
