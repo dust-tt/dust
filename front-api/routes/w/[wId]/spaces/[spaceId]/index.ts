@@ -308,8 +308,7 @@ app.get(
             const groupMemberships = membershipMap.get(group.id);
             return groupMembers.map((member) => ({
               ...member.toJSON(),
-              // group_vaults tells us if the group is an editor group.
-              isEditor: group.group_vaults?.kind === "project_editor",
+              isEditor: group.kind === "space_editors",
               joinedAt: groupMemberships?.get(member.id),
             }));
           },
