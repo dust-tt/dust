@@ -49,12 +49,15 @@ export function GitHubConnectionRow({
       {connection.connectedBy && (
         <Tooltip
           label={connection.connectedBy.fullName}
+          tooltipTriggerAsChild
           trigger={
-            <Avatar
-              size="xxs"
-              name={connection.connectedBy.fullName}
-              visual={connection.connectedBy.imageUrl ?? undefined}
-            />
+            <div className="cursor-default">
+              <Avatar
+                size="xxs"
+                name={connection.connectedBy.fullName}
+                visual={connection.connectedBy.imageUrl ?? undefined}
+              />
+            </div>
           }
         />
       )}
