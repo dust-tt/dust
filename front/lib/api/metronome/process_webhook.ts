@@ -686,6 +686,7 @@ export async function applyContractStartSubscriptionSwap({
     metronomeCustomerId: customerId,
     metronomeContractId: contractId,
     planCode: targetPlanCode ?? "",
+    contract: contractResult.value,
   });
   if (!targetPlanCode) {
     logger.info(
