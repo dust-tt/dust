@@ -159,7 +159,8 @@ const SkillBuilderSlashCommandDropdownInner = forwardRef<
             editor.chain().focus().deleteRange(range).run();
             if (isSkillSlashCommand(item)) {
               onSkillDetailsRef?.current?.(item.data.skill);
-            } else if (isToolSlashCommand(item)) {
+            } else if (isToolSlashCommand<MCPServerViewType>(item)) {
+              // Skill-builder slash items are built from full views.
               onToolDetailsRef?.current?.(item.data.tool.view);
             }
             onClose();

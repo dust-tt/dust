@@ -117,6 +117,30 @@ export interface MCPServerViewType {
   }[];
 }
 
+// Light variants for list surfaces that only render names, descriptions and icons (conversation
+// capabilities picker, slash menu). Served by GET /mcp/views/jit; full types are structurally
+// assignable to them.
+export type MCPToolLightType = Pick<MCPToolType, "name" | "description">;
+
+export type MCPServerLightType = Pick<
+  MCPServerType,
+  "sId" | "name" | "description" | "icon"
+> & {
+  tools: MCPToolLightType[];
+};
+
+export type MCPServerViewLightType = Pick<
+  MCPServerViewType,
+  "sId" | "name" | "description"
+> & {
+  server: MCPServerLightType;
+};
+
+export type GetJITMCPServerViewsListResponseBody = {
+  success: boolean;
+  serverViews: MCPServerViewLightType[];
+};
+
 export type MCPToolWithAvailabilityType = MCPToolType & {
   availability: MCPServerAvailability;
 };

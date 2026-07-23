@@ -46,7 +46,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceLiveTranscriberService } from "@app/hooks/useVoiceLiveTranscriberService";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
@@ -228,8 +228,8 @@ export interface InputBarContainerProps {
   onVoiceActiveChange?: (active: boolean) => void;
   isSubmitting: boolean;
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
-  onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
-  onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
+  onMCPServerViewDeselect: (serverView: MCPServerViewLightType) => void;
+  onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
   onModelSelectionChange?: (
     modelSelection: ModelSelectionType | undefined
   ) => void;
@@ -244,7 +244,7 @@ export interface InputBarContainerProps {
   ) => void;
   pendingInputText: PendingInputText | null;
   selectedAgent: RichAgentMention | null;
-  selectedMCPServerViews: MCPServerViewType[];
+  selectedMCPServerViews: MCPServerViewLightType[];
   selectedSpaceIds?: string[];
   selectableSpaces?: SelectableConversationSpaceType[];
   shouldShowSpacesAction?: boolean;
@@ -421,7 +421,7 @@ const InputBarContainer = ({
     string | null
   >(null);
   const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
-    useState<MCPServerViewType | null>(null);
+    useState<MCPServerViewLightType | null>(null);
   selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 

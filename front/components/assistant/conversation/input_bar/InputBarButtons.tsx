@@ -5,7 +5,7 @@ import type { InputBarAction } from "@app/components/assistant/conversation/inpu
 import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useAppRouter } from "@app/lib/platform";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { setQueryParam } from "@app/lib/utils/router";
@@ -56,7 +56,7 @@ interface InputBarButtonsProps {
   isInputDisabled: boolean;
   lastRequestedModel: ModelSelectionType | null;
   onAgentRemove: () => void;
-  onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
+  onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
   onModelSelectionChange?: (
     modelSelection: ModelSelectionType | undefined
   ) => void;
@@ -65,7 +65,7 @@ interface InputBarButtonsProps {
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   owner: WorkspaceType;
   selectedAgent: RichAgentMention | null;
-  selectedMCPServerViews: MCPServerViewType[];
+  selectedMCPServerViews: MCPServerViewLightType[];
   space: SpaceType | undefined;
   user: UserType | null;
   onAgentPickerOpenChange?: (open: boolean) => void;

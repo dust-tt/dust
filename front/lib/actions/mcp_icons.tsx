@@ -8,7 +8,7 @@ export { DEFAULT_MCP_SERVER_ICON };
 
 // MCP-specific function
 export const getAvatar = (
-  mcpServer: MCPServerType,
+  mcpServer: Pick<MCPServerType, "icon">,
   size: ComponentProps<typeof Avatar>["size"] = "sm"
 ) => {
   return getAvatarFromIcon(mcpServer.icon, size);
