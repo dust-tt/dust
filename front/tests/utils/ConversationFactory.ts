@@ -188,6 +188,7 @@ export class ConversationFactory {
   }): Promise<{ messageRow: MessageModel; userMessage: UserMessageType }> {
     const userMessageRow = await UserMessageModel.create({
       userId: auth.getNonNullableUser().id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content,
       userContextUsername: "testuser",
@@ -265,6 +266,7 @@ export class ConversationFactory {
   }): Promise<MessageModel> {
     const userMessageRow = await UserMessageModel.create({
       userId: auth.user()?.id,
+      conversationId,
       workspaceId: workspace.id,
       content,
       userContextUsername: "testuser",
@@ -310,6 +312,7 @@ export class ConversationFactory {
       status: "created",
       agentConfigurationId,
       agentConfigurationVersion,
+      conversationId,
       workspaceId: workspace.id,
       skipToolsValidation: false,
     });
@@ -371,6 +374,7 @@ export class ConversationFactory {
       status: "created",
       agentConfigurationId: agentConfig.sId,
       agentConfigurationVersion: agentConfig.version,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       skipToolsValidation: false,
     });
@@ -501,6 +505,7 @@ export class ConversationFactory {
 
     const contentFragment = await ContentFragmentResource.makeNew({
       workspaceId: workspace.id,
+      conversationId,
       title,
       contentType: contentType ?? "text/plain",
       fileId: finalFileId,
@@ -583,6 +588,7 @@ const createUserMessage = async ({
             createdAt,
             updatedAt: createdAt,
             userId: user?.id,
+            conversationId: conversationModelId,
             workspaceId: workspace.id,
             content: "Test user Message.",
             userContextUsername: "soupinou",
@@ -628,6 +634,7 @@ const createMessageAndAgentMessage = async ({
       status: "created",
       agentConfigurationId,
       agentConfigurationVersion: 0,
+      conversationId: conversationModelId,
       workspaceId: workspace.id,
       skipToolsValidation: false,
     },

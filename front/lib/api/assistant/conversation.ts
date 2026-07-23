@@ -1556,6 +1556,7 @@ export async function createAgentMessageFromText(
         status: "succeeded",
         agentConfigurationId: agentConfiguration.sId,
         agentConfigurationVersion: agentConfiguration.version,
+        conversationId: conversation.id,
         workspaceId: owner.id,
         skipToolsValidation,
         runIds: null,
@@ -2119,6 +2120,7 @@ export async function postNewContentFragment(
       userContextEmail: context?.email,
       userContextFullName: context?.fullName,
       userContextUsername: context?.username,
+      conversationId: conversation.id,
       workspaceId: owner.id,
     };
 
