@@ -3502,6 +3502,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       lastRank,
     });
 
+    // The include.where lands in the LEFT JOIN ON clause (required: false keeps the OUTER join),
+    // letting the planner use the side tables' (workspaceId, conversationId) indexes instead of
+    // one PK probe per message. Relies on conversationId being backfilled on side tables.
+    const sideTableWhere = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      conversationId: this.id,
+    };
     // Fetch all messages (including content fragments and up to limit non-content-fragment messages)
     const messages = await MessageModel.findAll({
       where: {
@@ -3517,11 +3524,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: UserMessageModel,
           as: "userMessage",
           required: false,
+          where: sideTableWhere,
         },
         {
           model: AgentMessageModel,
           as: "agentMessage",
           required: false,
+          where: sideTableWhere,
         },
         // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
         // along with messages in one query). Only once we move to a MessageResource will we be able
@@ -3530,11 +3539,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: ContentFragmentModel,
           as: "contentFragment",
           required: false,
+          where: sideTableWhere,
         },
         {
           model: CompactionMessageModel,
           as: "compactionMessage",
           required: false,
+          where: sideTableWhere,
         },
       ],
     });
