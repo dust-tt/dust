@@ -1717,7 +1717,7 @@ describe("validateAction", () => {
   });
 
   describe("approval states", () => {
-    it("should handle 'rejected' approval state", async () => {
+    it("should reject an action without executing it or allowing a later retry", async () => {
       // Create a user message and agent message
       const { messageRow } = await ConversationFactory.createUserMessage({
         auth,
@@ -1762,6 +1762,7 @@ describe("validateAction", () => {
       expect(conversationResource).not.toBeNull();
 
       // Reject the action
+      const decisionStartedAtMs = Date.now();
       const result = await validateAction(auth, conversationResource!, {
         actionId,
         approvalState: "rejected",
@@ -1773,6 +1774,9 @@ describe("validateAction", () => {
       // Verify action status was updated to denied
       await action.reload();
       expect(action.status).toBe("denied");
+      expect(action.updatedAt.getTime()).toBeGreaterThanOrEqual(
+        decisionStartedAtMs
+      );
 
       const user = auth.getNonNullableUser();
       const decidedEvents = await waitForAuditLogEventCalls(
@@ -1781,6 +1785,7 @@ describe("validateAction", () => {
       expect(decidedEvents).toHaveLength(1);
       expect(decidedEvents[0]).toMatchObject({
         action: "tool.approval_decided",
+        context: { location: "internal" },
         targets: [
           { type: "workspace", id: workspace.sId },
           { type: "agent", id: agentConfig.sId, name: "Test Agent" },
@@ -1799,7 +1804,34 @@ describe("validateAction", () => {
           accessed_data_source_ids: "",
         },
       });
-      expect(getExecutedAuditLogEventCalls()).toHaveLength(0);
+      expect(
+        getExecutedAuditLogEventCalls().filter(
+          (event) => event.metadata?.action_id === actionId
+        )
+      ).toHaveLength(0);
+
+      const retryResult = await validateAction(auth, conversationResource!, {
+        actionId,
+        approvalState: "approved",
+        messageId: agentMessageMessage.sId,
+      });
+      expect(retryResult.isErr()).toBe(true);
+      if (retryResult.isErr()) {
+        expect(retryResult.error.code).toBe("action_not_blocked");
+      }
+      await action.reload();
+      expect(action.status).toBe("denied");
+      expect(
+        getAuditLogEventCalls("tool.approval_decided").filter(
+          (event) => event.metadata?.action_id === actionId
+        )
+      ).toHaveLength(1);
+      expect(
+        getExecutedAuditLogEventCalls().filter(
+          (event) => event.metadata?.action_id === actionId
+        )
+      ).toHaveLength(0);
+      expect(vi.mocked(launchAgentLoopWorkflow)).toHaveBeenCalledTimes(1);
     });
 
     it("should mark stale validation so it cannot join to a later execution", async () => {
