@@ -1,11 +1,7 @@
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  createIncident,
-  getIncidentByNumber,
-  getServiceNowCredentials,
-  listIncidents,
-  updateIncident,
+  createServiceNowClient,
   type WritableIncidentFields,
 } from "@app/lib/api/actions/servers/servicenow/client";
 import { renderIncident } from "@app/lib/api/actions/servers/servicenow/helpers";
@@ -58,16 +54,13 @@ function writableFieldsFromParams({
 
 const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
   list_incidents: async ({ query, limit }, { authInfo }) => {
-    const credentialsResult = getServiceNowCredentials(authInfo);
-    if (credentialsResult.isErr()) {
-      return credentialsResult;
+    const clientResult = createServiceNowClient(authInfo);
+    if (clientResult.isErr()) {
+      return clientResult;
     }
-    const { accessToken, instanceUrl } = credentialsResult.value;
+    const client = clientResult.value;
 
-    const result = await listIncidents(accessToken, instanceUrl, {
-      query,
-      limit,
-    });
+    const result = await client.listIncidents({ query, limit });
 
     if (result.isErr()) {
       return result;
@@ -88,17 +81,13 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
   },
 
   get_incident: async ({ incidentNumber }, { authInfo }) => {
-    const credentialsResult = getServiceNowCredentials(authInfo);
-    if (credentialsResult.isErr()) {
-      return credentialsResult;
+    const clientResult = createServiceNowClient(authInfo);
+    if (clientResult.isErr()) {
+      return clientResult;
     }
-    const { accessToken, instanceUrl } = credentialsResult.value;
+    const client = clientResult.value;
 
-    const result = await getIncidentByNumber(
-      accessToken,
-      instanceUrl,
-      incidentNumber
-    );
+    const result = await client.getIncidentByNumber(incidentNumber);
 
     if (result.isErr()) {
       return result;
@@ -119,15 +108,13 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
   },
 
   create_incident: async (params, { authInfo }) => {
-    const credentialsResult = getServiceNowCredentials(authInfo);
-    if (credentialsResult.isErr()) {
-      return credentialsResult;
+    const clientResult = createServiceNowClient(authInfo);
+    if (clientResult.isErr()) {
+      return clientResult;
     }
-    const { accessToken, instanceUrl } = credentialsResult.value;
+    const client = clientResult.value;
 
-    const result = await createIncident(
-      accessToken,
-      instanceUrl,
+    const result = await client.createIncident(
       writableFieldsFromParams(params)
     );
 
@@ -143,12 +130,12 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
     ]);
   },
 
-  update_incident: async ({ sysId, ...fields }, { authInfo }) => {
-    const credentialsResult = getServiceNowCredentials(authInfo);
-    if (credentialsResult.isErr()) {
-      return credentialsResult;
+  update_incident: async ({ incidentNumber, ...fields }, { authInfo }) => {
+    const clientResult = createServiceNowClient(authInfo);
+    if (clientResult.isErr()) {
+      return clientResult;
     }
-    const { accessToken, instanceUrl } = credentialsResult.value;
+    const client = clientResult.value;
 
     const writableFields = writableFieldsFromParams(fields);
 
@@ -161,12 +148,10 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
       ]);
     }
 
-    const result = await updateIncident(
-      accessToken,
-      instanceUrl,
-      sysId,
-      writableFields
-    );
+    const result = await client.updateIncident({
+      incidentNumber,
+      fields: writableFields,
+    });
 
     if (result.isErr()) {
       return result;

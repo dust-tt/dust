@@ -88,18 +88,26 @@ export const SERVICENOW_TOOLS_METADATA = [
   {
     name: "update_incident",
     description:
-      "Update, resolve, or close an existing ServiceNow incident (ticket) identified by its sys_id (returned by list_incidents/get_incident).",
+      "Update, resolve, or close an existing ServiceNow incident (ticket) identified by its number, e.g. 'INC0010001'.",
     schema: {
-      sysId: z.string().describe("The sys_id of the incident to update."),
+      incidentNumber: z
+        .string()
+        .describe("The ServiceNow incident number, e.g. 'INC0010001'."),
       shortDescription: z
         .string()
         .optional()
-        .describe("New short summary of the incident."),
+        .describe("Replacement short summary of the incident."),
       state: z
         .string()
         .optional()
         .describe(
-          "New state, e.g. 'New', 'In Progress', 'Resolved', 'Closed'."
+          "State to move the incident to, e.g. 'In Progress', 'Resolved', 'Closed'."
+        ),
+      priority: z
+        .string()
+        .optional()
+        .describe(
+          "Priority, e.g. '1 - Critical', '2 - High', '3 - Moderate', '4 - Low', '5 - Planning'."
         ),
       workNotes: z
         .string()
@@ -119,7 +127,6 @@ export const SERVICENOW_TOOLS_METADATA = [
         .describe(
           "Resolution code. Required by ServiceNow to move state to 'Resolved' or 'Closed'. Valid values are configured per ServiceNow instance (e.g. 'Solution provided', 'Resolved by caller') — if unsure, call list_incidents on an already-resolved incident to see a value your instance accepts."
         ),
-      ...WRITABLE_INCIDENT_FIELDS_SCHEMA,
     },
     stake: "low",
     displayLabels: {

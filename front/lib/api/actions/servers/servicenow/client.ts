@@ -18,6 +18,24 @@ export const IncidentSchema = z.object({
 });
 export type Incident = z.infer<typeof IncidentSchema>;
 
+// Fields writable via the incident CRUD tools, keyed by the ServiceNow
+// field name. Passing sysparm_input_display_value=true on write lets callers
+// use human-readable choice labels (e.g. "Resolved", "1 - Critical") instead
+// of ServiceNow's internal numeric codes.
+export type WritableIncidentFields = {
+  short_description?: string;
+  description?: string;
+  urgency?: string;
+  impact?: string;
+  priority?: string;
+  state?: string;
+  category?: string;
+  assignment_group?: string;
+  work_notes?: string;
+  close_notes?: string;
+  close_code?: string;
+};
+
 function getInstanceUrl(authInfo?: AuthInfo): string | null {
   if (!authInfo?.extra) {
     return null;
@@ -29,31 +47,27 @@ function getInstanceUrl(authInfo?: AuthInfo): string | null {
   return servicenowInstanceUrl.trim().replace(/\/$/, "");
 }
 
-async function servicenowApiCall<T extends z.ZodTypeAny>(
+async function request<T extends z.ZodTypeAny>(
   {
-    endpoint,
+    url,
     accessToken,
-    instanceUrl,
+    method,
+    body,
   }: {
-    endpoint: string;
+    url: string;
     accessToken: string;
-    instanceUrl: string;
-  },
-  schema: T,
-  options: {
-    method?: "GET" | "POST" | "PATCH";
+    method: "GET" | "POST" | "PATCH";
     body?: Record<string, unknown>;
-  } = {}
+  },
+  schema: T
 ): Promise<Result<z.infer<T>, MCPError>> {
-  const url = `${instanceUrl}${endpoint}`;
-
   const response = await untrustedFetch(url, {
-    method: options.method ?? "GET",
+    method,
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    ...(options.body && { body: JSON.stringify(options.body) }),
+    ...(body && { body: JSON.stringify(body) }),
   });
 
   if (!response.ok) {
@@ -90,140 +104,178 @@ async function servicenowApiCall<T extends z.ZodTypeAny>(
   return new Ok(parseResult.data);
 }
 
-export async function listIncidents(
-  accessToken: string,
-  instanceUrl: string,
-  { query, limit }: { query?: string; limit?: number }
-): Promise<Result<Incident[], MCPError>> {
-  const params = new URLSearchParams();
-  params.set("sysparm_limit", String(limit ?? DEFAULT_INCIDENT_LIMIT));
-  // Return human-readable labels (e.g. "Critical", "New") for choice fields
-  // like state/priority instead of ServiceNow's raw internal codes.
-  params.set("sysparm_display_value", "true");
-  if (query) {
-    params.set("sysparm_query", query);
-  }
-
-  const result = await servicenowApiCall(
-    {
-      endpoint: `/api/now/table/incident?${params.toString()}`,
-      accessToken,
-      instanceUrl,
-    },
-    z.object({ result: z.array(IncidentSchema) })
-  );
-
-  if (result.isErr()) {
-    return result;
-  }
-
-  return new Ok(result.value.result);
-}
-
-export async function getIncidentByNumber(
-  accessToken: string,
-  instanceUrl: string,
-  incidentNumber: string
-): Promise<Result<Incident | null, MCPError>> {
-  // ServiceNow's encoded query syntax treats "^" as a condition separator (and
-  // "=" as an operator), so passing it through unescaped would let a caller
-  // turn this exact-number lookup into an arbitrary compound query.
-  if (/[\^=]/.test(incidentNumber)) {
-    return new Err(
-      new MCPError(
-        `Invalid incident number: "${incidentNumber}". Expected a plain incident number, e.g. "INC0010001".`
-      )
-    );
-  }
-
-  const params = new URLSearchParams();
-  params.set("sysparm_query", `number=${incidentNumber}`);
-  params.set("sysparm_limit", "1");
-  params.set("sysparm_display_value", "true");
-
-  const result = await servicenowApiCall(
-    {
-      endpoint: `/api/now/table/incident?${params.toString()}`,
-      accessToken,
-      instanceUrl,
-    },
-    z.object({ result: z.array(IncidentSchema) })
-  );
-
-  if (result.isErr()) {
-    return result;
-  }
-
-  return new Ok(result.value.result[0] ?? null);
-}
-
-// Fields writable via the incident CRUD tools, keyed by the ServiceNow
-// field name. Passing sysparm_input_display_value=true on write lets callers
-// use human-readable choice labels (e.g. "Resolved", "1 - Critical") instead
-// of ServiceNow's internal numeric codes.
-export type WritableIncidentFields = {
-  short_description?: string;
-  description?: string;
-  urgency?: string;
-  impact?: string;
-  priority?: string;
-  state?: string;
-  category?: string;
-  assignment_group?: string;
-  work_notes?: string;
-  close_notes?: string;
-  close_code?: string;
+type BaseRequestArgs = {
+  endpoint: string;
+  accessToken: string;
+  instanceUrl: string;
 };
 
-export async function createIncident(
-  accessToken: string,
-  instanceUrl: string,
-  fields: WritableIncidentFields
-): Promise<Result<Incident, MCPError>> {
-  const result = await servicenowApiCall(
-    {
-      endpoint:
-        "/api/now/table/incident?sysparm_display_value=true&sysparm_input_display_value=true",
-      accessToken,
-      instanceUrl,
-    },
-    z.object({ result: IncidentSchema }),
-    { method: "POST", body: fields }
+function get<T extends z.ZodTypeAny>(
+  { endpoint, accessToken, instanceUrl }: BaseRequestArgs,
+  schema: T
+): Promise<Result<z.infer<T>, MCPError>> {
+  return request(
+    { url: `${instanceUrl}${endpoint}`, accessToken, method: "GET" },
+    schema
   );
-
-  if (result.isErr()) {
-    return result;
-  }
-
-  return new Ok(result.value.result);
 }
 
-export async function updateIncident(
-  accessToken: string,
-  instanceUrl: string,
-  sysId: string,
-  fields: WritableIncidentFields
-): Promise<Result<Incident, MCPError>> {
-  const result = await servicenowApiCall(
-    {
-      endpoint: `/api/now/table/incident/${encodeURIComponent(sysId)}?sysparm_display_value=true&sysparm_input_display_value=true`,
-      accessToken,
-      instanceUrl,
-    },
-    z.object({ result: IncidentSchema }),
-    { method: "PATCH", body: fields }
+function write<T extends z.ZodTypeAny>(
+  {
+    endpoint,
+    accessToken,
+    instanceUrl,
+    method,
+    body,
+  }: BaseRequestArgs & {
+    method: "POST" | "PATCH";
+    body: Record<string, unknown>;
+  },
+  schema: T
+): Promise<Result<z.infer<T>, MCPError>> {
+  return request(
+    { url: `${instanceUrl}${endpoint}`, accessToken, method, body },
+    schema
   );
-
-  if (result.isErr()) {
-    return result;
-  }
-
-  return new Ok(result.value.result);
 }
 
-export function getServiceNowCredentials(
+export class ServiceNowClient {
+  constructor(
+    private readonly accessToken: string,
+    private readonly instanceUrl: string
+  ) {}
+
+  async listIncidents({
+    query,
+    limit,
+  }: {
+    query?: string;
+    limit?: number;
+  }): Promise<Result<Incident[], MCPError>> {
+    const params = new URLSearchParams();
+    params.set("sysparm_limit", String(limit ?? DEFAULT_INCIDENT_LIMIT));
+    // Return human-readable labels (e.g. "Critical", "New") for choice fields
+    // like state/priority instead of ServiceNow's raw internal codes.
+    params.set("sysparm_display_value", "true");
+    if (query) {
+      params.set("sysparm_query", query);
+    }
+
+    const result = await get(
+      {
+        endpoint: `/api/now/table/incident?${params.toString()}`,
+        accessToken: this.accessToken,
+        instanceUrl: this.instanceUrl,
+      },
+      z.object({ result: z.array(IncidentSchema) })
+    );
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    return new Ok(result.value.result);
+  }
+
+  async getIncidentByNumber(
+    incidentNumber: string
+  ): Promise<Result<Incident | null, MCPError>> {
+    // ServiceNow's encoded query syntax treats "^" as a condition separator (and
+    // "=" as an operator), so passing it through unescaped would let a caller
+    // turn this exact-number lookup into an arbitrary compound query.
+    if (/[\^=]/.test(incidentNumber)) {
+      return new Err(
+        new MCPError(
+          `Invalid incident number: "${incidentNumber}". Expected a plain incident number, e.g. "INC0010001".`,
+          { tracked: false }
+        )
+      );
+    }
+
+    const params = new URLSearchParams();
+    params.set("sysparm_query", `number=${incidentNumber}`);
+    params.set("sysparm_limit", "1");
+    params.set("sysparm_display_value", "true");
+
+    const result = await get(
+      {
+        endpoint: `/api/now/table/incident?${params.toString()}`,
+        accessToken: this.accessToken,
+        instanceUrl: this.instanceUrl,
+      },
+      z.object({ result: z.array(IncidentSchema) })
+    );
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    return new Ok(result.value.result[0] ?? null);
+  }
+
+  async createIncident(
+    fields: WritableIncidentFields
+  ): Promise<Result<Incident, MCPError>> {
+    const result = await write(
+      {
+        endpoint:
+          "/api/now/table/incident?sysparm_display_value=true&sysparm_input_display_value=true",
+        accessToken: this.accessToken,
+        instanceUrl: this.instanceUrl,
+        method: "POST",
+        body: fields,
+      },
+      z.object({ result: IncidentSchema })
+    );
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    return new Ok(result.value.result);
+  }
+
+  async updateIncident({
+    incidentNumber,
+    fields,
+  }: {
+    incidentNumber: string;
+    fields: WritableIncidentFields;
+  }): Promise<Result<Incident, MCPError>> {
+    const existingResult = await this.getIncidentByNumber(incidentNumber);
+    if (existingResult.isErr()) {
+      return existingResult;
+    }
+    if (!existingResult.value) {
+      return new Err(
+        new MCPError(`No incident found with number "${incidentNumber}".`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const result = await write(
+      {
+        endpoint: `/api/now/table/incident/${encodeURIComponent(existingResult.value.sys_id)}?sysparm_display_value=true&sysparm_input_display_value=true`,
+        accessToken: this.accessToken,
+        instanceUrl: this.instanceUrl,
+        method: "PATCH",
+        body: fields,
+      },
+      z.object({ result: IncidentSchema })
+    );
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    return new Ok(result.value.result);
+  }
+}
+
+export function createServiceNowClient(
   authInfo?: AuthInfo
-): Result<{ accessToken: string; instanceUrl: string }, MCPError> {
+): Result<ServiceNowClient, MCPError> {
   const accessToken = authInfo?.token;
   if (!accessToken) {
     return new Err(new MCPError("No access token found"));
@@ -239,5 +291,5 @@ export function getServiceNowCredentials(
     );
   }
 
-  return new Ok({ accessToken, instanceUrl });
+  return new Ok(new ServiceNowClient(accessToken, instanceUrl));
 }
