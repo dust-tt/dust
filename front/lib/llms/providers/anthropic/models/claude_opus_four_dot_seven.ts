@@ -2,13 +2,26 @@ import {
   disableReasoningWhenForcingTool,
   dropTemperature,
 } from "@app/lib/llms/stream/types/configuration";
+import { CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 
 export function WithDustClaudeOpusFourDotSevenConfig<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  abstract class DustClaudeOpusFourDotSeven extends Base {
+  // Spread the legacy model config onto the class statics (see
+  // `DustStreamEndpointConfiguration`). `Object.assign` returns
+  // `class & ModelConfigurationType`, so the fields are visible to the type
+  // checker without an unsafe cast.
+  abstract class DustClaudeOpusFourDotSevenConfig extends Base {}
+  const WithConfig = Object.assign(
+    DustClaudeOpusFourDotSevenConfig,
+    CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG
+  );
+
+  // Declared last so these own statics shadow (take precedence over) the spread
+  // config values.
+  abstract class DustClaudeOpusFourDotSeven extends WithConfig {
     static readonly displayName = "Claude Opus 4.7";
     static readonly description =
       "Anthropic's Claude Opus 4.7 model, an advanced model with a step-change improvement in agentic coding (250k context).";
