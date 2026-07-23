@@ -57,20 +57,22 @@ async function buildConnectedServerIdsByType(
     workspace: new Set(),
   };
 
-  await Promise.all(
-    [...neededTypes].map(async (connectionType) => {
-      if (connectionType === "personal" && !auth.user()) {
-        return;
-      }
-      const connections = await MCPServerConnectionResource.listByWorkspace(
-        auth,
-        { connectionType }
-      );
-      connectedByType[connectionType] = new Set(
-        connections.map((c) => c.mcpServerId)
-      );
-    })
-  );
+  if (neededTypes.has("personal") && auth.user()) {
+    const connections = await MCPServerConnectionResource.listByWorkspace(
+      auth,
+      { connectionType: "personal" }
+    );
+    connectedByType["personal"] = new Set(connections.map((c) => c.mcpServerId));
+  }
+  if (neededTypes.has("workspace")) {
+    const connections = await MCPServerConnectionResource.listByWorkspace(
+      auth,
+      { connectionType: "workspace" }
+    );
+    connectedByType["workspace"] = new Set(
+      connections.map((c) => c.mcpServerId)
+    );
+  }
 
   return connectedByType;
 }
