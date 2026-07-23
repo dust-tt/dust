@@ -39,6 +39,11 @@ const ResolveAuthenticationBodySchema = z
 const PostSandboxFunctionInvocationBodySchema = z
   .object({
     input: z.unknown().optional(),
+    context: z
+      .object({
+        timezone: z.string().optional(),
+      })
+      .optional(),
   })
   .strict();
 

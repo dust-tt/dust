@@ -8,6 +8,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   isAgentLoopRunContext,
+  isSandboxFunctionRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
 import {
@@ -1159,7 +1160,10 @@ export function createProjectManagerTools(
             origin = userMessage.context.origin ?? origin;
             timezone = userMessage.context.timezone ?? timezone;
           }
-          // TODO(spolu): extract user timezone from sandbox function once available
+        }
+        if (isSandboxFunctionRunContext(toolContext?.runContext)) {
+          timezone =
+            toolContext.runContext.invocation.context?.timezone ?? timezone;
         }
 
         // Get agent configuration name & profile picture URL

@@ -118,14 +118,24 @@ describe("callSandboxFunction", () => {
   it("returns the parsed output on a successful result", async () => {
     const { auth, fn, invocationId } = await setup();
     mockResult({ greeting: "Hi, Soupinou" }, invocationId);
+    const invokeSpy = vi.spyOn(fn, "invoke");
 
-    const result = await callSandboxFunction(auth, fn, { name: "Soupinou" });
+    const result = await callSandboxFunction(
+      auth,
+      fn,
+      { name: "Soupinou" },
+      { timezone: "Europe/Paris" }
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
       return;
     }
     expect(result.value).toEqual({ greeting: "Hi, Soupinou" });
+    expect(invokeSpy).toHaveBeenCalledWith(auth, {
+      input: { name: "Soupinou" },
+      context: { timezone: "Europe/Paris" },
+    });
   });
 
   it("returns a typed invocation error", async () => {

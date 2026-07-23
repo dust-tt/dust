@@ -3,6 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { getPod } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import { callSandboxFunction } from "@app/lib/api/sandbox_functions/call_sandbox_function";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -30,7 +31,15 @@ export async function callHandler(
     );
   }
 
-  const result = await callSandboxFunction(auth, sandboxFunction, input);
+  const timezone = isAgentLoopRunContext(runContext)
+    ? runContext.userMessage.context.timezone
+    : runContext.invocation.context?.timezone;
+  const result = await callSandboxFunction(
+    auth,
+    sandboxFunction,
+    input,
+    timezone === undefined ? undefined : { timezone }
+  );
   if (result.isErr()) {
     const { code, message } = result.error;
     return new Err(

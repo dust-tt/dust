@@ -112,8 +112,13 @@ export function isSandboxFunctionInvocationTerminalEvent(
   );
 }
 
+export type SandboxFunctionInvocationContext = {
+  timezone?: string;
+};
+
 export type PostSandboxFunctionInvocationRequestBody = {
   input?: unknown;
+  context?: SandboxFunctionInvocationContext;
 };
 
 export type PostSandboxFunctionInvocationResponseBody = {

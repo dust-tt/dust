@@ -31,6 +31,7 @@ import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_f
 import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionCallError,
+  SandboxFunctionInvocationContext,
   SandboxFunctionInvocationStatus,
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
@@ -55,6 +56,11 @@ const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 1;
 const SandboxFunctionInvocationDataSchema = z.object({
   version: z.literal(SANDBOX_FUNCTION_INVOCATION_DATA_VERSION),
   input: z.unknown().optional(),
+  context: z
+    .object({
+      timezone: z.string().optional(),
+    })
+    .optional(),
   result: z.unknown().optional(),
   error: z.string().optional(),
 });
@@ -146,6 +152,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return this.data.input;
   }
 
+  get context(): SandboxFunctionInvocationContext | undefined {
+    return this.data.context;
+  }
+
   get result(): unknown {
     return this.data.result;
   }
@@ -162,6 +172,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
+      context: this.context,
       error: callError.message,
     };
     await this.writeDataToGcs();
@@ -182,6 +193,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
+      context: this.context,
       result,
     };
     await this.writeDataToGcs();
@@ -343,9 +355,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     {
       sandboxFunction,
       input,
+      context,
     }: {
       sandboxFunction: SandboxFunctionResource;
       input: unknown;
+      context?: SandboxFunctionInvocationContext;
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionInvocationResource> {
@@ -368,6 +382,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const data: SandboxFunctionInvocationData = {
         version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
         input,
+        context,
       };
       const resource = new this(this.model, invocation.get(), {
         sandboxFunction,
@@ -396,6 +411,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     const invocation = await this.makeNew(auth, {
       sandboxFunction,
       input: body.input,
+      context: body.context,
     });
     await publishSandboxFunctionInvocationEvent(
       {
