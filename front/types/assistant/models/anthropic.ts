@@ -332,7 +332,7 @@ export const CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
-    "europe-west1": false,
+    "europe-west1": true,
   },
 };
 export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -376,7 +376,7 @@ export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
-    "europe-west1": false,
+    "europe-west1": true,
   },
 };
 // https://platform.claude.com/docs/en/about-claude/models/overview
@@ -467,8 +467,7 @@ export const CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
-    // TODO: enable once we have Vertex EU quota for Sonnet 5.
-    "europe-west1": false,
+    "europe-west1": true,
   },
 };
 export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {

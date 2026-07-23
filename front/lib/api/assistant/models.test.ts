@@ -12,7 +12,7 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
-  CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
@@ -111,7 +111,7 @@ describe("selectEnabledModel", () => {
     vi.restoreAllMocks();
   });
 
-  // An enterprise (upgraded) workspace is what makes Claude Opus 4.8 otherwise
+  // An enterprise (upgraded) workspace is what makes Claude Opus 4.7 otherwise
   // selectable, so the only remaining gate under test is regional availability.
   async function enterpriseRegionalOnlyAuth(): Promise<Authenticator> {
     const workspace = await WorkspaceFactory.enterprise({
@@ -125,13 +125,13 @@ describe("selectEnabledModel", () => {
     vi.spyOn(regionConfig, "getCurrentRegion").mockReturnValue("europe-west1");
     const auth = await enterpriseRegionalOnlyAuth();
 
-    // Claude Opus 4.8 is not available in europe-west1, so a regional-only EU
+    // Claude Opus 4.7 is not available in europe-west1, so a regional-only EU
     // workspace must fall through to the next regionally-available candidate
     // instead of picking a model conversation.ts would later reject.
     const selected = selectEnabledModel(
       auth,
       [
-        CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+        CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG,
         CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
       ],
       { featureFlags: [] }
@@ -142,7 +142,7 @@ describe("selectEnabledModel", () => {
     );
 
     expect(
-      selectEnabledModel(auth, [CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG], {
+      selectEnabledModel(auth, [CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG], {
         featureFlags: [],
       })
     ).toBeNull();
@@ -152,19 +152,19 @@ describe("selectEnabledModel", () => {
     vi.spyOn(regionConfig, "getCurrentRegion").mockReturnValue("us-central1");
     const auth = await enterpriseRegionalOnlyAuth();
 
-    // The same workspace keeps Claude Opus 4.8 in us-central1, where it is
+    // The same workspace keeps Claude Opus 4.7 in us-central1, where it is
     // regionally available, so the regional gate does not over-block.
     const selected = selectEnabledModel(
       auth,
       [
-        CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+        CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG,
         CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
       ],
       { featureFlags: [] }
     );
 
     expect(selected?.modelId).toBe(
-      CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId
+      CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG.modelId
     );
   });
 });
@@ -310,8 +310,8 @@ describe("resolveModel", () => {
 
     const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
       configuration: makeAgentConfiguration({
-        providerId: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG.modelId,
       }),
       featureFlags: [],
     });
@@ -331,8 +331,8 @@ describe("resolveModel", () => {
 
     const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
       selection: {
-        providerId: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG.modelId,
       },
       configuration: makeAgentConfiguration({
         providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
