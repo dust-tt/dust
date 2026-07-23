@@ -115,7 +115,8 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   onPlusMenuOpenChange,
 }: InputBarButtonsProps) {
   const router = useAppRouter();
-  const isWidthConstrained = useIsMobile() || clientType === "extension";
+  const isMobile = useIsMobile();
+  const isWidthConstrained = isMobile || clientType === "extension";
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -155,7 +156,11 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             aria-label={`Selected agent: ${selectedAgent.label}`}
             aria-disabled={isInputDisabled}
             className={cn(
-              "inline-flex box-border items-center rounded-full h-7 heading-xs px-2 gap-1.5 text-primary-900 transition-colors duration-200",
+              "inline-flex box-border items-center rounded-full heading-xs px-2 gap-1.5 text-primary-900 transition-colors duration-200",
+              // Match the Button component's own height for this size (xs=h-6,
+              // sm=h-8) so this custom chip lines up with the "+" button and
+              // other Button-based controls in the same row.
+              buttonSize === "xs" ? "h-6" : "h-8",
               INPUT_BAR_PILL_SURFACE_CLASSNAME,
               isWidthConstrained && "pl-1",
               isInputDisabled
@@ -164,7 +169,9 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             )}
           >
             <Avatar size="3xs" visual={selectedAgent.pictureUrl} />
-            {!isWidthConstrained && (
+            {/* Extension stays icon-only (very narrow toolbar); mobile shows
+                the name too, just like desktop. */}
+            {(!isWidthConstrained || isMobile) && (
               <span className="grow truncate notranslate">
                 {selectedAgent.label}
               </span>
@@ -293,6 +300,10 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             spaceId={spaceId}
             selectedSpaceIds={selectedSpaceIds}
             onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
+            agentModel={selectedAgentModel}
+            agentId={selectedAgent?.id ?? null}
+            lastRequestedModel={lastRequestedModel}
+            onModelSelectionChange={onModelSelectionChange}
             onOpenChange={onPlusMenuOpenChange}
             onCapabilitiesPickerOpenChange={onCapabilitiesPickerOpenChange}
             onAttachmentsPickerOpenChange={onAttachmentsPickerOpenChange}

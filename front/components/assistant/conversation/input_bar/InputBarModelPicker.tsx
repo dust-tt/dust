@@ -33,7 +33,15 @@ import type {
 } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
+import {
+  Button,
+  CpuChip01,
+  DropdownMenu,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+  Icon,
+} from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 interface InputBarModelPickerProps {
@@ -48,6 +56,10 @@ interface InputBarModelPickerProps {
   side?: "top" | "bottom";
   disabled?: boolean;
   onSelectionChange?: (modelSelection: ModelSelectionType | undefined) => void;
+  // See the identical `type` prop on CapabilitiesPicker: "subdropdown" nests
+  // this picker as a DropdownMenuSub entry inside a parent menu (the "+" menu)
+  // instead of rendering its own top-level dropdown trigger.
+  type?: "dropdown" | "subdropdown";
 }
 
 export function InputBarModelPicker({
@@ -59,6 +71,7 @@ export function InputBarModelPicker({
   side = "top",
   disabled,
   onSelectionChange,
+  type = "dropdown",
 }: InputBarModelPickerProps) {
   const { hasFeature } = useFeatureFlags();
   const hasModelsPicker = hasFeature("models_picker");
@@ -301,8 +314,10 @@ export function InputBarModelPicker({
     return null;
   }
 
+  const Wrapper = type === "dropdown" ? DropdownMenu : DropdownMenuSub;
+
   return (
-    <DropdownMenu
+    <Wrapper
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
@@ -313,18 +328,38 @@ export function InputBarModelPicker({
         }
       }}
     >
-      <DropdownMenuTrigger asChild>
-        <Button
-          className="px-2"
-          variant="ghost-secondary"
-          size={buttonSize}
+      {type === "dropdown" ? (
+        <DropdownMenuTrigger asChild>
+          <Button
+            className="px-2"
+            variant="ghost-secondary"
+            size={buttonSize}
+            label={label}
+            icon={buttonIcon}
+            disabled={disabled}
+            isSelect
+          />
+        </DropdownMenuTrigger>
+      ) : (
+        <DropdownMenuSubTrigger
           label={label}
-          icon={buttonIcon}
+          icon={
+            <Icon
+              size="xs"
+              visual={buttonIcon ?? CpuChip01}
+              className="text-muted-foreground"
+            />
+          }
           disabled={disabled}
-          isSelect
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setIsOpen(true);
+          }}
         />
-      </DropdownMenuTrigger>
+      )}
       <ModelPickerContent
+        type={type}
         side={side}
         search={search}
         onSearchChange={setSearch}
@@ -350,6 +385,6 @@ export function InputBarModelPicker({
           )
         }
       />
-    </DropdownMenu>
+    </Wrapper>
   );
 }

@@ -43,9 +43,13 @@ export function Composer({
             ? "bg-[oklch(0.994_0.001_106.423)]"
             : "bg-[oklch(0.988_0_89.876)]",
           "dark:border-transparent",
+          // Darker than the previous stone-775/750-ish values: those sat
+          // noticeably lighter than the dark app background (stone-900,
+          // L20.6%), making the composer read as too bright. Now stone-850
+          // (default) / stone-800 (focus), a shorter step up from the page.
           isFocused
-            ? "dark:bg-[oklch(0.307_0.010_80.657)]"
-            : "dark:bg-[oklch(0.294_0.008_84.593)]",
+            ? "dark:bg-[oklch(0.256_0.006_34.298)]"
+            : "dark:bg-[oklch(0.229_0.007_67.447)]",
           isFocused
             ? "dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.035),inset_0px_0px_0px_1px_rgba(255,255,255,0.055),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]"
             : "dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.02),inset_0px_0px_0px_1px_rgba(255,255,255,0.04),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]",

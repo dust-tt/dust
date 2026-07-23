@@ -11,6 +11,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
+  DropdownMenuSubContent,
   SliderToggle,
 } from "@dust-tt/sparkle";
 
@@ -29,6 +30,8 @@ interface ModelPickerContentProps {
   // provider currently expanded.
   expandedProvider: ModelProviderIdType | null;
   onToggleProvider: (providerId: ModelProviderIdType) => void;
+  // See the identical `type` prop on CapabilitiesPicker.
+  type?: "dropdown" | "subdropdown";
 }
 
 export function ModelPickerContent({
@@ -42,11 +45,17 @@ export function ModelPickerContent({
   onSelectModel,
   expandedProvider,
   onToggleProvider,
+  type = "dropdown",
 }: ModelPickerContentProps) {
   const isMobile = useIsMobile();
+  const ContentWrapper =
+    type === "dropdown" ? DropdownMenuContent : DropdownMenuSubContent;
 
   return (
-    <DropdownMenuContent className="w-72" align="start" side={side}>
+    <ContentWrapper
+      className="w-72"
+      {...(type === "dropdown" ? { align: "start" as const, side } : {})}
+    >
       {auto && (
         <ModelPickerRowTooltip description={AUTO_TOOLTIP} isMobile={isMobile}>
           <DropdownMenuItem
@@ -77,6 +86,6 @@ export function ModelPickerContent({
         expandedProvider={expandedProvider}
         onToggleProvider={onToggleProvider}
       />
-    </DropdownMenuContent>
+    </ContentWrapper>
   );
 }
