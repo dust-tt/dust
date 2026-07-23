@@ -7,8 +7,8 @@ import {
   getEffortStops,
   getInitialEffort,
   getModelKey,
+  getModelLockReason,
   isModelSelection,
-  isPremiumModel,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -104,7 +104,7 @@ export function ModelPickerMoreModels({
   ) => {
     const isSelected = isModelSelection(model, shown.display);
     const isDefault = isModelSelection(model, agentDefault.display);
-    const locked = isPremiumModel(model, { lockPremiumEfforts });
+    const lockReason = getModelLockReason(model, { lockPremiumEfforts });
     const effort =
       isSelected && shown.display.kind === "model"
         ? shown.display.effort
@@ -115,7 +115,7 @@ export function ModelPickerMoreModels({
         model={model}
         isSelected={isSelected}
         isDefault={isDefault}
-        locked={locked}
+        lockReason={lockReason}
         effort={effort}
         effortStops={getEffortStops(model, { lockPremiumEfforts })}
         icon={

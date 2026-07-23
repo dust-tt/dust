@@ -14,6 +14,7 @@ import {
   getModelWithReasoningEffortLabel,
   isPremiumModel,
   isSameSelection,
+  isTierLocked,
   resolveShownSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
@@ -190,6 +191,9 @@ export function InputBarModelPicker({
     Date.now() - lastModelInteractionAtMsRef.current < 300;
 
   const onSelectTier = (tierId: ModelTierId) => {
+    if (isTierLocked(tierId, { lockPremiumEfforts })) {
+      return;
+    }
     commit({
       display: { kind: "tier", tierId },
       toSend: buildTierSelection(tierId),

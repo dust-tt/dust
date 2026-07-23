@@ -1,6 +1,9 @@
 import { ModelPickerSelectionIndicator } from "@app/components/assistant/conversation/input_bar/ModelPickerSelectionIndicator";
-import type { EffortStop } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { PREMIUM_MODEL_LOCKED_TOOLTIP } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import type {
+  EffortStop,
+  ModelLockReason,
+} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import { getModelLockTooltip } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { ReasoningEffortSlider } from "@app/components/assistant/conversation/input_bar/ReasoningEffortSlider";
 import type {
   ModelConfigurationType,
@@ -14,7 +17,7 @@ interface ModelPickerModelRowProps {
   model: ModelConfigurationType;
   isSelected: boolean;
   isDefault: boolean;
-  locked: boolean;
+  lockReason: ModelLockReason | null;
   effort: ReasoningEffort;
   effortStops: EffortStop[];
   icon?: ComponentType;
@@ -28,7 +31,7 @@ export function ModelPickerModelRow({
   model,
   isSelected,
   isDefault,
-  locked,
+  lockReason,
   effort,
   effortStops,
   icon,
@@ -39,7 +42,7 @@ export function ModelPickerModelRow({
 }: ModelPickerModelRowProps) {
   const itemRef = useRef<HTMLDivElement>(null);
 
-  if (locked) {
+  if (lockReason) {
     return (
       <DropdownMenuItem
         ref={itemRef}
@@ -47,7 +50,7 @@ export function ModelPickerModelRow({
         icon={icon}
         truncateText
         disabled
-        tooltip={PREMIUM_MODEL_LOCKED_TOOLTIP}
+        tooltip={getModelLockTooltip(lockReason)}
         endComponent={
           <Icon visual={Lock01} size="sm" className="text-muted-foreground" />
         }

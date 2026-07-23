@@ -1,5 +1,8 @@
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
-import { STATIC_MODEL_TIERS } from "@app/lib/api/assistant/token_pricing/tiers";
+import {
+  STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
+  STATIC_MODEL_TIERS,
+} from "@app/lib/api/assistant/token_pricing/tiers";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
@@ -22,10 +25,17 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import capitalize from "lodash/capitalize";
 
 // Shown when a whole-premium model row or a premium reasoning-effort stop is
-// locked because the workspace is not on a credit-based (usage-based) plan.
+// locked because the workspace is on a legacy (non usage-based) plan.
 export const PREMIUM_MODEL_LOCKED_TOOLTIP =
   "Premium models are available via this picker on the new usage-based plans. " +
-  "Contact your administrator to upgrade to access these models.";
+  "Contact your administrator to upgrade and access these models.";
+
+// Shown when a model row is locked because the model's tier is not enabled for
+// the workspace's current model-tier ceiling (independent of the plan: this
+// applies even on usage-based plans whose tier grants stop below the model).
+export const MODEL_TIER_LOCKED_TOOLTIP =
+  "You don't have access to this model tier. " +
+  "Contact your administrator to get access.";
 
 // The three primary picks of the model picker. Each tier is backed by a
 // meta-model that is resolved to a concrete model at message-send time:
@@ -80,6 +90,15 @@ export function getModelTier(tierId: ModelTierId): ModelTierDefinition {
   );
 }
 
+const PREMIUM_MODEL_TIER_IDS: ModelTierId[] = ["complex"];
+
+export function isTierLocked(
+  tierId: ModelTierId,
+  { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
+): boolean {
+  return lockPremiumEfforts && PREMIUM_MODEL_TIER_IDS.includes(tierId);
+}
+
 // Per reasoning-effort blurbs surfaced in the effort slider tooltip.
 export const REASONING_EFFORT_INFO: Record<ReasoningEffort, string> = {
   none: "No additional reasoning, for the fastest responses.",
@@ -111,7 +130,7 @@ export interface MakerGroup {
   models: ModelConfigurationType[];
 }
 
-export type EffortLockReason = "unsupported" | "premium";
+export type EffortLockReason = "unsupported" | "premium" | "model_tier";
 
 // One stop of the reasoning-effort slider. A stop is `locked` when the level is
 // not selectable; `lockedReason` says why.
@@ -215,6 +234,16 @@ export function getModelEffortTier(
   return STATIC_MODEL_TIERS[modelId][effort] ?? null;
 }
 
+function modelSupportsEffortStatically(
+  modelId: ModelIdType,
+  effort: ReasoningEffort
+): boolean {
+  if (!isStaticModelId(modelId)) {
+    return false;
+  }
+  return STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[modelId][effort] === true;
+}
+
 // The single authority for whether a reasoning-effort level is selectable.
 export function getEffortStops(
   enabledModel: ModelConfigurationType,
@@ -226,7 +255,16 @@ export function getEffortStops(
 
   return SLIDER_EFFORTS.map((effort) => {
     if (!allowed.has(effort)) {
-      return { effort, locked: true, lockedReason: "unsupported" };
+      return {
+        effort,
+        locked: true,
+        lockedReason: modelSupportsEffortStatically(
+          enabledModel.modelId,
+          effort
+        )
+          ? "model_tier"
+          : "unsupported",
+      };
     }
     if (
       lockPremiumEfforts &&
@@ -255,15 +293,29 @@ export function getInitialEffort(
   return stops.find((stop) => !stop.locked)?.effort ?? "none";
 }
 
+function isReasoningModel(modelId: ModelIdType): boolean {
+  if (!isStaticModelId(modelId)) {
+    return false;
+  }
+  const support = STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[modelId];
+  return SLIDER_EFFORTS.some((effort) => support[effort]);
+}
+
 // Whether a whole model row must be locked
 export function isPremiumModel(
   enabledModel: ModelConfigurationType,
   { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
 ): boolean {
+  const stops = getEffortStops(enabledModel, { lockPremiumEfforts });
+  const hasUsableSliderEffort = stops.some((stop) => !stop.locked);
+
+  if (isReasoningModel(enabledModel.modelId) && !hasUsableSliderEffort) {
+    return true;
+  }
+
   if (!lockPremiumEfforts) {
     return false;
   }
-  const stops = getEffortStops(enabledModel, { lockPremiumEfforts });
   const supportedSlider = stops.filter(
     (stop) => stop.lockedReason !== "unsupported"
   );
@@ -271,6 +323,47 @@ export function isPremiumModel(
     return supportedSlider.every((stop) => stop.lockedReason === "premium");
   }
   return getModelEffortTier(enabledModel.modelId, "none") === "premium";
+}
+
+export type ModelLockReason = "premium" | "model_tier";
+
+export function getModelLockReason(
+  enabledModel: ModelConfigurationType,
+  { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
+): ModelLockReason | null {
+  if (!isPremiumModel(enabledModel, { lockPremiumEfforts })) {
+    return null;
+  }
+  return lockPremiumEfforts ? "premium" : "model_tier";
+}
+
+export function getModelLockTooltip(reason: ModelLockReason): string {
+  switch (reason) {
+    case "premium":
+      return PREMIUM_MODEL_LOCKED_TOOLTIP;
+    case "model_tier":
+      return MODEL_TIER_LOCKED_TOOLTIP;
+    default:
+      assertNeverAndIgnore(reason);
+      return "";
+  }
+}
+
+export function getEffortStopTooltip(stop: EffortStop): string {
+  if (stop.locked) {
+    switch (stop.lockedReason) {
+      case "premium":
+        return PREMIUM_MODEL_LOCKED_TOOLTIP;
+      case "model_tier":
+        return MODEL_TIER_LOCKED_TOOLTIP;
+      case "unsupported":
+      case undefined:
+        break;
+      default:
+        assertNeverAndIgnore(stop.lockedReason);
+    }
+  }
+  return REASONING_EFFORT_INFO[stop.effort];
 }
 
 export function getModelWithReasoningEffortLabel(
