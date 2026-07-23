@@ -165,11 +165,11 @@ function getStorageMountRole(): string {
  *
  *  3. objectUser (read/write) or objectViewer (read-only) with a resource.name condition, one rule
  *     per prefix. A read-only prefix gets no object create/delete, so a workload that extracts the
- *     loopback-served token (gcsfuse fetches it over http) still cannot write there.
+ *     broker-served token (gcsfuse fetches it over HTTP) still cannot write there.
  *
- * Total rule count is `1 + 2 * prefixes.length`. CAB allows up to 10 rules, so we support up to 4
- * concurrent prefixes. Current budget: a pod sandbox mounts files (rw) +
- * sandbox-functions (ro) + state (rw, the litestream replica prefix) = 3 prefixes = 7 rules.
+ * Total rule count is `1 + 2 * prefixes.length`. CAB allows up to 10 rules, so callers that
+ * intentionally combine prefixes support up to 4 concurrent prefixes. The gcsfuse mount adapter
+ * keeps the credentials separate and passes one prefix per token.
  *
  * Prefixes carry NO trailing slash: the conditions below append the '/' themselves, so a
  * trailing-slash prefix would produce 'state//' and silently break listing.

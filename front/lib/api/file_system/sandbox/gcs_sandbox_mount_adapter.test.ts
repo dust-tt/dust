@@ -28,6 +28,7 @@ describe("buildMountCommand", () => {
     );
 
     expect(command).toContain("/usr/bin/gcsfuse");
+    expect(command).toContain("--token-url http://127.0.0.1:987/token/mount-0");
     expect(command).not.toContain("runuser");
     expect(command).toContain("-o allow_other");
     expect(command).toContain("--file-mode=666");
@@ -42,6 +43,7 @@ describe("buildMountCommand", () => {
     const command = renderRootCommand(
       buildMountCommand({
         bucket: "bucket-x",
+        targetIndex: 1,
         target: workloadTarget({
           gcsPrefix: "w/ws1/pods/spc1/sandbox-functions",
           sandboxMountPoint: "/sandbox-functions/pods/spc1",
@@ -52,6 +54,7 @@ describe("buildMountCommand", () => {
     );
 
     expect(command).toContain("-o allow_other,ro");
+    expect(command).toContain("--token-url http://127.0.0.1:987/token/mount-1");
   });
 
   test("pod_state_replica profile mounts as dust-state without allow_other or list caching", () => {
@@ -115,13 +118,15 @@ describe("pod sandbox mount wiring", () => {
       throw new Error("expected a GCSSandboxMountAdapter");
     }
 
-    // 1 unconditional bucket-get rule + 2 rules per prefix × 3 prefixes
-    // (files rw, sandbox-functions ro, state rw) = 7, under the 10-rule CAB
-    // ceiling.
+    // Each mount gets its own 1 + 2-rule CAB. The firewall is the sole caller
+    // authorization boundary; if a caller reaches the broker, each token still
+    // grants only its own target prefix.
     const rules = adapter.getAccessBoundaryRules();
-    expect(rules).toHaveLength(7);
+    expect(rules).toHaveLength(3);
+    expect(rules.every((tokenRules) => tokenRules.length === 3)).toBe(true);
 
     const conditions = rules
+      .flat()
       .map((rule) =>
         "availabilityCondition" in rule
           ? rule.availabilityCondition.expression
