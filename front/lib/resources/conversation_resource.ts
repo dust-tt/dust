@@ -10,6 +10,7 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -37,6 +38,7 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageStatus,
+  CompactionMessageStatus,
   ConversationForkedChildType,
   ConversationForkedFromType,
   ConversationForkingDataType,
@@ -102,6 +104,31 @@ export type ConversationAccessType =
   | "conversation_not_found"
   | "conversation_access_restricted"
   | "conversation_access_restricted_by_private_by_default_url_restriction";
+
+export type RunningAgentMessageContext = {
+  sId: string;
+  agentMessageId: number;
+  agentConfigurationId: string;
+  rank: number;
+};
+
+export type RunningCompactionMessageContext = {
+  sId: string;
+  rank: number;
+};
+
+export type BranchCreationContext = {
+  isEmpty: boolean;
+  onlyContentFragments: boolean;
+  maxRank: number | null;
+  lastMessage: { id: ModelId; rank: number } | null;
+};
+
+export type LatestMessageSummary = {
+  sId: string;
+  rank: number;
+  compactionStatus: CompactionMessageStatus | null;
+};
 
 const shouldByPassPrivateByDefaultUrlRestriction = (auth: Authenticator) => {
   // Dust super users (poke admins) can always access conversations regardless of participant
@@ -2656,7 +2683,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
       lastReadAt,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       transaction?: Transaction;
       // Optional override; defaults to now. Callers can pass a timestamp in the
       // future to keep the conversation marked as read through an imminent
@@ -2686,7 +2713,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       conversation,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
     }
   ) {
     if (!auth.user()) {
@@ -2807,7 +2834,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       user,
       transaction,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       user: UserType;
       transaction?: Transaction;
     }
@@ -2832,7 +2859,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
       lastReadAt = new Date(),
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       action: ParticipantActionType;
       user: UserType | null;
       transaction?: Transaction;
@@ -3007,6 +3034,625 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     return results;
+  }
+
+  /**
+   * Resolve branch-aware message view filters for Sequelize and raw SQL callers.
+   * Matches the scoping used in `_getConversation` in fetch.ts.
+   */
+  private async resolveMessageViewScope(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<{
+    scopeWhere: WhereOptions<MessageModel>;
+    branchFilterSql: string;
+    sqlReplacements: Record<string, unknown>;
+  }> {
+    const owner = auth.getNonNullableWorkspace();
+    const baseWhere: WhereOptions<MessageModel> = {
+      conversationId: this.id,
+      workspaceId: owner.id,
+    };
+
+    if (!branchId) {
+      return {
+        scopeWhere: {
+          ...baseWhere,
+          branchId: { [Op.is]: null },
+        },
+        branchFilterSql: `"branchId" IS NULL`,
+        sqlReplacements: {},
+      };
+    }
+
+    const branch = await ConversationBranchResource.fetchById(
+      auth,
+      branchId,
+      transaction
+    );
+    if (!branch || !branch.canRead(auth)) {
+      throw new Error("Unexpected: conversation branch not found.");
+    }
+
+    const previousMessage = await MessageModel.findOne({
+      attributes: ["rank"],
+      where: {
+        id: branch.previousMessageId,
+        workspaceId: owner.id,
+      },
+      transaction,
+    });
+    if (!previousMessage) {
+      throw new Error("Unexpected: branch previous message not found.");
+    }
+
+    return {
+      scopeWhere: {
+        ...baseWhere,
+        [Op.or]: [
+          {
+            branchId: branch.id,
+          },
+          {
+            branchId: null,
+            rank: { [Op.lte]: previousMessage.rank },
+          },
+        ],
+      },
+      branchFilterSql: `("branchId" = :branchModelId OR ("branchId" IS NULL AND rank <= :previousMessageRank))`,
+      sqlReplacements: {
+        branchModelId: branch.id,
+        previousMessageRank: previousMessage.rank,
+      },
+    };
+  }
+
+  /**
+   * Build Sequelize `where` for messages visible in a conversation view (main thread
+   * or branch). Matches the scoping used in `_getConversation` in fetch.ts.
+   */
+  async getMessageScopeWhere(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<WhereOptions<MessageModel>> {
+    const { scopeWhere } = await this.resolveMessageViewScope(auth, {
+      branchId,
+      transaction,
+    });
+    return scopeWhere;
+  }
+
+  /**
+   * Returns true when the conversation view contains a user message (latest version
+   * per rank) authored by someone other than `excludeUserId`.
+   */
+  async hasUserMessageFromOtherUser(
+    auth: Authenticator,
+    {
+      excludeUserId,
+      branchId,
+      transaction,
+    }: {
+      excludeUserId?: ModelId | null;
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<boolean> {
+    const owner = auth.getNonNullableWorkspace();
+    const { branchFilterSql, sqlReplacements } =
+      await this.resolveMessageViewScope(auth, { branchId, transaction });
+
+    const query = `
+      SELECT EXISTS (
+        SELECT 1
+        FROM (
+          SELECT DISTINCT ON (m.rank) um."userId"
+          FROM messages m
+          INNER JOIN user_messages um
+            ON um.id = m."userMessageId"
+            AND um."workspaceId" = m."workspaceId"
+            AND um."conversationId" = m."conversationId"
+          WHERE m."workspaceId" = :workspaceId
+            AND m."conversationId" = :conversationId
+            AND m.visibility != 'deleted'
+            AND m."userMessageId" IS NOT NULL
+            AND um."userId" IS NOT NULL
+            AND ${branchFilterSql}
+          ORDER BY m.rank ASC, m.version DESC
+        ) latest
+        WHERE latest."userId" IS NOT NULL
+          AND (:excludeUserId IS NULL OR latest."userId" != :excludeUserId)
+      ) AS "exists"
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: EXISTS subquery with DISTINCT ON
+    const [result] = await frontSequelize.query<{ exists: boolean }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        excludeUserId: excludeUserId ?? null,
+        ...sqlReplacements,
+      },
+      transaction,
+    });
+
+    return result?.exists ?? false;
+  }
+
+  /**
+   * Returns true when the conversation view has an agent message (latest version
+   * per rank) at a rank strictly greater than `afterRank`.
+   */
+  async hasAgentMessageAfterRank(
+    auth: Authenticator,
+    {
+      afterRank,
+      branchId,
+      transaction,
+    }: {
+      afterRank: number;
+      branchId?: string | null;
+      transaction?: Transaction;
+    }
+  ): Promise<boolean> {
+    const owner = auth.getNonNullableWorkspace();
+    const { branchFilterSql, sqlReplacements } =
+      await this.resolveMessageViewScope(auth, { branchId, transaction });
+
+    const query = `
+      SELECT EXISTS (
+        SELECT 1
+        FROM (
+          SELECT DISTINCT ON (m.rank) m."agentMessageId"
+          FROM messages m
+          WHERE m."workspaceId" = :workspaceId
+            AND m."conversationId" = :conversationId
+            AND m.visibility != 'deleted'
+            AND m.rank > :afterRank
+            AND ${branchFilterSql}
+          ORDER BY m.rank ASC, m.version DESC
+        ) latest
+        WHERE latest."agentMessageId" IS NOT NULL
+      ) AS "exists"
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: EXISTS subquery with DISTINCT ON
+    const [result] = await frontSequelize.query<{ exists: boolean }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        afterRank,
+        ...sqlReplacements,
+      },
+      transaction,
+    });
+
+    return result?.exists ?? false;
+  }
+
+  async getLatestUserMessageModelAtRank(
+    auth: Authenticator,
+    {
+      rank,
+      branchId,
+      transaction,
+    }: {
+      rank: number;
+      branchId?: string | null;
+      transaction?: Transaction;
+    }
+  ): Promise<MessageModel | null> {
+    const scopeWhere = await this.getMessageScopeWhere(auth, {
+      branchId,
+      transaction,
+    });
+
+    return MessageModel.findOne({
+      where: {
+        ...scopeWhere,
+        rank,
+        visibility: { [Op.ne]: "deleted" },
+      },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+        },
+      ],
+      order: [["version", "DESC"]],
+      transaction,
+    });
+  }
+
+  /**
+   * Returns `clientSideMCPServerIds` from the most recent user message (latest
+   * version per rank) whose origin is not `wakeup`. Used when posting wake-up
+   * messages to inherit the previous human turn's client-side MCP selection.
+   */
+  async getClientSideMCPServerIdsFromLatestNonWakeUpUserMessage(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<string[]> {
+    const owner = auth.getNonNullableWorkspace();
+    const { branchFilterSql, sqlReplacements } =
+      await this.resolveMessageViewScope(auth, { branchId, transaction });
+
+    const query = `
+      SELECT latest."clientSideMCPServerIds"
+      FROM (
+        SELECT DISTINCT ON (m.rank)
+          m.rank,
+          um."userContextOrigin",
+          um."clientSideMCPServerIds"
+        FROM messages m
+        INNER JOIN user_messages um
+          ON um.id = m."userMessageId"
+          AND um."workspaceId" = m."workspaceId"
+          AND um."conversationId" = m."conversationId"
+        WHERE m."workspaceId" = :workspaceId
+          AND m."conversationId" = :conversationId
+          AND m.visibility != 'deleted'
+          AND m."userMessageId" IS NOT NULL
+          AND ${branchFilterSql}
+        ORDER BY m.rank ASC, m.version DESC
+      ) latest
+      WHERE latest."userContextOrigin" != 'wakeup'
+      ORDER BY latest.rank DESC
+      LIMIT 1
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: DISTINCT ON subquery with LIMIT 1
+    const [result] = await frontSequelize.query<{
+      clientSideMCPServerIds: string[] | null;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        ...sqlReplacements,
+      },
+      transaction,
+    });
+
+    return result?.clientSideMCPServerIds ?? [];
+  }
+
+  /**
+   * Returns the latest message row per rank for consecutive agent-message ranks
+   * immediately following `afterRank`, stopping at the first non-agent rank.
+   * Includes already-deleted agent placeholders (caller filters for cascade).
+   */
+  async getConsecutiveAgentReplyModelsAfterRank(
+    auth: Authenticator,
+    {
+      afterRank,
+      branchId,
+      transaction,
+    }: {
+      afterRank: number;
+      branchId?: string | null;
+      transaction?: Transaction;
+    }
+  ): Promise<MessageModel[]> {
+    const owner = auth.getNonNullableWorkspace();
+    const { branchFilterSql, sqlReplacements } =
+      await this.resolveMessageViewScope(auth, { branchId, transaction });
+
+    const query = `
+      SELECT DISTINCT ON (m.rank)
+        m.id,
+        m.rank,
+        m."agentMessageId"
+      FROM messages m
+      WHERE m."workspaceId" = :workspaceId
+        AND m."conversationId" = :conversationId
+        AND m.rank > :afterRank
+        AND ${branchFilterSql}
+      ORDER BY m.rank ASC, m.version DESC
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: DISTINCT ON for latest version per rank
+    const latestPerRank = await frontSequelize.query<{
+      id: ModelId;
+      rank: number;
+      agentMessageId: ModelId | null;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        afterRank,
+        ...sqlReplacements,
+      },
+      transaction,
+    });
+
+    const consecutiveMessageIds: ModelId[] = [];
+    for (const row of latestPerRank) {
+      if (!row.agentMessageId) {
+        break;
+      }
+      consecutiveMessageIds.push(row.id);
+    }
+
+    if (consecutiveMessageIds.length === 0) {
+      return [];
+    }
+
+    return MessageModel.findAll({
+      where: {
+        id: { [Op.in]: consecutiveMessageIds },
+        workspaceId: owner.id,
+        conversationId: this.id,
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: false,
+        },
+      ],
+      order: [["rank", "ASC"]],
+      transaction,
+    });
+  }
+
+  async getRunningAgentMessage(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<RunningAgentMessageContext | null> {
+    const { scopeWhere } = await this.resolveMessageViewScope(auth, {
+      branchId,
+      transaction,
+    });
+
+    const message = await MessageModel.findOne({
+      attributes: ["sId", "rank"],
+      where: {
+        ...scopeWhere,
+        visibility: { [Op.ne]: "deleted" },
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["id", "agentConfigurationId"],
+          where: { status: "created", conversationId: this.id },
+        },
+      ],
+      order: [
+        ["rank", "DESC"],
+        ["version", "DESC"],
+      ],
+      transaction,
+    });
+
+    if (!message?.agentMessage) {
+      return null;
+    }
+
+    return {
+      sId: message.sId,
+      agentMessageId: message.agentMessage.id,
+      agentConfigurationId: message.agentMessage.agentConfigurationId,
+      rank: message.rank,
+    };
+  }
+
+  async getRunningCompactionMessage(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<RunningCompactionMessageContext | null> {
+    const { scopeWhere } = await this.resolveMessageViewScope(auth, {
+      branchId,
+      transaction,
+    });
+
+    const message = await MessageModel.findOne({
+      attributes: ["sId", "rank"],
+      where: {
+        ...scopeWhere,
+        visibility: { [Op.ne]: "deleted" },
+      },
+      include: [
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
+          required: true,
+          attributes: ["id"],
+          where: { status: "created", conversationId: this.id },
+        },
+      ],
+      order: [
+        ["rank", "DESC"],
+        ["version", "DESC"],
+      ],
+      transaction,
+    });
+
+    if (!message) {
+      return null;
+    }
+
+    return {
+      sId: message.sId,
+      rank: message.rank,
+    };
+  }
+
+  async getInFlightMessages(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<{
+    runningAgentMessage: RunningAgentMessageContext | null;
+    runningCompactionMessage: RunningCompactionMessageContext | null;
+  }> {
+    const [runningAgentMessage, runningCompactionMessage] = await Promise.all([
+      this.getRunningAgentMessage(auth, { branchId, transaction }),
+      this.getRunningCompactionMessage(auth, { branchId, transaction }),
+    ]);
+
+    return { runningAgentMessage, runningCompactionMessage };
+  }
+
+  async getBranchCreationContext(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<BranchCreationContext> {
+    const owner = auth.getNonNullableWorkspace();
+    const { branchFilterSql, sqlReplacements } =
+      await this.resolveMessageViewScope(auth, { branchId, transaction });
+
+    const query = `
+      WITH latest AS (
+        SELECT DISTINCT ON (rank) id, rank, "contentFragmentId"
+        FROM messages
+        WHERE "workspaceId" = :workspaceId
+          AND "conversationId" = :conversationId
+          AND visibility != 'deleted'
+          AND ${branchFilterSql}
+        ORDER BY rank ASC, version DESC
+      )
+      SELECT
+        COUNT(*)::int AS "messageCount",
+        COUNT(*) FILTER (WHERE "contentFragmentId" IS NULL)::int AS "nonContentFragmentCount",
+        MAX(rank) AS "maxRank",
+        (ARRAY_AGG(id ORDER BY rank DESC))[1] AS "lastMessageId",
+        MAX(rank) AS "lastMessageRank"
+      FROM latest
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: DISTINCT ON aggregate for branch creation
+    const [stats] = await frontSequelize.query<{
+      messageCount: number;
+      nonContentFragmentCount: number;
+      maxRank: number | null;
+      lastMessageId: ModelId | null;
+      lastMessageRank: number | null;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        ...sqlReplacements,
+      },
+      transaction,
+    });
+
+    if (!stats || stats.messageCount === 0) {
+      return {
+        isEmpty: true,
+        onlyContentFragments: false,
+        maxRank: null,
+        lastMessage: null,
+      };
+    }
+
+    return {
+      isEmpty: false,
+      onlyContentFragments: stats.nonContentFragmentCount === 0,
+      maxRank: stats.maxRank,
+      lastMessage:
+        stats.lastMessageId !== null && stats.lastMessageRank !== null
+          ? { id: stats.lastMessageId, rank: stats.lastMessageRank }
+          : null,
+    };
+  }
+
+  /**
+   * Latest-version message at the highest rank in the conversation view.
+   */
+  async getLatestMessageSummary(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<LatestMessageSummary | null> {
+    const { scopeWhere } = await this.resolveMessageViewScope(auth, {
+      branchId,
+      transaction,
+    });
+
+    const message = await MessageModel.findOne({
+      attributes: ["sId", "rank", "compactionMessageId"],
+      where: {
+        ...scopeWhere,
+        visibility: { [Op.ne]: "deleted" },
+      },
+      include: [
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
+          required: false,
+          attributes: ["status"],
+        },
+      ],
+      order: [
+        ["rank", "DESC"],
+        ["version", "DESC"],
+      ],
+      transaction,
+    });
+
+    if (!message) {
+      return null;
+    }
+
+    return {
+      sId: message.sId,
+      rank: message.rank,
+      compactionStatus: message.compactionMessage?.status ?? null,
+    };
   }
 
   async getMessageById(
@@ -3732,7 +4378,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       agentConfigurationId,
       transaction,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       mcpServerViews: MCPServerViewResource[];
       enabled: boolean;
       transaction?: Transaction;
@@ -3865,6 +4511,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // `update` refreshes the instance from the `RETURNING` row, so this is the persisted value.
     return new Ok(this.getRequestedSpaceIdsFromModel());
+  }
+
+  isPodConversation() {
+    return this.spaceId !== null;
+  }
+
+  get spaceSId(): string | null {
+    return this.spaceId
+      ? SpaceResource.modelIdToSId({
+          id: this.spaceId,
+          workspaceId: this.workspaceId,
+        })
+      : null;
   }
 
   async updateSpaceId(
