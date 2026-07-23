@@ -23,8 +23,8 @@ export interface SandboxMountAdapter {
   ): Promise<Result<void, Error>>;
 
   /**
-   * Refresh the credential in an already-mounted sandbox without remounting.
-   * Overwrites the credential file that the credential server reads on the next request.
+   * Refresh the per-mount credentials in an already-mounted sandbox without remounting.
+   * The credential broker reads the atomically replaced files on the next request.
    */
   refreshCredential(
     auth: Authenticator,

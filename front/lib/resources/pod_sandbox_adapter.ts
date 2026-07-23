@@ -91,8 +91,8 @@ export class PodSandboxAdapter {
 
   // Pod state pre-sleep flush: every committed SQLite transaction must reach
   // the GCS replica before the sandbox may pause or be destroyed. The refresh
-  // callback rewrites /tmp/token.json first — the sync flushes through
-  // gcsfuse and the token may have expired while the sandbox sat idle.
+  // callback rewrites the root-owned per-mount credentials first — the sync
+  // flushes through gcsfuse and the token may have expired while the sandbox sat idle.
   private static podPreSleepCheck(
     auth: Authenticator,
     pod: SpaceResource
