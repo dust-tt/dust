@@ -281,6 +281,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       functionIdOrSlug: sandboxFunction.sId,
       body: {
         input: { message: "hello" },
+        timezone: "Europe/Paris",
       },
     });
 
@@ -299,7 +300,10 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       expect.anything(),
       {
         sandboxFunction: expect.objectContaining({ sId: sandboxFunction.sId }),
-        invocation: expect.objectContaining({ sId: invocation.sId }),
+        invocation: expect.objectContaining({
+          sId: invocation.sId,
+          timezone: "Europe/Paris",
+        }),
       }
     );
     expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(

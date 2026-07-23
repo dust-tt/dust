@@ -114,6 +114,7 @@ export function isSandboxFunctionInvocationTerminalEvent(
 
 export type PostSandboxFunctionInvocationRequestBody = {
   input?: unknown;
+  timezone?: string;
 };
 
 export type PostSandboxFunctionInvocationResponseBody = {

@@ -15,9 +15,13 @@ const CALL_RESULT_WAIT_TIMEOUT_MS = 3 * 60 * 1_000;
 export async function callSandboxFunction(
   auth: Authenticator,
   sandboxFunction: SandboxFunctionResource,
-  input: unknown
+  input: unknown,
+  timezone?: string
 ): Promise<Result<unknown, SandboxFunctionCallError>> {
-  const invocationResult = await sandboxFunction.invoke(auth, { input });
+  const invocationResult = await sandboxFunction.invoke(auth, {
+    input,
+    timezone,
+  });
   if (invocationResult.isErr()) {
     return new Err({
       code: "invocation_failed",

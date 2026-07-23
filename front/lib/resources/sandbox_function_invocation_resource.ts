@@ -55,6 +55,7 @@ const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 1;
 const SandboxFunctionInvocationDataSchema = z.object({
   version: z.literal(SANDBOX_FUNCTION_INVOCATION_DATA_VERSION),
   input: z.unknown().optional(),
+  timezone: z.string().optional(),
   result: z.unknown().optional(),
   error: z.string().optional(),
 });
@@ -146,6 +147,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return this.data.input;
   }
 
+  get timezone(): string | undefined {
+    return this.data.timezone;
+  }
+
   get result(): unknown {
     return this.data.result;
   }
@@ -162,6 +167,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
+      timezone: this.timezone,
       error: callError.message,
     };
     await this.writeDataToGcs();
@@ -182,6 +188,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
+      timezone: this.timezone,
       result,
     };
     await this.writeDataToGcs();
@@ -343,9 +350,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     {
       sandboxFunction,
       input,
+      timezone,
     }: {
       sandboxFunction: SandboxFunctionResource;
       input: unknown;
+      timezone?: string;
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionInvocationResource> {
@@ -368,6 +377,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const data: SandboxFunctionInvocationData = {
         version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
         input,
+        timezone,
       };
       const resource = new this(this.model, invocation.get(), {
         sandboxFunction,
@@ -396,6 +406,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     const invocation = await this.makeNew(auth, {
       sandboxFunction,
       input: body.input,
+      timezone: body.timezone,
     });
     await publishSandboxFunctionInvocationEvent(
       {
