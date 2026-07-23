@@ -32,6 +32,10 @@ export function RoleDropDown({
   const canManageAdminRole = isAdmin(workspace);
 
   const availableRoles = ACTIVE_ROLES.filter((role) => {
+    // `builder` is deprecated and can no longer be assigned.
+    if (role === "builder") {
+      return false;
+    }
     // `manager` can only be assigned when the workspace has the
     // `admin_governance` feature flag.
     if (role === "manager" && !hasFeature("admin_governance")) {

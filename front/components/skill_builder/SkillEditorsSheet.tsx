@@ -54,7 +54,6 @@ export function SkillEditorsSheet({
         mode="editors-only"
         editors={editors || []}
         onEditorsChange={onChange}
-        buildersOnly
       />
     </>
   );
