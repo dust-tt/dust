@@ -105,7 +105,7 @@ export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
         route: routePath(ctx) ?? ctx.req.path,
         url: ctx.req.path,
         statusCode: err.status,
-        error: { name: err.name, message: err.message },
+        error: err,
       },
       "Client API Error"
     );
