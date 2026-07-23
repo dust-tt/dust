@@ -52,6 +52,13 @@ export const SLACK_BOT_TOOLS_METADATA = [
         .describe(
           "If false, disable media previews (unfurling) for image/video URLs in the message. Defaults to Slack's behavior."
         ),
+      showSentByFooter: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe(
+          "Include the 'Sent via [AgentName] on Dust' footer. Set to false only when explicitly asked to omit it."
+        ),
     },
     stake: "low",
     displayLabels: {

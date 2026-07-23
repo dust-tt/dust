@@ -24,7 +24,15 @@ export function createSlackBotTools(
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof SLACK_BOT_TOOLS_METADATA> = {
     post_message: async (
-      { to, message, threadTs, fileId, unfurlLinks, unfurlMedia },
+      {
+        to,
+        message,
+        threadTs,
+        fileId,
+        unfurlLinks,
+        unfurlMedia,
+        showSentByFooter,
+      },
       { authInfo }
     ) => {
       const accessToken = authInfo?.token;
@@ -45,6 +53,7 @@ export function createSlackBotTools(
           unfurlLinks,
           unfurlMedia,
           accessToken,
+          showSentByFooter: showSentByFooter ?? true,
         });
       } catch (error) {
         return new Err(
