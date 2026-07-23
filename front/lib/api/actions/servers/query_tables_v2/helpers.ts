@@ -21,9 +21,8 @@ import config from "@app/lib/api/config";
 import type { CSVRecord } from "@app/lib/api/csv";
 import { toCsv } from "@app/lib/api/csv";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { podScopedPath } from "@app/lib/api/file_system/types";
+import { getToolOutputsScopedPath } from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
-import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
@@ -227,10 +226,7 @@ async function writeSandboxFunctionQueryResultFile(
     name: queryTitle,
     ext: ".csv",
   });
-  const scopedPath = podScopedPath(
-    runContext.invocation.sandboxFunction.space.sId,
-    `${TOOL_OUTPUTS_FOLDER_NAME}/${runContext.invocation.sandboxFunction.slug}/${outputFileName}`
-  );
+  const scopedPath = getToolOutputsScopedPath(runContext, outputFileName);
   const csvContent = await toCsv(results);
   const writeResult = await fileSystemResult.value.write(
     scopedPath,
