@@ -193,14 +193,11 @@ export function ShareFrameSheet({
     disabled: externalSharingDisabledByPolicy,
   });
 
-  // Inviting people outside the workspace requires both the workspace policy to allow it and the
-  // "invite" frame permission. You can still invite internal members regardless of your permission.
   const canInviteExternal =
     !externalSharingDisabledByPolicy && hasPermission("invite", "frame");
   const canPublish =
     !externalSharingDisabledByPolicy && hasPermission("publish", "frame");
 
-  // The UI reflects internal-only sharing whenever external invites aren't available.
   const isExternalInviteOff = !canInviteExternal;
 
   const allowedScopes = ALLOWED_SCOPES_BY_POLICY[owner.sharingPolicy];
