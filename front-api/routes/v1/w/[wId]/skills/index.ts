@@ -24,6 +24,12 @@ const GetSkillsQuerySchema = z.object({
   status: z.enum(["active", "archived", "suggested"]).optional(),
 });
 
+// Unpublished (editors) skills are never exposed through the public API, so the filter only
+// accepts the published availabilities.
+const SkillAvailabilitiesSchema = z
+  .array(z.enum(["workspace_users", "users_and_agents"]))
+  .optional();
+
 // Mounted at /api/v1/w/:wId/skills.
 //
 // We extend the public API context with `HttpBindings` so we can reach the
@@ -55,6 +61,17 @@ const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
  *         schema:
  *           type: string
  *           enum: [active, archived, suggested]
+ *       - in: query
+ *         name: availability
+ *         required: false
+ *         description: Filter skills by availability. Repeatable to match several values. Unpublished (editors) skills are never returned through the public API.
+ *         schema:
+ *           type: array
+ *           items:
+ *             type: string
+ *             enum: [workspace_users, users_and_agents]
+ *         style: form
+ *         explode: true
  *     responses:
  *       200:
  *         description: Skills available in the workspace.
@@ -156,10 +173,36 @@ app.get(
     const auth = ctx.get("auth");
     const { status } = ctx.req.valid("query");
 
-    const skills = await SkillResource.listByWorkspace(auth, {
+    // Repeatable: ?availability=workspace_users&availability=users_and_agents.
+    const availabilityValidation = SkillAvailabilitiesSchema.safeParse(
+      ctx.req.queries("availability")
+    );
+    if (!availabilityValidation.success) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            'Invalid availability. Expected "workspace_users" or "users_and_agents".',
+        },
+      });
+    }
+    const availability =
+      availabilityValidation.data && availabilityValidation.data.length > 0
+        ? availabilityValidation.data
+        : undefined;
+
+    const allSkills = await SkillResource.listByWorkspace(auth, {
       status,
       onlyCustom: true,
+      availability,
     });
+
+    // Unpublished (editors-only) skills are drafts and are never exposed through the
+    // public API: API keys have no editor-group membership to scope them by.
+    const skills = allSkills.filter(
+      (skill) => skill.availability !== "editors"
+    );
 
     return ctx.json({
       skills: skills.map((skill) => skill.toJSON(auth)),

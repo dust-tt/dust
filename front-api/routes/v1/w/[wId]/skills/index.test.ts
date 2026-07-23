@@ -153,6 +153,74 @@ describe("GET /api/v1/w/[wId]/skills", () => {
     expect(skillNames).toContain("Archived API Skill");
     expect(skillNames).not.toContain("Active API Skill");
   });
+
+  it("filters skills by availability", async () => {
+    const { workspace, key } = await createPublicApiMockRequest();
+    const user = await UserFactory.basic();
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
+
+    await SkillFactory.create(auth, {
+      name: "Workspace Skill",
+      availability: "workspace_users",
+    });
+    await SkillFactory.create(auth, {
+      name: "Discoverable Skill",
+      availability: "users_and_agents",
+    });
+    await SkillFactory.create(auth, {
+      name: "Unpublished Skill",
+      availability: "editors",
+    });
+
+    // Unpublished (editors-only) skills are never exposed through the public API.
+    const defaultResponse = await getSkills(workspace, key);
+    expect(defaultResponse.status).toBe(200);
+    const defaultSkillNames = (await defaultResponse.json()).skills.map(
+      (skill: { name: string }) => skill.name
+    );
+    expect(defaultSkillNames).toContain("Workspace Skill");
+    expect(defaultSkillNames).toContain("Discoverable Skill");
+    expect(defaultSkillNames).not.toContain("Unpublished Skill");
+
+    const response = await getSkills(workspace, key, {
+      availability: "users_and_agents",
+    });
+    expect(response.status).toBe(200);
+    const skillNames = (await response.json()).skills.map(
+      (skill: { name: string }) => skill.name
+    );
+    expect(skillNames).toEqual(["Discoverable Skill"]);
+
+    // Repeatable to match several availabilities.
+    const multiResponse = await honoApp.request(
+      `/api/v1/w/${workspace.sId}/skills?availability=workspace_users&availability=users_and_agents`,
+      { headers: { authorization: `Bearer ${key.secret}` } }
+    );
+    expect(multiResponse.status).toBe(200);
+    const multiSkillNames = (await multiResponse.json()).skills.map(
+      (skill: { name: string }) => skill.name
+    );
+    expect(multiSkillNames).toContain("Workspace Skill");
+    expect(multiSkillNames).toContain("Discoverable Skill");
+    expect(multiSkillNames).not.toContain("Unpublished Skill");
+
+    // The unpublished availability is not accepted as a filter value.
+    const editorsResponse = await getSkills(workspace, key, {
+      availability: "editors",
+    });
+    expect(editorsResponse.status).toBe(400);
+
+    const invalidResponse = await getSkills(workspace, key, {
+      availability: "everyone",
+    });
+    expect(invalidResponse.status).toBe(400);
+  });
 });
 
 describe("POST /api/v1/w/[wId]/skills", () => {
