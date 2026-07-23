@@ -167,7 +167,7 @@ export function ShareFrameSheet({
   const canInviteExternal =
     !externalSharingDisabledByPolicy && hasPermission("invite", "frame");
   const canPublish =
-    !externalSharingDisabledByPolicy && hasPermission("publish", "frame");
+    owner.sharingPolicy === "all_scopes" && hasPermission("publish", "frame");
 
   const lostPublishPermission =
     currentScope === "public" && !canPublish && !isWorkspacePermissionsLoading;
