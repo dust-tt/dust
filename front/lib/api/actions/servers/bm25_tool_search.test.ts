@@ -479,6 +479,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "post a message to a slack channel as the workspace bot",
     expected: "slack_bot.post_message",
+    maxRank: 2, // showSentByFooter guardrail wording lengthens the doc, add_reaction edges it out
   },
   {
     query: "edit a message the slack bot posted",
