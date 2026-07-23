@@ -83,7 +83,11 @@ export function ManageAgentsPage() {
   const { hasPermission } = useWorkspacePermissions(owner);
 
   const canCreateAgent = hasPermission("create", "agent");
-  const shouldDisableAgentFetching = !canCreateAgent;
+  const canPublishAgent = hasPermission("publish", "agent");
+  // Users who can publish agents can view the page to discover existing agents
+  // and identify the ones they can edit, even without create permission.
+  const canManageAgents = canCreateAgent || canPublishAgent;
+  const shouldDisableAgentFetching = !canManageAgents;
   const isSearchActive = assistantSearch.trim() !== "";
 
   const activeTab = useMemo(() => {
@@ -215,7 +219,7 @@ export function ManageAgentsPage() {
   }, []);
 
   useEffect(() => {
-    if (!canCreateAgent) {
+    if (!canManageAgents) {
       return;
     }
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -229,7 +233,7 @@ export function ManageAgentsPage() {
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [canCreateAgent]);
+  }, [canManageAgents]);
 
   const navChildren = useMemo(
     () => <AgentSidebarMenu owner={owner} />,
@@ -241,7 +245,7 @@ export function ManageAgentsPage() {
 
   return (
     <>
-      {!canCreateAgent ? (
+      {!canManageAgents ? (
         <Custom404 />
       ) : (
         <>
