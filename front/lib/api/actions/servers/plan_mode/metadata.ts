@@ -107,9 +107,9 @@ export const PLAN_MODE_SERVER = {
     name: PLAN_MODE_SERVER_NAME,
     version: "1.0.0",
     description:
-      `Create and maintain a living \`${PLAN_FILE_NAME}\` that gives the user visibility on non-trivial ` +
-      "work. When you need explicit sign-off before proceeding, ask the user with the standard " +
-      "question flow.",
+      `Create and maintain a living \`${PLAN_FILE_NAME}\` that gives the user visibility on genuinely ` +
+      "multi-step work. When you need explicit sign-off before proceeding, ask the user with the " +
+      "standard question flow.",
     icon: "ActionDocumentTextIcon" as const,
     authorization: null,
     documentationUrl: null,

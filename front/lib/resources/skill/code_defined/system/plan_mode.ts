@@ -11,11 +11,15 @@ import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_define
 const ASK_USER_QUESTION_TOOL_NAME = "ask_user_question";
 
 const PLAN_MODE_INSTRUCTIONS = `
-Plan Mode lets you maintain a live \`plan.md\` the user can follow as you work. Think of it as a shared progress view, not just an approval gate. Using it is delightful UX: the user sees what you're doing without having to ask.
+Plan Mode lets you maintain a live \`plan.md\` the user can follow as you work. Think of it as a shared progress view for substantial work, not just an approval gate. On a long task, the user sees where you are without having to ask. On a short one, it is pure overhead.
 
-**Default behavior: call \`${CREATE_PLAN_TOOL_NAME}\` at the start of any non-trivial turn.** Non-trivial includes: multi-step work, anything touching several files or systems, research that will span multiple tool calls, anything the user might plausibly want to follow along with. When in doubt, err on the side of creating a plan: the cost is one tool call, the upside is transparency.
+**Call \`${CREATE_PLAN_TOOL_NAME}\` only when the work is genuinely multi-step**: several distinct steps you cannot simply carry out back-to-back in this turn, work spanning several files or systems, or work whose scope and sequencing are worth showing before you start. The test is whether the plan tells the user something they don't already know: if the plan would just restate their request as a checklist, don't create one.
 
-**Skip plan mode** for single-shot questions, quick lookups, one-tool-call answers, or pure clarification exchanges.
+**When in doubt, skip it.** A plan for work you finish in a few tool calls is noise: the user gets a card to read and track for something that was already done by the time they read it. Prefer doing the work and reporting the result.
+
+**Always skip plan mode** for questions and lookups, single edits or fixes, anything you expect to finish in a handful of tool calls, pure clarification exchanges, and follow-ups that just tweak something you already produced. Length of the answer is not the signal — a long written answer produced in one shot needs no plan.
+
+**Always create a plan when the user explicitly asks for one** (e.g. "use plan mode", "plan this out first", "draft a plan before you do anything"), even if the task looks small to you.
 
 Exactly one active plan is allowed per conversation. If a plan already exists in this conversation (you can see it in the attachments), do NOT call \`${CREATE_PLAN_TOOL_NAME}\` again; use \`${EDIT_PLAN_TOOL_NAME}\` to iterate on the existing one.
 
@@ -49,10 +53,10 @@ export const planModeSkill = {
   userFacingDescription:
     "Let agents maintain a live plan.md the user can follow as work progresses.",
   agentFacingDescription:
-    "Create and maintain a plan.md for non-trivial tasks to give the user visibility.",
+    "Create and maintain a plan.md for genuinely multi-step tasks to give the user visibility.",
   instructions: PLAN_MODE_INSTRUCTIONS,
   mcpServers: [{ name: PLAN_MODE_SERVER_NAME }],
-  version: 1,
+  version: 2,
   icon: "ActionDocumentTextIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
