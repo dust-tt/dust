@@ -20,6 +20,7 @@ import {
   validateSelectableSpaces,
 } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -28,7 +29,10 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 
@@ -135,6 +139,25 @@ describe("selected conversation Spaces", () => {
     });
   }
 
+  // `ConversationFactory` does not create participants, so tests that exercise the creator gate
+  // have to materialize them explicitly. The first participant by `createdAt` is the creator.
+  async function participate(
+    conv: ConversationWithoutContentType,
+    participantAuth: Authenticator
+  ) {
+    await ConversationResource.upsertParticipation(participantAuth, {
+      conversation: conv,
+      action: "posted",
+      user: participantAuth.getNonNullableUser().toJSON(),
+    });
+  }
+
+  async function otherWorkspaceMember() {
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    return Authenticator.fromUserIdAndWorkspaceId(otherUser.sId, workspace.sId);
+  }
+
   it("rejects selected Spaces when the feature flag is disabled", async () => {
     const restrictedSpace = await memberRestrictedSpace();
 
@@ -161,6 +184,7 @@ describe("selected conversation Spaces", () => {
     expectErrCode(
       await addSelectedConversationSpaces(auth, {
         conversation: projectConversation,
+        enforceCreatorOnly: false,
         origin: "input_bar",
         spaceIds: [restrictedSpace.sId],
       }),
@@ -250,6 +274,7 @@ describe("selected conversation Spaces", () => {
     const result = unwrapResult(
       await addSelectedConversationSpaces(auth, {
         conversation: conv,
+        enforceCreatorOnly: false,
         origin: "input_bar",
         spaceIds: [selectedSpace.sId, selectedSpace.sId],
       })
@@ -281,6 +306,7 @@ describe("selected conversation Spaces", () => {
     expectErrCode(
       await addSelectedConversationSpaces(auth, {
         conversation: { ...conv, sId: missingConversationId },
+        enforceCreatorOnly: false,
         origin: "input_bar",
         spaceIds: [selectedSpace.sId],
       }),
@@ -293,6 +319,103 @@ describe("selected conversation Spaces", () => {
       )
     ).toEqual([]);
     expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
+  it("rejects added Spaces from a participant who did not create the conversation", async () => {
+    await enableFeature();
+    const selectedSpace = await memberOpenSpace();
+    const conv = await conversation();
+    await participate(conv, auth);
+
+    const otherAuth = await otherWorkspaceMember();
+    // `isConversationCreator` orders participants by `createdAt`, so make sure the two rows do not
+    // land on the same timestamp.
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await participate(conv, otherAuth);
+
+    // The other participant can read the conversation and can read the Space...
+    expect(
+      await ConversationResource.fetchById(otherAuth, conv.sId)
+    ).not.toBeNull();
+    expect(
+      (
+        await validateSelectableSpaces(otherAuth, {
+          spaceIds: [selectedSpace.sId],
+        })
+      ).isOk()
+    ).toBe(true);
+
+    // ...but they still cannot widen the conversation's access requirements.
+    expectErrCode(
+      await addSelectedConversationSpaces(otherAuth, {
+        conversation: conv,
+        enforceCreatorOnly: true,
+        origin: "input_bar",
+        spaceIds: [selectedSpace.sId],
+      }),
+      "conversation_not_creator"
+    );
+    expect(
+      await ConversationSelectedSpaceResource.listActiveSpacesByConversation(
+        auth,
+        { conversation: conv }
+      )
+    ).toEqual([]);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
+  it("lets the conversation creator add Spaces to an existing conversation", async () => {
+    await enableFeature();
+    const selectedSpace = await memberOpenSpace();
+    const conv = await conversation();
+    await participate(conv, auth);
+
+    const otherAuth = await otherWorkspaceMember();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await participate(conv, otherAuth);
+
+    const result = unwrapResult(
+      await addSelectedConversationSpaces(auth, {
+        conversation: conv,
+        enforceCreatorOnly: true,
+        origin: "input_bar",
+        spaceIds: [selectedSpace.sId],
+      })
+    );
+
+    expect(result.selectedSpaces).toEqual([
+      expect.objectContaining({ sId: selectedSpace.sId, selected: true }),
+    ]);
+    expect(result.effectiveAcl.spaceIds).toContain(selectedSpace.sId);
+  });
+
+  it("selects Spaces on the conversation creation path, before any participant exists", async () => {
+    await enableFeature();
+    const selectedSpace = await memberOpenSpace();
+    const conv = await conversation();
+
+    // A conversation being created has no participant row yet (participation is upserted after the
+    // Spaces are materialized), so the creator gate cannot be satisfied there, and the creation
+    // path opts out of it.
+    expectErrCode(
+      await addSelectedConversationSpaces(auth, {
+        conversation: conv,
+        enforceCreatorOnly: true,
+        origin: "input_bar",
+        spaceIds: [selectedSpace.sId],
+      }),
+      "conversation_not_creator"
+    );
+
+    const result = unwrapResult(
+      await addSelectedConversationSpaces(auth, {
+        conversation: conv,
+        enforceCreatorOnly: false,
+        origin: "input_bar",
+        spaceIds: [selectedSpace.sId],
+      })
+    );
+    expect(result.effectiveAcl.spaceIds).toContain(selectedSpace.sId);
   });
 
   it("uses selected Spaces as effective runtime scope when still valid", async () => {
@@ -410,6 +533,43 @@ describe("selected conversation Spaces", () => {
         conversation: childConversation,
       });
     expect(selectedSpaceRow.origin).toBe("parent_conversation");
+  });
+
+  it("copies selected Spaces to a child conversation when the caller did not create the parent", async () => {
+    await enableFeature();
+    const selectedSpace = await memberOpenSpace();
+    const parentConversation = await conversation();
+    const childConversation = await conversation();
+
+    await ConversationSelectedSpaceResource.upsertForConversation(auth, {
+      conversation: parentConversation,
+      origin: "input_bar",
+      spaces: [selectedSpace],
+    });
+    await participate(parentConversation, auth);
+
+    // A participant who is not the creator can still run a sub-agent, and the child conversation
+    // must inherit the parent's Spaces: inheritance is system-initiated and revalidated against the
+    // caller, so the creator gate does not apply to it.
+    const otherAuth = await otherWorkspaceMember();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await participate(parentConversation, otherAuth);
+
+    unwrapResult(
+      await copySelectedConversationSpacesToChild(otherAuth, {
+        parentConversation,
+        childConversationId: childConversation.sId,
+      })
+    );
+
+    const childSelectedSpaces =
+      await ConversationSelectedSpaceResource.listActiveSpacesByConversation(
+        auth,
+        { conversation: childConversation }
+      );
+    expect(childSelectedSpaces.map((space) => space.sId)).toEqual([
+      selectedSpace.sId,
+    ]);
   });
 
   it("ignores selected Spaces at runtime when the feature flag is disabled", async () => {

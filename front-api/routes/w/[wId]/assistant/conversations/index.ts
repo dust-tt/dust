@@ -313,6 +313,10 @@ app.post(
         spaceIds: allSelectedSpaceIds,
         origin: "input_bar",
         auditContext: getAuditLogContext(auth),
+        // The conversation was just created by this caller and has no participant row yet (the
+        // `upsertParticipation` call below is what creates the creator row), so there is no other
+        // participant to evict and nothing to check against.
+        enforceCreatorOnly: false,
       });
       if (selectedSpacesResult.isErr()) {
         return apiErrorForSelectedSpaces(ctx, selectedSpacesResult.error);

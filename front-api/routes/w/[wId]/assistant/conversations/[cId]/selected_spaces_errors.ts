@@ -15,6 +15,14 @@ export function apiErrorForSelectedSpaces(
           message: error.message,
         },
       });
+    case "conversation_not_creator":
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "conversation_access_restricted",
+          message: error.message,
+        },
+      });
     case "conversation_not_mutable":
     case "space_not_selectable":
       return apiError(ctx, {
