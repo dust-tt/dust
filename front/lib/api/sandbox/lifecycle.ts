@@ -108,11 +108,11 @@ async function ensureOwnerSandboxReady(
       if (freshlyCreated) {
         // The image seeds /etc/dust/ca-bundle.pem with system roots, and
         // gcsfuse runs as root to storage.googleapis.com, which the in-sandbox
-        // nftables ruleset never touches: every rule is scoped to the agent uid
-        // (1003) and the chains default to accept, so root egress is never
-        // dropped, even mid-setup. The dev-unrestricted branch tears down the
-        // general table but recreates the dedicated GCS broker drop, so it's
-        // safe to overlap too.
+        // nftables ruleset never touches: every rule is scoped to the
+        // non-root Front exec UIDs (1002 and 1003) and the chains default to
+        // accept, so root egress is never dropped, even mid-setup. The
+        // dev-unrestricted branch tears down the general table but recreates
+        // the dedicated GCS broker drops, so it's safe to overlap too.
         // Egress prep can therefore run alongside the GCS mount, with egress
         // errors still taking precedence.
         const [prepResult, mountResult] = await Promise.all([

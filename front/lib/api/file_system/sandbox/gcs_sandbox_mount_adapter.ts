@@ -29,6 +29,7 @@ const TOKEN_FIREWALL_PATH = "/usr/local/bin/dust-gcs-token-firewall.sh";
 const TOKEN_SERVER_POLL_ATTEMPTS = 100;
 const TOKEN_SERVER_POLL_INTERVAL_SECONDS = 0.05;
 const TOKEN_SERVER_EXEC_TIMEOUT_MS = 10_000;
+const TOKEN_BROKER_DENIED_USERS = ["agent", "agent-proxied"] as const;
 
 class GCSMountImageHelperUnavailableError extends Error {
   constructor(
@@ -108,9 +109,10 @@ export type GCSMountTarget = {
  *
  * Mounts one GCS prefix per target via gcsfuse using a per-target CAB-scoped downscoped token
  * served by a root-owned HTTP token server baked into the sandbox image. The server listens on a
- * privileged loopback port and a dedicated nftables table denies the untrusted workload UID access
- * to that port, including when dev-unrestricted egress removes the general egress table. The UID
- * firewall is the sole caller-authorization control; token ids are routing names, not secrets.
+ * privileged loopback port and a dedicated nftables table denies every Front-controlled non-root
+ * UID access to that port, including when dev-unrestricted egress removes the general egress table.
+ * The UID firewall is the sole caller-authorization control; token ids are routing names, not
+ * secrets.
  *
  * Each token has one unconditional rule plus two rules for its single prefix. The existing
  * four-target limit is retained as an operational guard on concurrent mounts.
@@ -181,6 +183,17 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
     // 3-4. Start the root-owned token server and poll it ready in
     // ONE exec. Polling every 50ms returns the instant the server is listening
     // instead of a flat sleep 1, and folds three round-trips into one.
+    const tokenBrokerDenyChecks = TOKEN_BROKER_DENIED_USERS.map(
+      (user) =>
+        `/usr/sbin/runuser -u ${user} -- /usr/bin/curl -sf --connect-timeout 0.3 --max-time 1 ${tokenUrl(0)} > /dev/null 2>&1; ` +
+        `deny_check_exit=$?; ` +
+        `if [ $deny_check_exit -eq 0 ]; then ` +
+        `/usr/bin/printf 'GCS token firewall deny-check unexpectedly reached the broker as ${user}\\n' >&2; ` +
+        `exit 1; fi; ` +
+        `if [ $deny_check_exit -ne 28 ]; then ` +
+        `/usr/bin/printf 'GCS token firewall deny-check for ${user} could not be verified (exit code %s)\\n' "$deny_check_exit" >&2; ` +
+        `exit 1; fi; `
+    ).join("");
     const tokenServerResult = await traceSandboxStartupPhase(
       "gcs.token_server",
       () =>
@@ -199,14 +212,7 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
               `if ! /usr/bin/curl -sf ${TOKEN_SERVER_HEALTH_URL} > /dev/null 2>&1; then ` +
               `/usr/bin/sleep ${TOKEN_SERVER_POLL_INTERVAL_SECONDS}; ` +
               `i=$((i+1)); continue; fi; ` +
-              `/usr/sbin/runuser -u agent-proxied -- /usr/bin/curl -sf --connect-timeout 0.3 --max-time 1 ${tokenUrl(0)} > /dev/null 2>&1; ` +
-              `deny_check_exit=$?; ` +
-              `if [ $deny_check_exit -eq 0 ]; then ` +
-              `/usr/bin/printf 'GCS token firewall deny-check unexpectedly reached the broker\\n' >&2; ` +
-              `exit 1; fi; ` +
-              `if [ $deny_check_exit -ne 28 ]; then ` +
-              `/usr/bin/printf 'GCS token firewall deny-check could not be verified (exit code %s)\\n' "$deny_check_exit" >&2; ` +
-              `exit 1; fi; ` +
+              tokenBrokerDenyChecks +
               `exit 0; ` +
               `done; ` +
               `/usr/bin/printf 'GCS token server readiness timed out\\n' >&2; exit 1`,

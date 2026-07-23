@@ -27,6 +27,7 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 const TRACE_OPTS = { workspaceId: "sandbox-image-security-check" };
+const AGENT_USER = "agent";
 const AGENT_PROXIED_USER = "agent-proxied";
 const COMMAND_TIMEOUT_MS = 15_000;
 const ROOT_ID_PATTERN = /\buid=0\(root\)\b/;
@@ -269,6 +270,9 @@ async function checkBasicSandboxFunctionality(
 set -euo pipefail
 echo "shell-ok"
 /opt/bin/dsbx version >/dev/null
+DUST_PROFILE=openai source /opt/dust/profile/common.sh
+declare -F shell >/dev/null
+/opt/venv/bin/python3 -c 'import requests'
 # /files/conversation and /files/pod no longer exist in the image. They are
 # created at runtime as mount points by the GCS mount adapter. Test /files
 # itself and verify that a subdirectory created there mimics the runtime
@@ -284,6 +288,190 @@ rm -rf "$tmpdir"
   );
 
   assertCommandSucceeded("basic shell and file operations", smoke);
+}
+
+async function checkAgentServiceBoundary(
+  provider: E2BSandboxProvider,
+  providerId: string
+): Promise<void> {
+  for (const user of [AGENT_USER, AGENT_PROXIED_USER] as const) {
+    const pathDenials = await runBashScript(
+      provider,
+      providerId,
+      `
+set -euo pipefail
+for dotfile in .bash_profile .bash_login .profile .bashrc; do
+  if [ -e "/home/agent/$dotfile" ]; then
+    echo "CRITICAL: agent dotfile unexpectedly exists: /home/agent/$dotfile"
+    exit 1
+  fi
+done
+if touch /home/agent/.bash_profile 2>/dev/null; then
+  echo "CRITICAL: workload can write /home/agent/.bash_profile"
+  exit 1
+fi
+if printf '\\n# security probe\\n' >> /usr/local/bin/dust-gcs-token-server.py 2>/dev/null; then
+  echo "CRITICAL: workload can modify the GCS token server"
+  exit 1
+fi
+site_packages=$(/opt/venv/bin/python3 -c 'import site; print(site.getsitepackages()[0])')
+if touch "$site_packages/dust-security-check.pth" 2>/dev/null; then
+  echo "CRITICAL: workload can plant a Python .pth file"
+  exit 1
+fi
+if printf '\\n# security probe\\n' >> /opt/dust/profile/common.sh 2>/dev/null; then
+  echo "CRITICAL: workload can modify the Dust tool profile"
+  exit 1
+fi
+`,
+      { user }
+    );
+    assertCommandSucceeded(`${user} service path denials`, pathDenials);
+  }
+
+  const marker = `/tmp/dust-agent-dotfile-proof-${Date.now()}`;
+  try {
+    const seed = await runRootBashScript(
+      provider,
+      providerId,
+      `
+set -euo pipefail
+printf '%s\\n' '/usr/bin/touch ${marker}' > /home/agent/.bash_profile
+/usr/bin/chown root:agent /home/agent/.bash_profile
+/bin/chmod 640 /home/agent/.bash_profile
+printf '%s\\n' '/usr/bin/touch ${marker}' > /home/agent-proxied/.bash_profile
+/usr/bin/chown agent-proxied:agent-proxied /home/agent-proxied/.bash_profile
+/bin/chmod 600 /home/agent-proxied/.bash_profile
+/bin/rm -f ${marker}
+`
+    );
+    assertCommandSucceeded("agent dotfile non-execution seed", seed);
+
+    for (const [user, expectedHome] of [
+      [AGENT_USER, "/var/empty"],
+      [AGENT_PROXIED_USER, "/home/agent-proxied"],
+    ] as const) {
+      const cleanExec = await runCommand(
+        provider,
+        providerId,
+        `/usr/bin/test "$HOME" = ${expectedHome}`,
+        { user }
+      );
+      assertCommandSucceeded(`${user} clean exec`, cleanExec);
+    }
+
+    const verify = await runRootBashScript(
+      provider,
+      providerId,
+      `
+set -euo pipefail
+test ! -e ${marker}
+test "$(/usr/bin/getent passwd agent | /usr/bin/cut -d: -f6)" = /var/empty
+test "$(/usr/bin/stat -c '%U:%G %a' /var/empty)" = "root:root 755"
+`
+    );
+    assertCommandSucceeded("agent dotfile non-execution proof", verify);
+  } finally {
+    await runRootBashScript(
+      provider,
+      providerId,
+      `/bin/rm -f /home/agent/.bash_profile /home/agent-proxied/.bash_profile ${marker}`
+    );
+  }
+}
+
+async function checkControlledUidEgress(
+  provider: E2BSandboxProvider,
+  providerId: string
+): Promise<void> {
+  for (const user of [AGENT_USER, AGENT_PROXIED_USER] as const) {
+    const result = await runBashScript(
+      provider,
+      providerId,
+      `
+set -euo pipefail
+if /usr/bin/curl -m 3 -sS http://169.254.169.254/ >/dev/null 2>&1; then
+  echo "CRITICAL: ${user} can reach the metadata service"
+  exit 1
+fi
+resolved=$(/usr/bin/getent ahostsv4 example.com | /usr/bin/awk 'NR == 1 { print $1 }')
+if [ "$resolved" != 240.0.0.1 ]; then
+  echo "CRITICAL: ${user} bypassed synthetic DNS: $resolved"
+  exit 1
+fi
+`,
+      { user }
+    );
+    assertCommandSucceeded(`${user} egress boundary`, result);
+  }
+}
+
+async function checkTokenBrokerDenied(
+  provider: E2BSandboxProvider,
+  providerId: string
+): Promise<void> {
+  for (const user of [AGENT_USER, AGENT_PROXIED_USER] as const) {
+    const result = await runCommand(
+      provider,
+      providerId,
+      "/usr/bin/curl -sf --connect-timeout 0.3 --max-time 1 http://127.0.0.1:987/token/mount-0",
+      { user }
+    );
+    if (result.exitCode !== 28) {
+      throw new Error(
+        `${user} GCS token broker denial returned exit code ${result.exitCode}, expected curl timeout 28:\n${combinedOutput(result)}`
+      );
+    }
+  }
+}
+
+async function checkRootTokenRefreshAcrossSleepWake(
+  provider: E2BSandboxProvider,
+  providerId: string
+): Promise<void> {
+  const initialToken = '{"access_token":"before-sleep"}';
+  const refreshedToken = '{"access_token":"after-wake"}';
+  const start = await runRootBashScript(
+    provider,
+    providerId,
+    `
+set -euo pipefail
+printf %s ${shellQuote(initialToken)} | /usr/local/bin/dust-gcs-write-token.sh /run/dust-gcs/mount-0.json
+/usr/local/bin/dust-gcs-token-firewall.sh
+/usr/bin/nohup /usr/local/bin/dust-gcs-token-server.py >/run/dust-gcs/security-check-server.log 2>&1 &
+for _attempt in $(/usr/bin/seq 1 100); do
+  if [ "$(/usr/bin/curl -sf http://127.0.0.1:987/token/mount-0)" = ${shellQuote(initialToken)} ]; then
+    exit 0
+  fi
+  /usr/bin/sleep 0.05
+done
+exit 1
+`
+  );
+  assertCommandSucceeded("root-owned GCS token server start", start);
+  await checkTokenBrokerDenied(provider, providerId);
+
+  const sleepResult = await provider.sleep(providerId, TRACE_OPTS);
+  if (sleepResult.isErr()) {
+    throw sleepResult.error;
+  }
+  const wakeResult = await provider.wake(providerId, TRACE_OPTS);
+  if (wakeResult.isErr()) {
+    throw wakeResult.error;
+  }
+
+  const refresh = await runRootBashScript(
+    provider,
+    providerId,
+    `
+set -euo pipefail
+printf %s ${shellQuote(refreshedToken)} | /usr/local/bin/dust-gcs-write-token.sh /run/dust-gcs/mount-0.json
+test "$(/usr/bin/curl -sf http://127.0.0.1:987/token/mount-0)" = ${shellQuote(refreshedToken)}
+test ! -e /home/agent/.bash_profile
+`
+  );
+  assertCommandSucceeded("GCS token refresh after sleep/wake", refresh);
+  await checkTokenBrokerDenied(provider, providerId);
 }
 
 async function checkTargetUserState(
@@ -759,7 +947,11 @@ DUST_HIJACK_EOF
 `,
       { user: AGENT_PROXIED_USER }
     );
-    assertCommandSucceeded("root exec path hijack plant", plant);
+    if (plant.exitCode === 0) {
+      throw new Error(
+        `agent-proxied can plant an executable in the service venv at ${plantedPath}`
+      );
+    }
 
     const trigger = await runRootBashScript(
       provider,
@@ -968,6 +1160,10 @@ function assertSshAndDnsHardening(output: string): void {
   for (const expected of [
     "DNS_RESOLVER_ACTIVE=1",
     "DNS_NFTABLES_ACTIVE=1",
+    "SYSTEM_RESOLVER_ACTIVE=1",
+    "RESOLV_CONF_LOCAL=1",
+    "ROOT_GCS_DNS_OK=1",
+    "ROOT_GCS_HTTPS_OK=1",
     "udp dport 53 redirect",
     "tcp dport 53 redirect",
     "tcp dport 22 drop",
@@ -998,6 +1194,12 @@ fi
 echo "--- sshd-hardening ---"
 /usr/bin/cat /etc/ssh/sshd_config.d/00-dust-sandbox-hardening.conf
 echo "--- dns-systemd ---"
+if /usr/bin/systemctl is-active --quiet systemd-resolved.service; then
+  echo "SYSTEM_RESOLVER_ACTIVE=1"
+else
+  /usr/bin/systemctl status systemd-resolved.service --no-pager || true
+  echo "SYSTEM_RESOLVER_ACTIVE=0"
+fi
 if /usr/bin/systemctl is-active --quiet dust-egress-resolver.service; then
   echo "DNS_RESOLVER_ACTIVE=1"
 else
@@ -1009,6 +1211,23 @@ if /usr/bin/systemctl is-active --quiet dust-egress-nftables.service; then
 else
   /usr/bin/systemctl status dust-egress-nftables.service --no-pager || true
   echo "DNS_NFTABLES_ACTIVE=0"
+fi
+if /usr/bin/grep -Eq '^nameserver 127\\.0\\.0\\.53$' /etc/resolv.conf; then
+  echo "RESOLV_CONF_LOCAL=1"
+else
+  /usr/bin/cat /etc/resolv.conf
+  echo "RESOLV_CONF_LOCAL=0"
+fi
+root_gcs_ip=$(/usr/bin/getent ahostsv4 storage.googleapis.com | /usr/bin/awk 'NR == 1 { print $1 }')
+if [ -n "$root_gcs_ip" ] && [ "$root_gcs_ip" != 240.0.0.1 ]; then
+  echo "ROOT_GCS_DNS_OK=1"
+else
+  echo "ROOT_GCS_DNS_OK=0"
+fi
+if /usr/bin/curl -m 10 -sS -o /dev/null https://storage.googleapis.com/; then
+  echo "ROOT_GCS_HTTPS_OK=1"
+else
+  echo "ROOT_GCS_HTTPS_OK=0"
 fi
 echo "--- nft-ip ---"
 /usr/sbin/nft -n list table ip dust-egress
@@ -1047,10 +1266,14 @@ async function checkImage(image: SandboxImage): Promise<void> {
     await checkOriginalExploitPath(provider, providerId);
     await checkPamEscalationPaths(provider, providerId);
     await checkBasicSandboxFunctionality(provider, providerId);
+    await checkAgentServiceBoundary(provider, providerId);
     await checkTargetUserState(provider, providerId);
     await checkEquivalentAccountEscalation(provider, providerId);
     await checkSystemAccountAudit(provider, providerId);
     await checkSshAndDnsHardening(provider, providerId);
+    await checkControlledUidEgress(provider, providerId);
+    await checkRootTokenRefreshAcrossSleepWake(provider, providerId);
+    await checkControlledUidEgress(provider, providerId);
     await checkRootExecPathHijack(provider, providerId);
     await checkSystemdUnitSearchPathShadow(provider, providerId);
     await checkPodStateWorkloadAccess(provider, providerId);

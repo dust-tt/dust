@@ -77,7 +77,12 @@ vi.mock("e2b", () => {
 
 import { CommandExitError, NotFoundError } from "e2b";
 
-import { SANDBOX_ROOT_SAFE_PATH } from "../hardening";
+import {
+  SANDBOX_AGENT_PROXIED_SAFE_PATH,
+  SANDBOX_AGENT_SAFE_PATH,
+  SANDBOX_AGENT_SERVICE_HOME,
+  SANDBOX_ROOT_SAFE_PATH,
+} from "../hardening";
 import { rootCommand } from "../root_command";
 import { E2BSandboxProvider } from "./e2b";
 
@@ -168,6 +173,11 @@ describe("E2BSandboxProvider", () => {
     expect(hardeningCommand).toContain(
       "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle"
     );
+    expect(hardeningCommand).toContain(
+      "/usr/bin/chown -R root:agent /home/agent"
+    );
+    expect(hardeningCommand).toContain("/usr/bin/chown -R root:root /opt/venv");
+    expect(hardeningCommand).toContain("/bin/chmod 644 /opt/dust/profile/*.sh");
     expect(hardeningCommand).toContain("privileged primary group");
     expect(mockKill).not.toHaveBeenCalled();
   });
@@ -264,7 +274,48 @@ describe("E2BSandboxProvider", () => {
     expect(mockRun).not.toHaveBeenCalled();
   });
 
-  it("does not wrap non-root commands", async () => {
+  it("runs default agent service commands without sourcing user dotfiles", async () => {
+    mockRun.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: "ok",
+      stderr: "",
+    });
+    const provider = new E2BSandboxProvider({
+      apiKey: "api-key",
+      domain: undefined,
+    });
+
+    const result = await provider.exec("provider-id", "echo ok", undefined, {
+      workspaceId: "workspace-id",
+    });
+
+    expect(result).toEqual(new Ok({ exitCode: 0, stdout: "ok", stderr: "" }));
+    const command = mockRun.mock.calls[0][0];
+    if (typeof command !== "string") {
+      throw new Error("expected command to be a string");
+    }
+    expect(command).toContain(`PATH='${SANDBOX_AGENT_SAFE_PATH}'`);
+    expect(command).toContain(`HOME='${SANDBOX_AGENT_SERVICE_HOME}'`);
+    expect(command).toContain("BASH_ENV=/dev/null");
+    expect(command).toContain("ENV=/dev/null");
+    expect(command).toContain("/bin/bash --noprofile --norc -c 'echo ok'");
+    expect(command).not.toContain("/opt/venv/bin");
+    expect(command).not.toContain("/home/agent/.local/bin");
+    expect(mockRun).toHaveBeenCalledWith(
+      command,
+      expect.objectContaining({
+        envs: {
+          BASH_ENV: "/dev/null",
+          ENV: "/dev/null",
+          HOME: SANDBOX_AGENT_SERVICE_HOME,
+          PATH: SANDBOX_AGENT_SAFE_PATH,
+        },
+        user: "agent",
+      })
+    );
+  });
+
+  it("runs agent-proxied workload commands in a clean shell with its own home", async () => {
     mockRun.mockResolvedValueOnce({
       exitCode: 0,
       stdout: "ok",
@@ -278,14 +329,41 @@ describe("E2BSandboxProvider", () => {
     const result = await provider.exec(
       "provider-id",
       "echo ok",
-      { user: "agent-proxied" },
+      {
+        envVars: {
+          BASH_ENV: "/tmp/attacker/bash-env",
+          ENV: "/tmp/attacker/env",
+          HOME: "/home/agent-proxied",
+          PATH: "/tmp/attacker/bin",
+          SAFE_INPUT: "preserved",
+        },
+        user: "agent-proxied",
+      },
       { workspaceId: "workspace-id" }
     );
 
     expect(result).toEqual(new Ok({ exitCode: 0, stdout: "ok", stderr: "" }));
+    const command = mockRun.mock.calls[0][0];
+    if (typeof command !== "string") {
+      throw new Error("expected command to be a string");
+    }
+    expect(command).toContain(`PATH='${SANDBOX_AGENT_PROXIED_SAFE_PATH}'`);
+    expect(command).toContain("HOME='/home/agent-proxied'");
+    expect(command).toContain("BASH_ENV=/dev/null");
+    expect(command).toContain("ENV=/dev/null");
+    expect(command).toContain("/bin/bash --noprofile --norc -c 'echo ok'");
     expect(mockRun).toHaveBeenCalledWith(
-      "echo ok",
-      expect.objectContaining({ user: "agent-proxied" })
+      command,
+      expect.objectContaining({
+        envs: {
+          BASH_ENV: "/dev/null",
+          ENV: "/dev/null",
+          HOME: SANDBOX_AGENT_SERVICE_HOME,
+          PATH: SANDBOX_AGENT_SAFE_PATH,
+          SAFE_INPUT: "preserved",
+        },
+        user: "agent-proxied",
+      })
     );
   });
 

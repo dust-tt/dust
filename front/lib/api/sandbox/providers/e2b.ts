@@ -1,5 +1,9 @@
 import {
   getLocalAccountPrivilegeHardeningCommand,
+  getSandboxServicePathHardeningCommand,
+  SANDBOX_AGENT_PROXIED_SAFE_PATH,
+  SANDBOX_AGENT_SAFE_PATH,
+  SANDBOX_AGENT_SERVICE_HOME,
   SANDBOX_ROOT_SAFE_PATH,
 } from "@app/lib/api/sandbox/hardening";
 import {
@@ -13,6 +17,7 @@ import type {
   FileEntry,
   RootExecOptions,
   SandboxCreateConfig,
+  SandboxExecUser,
   SandboxHandle,
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
@@ -59,6 +64,46 @@ function getRootSafeSandboxCommand(command: RootCommand): string {
     "/bin/bash --noprofile --norc -c",
     shellEscape(renderRootCommand(command)),
   ].join(" ");
+}
+
+function getNonRootSafeSandboxCommand(
+  command: string,
+  user: SandboxExecUser
+): string {
+  const { home, path } =
+    user === "agent"
+      ? {
+          home: SANDBOX_AGENT_SERVICE_HOME,
+          path: SANDBOX_AGENT_SAFE_PATH,
+        }
+      : {
+          home: "/home/agent-proxied",
+          path: SANDBOX_AGENT_PROXIED_SAFE_PATH,
+        };
+
+  return [
+    `PATH=${shellEscape(path)}`,
+    `HOME=${shellEscape(home)}`,
+    "BASH_ENV=/dev/null",
+    "ENV=/dev/null",
+    "/bin/bash --noprofile --norc -c",
+    shellEscape(command),
+  ].join(" ");
+}
+
+function getNonRootOuterEnvironment(
+  envVars: Record<string, string> | undefined
+): Record<string, string> {
+  return {
+    ...envVars,
+    // The E2B SDK starts an outer login shell before evaluating `command`.
+    // Keep that shell away from attacker-writable homes and startup hooks; the
+    // inner clean shell above restores the workload user's intended HOME/PATH.
+    PATH: SANDBOX_AGENT_SAFE_PATH,
+    HOME: SANDBOX_AGENT_SERVICE_HOME,
+    BASH_ENV: "/dev/null",
+    ENV: "/dev/null",
+  };
 }
 
 function getLocalAccountHardeningError(result: ExecResult): Error {
@@ -307,8 +352,11 @@ export class E2BSandboxProvider implements SandboxProvider {
               sandbox.commands.run(
                 getRootSafeSandboxCommand(
                   rootCommand.unsafeShell(
-                    getLocalAccountPrivilegeHardeningCommand(),
-                    "create-time sandbox local account hardening"
+                    [
+                      getLocalAccountPrivilegeHardeningCommand(),
+                      getSandboxServicePathHardeningCommand(),
+                    ].join(" && "),
+                    "create-time sandbox local account and service path hardening"
                   )
                 ),
                 {
@@ -482,15 +530,17 @@ export class E2BSandboxProvider implements SandboxProvider {
       );
     }
 
+    const execUser = execOpts?.user ?? "agent";
+
     return this.runCommand(
       providerId,
-      command,
+      getNonRootSafeSandboxCommand(command, execUser),
       {
         cwd: execOpts?.workingDirectory,
-        envs: execOpts?.envVars,
+        envs: getNonRootOuterEnvironment(execOpts?.envVars),
         timeoutMs: execOpts?.timeoutMs,
         stdin: execOpts?.stdin,
-        user: execOpts?.user,
+        user: execUser,
       },
       tracingOpts
     );
