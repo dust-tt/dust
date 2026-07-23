@@ -406,7 +406,7 @@ async function handleToolRunFirstStep(
 } | null> {
   const {
     agentConfiguration,
-    model,
+    modelInfo: model,
     conversation: originalConversation,
     userMessage,
     agentMessage: originalAgentMessage,

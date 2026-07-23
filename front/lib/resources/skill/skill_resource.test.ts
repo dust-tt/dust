@@ -1892,7 +1892,7 @@ describe("SkillResource", () => {
         {
           agentLoopData: {
             agentConfiguration,
-            model: {
+            modelInfo: {
               ...agentModel,
               ...modelConfig,
             },

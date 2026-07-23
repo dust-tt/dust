@@ -186,7 +186,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const prompt1 = constructPromptMultiActions(authenticator1, params);
     const prompt2 = constructPromptMultiActions(authenticator1, {
       ...params,
-      model: { ...model, modelId: alternativeModel.modelId },
+      modelInfo: { ...model, modelId: alternativeModel.modelId },
     });
 
     expect(prompt1).toEqual(prompt2);

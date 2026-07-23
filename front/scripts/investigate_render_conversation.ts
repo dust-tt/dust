@@ -185,7 +185,7 @@ makeScript(
       userMessage,
       agentConfiguration,
       fallbackPrompt,
-      model: {
+      modelInfo: {
         ...model,
         ...agentConfiguration.model,
       },

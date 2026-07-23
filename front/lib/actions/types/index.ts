@@ -169,7 +169,7 @@ export type AgentLoopRunContext = {
   contextType: "agent_loop";
   action: AgentMCPActionResource;
   agentConfiguration: AgentConfigurationWithoutModelType;
-  model: AgentModelConfigurationType & ModelConfigurationType;
+  modelInfo: AgentModelConfigurationType & ModelConfigurationType;
   agentMessage: AgentMessageType;
   conversation: ConversationType;
   stepContext: StepContext;

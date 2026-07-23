@@ -283,22 +283,18 @@ export class AgentMessageContentParser {
 
 const DEEPSEEK_MODELS: ModelIdType[] = [DEEPSEEK_CHAT_MODEL_ID];
 
-export function getDelimitersConfiguration({
-  model,
-}: {
-  model: AgentModelConfigurationType;
-}): DelimitersConfiguration {
-  const supportedModel = getSupportedModelConfig(model);
+export function getDelimitersConfiguration(agentModelConfig: AgentModelConfigurationType): DelimitersConfiguration {
+  const supportedModel = getSupportedModelConfig(agentModelConfig);
   assert(
     supportedModel,
     "Model configuration not found in getDelimitersConfiguration"
   );
 
-  if (DEEPSEEK_MODELS.includes(model.modelId)) {
+  if (DEEPSEEK_MODELS.includes(agentModelConfig.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
   }
   const reasoningEffort =
-    model.reasoningEffort ?? supportedModel.defaultReasoningEffort;
+    agentModelConfig.reasoningEffort ?? supportedModel.defaultReasoningEffort;
   if (reasoningEffort !== "light") {
     return {
       delimiters: [],

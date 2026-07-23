@@ -724,7 +724,7 @@ describe("tryCallMCPTool", () => {
     const agentLoopRunContext: AgentLoopRunContext = {
       contextType: "agent_loop",
       agentConfiguration,
-      model: {
+      modelInfo: {
         ...agentModel,
         ...modelConfig,
       },

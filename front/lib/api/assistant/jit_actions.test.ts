@@ -401,7 +401,7 @@ describe("getJITServers", () => {
 
       const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
         agentConfiguration,
-        model: {
+        modelInfo: {
           ...agentModel,
           ...modelConfig,
         },

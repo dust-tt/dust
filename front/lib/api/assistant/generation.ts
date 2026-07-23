@@ -52,13 +52,13 @@ import moment from "moment-timezone";
 function constructContextSection({
   userMessage,
   agentConfiguration,
-  model,
+  modelInfo,
   owner,
   disableFormattingPrompt,
 }: {
   userMessage: UserMessageType;
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
-  model: AgentLoopExecutionData["model"];
+  modelInfo: AgentLoopExecutionData["modelInfo"];
   owner: WorkspaceType | null;
   disableFormattingPrompt: boolean;
 }): string {
@@ -71,8 +71,8 @@ function constructContextSection({
     context += `workspace: ${owner.name}\n`;
   }
 
-  if (model.formattingMetaPrompt && !disableFormattingPrompt) {
-    context += `# RESPONSE FORMAT\n${model.formattingMetaPrompt}\n`;
+  if (modelInfo.formattingMetaPrompt && !disableFormattingPrompt) {
+    context += `# RESPONSE FORMAT\n${modelInfo.formattingMetaPrompt}\n`;
   }
 
   return context;
@@ -140,13 +140,13 @@ function constructPlatformSpecificContextSection({
 
 function constructToolsSection({
   hasAvailableActions,
-  model,
+  modelInfo,
   agentConfiguration,
   conversation,
   serverToolsAndInstructions,
 }: {
   hasAvailableActions: boolean;
-  model: AgentLoopExecutionData["model"];
+  modelInfo: AgentLoopExecutionData["modelInfo"];
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
   conversation?: ConversationWithoutContentType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
@@ -154,13 +154,13 @@ function constructToolsSection({
   let toolsSection = "# TOOLS\n";
 
   toolsSection += "\n## TOOL USE DIRECTIVES\n";
-  if (hasAvailableActions && model.toolUseMetaPrompt) {
-    toolsSection += `${model.toolUseMetaPrompt}\\n`;
+  if (hasAvailableActions && modelInfo.toolUseMetaPrompt) {
+    toolsSection += `${modelInfo.toolUseMetaPrompt}\\n`;
   }
   if (
     hasAvailableActions &&
-    model.reasoningEffort === "light" &&
-    !model.useNativeLightReasoning
+    modelInfo.reasoningEffort === "light" &&
+    !modelInfo.useNativeLightReasoning
   ) {
     toolsSection += `${CHAIN_OF_THOUGHT_META_PROMPT}\n`;
   }
@@ -381,7 +381,7 @@ export function constructPromptMultiActions(
     userMessage,
     agentConfiguration,
     fallbackPrompt,
-    model,
+    modelInfo,
     hasAvailableActions,
     conversation,
     serverToolsAndInstructions,
@@ -398,7 +398,7 @@ export function constructPromptMultiActions(
     userMessage: AgentLoopExecutionData["userMessage"];
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     fallbackPrompt?: string;
-    model: AgentLoopExecutionData["model"];
+    modelInfo: AgentLoopExecutionData["modelInfo"];
     hasAvailableActions: boolean;
     conversation?: ConversationWithoutContentType;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
@@ -432,7 +432,7 @@ export function constructPromptMultiActions(
 
   const contextSection = constructContextSection({
     agentConfiguration,
-    model,
+    modelInfo,
     owner,
     userMessage,
     disableFormattingPrompt,
@@ -446,7 +446,7 @@ export function constructPromptMultiActions(
 
   const toolsSection = constructToolsSection({
     hasAvailableActions,
-    model,
+    modelInfo,
     agentConfiguration,
     conversation,
     serverToolsAndInstructions,

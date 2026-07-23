@@ -232,7 +232,7 @@ export async function createSandboxTools(
     bash: runSandboxBashTool,
     describe_toolset: async ({ format }, { auth, runContext }) => {
       const providerId = isAgentLoopRunContext(runContext)
-        ? runContext.model.providerId
+        ? runContext.modelInfo.providerId
         : null;
       if (!providerId) {
         return new Err(new MCPError("Missing model provider ID"));
@@ -308,7 +308,7 @@ export async function runSandboxBashTool(
   const {
     conversation,
     agentConfiguration,
-    model,
+    modelInfo,
     agentMessage,
     action: sandboxAction,
     stepContext,
@@ -368,7 +368,7 @@ export async function runSandboxBashTool(
 
   const startMs = performance.now();
 
-  const providerId = model.providerId;
+  const providerId = modelInfo.providerId;
   const commandTimeoutMs = timeoutMs ?? SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS;
   const timeoutSec = Math.ceil(commandTimeoutMs / 1000);
   // Give the provider a slightly longer timeout than the in-container one, so

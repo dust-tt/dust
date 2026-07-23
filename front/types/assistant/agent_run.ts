@@ -142,7 +142,7 @@ export type AgentMessageRef = {
 export type AgentLoopExecutionData = {
   // No models on the agent configuration as it might be different at run time (eg: auto mode, override by inputbar picker)
   agentConfiguration: AgentConfigurationWithoutModelType;
-  model: AgentModelConfigurationType & ModelConfigurationType;
+  modelInfo: AgentModelConfigurationType & ModelConfigurationType;
   agentMessage: AgentMessageType;
   conversation: ConversationType;
   userMessage: UserMessageType;
@@ -376,7 +376,7 @@ export async function getAgentLoopDataWithAuth(
 
   return new Ok({
     agentConfiguration: agentConfigurationWithoutModel,
-    model: {
+    modelInfo: {
       // This contains general configuration for the model, like the provider and model ID.
       ...endpoint.modelConfig,
       // This contains specific configuration for reasoning effort, temperature, etc.

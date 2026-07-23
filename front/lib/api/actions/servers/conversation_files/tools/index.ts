@@ -139,7 +139,7 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
 
     const conversation = runContext.conversation;
-    const model = runContext.model;
+    const model = runContext.modelInfo;
 
     const fileRes = await getFileFromConversation(
       auth,

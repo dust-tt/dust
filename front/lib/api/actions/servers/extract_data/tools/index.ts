@@ -92,7 +92,7 @@ export function createExtractDataTools(
       isAgentLoopRunContext(toolContext?.runContext),
       "AgentLoopRunContext expected"
     );
-    const { agentConfiguration, model, conversation } = toolContext.runContext;
+    const { agentConfiguration, modelInfo, conversation } = toolContext.runContext;
 
     // Defensive handling: parse jsonSchema if it arrives as a JSON string.
     // This can happen when the LLM generates a stringified JSON schema instead of an object,
@@ -158,7 +158,7 @@ export function createExtractDataTools(
     const prompt = await getPromptForProcessDustApp({
       auth,
       agentConfiguration,
-      model,
+      modelInfo,
       conversation,
     });
 
@@ -179,7 +179,7 @@ export function createExtractDataTools(
     const res = await processDataSources({
       auth,
       coreDataSourceSearchCriterias: coreDataSourceSearchCriteriasResult.value,
-      model,
+      modelInfo,
       prompt,
       objective,
       jsonSchema: jsonSchemaForExtraction,

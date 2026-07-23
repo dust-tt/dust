@@ -138,7 +138,7 @@ async function setupTest({
     runContext: {
       contextType: "agent_loop",
       agentConfiguration,
-      model: {
+      modelInfo: {
         ...agentModel,
         ...modelConfig,
       },

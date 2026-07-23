@@ -292,15 +292,15 @@ export async function prepareParamsWithHistory(
   if (
     schema?.some((s) => s.key === DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY)
   ) {
-    const model = agentLoopRunContext.model;
+    const modelInfo = agentLoopRunContext.modelInfo;
 
-    if (agentLoopRunContext.model) {
-      const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
+    if (modelInfo) {
+      const allowedTokenCount = modelInfo.contextSize - MIN_GENERATION_TOKENS;
 
       const convoRes = await renderConversationForModel(auth, {
         conversation: agentLoopRunContext.conversation,
         enabledSkills: [],
-        model,
+        model: modelInfo,
         prompt: "",
         tools: "",
         allowedTokenCount,

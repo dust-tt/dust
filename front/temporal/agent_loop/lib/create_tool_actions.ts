@@ -53,7 +53,7 @@ export async function createToolActionsActivity(
     runIds: string[];
   }
 ): Promise<CreateToolActionsResult> {
-  const { agentConfiguration, model, agentMessage, conversation } =
+  const { agentConfiguration, modelInfo: model, agentMessage, conversation } =
     runAgentData;
 
   const actionBlobs: ActionBlob[] = [];
