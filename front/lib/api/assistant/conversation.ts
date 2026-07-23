@@ -4,6 +4,7 @@ import {
   getAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
+import { fetchPrecedingContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { cleanupDeniedBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
@@ -1103,11 +1104,14 @@ export async function postUserMessage(
       conversation,
       {
         ...userMessage,
-        contentFragments:
-          await conversationResource.fetchPrecedingContentFragments(auth, {
+        contentFragments: await fetchPrecedingContentFragments(
+          auth,
+          conversationResource,
+          {
             targetRank: userMessage.rank,
             branchId: conversation.branchId,
-          }),
+          }
+        ),
       },
       agentMessages
     ),
@@ -1440,11 +1444,14 @@ export async function editUserMessage(
     conversation,
     {
       ...userMessage,
-      contentFragments:
-        await conversationResource.fetchPrecedingContentFragments(auth, {
+      contentFragments: await fetchPrecedingContentFragments(
+        auth,
+        conversationResource,
+        {
           targetRank: userMessage.rank,
           branchId: conversation.branchId,
-        }),
+        }
+      ),
     },
     agentMessages
   );
@@ -2244,12 +2251,15 @@ export async function softDeleteUserMessageAndReplies(
   const userMessage = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    const relatedContentFragments =
-      await conversationResource.fetchPrecedingContentFragments(auth, {
+    const relatedContentFragments = await fetchPrecedingContentFragments(
+      auth,
+      conversationResource,
+      {
         targetRank: message.rank,
         branchId,
         transaction: t,
-      });
+      }
+    );
 
     const userMessage = await createUserMessage(auth, {
       conversation,

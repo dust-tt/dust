@@ -10,6 +10,7 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -59,10 +60,7 @@ import {
   ACTIVE_WAKE_UP_STATUSES,
   type WakeUpScheduleConfig,
 } from "@app/types/assistant/wakeups";
-import type {
-  ContentFragmentType,
-  ContentFragmentVersion,
-} from "@app/types/content_fragment";
+import type { ContentFragmentVersion } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -2690,7 +2688,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       conversation,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
     }
   ) {
     if (!auth.user()) {
@@ -3566,79 +3564,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       rank: message.rank,
       compactionStatus: message.compactionMessage?.status ?? null,
     };
-  }
-
-  /**
-   * Fetch the contiguous content fragments that immediately precede `targetRank`
-   * in the conversation view. Mirrors `getRelatedContentFragments` without loading
-   * the full conversation content.
-   */
-  async fetchPrecedingContentFragments(
-    auth: Authenticator,
-    {
-      targetRank,
-      branchId,
-      transaction,
-    }: {
-      targetRank: number;
-      branchId?: string | null;
-      transaction?: Transaction;
-    }
-  ): Promise<ContentFragmentType[]> {
-    const scopeWhere = await this.getMessageScopeWhere(auth, {
-      branchId,
-      transaction,
-    });
-
-    const messages = await MessageModel.findAll({
-      where: {
-        ...scopeWhere,
-        rank: { [Op.lt]: targetRank },
-        visibility: { [Op.ne]: "deleted" },
-      },
-      include: [
-        {
-          model: ContentFragmentModel,
-          as: "contentFragment",
-          required: true,
-        },
-      ],
-      order: [
-        ["rank", "DESC"],
-        ["version", "DESC"],
-      ],
-      transaction,
-    });
-
-    const latestPerRank = new Map<number, MessageModel>();
-    for (const m of messages) {
-      if (!latestPerRank.has(m.rank)) {
-        latestPerRank.set(m.rank, m);
-      }
-    }
-
-    const { ContentFragmentResource } = await import(
-      "@app/lib/resources/content_fragment_resource"
-    );
-    const fragments = await ContentFragmentResource.batchRenderFromMessages(
-      auth,
-      {
-        conversationId: this.sId,
-        messages: [...latestPerRank.values()],
-      }
-    );
-
-    const related: ContentFragmentType[] = [];
-    let lastRank = targetRank;
-    for (const cf of fragments) {
-      if (cf.rank === lastRank - 1) {
-        related.push(cf);
-        lastRank = cf.rank;
-      } else {
-        break;
-      }
-    }
-    return related;
   }
 
   async getMessageById(
