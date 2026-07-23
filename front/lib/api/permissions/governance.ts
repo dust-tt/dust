@@ -3,7 +3,6 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { CapabilityState } from "@app/lib/resources/group_permission_resource";
