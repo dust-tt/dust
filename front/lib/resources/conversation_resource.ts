@@ -83,6 +83,7 @@ export type FetchConversationOptions = {
   dangerouslySkipPermissionFiltering?: boolean;
   includeForkingData?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
+  transaction?: Transaction; // Read within the given transaction, seeing its uncommitted writes
 };
 
 type SpaceConversationsFilter = "all" | "group" | "with_me";
@@ -889,6 +890,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const workspace = auth.getNonNullableWorkspace();
     const { where } = this.getOptions(fetchConversationOptions);
 
+    const { transaction } = fetchConversationOptions ?? {};
+
     const conversations = await this.model.findAll({
       where: {
         ...where,
@@ -900,6 +903,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         : {}),
       limit: options.limit,
       order: options.order,
+      transaction,
     });
 
     const uniqueSpaceIds = uniq([
@@ -913,6 +917,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         ? []
         : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds, {
             includeDeleted: fetchConversationOptions?.includeDeleted,
+            transaction,
           });
 
     const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
@@ -993,6 +998,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             },
           },
           attributes: ["conversationId"],
+          transaction,
         })
       : [];
 
@@ -3562,13 +3568,44 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     requestedSpaceIds: number[],
     transaction?: Transaction
   ) {
-    const conversation = await ConversationResource.fetchById(auth, sId);
+    const conversation = await ConversationResource.fetchById(auth, sId, {
+      transaction,
+    });
     if (conversation === null) {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
     await conversation.updateRequirements(auth, requestedSpaceIds, transaction);
     return new Ok(undefined);
+  }
+
+  /**
+   * Atomically merges `spaceModelIds` into the conversation requirements and returns the resulting
+   * requirement set (as space sIds).
+   *
+   * `requestedSpaceIds` is a conjunctive ACL: a viewer must have read access to every listed Space.
+   * Computing the union from a caller-held snapshot lets two overlapping requests overwrite each
+   * other, which would leave a Space materialized in the agent runtime scope with no matching ACL
+   * requirement. The merge therefore has to happen against locked, current state.
+   */
+  static async appendRequestedSpaceIds(
+    auth: Authenticator,
+    sId: string,
+    spaceModelIds: ModelId[],
+    transaction: Transaction
+  ): Promise<Result<string[], ConversationError>> {
+    const conversation = await ConversationResource.fetchById(auth, sId, {
+      transaction,
+    });
+    if (conversation === null) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+
+    return conversation.appendRequestedSpaceIds(
+      auth,
+      spaceModelIds,
+      transaction
+    );
   }
 
   static async updateTitle(
@@ -3777,6 +3814,38 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
       transaction
     );
+  }
+
+  /**
+   * See {@link ConversationResource.appendRequestedSpaceIds}. The conversation row is re-read with
+   * `SELECT ... FOR UPDATE` inside the caller transaction, so concurrent appends serialize on the
+   * row instead of each writing the union of its own stale snapshot.
+   */
+  async appendRequestedSpaceIds(
+    auth: Authenticator,
+    spaceModelIds: ModelId[],
+    transaction: Transaction
+  ): Promise<Result<string[], ConversationError>> {
+    const lockedConversation = await ConversationResource.model.findOne({
+      where: {
+        id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
+    if (lockedConversation === null) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+
+    await this.updateRequirements(
+      auth,
+      [...lockedConversation.requestedSpaceIds, ...spaceModelIds],
+      transaction
+    );
+
+    // `update` refreshes the instance from the `RETURNING` row, so this is the persisted value.
+    return new Ok(this.getRequestedSpaceIdsFromModel());
   }
 
   async updateSpaceId(

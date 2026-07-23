@@ -188,6 +188,14 @@ describe("selected conversation Spaces", () => {
     return space;
   }
 
+  async function persistedRequestedSpaceIds(conversationId: string) {
+    const { requestedSpaceIds } = await refetchConversation(
+      auth,
+      conversationId
+    );
+    return [...requestedSpaceIds].sort();
+  }
+
   it("rejects selected Spaces when the feature flag is disabled", async () => {
     const restrictedSpace = await memberRestrictedSpace();
 
@@ -323,6 +331,112 @@ describe("selected conversation Spaces", () => {
           space_id: selectedSpace.sId,
         },
       })
+    );
+  });
+
+  it("merges Spaces added by successive requests into the conversation ACL", async () => {
+    await enableFeature();
+    const firstSpace = await memberRestrictedSpace();
+    const secondSpace = await memberRestrictedSpace();
+    const conv = await conversation();
+
+    const firstResult = unwrapResult(
+      await addSelectedConversationSpaces(auth, {
+        conversation: conv,
+        enforceCreatorOnly: false,
+        origin: "input_bar",
+        spaceIds: [firstSpace.sId],
+      })
+    );
+    expect(firstResult.effectiveAcl.spaceIds).toContain(firstSpace.sId);
+
+    const secondResult = unwrapResult(
+      await addSelectedConversationSpaces(auth, {
+        conversation: await refetchConversation(auth, conv.sId),
+        enforceCreatorOnly: false,
+        origin: "input_bar",
+        spaceIds: [secondSpace.sId],
+      })
+    );
+
+    expect(secondResult.effectiveAcl.spaceIds).toEqual(
+      expect.arrayContaining([firstSpace.sId, secondSpace.sId])
+    );
+    expect(secondResult.selectedSpaces.map((space) => space.sId)).toEqual(
+      expect.arrayContaining([firstSpace.sId, secondSpace.sId])
+    );
+    await expect(persistedRequestedSpaceIds(conv.sId)).resolves.toEqual(
+      [firstSpace.sId, secondSpace.sId].sort()
+    );
+  });
+
+  it("keeps Spaces added meanwhile when the caller holds a stale conversation", async () => {
+    await enableFeature();
+    const firstSpace = await memberRestrictedSpace();
+    const secondSpace = await memberRestrictedSpace();
+    const conv = await conversation();
+
+    // Snapshot taken before the first add, as an overlapping request would hold.
+    const staleConversation = {
+      ...conv,
+      requestedSpaceIds: [...conv.requestedSpaceIds],
+    };
+
+    unwrapResult(
+      await addSelectedConversationSpaces(auth, {
+        conversation: conv,
+        enforceCreatorOnly: false,
+        origin: "input_bar",
+        spaceIds: [firstSpace.sId],
+      })
+    );
+
+    const staleResult = unwrapResult(
+      await addSelectedConversationSpaces(auth, {
+        conversation: staleConversation,
+        enforceCreatorOnly: false,
+        origin: "input_bar",
+        spaceIds: [secondSpace.sId],
+      })
+    );
+
+    // The Space added by the first request must stay in the ACL: both selections are active, so an
+    // ACL that only requires one of them would expose the other's data to users without access.
+    await expect(persistedRequestedSpaceIds(conv.sId)).resolves.toEqual(
+      [firstSpace.sId, secondSpace.sId].sort()
+    );
+    expect(
+      (
+        await ConversationSelectedSpaceResource.listActiveSpacesByConversation(
+          auth,
+          { conversation: conv }
+        )
+      )
+        .map((space) => space.sId)
+        .sort()
+    ).toEqual([firstSpace.sId, secondSpace.sId].sort());
+    expect([...staleResult.effectiveAcl.spaceIds].sort()).toEqual(
+      [firstSpace.sId, secondSpace.sId].sort()
+    );
+  });
+
+  it("returns the persisted ACL as the effective ACL", async () => {
+    await enableFeature();
+    const selectedSpace = await memberRestrictedSpace();
+    const conv = await conversation();
+
+    const result = unwrapResult(
+      await addSelectedConversationSpaces(auth, {
+        conversation: conv,
+        enforceCreatorOnly: false,
+        origin: "input_bar",
+        spaceIds: [selectedSpace.sId],
+      })
+    );
+
+    expect(result.effectiveAcl.viewerMustHaveAll).toBe(true);
+    await expect(persistedRequestedSpaceIds(conv.sId)).resolves.toEqual(
+      [...result.effectiveAcl.spaceIds].sort()
     );
   });
 
