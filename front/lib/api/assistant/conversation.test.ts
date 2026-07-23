@@ -1178,6 +1178,7 @@ describe("softDeleteAgentMessage", () => {
       .filter((m) => m.type === "agent_message") as AgentMessageType[];
     expect(updatedAgentMessages.length).toBe(2);
     expect(updatedAgentMessages[0].rank).toBe(1);
+    expect(updatedAgentMessages[0].status).toBe("cancelled");
     expect(updatedAgentMessages[1].version).toBe(1);
     expect(updatedAgentMessages[1].visibility).toBe("deleted");
   });
@@ -1422,6 +1423,11 @@ describe("softDeleteUserMessageAndReplies", () => {
       throw new Error("No agent message found in conversation");
     }
 
+    await ConversationResource.setIsRunningAgentLoop(auth, {
+      conversation,
+      isRunningAgentLoop: true,
+    });
+
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: firstUserMessage,
       conversation,
@@ -1432,6 +1438,20 @@ describe("softDeleteUserMessageAndReplies", () => {
       messageIds: [firstAgentMessage.sId],
       conversationId: conversation.sId,
     });
+
+    const originalAgentMessage = await AgentMessageModel.findOne({
+      where: {
+        id: firstAgentMessage.agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    expect(originalAgentMessage?.status).toBe("cancelled");
+
+    const updatedConversation = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(updatedConversation?.isRunningAgentLoop).toBe(false);
   });
 
   it("does not signal gracefullyStopAgentLoop when the cascaded agent reply already finished", async () => {
