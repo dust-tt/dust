@@ -266,26 +266,22 @@ export async function addSelectedConversationSpaces(
     }
 
     const spaces = selectableSpacesResult.value;
-    const requestedSpaceModelIds = removeNulls(
-      conversation.requestedSpaceIds.map(getResourceIdFromSId)
-    );
-    const selectedSpaceModelIds = spaces.map((space) => space.id);
-    const effectiveAclSpaceModelIds = uniq([
-      ...requestedSpaceModelIds,
-      ...selectedSpaceModelIds,
-    ]);
 
-    const updateResult = await ConversationResource.updateRequirements(
+    // The ACL must be merged against locked, current state rather than against `conversation`,
+    // which is the caller snapshot: the input bar fires one request per Space toggle, and two
+    // overlapping requests each writing the union of their own snapshot would drop one of the
+    // Spaces from the ACL while both selections stay active.
+    const appendResult = await ConversationResource.appendRequestedSpaceIds(
       auth,
       conversation.sId,
-      effectiveAclSpaceModelIds,
+      spaces.map((space) => space.id),
       t
     );
-    if (updateResult.isErr()) {
+    if (appendResult.isErr()) {
       return new Err(
         new SelectedConversationSpacesError(
           "space_not_selectable",
-          updateResult.error.message
+          appendResult.error.message
         )
       );
     }
@@ -308,10 +304,6 @@ export async function addSelectedConversationSpaces(
           transaction: t,
         }
       );
-    const effectiveAclSpaceIds = uniq([
-      ...conversation.requestedSpaceIds,
-      ...spaces.map((space) => space.sId),
-    ]);
 
     return new Ok({
       selectedSpaces: allSelectedSpaces.map((space) => ({
@@ -319,7 +311,9 @@ export async function addSelectedConversationSpaces(
         selected: true,
       })),
       effectiveAcl: {
-        spaceIds: effectiveAclSpaceIds,
+        // The persisted ACL, not an optimistic local union: callers feed it back into their own
+        // conversation object.
+        spaceIds: appendResult.value,
         viewerMustHaveAll: true as const,
       },
     });
