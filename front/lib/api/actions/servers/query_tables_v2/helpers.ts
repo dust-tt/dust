@@ -7,19 +7,29 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   SqlQueryOutputType,
   ThinkingOutputType,
+  ToolGeneratedFilePathType,
   ToolGeneratedFileType,
   ToolMarkerResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { EXECUTE_TABLES_QUERY_MARKER } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import type {
+  AgentLoopRunContext,
+  SandboxFunctionRunContext,
+  ToolRunContext,
+} from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { CSVRecord } from "@app/lib/api/csv";
+import { toCsv } from "@app/lib/api/csv";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { podScopedPath } from "@app/lib/api/file_system/types";
+import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { ConnectorProvider } from "@app/types/data_source";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
@@ -30,6 +40,7 @@ type TablesQueryOutputResources =
   | ThinkingOutputType
   | SqlQueryOutputType
   | ToolGeneratedFileType
+  | ToolGeneratedFilePathType
   | ToolMarkerResourceType;
 
 type TablesQueryContentItem =
@@ -187,6 +198,64 @@ async function generateAgentLoopQueryResultFiles(
   return content;
 }
 
+async function writeSandboxFunctionQueryResultFile(
+  auth: Authenticator,
+  {
+    queryTitle,
+    results,
+    runContext,
+  }: {
+    queryTitle: string;
+    results: CSVRecord[];
+    runContext: SandboxFunctionRunContext;
+  }
+): Promise<Result<ToolGeneratedFilePathType, MCPError>> {
+  const fileSystemResult = await DustFileSystem.forPod(
+    auth,
+    runContext.invocation.sandboxFunction.space
+  );
+  if (fileSystemResult.isErr()) {
+    return new Err(
+      new MCPError(
+        `Error accessing query result files: ${fileSystemResult.error.message}`,
+        { cause: fileSystemResult.error }
+      )
+    );
+  }
+
+  const outputFileName = makeFileName({
+    name: queryTitle,
+    ext: ".csv",
+  });
+  const scopedPath = podScopedPath(
+    runContext.invocation.sandboxFunction.space.sId,
+    `${TOOL_OUTPUTS_FOLDER_NAME}/${runContext.invocation.sandboxFunction.slug}/${outputFileName}`
+  );
+  const csvContent = await toCsv(results);
+  const writeResult = await fileSystemResult.value.write(
+    scopedPath,
+    csvContent,
+    "text/csv"
+  );
+  if (writeResult.isErr()) {
+    return new Err(
+      new MCPError(
+        `Error saving database query results: ${writeResult.error.message}`,
+        { cause: writeResult.error }
+      )
+    );
+  }
+
+  return new Ok({
+    text: "Your query results were generated successfully. They are available as a structured CSV file.",
+    uri: scopedPath,
+    path: scopedPath,
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
+    title: outputFileName,
+    contentType: "text/csv",
+  });
+}
+
 export async function executeQuery(
   auth: Authenticator,
   {
@@ -202,7 +271,7 @@ export async function executeQuery(
       table_id: string;
     }>;
     query: string;
-    runContext: AgentLoopRunContext;
+    runContext: ToolRunContext;
     fileName: string;
     connectorProvider: ConnectorProvider | null;
   }
@@ -245,13 +314,36 @@ export async function executeQuery(
     const humanReadableDate = new Date().toISOString().split("T")[0];
     const queryTitle = `${fileName} (${humanReadableDate})`;
 
-    const agentLoopContent = await generateAgentLoopQueryResultFiles(auth, {
-      queryTitle,
-      results,
-      runContext,
-      connectorProvider,
-    });
-    content.push(...agentLoopContent);
+    switch (runContext.contextType) {
+      case "agent_loop": {
+        const agentLoopContent = await generateAgentLoopQueryResultFiles(auth, {
+          queryTitle,
+          results,
+          runContext,
+          connectorProvider,
+        });
+        content.push(...agentLoopContent);
+        break;
+      }
+      case "sandbox_function": {
+        const fileResult = await writeSandboxFunctionQueryResultFile(auth, {
+          queryTitle,
+          results,
+          runContext,
+        });
+        if (fileResult.isErr()) {
+          return fileResult;
+        }
+
+        content.push({
+          type: "resource",
+          resource: fileResult.value,
+        });
+        break;
+      }
+      default:
+        return assertNever(runContext);
+    }
   } else {
     content.push({
       type: "text",

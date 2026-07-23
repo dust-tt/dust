@@ -4,7 +4,6 @@ import { GET_DATABASE_SCHEMA_MARKER } from "@app/lib/actions/mcp_internal_action
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   executeQuery,
   verifyDataSourceViewReadAccess,
@@ -239,13 +238,6 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
     { tables, query, fileName },
     { auth, runContext }
   ) => {
-    // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
-    if (!isAgentLoopRunContext(runContext)) {
-      return new Err(new MCPError("AgentLoopRunContext expected"));
-    }
-
-    const agentLoopRunContext = runContext;
-
     const resolvedRes = await resolveTableConfigurations(auth, tables);
     if (resolvedRes.isErr()) {
       return resolvedRes;
@@ -282,7 +274,7 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
         };
       }),
       query,
-      runContext: agentLoopRunContext,
+      runContext,
       fileName,
       connectorProvider,
     });
