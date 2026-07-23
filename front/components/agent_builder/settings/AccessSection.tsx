@@ -7,7 +7,7 @@ import { ManageUsersPanel } from "@app/components/assistant/conversation/space/M
 import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
 import { getPublishingRestrictionForOwner } from "@app/lib/api/assistant/publishing_restrictions";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { isBuilder } from "@app/types/user";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   Button,
   DropdownMenu,
@@ -59,6 +59,8 @@ export function AccessSection({
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { owner } = useAgentBuilderContext();
   const { featureFlags } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions(owner);
+  const canPublishAgent = hasPermission("publish", "agent");
 
   const {
     disabled: publishingToggleDisabled,
@@ -138,7 +140,7 @@ export function AccessSection({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {scope.value === "visible" && slackDataSource && isBuilder(owner) && (
+        {scope.value === "visible" && slackDataSource && canPublishAgent && (
           <>
             <Button
               variant="outline"

@@ -5,7 +5,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -29,12 +28,21 @@ const app = workspaceApp();
 app.patch(
   "/",
   validate("param", ParamsSchema),
-  ensureIsBuilder(),
   validate("json", PatchLinkedSlackChannelsRequestBodySchema),
   async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
     const body = ctx.req.valid("json");
+
+    if (!(await auth.hasWorkspacePermission("publish", "agent"))) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only users who can publish agents can perform this action.",
+        },
+      });
+    }
 
     if (body.auto_respond_without_mention) {
       const featureFlags = await getFeatureFlags(auth);
