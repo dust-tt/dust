@@ -153,8 +153,8 @@ function itemToEvents(
     case "tool_search_output": {
       logOpenAIToolSearchItem(item, {
         tags: [
-          `client_id:${metadata.clientId}`,
-          `inference_provider:${metadata.inferenceProvider}`,
+          `provider_id:${metadata.clientId}`,
+          `api:${metadata.inferenceProvider}`,
           `model_id:${metadata.modelId}`,
         ],
         logFields: metadata,
