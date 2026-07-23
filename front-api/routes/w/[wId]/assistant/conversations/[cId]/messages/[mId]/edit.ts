@@ -1,8 +1,7 @@
 import { editUserMessage } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { isUserMessageType } from "@app/types/assistant/conversation";
-import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -126,24 +125,37 @@ app.post(
       });
     }
 
-    const branchId = messageRes.value.getBranchId() ?? null;
-
-    const conversationRes = await getConversation(
-      auth,
-      conversationId,
-      false,
-      branchId
-    );
-
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const messageModel = messageRes.value;
+    if (!messageModel.userMessage) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "The message you're trying to edit does not exist or is not an user message.",
+        },
+      });
     }
 
-    const conversation = conversationRes.value;
+    const branchId = messageModel.getBranchId() ?? null;
 
-    const message = conversation.content
-      .flat()
-      .find((m) => m.sId === messageId);
+    const renderRes = await batchRenderMessages(
+      auth,
+      conversationResource,
+      [messageModel],
+      "full"
+    );
+    if (renderRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to render message.",
+        },
+      });
+    }
+
+    const message = renderRes.value[0];
     if (!message || !isUserMessageType(message)) {
       return apiError(ctx, {
         status_code: 400,
@@ -158,7 +170,8 @@ app.post(
     const { content, mentions } = ctx.req.valid("json");
 
     const editedMessageRes = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
+      branchId,
       message,
       content,
       mentions,

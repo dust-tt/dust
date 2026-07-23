@@ -3393,7 +3393,6 @@ describe("compactConversation", () => {
 describe("editUserMessage", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
-  let conversation: ConversationType;
   let conversationResource: ConversationResource;
   let agentConfig1: LightAgentConfigurationType;
   let agentConfig2: LightAgentConfigurationType;
@@ -3420,31 +3419,19 @@ describe("editUserMessage", () => {
       visibility: "unlisted",
     });
 
-    const fetchedConversationResult = await getConversation(
-      auth,
-      conversationWithoutContent.sId
-    );
-    if (fetchedConversationResult.isErr()) {
-      throw new Error("Failed to fetch conversation");
-    }
-    conversation = fetchedConversationResult.value;
     conversationResource = await fetchConversationResource(
       auth,
       conversationWithoutContent.sId
     );
 
-    // Create an original user message with agent mentions
+    // Create an original user message without mentions or agent replies.
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
 
     const postResult = await postUserMessage(auth, {
       conversationResource,
-      content: `Original message with @${agentConfig1.name}`,
-      mentions: [
-        {
-          configurationId: agentConfig1.sId,
-        } satisfies AgentMention,
-      ],
+      content: "Original message without mentions",
+      mentions: [],
       context: {
         username: userJson.username,
         timezone: "UTC",
@@ -3454,6 +3441,7 @@ describe("editUserMessage", () => {
         origin: "web",
       },
       skipToolsValidation: false,
+      skipDustAutoMention: true,
     });
 
     if (postResult.isErr()) {
@@ -3475,7 +3463,7 @@ describe("editUserMessage", () => {
     ];
 
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
       content: `Edited message with @${agentConfig1.name} and @${agentConfig2.name}`,
       mentions,
@@ -3536,7 +3524,7 @@ describe("editUserMessage", () => {
     ];
 
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
       content: `Edited message with @${mentionedUser.username}`,
       mentions,
@@ -3594,7 +3582,7 @@ describe("editUserMessage", () => {
     ];
 
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
       content: `Edited message with @${mentionedUser.username} and @${agentConfig2.name}`,
       mentions,
@@ -3641,7 +3629,7 @@ describe("editUserMessage", () => {
 
   it("should preserve empty mentions array when editing removes all mentions", async () => {
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
       content: "Edited message without mentions",
       mentions: [],
@@ -3688,7 +3676,7 @@ describe("editUserMessage", () => {
     ];
 
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
       content: `Edited message with only user mention @${mentionedUser.username}`,
       mentions,

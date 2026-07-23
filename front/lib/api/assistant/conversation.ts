@@ -1159,12 +1159,14 @@ export async function editUserMessage(
   auth: Authenticator,
   {
     conversationResource,
+    branchId: initialBranchId = null,
     message,
     content,
     mentions,
     skipToolsValidation,
   }: {
     conversationResource: ConversationResource;
+    branchId?: string | null;
     message: UserMessageType;
     content: string;
     mentions: MentionType[];
@@ -1199,7 +1201,10 @@ export async function editUserMessage(
     });
   }
 
-  const conversation = conversationResource.toJSON();
+  const conversation: ConversationWithoutContentType = {
+    ...conversationResource.toJSON(),
+    branchId: initialBranchId,
+  };
 
   const canInteractRes = await WakeUpResource.canUserInteract(
     auth,
@@ -1333,16 +1338,11 @@ export async function editUserMessage(
       const hasAgentMentions = mentions.some(isAgentMention);
 
       if (hasAgentMentions) {
-        // Check if there are any agent messages after the edited user message
-        // by checking conversation.content (which is indexed by rank)
-        const hasAgentMessagesAfter = conversation.content
-          .slice(messageRow.rank + 1)
-          .some((versions) => {
-            if (versions.length === 0) {
-              return false;
-            }
-            const latestVersion = versions[versions.length - 1];
-            return isAgentMessageType(latestVersion);
+        const hasAgentMessagesAfter =
+          await conversationResource.hasAgentMessageAfterRank(auth, {
+            afterRank: messageRow.rank,
+            branchId: conversation.branchId,
+            transaction: t,
           });
 
         const agentMessages: AgentMessageType[] = [];
@@ -1442,7 +1442,11 @@ export async function editUserMessage(
     conversation,
     {
       ...userMessage,
-      contentFragments: getRelatedContentFragments(conversation, userMessage),
+      contentFragments:
+        await conversationResource.fetchPrecedingContentFragments(auth, {
+          targetRank: userMessage.rank,
+          branchId: conversation.branchId,
+        }),
     },
     agentMessages
   );

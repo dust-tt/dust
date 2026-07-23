@@ -34,7 +34,7 @@ export async function compactConversation(
     model,
     sourceConversation,
   }: {
-    conversation: ConversationResource | ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType;
     model: SupportedModel;
     sourceConversation?: CompactionSourceConversation;
   }

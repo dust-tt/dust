@@ -3219,6 +3219,58 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return result?.exists ?? false;
   }
 
+  /**
+   * Returns true when the conversation view has an agent message (latest version
+   * per rank) at a rank strictly greater than `afterRank`.
+   */
+  async hasAgentMessageAfterRank(
+    auth: Authenticator,
+    {
+      afterRank,
+      branchId,
+      transaction,
+    }: {
+      afterRank: number;
+      branchId?: string | null;
+      transaction?: Transaction;
+    }
+  ): Promise<boolean> {
+    const owner = auth.getNonNullableWorkspace();
+    const { branchFilterSql, replacements: branchReplacements } =
+      await this.getBranchFilterSqlContext(auth, { branchId, transaction });
+
+    const query = `
+      SELECT EXISTS (
+        SELECT 1
+        FROM (
+          SELECT DISTINCT ON (m.rank) m."agentMessageId"
+          FROM messages m
+          WHERE m."workspaceId" = :workspaceId
+            AND m."conversationId" = :conversationId
+            AND m.visibility != 'deleted'
+            AND m.rank > :afterRank
+            AND ${branchFilterSql}
+          ORDER BY m.rank ASC, m.version DESC
+        ) latest
+        WHERE latest."agentMessageId" IS NOT NULL
+      ) AS "exists"
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: EXISTS subquery with DISTINCT ON
+    const [result] = await frontSequelize.query<{ exists: boolean }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        afterRank,
+        ...branchReplacements,
+      },
+      transaction,
+    });
+
+    return result?.exists ?? false;
+  }
+
   async getRunningAgentMessage(
     auth: Authenticator,
     {
