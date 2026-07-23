@@ -170,7 +170,8 @@ export type LLMStreamParameters = LLMStreamParametersBase &
   ExclusiveToolChoiceParameters;
 
 export interface LLMStreamMetadata {
-  conversationId: string;
+  agentConfigurationId: string;
+  workspaceId: string;
 }
 
 // Omit the base fields only and re-intersect the tool-choice union: a plain

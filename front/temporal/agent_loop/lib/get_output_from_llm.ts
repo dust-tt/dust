@@ -300,7 +300,8 @@ export async function getOutputFromLLMStream(
       previousMessageId,
     },
     {
-      conversationId: conversation.sId,
+      workspaceId: conversation.owner.sId,
+      agentConfigurationId: agentConfiguration.sId,
     }
   );
 

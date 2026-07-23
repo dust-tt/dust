@@ -28,6 +28,7 @@ import {
   parseReasoningMetadata,
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
+import { getOpenAIPromptCacheKey } from "@app/lib/api/llm/utils/prompt_cache_key";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
@@ -823,10 +824,13 @@ export class StreamEndpointTransition extends BaseTransition {
     // needs an explicit breakpoint on the conversation tail (legacy's isLast).
     const explicitTailBreakpoint = api === AGENT_PLATFORM_HOST;
     // Only OpenAI Responses consumes a prompt cache key (as `prompt_cache_key`);
-    // legacy sent the conversationId. Other surfaces guard `cacheKey` to
+    // use the workspace and agent configuration so requests can reuse cached
+    // prefixes across conversations. Other surfaces guard `cacheKey` to
     // undefined, so leave it unset for them.
     const cacheKey =
-      api === OPENAI_RESPONSES_HOST ? metadata?.conversationId : undefined;
+      api === OPENAI_RESPONSES_HOST && metadata
+        ? getOpenAIPromptCacheKey(metadata)
+        : undefined;
     return this.model.buildRequestPayload(
       this.buildPayload(streamParameters, { explicitTailBreakpoint }),
       this.buildConfig(

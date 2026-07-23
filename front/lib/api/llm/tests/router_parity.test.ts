@@ -27,7 +27,10 @@ import {
   readEndpointInfo,
 } from "@app/lib/api/llm/tests/parity/providers";
 import { StreamEndpointTransition } from "@app/lib/api/llm/transitionLLM";
-import type { LLMParameters } from "@app/lib/api/llm/types/options";
+import type {
+  LLMParameters,
+  LLMStreamMetadata,
+} from "@app/lib/api/llm/types/options";
 import { DUST_STREAM_ENDPOINTS } from "@app/lib/llms/stream";
 import {
   AGENT_PLATFORM_HOST,
@@ -147,6 +150,10 @@ const ENDPOINTS = Object.values(DUST_STREAM_ENDPOINTS)
       endpoint.host !== AGENT_PLATFORM_HOST
   );
 const MATRIX = buildParityMatrix();
+const STREAM_METADATA: LLMStreamMetadata = {
+  workspaceId: "workspace-123",
+  agentConfigurationId: "agent-456",
+};
 
 describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
   "LLM router request parity (legacy vs new)",
@@ -183,10 +190,10 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
             );
 
             const oldErr = await drain(
-              oldLLM.stream(testCase.streamParameters)
+              oldLLM.stream(testCase.streamParameters, STREAM_METADATA)
             );
             const newErr = await drain(
-              newLLM.stream(testCase.streamParameters)
+              newLLM.stream(testCase.streamParameters, STREAM_METADATA)
             );
 
             const oldReq = provider.selectOldRequest(
