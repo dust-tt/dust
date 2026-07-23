@@ -185,12 +185,16 @@ const output = await callFunction("<podId>/<slug>", input);
 
 \`input\` must match the function's declared input schema (see \`get\`). The promise resolves to
 the parsed and validated \`schema.output\`. It rejects with a \`SandboxFunctionCallError\` (also
-exported by \`@dust/react-hooks\`) whose \`code\` distinguishes missing functions, invalid
-input/output, handler failures, HTTP errors, and transport failures; render loading and error
-states like for any other network call. Pod functions are only reachable from authenticated
-Pod Frames, not from public or shared Frames.`,
+exported by \`@dust/react-hooks\`) carrying a \`message\`, an optional HTTP \`status\`, and a
+\`code\`; render loading and error states like for any other network call. Treat \`code\` as an
+open string: it is whatever classified the failure, so branch on the ones you handle and fall
+back to a generic message for the rest. The ones worth branching on are \`invalid_input\` and
+\`invalid_output\` (the value does not match the declared schema), \`threw\` (the function threw),
+\`http_error\` (the function's own request failed, with \`status\`), \`sandbox_function_not_found\`
+(no such function), and \`not_supported\` (the Frame is public or shared). Pod functions are only
+reachable from authenticated Pod Frames, not from public or shared Frames.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 3,
+  version: 4,
   icon: "PuzzleIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

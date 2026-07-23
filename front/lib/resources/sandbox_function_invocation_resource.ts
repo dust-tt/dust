@@ -53,6 +53,24 @@ const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
 const GCS_CONCURRENCY = 4;
 const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 1;
 
+// `code` is not narrowed to `SandboxFunctionCallErrorCode`: it is forwarded from whatever
+// classified the failure (runner, API error type, front), and a blob written by a newer deploy
+// must stay readable rather than fail to parse.
+const PersistedSandboxFunctionCallErrorSchema = z.union([
+  // Blobs written before the code and status were persisted only carry the message. Every such
+  // blob went through `fail(Error)`, which classified as `invocation_failed`.
+  z.string().transform((message) => ({ code: "invocation_failed", message })),
+  z.object({
+    code: z.string(),
+    message: z.string(),
+    status: z.number().optional(),
+  }),
+]);
+
+type PersistedSandboxFunctionCallError = z.infer<
+  typeof PersistedSandboxFunctionCallErrorSchema
+>;
+
 const SandboxFunctionInvocationDataSchema = z.object({
   version: z.literal(SANDBOX_FUNCTION_INVOCATION_DATA_VERSION),
   input: z.unknown().optional(),
@@ -62,7 +80,7 @@ const SandboxFunctionInvocationDataSchema = z.object({
     })
     .optional(),
   result: z.unknown().optional(),
-  error: z.string().optional(),
+  error: PersistedSandboxFunctionCallErrorSchema.optional(),
 });
 
 type SandboxFunctionInvocationData = z.infer<
@@ -71,7 +89,7 @@ type SandboxFunctionInvocationData = z.infer<
 
 export interface SandboxFunctionInvocationForLLM {
   createdAt: string;
-  error?: string;
+  error?: PersistedSandboxFunctionCallError;
   input: unknown;
   invocationId: string;
   result?: unknown;
@@ -160,7 +178,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return this.data.result;
   }
 
-  get error(): string | undefined {
+  get error(): PersistedSandboxFunctionCallError | undefined {
     return this.data.error;
   }
 
@@ -173,7 +191,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
       context: this.context,
-      error: callError.message,
+      // Persist the whole error: the code and status are what `inspect_invocations` needs to say
+      // why an invocation failed, and dropping them here would leave the message as the only
+      // record of a failure the stream classified precisely.
+      error: callError,
     };
     await this.writeDataToGcs();
     await this.update({ status: "errored" });

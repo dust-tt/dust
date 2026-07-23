@@ -135,6 +135,15 @@ class FileStorageMock {
     return this._objectStore.get(filePath);
   }
 
+  /**
+   * Seeds `filePath` with content, as if it had already been written. Use to
+   * stand up objects a test needs to read but cannot produce with the code
+   * under test, such as a blob written in an older format.
+   */
+  setObject(filePath: string, content: string): void {
+    this._objectStore.set(filePath, content);
+  }
+
   reset(): void {
     this._writeStreamCalls.length = 0;
     this._readStreamCalls.length = 0;
