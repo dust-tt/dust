@@ -11,6 +11,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import { AGENT_GROUP_PREFIX } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -271,8 +272,7 @@ async function createSuggestedSkills(
               editedBy: null,
               requestedSpaceIds: [],
               icon: skill.icon,
-              isDefault: false,
-              availability: "workspace_users",
+              availability: DEFAULT_SKILL_AVAILABILITY,
             },
             { transaction }
           );

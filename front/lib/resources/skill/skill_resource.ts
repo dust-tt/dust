@@ -78,7 +78,6 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
-  SkillAvailability,
   SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
@@ -422,18 +421,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<SkillResource> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Transition (isDefault -> availability): dual-write both columns from whichever one the
-    // caller provided, so old code reading isDefault stays correct during the rollout.
-    const availability =
-      blob.availability ?? availabilityFromIsDefault(blob.isDefault ?? false);
-
     // Use a transaction to ensure all creations succeed or all are rolled back.
     return withTransaction(async (transaction) => {
       const skill = await this.model.create(
         {
           ...blob,
-          availability,
-          isDefault: isDefaultFromAvailability(availability),
           instructionsHtml: blob.instructionsHtml ?? null,
           workspaceId: owner.id,
         },
@@ -1467,7 +1459,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const skills = await this.baseFetch(auth, {
       where: {
         status,
-        ...(isDefault !== undefined ? { isDefault } : {}),
+        // isDefault is a legacy alias kept at the interface level; the column is availability.
+        ...(isDefault !== undefined
+          ? { availability: availabilityFromIsDefault(isDefault) }
+          : {}),
         ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
         ...(reinforcementNotOff ? { reinforcement: { [Op.ne]: "off" } } : {}),
       },
@@ -1506,7 +1501,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       {
         where: {
           status: "active",
-          isDefault: true,
+          availability: "users_and_agents",
         },
       },
       { agentLoopData, effectiveSpaceIds }
@@ -2025,7 +2020,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         icon: def.icon,
         source: null,
         sourceMetadata: null,
-        isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
         availability: SystemSkillsRegistry.isSystemSkill(def.sId)
           ? "workspace_users"
           : "users_and_agents",
@@ -2328,7 +2322,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           requestedSpaceIds: versionModel.requestedSpaceIds,
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
-          isDefault: versionModel.isDefault,
           availability: versionModel.availability,
           favoriteCount: this.favoriteCount,
           reinforcement: "auto",
@@ -2888,10 +2881,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(status ? { status } : {}),
           ...(source ? { source } : {}),
           ...(sourceMetadata ? { sourceMetadata } : {}),
-          // Transition (isDefault -> availability): dual-write both columns until all code
-          // relies on availability and isDefault is dropped.
+          // isDefault is a legacy alias kept at the interface level; the column is availability.
           ...(isDefault !== undefined
-            ? { isDefault, availability: availabilityFromIsDefault(isDefault) }
+            ? { availability: availabilityFromIsDefault(isDefault) }
             : {}),
           ...(reinforcement !== undefined ? { reinforcement } : {}),
         },
@@ -4047,14 +4039,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       })),
       canWrite: this.canWrite(auth),
       canAdministrate: this.canAdministrate(auth),
-      isDefault: isDefaultFromAvailability(this.getAvailability()),
+      isDefault: isDefaultFromAvailability(this.availability),
     };
-  }
-
-  getAvailability(): SkillAvailability {
-    // Transition (isDefault -> availability): NULL means the row predates the availability column
-    // and isDefault is authoritative.
-    return this.availability ?? availabilityFromIsDefault(this.isDefault);
   }
 
   private async saveVersion(
@@ -4120,7 +4106,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       sourceMetadata: this.sourceMetadata,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      isDefault: this.isDefault,
       availability: this.availability,
     };
 

@@ -5,6 +5,7 @@ import type { ResourceSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 export const SKILL_COMPANY_DATA_SERVER_NAME = "company_data";
@@ -123,7 +124,7 @@ export async function filterSkillDefinitions<T extends SkillDefinition>(
   auth: Authenticator,
   skills: readonly T[],
   where: AllSkillConfigurationFindOptions["where"] = {},
-  { isDefault }: { isDefault: boolean }
+  { availability }: { availability: SkillAvailability }
 ): Promise<T[]> {
   const filteredSkills = skills.filter((skill) => {
     if (where.sId && !matchesFilter(skill.sId, where.sId)) {
@@ -138,7 +139,10 @@ export async function filterSkillDefinitions<T extends SkillDefinition>(
       return false; // Code-defined skills are always active.
     }
 
-    if (where.isDefault !== undefined && where.isDefault !== isDefault) {
+    if (
+      where.availability !== undefined &&
+      where.availability !== availability
+    ) {
       return false;
     }
 

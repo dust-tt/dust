@@ -270,7 +270,6 @@ describe("pruneOutdatedSkillEditSuggestions", () => {
         instructions: skill.instructions,
         instructionsHtml: '<p data-block-id="block-2">New content.</p>',
         icon: skill.icon,
-        isDefault: skill.isDefault,
         mcpServerViews: skill.mcpServerViews,
         requestedSpaceIds: [],
         attachedKnowledge: [],
@@ -305,7 +304,6 @@ describe("pruneOutdatedSkillEditSuggestions", () => {
         instructionsHtml:
           '<p data-block-id="block-1">Updated A.</p><p data-block-id="block-2">B.</p>',
         icon: skill.icon,
-        isDefault: skill.isDefault,
         mcpServerViews: skill.mcpServerViews,
         requestedSpaceIds: [],
         attachedKnowledge: [],

@@ -26,6 +26,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import { extractToolTags, serializeToolTag } from "@app/lib/tools/format";
 import logger from "@app/logger/logger";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -416,7 +417,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
         icon: resolvedIcon,
         source: "agent",
         sourceMetadata: null,
-        isDefault: false,
+        availability: DEFAULT_SKILL_AVAILABILITY,
         reinforcement: "on",
       },
       {

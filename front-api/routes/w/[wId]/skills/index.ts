@@ -15,6 +15,7 @@ import type {
   PostSkillResponseBody,
 } from "@app/types/api/skills";
 import {
+  availabilityFromIsDefault,
   SKILL_REINFORCEMENT_MODES,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
@@ -392,7 +393,7 @@ app.post(
         icon,
         source: body.source ?? "web_app",
         sourceMetadata: body.sourceMetadata ?? null,
-        isDefault: body.isDefault ?? false,
+        availability: availabilityFromIsDefault(body.isDefault ?? false),
         reinforcement: body.reinforcement ?? "on",
       },
       {
