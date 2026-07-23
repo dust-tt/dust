@@ -230,6 +230,9 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
     }, transaction);
   }
 
+  // Soft-removes the selections of specific Spaces. The selected_spaces route only accepts
+  // `mode: "add"` today, so this has no production caller yet: it is the counterpart of
+  // `upsertForConversation` for the deselect path, and is covered by this resource's tests.
   static async removeForConversation(
     auth: Authenticator,
     {
