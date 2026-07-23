@@ -511,14 +511,13 @@ export async function addEgressDomainTool(
     return new Err(new MCPError(parsed.error.message));
   }
 
-  // Approvals write to the sandbox's egress policy owner file. For a normal
-  // conversation that is the conversation itself (approvals persist for the
-  // conversation's lifetime, across sandbox destroy/recreate cycles). For a
-  // conversation inside a Pod it is the POD: pod network settings are shared,
-  // so the approval applies to every conversation in the Pod and the Pod's
-  // shared sandbox. Interim v0 behavior (internal-only, FF-gated) pending the
-  // approval-governance decision.
-  const egressPolicyOwnerId = conversation.spaceId ?? conversation.sId;
+  // Approvals write to the conversation's own egress policy file — inside or
+  // outside a Pod — persisting for the conversation's lifetime across sandbox
+  // destroy/recreate cycles. Pod network settings reach the sandbox as an
+  // inherited read-only layer instead (egressPolicyPodId), so an on-the-fly
+  // approval never widens the Pod's shared allowlist; Pod-level additions go
+  // through the Pod settings admin surface.
+  const egressPolicyOwnerId = conversation.sId;
   const result = await addOwnerPolicyDomain(auth, {
     ownerId: egressPolicyOwnerId,
     domain: parsed.value,
@@ -549,11 +548,7 @@ export async function addEgressDomainTool(
     },
   });
 
-  // Scope wording matches the tool description: pod approvals apply Pod-wide.
-  const scope =
-    conversation.spaceId !== null
-      ? "this Pod (every conversation in it and the Pod's shared sandbox)"
-      : "this conversation";
+  const scope = "this conversation";
   const text =
     result.value.addedDomain !== null
       ? `Allowed: ${result.value.addedDomain}\n` +

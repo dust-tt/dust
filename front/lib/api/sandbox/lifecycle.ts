@@ -39,6 +39,7 @@ type SandboxReadyConfig = {
   // sandbox's egress is scoped to. Distinct from runtimeOwner: conversations
   // inside a Pod share the Pod's policy file.
   egressPolicyOwnerId: string;
+  egressPolicyPodId?: string;
 };
 
 // /!\ All sandbox-touching tools must use the owner-specific ready helper rather than calling
@@ -51,6 +52,7 @@ async function ensureOwnerSandboxReady(
     getFileSystem,
     runtimeOwner,
     egressPolicyOwnerId,
+    egressPolicyPodId,
   }: SandboxReadyConfig
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
   const startMs = performance.now();
@@ -120,6 +122,7 @@ async function ensureOwnerSandboxReady(
             prepareSandboxEgressBeforeMount(auth, sandbox, {
               runtimeOwner,
               egressPolicyOwnerId,
+              egressPolicyPodId,
             })
           ),
           traceSandboxStartupPhase("gcs_mount", async () => {
@@ -185,6 +188,7 @@ async function ensureOwnerSandboxReady(
           ensureSandboxEgressOnExec(auth, sandbox, {
             runtimeOwner,
             egressPolicyOwnerId,
+            egressPolicyPodId,
             wokeFromSleep,
           })
       );
@@ -210,14 +214,17 @@ export async function ensureConversationSandboxReady(
     ensureActive: () =>
       ConversationSandboxAdapter.ensureSandboxActive(auth, conversation),
     getFileSystem: () => DustFileSystem.forConversation(auth, conversation),
+    // Pod network settings apply to everything running in the Pod: a
+    // conversation inside a Pod inherits the Pod's policy as a read-only
+    // layer (egressPolicyPodId). Its own policy file stays
+    // conversation-scoped — on-the-fly domain approvals land there, exactly
+    // like conversations outside a Pod.
     runtimeOwner: {
       kind: "conversation",
       conversationId: conversation.sId,
     },
-    // Pod network settings apply to everything running in the Pod: a
-    // conversation inside a Pod uses the Pod's shared policy file, not a
-    // per-conversation one.
-    egressPolicyOwnerId: conversation.spaceId ?? conversation.sId,
+    egressPolicyOwnerId: conversation.sId,
+    egressPolicyPodId: conversation.spaceId ?? undefined,
   });
 }
 

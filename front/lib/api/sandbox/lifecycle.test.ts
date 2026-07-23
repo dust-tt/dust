@@ -219,7 +219,7 @@ describe("ensureConversationSandboxReady", () => {
     );
   });
 
-  it("scopes egress policy to the Pod for conversations inside a Pod", async () => {
+  it("keeps conversation-scoped policy with the Pod as an inherited layer", async () => {
     mockEnsureSandboxActive.mockResolvedValue(
       new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
     );
@@ -231,16 +231,22 @@ describe("ensureConversationSandboxReady", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    // runtimeOwner stays the conversation (env vars, logs, file system)...
+    // The egress policy file stays conversation-scoped (on-the-fly
+    // approvals land there) while the Pod's policy applies as the inherited
+    // layer.
     expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
       auth,
       sandbox,
-      // ...but the egress policy is scoped to the Pod's shared file.
-      { runtimeOwner: conversationOwner, egressPolicyOwnerId: "space-id" }
+      {
+        runtimeOwner: conversationOwner,
+        egressPolicyOwnerId: conversation.sId,
+        egressPolicyPodId: "space-id",
+      }
     );
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
       runtimeOwner: conversationOwner,
-      egressPolicyOwnerId: "space-id",
+      egressPolicyOwnerId: conversation.sId,
+      egressPolicyPodId: "space-id",
       wokeFromSleep: false,
     });
     expect(mockForConversation).toHaveBeenCalledWith(auth, podConversation);
