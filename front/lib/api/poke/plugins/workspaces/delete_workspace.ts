@@ -55,7 +55,9 @@ export const deleteWorkspacePlugin = createPlugin({
     }
 
     if (!deleteDataSources) {
-      const dataSources = await DataSourceResource.listByWorkspace(auth);
+      const dataSources = await DataSourceResource.listByWorkspace(auth, {
+        limit: 1,
+      });
       if (dataSources.length > 0) {
         return new Err(
           new Error(

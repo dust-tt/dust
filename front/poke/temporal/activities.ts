@@ -704,7 +704,7 @@ export async function prepareDeletionActivity({
     if (!deleteDataSources) {
       const dataSources = await DataSourceResource.listByWorkspace(
         auth,
-        undefined,
+        { limit: 1 },
         undefined,
         transaction
       );
