@@ -12450,19 +12450,7 @@
             "properties": {
               "code": {
                 "type": "string",
-                "enum": [
-                  "bad_input",
-                  "invalid_input",
-                  "import_failed",
-                  "threw",
-                  "bad_return",
-                  "http_error",
-                  "invalid_output",
-                  "function_not_found",
-                  "invocation_failed",
-                  "transport_error",
-                  "not_supported"
-                ]
+                "description": "Whatever classified the failure, forwarded as-is (a runner code such as `threw` or `http_error`, or the `type` of the API error that failed the call). Open by design, branch on the codes you handle and treat the rest as generic failures."
               },
               "message": {
                 "type": "string"
