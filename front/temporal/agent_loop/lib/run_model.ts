@@ -634,13 +634,10 @@ export async function runModel(
 
   // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
   // deferred behind tool search is a provider-specific policy applied downstream.
-  // Anthropic is fully rolled out while OpenAI remains behind a feature flag.
-  const toolSearchFeatureEnabled =
-    model.providerId === ANTHROPIC_PROVIDER_ID ||
-    (model.providerId === OPENAI_PROVIDER_ID &&
-      featureFlags.includes("openai_tool_search"));
   const toolSearchEnabled =
-    toolSearchFeatureEnabled && !!model.supportsToolSearch;
+    (model.providerId === ANTHROPIC_PROVIDER_ID ||
+      model.providerId === OPENAI_PROVIDER_ID) &&
+    !!model.supportsToolSearch;
   const baseSpecifications: AgentActionSpecification[] =
     buildBaseSpecifications(availableActions, agentConfiguration);
 
