@@ -179,7 +179,7 @@ export function ShareFrameSheet({
     currentScope,
   });
 
-  const showEmailOption =
+  const showEmailSection =
     currentScope === "emails_only" || currentScope === "workspace_and_emails";
 
   const activeGrants = grants
@@ -349,7 +349,7 @@ export function ShareFrameSheet({
                   </div>
                 </fieldset>
 
-                {showEmailOption && (
+                {showEmailSection && (
                   <div className="flex flex-col gap-4">
                     <form
                       className="flex flex-col gap-2"
