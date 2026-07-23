@@ -318,6 +318,9 @@ app.post(
         spaceIds: context.selectedSpaceIds,
         origin: "input_bar",
         auditContext: getAuditLogContext(auth),
+        // Widening the scope of an existing conversation is irreversible and can lock the other
+        // participants out, so only its creator may do it.
+        enforceCreatorOnly: true,
       });
       if (selectedSpacesResult.isErr()) {
         return apiErrorForSelectedSpaces(ctx, selectedSpacesResult.error);

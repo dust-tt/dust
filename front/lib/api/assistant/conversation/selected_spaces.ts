@@ -25,6 +25,7 @@ import type { Transaction } from "sequelize";
 export class SelectedConversationSpacesError extends Error {
   constructor(
     readonly code:
+      | "conversation_not_creator"
       | "conversation_not_mutable"
       | "conversation_not_found"
       | "feature_flag_not_found"
@@ -153,6 +154,16 @@ export async function validateSelectableSpaces(
   return new Ok(spaces);
 }
 
+/**
+ * Selected Spaces are a conjunctive access requirement: a viewer must have read access to *every*
+ * Space of `conversation.requestedSpaceIds` to read the conversation, and there is no removal path
+ * once a Space is selected. Adding a Space to an existing conversation can therefore permanently
+ * evict the other participants, so `enforceCreatorOnly` must be true whenever the caller is a user
+ * widening the scope of a conversation that already exists. It is only false on paths where there
+ * is no one to evict: conversation creation (the conversation is brand new, and has no participant
+ * row yet) and sub-agent inheritance (the child conversation is system-created and its Spaces were
+ * already validated against the same user on the parent).
+ */
 export async function addSelectedConversationSpaces(
   auth: Authenticator,
   {
@@ -160,6 +171,7 @@ export async function addSelectedConversationSpaces(
     spaceIds,
     origin,
     auditContext,
+    enforceCreatorOnly,
     sourceSelections,
     transaction,
   }: {
@@ -167,6 +179,7 @@ export async function addSelectedConversationSpaces(
     spaceIds: string[];
     origin: ConversationSelectedSpaceOrigin;
     auditContext?: AuditLogContext;
+    enforceCreatorOnly: boolean;
     sourceSelections?: ConversationSelectedSpaceResource[];
     transaction?: Transaction;
   }
@@ -195,6 +208,33 @@ export async function addSelectedConversationSpaces(
         viewerMustHaveAll: true as const,
       },
     });
+  }
+
+  if (enforceCreatorOnly) {
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    if (!conversationResource) {
+      return new Err(
+        new SelectedConversationSpacesError(
+          "conversation_not_found",
+          "Conversation not found or access was denied."
+        )
+      );
+    }
+
+    // `isConversationCreator` errors when the conversation has no participant at all, which is the
+    // same as "the caller is not the creator" from this endpoint's point of view.
+    const isCreatorRes = await conversationResource.isConversationCreator(auth);
+    if (isCreatorRes.isErr() || !isCreatorRes.value) {
+      return new Err(
+        new SelectedConversationSpacesError(
+          "conversation_not_creator",
+          "Only the user who created the conversation can select Spaces for it."
+        )
+      );
+    }
   }
 
   let newlyActiveSpaces: SpaceResource[] = [];
@@ -416,6 +456,10 @@ export async function copySelectedConversationSpacesToChild(
     conversation: childConversation.toJSON(),
     spaceIds: selectedSpaceIds,
     origin: "parent_conversation",
+    // System-initiated inheritance: the child conversation is created by the run_agent tool and has
+    // no participant, and the inherited Spaces were revalidated against the same `auth` on the
+    // parent just above. There is no one to evict here.
+    enforceCreatorOnly: false,
     sourceSelections,
   });
   if (result.isErr()) {
