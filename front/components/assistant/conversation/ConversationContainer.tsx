@@ -267,10 +267,7 @@ export function ConversationContainerVirtuoso({
         <>
           <div
             id="agent-input-header"
-            // pl-3/md:pl-4 matches the composer's own text inset
-            // (InputBarContainer's contentEditable is `px-3 md:pl-4`) so the
-            // greeting lines up with the placeholder text below it.
-            className="flex h-fit w-full max-w-conversation flex-col justify-end gap-8 pt-4 pb-6 pl-3 md:pl-4 md:min-h-[20vh]"
+            className="flex h-fit w-full max-w-conversation flex-col justify-end gap-8 pt-4 pb-6 md:min-h-[20vh]"
             ref={startConversationRef}
           >
             <Page.Header

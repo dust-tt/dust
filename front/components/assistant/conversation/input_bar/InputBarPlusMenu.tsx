@@ -1,6 +1,5 @@
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
-import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import { InputBarSpacesPicker } from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
 import {
   INPUT_BAR_PILL_HOVER_CLASSNAME,
@@ -8,9 +7,7 @@ import {
 } from "@app/components/assistant/conversation/input_bar/inputBarPillStyles";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -49,12 +46,6 @@ interface InputBarPlusMenuProps {
   spaceId?: string;
   selectedSpaceIds: string[];
   onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
-  agentModel: AgentModelConfigurationType | null;
-  agentId: string | null;
-  lastRequestedModel: ModelSelectionType | null;
-  onModelSelectionChange?: (
-    modelSelection: ModelSelectionType | undefined
-  ) => void;
   onOpenChange?: (open: boolean) => void;
   onCapabilitiesPickerOpenChange?: (open: boolean) => void;
   onAttachmentsPickerOpenChange?: (open: boolean) => void;
@@ -78,10 +69,6 @@ export function InputBarPlusMenu({
   spaceId,
   selectedSpaceIds,
   onSelectedSpaceIdsChange,
-  agentModel,
-  agentId,
-  lastRequestedModel,
-  onModelSelectionChange,
   onOpenChange,
   onCapabilitiesPickerOpenChange,
   onAttachmentsPickerOpenChange,
@@ -156,17 +143,6 @@ export function InputBarPlusMenu({
           prefetch={shouldPrefetch}
           selectedSpaceIds={selectedSpaceIds}
           onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
-        />
-        <InputBarModelPicker
-          type="subdropdown"
-          agentModel={agentModel}
-          agentId={agentId}
-          lastRequestedModel={lastRequestedModel}
-          owner={owner}
-          buttonSize={buttonSize}
-          side={conversation ? "top" : "bottom"}
-          disabled={disabled}
-          onSelectionChange={onModelSelectionChange}
         />
       </DropdownMenuContent>
     </DropdownMenu>

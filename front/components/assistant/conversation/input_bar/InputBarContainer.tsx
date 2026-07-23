@@ -2,6 +2,7 @@ import { ContextUsageIndicator } from "@app/components/assistant/conversation/in
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
 import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import {
   INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
@@ -1886,6 +1887,23 @@ const InputBarContainer = ({
                       isWidthConstrained ? "gap-1" : "gap-2"
                     )}
                   >
+                    {clientType !== "extension" &&
+                      actions.includes("model-picker") && (
+                        <InputBarModelPicker
+                          agentModel={
+                            (selectedSingleAgent &&
+                              agentsById.get(selectedSingleAgent.id)?.model) ??
+                            null
+                          }
+                          agentId={selectedSingleAgent?.id ?? null}
+                          lastRequestedModel={lastRequestedModel}
+                          owner={owner}
+                          buttonSize={buttonSize}
+                          side={conversation ? "top" : "bottom"}
+                          disabled={disableInput}
+                          onSelectionChange={onModelSelectionChange}
+                        />
+                      )}
                     {conversation && (
                       <ContextUsageIndicator
                         buttonSize={buttonSize}
