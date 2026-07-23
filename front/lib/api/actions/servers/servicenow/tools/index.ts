@@ -1,3 +1,4 @@
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
@@ -6,7 +7,7 @@ import {
 } from "@app/lib/api/actions/servers/servicenow/client";
 import { renderIncident } from "@app/lib/api/actions/servers/servicenow/helpers";
 import { SERVICENOW_TOOLS_METADATA } from "@app/lib/api/actions/servers/servicenow/metadata";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 function writableFieldsFromParams({
   shortDescription,
@@ -94,12 +95,11 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
     }
 
     if (!result.value) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `No incident found with number ${incidentNumber}.`,
-        },
-      ]);
+      return new Err(
+        new MCPError(`No incident found with number "${incidentNumber}".`, {
+          tracked: false,
+        })
+      );
     }
 
     return new Ok([
@@ -148,10 +148,22 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
       ]);
     }
 
-    const result = await client.updateIncident({
-      incidentNumber,
-      fields: writableFields,
-    });
+    const existingResult = await client.getIncidentByNumber(incidentNumber);
+    if (existingResult.isErr()) {
+      return existingResult;
+    }
+    if (!existingResult.value) {
+      return new Err(
+        new MCPError(`No incident found with number "${incidentNumber}".`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const result = await client.updateIncident(
+      existingResult.value.sys_id,
+      writableFields
+    );
 
     if (result.isErr()) {
       return result;

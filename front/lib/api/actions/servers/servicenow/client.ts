@@ -104,46 +104,42 @@ async function request<T extends z.ZodTypeAny>(
   return new Ok(parseResult.data);
 }
 
-type BaseRequestArgs = {
-  endpoint: string;
-  accessToken: string;
-  instanceUrl: string;
-};
-
-function get<T extends z.ZodTypeAny>(
-  { endpoint, accessToken, instanceUrl }: BaseRequestArgs,
-  schema: T
-): Promise<Result<z.infer<T>, MCPError>> {
-  return request(
-    { url: `${instanceUrl}${endpoint}`, accessToken, method: "GET" },
-    schema
-  );
-}
-
-function write<T extends z.ZodTypeAny>(
-  {
-    endpoint,
-    accessToken,
-    instanceUrl,
-    method,
-    body,
-  }: BaseRequestArgs & {
-    method: "POST" | "PATCH";
-    body: Record<string, unknown>;
-  },
-  schema: T
-): Promise<Result<z.infer<T>, MCPError>> {
-  return request(
-    { url: `${instanceUrl}${endpoint}`, accessToken, method, body },
-    schema
-  );
-}
-
 export class ServiceNowClient {
   constructor(
     private readonly accessToken: string,
     private readonly instanceUrl: string
   ) {}
+
+  private get<T extends z.ZodTypeAny>(
+    endpoint: string,
+    schema: T
+  ): Promise<Result<z.infer<T>, MCPError>> {
+    return request(
+      {
+        url: `${this.instanceUrl}${endpoint}`,
+        accessToken: this.accessToken,
+        method: "GET",
+      },
+      schema
+    );
+  }
+
+  private mutate<T extends z.ZodTypeAny>(
+    endpoint: string,
+    method: "POST" | "PATCH",
+    body: Record<string, unknown>,
+    schema: T
+  ): Promise<Result<z.infer<T>, MCPError>> {
+    return request(
+      {
+        url: `${this.instanceUrl}${endpoint}`,
+        accessToken: this.accessToken,
+        method,
+        body,
+      },
+      schema
+    );
+  }
 
   async listIncidents({
     query,
@@ -161,12 +157,8 @@ export class ServiceNowClient {
       params.set("sysparm_query", query);
     }
 
-    const result = await get(
-      {
-        endpoint: `/api/now/table/incident?${params.toString()}`,
-        accessToken: this.accessToken,
-        instanceUrl: this.instanceUrl,
-      },
+    const result = await this.get(
+      `/api/now/table/incident?${params.toString()}`,
       z.object({ result: z.array(IncidentSchema) })
     );
 
@@ -197,12 +189,8 @@ export class ServiceNowClient {
     params.set("sysparm_limit", "1");
     params.set("sysparm_display_value", "true");
 
-    const result = await get(
-      {
-        endpoint: `/api/now/table/incident?${params.toString()}`,
-        accessToken: this.accessToken,
-        instanceUrl: this.instanceUrl,
-      },
+    const result = await this.get(
+      `/api/now/table/incident?${params.toString()}`,
       z.object({ result: z.array(IncidentSchema) })
     );
 
@@ -216,15 +204,10 @@ export class ServiceNowClient {
   async createIncident(
     fields: WritableIncidentFields
   ): Promise<Result<Incident, MCPError>> {
-    const result = await write(
-      {
-        endpoint:
-          "/api/now/table/incident?sysparm_display_value=true&sysparm_input_display_value=true",
-        accessToken: this.accessToken,
-        instanceUrl: this.instanceUrl,
-        method: "POST",
-        body: fields,
-      },
+    const result = await this.mutate(
+      "/api/now/table/incident?sysparm_display_value=true&sysparm_input_display_value=true",
+      "POST",
+      fields,
       z.object({ result: IncidentSchema })
     );
 
@@ -235,33 +218,14 @@ export class ServiceNowClient {
     return new Ok(result.value.result);
   }
 
-  async updateIncident({
-    incidentNumber,
-    fields,
-  }: {
-    incidentNumber: string;
-    fields: WritableIncidentFields;
-  }): Promise<Result<Incident, MCPError>> {
-    const existingResult = await this.getIncidentByNumber(incidentNumber);
-    if (existingResult.isErr()) {
-      return existingResult;
-    }
-    if (!existingResult.value) {
-      return new Err(
-        new MCPError(`No incident found with number "${incidentNumber}".`, {
-          tracked: false,
-        })
-      );
-    }
-
-    const result = await write(
-      {
-        endpoint: `/api/now/table/incident/${encodeURIComponent(existingResult.value.sys_id)}?sysparm_display_value=true&sysparm_input_display_value=true`,
-        accessToken: this.accessToken,
-        instanceUrl: this.instanceUrl,
-        method: "PATCH",
-        body: fields,
-      },
+  async updateIncident(
+    sysId: string,
+    fields: WritableIncidentFields
+  ): Promise<Result<Incident, MCPError>> {
+    const result = await this.mutate(
+      `/api/now/table/incident/${encodeURIComponent(sysId)}?sysparm_display_value=true&sysparm_input_display_value=true`,
+      "PATCH",
+      fields,
       z.object({ result: IncidentSchema })
     );
 
