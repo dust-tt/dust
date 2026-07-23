@@ -53,6 +53,7 @@ import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 const MAX_EAGER_VALIDATION_INPUT_LENGTH = 5_000;
 const INVALID_JSON_MARKER = "JSON: ";
 const INVALID_TOOL_JSON_NEEDLE = "Unable to parse tool parameter JSON";
+const FILE_DOWNLOAD_ERROR = "Unable to download the file";
 
 // Type guard: APIError carrying the server-side invalid-tool-JSON diagnostic.
 function isApiInvalidToolJsonError(
@@ -437,6 +438,15 @@ function apiErrorToErrorEvent(
   metadata: EndpointMetadata,
   error: APIError
 ): ErrorEvent {
+  if (error.message.includes(FILE_DOWNLOAD_ERROR)) {
+    return buildErrorEvent({
+      metadata,
+      type: "server_error",
+      message: `Server error from Anthropic: ${error.message}`,
+      originalError: error,
+    });
+  }
+
   // Mid-stream SSE `error` events surface as an `APIError` with no HTTP status;
   // the old router defaulted those to 500, so mirror that here.
   const status = error.status ?? 500;

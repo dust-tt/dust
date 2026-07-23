@@ -47,6 +47,20 @@ describe("handleError (Anthropic)", () => {
     );
     const event = handleError(err, metadata) as EventError;
     expect(event.content.message.toLowerCase()).toContain("invalid request");
+    expect(event.content.type).toBe("invalid_request_error");
+    expect(event.content.isRetryable).toBe(false);
+  });
+
+  it("retries Anthropic file download failures", () => {
+    const err = new BadRequestError(
+      400,
+      { message: "Unable to download the file. Please verify the URL." },
+      undefined,
+      makeHeaders()
+    );
+    const event = handleError(err, metadata) as EventError;
+    expect(event.content.type).toBe("server_error");
+    expect(event.content.isRetryable).toBe(true);
   });
 
   it("maps AuthenticationError (401)", () => {
