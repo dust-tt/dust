@@ -148,7 +148,15 @@ describe("dismissMention", () => {
       const user = refreshedAuth.getNonNullableUser();
       const userJson = user.toJSON();
       const postResult = await postUserMessage(refreshedAuth, {
-        conversation,
+        conversationResource: await ConversationResource.fetchById(
+          refreshedAuth,
+          restrictedConversation.sId
+        ).then((resource) => {
+          if (!resource) {
+            throw new Error("Failed to fetch conversation resource");
+          }
+          return resource;
+        }),
         content: `Hello @${mentionedUser.username}`,
         mentions: [
           {
@@ -296,7 +304,15 @@ describe("dismissMention", () => {
       const user = refreshedAuth.getNonNullableUser();
       const userJson = user.toJSON();
       const postResult1 = await postUserMessage(refreshedAuth, {
-        conversation: conversation1,
+        conversationResource: await ConversationResource.fetchById(
+          refreshedAuth,
+          restrictedConversation.sId
+        ).then((resource) => {
+          if (!resource) {
+            throw new Error("Failed to fetch conversation resource");
+          }
+          return resource;
+        }),
         content: `Hello @${mentionedUser.username}`,
         mentions: [
           {
@@ -334,7 +350,15 @@ describe("dismissMention", () => {
 
       // Use postUserMessage to create the second message with the full flow
       const postResult2 = await postUserMessage(refreshedAuth, {
-        conversation: conversation2,
+        conversationResource: await ConversationResource.fetchById(
+          refreshedAuth,
+          restrictedConversation.sId
+        ).then((resource) => {
+          if (!resource) {
+            throw new Error("Failed to fetch conversation resource");
+          }
+          return resource;
+        }),
         content: `Hello again @${mentionedUser.username}`,
         mentions: [
           {

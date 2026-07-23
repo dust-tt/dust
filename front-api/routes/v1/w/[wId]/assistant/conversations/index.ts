@@ -382,12 +382,17 @@ app.post(
         isContentFragmentInputWithFileId(cf) ||
         isContentFragmentInputWithContentNode(cf)
       ) {
-        const cfRes = await postNewContentFragment(auth, conversation, cf, {
-          username: context?.username ?? null,
-          fullName: context?.fullName ?? null,
-          email: context?.email?.toLowerCase() ?? null,
-          profilePictureUrl: context?.profilePictureUrl ?? null,
-        });
+        const cfRes = await postNewContentFragment(
+          auth,
+          conversation.toJSON(),
+          cf,
+          {
+            username: context?.username ?? null,
+            fullName: context?.fullName ?? null,
+            email: context?.email?.toLowerCase() ?? null,
+            profilePictureUrl: context?.profilePictureUrl ?? null,
+          }
+        );
         if (cfRes.isErr()) {
           return apiError(ctx, {
             status_code: 400,

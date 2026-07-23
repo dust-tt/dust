@@ -5,24 +5,15 @@ import {
 import { createCompactionMessage } from "@app/lib/api/assistant/conversation/messages";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentMessageModel,
-  CompactionMessageModel,
-  MessageModel,
-} from "@app/lib/models/agent/conversation";
+import { CompactionMessageModel } from "@app/lib/models/agent/conversation";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { launchCompactionWorkflow } from "@app/temporal/agent_loop/client";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type {
-  AgentMessageType,
   CompactionMessageType,
-  ConversationType,
   ConversationWithoutContentType,
-} from "@app/types/assistant/conversation";
-import {
-  isAgentMessageType,
-  isCompactionMessageType,
 } from "@app/types/assistant/conversation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -43,7 +34,7 @@ export async function compactConversation(
     model,
     sourceConversation,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationResource | ConversationWithoutContentType;
     model: SupportedModel;
     sourceConversation?: CompactionSourceConversation;
   }
@@ -53,22 +44,23 @@ export async function compactConversation(
     APIErrorWithContentfulStatusCode
   >
 > {
-  const owner = auth.getNonNullableWorkspace();
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversation.sId
+  );
+  if (!conversationResource) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "The conversation does not exist.",
+      },
+    });
+  }
 
-  // Block compaction while an agent message is running or a compaction is running.
-  const runningAgentMessage = conversation.content
-    .flat()
-    .find(
-      (m): m is AgentMessageType =>
-        isAgentMessageType(m) && m.status === "created"
-    );
-  const runningCompaction = conversation.content
-    .flat()
-    .find(
-      (m): m is CompactionMessageType =>
-        isCompactionMessageType(m) && m.status === "created"
-    );
-  const lastMessage = conversation.content.at(-1)?.at(-1);
+  const { runningAgentMessage, runningCompactionMessage } =
+    await conversationResource.getInFlightMessages(auth);
+  const lastMessage = await conversationResource.getLatestMessageSummary(auth);
 
   if (runningAgentMessage) {
     return new Err({
@@ -80,7 +72,7 @@ export async function compactConversation(
     });
   }
 
-  if (runningCompaction) {
+  if (runningCompactionMessage) {
     return new Err({
       status_code: 409,
       api_error: {
@@ -90,11 +82,7 @@ export async function compactConversation(
     });
   }
 
-  if (
-    lastMessage &&
-    isCompactionMessageType(lastMessage) &&
-    lastMessage.status === "succeeded"
-  ) {
+  if (lastMessage && lastMessage.compactionStatus === "succeeded") {
     return new Err({
       status_code: 409,
       api_error: {
@@ -108,43 +96,11 @@ export async function compactConversation(
   const { compactionMessage } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    // Re-check the existence of a compaction message or running agent message inside the critical
-    // section of the advisory lock to avoid stacking compaction with other compaction or running
-    // agent loop.
-    const [runningCompactionMessage, runningAgentMessage] = await Promise.all([
-      MessageModel.findOne({
-        where: {
-          conversationId: conversation.id,
-          workspaceId: owner.id,
-        },
-        include: [
-          {
-            model: CompactionMessageModel,
-            as: "compactionMessage",
-            required: true,
-            where: { status: "created" },
-          },
-        ],
-        transaction: t,
-      }),
-      MessageModel.findOne({
-        where: {
-          conversationId: conversation.id,
-          workspaceId: owner.id,
-        },
-        include: [
-          {
-            model: AgentMessageModel,
-            as: "agentMessage",
-            required: true,
-            where: { status: "created" },
-          },
-        ],
-        transaction: t,
-      }),
-    ]);
+    const inFlight = await conversationResource.getInFlightMessages(auth, {
+      transaction: t,
+    });
 
-    if (runningCompactionMessage || runningAgentMessage) {
+    if (inFlight.runningCompactionMessage || inFlight.runningAgentMessage) {
       return { compactionMessage: null };
     }
 

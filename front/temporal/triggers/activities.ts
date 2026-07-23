@@ -143,7 +143,7 @@ async function createConversationForAgentConfiguration({
 
     await postNewContentFragment(
       auth,
-      newConversation,
+      newConversation.toJSON(),
       contentFragmentRes.value,
       null
     );

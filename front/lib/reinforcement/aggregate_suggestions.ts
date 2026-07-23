@@ -355,7 +355,7 @@ export async function createSkillSuggestionsConversation(
 
   const contentFragmentPostRes = await postNewContentFragment(
     auth,
-    conversationResource,
+    conversationResource.toJSON(),
     contentFragmentRes.value,
     {
       username: author.username,

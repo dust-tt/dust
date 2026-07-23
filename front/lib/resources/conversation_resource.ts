@@ -37,6 +37,7 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageStatus,
+  CompactionMessageStatus,
   ConversationForkedChildType,
   ConversationForkedFromType,
   ConversationForkingDataType,
@@ -58,7 +59,10 @@ import {
   ACTIVE_WAKE_UP_STATUSES,
   type WakeUpScheduleConfig,
 } from "@app/types/assistant/wakeups";
-import type { ContentFragmentVersion } from "@app/types/content_fragment";
+import type {
+  ContentFragmentType,
+  ContentFragmentVersion,
+} from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -97,6 +101,31 @@ export type ConversationAccessType =
   | "conversation_not_found"
   | "conversation_access_restricted"
   | "conversation_access_restricted_by_private_by_default_url_restriction";
+
+export type RunningAgentMessageContext = {
+  sId: string;
+  agentMessageId: number;
+  agentConfigurationId: string;
+  rank: number;
+};
+
+export type RunningCompactionMessageContext = {
+  sId: string;
+  rank: number;
+};
+
+export type BranchCreationContext = {
+  isEmpty: boolean;
+  onlyContentFragments: boolean;
+  maxRank: number | null;
+  lastMessage: { id: ModelId; rank: number } | null;
+};
+
+export type LatestMessageSummary = {
+  sId: string;
+  rank: number;
+  compactionStatus: CompactionMessageStatus | null;
+};
 
 const shouldByPassPrivateByDefaultUrlRestriction = (auth: Authenticator) => {
   // Dust super users (poke admins) can always access conversations regardless of participant
@@ -2982,6 +3011,487 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     return results;
+  }
+
+  /**
+   * Build Sequelize `where` for messages visible in a conversation view (main thread
+   * or branch). Matches the scoping used in `_getConversation` in fetch.ts.
+   */
+  async getMessageScopeWhere(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<WhereOptions<MessageModel>> {
+    const owner = auth.getNonNullableWorkspace();
+    let where: WhereOptions<MessageModel> = {
+      conversationId: this.id,
+      workspaceId: owner.id,
+    };
+
+    if (branchId) {
+      const branch = await ConversationBranchResource.fetchById(auth, branchId);
+      if (!branch || !branch.canRead(auth)) {
+        throw new Error("Unexpected: conversation branch not found.");
+      }
+
+      const previousMessage = await MessageModel.findOne({
+        attributes: ["rank"],
+        where: {
+          id: branch.previousMessageId,
+          workspaceId: owner.id,
+        },
+        transaction,
+      });
+      if (!previousMessage) {
+        throw new Error("Unexpected: branch previous message not found.");
+      }
+
+      where = {
+        ...where,
+        [Op.or]: [
+          {
+            branchId: branch.id,
+          },
+          {
+            branchId: null,
+            rank: { [Op.lte]: previousMessage.rank },
+          },
+        ],
+      };
+    } else {
+      where = {
+        ...where,
+        branchId: { [Op.is]: null },
+      };
+    }
+
+    return where;
+  }
+
+  private async getBranchFilterSqlContext(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    }
+  ): Promise<{
+    branchFilterSql: string;
+    replacements: Record<string, unknown>;
+  }> {
+    if (!branchId) {
+      return {
+        branchFilterSql: `"branchId" IS NULL`,
+        replacements: {},
+      };
+    }
+
+    const branch = await ConversationBranchResource.fetchById(auth, branchId);
+    if (!branch || !branch.canRead(auth)) {
+      throw new Error("Unexpected: conversation branch not found.");
+    }
+
+    const previousMessage = await MessageModel.findOne({
+      attributes: ["rank"],
+      where: {
+        id: branch.previousMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
+    if (!previousMessage) {
+      throw new Error("Unexpected: branch previous message not found.");
+    }
+
+    return {
+      branchFilterSql: `("branchId" = :branchModelId OR ("branchId" IS NULL AND rank <= :previousMessageRank))`,
+      replacements: {
+        branchModelId: branch.id,
+        previousMessageRank: previousMessage.rank,
+      },
+    };
+  }
+
+  private async queryLatestVersionPerRankRows(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    }
+  ): Promise<
+    Array<{ id: ModelId; rank: number; contentFragmentId: ModelId | null }>
+  > {
+    const owner = auth.getNonNullableWorkspace();
+    const { branchFilterSql, replacements: branchReplacements } =
+      await this.getBranchFilterSqlContext(auth, { branchId, transaction });
+
+    const query = `
+      SELECT DISTINCT ON (rank) id, rank, "contentFragmentId"
+      FROM messages
+      WHERE "workspaceId" = :workspaceId
+        AND "conversationId" = :conversationId
+        AND visibility != 'deleted'
+        AND ${branchFilterSql}
+      ORDER BY rank ASC, version DESC
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: DISTINCT ON requires raw SQL
+    return frontSequelize.query<{
+      id: ModelId;
+      rank: number;
+      contentFragmentId: ModelId | null;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        ...branchReplacements,
+      },
+      transaction,
+    });
+  }
+
+  /**
+   * Returns true when the conversation view contains a user message (latest version
+   * per rank) authored by someone other than `excludeUserSId`.
+   */
+  async hasUserMessageFromOtherUser(
+    auth: Authenticator,
+    {
+      excludeUserSId,
+      branchId,
+      transaction,
+    }: {
+      excludeUserSId?: string | null;
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<boolean> {
+    const owner = auth.getNonNullableWorkspace();
+    const { branchFilterSql, replacements: branchReplacements } =
+      await this.getBranchFilterSqlContext(auth, { branchId, transaction });
+
+    const query = `
+      SELECT EXISTS (
+        SELECT 1
+        FROM (
+          SELECT DISTINCT ON (m.rank) um."userId", u."sId"
+          FROM messages m
+          INNER JOIN user_messages um
+            ON um.id = m."userMessageId"
+            AND um."workspaceId" = m."workspaceId"
+          INNER JOIN users u ON u.id = um."userId"
+          WHERE m."workspaceId" = :workspaceId
+            AND m."conversationId" = :conversationId
+            AND m.visibility != 'deleted'
+            AND m."userMessageId" IS NOT NULL
+            AND um."userId" IS NOT NULL
+            AND ${branchFilterSql}
+          ORDER BY m.rank ASC, m.version DESC
+        ) latest
+        WHERE latest."userId" IS NOT NULL
+          AND (:excludeUserSId IS NULL OR latest."sId" != :excludeUserSId)
+      ) AS "exists"
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: EXISTS subquery with DISTINCT ON
+    const [result] = await frontSequelize.query<{ exists: boolean }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        excludeUserSId: excludeUserSId ?? null,
+        ...branchReplacements,
+      },
+      transaction,
+    });
+
+    return result?.exists ?? false;
+  }
+
+  async getRunningAgentMessage(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<RunningAgentMessageContext | null> {
+    const scopeWhere = await this.getMessageScopeWhere(auth, {
+      branchId,
+      transaction,
+    });
+
+    const message = await MessageModel.findOne({
+      where: {
+        ...scopeWhere,
+        visibility: { [Op.ne]: "deleted" },
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          where: { status: "created" },
+        },
+      ],
+      order: [
+        ["rank", "DESC"],
+        ["version", "DESC"],
+      ],
+      transaction,
+    });
+
+    if (!message?.agentMessage) {
+      return null;
+    }
+
+    return {
+      sId: message.sId,
+      agentMessageId: message.agentMessage.id,
+      agentConfigurationId: message.agentMessage.agentConfigurationId,
+      rank: message.rank,
+    };
+  }
+
+  async getRunningCompactionMessage(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<RunningCompactionMessageContext | null> {
+    const scopeWhere = await this.getMessageScopeWhere(auth, {
+      branchId,
+      transaction,
+    });
+
+    const message = await MessageModel.findOne({
+      where: {
+        ...scopeWhere,
+        visibility: { [Op.ne]: "deleted" },
+      },
+      include: [
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
+          required: true,
+          where: { status: "created" },
+        },
+      ],
+      order: [
+        ["rank", "DESC"],
+        ["version", "DESC"],
+      ],
+      transaction,
+    });
+
+    if (!message) {
+      return null;
+    }
+
+    return {
+      sId: message.sId,
+      rank: message.rank,
+    };
+  }
+
+  async getInFlightMessages(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<{
+    runningAgentMessage: RunningAgentMessageContext | null;
+    runningCompactionMessage: RunningCompactionMessageContext | null;
+  }> {
+    const [runningAgentMessage, runningCompactionMessage] = await Promise.all([
+      this.getRunningAgentMessage(auth, { branchId, transaction }),
+      this.getRunningCompactionMessage(auth, { branchId, transaction }),
+    ]);
+
+    return { runningAgentMessage, runningCompactionMessage };
+  }
+
+  async getBranchCreationContext(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<BranchCreationContext> {
+    const latestPerRank = await this.queryLatestVersionPerRankRows(auth, {
+      branchId,
+      transaction,
+    });
+
+    if (latestPerRank.length === 0) {
+      return {
+        isEmpty: true,
+        onlyContentFragments: false,
+        maxRank: null,
+        lastMessage: null,
+      };
+    }
+
+    const onlyContentFragments = latestPerRank.every(
+      (m) => m.contentFragmentId !== null
+    );
+    const lastMessageRow = latestPerRank[latestPerRank.length - 1];
+    const maxRank = Math.max(...latestPerRank.map((m) => m.rank));
+
+    return {
+      isEmpty: false,
+      onlyContentFragments,
+      maxRank,
+      lastMessage: lastMessageRow
+        ? { id: lastMessageRow.id, rank: lastMessageRow.rank }
+        : null,
+    };
+  }
+
+  /**
+   * Latest-version message at the highest rank in the conversation view.
+   */
+  async getLatestMessageSummary(
+    auth: Authenticator,
+    {
+      branchId,
+      transaction,
+    }: {
+      branchId?: string | null;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<LatestMessageSummary | null> {
+    const scopeWhere = await this.getMessageScopeWhere(auth, {
+      branchId,
+      transaction,
+    });
+
+    const message = await MessageModel.findOne({
+      where: {
+        ...scopeWhere,
+        visibility: { [Op.ne]: "deleted" },
+      },
+      include: [
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
+          required: false,
+          attributes: ["status"],
+        },
+      ],
+      order: [
+        ["rank", "DESC"],
+        ["version", "DESC"],
+      ],
+      transaction,
+    });
+
+    if (!message) {
+      return null;
+    }
+
+    return {
+      sId: message.sId,
+      rank: message.rank,
+      compactionStatus: message.compactionMessage?.status ?? null,
+    };
+  }
+
+  /**
+   * Fetch the contiguous content fragments that immediately precede `targetRank`
+   * in the conversation view. Mirrors `getRelatedContentFragments` without loading
+   * the full conversation content.
+   */
+  async fetchPrecedingContentFragments(
+    auth: Authenticator,
+    {
+      targetRank,
+      branchId,
+      transaction,
+    }: {
+      targetRank: number;
+      branchId?: string | null;
+      transaction?: Transaction;
+    }
+  ): Promise<ContentFragmentType[]> {
+    const scopeWhere = await this.getMessageScopeWhere(auth, {
+      branchId,
+      transaction,
+    });
+
+    const messages = await MessageModel.findAll({
+      where: {
+        ...scopeWhere,
+        rank: { [Op.lt]: targetRank },
+        visibility: { [Op.ne]: "deleted" },
+      },
+      include: [
+        {
+          model: ContentFragmentModel,
+          as: "contentFragment",
+          required: true,
+        },
+      ],
+      order: [
+        ["rank", "DESC"],
+        ["version", "DESC"],
+      ],
+      transaction,
+    });
+
+    const latestPerRank = new Map<number, MessageModel>();
+    for (const m of messages) {
+      if (!latestPerRank.has(m.rank)) {
+        latestPerRank.set(m.rank, m);
+      }
+    }
+
+    const { ContentFragmentResource } = await import(
+      "@app/lib/resources/content_fragment_resource"
+    );
+    const fragments = await ContentFragmentResource.batchRenderFromMessages(
+      auth,
+      {
+        conversationId: this.sId,
+        messages: [...latestPerRank.values()],
+      }
+    );
+
+    const related: ContentFragmentType[] = [];
+    let lastRank = targetRank;
+    for (const cf of fragments) {
+      if (cf.rank === lastRank - 1) {
+        related.push(cf);
+        lastRank = cf.rank;
+      } else {
+        break;
+      }
+    }
+    return related;
   }
 
   async getMessageById(

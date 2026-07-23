@@ -22,7 +22,10 @@ import type {
   GetConversationsResponseBody,
   PostConversationsResponseBody,
 } from "@app/types/api/assistant/conversation/types";
-import type { UserMessageType } from "@app/types/assistant/conversation";
+import type {
+  ConversationType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
@@ -300,12 +303,19 @@ app.post(
       spaceModelId = space.id;
     }
 
-    let newConversation = await createConversation(auth, {
+    const newConversationResource = await createConversation(auth, {
       title,
       visibility,
       spaceId: spaceModelId,
       metadata,
     });
+
+    let newConversation: ConversationType = {
+      ...newConversationResource.toJSON(),
+      content: [],
+      owner: auth.getNonNullableWorkspace(),
+      visibility: visibility,
+    };
 
     if (allSelectedSpaceIds.length > 0) {
       const selectedSpacesResult = await addSelectedConversationSpaces(auth, {
@@ -365,14 +375,6 @@ app.post(
 
         newContentFragments.push(r.value);
       }
-
-      newConversation = {
-        ...newConversation,
-        content: [
-          ...newConversation.content,
-          ...newContentFragments.map((contentFragment) => [contentFragment]),
-        ],
-      };
     }
 
     if (message) {
@@ -438,7 +440,7 @@ app.post(
       // If a message was provided we do await for the message to be created
       // before returning the conversation along with the message.
       const messageRes = await postUserMessage(auth, {
-        conversation: newConversation,
+        conversationResource: newConversationResource,
         content: message.content,
         mentions: message.mentions,
         context: {
