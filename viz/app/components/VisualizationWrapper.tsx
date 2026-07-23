@@ -408,8 +408,13 @@ export function VisualizationWrapper({
   );
 
   // A rejected promise nothing catches never reaches the ErrorBoundary, which only sees throws
-  // during render. Frame code is async throughout — a `callFunction` awaited without a `catch`,
-  // a failed fetch — so without this the Frame renders nothing and reports nothing.
+  // during render. Frame code is async throughout (a `callFunction` awaited without a `catch`, a
+  // failed fetch), so without this the Frame shows a spinner forever and reports nothing.
+  //
+  // This surfaces the error even once the Frame has rendered, which does replace a Frame that was
+  // partly working with the parent's error card. That is the intent: a Frame with an uncaught
+  // rejection is broken, and the card feeds the error back to the model on retry. The event is
+  // deliberately not `preventDefault()`ed so the rejection still reaches the browser console.
   useEffect(() => {
     const onUnhandledRejection = (event: PromiseRejectionEvent) => {
       const { reason } = event;

@@ -56,20 +56,26 @@ const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 1;
 // `code` is not narrowed to `SandboxFunctionCallErrorCode`: it is forwarded from whatever
 // classified the failure (runner, API error type, front), and a blob written by a newer deploy
 // must stay readable rather than fail to parse.
-const PersistedSandboxFunctionCallErrorSchema = z.union([
-  // Blobs written before the code and status were persisted only carry the message. Every such
-  // blob went through `fail(Error)`, which classified as `invocation_failed`.
-  z.string().transform((message) => ({ code: "invocation_failed", message })),
-  z.object({
-    code: z.string(),
-    message: z.string(),
-    status: z.number().optional(),
-  }),
-]);
+const PersistedErrorSchema = z.object({
+  code: z.string(),
+  message: z.string(),
+  status: z.number().optional(),
+});
 
-type PersistedSandboxFunctionCallError = z.infer<
-  typeof PersistedSandboxFunctionCallErrorSchema
+export type PersistedSandboxFunctionCallError = z.infer<
+  typeof PersistedErrorSchema
 >;
+
+const PersistedSandboxFunctionCallErrorSchema = z.union([
+  PersistedErrorSchema,
+  // Blobs written before the code and status were persisted only carry the message. Every such
+  // blob went through `fail(Error)`, which classified as `invocation_failed`. Piped back through
+  // the object schema so both arms infer one shape and `status` stays readable without narrowing.
+  z
+    .string()
+    .transform((message) => ({ code: "invocation_failed", message }))
+    .pipe(PersistedErrorSchema),
+]);
 
 const SandboxFunctionInvocationDataSchema = z.object({
   version: z.literal(SANDBOX_FUNCTION_INVOCATION_DATA_VERSION),
@@ -98,15 +104,22 @@ export interface SandboxFunctionInvocationForLLM {
 }
 
 function parseSandboxFunctionInvocationData(
+  gcsPath: string,
   content: string
 ): SandboxFunctionInvocationData {
   const result = SandboxFunctionInvocationDataSchema.safeParse(
     JSON.parse(content)
   );
   if (!result.success) {
-    throw new Error(
-      `Invalid sandbox function invocation data: ${result.error.message}`
+    // Listings load every invocation's blob, so throwing here would fail the whole listing over
+    // one unreadable record. That includes a blob written by a newer deploy during a rollout, so
+    // degrade to an empty record and keep the rest readable.
+    logger.error(
+      { gcsPath, error: result.error.message },
+      "Invalid sandbox function invocation data"
     );
+
+    return { version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION };
   }
 
   return result.data;
@@ -339,7 +352,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     }
 
     const [buffer] = downloadResult.value;
-    this.data = parseSandboxFunctionInvocationData(buffer.toString("utf-8"));
+    this.data = parseSandboxFunctionInvocationData(
+      this.gcsPath,
+      buffer.toString("utf-8")
+    );
   }
 
   private async writeDataToGcs(): Promise<void> {

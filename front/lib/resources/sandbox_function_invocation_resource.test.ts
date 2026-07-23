@@ -275,7 +275,7 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(invocation.userId).toBeNull();
   });
 
-  it("rejects unsupported stored data versions", async () => {
+  it("returns an empty record for unsupported stored data versions", async () => {
     const { authenticator, sandboxFunction, invocation } =
       await setupExecutionTest();
 
@@ -283,12 +283,14 @@ describe("SandboxFunctionInvocationResource", () => {
       .file(invocation.gcsPath!)
       .save(Buffer.from(JSON.stringify({ version: 2 }), "utf-8"));
 
-    await expect(
-      SandboxFunctionInvocationResource.fetchById(authenticator, {
-        sandboxFunction,
-        invocationId: invocation.sId,
-      })
-    ).rejects.toThrow("Invalid sandbox function invocation data");
+    // Listings load every invocation's blob, so one unreadable record must not fail the listing.
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.input).toBeUndefined();
+    expect(refetched?.result).toBeUndefined();
+    expect(refetched?.error).toBeUndefined();
   });
 
   it("stores and reloads its result from GCS on success", async () => {
@@ -373,15 +375,20 @@ describe("SandboxFunctionInvocationResource", () => {
     const { authenticator, sandboxFunction, invocation } =
       await setupExecutionTest();
 
-    await invocation.fail(new Error("sandbox unavailable"));
-    fileStorageMock.setObject(
-      invocation.gcsPath!,
-      JSON.stringify({
-        version: 1,
-        input: { message: "hello" },
-        error: "sandbox unavailable",
-      })
-    );
+    // A message distinct from anything the current code writes, so the assertion can only pass
+    // by reading the seeded blob.
+    await getPrivateUploadBucket()
+      .file(invocation.gcsPath!)
+      .save(
+        Buffer.from(
+          JSON.stringify({
+            version: 1,
+            input: { message: "hello" },
+            error: "written before codes existed",
+          }),
+          "utf-8"
+        )
+      );
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
@@ -389,7 +396,7 @@ describe("SandboxFunctionInvocationResource", () => {
     );
     expect(refetched?.error).toEqual({
       code: "invocation_failed",
-      message: "sandbox unavailable",
+      message: "written before codes existed",
     });
   });
 

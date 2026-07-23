@@ -95,16 +95,22 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
 const sendErrorToIframe = (
   request: CallFunctionRequest,
   error: SandboxFunctionCallError,
-  target: MessageEventSource
+  target: MessageEventSource,
+  {
+    conversationId,
+    workspaceId,
+  }: { conversationId: string | null; workspaceId: string }
 ) => {
   // Once handed over, the error belongs to Frame code and only comes back if the Frame reports it
   // itself, so log here to keep a trace of every failed call.
   datadogLogger.info("Sandbox function call failed", {
     code: error.code,
+    conversationId,
     errorMessage: error.message,
+    fileId: request.identifier,
     functionIdOrSlug: request.params.functionIdOrSlug,
-    identifier: request.identifier,
     status: error.status,
+    workspaceId,
   });
 
   target.postMessage(
@@ -296,6 +302,7 @@ function SandboxFunctionInvocation({
 
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler({
+  conversationId,
   createSandboxFunctionInvocation,
   getFileBlob,
   onEditText,
@@ -305,7 +312,9 @@ function useVisualizationDataHandler({
   visualization,
   vizIframeRef,
   waitForSandboxFunctionInvocationResult,
+  workspaceId,
 }: {
+  conversationId: string | null;
   createSandboxFunctionInvocation: (
     functionIdOrSlug: string,
     input?: unknown
@@ -321,6 +330,7 @@ function useVisualizationDataHandler({
     functionId: string;
     invocationId: string;
   }) => Promise<Result<unknown, SandboxFunctionCallError>>;
+  workspaceId: string;
 }) {
   const sendNotification = useSendNotification();
   const { code } = visualization;
@@ -384,7 +394,10 @@ function useVisualizationDataHandler({
           );
 
           if (invocationRes.isErr()) {
-            sendErrorToIframe(data, invocationRes.error, event.source);
+            sendErrorToIframe(data, invocationRes.error, event.source, {
+              conversationId,
+              workspaceId,
+            });
             break;
           }
 
@@ -394,7 +407,10 @@ function useVisualizationDataHandler({
           });
 
           if (result.isErr()) {
-            sendErrorToIframe(data, result.error, event.source);
+            sendErrorToIframe(data, result.error, event.source, {
+              conversationId,
+              workspaceId,
+            });
           } else {
             sendResponseToIframe(data, result.value, event.source);
           }
@@ -465,6 +481,7 @@ function useVisualizationDataHandler({
     return () => window.removeEventListener("message", listener);
   }, [
     code,
+    conversationId,
     createSandboxFunctionInvocation,
     downloadFileFromBlob,
     getFileBlob,
@@ -476,6 +493,7 @@ function useVisualizationDataHandler({
     vizIframeRef,
     sendNotification,
     waitForSandboxFunctionInvocationResult,
+    workspaceId,
   ]);
 }
 
@@ -712,6 +730,7 @@ export const VisualizationActionIframe = forwardRef<
   );
 
   useVisualizationDataHandler({
+    conversationId,
     createSandboxFunctionInvocation,
     getFileBlob,
     onEditText,
@@ -721,6 +740,7 @@ export const VisualizationActionIframe = forwardRef<
     visualization,
     vizIframeRef,
     waitForSandboxFunctionInvocationResult,
+    workspaceId,
   });
 
   const { code, complete: codeFullyGenerated } = visualization;
