@@ -220,6 +220,7 @@ describe("batchRenderMessages", () => {
 
       const handoverUserMessageRow = await UserMessageModel.create({
         userId: auth.getNonNullableUser().id,
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         content: "continue on another agent",
         userContextUsername: "testuser",

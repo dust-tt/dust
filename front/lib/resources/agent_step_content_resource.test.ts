@@ -6,6 +6,7 @@ import {
   FETCH_BY_AGENT_MESSAGES_CHUNK_SIZE,
 } from "@app/lib/resources/agent_step_content_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentTextContentType } from "@app/types/assistant/agent_message_content";
 import { describe, expect, it } from "vitest";
@@ -31,8 +32,14 @@ async function createAgentMessages(
 ): Promise<AgentMessageModel[]> {
   const workspace = auth.getNonNullableWorkspace();
 
+  const conversation = await ConversationFactory.create(auth, {
+    agentConfigurationId,
+    messagesCreatedAt: [],
+  });
+
   return AgentMessageModel.bulkCreate(
     Array.from({ length: count }, () => ({
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       status: "succeeded",
       agentConfigurationId,

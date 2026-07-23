@@ -860,6 +860,7 @@ describe("validateAction", () => {
   async function createAgentMessageWithNullUserParent() {
     const userMessageRow = await UserMessageModel.create({
       userId: null,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Message without user",
       userContextUsername: "api-user",
@@ -885,6 +886,7 @@ describe("validateAction", () => {
     });
 
     const agentMessageRow = await AgentMessageModel.create({
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       status: "created",
       agentConfigurationId: agentConfig.sId,
@@ -931,6 +933,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1102,6 +1105,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1165,6 +1169,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1217,6 +1222,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1433,6 +1439,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1612,6 +1619,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,

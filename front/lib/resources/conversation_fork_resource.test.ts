@@ -52,6 +52,7 @@ async function makeSourceAgentMessage({
   const workspace = auth.getNonNullableWorkspace();
 
   const agentMessage = await AgentMessageModel.create({
+    conversationId: conversationModelId,
     workspaceId: workspace.id,
     agentConfigurationId: "agent-configuration-id",
     agentConfigurationVersion: 0,
@@ -82,6 +83,7 @@ async function makeUserMessage({
 
   const userMessage = await UserMessageModel.create({
     userId: user.id,
+    conversationId: conversationModelId,
     workspaceId: workspace.id,
     content: "Source message",
     userContextUsername: "testuser",

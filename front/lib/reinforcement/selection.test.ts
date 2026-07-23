@@ -329,6 +329,7 @@ describe("findConversationsWithSkills", () => {
       status: "created",
       agentConfigurationId: "test-agent",
       agentConfigurationVersion: 0,
+      conversationId: convA.id,
       workspaceId: workspace.id,
       skipToolsValidation: false,
     });
@@ -353,6 +354,7 @@ describe("findConversationsWithSkills", () => {
       status: "created",
       agentConfigurationId: "test-agent",
       agentConfigurationVersion: 0,
+      conversationId: convB.id,
       workspaceId: workspace.id,
       skipToolsValidation: false,
     });

@@ -4748,6 +4748,7 @@ describe("Space Handling", () => {
 
       const otherUserMessage = await UserMessageModel.create({
         userId: ownerAuth.getNonNullableUser().id,
+        conversationId: otherConversation.id,
         workspaceId: workspace.id,
         content: "Other conversation message",
         userContextUsername: "testuser",
@@ -4808,6 +4809,7 @@ describe("Space Handling", () => {
 
       const branchUserMessageRow = await UserMessageModel.create({
         userId: ownerUser.id,
+        conversationId: conversationResource.id,
         workspaceId: workspace.id,
         content: "Branch message",
         userContextUsername: "testuser",
@@ -4878,6 +4880,7 @@ describe("Space Handling", () => {
       const user = auth.getNonNullableUser();
       const userMessageRow = await UserMessageModel.create({
         userId: user.id,
+        conversationId: conversationModelId,
         workspaceId: workspace.id,
         content: `Pending message rank ${rank}`,
         userContextUsername: "testuser",
@@ -4932,6 +4935,7 @@ describe("Space Handling", () => {
       // Create a main-thread message to anchor the branch.
       const anchorUserMessageRow = await UserMessageModel.create({
         userId: user.id,
+        conversationId: conversationResource.id,
         workspaceId: workspace.id,
         content: "Anchor message",
         userContextUsername: "testuser",
@@ -5008,6 +5012,7 @@ describe("Space Handling", () => {
       // Create a main-thread anchor message.
       const anchorUserMessageRow = await UserMessageModel.create({
         userId: user.id,
+        conversationId: conversationResource.id,
         workspaceId: workspace.id,
         content: "Anchor",
         userContextUsername: "testuser",
@@ -5089,6 +5094,7 @@ describe("Space Handling", () => {
       const user = auth.getNonNullableUser();
       const visibleUserMessageRow = await UserMessageModel.create({
         userId: user.id,
+        conversationId: conversationResource.id,
         workspaceId: workspace.id,
         content: "Visible message",
         userContextUsername: "testuser",
@@ -5620,6 +5626,7 @@ describe("Space Handling", () => {
       // Create a main-thread user message at rank 0
       const mainUserMessageRow = await UserMessageModel.create({
         userId: user.id,
+        conversationId: conversationResource.id,
         workspaceId: workspace.id,
         content: "Main thread message",
         userContextUsername: "testuser",
@@ -5651,6 +5658,7 @@ describe("Space Handling", () => {
       // Create a branch user message at the same rank, attached to the branch
       const branchUserMessageRow = await UserMessageModel.create({
         userId: user.id,
+        conversationId: conversationResource.id,
         workspaceId: workspace.id,
         content: "Branch message",
         userContextUsername: "testuser",
