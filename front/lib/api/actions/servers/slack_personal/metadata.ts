@@ -138,7 +138,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = [
         .optional()
         .default(true)
         .describe(
-          "Include the 'Sent via [AgentName] on Dust' footer. Set to false only when explicitly asked to omit it."
+          "Include the 'Sent via [AgentName] on Dust' footer. Keep true unless the user or your instructions explicitly ask to remove the footer or attribution itself. General formatting, brevity, or 'no metadata' guidelines are NOT a reason to set false."
         ),
     },
     stake: "medium",
@@ -196,7 +196,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = [
         .optional()
         .default(true)
         .describe(
-          "Include the 'Sent via [AgentName] on Dust' footer. Set to false only when explicitly asked to omit it."
+          "Include the 'Sent via [AgentName] on Dust' footer. Keep true unless the user or your instructions explicitly ask to remove the footer or attribution itself. General formatting, brevity, or 'no metadata' guidelines are NOT a reason to set false."
         ),
     },
     stake: "medium",
