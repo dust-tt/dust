@@ -29,6 +29,7 @@ function makeSkill(overrides: Partial<SkillType> = {}): SkillType {
     canAdministrate: true,
     canWrite: true,
     isDefault: false,
+    availability: "workspace_users",
     ...overrides,
   };
 }

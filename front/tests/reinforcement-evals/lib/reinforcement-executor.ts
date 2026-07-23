@@ -97,6 +97,7 @@ function makeSkillType(config: MockSkillConfig): SkillType {
     canWrite: false,
     canAdministrate: false,
     isDefault: false,
+    availability: "workspace_users",
   };
 }
 
