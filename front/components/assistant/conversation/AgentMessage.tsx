@@ -14,7 +14,6 @@ import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conver
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { getModelWithReasoningEffortLabel } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { useAutoOpenSidePanel } from "@app/components/assistant/conversation/useAutoOpenSidePanel";
 import type {
   AgentMessageStateWithControlEvent,
   AgentMessageWithStreaming,
@@ -27,6 +26,7 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
+import { useAutoOpenSidePanel } from "@app/components/assistant/conversation/useAutoOpenSidePanel";
 import {
   CREDIT_COST_ITEM_CLASS_NAME,
   useCreditCostMenuItem,
@@ -1386,7 +1386,10 @@ function AgentMessageContent({
     ]
   );
 
-  const { interactiveFiles } = useAutoOpenSidePanel({ agentMessage, isLastMessage });
+  const { interactiveFiles } = useAutoOpenSidePanel({
+    agentMessage,
+    isLastMessage,
+  });
 
   const blockedActionElement = blockedAction ? (
     <BlockedAction

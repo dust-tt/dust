@@ -96,7 +96,10 @@ export function useAutoOpenSidePanel({
       }
     } else if (completedInteractiveFiles.length > 0 && isLastMessage) {
       const [firstFile] = completedInteractiveFiles;
-      if (firstFile?.fileId && lastOpenedFileIdRef.current !== firstFile.fileId) {
+      if (
+        firstFile?.fileId &&
+        lastOpenedFileIdRef.current !== firstFile.fileId
+      ) {
         lastOpenedFileIdRef.current = firstFile.fileId;
         openPanel({ type: "interactive_content", fileId: firstFile.fileId });
       }
