@@ -1,12 +1,18 @@
 import { hardDeleteApp } from "@app/lib/api/apps";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import config from "@app/lib/api/config";
-import { hardDeleteDataSource } from "@app/lib/api/data_sources";
+import {
+  hardDeleteDataSource,
+  sendGitHubDeletionEmails,
+} from "@app/lib/api/data_sources";
 import { deletePodStatePrefix } from "@app/lib/api/sandbox/db";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
-import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
+import {
+  areAllSubscriptionsCanceled,
+  getMembers,
+} from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
@@ -95,9 +101,11 @@ const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
 export async function scrubDataSourceActivity({
   dataSourceId,
+  warnAdmins = true,
   workspaceId,
 }: {
   dataSourceId: string;
+  warnAdmins?: boolean;
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
@@ -122,7 +130,7 @@ export async function scrubDataSourceActivity({
     throw new Error("Data source is not soft deleted.");
   }
 
-  await hardDeleteDataSource(auth, dataSource);
+  await hardDeleteDataSource(auth, dataSource, { warnAdmins });
 }
 
 export async function scrubMCPServerViewActivity({
@@ -187,6 +195,7 @@ export async function scrubSpaceActivity({
   for (const ds of dataSources) {
     await scrubDataSourceActivity({
       dataSourceId: ds.sId,
+      warnAdmins: false,
       workspaceId,
     });
   }
@@ -565,6 +574,21 @@ export async function deleteMembersActivity({
     workspace,
   });
 
+  // The workspace/provider index makes this existence check cheap.
+  const githubDataSources = await DataSourceResource.listByConnectorProvider(
+    auth,
+    "github",
+    { limit: 1 }
+  );
+  let githubAdminEmails: string[] = [];
+  if (githubDataSources.length > 0) {
+    const { members } = await getMembers(auth, {
+      roles: ["admin"],
+      activeOnly: true,
+    });
+    githubAdminEmails = members.map((member) => member.email);
+  }
+
   for (const membership of memberships) {
     const user = await UserResource.fetchByModelId(membership.userId);
     if (user) {
@@ -611,6 +635,8 @@ export async function deleteMembersActivity({
       await membership.delete(auth, {});
     }
   }
+
+  return githubAdminEmails;
 }
 
 export async function deleteSkillsActivity({
@@ -639,8 +665,10 @@ export async function deleteWebhookSourcesActivity({
 }
 
 export async function deleteSpacesActivity({
+  githubAdminEmails,
   workspaceId,
 }: {
+  githubAdminEmails: string[];
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
@@ -726,6 +754,8 @@ export async function deleteSpacesActivity({
       workspaceId,
     });
   }
+
+  await sendGitHubDeletionEmails(githubAdminEmails);
 }
 
 export async function deletePluginRunsActivity({

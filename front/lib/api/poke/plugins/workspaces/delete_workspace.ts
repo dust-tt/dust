@@ -33,6 +33,7 @@ export const deleteWorkspacePlugin = createPlugin({
       },
       deleteDataSources: {
         type: "boolean",
+        default: false,
         description:
           "Delete all data sources as part of the workspace deletion.",
         label: "Delete all data sources",

@@ -182,7 +182,10 @@ export function createZodSchemaFromArgs(
         break;
 
       case "boolean":
-        schemaProps[key] = z.boolean();
+        schemaProps[key] =
+          arg.default === undefined
+            ? z.boolean()
+            : z.boolean().default(arg.default);
         break;
 
       case "enum":

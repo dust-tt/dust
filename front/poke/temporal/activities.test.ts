@@ -2,11 +2,28 @@ import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { deleteSpacesActivity } from "@app/poke/temporal/activities";
+import {
+  deleteMembersActivity,
+  deleteSpacesActivity,
+} from "@app/poke/temporal/activities";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { describe, expect, it, vi } from "vitest";
+
+const { mockSendGitHubDeletionEmail } = vi.hoisted(() => ({
+  mockSendGitHubDeletionEmail: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/email", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/api/email")>();
+  return {
+    ...actual,
+    sendGitHubDeletionEmail: mockSendGitHubDeletionEmail,
+  };
+});
 
 vi.mock("@app/lib/api/data_sources", async (importOriginal) => {
   const actual =
@@ -22,6 +39,28 @@ vi.mock("@app/lib/api/data_sources", async (importOriginal) => {
       }
     ),
   };
+});
+
+describe("deleteMembersActivity", () => {
+  it("notifies admins after deleting a workspace with GitHub data", async () => {
+    const workspace = await WorkspaceFactory.byok();
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const globalSpace = await SpaceFactory.global(workspace);
+    await DataSourceViewFactory.fromConnector(workspace, globalSpace, "github");
+
+    const githubAdminEmails = await deleteMembersActivity({
+      workspaceId: workspace.sId,
+    });
+    expect(mockSendGitHubDeletionEmail).not.toHaveBeenCalled();
+
+    await deleteSpacesActivity({
+      githubAdminEmails,
+      workspaceId: workspace.sId,
+    });
+
+    expect(mockSendGitHubDeletionEmail).toHaveBeenCalledWith(admin.email);
+  });
 });
 
 describe("deleteSpacesActivity", () => {
@@ -44,7 +83,10 @@ describe("deleteSpacesActivity", () => {
       );
     expect(sharedView.isOk()).toBe(true);
 
-    await deleteSpacesActivity({ workspaceId: workspace.sId });
+    await deleteSpacesActivity({
+      githubAdminEmails: [],
+      workspaceId: workspace.sId,
+    });
 
     await expect(
       DataSourceResource.fetchById(auth, defaultView.dataSource.sId, {

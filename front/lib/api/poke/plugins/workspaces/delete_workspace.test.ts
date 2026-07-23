@@ -3,6 +3,7 @@ import { Authenticator } from "@app/lib/auth";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { createZodSchemaFromArgs } from "@app/types/poke/plugins";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -31,6 +32,17 @@ beforeEach(() => {
 });
 
 describe("deleteWorkspacePlugin.execute", () => {
+  it("defaults data source deletion to false", () => {
+    const schema = createZodSchemaFromArgs(deleteWorkspacePlugin.manifest.args);
+
+    const args = schema.parse({
+      confirmation: "DELETE",
+      workspaceHasBeenRelocated: false,
+    });
+
+    expect(args.deleteDataSources).toBe(false);
+  });
+
   it("blocks deletion when the free-plan workspace still has an active Metronome contract", async () => {
     // Credit-priced free plan: `isFreePlan` is true, yet the active subscription
     // is Metronome-billed — the case the guard must catch.

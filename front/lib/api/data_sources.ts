@@ -265,7 +265,8 @@ export async function softDeleteDataSourceAndLaunchScrubWorkflow(
  */
 export async function hardDeleteDataSource(
   auth: Authenticator,
-  dataSource: DataSourceResource
+  dataSource: DataSourceResource,
+  { warnAdmins = true }: { warnAdmins?: boolean } = {}
 ) {
   assert(auth.isBuilder(), "Only builders can delete data sources.");
 
@@ -415,7 +416,7 @@ export async function hardDeleteDataSource(
 
   await dataSource.delete(auth, { hardDelete: true });
 
-  if (dataSource.connectorProvider) {
+  if (dataSource.connectorProvider && warnAdmins) {
     await warnPostDeletion(auth, dataSource.connectorProvider);
   }
 }
@@ -433,14 +434,18 @@ async function warnPostDeletion(
         activeOnly: true,
       });
       const adminEmails = members.map((u) => u.email);
-      // send email to admins
-      for (const email of adminEmails) {
-        await sendGitHubDeletionEmail(email);
-      }
+      await sendGitHubDeletionEmails(adminEmails);
       break;
 
     default:
       break;
+  }
+}
+
+export async function sendGitHubDeletionEmails(adminEmails: string[]) {
+  // send email to admins
+  for (const email of adminEmails) {
+    await sendGitHubDeletionEmail(email);
   }
 }
 
