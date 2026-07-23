@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest";
 
 const makeRec = (auth: Authenticator) =>
   ActivationRecommendationResource.makeNew(auth, {
-    content: "Try the Slack integration",
-    rationale: "User has Slack but no Slack skill",
+    title: "Try the Slack integration",
+    content: "Connect your workspace Slack to get started.",
     conversationId: null,
   });
 
@@ -20,8 +20,8 @@ describe("ActivationRecommendationResource", () => {
       const rec = await makeRec(authenticator);
 
       expect(rec.status).toBe("suggested");
-      expect(rec.content).toBe("Try the Slack integration");
-      expect(rec.rationale).toBe("User has Slack but no Slack skill");
+      expect(rec.title).toBe("Try the Slack integration");
+      expect(rec.content).toBe("Connect your workspace Slack to get started.");
       expect(rec.sId).toBeTruthy();
     });
   });

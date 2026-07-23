@@ -22,8 +22,8 @@ export class ActivationRecommendationModel extends WorkspaceAwareModel<Activatio
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare status: ActivationRecommendationStatus;
+  declare title: string;
   declare content: string;
-  declare rationale: string;
 
   // The conversation in which the recommendation was (originally) made
   declare conversationId: ForeignKey<ConversationModel["id"]> | null;
@@ -53,11 +53,11 @@ ActivationRecommendationModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    content: {
+    title: {
       type: DataTypes.STRING(4096),
       allowNull: false,
     },
-    rationale: {
+    content: {
       type: DataTypes.STRING(4096),
       allowNull: false,
     },
@@ -79,11 +79,12 @@ ActivationRecommendationModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["userId"],
+        name: "activation_recommendations_workspace_user_idx",
+        fields: ["workspaceId", "userId"],
         concurrently: true,
       },
       {
-        fields: ["workspaceId"],
+        fields: ["userId"],
         concurrently: true,
       },
       {

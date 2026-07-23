@@ -52,7 +52,7 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     auth: Authenticator,
     blob: Pick<
       CreationAttributes<ActivationRecommendationModel>,
-      "content" | "rationale" | "conversationId"
+      "title" | "content" | "conversationId"
     >
   ): Promise<ActivationRecommendationResource> {
     const workspace = auth.getNonNullableWorkspace();
@@ -62,8 +62,8 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       workspaceId: workspace.id,
       userId: user.id,
       status: "suggested",
+      title: blob.title,
       content: blob.content,
-      rationale: blob.rationale,
       conversationId: blob.conversationId ?? null,
     });
 
@@ -154,8 +154,8 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     return {
       sId: this.sId,
       status: this.status,
+      title: this.title,
       content: this.content,
-      rationale: this.rationale,
       createdAt: this.createdAt,
     };
   }
