@@ -3,6 +3,7 @@ import {
   ActivationRecommendationModel,
   type ActivationRecommendationStatus,
 } from "@app/lib/models/activation/activation_recommendation";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -14,7 +15,9 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
+import { Op } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ActivationRecommendationResource
@@ -108,6 +111,47 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     });
 
     return recs.map((rec) => new this(this.model, rec.get()));
+  }
+
+  static async listSuggestedByUser(
+    auth: Authenticator,
+    { limit = 5, sinceDaysAgo }: { limit?: number; sinceDaysAgo?: number } = {}
+  ): Promise<
+    {
+      resource: ActivationRecommendationResource;
+      conversationSId: string | null;
+    }[]
+  > {
+    const user = auth.getNonNullableUser();
+
+    const where: WhereOptions<ActivationRecommendationModel> = {
+      userId: user.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+      status: "suggested",
+    };
+
+    if (sinceDaysAgo !== undefined) {
+      const sinceMs = Date.now() - sinceDaysAgo * 24 * 60 * 60 * 1000;
+      where.createdAt = { [Op.gte]: new Date(sinceMs) };
+    }
+
+    const recs = await this.model.findAll({
+      where,
+      include: [
+        {
+          model: ConversationModel,
+          attributes: ["sId"],
+          required: false,
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit,
+    });
+
+    return recs.map((rec) => ({
+      resource: new this(this.model, rec.get()),
+      conversationSId: rec.conversation?.sId ?? null,
+    }));
   }
 
   async updateFields(fields: {
