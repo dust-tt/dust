@@ -1,5 +1,8 @@
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
@@ -12,16 +15,28 @@ async function createGroupWithMember() {
     workspace,
     "Poke member count group"
   );
-  const addMemberResult = await GroupFactory.withMembers(auth, group, [user]);
+  const revokedUser = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, revokedUser, { role: "user" });
+  const addMemberResult = await GroupFactory.withMembers(auth, group, [
+    user,
+    revokedUser,
+  ]);
   if (addMemberResult.isErr()) {
     throw addMemberResult.error;
+  }
+  const revokeResult = await MembershipResource.revokeMembership({
+    user: revokedUser,
+    workspace,
+  });
+  if (revokeResult.isErr()) {
+    throw new Error(revokeResult.error.type);
   }
 
   return { workspace, group };
 }
 
 describe("GET /api/poke/workspaces/:wId/groups", () => {
-  it("returns actual member counts", async () => {
+  it("excludes revoked workspace members from group counts", async () => {
     const { workspace, group } = await createGroupWithMember();
 
     const response = await honoApp.request(
@@ -38,7 +53,7 @@ describe("GET /api/poke/workspaces/:wId/groups", () => {
 });
 
 describe("GET /api/poke/workspaces/:wId/groups/:groupId/details", () => {
-  it("returns the actual member count", async () => {
+  it("excludes revoked workspace members from the group count", async () => {
     const { workspace, group } = await createGroupWithMember();
 
     const response = await honoApp.request(

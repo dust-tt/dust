@@ -37,7 +37,7 @@ app.get(
 
     return ctx.json({
       members,
-      group: await group.toJSONWithMemberCount(auth),
+      group: { ...group.toJSON(), memberCount: members.length },
     });
   }
 );
