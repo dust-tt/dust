@@ -169,7 +169,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import assert from "assert";
 import type { IncomingHttpHeaders } from "http";
 import { col } from "sequelize";
 
@@ -1738,23 +1737,67 @@ export async function createAgentMessageFromText(
 export async function retryAgentMessage(
   auth: Authenticator,
   {
-    conversation,
+    conversationResource,
+    branchId: initialBranchId = null,
     message,
   }: {
-    conversation: ConversationWithoutContentType;
+    conversationResource: ConversationResource;
+    branchId?: string | null;
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithContentfulStatusCode>> {
-  // Find the parent user message to get the original context for rate limiting.
-  // This ensures retries are counted with the same origin (web vs programmatic) as the original.
-  const parentUserMessage = conversation.content
-    .flat()
-    .find(
-      (m): m is UserMessageType =>
-        isUserMessageType(m) && m.sId === message.parentMessageId
-    );
+  const conversation: ConversationWithoutContentType = {
+    ...conversationResource.toJSON(),
+    branchId: initialBranchId,
+  };
 
-  if (!parentUserMessage) {
+  const parentMessageRes = await conversationResource.getMessageById(
+    auth,
+    message.parentMessageId
+  );
+  if (parentMessageRes.isErr() || !parentMessageRes.value.userMessage) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Could not find the parent user message for this retry.",
+      },
+    });
+  }
+
+  const latestParentMessageModel =
+    await conversationResource.getLatestUserMessageModelAtRank(auth, {
+      rank: parentMessageRes.value.rank,
+      branchId: message.branchId,
+    });
+  if (!latestParentMessageModel) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Could not find the parent user message for this retry.",
+      },
+    });
+  }
+
+  const parentUserMessageRenderRes = await batchRenderMessages(
+    auth,
+    conversationResource,
+    [latestParentMessageModel],
+    "full"
+  );
+  if (parentUserMessageRenderRes.isErr()) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Could not find the parent user message for this retry.",
+      },
+    });
+  }
+
+  const parentUserMessage = parentUserMessageRenderRes.value[0];
+  if (!parentUserMessage || !isUserMessageType(parentUserMessage)) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -1907,34 +1950,6 @@ export async function retryAgentMessage(
 
   const { agentMessage } = agentMessageResult;
 
-  // First, find the array of the parent message in conversation.content.
-  const parentMessageIndex = conversation.content.findIndex((messages) => {
-    return messages.some((m) => m.sId === agentMessage.parentMessageId);
-  });
-  if (parentMessageIndex === -1) {
-    throw new Error(
-      `Parent message ${agentMessage.parentMessageId} not found in conversation`
-    );
-  }
-
-  const userMessage =
-    conversation.content[parentMessageIndex][
-      conversation.content[parentMessageIndex].length - 1
-    ];
-  if (!isUserMessageType(userMessage)) {
-    throw new Error("Unreachable: parent message must be a user message");
-  }
-
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentMessage.configuration.sId,
-    variant: "light",
-  });
-
-  assert(
-    agentConfiguration,
-    "Unreachable: could not find detailed configuration for agent"
-  );
-
   void launchAgentLoopWorkflow({
     auth,
     agentLoopArgs: {
@@ -1943,9 +1958,9 @@ export async function retryAgentMessage(
       conversationId: conversation.sId,
       conversationTitle: conversation.title,
       conversationBranchId: conversation.branchId,
-      userMessageId: userMessage.sId,
-      userMessageVersion: userMessage.version,
-      userMessageOrigin: userMessage.context.origin,
+      userMessageId: parentUserMessage.sId,
+      userMessageVersion: parentUserMessage.version,
+      userMessageOrigin: parentUserMessage.context.origin,
     },
     startStep: 0,
   });

@@ -3271,6 +3271,41 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return result?.exists ?? false;
   }
 
+  async getLatestUserMessageModelAtRank(
+    auth: Authenticator,
+    {
+      rank,
+      branchId,
+      transaction,
+    }: {
+      rank: number;
+      branchId?: string | null;
+      transaction?: Transaction;
+    }
+  ): Promise<MessageModel | null> {
+    const scopeWhere = await this.getMessageScopeWhere(auth, {
+      branchId,
+      transaction,
+    });
+
+    return MessageModel.findOne({
+      where: {
+        ...scopeWhere,
+        rank,
+        visibility: { [Op.ne]: "deleted" },
+      },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+        },
+      ],
+      order: [["version", "DESC"]],
+      transaction,
+    });
+  }
+
   async getRunningAgentMessage(
     auth: Authenticator,
     {

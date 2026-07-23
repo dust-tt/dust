@@ -164,6 +164,7 @@ describe("retryAgentMessage", () => {
     ReturnType<typeof createResourceTest>
   >["globalGroup"];
   let conversation: ConversationType;
+  let conversationResource: ConversationResource;
   let agentConfig: LightAgentConfigurationType;
   let agentMessage: AgentMessageType;
 
@@ -195,6 +196,10 @@ describe("retryAgentMessage", () => {
       throw new Error("Failed to fetch conversation");
     }
     conversation = fetchedConversationResult.value;
+    conversationResource = await fetchConversationResource(
+      auth,
+      conversationWithoutContent.sId
+    );
 
     // Find the agent message in the conversation
     const agentMessages = conversation.content
@@ -223,7 +228,7 @@ describe("retryAgentMessage", () => {
     expect(userMessage).toBeDefined();
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -259,13 +264,9 @@ describe("retryAgentMessage", () => {
 
     expect(userMessage).toBeDefined();
 
-    const branchedConversation: ConversationType = {
-      ...conversation,
-      branchId,
-    };
-
     const result = await retryAgentMessage(auth, {
-      conversation: branchedConversation,
+      conversationResource,
+      branchId,
       message: agentMessage,
     });
 
@@ -285,7 +286,7 @@ describe("retryAgentMessage", () => {
 
   it("should call publishAgentMessagesEvents with correct arguments", async () => {
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -315,7 +316,7 @@ describe("retryAgentMessage", () => {
     const originalId = agentMessage.sId;
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -346,7 +347,7 @@ describe("retryAgentMessage", () => {
     };
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: nonExistentMessage,
     });
 
@@ -362,7 +363,7 @@ describe("retryAgentMessage", () => {
   it("should return error when message was already retried", async () => {
     // First retry
     const firstRetry = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
     expect(firstRetry.isOk()).toBe(true);
@@ -372,7 +373,7 @@ describe("retryAgentMessage", () => {
 
     // Try to retry again with the same original message
     const secondRetry = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -388,7 +389,7 @@ describe("retryAgentMessage", () => {
 
   it("should preserve agent message properties in the retry", async () => {
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -423,19 +424,15 @@ describe("retryAgentMessage", () => {
       }
     );
 
-    // Refresh conversation
-    const refreshedConversationResult = await getConversation(
+    // Refresh conversation resource
+    const refreshedConversationResource = await fetchConversationResource(
       auth,
       conversation.sId
     );
-    if (refreshedConversationResult.isErr()) {
-      throw new Error("Failed to fetch conversation");
-    }
-    const refreshedConversation = refreshedConversationResult.value;
-    expect(refreshedConversation.hasError).toBe(true);
+    expect(refreshedConversationResource.toJSON().hasError).toBe(true);
 
     const result = await retryAgentMessage(auth, {
-      conversation: refreshedConversation,
+      conversationResource: refreshedConversationResource,
       message: agentMessage,
     });
 
@@ -460,7 +457,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(0);
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -483,7 +480,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(100);
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -502,7 +499,7 @@ describe("retryAgentMessage", () => {
     };
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: messageWithInvalidParent,
     });
 
@@ -532,7 +529,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(100);
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -565,7 +562,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(100);
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -591,7 +588,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(0);
 
     const result = await retryAgentMessage(systemKeyAuth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -621,7 +618,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(100);
 
     const result = await retryAgentMessage(mixedAuth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -642,7 +639,7 @@ describe("retryAgentMessage", () => {
 
     // Try to retry the agent message
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -662,6 +659,7 @@ describe("retryAgentMessage", () => {
     let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
     let anotherProjectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
     let projectConversation: ConversationType;
+    let projectConversationResource: ConversationResource;
     let projectAgentMessage: AgentMessageType;
     let agentWithDifferentSpace: LightAgentConfigurationType;
 
@@ -776,6 +774,10 @@ describe("retryAgentMessage", () => {
         throw new Error("Failed to fetch conversation");
       }
       projectConversation = fetchedConversationResult.value;
+      projectConversationResource = await fetchConversationResource(
+        auth,
+        conversationWithoutContent.sId
+      );
 
       // Find the agent message in the conversation
       const agentMessages = projectConversation.content
@@ -849,6 +851,10 @@ describe("retryAgentMessage", () => {
         throw new Error("Failed to fetch conversation");
       }
       const sameSpaceConversation = fetchedConversationResult.value;
+      const sameSpaceConversationResource = await fetchConversationResource(
+        auth,
+        conversationWithoutContent.sId
+      );
 
       const agentMessages = sameSpaceConversation.content
         .flat()
@@ -864,7 +870,7 @@ describe("retryAgentMessage", () => {
         .mockResolvedValue(100);
 
       const result = await retryAgentMessage(auth, {
-        conversation: sameSpaceConversation,
+        conversationResource: sameSpaceConversationResource,
         message: sameSpaceAgentMessage,
       });
 
@@ -916,6 +922,10 @@ describe("retryAgentMessage", () => {
         throw new Error("Failed to fetch conversation");
       }
       const globalSpaceConversation = fetchedConversationResult.value;
+      const globalSpaceConversationResource = await fetchConversationResource(
+        auth,
+        conversationWithoutContent.sId
+      );
 
       const agentMessages = globalSpaceConversation.content
         .flat()
@@ -931,7 +941,7 @@ describe("retryAgentMessage", () => {
         .mockResolvedValue(100);
 
       const result = await retryAgentMessage(auth, {
-        conversation: globalSpaceConversation,
+        conversationResource: globalSpaceConversationResource,
         message: globalSpaceAgentMessage,
       });
 

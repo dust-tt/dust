@@ -1,10 +1,9 @@
 import { retryAgentMessage } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { isAgentMessageType } from "@app/types/assistant/conversation";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { RetryMessageResponseType } from "@dust-tt/client";
-import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { streamingTag } from "@front-api/middlewares/streaming";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -73,25 +72,8 @@ app.post(
       });
     }
 
-    const branchId = messageRes.value.getBranchId() ?? null;
-
-    const conversationRes = await getConversation(
-      auth,
-      conversationId,
-      false,
-      branchId
-    );
-
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
-    }
-
-    const conversation = conversationRes.value;
-
-    const message = conversation.content
-      .flat()
-      .find((m) => m.sId === messageId);
-    if (!message || !isAgentMessageType(message)) {
+    const messageModel = messageRes.value;
+    if (!messageModel.agentMessage) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -102,9 +84,39 @@ app.post(
       });
     }
 
+    const branchId = messageModel.getBranchId() ?? null;
+
+    const renderRes = await batchRenderMessages(
+      auth,
+      conversationResource,
+      [messageModel],
+      "full"
+    );
+    if (renderRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to render message.",
+        },
+      });
+    }
+
+    const message = renderRes.value[0];
+    if (!message) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to render message.",
+        },
+      });
+    }
+
     const retriedMessageRes = await retryAgentMessage(auth, {
-      conversation,
-      message,
+      conversationResource,
+      branchId,
+      message: message as AgentMessageType,
     });
     if (retriedMessageRes.isErr()) {
       return apiError(ctx, retriedMessageRes.error);
