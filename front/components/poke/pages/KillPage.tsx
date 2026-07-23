@@ -17,6 +17,7 @@ import {
   CreditCard01,
   Fire,
   OpenaiLogo,
+  PauseCircle,
   RefreshCw02,
   Settings01,
   SliderToggle,
@@ -74,6 +75,13 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
       "Disable Metronome billing globally and fall back to legacy Stripe subscriptions.",
     note: "Workspaces with the `legacy_billing` feature flag are always on legacy billing regardless of this switch.",
     icon: CreditCard01,
+  },
+  pause_upsert_queue: {
+    title: "Upsert Queue",
+    description:
+      "Pause the document upsert queue: parked upserts retry every 5 minutes until the switch is disabled.",
+    note: "Enqueues keep succeeding and in-flight upserts finish. Use to shed Qdrant write load (e.g. during resharding).",
+    icon: PauseCircle,
   },
 };
 
