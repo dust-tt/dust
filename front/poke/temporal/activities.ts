@@ -672,20 +672,21 @@ export async function deleteSpacesActivity({
     return a.createdAt.getTime() - b.createdAt.getTime();
   });
 
+  // Data sources can have views in several spaces, so soft-delete every view before deleting any
+  // data source.
+  const dataSourceViews = await DataSourceViewResource.listBySpaces(
+    auth,
+    sortedSpaces,
+    { includeDeleted: true }
+  );
+  for (const dataSourceView of dataSourceViews) {
+    await dataSourceView.delete(auth, { hardDelete: false });
+  }
+
   for (const space of sortedSpaces) {
     const res = await space.delete(auth, { hardDelete: false });
     if (res.isErr()) {
       throw res.error;
-    }
-
-    // Soft delete all the data source views of the space.
-    const dataSourceViews = await DataSourceViewResource.listBySpace(
-      auth,
-      space,
-      { includeDeleted: true }
-    );
-    for (const ds of dataSourceViews) {
-      await ds.delete(auth, { hardDelete: false });
     }
 
     // Soft delete all the data sources of the space.
