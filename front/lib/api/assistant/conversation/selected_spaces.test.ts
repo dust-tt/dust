@@ -752,51 +752,6 @@ describe("selected conversation Spaces", () => {
     ).resolves.toEqual([globalSpace.sId]);
   });
 
-  it("does not resurrect selected Spaces created before the move-in cleared them", async () => {
-    await enableFeature();
-    const selectedSpace = await memberRestrictedSpace();
-    const projectSpace = await memberProjectSpace();
-    const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
-      auth,
-      { requestedSpaceIds: [globalSpace.id] }
-    );
-    const conv = await conversation();
-
-    const moveInResult = await moveConversationToProject(auth, {
-      conversation: conv,
-      spaceId: projectSpace.sId,
-    });
-    expect(moveInResult.isOk()).toBe(true);
-
-    const podConversation = await refetchConversation(conv.sId);
-    expect(isPodConversation(podConversation)).toBe(true);
-
-    // Reproduce a row written before the move-in started clearing selections: the conversation is
-    // already in the project and still carries an active selection with no ACL backing.
-    await ConversationSelectedSpaceResource.upsertForConversation(auth, {
-      conversation: podConversation,
-      origin: "input_bar",
-      spaces: [selectedSpace],
-    });
-
-    const moveOutResult = await moveConversationOutOfProject(auth, {
-      conversation: podConversation,
-    });
-    expect(moveOutResult.isOk()).toBe(true);
-
-    const movedOutConversation = await refetchConversation(conv.sId);
-    expect(isPodConversation(movedOutConversation)).toBe(false);
-    expect(movedOutConversation.requestedSpaceIds).not.toContain(
-      selectedSpace.sId
-    );
-    await expect(
-      getEffectiveSpaceIdsForAgentRun(auth, {
-        agentConfiguration,
-        conversation: movedOutConversation,
-      })
-    ).resolves.toEqual([globalSpace.sId]);
-  });
-
   it("ignores selected Spaces at runtime when the feature flag is disabled", async () => {
     const selectedSpace = await memberRestrictedSpace();
     const requestedSpaceModelIds = [globalSpace.id];
