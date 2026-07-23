@@ -207,6 +207,10 @@ const WorkspaceAnalyticsUpdateBodySchema = z.object({
   disableWorkspaceAnalytics: z.boolean(),
 });
 
+const WorkspacePublishedAgentsRestrictedModelsUpdateBodySchema = z.object({
+  allowRestrictedModelsForPublishedAgents: z.boolean(),
+});
+
 const WorkspaceSlackPersonalFooterRemovalUpdateBodySchema = z.object({
   slackPersonalAllowFooterRemoval: z.boolean(),
 });
@@ -242,6 +246,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceSelfImprovementCapPerSkillAwuCreditsUpdateBodySchema,
   WorkspaceAuditLogsUpdateBodySchema,
   WorkspaceAnalyticsUpdateBodySchema,
+  WorkspacePublishedAgentsRestrictedModelsUpdateBodySchema,
   WorkspaceDefaultAgentUpdateBodySchema,
   WorkspaceSlackPersonalFooterRemovalUpdateBodySchema,
 ]);
@@ -578,6 +583,25 @@ app.post(
         context: getAuditLogContext(auth),
         metadata: {
           enabled: String(body.allowEmailAgents),
+        },
+      });
+    } else if ("allowRestrictedModelsForPublishedAgents" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        allowRestrictedModelsForPublishedAgents:
+          body.allowRestrictedModelsForPublishedAgents,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.published_agents_restricted_models_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.allowRestrictedModelsForPublishedAgents),
         },
       });
     } else if ("allowReinforcement" in body) {

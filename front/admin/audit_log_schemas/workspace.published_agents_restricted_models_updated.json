@@ -1,0 +1,7 @@
+{
+  "action": "workspace.published_agents_restricted_models_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "enabled": "string"
+  }
+}
