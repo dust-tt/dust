@@ -1,0 +1,14 @@
+{
+  "action": "workspace.governance_permission_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "grant_type": "string",
+    "resource_type": "string",
+    "scope": "string",
+    "group_ids": "string"
+  }
+}
