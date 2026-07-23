@@ -686,10 +686,6 @@ export async function applyContractStartSubscriptionSwap({
     metronomeCustomerId: customerId,
     metronomeContractId: contractId,
     planCode: targetPlanCode ?? "",
-    // Reconcile against the contract that just started, not the DB-active one:
-    // the subscription swap (and contract-cache flush) below hasn't happened
-    // yet, so `getActiveContract` would still resolve the previous contract and
-    // read the wrong seat allowance — flagging every seat as "near limit".
     contract: contractResult.value,
   });
   if (!targetPlanCode) {

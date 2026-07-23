@@ -500,12 +500,6 @@ export async function reconcileWorkspaceUserCreditStates({
   metronomeCustomerId: string;
   metronomeContractId: string;
   planCode: string;
-  // The contract being reconciled against. Pass it when it may differ from the
-  // workspace's DB-active contract (e.g. the `contract.start` webhook running
-  // before the subscription swap): the seat allowances must be read from this
-  // contract, not from `getActiveContract`, which would otherwise resolve the
-  // previous contract and collapse the per-user cap to zero — flagging every
-  // seat as "near limit". Defaults to the DB-active contract when omitted.
   contract?: CachedContract | null;
 }): Promise<void> {
   if (!isCreditPricedPlanPrefix(planCode)) {

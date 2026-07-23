@@ -667,16 +667,10 @@ export function getAwuAllocationForNormalizedSeatType(
 
 /**
  * Resolve the seat AWU allowance for each normalized pool-limit seat type of
- * a contract. Returns an empty record when the workspace has no active
- * contract. Used to derive total per-user cap thresholds (pool override + seat
- * allowance) from the pool-only override persisted on memberships.
- *
- * Pass an explicit `contract` when the caller already holds the contract to
- * reconcile against and it may differ from the workspace's DB-active contract
- * — e.g. the `contract.start` webhook, which reconciles per-user state against
- * the newly-started contract *before* the DB subscription swap (and cache
- * flush) has happened, so `getActiveContract` would still resolve the previous
- * contract and yield the wrong (often zero) allowance.
+ * a contract, defaulting to the workspace's active contract. Returns an empty
+ * record when there is no contract. Used to derive total per-user cap
+ * thresholds (pool override + seat allowance) from the pool-only override
+ * persisted on memberships.
  */
 export async function getSeatAllowancesByNormalizedSeatType(
   workspaceId: string,
