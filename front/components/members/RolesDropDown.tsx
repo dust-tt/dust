@@ -1,4 +1,8 @@
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import {
+  displayRole,
+  displayRoleCapitalized,
+  ROLES_DATA,
+} from "@app/components/members/Roles";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import type { ActiveRoleType } from "@app/types/user";
 import { ACTIVE_ROLES, isAdmin } from "@app/types/user";
@@ -61,26 +65,19 @@ export function RoleDropDown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <div className="group flex cursor-pointer items-center gap-2">
-          <Chip
-            color={ROLES_DATA[selectedRole]["color"]}
-            size="sm"
-            className="capitalize"
-          >
-            {displayRole(selectedRole)}
-          </Chip>
-          <Button icon={ChevronDown} size="sm" variant="ghost" />
-        </div>
+        <Button
+          iconRight={ChevronDown}
+          size="sm"
+          label={displayRoleCapitalized(selectedRole)}
+          variant="ghost"
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         {availableRoles.map((role) => (
           <DropdownMenuItem
             key={role}
             onClick={() => onChange(role)}
-            label={
-              displayRole(role).charAt(0).toUpperCase() +
-              displayRole(role).slice(1)
-            }
+            label={displayRoleCapitalized(role)}
           />
         ))}
       </DropdownMenuContent>

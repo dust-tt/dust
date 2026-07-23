@@ -7,9 +7,14 @@ export function displayRole(role: RoleType): string {
   return role;
 }
 
+export function displayRoleCapitalized(role: RoleType): string {
+  const label = displayRole(role);
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 export const ROLES_DATA: Record<
   ActiveRoleType,
-  { description: string; color: "warning" | "info" | "success" | "primary" }
+  { description: string; color: "warning" | "info" | "success" | "highlight" }
 > = {
   admin: {
     description:
@@ -17,8 +22,9 @@ export const ROLES_DATA: Record<
     color: "warning",
   },
   manager: {
-    description: "",
-    color: "primary",
+    description:
+      "Can use and create agents, manage members, groups, roles, and workspace analytics.",
+    color: "highlight",
   },
   builder: {
     description:
