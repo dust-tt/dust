@@ -1,0 +1,165 @@
+import * as SliderPrimitive from "@radix-ui/react-slider";
+import { Lock01 } from "@sparkle/icons/v2-stroke";
+import { cn } from "@sparkle/lib/utils";
+import React from "react";
+
+// Radix keeps the thumb inside the track bounds by shifting it by up to half
+// its width at the extremities. Step markers (dots, locks) and the hover
+// preview must apply the same shift to land exactly where the thumb does, so
+// this must match the measured size of the Thumb element exactly.
+// The thumb spans the full track height; the visible ball is drawn 4px
+// smaller inside it, so the fill (which extends half a thumb past the thumb
+// center) wraps the ball with a constant-radius endcap and a 2px ring.
+const THUMB_SIZE_PX = 20;
+
+function stepCenter(index: number, lastIndex: number): string {
+  const ratio = lastIndex > 0 ? index / lastIndex : 0;
+  const offsetPx = (0.5 - ratio) * THUMB_SIZE_PX;
+  return `calc(${ratio * 100}% + ${offsetPx}px)`;
+}
+
+export interface SliderStepsProps {
+  stepCount: number;
+  value: number;
+  onChange: (index: number) => void;
+  lockedSteps?: number[];
+  disabled?: boolean;
+  className?: string;
+  ariaLabel?: string;
+}
+
+export function SliderSteps({
+  stepCount,
+  value,
+  onChange,
+  lockedSteps,
+  disabled = false,
+  className,
+  ariaLabel,
+}: SliderStepsProps) {
+  const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
+
+  const lastIndex = Math.max(stepCount - 1, 1);
+  const lockedSet = React.useMemo(
+    () => new Set(lockedSteps ?? []),
+    [lockedSteps]
+  );
+
+  const nearestUnlocked = (target: number): number | null => {
+    for (let distance = 0; distance < stepCount; distance++) {
+      const below = target - distance;
+      const above = target + distance;
+      if (below >= 0 && !lockedSet.has(below)) {
+        return below;
+      }
+      if (above < stepCount && !lockedSet.has(above)) {
+        return above;
+      }
+    }
+    return null;
+  };
+
+  const handleValueChange = ([raw]: number[]) => {
+    const next = nearestUnlocked(raw);
+    if (next !== null && next !== value) {
+      onChange(next);
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLSpanElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (rect.width === 0) {
+      return;
+    }
+    const ratio = Math.min(
+      Math.max((e.clientX - rect.left) / rect.width, 0),
+      1
+    );
+    setHoveredIndex(nearestUnlocked(Math.round(ratio * lastIndex)));
+  };
+
+  // Decided at render time so the preview vanishes as soon as the hovered step
+  // becomes the value (click/drag), without waiting for the next pointer move.
+  const previewIndex =
+    !disabled && hoveredIndex !== null && hoveredIndex > value
+      ? hoveredIndex
+      : null;
+
+  return (
+    <SliderPrimitive.Root
+      className={cn(
+        "relative flex h-5 w-full touch-none select-none items-center",
+        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+        className
+      )}
+      min={0}
+      max={lastIndex}
+      step={1}
+      value={[value]}
+      onValueChange={handleValueChange}
+      disabled={disabled}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={() => setHoveredIndex(null)}
+    >
+      <SliderPrimitive.Track className="relative h-full w-full grow rounded-full bg-slider-toggle-bg-idle">
+        {/* Dots on the available positions, painted under the fill. */}
+        {Array.from({ length: stepCount }, (_, index) =>
+          lockedSet.has(index) ? null : (
+            <span
+              key={index}
+              className="absolute top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-400"
+              style={{ left: stepCenter(index, lastIndex) }}
+            />
+          )
+        )}
+        {/* Fill up to the knob. Drawn by hand instead of Radix's Range: Range
+            stops at the raw value percent while the thumb is shifted inward to
+            stay in bounds, which would leave a gap between fill and knob. */}
+        <span
+          className="absolute inset-y-0 left-0 rounded-full bg-highlight-400"
+          style={{
+            width: `calc(${stepCenter(value, lastIndex)} + ${THUMB_SIZE_PX / 2}px)`,
+          }}
+        />
+        {/* Hover preview: the fill's would-be extent, in SliderToggle's hover
+            tint. Width animates so reaching for the next step feels guided. */}
+        <span
+          className={cn(
+            "pointer-events-none absolute inset-y-0 left-0 rounded-full",
+            "bg-black/[0.06] dark:bg-white/[0.08]",
+            "transition-[width,opacity] duration-200 ease-in-out motion-reduce:transition-none",
+            previewIndex !== null ? "opacity-100" : "opacity-0"
+          )}
+          style={{
+            width:
+              previewIndex !== null
+                ? `calc(${stepCenter(previewIndex, lastIndex)} + ${THUMB_SIZE_PX / 2}px)`
+                : 0,
+          }}
+        />
+        {/* Locks sit on the track at their step position. */}
+        {Array.from({ length: stepCount }, (_, index) =>
+          lockedSet.has(index) ? (
+            <span
+              key={index}
+              className="pointer-events-none absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground"
+              style={{ left: stepCenter(index, lastIndex) }}
+            >
+              <Lock01 className="h-3 w-3" />
+            </span>
+          ) : null
+        )}
+        {/* SliderToggle's inset shadow, as a topmost transparent overlay so it
+            reads over the fill too (the fill would otherwise paint above a
+            shadow set on the track itself). */}
+        <span className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0px_-3px_3px_0px_rgba(255,255,255,0.25),inset_0px_0.5px_2px_0px_rgba(0,0,0,0.14)]" />
+      </SliderPrimitive.Track>
+      <SliderPrimitive.Thumb
+        aria-label={ariaLabel}
+        className="flex h-5 w-5 items-center justify-center focus:outline-none"
+      >
+        <span className="block h-4 w-4 rounded-full bg-white drop-shadow" />
+      </SliderPrimitive.Thumb>
+    </SliderPrimitive.Root>
+  );
+}
