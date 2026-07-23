@@ -124,7 +124,7 @@ describe("callSandboxFunction", () => {
       auth,
       fn,
       { name: "Soupinou" },
-      "Europe/Paris"
+      { timezone: "Europe/Paris" }
     );
 
     expect(result.isOk()).toBe(true);
@@ -134,7 +134,7 @@ describe("callSandboxFunction", () => {
     expect(result.value).toEqual({ greeting: "Hi, Soupinou" });
     expect(invokeSpy).toHaveBeenCalledWith(auth, {
       input: { name: "Soupinou" },
-      timezone: "Europe/Paris",
+      context: { timezone: "Europe/Paris" },
     });
   });
 

@@ -206,7 +206,9 @@ export function getUserTimezone(toolContext?: ToolContext): string | null {
   }
 
   if (isSandboxFunctionRunContext(toolContext?.runContext)) {
-    return normalizeTimezone(toolContext.runContext.invocation.timezone);
+    return normalizeTimezone(
+      toolContext.runContext.invocation.context?.timezone
+    );
   }
 
   return null;

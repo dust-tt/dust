@@ -656,7 +656,9 @@ export const VisualizationActionIframe = forwardRef<
 
         const body: PostSandboxFunctionInvocationRequestBody = {
           input,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          context: {
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          },
         };
 
         const encodedFunctionIdOrSlug = encodeURIComponent(functionIdOrSlug);

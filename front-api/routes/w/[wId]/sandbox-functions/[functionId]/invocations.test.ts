@@ -281,7 +281,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       functionIdOrSlug: sandboxFunction.sId,
       body: {
         input: { message: "hello" },
-        timezone: "Europe/Paris",
+        context: { timezone: "Europe/Paris" },
       },
     });
 
@@ -302,7 +302,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
         sandboxFunction: expect.objectContaining({ sId: sandboxFunction.sId }),
         invocation: expect.objectContaining({
           sId: invocation.sId,
-          timezone: "Europe/Paris",
+          context: { timezone: "Europe/Paris" },
         }),
       }
     );

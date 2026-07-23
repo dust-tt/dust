@@ -33,12 +33,12 @@ export async function callHandler(
 
   const timezone = isAgentLoopRunContext(runContext)
     ? runContext.userMessage.context.timezone
-    : runContext.invocation.timezone;
+    : runContext.invocation.context?.timezone;
   const result = await callSandboxFunction(
     auth,
     sandboxFunction,
     input,
-    timezone
+    timezone === undefined ? undefined : { timezone }
   );
   if (result.isErr()) {
     const { code, message } = result.error;

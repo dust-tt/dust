@@ -213,27 +213,30 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(refetched?.input).toEqual({ message: "hello" });
   });
 
-  it("stores and reloads its timezone from GCS", async () => {
+  it("stores and reloads its context from GCS", async () => {
     const { authenticator, sandboxFunction } = await setupExecutionTest();
     const invocation = await SandboxFunctionInvocationResource.makeNew(
       authenticator,
       {
         sandboxFunction,
         input: undefined,
-        timezone: "Europe/Paris",
+        context: { timezone: "Europe/Paris" },
       }
     );
 
-    expect(invocation.timezone).toBe("Europe/Paris");
+    expect(invocation.context).toEqual({ timezone: "Europe/Paris" });
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toBe(
-      JSON.stringify({ version: 1, timezone: "Europe/Paris" })
+      JSON.stringify({
+        version: 1,
+        context: { timezone: "Europe/Paris" },
+      })
     );
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
-    expect(refetched?.timezone).toBe("Europe/Paris");
+    expect(refetched?.context).toEqual({ timezone: "Europe/Paris" });
   });
 
   it("records the initiating user", async () => {
