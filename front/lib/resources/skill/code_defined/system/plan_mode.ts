@@ -13,13 +13,15 @@ const ASK_USER_QUESTION_TOOL_NAME = "ask_user_question";
 const PLAN_MODE_INSTRUCTIONS = `
 Plan Mode lets you maintain a live \`plan.md\` the user can follow as you work. Think of it as a shared progress view for substantial work, not just an approval gate. On a long task, the user sees where you are without having to ask. On a short one, it is pure overhead.
 
-**Call \`${CREATE_PLAN_TOOL_NAME}\` only when the work is genuinely multi-step**: several distinct steps you cannot simply carry out back-to-back in this turn, work spanning several files or systems, or work whose scope and sequencing are worth showing before you start. The test is whether the plan tells the user something they don't already know: if the plan would just restate their request as a checklist, don't create one.
+**If the user explicitly asks for a plan** (e.g. "use plan mode", "plan this for me", "draft a plan before you do anything"), always call \`${CREATE_PLAN_TOOL_NAME}\`, even if the task looks small to you. This overrides everything below.
 
-**When in doubt, skip it.** A plan for work you finish in a few tool calls is noise: the user gets a card to read and track for something that was already done by the time they read it. Prefer doing the work and reporting the result.
+**Otherwise, call \`${CREATE_PLAN_TOOL_NAME}\` only when the work is genuinely multi-step**: a change spanning several files or systems, research across several sources, or a task whose steps you will have to sequence and revisit rather than run straight through. Rule of thumb: if you expect to be done within about five tool calls, there is nothing worth planning. The test is whether the plan tells the user something they don't already know — if it would just restate their request as a checklist, don't create one.
 
-**Always skip plan mode** for questions and lookups, single edits or fixes, anything you expect to finish in a handful of tool calls, pure clarification exchanges, and follow-ups that just tweak something you already produced. Length of the answer is not the signal — a long written answer produced in one shot needs no plan.
+**When in doubt, skip it.** A plan the user reads only after the work is already finished is noise, not transparency: they get a card to track for nothing. Prefer doing the work and reporting the result.
 
-**Always create a plan when the user explicitly asks for one** (e.g. "use plan mode", "plan this out first", "draft a plan before you do anything"), even if the task looks small to you.
+**Skip plan mode entirely** for questions and lookups, single edits or fixes, pure clarification exchanges, and follow-ups that just tweak something you already produced. Answer length is not the signal — a long written answer produced in one shot needs no plan.
+
+**If the work turns out bigger than you expected mid-turn, call \`${CREATE_PLAN_TOOL_NAME}\` then.** The bar is the size of the work, not when you discovered it.
 
 Exactly one active plan is allowed per conversation. If a plan already exists in this conversation (you can see it in the attachments), do NOT call \`${CREATE_PLAN_TOOL_NAME}\` again; use \`${EDIT_PLAN_TOOL_NAME}\` to iterate on the existing one.
 
@@ -28,7 +30,7 @@ Exactly one active plan is allowed per conversation. If a plan already exists in
 Clarifying questions go through \`${ASK_USER_QUESTION_TOOL_NAME}\`: use it liberally before drafting the plan and whenever ambiguity arises mid-execution.
 
 **Approval**: plan mode has no dedicated approval tool. When you need explicit sign-off before executing, you MUST request it through \`${ASK_USER_QUESTION_TOOL_NAME}\` with a question like "Approve this plan?" and options such as "Approve" and "Reject". Never ask for approval in your normal response text: a plain sentence like "Do you approve?" gives the user no clear choice, is not an approval gate, and does not pause for a decision. If you are seeking approval, the LAST thing you do in the turn is the \`${ASK_USER_QUESTION_TOOL_NAME}\` call, not a written question.
-- Request approval this way when the user explicitly asked for plan mode (e.g. "use plan mode", "plan this for me", "draft a plan before you do anything"): ask once the plan is populated and before starting execution.
+- Request approval this way when the user explicitly asked for plan mode (see above): ask once the plan is populated and before starting execution.
 - Otherwise it is optional: only ask if the stakes warrant a human checkpoint (irreversible actions, big scope, ambiguous intent). For transparency-only flows, skip approval and just keep editing the plan as you execute.
 - Only ask for approval when plan.md is ready. Do not ask with an incomplete plan.
 
