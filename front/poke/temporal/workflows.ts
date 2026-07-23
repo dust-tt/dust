@@ -26,6 +26,7 @@ const {
   isWorkflowDeletableActivity,
   scrubDataSourceActivity,
   scrubSpaceActivity,
+  sendGitHubNoticesActivity,
 } = normalActivityProxies;
 
 const {
@@ -80,7 +81,8 @@ export async function deleteWorkspaceWorkflow({
   await deleteWorkspaceUserMetadataActivity({ workspaceId });
   await deleteTagsActivity({ workspaceId });
   await deleteWebhookSourcesActivity({ workspaceId });
-  await deleteSpacesActivity({ githubAdminEmails, workspaceId });
+  await deleteSpacesActivity({ workspaceId });
+  await sendGitHubNoticesActivity({ adminEmails: githubAdminEmails });
   await deleteTranscriptsActivity({ workspaceId });
   await deletePluginRunsActivity({ workspaceId });
   await deleteWorkspaceActivity({ workspaceId });

@@ -156,9 +156,11 @@ export async function scrubMCPServerViewActivity({
 
 export async function scrubSpaceActivity({
   spaceId,
+  warnAdmins = true,
   workspaceId,
 }: {
   spaceId: string;
+  warnAdmins?: boolean;
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
@@ -195,7 +197,7 @@ export async function scrubSpaceActivity({
   for (const ds of dataSources) {
     await scrubDataSourceActivity({
       dataSourceId: ds.sId,
-      warnAdmins: false,
+      warnAdmins,
       workspaceId,
     });
   }
@@ -576,41 +578,7 @@ export async function deleteMembersActivity({
 
   for (const membership of memberships) {
     const user = await UserResource.fetchByModelId(membership.userId);
-    if (user) {
-      const { memberships: membershipsOfUser } =
-        await MembershipResource.getLatestMemberships({
-          users: [user],
-        });
-
-      // If the user we're removing the membership of only has one membership, we delete their
-      // workspace data but keep the user row to avoid expensive FK constraint scans.
-      if (membershipsOfUser.length === 1) {
-        childLogger.info(
-          {
-            membershipId: membership.id,
-            userId: user.sId,
-          },
-          "Deleting Membership and user data"
-        );
-
-        // Delete the user's files.
-        await FileResource.deleteAllForUser(auth, user.toJSON());
-        await membership.delete(auth, {});
-
-        // Delete the user's agent memories.
-        await AgentMemoryModel.destroy({
-          where: {
-            workspaceId: workspace.id,
-            userId: user.id,
-          },
-        });
-        await OnboardingTaskResource.deleteAllForUser(auth, user.toJSON());
-
-        // Cancel any remaining Temporal workflows/schedules and delete wake-up rows owned by the
-        // user in this workspace.
-        await WakeUpResource.deleteAllForUser(auth, user.toJSON());
-      }
-    } else {
+    if (!user) {
       hardDeleteLogger.info(
         {
           membershipId: membership.id,
@@ -618,6 +586,44 @@ export async function deleteMembersActivity({
         "Deleting Membership"
       );
       await membership.delete(auth, {});
+      continue;
+    }
+
+    const { memberships: membershipsOfUser } =
+      await MembershipResource.getLatestMemberships({
+        users: [user],
+      });
+    const shouldDeleteUserData = membershipsOfUser.length === 1;
+
+    childLogger.info(
+      {
+        membershipId: membership.id,
+        userId: user.sId,
+      },
+      shouldDeleteUserData
+        ? "Deleting Membership and user data"
+        : "Deleting Membership"
+    );
+    await membership.delete(auth, {});
+
+    // If the user we're removing the membership of only has one membership, we delete their
+    // workspace data but keep the user row to avoid expensive FK constraint scans.
+    if (shouldDeleteUserData) {
+      // Delete the user's files.
+      await FileResource.deleteAllForUser(auth, user.toJSON());
+
+      // Delete the user's agent memories.
+      await AgentMemoryModel.destroy({
+        where: {
+          workspaceId: workspace.id,
+          userId: user.id,
+        },
+      });
+      await OnboardingTaskResource.deleteAllForUser(auth, user.toJSON());
+
+      // Cancel any remaining Temporal workflows/schedules and delete wake-up rows owned by the
+      // user in this workspace.
+      await WakeUpResource.deleteAllForUser(auth, user.toJSON());
     }
   }
 }
@@ -647,6 +653,14 @@ export async function getGitHubAdminEmailsActivity({
   return githubAdminEmails;
 }
 
+export async function sendGitHubNoticesActivity({
+  adminEmails,
+}: {
+  adminEmails: string[];
+}) {
+  await sendGitHubDeletionEmails(adminEmails);
+}
+
 export async function deleteSkillsActivity({
   workspaceId,
 }: {
@@ -673,10 +687,8 @@ export async function deleteWebhookSourcesActivity({
 }
 
 export async function deleteSpacesActivity({
-  githubAdminEmails,
   workspaceId,
 }: {
-  githubAdminEmails: string[];
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
@@ -759,11 +771,10 @@ export async function deleteSpacesActivity({
 
     await scrubSpaceActivity({
       spaceId: space.sId,
+      warnAdmins: false,
       workspaceId,
     });
   }
-
-  await sendGitHubDeletionEmails(githubAdminEmails);
 }
 
 export async function deletePluginRunsActivity({
