@@ -16,13 +16,17 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
         .string()
         .max(4096)
         .describe(
-          "Short title for the recommendation, shown in the 'Your next steps' surface (5-10 words)."
+          "Action label shown in the recommendations list (6-8 words). " +
+            "Be specific enough that the user knows exactly what they would be doing. " +
+            "Example: 'Ask about recent Slack decisions'."
         ),
       content: z
         .string()
         .max(4096)
         .describe(
-          "One-sentence description of what the recommendation involves, shown as subtitle."
+          "Brief subtitle shown under the title in the recommendations list (8-10 words). " +
+            "Explain the 'how' or 'why' in plain language. " +
+            "Example: 'Find past decisions in your Slack workspace in seconds'."
         ),
     },
     stake: "never_ask",

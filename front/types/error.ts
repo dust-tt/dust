@@ -132,6 +132,8 @@ const API_ERROR_TYPES = [
   // Plugins:
   "plugin_not_found",
   "plugin_execution_failed",
+  // Action recommendations:
+  "recommendation_not_found",
   // Triggers:
   "trigger_not_found",
   "webhook_source_not_found",
