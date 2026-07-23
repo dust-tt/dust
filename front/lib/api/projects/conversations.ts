@@ -219,6 +219,16 @@ export async function moveConversationOutOfProject(
   const oldUpdatedAt = conversationResource.updatedAt;
   const participants = await conversationResource.listParticipants(auth);
 
+  // Selections are cleared when a conversation moves into a project, but conversations that were
+  // moved in before that behaviour shipped still carry active rows. They are inert while the
+  // conversation is a pod (getValidSelectedSpaceIdsForAgentRun ignores them), and the rebuild below
+  // does not re-add them to requestedSpaceIds, so leaving them would make them live again with no
+  // ACL backing. Clear them before dropping the project association, so the conversation is never
+  // outside a project with a live selection.
+  await ConversationSelectedSpaceResource.removeAllForConversation(auth, {
+    conversation: conversationResource,
+  });
+
   // Remove the project association.
   await conversationResource.updateSpaceId(auth, null);
 
