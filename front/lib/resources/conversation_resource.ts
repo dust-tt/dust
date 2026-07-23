@@ -83,7 +83,10 @@ export type FetchConversationOptions = {
   dangerouslySkipPermissionFiltering?: boolean;
   includeForkingData?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
-  transaction?: Transaction; // Read within the given transaction, seeing its uncommitted writes
+  // Read within the given transaction, seeing its uncommitted writes. Only honored on the
+  // `baseFetchWithAuthorization` path (`fetchById`, `fetchByIds`, `listAll`, ...). Helpers that
+  // cherry-pick options, such as `fetchConversationWithoutContent`, still read outside of it.
+  transaction?: Transaction;
 };
 
 type SpaceConversationsFilter = "all" | "group" | "with_me";
