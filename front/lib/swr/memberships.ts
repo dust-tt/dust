@@ -128,6 +128,7 @@ export function useSearchMembers<
   pageIndex,
   pageSize,
   groupKind,
+  buildersOnly,
   disabled,
 }: {
   workspaceId: string;
@@ -135,6 +136,7 @@ export function useSearchMembers<
   pageIndex: number;
   pageSize: number;
   groupKind?: Exclude<GroupKind, "system">;
+  buildersOnly?: boolean;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -161,6 +163,10 @@ export function useSearchMembers<
 
   if (groupKind && isGroupKind(groupKind)) {
     searchParams.set("groupKind", groupKind);
+  }
+
+  if (buildersOnly) {
+    searchParams.set("buildersOnly", "true");
   }
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =

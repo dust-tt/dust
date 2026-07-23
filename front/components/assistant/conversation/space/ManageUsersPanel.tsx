@@ -39,6 +39,7 @@ interface EditorsOnlyMode extends BaseManageUsersPanelProps {
   editors: SearchMemberType[];
   onEditorsChange: (editors: SearchMemberType[]) => void;
   title?: string;
+  buildersOnly?: boolean;
 }
 
 type ManageUsersPanelProps = SpaceMembersMode | EditorsOnlyMode;
@@ -49,6 +50,8 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
   const sendNotification = useSendNotification();
   const doUpdateSpace = useUpdateSpace({ owner });
+
+  const buildersOnly = mode === "editors-only" ? props.buildersOnly : undefined;
 
   const [currentMembers, setCurrentMembers] = useState<Set<string>>(new Set());
   const [currentEditors, setCurrentEditors] = useState<Set<string>>(new Set());
@@ -222,6 +225,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
             selectedMemberIds={currentMembers}
             onSelectionChange={handleSelectionChange}
             extraColumns={editorColumn}
+            buildersOnly={buildersOnly}
             initialMembers={initialMembers}
           />
         </SheetContainer>

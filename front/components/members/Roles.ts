@@ -1,8 +1,7 @@
 import type { ActiveRoleType, RoleType } from "@app/types/user";
 
 export function displayRole(role: RoleType): string {
-  // `builder` is deprecated; surface it as a regular member to end users.
-  if (role === "user" || role === "builder") {
+  if (role === "user") {
     return "member";
   }
   return role;
@@ -11,6 +10,18 @@ export function displayRole(role: RoleType): string {
 export function displayRoleCapitalized(role: RoleType): string {
   const label = displayRole(role);
   return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+// `builder` is deprecated under admin governance: when the feature flag is
+// enabled, surface it to end users as a regular member.
+export function normalizeDisplayRole<T extends RoleType>(
+  role: T,
+  isAdminGovernanceEnabled: boolean
+): T | "user" {
+  if (role === "builder" && isAdminGovernanceEnabled) {
+    return "user";
+  }
+  return role;
 }
 
 export const ROLES_DATA: Record<
@@ -26,10 +37,10 @@ export const ROLES_DATA: Record<
     description: "",
     color: "highlight",
   },
-  // `builder` is deprecated; mirror the regular member appearance.
   builder: {
-    description: "Can use and create agents in conversations.",
-    color: "success",
+    description:
+      "Can use, create agents and manage folders, websites and dust apps in the company space.",
+    color: "info",
   },
   user: {
     description: "Can use and create agents in conversations.",

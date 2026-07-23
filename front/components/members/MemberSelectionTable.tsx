@@ -62,6 +62,7 @@ interface MemberSelectionTableProps {
   selectedMemberIds: Set<string>;
   onSelectionChange: (ids: Set<string>, users: SearchMemberType[]) => void;
   extraColumns?: ColumnDef<MemberRowData>[];
+  buildersOnly?: boolean;
   initialMembers?: SearchMemberType[];
 }
 
@@ -70,6 +71,7 @@ export function MemberSelectionTable({
   selectedMemberIds,
   onSelectionChange,
   extraColumns,
+  buildersOnly,
   initialMembers,
 }: MemberSelectionTableProps) {
   const [searchText, setSearchText] = useState("");
@@ -88,6 +90,7 @@ export function MemberSelectionTable({
     searchTerm: searchText,
     pageIndex: pagination.pageIndex,
     pageSize: pagination.pageSize,
+    buildersOnly,
     disabled: !searchText,
   });
 

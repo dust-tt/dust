@@ -20,6 +20,10 @@ const SearchMembersQuerySchema = z.object({
   searchTerm: z.string().optional(),
   searchEmails: z.string().optional(),
   groupKind: z.enum(GROUP_KINDS).exclude(["system"]).optional(),
+  buildersOnly: z
+    .string()
+    .transform((v) => v === "true")
+    .optional(),
 });
 
 // Mounted at /api/w/:wId/members/search.
@@ -54,6 +58,7 @@ app.get(
         searchTerm: query.searchTerm,
         searchEmails: emails,
         groupKind: query.groupKind,
+        buildersOnly: query.buildersOnly,
       },
       query
     );
