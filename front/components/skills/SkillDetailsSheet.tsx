@@ -102,7 +102,10 @@ export function SkillDetailsSheetContent({
 }: SkillDetailsSheetContentProps) {
   const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
 
-  const showEditorsTabs = skill.status !== "suggested" && skill.canAdministrate;
+  // The editors tab is shown to everyone (non-editors get a read-only list,
+  // SkillEditorsTab hides the remove column for them), except for global
+  // skills which are not editable.
+  const showEditorsTabs = skill.status !== "suggested" && !skill.isDefault;
 
   if (showEditorsTabs) {
     return (
