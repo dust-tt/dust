@@ -5,6 +5,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { resolveConversationFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
+  type AgentLoopRunContext,
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
@@ -207,27 +208,15 @@ export function trackTokenUsage({
   );
 }
 
-export async function uploadAndFormatImageResponse(
+async function uploadAndFormatAgentLoopImageResponse(
   auth: Authenticator,
-  toolContext: ToolContext | undefined,
+  runContext: AgentLoopRunContext,
   images: Base64ImageData[],
   fileName: string
 ): Promise<
   Result<Array<{ type: "resource"; resource: ToolGeneratedFileType }>, MCPError>
 > {
-  assert(
-    isAgentLoopRunContext(toolContext?.runContext),
-    "AgentLoopRunContext expected"
-  );
-  if (!toolContext?.runContext) {
-    return new Err(
-      new MCPError("No conversation context available for file upload", {
-        tracked: false,
-      })
-    );
-  }
-
-  const conversationId = toolContext.runContext.conversation.sId;
+  const conversationId = runContext.conversation.sId;
   const baseFileName = stripFileExtension(fileName);
 
   const resources: Array<{
@@ -282,6 +271,34 @@ export async function uploadAndFormatImageResponse(
   }
 
   return new Ok(resources);
+}
+
+export async function uploadAndFormatImageResponse(
+  auth: Authenticator,
+  toolContext: ToolContext | undefined,
+  images: Base64ImageData[],
+  fileName: string
+): Promise<
+  Result<Array<{ type: "resource"; resource: ToolGeneratedFileType }>, MCPError>
+> {
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
+  if (!toolContext?.runContext) {
+    return new Err(
+      new MCPError("No conversation context available for file upload", {
+        tracked: false,
+      })
+    );
+  }
+
+  return uploadAndFormatAgentLoopImageResponse(
+    auth,
+    toolContext.runContext,
+    images,
+    fileName
+  );
 }
 
 async function processSingleImageFile(
