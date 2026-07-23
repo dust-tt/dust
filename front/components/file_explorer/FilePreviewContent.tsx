@@ -8,9 +8,10 @@ import type { FilePreviewCategory } from "@app/components/file_explorer/utils";
 import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
-import { useFileContentByUrl } from "@app/lib/swr/files";
+import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
 import { stripMimeParameters } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   CodeBlock,
   cn,
@@ -138,11 +139,12 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
 interface AudioPreviewProps {
   fileUrl: string;
   fileId: string | null;
+  owner?: LightWorkspaceType;
 }
 
-function AudioPreview({ fileUrl, fileId }: AudioPreviewProps) {
-  const sep = fileUrl.includes("?") ? "&" : "?";
-  const transcriptUrl = fileId ? `${fileUrl}${sep}version=processed` : null;
+function AudioPreview({ fileUrl, fileId, owner }: AudioPreviewProps) {
+  const transcriptUrl =
+    fileId && owner ? getFileProcessedUrl(owner, fileId) : null;
   const { fileContent: transcript } = useFileContentByUrl({
     url: transcriptUrl,
     disabled: !transcriptUrl,
@@ -254,6 +256,7 @@ interface FilePreviewContentProps {
   markdownViewMode?: MarkdownFilePreviewViewMode;
   onMarkdownContentChange?: (content: string) => void;
   onMarkdownViewModeChange?: (mode: MarkdownFilePreviewViewMode) => void;
+  owner?: LightWorkspaceType;
   processedContent: ProcessedContent | null;
 }
 
@@ -269,6 +272,7 @@ export function FilePreviewContent({
   markdownViewMode,
   onMarkdownContentChange,
   onMarkdownViewModeChange,
+  owner,
   processedContent,
 }: FilePreviewContentProps) {
   if (isContentLoading) {
@@ -316,7 +320,9 @@ export function FilePreviewContent({
     }
 
     case "audio":
-      return <AudioPreview fileUrl={fileUrl} fileId={entry.fileId} />;
+      return (
+        <AudioPreview fileUrl={fileUrl} fileId={entry.fileId} owner={owner} />
+      );
 
     case "delimited":
       if (fileContent) {

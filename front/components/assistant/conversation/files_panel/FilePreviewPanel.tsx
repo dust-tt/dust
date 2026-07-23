@@ -123,6 +123,7 @@ export function FilePreviewPanel({
             isFullWidth
             markdownContent={processedContent?.text}
             markdownViewMode="preview"
+            owner={owner}
             processedContent={processedContent}
           />
         )}
