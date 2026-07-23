@@ -157,7 +157,7 @@ const UserNotificationDelaySchema = z.object({
   delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
 });
 
-const getConversationDetails = async ({
+export const getConversationDetails = async ({
   payload,
   auth: providedAuth,
   subscriberId,

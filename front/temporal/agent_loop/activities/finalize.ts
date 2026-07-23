@@ -14,7 +14,10 @@ import {
   notifyWorkflowError,
 } from "@app/temporal/agent_loop/activities/common";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
-import { conversationUnreadNotification } from "@app/temporal/agent_loop/activities/notification";
+import {
+  activationNewConversationNotification,
+  conversationUnreadNotification,
+} from "@app/temporal/agent_loop/activities/notification";
 import { snapshotAgentMessageSkills } from "@app/temporal/agent_loop/activities/snapshot_skills";
 import {
   launchEmitMetronomeUsageEvents,
@@ -35,6 +38,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
     conversationUnreadNotification(auth, agentLoopArgs),
+    activationNewConversationNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),
     sendEmailReplyOnCompletion(auth, agentLoopArgs),
   ]);
