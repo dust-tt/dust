@@ -55,7 +55,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-function getScopeOptions(isExternalOff: boolean): {
+function getScopeOptions(isExternalInviteOff: boolean): {
   icon: typeof Lock01;
   label: string;
   description: string;
@@ -64,18 +64,18 @@ function getScopeOptions(isExternalOff: boolean): {
   return [
     {
       icon: Lock01,
-      label: isExternalOff ? "Invited workspace members only" : "Invite only",
-      description: isExternalOff
+      label: isExternalInviteOff ? "Invited workspace members only" : "Invite only",
+      description: isExternalInviteOff
         ? "Only the workspace members you invite"
         : "Only the people you invite",
       value: "emails_only",
     },
     {
       icon: Users01,
-      label: isExternalOff
+      label: isExternalInviteOff
         ? "All workspace members"
         : "All workspace members + invites",
-      description: isExternalOff
+      description: isExternalInviteOff
         ? "Everyone in your workspace"
         : "Everyone in your workspace, plus anyone you invite",
       value: "workspace_and_emails",
@@ -199,10 +199,10 @@ export function ShareFrameSheet({
     !externalSharingDisabledByPolicy && hasPermission("publish", "frame");
 
   // The UI reflects internal-only sharing whenever external invites aren't available.
-  const isExternalOff = !canInviteExternal;
+  const isExternalInviteOff = !canInviteExternal;
 
   const allowedScopes = ALLOWED_SCOPES_BY_POLICY[owner.sharingPolicy];
-  const availableScopeOptions = getScopeOptions(isExternalOff).filter(
+  const availableScopeOptions = getScopeOptions(isExternalInviteOff).filter(
     (option) => {
       if (!allowedScopes.includes(option.value)) {
         return false;
@@ -305,7 +305,7 @@ export function ShareFrameSheet({
               </div>
             ) : (
               <div className="flex flex-col gap-6">
-                {isExternalOff && (
+                {isExternalInviteOff && (
                   <ContentMessage
                     icon={InfoCircle}
                     variant="info"
@@ -388,7 +388,7 @@ export function ShareFrameSheet({
                       className="flex flex-col gap-2"
                       onSubmit={handleSubmit(onInviteSubmit)}
                     >
-                      <Label htmlFor="email-invite">{`Invite ${isExternalOff ? "workspace members " : ""}by email`}</Label>
+                      <Label htmlFor="email-invite">{`Invite ${isExternalInviteOff ? "workspace members " : ""}by email`}</Label>
                       <div className="flex items-start gap-2">
                         <div className="flex-1">
                           <Input
