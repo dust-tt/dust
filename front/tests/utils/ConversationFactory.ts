@@ -1,5 +1,6 @@
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { createConversation } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
@@ -95,7 +96,11 @@ export class ConversationFactory {
       });
     }
 
-    return conversation;
+    const res = await getConversation(auth, conversation.sId);
+    if (res.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+    return res.value;
   }
 
   static async setTriggerIdForTest(

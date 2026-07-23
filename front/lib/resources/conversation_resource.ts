@@ -4322,7 +4322,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       agentConfigurationId,
       transaction,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       mcpServerViews: MCPServerViewResource[];
       enabled: boolean;
       transaction?: Transaction;

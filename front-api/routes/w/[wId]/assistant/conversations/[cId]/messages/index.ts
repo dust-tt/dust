@@ -1,7 +1,6 @@
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { addSelectedConversationSpaces } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
@@ -18,10 +17,6 @@ import type {
   LegacyLightMessageType,
   LightMessageType,
 } from "@app/types/assistant/conversation";
-import { isUserMessageType } from "@app/types/assistant/conversation";
-import type { ContentFragmentType } from "@app/types/content_fragment";
-import { isContentFragmentType } from "@app/types/content_fragment";
-import { removeNulls } from "@app/types/shared/utils/general";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -293,11 +288,21 @@ app.post(
       }
     }
 
-    const conversationRes = await getConversation(auth, conversationId);
-
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversationResource) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "conversation_not_found",
+          message: "Conversation not found",
+        },
+      });
     }
+
+    const conversation = conversationResource.toJSON();
 
     if (content.length === 0 && mentions.length === 0) {
       return apiError(ctx, {
@@ -310,8 +315,6 @@ app.post(
       });
     }
 
-    let conversation = conversationRes.value;
-
     if (context.selectedSpaceIds?.length) {
       const selectedSpacesResult = await addSelectedConversationSpaces(auth, {
         conversation,
@@ -322,11 +325,6 @@ app.post(
       if (selectedSpacesResult.isErr()) {
         return apiErrorForSelectedSpaces(ctx, selectedSpacesResult.error);
       }
-
-      conversation = {
-        ...conversation,
-        requestedSpaceIds: selectedSpacesResult.value.effectiveAcl.spaceIds,
-      };
     }
 
     if (context.selectedMCPServerViewIds?.length) {
@@ -374,30 +372,6 @@ app.post(
       }
     }
 
-    // Find all the contentFragments that are above the user message.
-    // Messages may have multiple versions, so we need to return only the max
-    // version of each message.
-    const allMessages = removeNulls(
-      [...conversation.content].map((messages) => {
-        if (messages.length === 0) {
-          return null;
-        }
-        return messages.toSorted((a, b) => b.version - a.version)[0];
-      })
-    );
-
-    // Iterate over all messages sorted by rank descending and collect content
-    // fragments until we find a user message.
-    const contentFragments: ContentFragmentType[] = [];
-    for (const message of allMessages.toSorted((a, b) => b.rank - a.rank)) {
-      if (isUserMessageType(message)) {
-        break;
-      }
-      if (isContentFragmentType(message)) {
-        contentFragments.push(message);
-      }
-    }
-
     // Sidekick conversations always use "agent_sidekick" origin regardless of
     // what the client sends (follow-up messages default to "web" because
     // useClientType() doesn't know about sidekick context).
@@ -406,7 +380,7 @@ app.post(
       : (context.origin ?? "web");
 
     const messageRes = await postUserMessage(auth, {
-      conversation,
+      conversationResource,
       content,
       mentions,
       context: {
@@ -426,6 +400,11 @@ app.post(
     if (messageRes.isErr()) {
       return apiError(ctx, messageRes.error);
     }
+
+    const contentFragments =
+      await conversationResource.fetchPrecedingContentFragments(auth, {
+        targetRank: messageRes.value.userMessage.rank,
+      });
 
     return ctx.json({
       message: messageRes.value.userMessage,

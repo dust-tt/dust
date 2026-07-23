@@ -36,10 +36,10 @@ import {
 } from "@app/types/api/assistant";
 import type {
   AgenticMessageData,
+  ConversationType,
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import {
   isInteractiveContentType,
@@ -337,16 +337,23 @@ app.post(
       resolvedSpaceModelId = space.id;
     }
 
-    let conversation = await createConversation(auth, {
+    const conversationResource = await createConversation(auth, {
       title: title ?? null,
       visibility: normalizeConversationVisibility(visibility),
       depth,
       spaceId: resolvedSpaceModelId,
     });
 
-    if (conversation.depth === 0) {
+    let conversation: ConversationType = {
+      ...conversationResource.toJSON(),
+      owner: auth.getNonNullableWorkspace(),
+      visibility: conversationResource.visibility,
+      content: [],
+    };
+
+    if (conversationResource.depth === 0) {
       await ConversationResource.upsertParticipation(auth, {
-        conversation,
+        conversation: conversationResource,
         action: "subscribed",
         user: auth.user()?.toJSON() ?? null,
       });
@@ -361,7 +368,7 @@ app.post(
 
       if (isContentFragmentInputWithInlinedContent(cf)) {
         const contentFragmentRes = await toFileContentFragment(auth, {
-          conversation,
+          conversation: conversationResource,
           contentFragment: cf,
         });
         if (contentFragmentRes.isErr()) {
@@ -384,7 +391,7 @@ app.post(
       ) {
         const cfRes = await postNewContentFragment(
           auth,
-          conversation.toJSON(),
+          conversationResource.toJSON(),
           cf,
           {
             username: context?.username ?? null,
@@ -403,25 +410,6 @@ app.post(
           });
         }
         newContentFragment = cfRes.value;
-      }
-
-      const updatedConversationRes = await getConversation(
-        auth,
-        conversation.sId
-      );
-
-      if (updatedConversationRes.isErr()) {
-        // Preserving former code in which if the conversation was not found here, we do not error
-        if (
-          !(
-            updatedConversationRes.error instanceof ConversationError &&
-            updatedConversationRes.error.type === "conversation_not_found"
-          )
-        ) {
-          return apiErrorForConversation(ctx, updatedConversationRes.error);
-        }
-      } else {
-        conversation = updatedConversationRes.value;
       }
     }
 
@@ -467,7 +455,7 @@ app.post(
         );
 
         const r = await ConversationResource.upsertMCPServerViews(auth, {
-          conversation,
+          conversation: conversationResource,
           mcpServerViews,
           enabled: true,
           source: "conversation",
@@ -510,7 +498,7 @@ app.post(
               content: message.content,
               context: messageContext,
               agenticMessageData,
-              conversation,
+              conversationResource,
               mentions: message.mentions,
               modelSelection,
               skipToolsValidation: skipToolsValidation ?? false,
@@ -519,7 +507,7 @@ app.post(
               content: message.content,
               context: messageContext,
               agenticMessageData,
-              conversation,
+              conversationResource,
               mentions: message.mentions,
               modelSelection,
               skipToolsValidation: skipToolsValidation ?? false,
@@ -538,7 +526,7 @@ app.post(
       // created as well, so pulling the conversation again will allow to have an up to date view
       // of the conversation with agent messages included so that the user of the API can start
       // streaming events from these agent messages directly.
-      const updatedRes = await getConversation(auth, conversation.sId);
+      const updatedRes = await getConversation(auth, conversationResource.sId);
 
       if (updatedRes.isErr()) {
         return apiErrorForConversation(ctx, updatedRes.error);
