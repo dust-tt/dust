@@ -54,9 +54,16 @@ describe("handleError (Anthropic)", () => {
   it("retries Anthropic file download failures", () => {
     const err = new BadRequestError(
       400,
-      { message: "Unable to download the file. Please verify the URL." },
+      {
+        type: "error",
+        error: {
+          type: "invalid_request_error",
+          message: "Unable to download the file. Please verify the URL.",
+        },
+      },
       undefined,
-      makeHeaders()
+      makeHeaders(),
+      "invalid_request_error"
     );
     const event = handleError(err, metadata) as EventError;
     expect(event.content.type).toBe("server_error");

@@ -20,6 +20,7 @@ import {
   logToolSearchQuery,
   logToolSearchResult,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/tool_search_logging";
+import { isAnthropicFileDownloadError } from "@app/lib/model_constructors/sdk/anthropic_ai/errors";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
 import type {
@@ -53,7 +54,6 @@ import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 const MAX_EAGER_VALIDATION_INPUT_LENGTH = 5_000;
 const INVALID_JSON_MARKER = "JSON: ";
 const INVALID_TOOL_JSON_NEEDLE = "Unable to parse tool parameter JSON";
-const FILE_DOWNLOAD_ERROR = "Unable to download the file";
 
 // Type guard: APIError carrying the server-side invalid-tool-JSON diagnostic.
 function isApiInvalidToolJsonError(
@@ -438,7 +438,7 @@ function apiErrorToErrorEvent(
   metadata: EndpointMetadata,
   error: APIError
 ): ErrorEvent {
-  if (error.message.includes(FILE_DOWNLOAD_ERROR)) {
+  if (isAnthropicFileDownloadError(error)) {
     return buildErrorEvent({
       metadata,
       type: "server_error",

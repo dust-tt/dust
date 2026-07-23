@@ -5,9 +5,8 @@ import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import { isAnthropicFileDownloadError } from "@app/lib/model_constructors/sdk/anthropic_ai/errors";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-const ANTHROPIC_FILE_DOWNLOAD_ERROR = "Unable to download the file";
 
 // https://github.com/anthropics/anthropic-sdk-typescript#handling-errors
 export const handleError = (
@@ -64,7 +63,7 @@ function categorizeAnthropicError(
   const statusCode = originalError.status ?? 500;
   const isRetryable = shouldRetry(originalError);
 
-  if (normalized.message.includes(ANTHROPIC_FILE_DOWNLOAD_ERROR)) {
+  if (isAnthropicFileDownloadError(originalError)) {
     return {
       type: "server_error",
       message: `Server error from ${metadata.clientId}. ${normalized.message}`,
