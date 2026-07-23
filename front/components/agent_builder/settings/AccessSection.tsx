@@ -5,8 +5,6 @@ import { SlackSettingsSheet } from "@app/components/agent_builder/settings/Slack
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
-import { getPublishingRestrictionForOwner } from "@app/lib/api/assistant/publishing_restrictions";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   Button,
@@ -58,14 +56,9 @@ export function AccessSection({
 
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { owner } = useAgentBuilderContext();
-  const { featureFlags } = useFeatureFlags();
   const { hasPermission } = useWorkspacePermissions(owner);
-  const canPublishAgent = hasPermission("publish", "agent");
 
-  const {
-    disabled: publishingToggleDisabled,
-    tooltip: publishingToggleTooltip,
-  } = getPublishingRestrictionForOwner(featureFlags, owner);
+  const canPublishAgent = hasPermission("publish", "agent");
 
   const getDisplayValue = () => {
     return scope.value === "visible" ? "Published" : "Unpublished";
@@ -118,8 +111,12 @@ export function AccessSection({
               label={getDisplayValue()}
               isSelect
               type="button"
-              disabled={publishingToggleDisabled}
-              tooltip={publishingToggleTooltip}
+              disabled={!canPublishAgent}
+              tooltip={
+                !canPublishAgent
+                  ? "You don’t have permission to publish agents."
+                  : undefined
+              }
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
@@ -128,14 +125,14 @@ export function AccessSection({
               description="Visible & usable by all members of the workspace."
               icon={Eye}
               onClick={() => scope.onChange("visible")}
-              disabled={publishingToggleDisabled}
+              disabled={!canPublishAgent}
             />
             <DropdownMenuItem
               label="Unpublished"
               description="Visible & usable by editors only."
               icon={EyeOff}
               onClick={() => scope.onChange("hidden")}
-              disabled={publishingToggleDisabled}
+              disabled={!canPublishAgent}
             />
           </DropdownMenuContent>
         </DropdownMenu>
