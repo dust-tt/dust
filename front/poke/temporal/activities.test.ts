@@ -3,10 +3,11 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
   deleteMembersActivity,
   deleteSpacesActivity,
-  getGitHubAdminEmailsActivity,
+  prepareDeletionActivity,
   scrubSpaceActivity,
   sendGitHubNoticesActivity,
 } from "@app/poke/temporal/activities";
@@ -54,6 +55,54 @@ vi.mock("@app/lib/api/data_sources", async (importOriginal) => {
   };
 });
 
+describe("prepareDeletionActivity", () => {
+  it("blocks deletion when data sources appeared without opt-in", async () => {
+    const workspace = await WorkspaceFactory.byok();
+    const globalSpace = await SpaceFactory.global(workspace);
+    await DataSourceViewFactory.folder(workspace, globalSpace);
+
+    const preparation = await prepareDeletionActivity({
+      deleteDataSources: false,
+      workspaceId: workspace.sId,
+    });
+
+    expect(preparation.canDelete).toBe(false);
+    const reloadedWorkspace = await WorkspaceResource.fetchById(workspace.sId);
+    expect(
+      WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(
+        reloadedWorkspace?.metadata?.killSwitched
+      )
+    ).toBe(false);
+    expect(reloadedWorkspace?.metadata?.deletionInProgress).toBeUndefined();
+  });
+
+  it("preserves an existing workspace block when deletion is refused", async () => {
+    const workspace = await WorkspaceFactory.byok();
+    const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+    expect(workspaceResource).not.toBeNull();
+    const blockResult = await workspaceResource?.updateWorkspaceKillSwitch({
+      operation: "block",
+    });
+    expect(blockResult?.isOk()).toBe(true);
+    const globalSpace = await SpaceFactory.global(workspace);
+    await DataSourceViewFactory.folder(workspace, globalSpace);
+
+    const preparation = await prepareDeletionActivity({
+      deleteDataSources: false,
+      workspaceId: workspace.sId,
+    });
+
+    expect(preparation.canDelete).toBe(false);
+    const reloadedWorkspace = await WorkspaceResource.fetchById(workspace.sId);
+    expect(
+      WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(
+        reloadedWorkspace?.metadata?.killSwitched
+      )
+    ).toBe(true);
+    expect(reloadedWorkspace?.metadata?.deletionInProgress).toBeUndefined();
+  });
+});
+
 describe("deleteMembersActivity", () => {
   it("deletes memberships for users who belong to another workspace", async () => {
     const workspace = await WorkspaceFactory.byok();
@@ -83,11 +132,20 @@ describe("deleteMembersActivity", () => {
     const admin = await UserFactory.basic();
     await MembershipFactory.associate(workspace, admin, { role: "admin" });
     const globalSpace = await SpaceFactory.global(workspace);
-    await DataSourceViewFactory.fromConnector(workspace, globalSpace, "github");
+    const githubView = await DataSourceViewFactory.fromConnector(
+      workspace,
+      globalSpace,
+      "github"
+    );
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await githubView.delete(auth, { hardDelete: false });
+    await githubView.dataSource.delete(auth, { hardDelete: false });
 
-    const githubAdminEmails = await getGitHubAdminEmailsActivity({
+    const { canDelete, githubAdminEmails } = await prepareDeletionActivity({
+      deleteDataSources: true,
       workspaceId: workspace.sId,
     });
+    expect(canDelete).toBe(true);
     await deleteMembersActivity({ workspaceId: workspace.sId });
     expect(mockSendGitHubDeletionEmail).not.toHaveBeenCalled();
 

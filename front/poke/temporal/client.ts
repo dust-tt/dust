@@ -67,9 +67,11 @@ export async function launchScrubSpaceWorkflow(
 }
 
 export async function launchDeleteWorkspaceWorkflow({
+  deleteDataSources = true,
   workspaceId,
   workspaceHasBeenRelocated = false,
 }: {
+  deleteDataSources?: boolean;
   workspaceId: string;
   workspaceHasBeenRelocated?: boolean;
 }) {
@@ -79,6 +81,7 @@ export async function launchDeleteWorkspaceWorkflow({
     await client.workflow.start(deleteWorkspaceWorkflow, {
       args: [
         {
+          deleteDataSources,
           workspaceId,
           workspaceHasBeenRelocated,
         },

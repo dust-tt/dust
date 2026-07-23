@@ -98,6 +98,7 @@ import assert from "assert";
 import { Op } from "sequelize";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
+const WORKSPACE_DELETION_METADATA_KEY = "deletionInProgress";
 
 export async function scrubDataSourceActivity({
   dataSourceId,
@@ -604,7 +605,6 @@ export async function deleteMembersActivity({
         ? "Deleting Membership and user data"
         : "Deleting Membership"
     );
-    await membership.delete(auth, {});
 
     // If the user we're removing the membership of only has one membership, we delete their
     // workspace data but keep the user row to avoid expensive FK constraint scans.
@@ -625,21 +625,77 @@ export async function deleteMembersActivity({
       // user in this workspace.
       await WakeUpResource.deleteAllForUser(auth, user.toJSON());
     }
+
+    await membership.delete(auth, {});
   }
 }
 
-export async function getGitHubAdminEmailsActivity({
+export async function prepareDeletionActivity({
+  deleteDataSources,
   workspaceId,
 }: {
+  deleteDataSources: boolean;
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  assert(workspace, "Workspace not found.");
+
+  // Remember the previous block state so retries can safely roll back an aborted deletion.
+  const existingDeletionState =
+    workspace.metadata?.[WORKSPACE_DELETION_METADATA_KEY];
+  let wasKillSwitched: boolean;
+  if (existingDeletionState === undefined) {
+    wasKillSwitched = WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(
+      workspace.metadata?.[WorkspaceResource.KILL_SWITCH_METADATA_KEY]
+    );
+    const blockResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      ...(workspace.metadata ?? {}),
+      [WORKSPACE_DELETION_METADATA_KEY]: { wasKillSwitched },
+      [WorkspaceResource.KILL_SWITCH_METADATA_KEY]:
+        WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE,
+    });
+    if (blockResult.isErr()) {
+      throw blockResult.error;
+    }
+  } else {
+    assert(
+      typeof existingDeletionState === "object" &&
+        existingDeletionState !== null &&
+        "wasKillSwitched" in existingDeletionState &&
+        typeof existingDeletionState.wasKillSwitched === "boolean",
+      "Invalid workspace deletion state."
+    );
+    wasKillSwitched = existingDeletionState.wasKillSwitched;
+  }
+
+  if (!deleteDataSources) {
+    const dataSources = await DataSourceResource.listByWorkspace(auth);
+    if (dataSources.length > 0) {
+      const blockedWorkspace = await WorkspaceResource.fetchById(workspaceId);
+      assert(blockedWorkspace, "Workspace not found.");
+      const metadata = { ...(blockedWorkspace.metadata ?? {}) };
+      delete metadata[WORKSPACE_DELETION_METADATA_KEY];
+      if (!wasKillSwitched) {
+        delete metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
+      }
+      const unblockResult = await WorkspaceResource.updateMetadata(
+        blockedWorkspace.id,
+        metadata
+      );
+      if (unblockResult.isErr()) {
+        throw unblockResult.error;
+      }
+
+      return { canDelete: false, githubAdminEmails: [] };
+    }
+  }
 
   // The workspace/provider index makes this existence check cheap.
   const githubDataSources = await DataSourceResource.listByConnectorProvider(
     auth,
     "github",
-    { limit: 1 }
+    { includeDeleted: true, limit: 1 }
   );
   let githubAdminEmails: string[] = [];
   if (githubDataSources.length > 0) {
@@ -650,7 +706,7 @@ export async function getGitHubAdminEmailsActivity({
     githubAdminEmails = members.map((member) => member.email);
   }
 
-  return githubAdminEmails;
+  return { canDelete: true, githubAdminEmails };
 }
 
 export async function sendGitHubNoticesActivity({

@@ -494,8 +494,12 @@ export async function areAllSubscriptionsCanceled(
 export async function deleteWorkspace(
   owner: LightWorkspaceType,
   {
+    deleteDataSources = true,
     workspaceHasBeenRelocated = false,
-  }: { workspaceHasBeenRelocated?: boolean } = {}
+  }: {
+    deleteDataSources?: boolean;
+    workspaceHasBeenRelocated?: boolean;
+  } = {}
 ): Promise<Result<void, Error>> {
   // If the workspace has not been relocated, we expect all subscriptions to be canceled.
   if (!workspaceHasBeenRelocated) {
@@ -510,6 +514,7 @@ export async function deleteWorkspace(
   }
 
   const res = await launchDeleteWorkspaceWorkflow({
+    deleteDataSources,
     workspaceId: owner.sId,
     workspaceHasBeenRelocated,
   });

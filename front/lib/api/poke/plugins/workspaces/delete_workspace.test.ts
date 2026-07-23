@@ -78,6 +78,22 @@ describe("deleteWorkspacePlugin.execute", () => {
     expect(mockDeleteWorkspace).not.toHaveBeenCalled();
   });
 
+  it("keeps data source deletion disabled when the workspace has none", async () => {
+    const workspace = await WorkspaceFactory.byok();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const result = await deleteWorkspacePlugin.execute(auth, workspace, {
+      confirmation: "DELETE",
+      workspaceHasBeenRelocated: false,
+      deleteDataSources: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockDeleteWorkspace).toHaveBeenCalledWith(workspace, {
+      deleteDataSources: false,
+    });
+  });
+
   it("proceeds with data sources when explicitly requested", async () => {
     const workspace = await WorkspaceFactory.byok();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -91,6 +107,8 @@ describe("deleteWorkspacePlugin.execute", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(mockDeleteWorkspace).toHaveBeenCalledTimes(1);
+    expect(mockDeleteWorkspace).toHaveBeenCalledWith(workspace, {
+      deleteDataSources: true,
+    });
   });
 });

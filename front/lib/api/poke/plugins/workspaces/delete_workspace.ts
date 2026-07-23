@@ -76,7 +76,10 @@ export const deleteWorkspacePlugin = createPlugin({
         );
       }
 
-      await deleteWorkspace(workspace, { workspaceHasBeenRelocated });
+      await deleteWorkspace(workspace, {
+        deleteDataSources,
+        workspaceHasBeenRelocated,
+      });
     } else {
       // If the workspace has not been relocated, we need to check its subscription.
       const subscription = auth.getNonNullableSubscription();
@@ -95,7 +98,7 @@ export const deleteWorkspacePlugin = createPlugin({
         );
       }
 
-      await deleteWorkspace(workspace);
+      await deleteWorkspace(workspace, { deleteDataSources });
     }
 
     void emitAuditLogEvent({

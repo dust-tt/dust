@@ -22,8 +22,8 @@ const {
   deleteTranscriptsActivity,
   deleteWorkOSOrganization,
   deleteWorkspaceUserMetadataActivity,
-  getGitHubAdminEmailsActivity,
   isWorkflowDeletableActivity,
+  prepareDeletionActivity,
   scrubDataSourceActivity,
   scrubSpaceActivity,
   sendGitHubNoticesActivity,
@@ -56,9 +56,11 @@ export async function scrubSpaceWorkflow({
 }
 
 export async function deleteWorkspaceWorkflow({
+  deleteDataSources = true,
   workspaceId,
   workspaceHasBeenRelocated = false,
 }: {
+  deleteDataSources?: boolean;
   workspaceId: string;
   workspaceHasBeenRelocated?: boolean;
 }) {
@@ -70,14 +72,21 @@ export async function deleteWorkspaceWorkflow({
     return;
   }
 
+  const { canDelete, githubAdminEmails } = await prepareDeletionActivity({
+    deleteDataSources,
+    workspaceId,
+  });
+  if (!canDelete) {
+    return;
+  }
+
+  await deleteMembersActivity({ workspaceId });
   await deleteConversationsActivity({ workspaceId });
   await deleteSkillsActivity({ workspaceId });
   await deleteRemoteMCPServersActivity({ workspaceId });
   await deleteAgentsActivity({ workspaceId });
   await deleteRunOnDustAppsActivity({ workspaceId });
   await deleteAppsActivity({ workspaceId });
-  const githubAdminEmails = await getGitHubAdminEmailsActivity({ workspaceId });
-  await deleteMembersActivity({ workspaceId });
   await deleteWorkspaceUserMetadataActivity({ workspaceId });
   await deleteTagsActivity({ workspaceId });
   await deleteWebhookSourcesActivity({ workspaceId });
