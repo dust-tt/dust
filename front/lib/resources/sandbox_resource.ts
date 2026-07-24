@@ -79,21 +79,6 @@ export type SandboxTimestampCursor = {
   timestamp: Date;
 };
 
-function timestampCursorCondition(
-  timestampColumn: "killRequestedAt" | "lastActivityAt",
-  cursor: SandboxTimestampCursor | undefined
-) {
-  return cursor
-    ? [
-        where(
-          fn("ROW", col(timestampColumn), col("id")),
-          Op.gt,
-          fn("ROW", cursor.timestamp, cursor.sandboxModelId)
-        ),
-      ]
-    : [];
-}
-
 export type SandboxDeleteOwner = SandboxLifecycleOwner & {
   deleteSandbox: (
     sandbox: SandboxResource,
@@ -278,7 +263,15 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         lastActivityAt: {
           [Op.lt]: new Date(Date.now() - opts.olderThanMs),
         },
-        [Op.and]: timestampCursorCondition("lastActivityAt", opts.after),
+        [Op.and]: opts.after
+          ? [
+              where(
+                fn("ROW", col("lastActivityAt"), col("id")),
+                Op.gt,
+                fn("ROW", opts.after.timestamp, opts.after.sandboxModelId)
+              ),
+            ]
+          : [],
       },
       order: [
         ["lastActivityAt", "ASC"],
@@ -986,7 +979,15 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       where: {
         killRequestedAt: { [Op.ne]: null },
         status: { [Op.ne]: "deleted" },
-        [Op.and]: timestampCursorCondition("killRequestedAt", opts.after),
+        [Op.and]: opts.after
+          ? [
+              where(
+                fn("ROW", col("killRequestedAt"), col("id")),
+                Op.gt,
+                fn("ROW", opts.after.timestamp, opts.after.sandboxModelId)
+              ),
+            ]
+          : [],
       },
       order: [
         ["killRequestedAt", "ASC"],
