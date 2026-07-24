@@ -15,7 +15,7 @@ import {
   SkillResource,
 } from "@app/lib/resources/skill/skill_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 const SKILL_KNOWLEDGE_FILE_SYSTEM_SERVER_NAME = "skill_knowledge_file_system";
@@ -309,7 +309,7 @@ export async function resolveSkillMCPServers(
     conversation,
   }: {
     agentConfiguration: AgentConfigurationType;
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
   }
 ): Promise<ResolvedSkillMCPServers> {
   const { effectiveSpaceIds, enabledSkills, systemSkills } =
