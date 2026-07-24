@@ -2946,19 +2946,44 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * permission on skills — being an editor is neither required nor sufficient. Does not
    * touch editedBy.
    */
-  async updateAvailability(
+  static async updateAvailabilities(
     auth: Authenticator,
+    skills: SkillResource[],
     availability: SkillAvailability
   ): Promise<void> {
     assert(
       await auth.hasWorkspacePermission("publish", "skill"),
-      "User is not authorized to update this skill's availability"
+      "User is not authorized to update skill availability"
     );
 
+    const changedSkills = skills.filter(
+      (skill) => skill.availability !== availability
+    );
+    if (changedSkills.length === 0) {
+      return;
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.user();
+
     await withTransaction(async (transaction) => {
-      // Save the current version before updating.
-      await this.saveVersion(auth, { transaction });
-      await this.update({ availability }, transaction);
+      // Save the current version of each skill before updating.
+      await this.bulkSaveVersions(auth, changedSkills, { transaction });
+
+      await SkillConfigurationModel.update(
+        {
+          availability,
+          // Publishing counts as an edit even when the caller is not in the editor group.
+          ...(user ? { editedBy: user.id } : {}),
+        },
+        {
+          where: {
+            workspaceId: workspace.id,
+            id: { [Op.in]: changedSkills.map((skill) => skill.id) },
+          },
+          transaction,
+        }
+      );
     });
   }
 
@@ -4075,69 +4100,96 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
+    await SkillResource.bulkSaveVersions(auth, [this], { transaction });
+  }
 
-    // Fetch current MCP server configuration IDs for this skill.
+  /**
+   * Snapshot the current state of several skills as new version entries, with batched
+   * queries (one per satellite table) instead of per-skill round trips.
+   */
+  private static async bulkSaveVersions(
+    auth: Authenticator,
+    skills: SkillResource[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+    const skillIds = skills.map((skill) => skill.id);
+
+    // Fetch current MCP server configuration IDs for all skills.
     const mcpServerConfigurations =
       await SkillMCPServerConfigurationModel.findAll({
         where: {
           workspaceId: workspace.id,
-          skillConfigurationId: this.id,
+          skillConfigurationId: { [Op.in]: skillIds },
         },
         transaction,
       });
-
-    const mcpServerViewIds = mcpServerConfigurations.map(
-      (config) => config.mcpServerViewId
+    const mcpServerConfigsBySkillId = groupBy(
+      mcpServerConfigurations,
+      "skillConfigurationId"
     );
 
-    // Fetch current file attachment IDs for this skill.
+    // Fetch current file attachment IDs for all skills.
     const fileAttachments = await SkillFileAttachmentModel.findAll({
       where: {
         workspaceId: workspace.id,
-        skillConfigurationId: this.id,
+        skillConfigurationId: { [Op.in]: skillIds },
       },
       transaction,
     });
+    const fileAttachmentsBySkillId = groupBy(
+      fileAttachments,
+      "skillConfigurationId"
+    );
 
-    const fileAttachmentIds = fileAttachments.map((a) => a.fileId);
-
-    // Calculate the next version number by counting existing versions.
-    const where: WhereOptions<SkillVersionModel> = {
-      workspaceId: this.workspaceId,
-      skillConfigurationId: this.id,
+    // Compute the next version number per skill. Only (skillConfigurationId, version)
+    // pairs are loaded; skills have a bounded number of versions.
+    const versionWhere: WhereOptions<SkillVersionModel> = {
+      workspaceId: workspace.id,
+      skillConfigurationId: { [Op.in]: skillIds },
     };
-
-    const existingVersionsCount = await SkillVersionModel.count({
-      where,
+    const versionRows = await SkillVersionModel.findAll({
+      attributes: ["skillConfigurationId", "version"],
+      where: versionWhere,
       transaction,
     });
+    const maxVersionBySkillId = new Map<ModelId, number>();
+    for (const row of versionRows) {
+      const currentMax = maxVersionBySkillId.get(row.skillConfigurationId) ?? 0;
+      if (row.version > currentMax) {
+        maxVersionBySkillId.set(row.skillConfigurationId, row.version);
+      }
+    }
 
-    const versionNumber = existingVersionsCount + 1;
+    // Create the new version entries with the current state of each skill.
+    const versionData: SkillVersionCreationAttributes[] = skills.map(
+      (skill) => ({
+        workspaceId: skill.workspaceId,
+        skillConfigurationId: skill.id,
+        version: (maxVersionBySkillId.get(skill.id) ?? 0) + 1,
+        status: skill.status,
+        name: skill.name,
+        agentFacingDescription: skill.agentFacingDescription,
+        userFacingDescription: skill.userFacingDescription,
+        instructions: skill.instructions,
+        instructionsHtml: skill.instructionsHtml,
+        requestedSpaceIds: skill.requestedSpaceIds,
+        editedBy: skill.editedBy,
+        mcpServerViewIds: (mcpServerConfigsBySkillId[skill.id] ?? []).map(
+          (config) => config.mcpServerViewId
+        ),
+        fileAttachmentIds: (fileAttachmentsBySkillId[skill.id] ?? []).map(
+          (attachment) => attachment.fileId
+        ),
+        source: skill.source,
+        sourceMetadata: skill.sourceMetadata,
+        createdAt: skill.createdAt,
+        updatedAt: skill.updatedAt,
+        availability: skill.availability,
+      })
+    );
 
-    // Create a new version entry with the current state.
-    const versionData: SkillVersionCreationAttributes = {
-      workspaceId: this.workspaceId,
-      skillConfigurationId: this.id,
-      version: versionNumber,
-      status: this.status,
-      name: this.name,
-      agentFacingDescription: this.agentFacingDescription,
-      userFacingDescription: this.userFacingDescription,
-      instructions: this.instructions,
-      instructionsHtml: this.instructionsHtml,
-      requestedSpaceIds: this.requestedSpaceIds,
-      editedBy: this.editedBy,
-      mcpServerViewIds,
-      fileAttachmentIds,
-      source: this.source,
-      sourceMetadata: this.sourceMetadata,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
-      availability: this.availability,
-    };
-
-    await SkillVersionModel.create(versionData, {
+    await SkillVersionModel.bulkCreate(versionData, {
       transaction,
     });
   }
