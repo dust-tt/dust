@@ -4,6 +4,7 @@ import type { MetronomeCredit } from "@app/lib/metronome/types";
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import { CouponFactory } from "@app/tests/utils/CouponFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -94,6 +95,23 @@ describe("GET /api/w/[wId]/coupon/redemptions", () => {
 
     expect(response.status).toBe(403);
     expect(metronomeClient.listMetronomeCustomerCredits).not.toHaveBeenCalled();
+  });
+
+  it("allows a member with the billing admin permission", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "admin",
+      resourceType: "billing",
+    });
+
+    const response = await honoApp.request(redemptionsUrl(workspace.sId));
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).coupons).toEqual([]);
   });
 
   it("returns an empty list without calling Metronome when nothing was redeemed", async () => {

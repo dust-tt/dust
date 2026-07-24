@@ -1,14 +1,12 @@
-import { Authenticator } from "@app/lib/auth";
 import {
   CREDIT_TYPE_EUR_ID,
   getCreditTypeAwuId,
 } from "@app/lib/metronome/constants";
-import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
@@ -22,29 +20,6 @@ import { listMetronomeDraftInvoices } from "@app/lib/metronome/client";
 
 function invoiceLinesUrl(wId: string) {
   return `/api/w/${wId}/metronome/invoice/lines`;
-}
-
-// Grants the workspace-level "admin" capability on "billing" to a non-admin user by placing them
-// in a group that holds a type-wide grant, mirroring how governance grants billing access.
-async function grantBillingAdmin(
-  workspace: Awaited<
-    ReturnType<typeof createPrivateApiMockRequest>
-  >["workspace"],
-  user: Awaited<ReturnType<typeof createPrivateApiMockRequest>>["user"]
-) {
-  const adminAuth = await Authenticator.internalAdminForWorkspace(
-    workspace.sId
-  );
-  const group = await GroupFactory.regularAuto(
-    workspace,
-    `billing-admin-${user.sId}`
-  );
-  await GroupFactory.withMembers(adminAuth, group, [user]);
-  await GroupPermissionResource.grantTypeWide(adminAuth, {
-    group,
-    grantType: "admin",
-    resourceType: "billing",
-  });
 }
 
 async function setActiveSubscriptionBilling({
@@ -328,7 +303,10 @@ describe("/api/w/[wId]/metronome/invoice/lines", () => {
         role: "user",
       });
 
-      await grantBillingAdmin(workspace, user);
+      await grantWorkspacePermission(workspace, user, {
+        grantType: "admin",
+        resourceType: "billing",
+      });
 
       const response = await honoApp.request(invoiceLinesUrl(workspace.sId));
 
