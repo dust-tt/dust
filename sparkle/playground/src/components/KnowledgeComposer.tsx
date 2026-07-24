@@ -4,6 +4,7 @@ import {
   Button,
   cn,
   File01,
+  PuzzlePiece01,
   TextArea,
 } from "@dust-tt/sparkle";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -15,7 +16,6 @@ import {
   getFilteredTreeGroups,
   mockKnowledgeTree,
 } from "../data/knowledgeItems";
-import type { MockSkill } from "../data/skills";
 import { mockSkills } from "../data/skills";
 import { useCaretCoordinates } from "../hooks/useCaretCoordinates";
 import { useSlashTrigger } from "../hooks/useSlashTrigger";
@@ -24,8 +24,12 @@ import {
   KNOWLEDGE_LISTBOX_ID,
   KnowledgeSuggestionPanel,
 } from "./KnowledgeSuggestionPanel";
-import type { SlashCommand, SlashCommandId } from "./SlashMenuPanel";
-import { SLASH_COMMANDS, SkillsPanel, SlashCommandMenu } from "./SlashMenuPanel";
+import type { SlashMenuEntry } from "./SlashMenuPanel";
+import {
+  SLASH_COMMANDS,
+  SlashCommandMenu,
+  buildSlashMenuEntries,
+} from "./SlashMenuPanel";
 
 const LOADING_SIMULATION_MS = 220;
 const REMOVE_ANIMATION_MS = 100;
@@ -34,9 +38,10 @@ const attachedItemsById = new Map(
   mockKnowledgeTree.map((node) => [node.id, node])
 );
 
-// The "/" trigger's first step is always the command menu; picking a
-// command hands off to that command's own step until the session closes.
-type SlashStep = "menu" | SlashCommandId;
+// The "/" trigger's first step is always the command menu (commands and
+// skills together, flat); picking "Attach knowledge" is the only one that
+// hands off to a further step.
+type SlashStep = "menu" | "knowledge";
 
 export function KnowledgeComposer() {
   const [value, setValue] = useState("");
@@ -145,38 +150,31 @@ export function KnowledgeComposer() {
     [currentBrowseNode, attachedIds]
   );
 
-  const filteredCommands = useMemo(() => {
-    const trimmed = activeQuery.trim().toLowerCase();
-    if (!trimmed) {
-      return SLASH_COMMANDS;
-    }
-    return SLASH_COMMANDS.filter((command) =>
-      command.label.toLowerCase().includes(trimmed)
-    );
-  }, [activeQuery]);
+  const menuEntries = useMemo(
+    () => buildSlashMenuEntries(SLASH_COMMANDS, mockSkills),
+    []
+  );
 
-  const filteredSkills = useMemo(() => {
+  const filteredMenuEntries = useMemo(() => {
     const trimmed = activeQuery.trim().toLowerCase();
     if (!trimmed) {
-      return mockSkills;
+      return menuEntries;
     }
-    return mockSkills.filter(
-      (skill) =>
-        skill.name.toLowerCase().includes(trimmed) ||
-        skill.description.toLowerCase().includes(trimmed)
-    );
-  }, [activeQuery]);
+    return menuEntries.filter((entry) => {
+      const haystack =
+        entry.kind === "command"
+          ? entry.command.label
+          : `${entry.skill.name} ${entry.skill.description}`;
+      return haystack.toLowerCase().includes(trimmed);
+    });
+  }, [menuEntries, activeQuery]);
 
   const knowledgeFlatItems = isFiltering
     ? filteredGroups.groups.flatMap((group) => group.files)
     : browseChildren;
 
   const flatItems: Array<{ id: string }> =
-    activePanel === "menu"
-      ? filteredCommands
-      : activePanel === "skills"
-        ? filteredSkills
-        : knowledgeFlatItems;
+    activePanel === "menu" ? filteredMenuEntries : knowledgeFlatItems;
 
   const activeItemId = flatItems[activeIndex]?.id ?? null;
 
@@ -312,25 +310,25 @@ export function KnowledgeComposer() {
     }
   };
 
-  const handleSelectSlashCommand = (command: SlashCommand) => {
-    if (command.id === "upload") {
+  const handleSelectMenuEntry = (entry: SlashMenuEntry) => {
+    if (entry.kind === "skill") {
+      attachItem({
+        id: entry.skill.id,
+        name: entry.skill.name,
+        spaceName: "Skill",
+        icon: PuzzlePiece01,
+        lastUsedAt: new Date(),
+        usageCount: 0,
+        source: "company",
+      });
+      return;
+    }
+    if (entry.command.id === "upload") {
       uploadInputRef.current?.click();
       return;
     }
     clearQuery();
-    setSlashStep(command.id);
-  };
-
-  const handleSelectSkill = (skill: MockSkill) => {
-    attachItem({
-      id: skill.id,
-      name: skill.name,
-      spaceName: "Skill",
-      icon: undefined,
-      lastUsedAt: new Date(),
-      usageCount: 0,
-      source: "company",
-    });
+    setSlashStep("knowledge");
   };
 
   const handleFileChosen = (file: File) => {
@@ -403,11 +401,7 @@ export function KnowledgeComposer() {
         }
         e.preventDefault();
         if (activePanel === "menu") {
-          handleSelectSlashCommand(item as SlashCommand);
-          break;
-        }
-        if (activePanel === "skills") {
-          handleSelectSkill(item as MockSkill);
+          handleSelectMenuEntry(item as SlashMenuEntry);
           break;
         }
         // Knowledge, in browse or search results alike: a file attaches
@@ -456,14 +450,7 @@ export function KnowledgeComposer() {
   };
 
   return (
-    <div
-      className={cn(
-        "flex w-full max-w-lg flex-col gap-1.5 rounded-2xl border bg-background p-1 shadow-sm transition-shadow duration-150",
-        isTextareaFocused
-          ? "border-border-focus ring-2 ring-highlight/20"
-          : "border-border"
-      )}
-    >
+    <div className="flex w-full max-w-lg flex-col gap-1.5">
       <input
         ref={uploadInputRef}
         type="file"
@@ -477,69 +464,9 @@ export function KnowledgeComposer() {
         }}
       />
 
-      <AttachedKnowledgeRow
-        items={attachedItems}
-        removingIds={removingIds}
-        onRemove={handleRemoveItem}
-      />
-
-      <div className="relative">
-        <TextArea
-          ref={textareaRef}
-          value={value}
-          minRows={6}
-          resize="vertical"
-          placeholder="Describe what this skill should do…"
-          className="border-none bg-transparent shadow-none focus-visible:ring-0"
-          role={isInlineActive ? "combobox" : undefined}
-          aria-expanded={isInlineActive || undefined}
-          aria-controls={isInlineActive ? KNOWLEDGE_LISTBOX_ID : undefined}
-          aria-autocomplete={isInlineActive ? "list" : undefined}
-          aria-activedescendant={
-            isInlineActive ? activeItemId ?? undefined : undefined
-          }
-          onFocus={() => {
-            setIsTextareaFocused(true);
-            // Focus moving into the textarea ends any button-triggered
-            // session — otherwise mode stays stuck on "button" and a new
-            // "/" trigger would keep showing the old picker state.
-            setIsButtonPickerOpen(false);
-          }}
-          onBlur={(e) => {
-            // Clicking a control inside the popover (a breadcrumb, a row)
-            // moves focus there natively before our click handler runs.
-            // That's still part of this same picker session, not a
-            // real dismissal — only close it when focus lands truly
-            // outside the popover (e.g. back on the page, or on the
-            // Attach knowledge button, which has its own open/close logic).
-            if (popoverContainerRef.current?.contains(e.relatedTarget as Node | null)) {
-              return;
-            }
-            setIsTextareaFocused(false);
-          }}
-          onChange={(e) => {
-            setValue(e.target.value);
-            syncSelection(e.target);
-          }}
-          onClick={(e) => syncSelection(e.currentTarget)}
-          onKeyUp={(e) => syncSelection(e.currentTarget)}
-          onKeyDown={handleTextareaKeyDown}
-        />
-        {isInlineActive && (
-          <div
-            ref={caretAnchorRef}
-            className="pointer-events-none absolute h-4 w-px"
-            style={{ top: caretCoords.top, left: caretCoords.left }}
-          />
-        )}
-        {value.length === 0 && (
-          <span className="pointer-events-none absolute bottom-3 right-3 text-xs text-muted-foreground">
-            Type <span className="font-medium">/</span> for knowledge
-          </span>
-        )}
-      </div>
-
-      <div className="flex items-center justify-between px-2 pb-1.5 pt-1">
+      {/* Outside the input box entirely — its own row above it, not
+          sharing the input's border/background. */}
+      <div className="flex items-center justify-end">
         <Button
           ref={attachButtonRef}
           size="sm"
@@ -556,12 +483,83 @@ export function KnowledgeComposer() {
         />
       </div>
 
+      <div
+        className={cn(
+          "flex flex-col gap-1.5 rounded-2xl border bg-background p-1 transition-colors duration-150",
+          isTextareaFocused
+            ? "border-border-focus ring-2 ring-highlight/20"
+            : "border-border"
+        )}
+      >
+        <AttachedKnowledgeRow
+          items={attachedItems}
+          removingIds={removingIds}
+          onRemove={handleRemoveItem}
+        />
+
+        <div className="relative">
+          <TextArea
+            ref={textareaRef}
+            value={value}
+            minRows={6}
+            resize="vertical"
+            placeholder="Describe what this skill should do…"
+            className="border-none bg-transparent shadow-none focus-visible:ring-0"
+            role={isInlineActive ? "combobox" : undefined}
+            aria-expanded={isInlineActive || undefined}
+            aria-controls={isInlineActive ? KNOWLEDGE_LISTBOX_ID : undefined}
+            aria-autocomplete={isInlineActive ? "list" : undefined}
+            aria-activedescendant={
+              isInlineActive ? activeItemId ?? undefined : undefined
+            }
+            onFocus={() => {
+              setIsTextareaFocused(true);
+              // Focus moving into the textarea ends any button-triggered
+              // session — otherwise mode stays stuck on "button" and a new
+              // "/" trigger would keep showing the old picker state.
+              setIsButtonPickerOpen(false);
+            }}
+            onBlur={(e) => {
+              // Clicking a control inside the popover (a breadcrumb, a row)
+              // moves focus there natively before our click handler runs.
+              // That's still part of this same picker session, not a
+              // real dismissal — only close it when focus lands truly
+              // outside the popover (e.g. back on the page, or on the
+              // Attach knowledge button, which has its own open/close logic).
+              if (popoverContainerRef.current?.contains(e.relatedTarget as Node | null)) {
+                return;
+              }
+              setIsTextareaFocused(false);
+            }}
+            onChange={(e) => {
+              setValue(e.target.value);
+              syncSelection(e.target);
+            }}
+            onClick={(e) => syncSelection(e.currentTarget)}
+            onKeyUp={(e) => syncSelection(e.currentTarget)}
+            onKeyDown={handleTextareaKeyDown}
+          />
+          {isInlineActive && (
+            <div
+              ref={caretAnchorRef}
+              className="pointer-events-none absolute h-4 w-px"
+              style={{ top: caretCoords.top, left: caretCoords.left }}
+            />
+          )}
+          {value.length === 0 && (
+            <span className="pointer-events-none absolute bottom-3 right-3 text-xs text-muted-foreground">
+              Type <span className="font-medium">/</span> for knowledge
+            </span>
+          )}
+        </div>
+      </div>
+
       <div ref={popoverContainerRef}>
         <AnchoredPopover
           open={isPickerOpen}
           anchorRef={mode === "inline" ? caretAnchorRef : attachButtonRef}
-          align="start"
-          side={mode === "inline" ? "bottom" : "top"}
+          align={mode === "inline" ? "start" : "end"}
+          side="bottom"
           sideOffset={8}
           className="w-auto p-0"
           onEscapeKeyDown={(e) => {
@@ -579,28 +577,15 @@ export function KnowledgeComposer() {
         >
           {activePanel === "menu" ? (
             <SlashCommandMenu
-              commands={filteredCommands}
+              entries={filteredMenuEntries}
               activeId={activeItemId}
               onHover={(id) => {
-                const index = filteredCommands.findIndex((c) => c.id === id);
+                const index = filteredMenuEntries.findIndex((e) => e.id === id);
                 if (index !== -1) {
                   setActiveIndex(index);
                 }
               }}
-              onSelect={handleSelectSlashCommand}
-            />
-          ) : activePanel === "skills" ? (
-            <SkillsPanel
-              skills={filteredSkills}
-              query={activeQuery}
-              activeId={activeItemId}
-              onHover={(id) => {
-                const index = filteredSkills.findIndex((s) => s.id === id);
-                if (index !== -1) {
-                  setActiveIndex(index);
-                }
-              }}
-              onSelect={handleSelectSkill}
+              onSelect={handleSelectMenuEntry}
             />
           ) : (
             <KnowledgeSuggestionPanel

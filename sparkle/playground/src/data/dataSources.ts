@@ -422,6 +422,61 @@ function generateDataSourcesForSpace(
     });
   }
 
+  if (spaceId === TEAM_WEEKLY_SPACE_ID) {
+    dataSources.push(...generateTeamWeeklyDataSources(spaceId, itemIndex));
+  }
+
+  return dataSources;
+}
+
+// A single, deterministic "Team Weekly" folder (in one fixed space, unlike
+// the randomly-placed "Team Weeklies" folder name in rootFolderNames) whose
+// files are named by date alone — a realistic, easy-to-recognize example for
+// exercising search and browsing.
+const TEAM_WEEKLY_SPACE_ID = "space-1";
+const TEAM_WEEKLY_COUNT = 22;
+const TEAM_WEEKLY_ANCHOR = new Date(2026, 11, 11); // 2026-12-11
+
+function generateTeamWeeklyDataSources(
+  spaceId: string,
+  startIndex: number
+): DataSource[] {
+  const folderId = `ds-${spaceId}-team-weekly-folder`;
+  const folderDates = generateDates(startIndex, `${spaceId}-team-weekly`);
+  const dataSources: DataSource[] = [
+    {
+      id: folderId,
+      kind: "folder",
+      fileName: "Team Weekly",
+      parentId: null,
+      source: "pod",
+      createdBy: getRandomUserId(startIndex, `${spaceId}-team-weekly`),
+      createdAt: folderDates.createdAt,
+      updatedAt: folderDates.updatedAt,
+    },
+  ];
+
+  for (let i = 0; i < TEAM_WEEKLY_COUNT; i++) {
+    const date = new Date(TEAM_WEEKLY_ANCHOR);
+    date.setDate(date.getDate() - i * 7);
+    const isoDate = date.toISOString().slice(0, 10);
+    const seed = `${spaceId}-team-weekly-file`;
+    const { createdAt, updatedAt } = generateDates(startIndex + i + 1, seed);
+
+    dataSources.push({
+      id: `ds-${spaceId}-team-weekly-file-${i}`,
+      kind: "file",
+      fileName: `${isoDate}.docx`,
+      parentId: folderId,
+      source: "pod",
+      fileType: "docx",
+      createdBy: getRandomUserId(startIndex + i + 1, seed),
+      createdAt,
+      updatedAt,
+      icon: getIconForFileType("docx"),
+    });
+  }
+
   return dataSources;
 }
 

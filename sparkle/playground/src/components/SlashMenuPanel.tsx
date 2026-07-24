@@ -12,7 +12,7 @@ import React from "react";
 import type { MockSkill } from "../data/skills";
 import { KNOWLEDGE_LISTBOX_ID } from "./KnowledgeSuggestionPanel";
 
-export type SlashCommandId = "knowledge" | "upload" | "skills";
+export type SlashCommandId = "knowledge" | "upload";
 
 export interface SlashCommand {
   id: SlashCommandId;
@@ -21,9 +21,10 @@ export interface SlashCommand {
   icon: ComponentType<{ className?: string }>;
 }
 
-// The "/" trigger's first step: a small command menu, Notion-style. Picking
-// "Attach knowledge" hands off to the browse/search panel already built;
-// "Upload file" and "Attach skills" are their own short flows.
+// The "/" trigger's first level: a Notion-style command menu, but skills
+// live right in it as regular entries — not behind their own sub-step —
+// since there's usually only a handful and picking one is a single action,
+// same as picking a command.
 export const SLASH_COMMANDS: SlashCommand[] = [
   {
     id: "knowledge",
@@ -37,13 +38,45 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     description: "Add a file from your computer",
     icon: UploadCloud01,
   },
-  {
-    id: "skills",
-    label: "Attach skills",
-    description: "Use an existing skill",
-    icon: PuzzlePiece01,
-  },
 ];
+
+// One flat list mixing commands and skills — typing filters both together,
+// and arrow-key navigation moves through them as a single sequence. `id` is
+// denormalized onto every entry so generic list code (active-item lookup,
+// keyboard nav) doesn't need to branch on `kind` just to find it.
+export type SlashMenuEntry =
+  | { kind: "command"; id: string; command: SlashCommand }
+  | { kind: "skill"; id: string; skill: MockSkill };
+
+function getSlashMenuEntryLabel(entry: SlashMenuEntry): string {
+  return entry.kind === "command" ? entry.command.label : entry.skill.name;
+}
+
+function getSlashMenuEntryDescription(entry: SlashMenuEntry): string {
+  return entry.kind === "command"
+    ? entry.command.description
+    : entry.skill.description;
+}
+
+function getSlashMenuEntryIcon(
+  entry: SlashMenuEntry
+): ComponentType<{ className?: string }> {
+  return entry.kind === "command" ? entry.command.icon : PuzzlePiece01;
+}
+
+export function buildSlashMenuEntries(
+  commands: SlashCommand[],
+  skills: MockSkill[]
+): SlashMenuEntry[] {
+  return [
+    ...commands.map(
+      (command): SlashMenuEntry => ({ kind: "command", id: command.id, command })
+    ),
+    ...skills.map(
+      (skill): SlashMenuEntry => ({ kind: "skill", id: skill.id, skill })
+    ),
+  ];
+}
 
 function SimpleListRow({
   id,
@@ -123,14 +156,14 @@ function EmptyState({ message }: { message: string }) {
 }
 
 interface SlashCommandMenuProps {
-  commands: SlashCommand[];
+  entries: SlashMenuEntry[];
   activeId: string | null;
   onHover: (id: string) => void;
-  onSelect: (command: SlashCommand) => void;
+  onSelect: (entry: SlashMenuEntry) => void;
 }
 
 export function SlashCommandMenu({
-  commands,
+  entries,
   activeId,
   onHover,
   onSelect,
@@ -143,75 +176,25 @@ export function SlashCommandMenu({
         className="h-auto max-h-72 px-1.5 py-1.5"
         onMouseDown={(e) => e.preventDefault()}
       >
-        {commands.length === 0 ? (
+        {entries.length === 0 ? (
           <EmptyState message="No matching command" />
         ) : (
           <div className="flex flex-col gap-0.5">
-            {commands.map((command) => (
-              <SimpleListRow
-                key={command.id}
-                id={command.id}
-                icon={command.icon}
-                label={command.label}
-                description={command.description}
-                isActive={command.id === activeId}
-                onHover={() => onHover(command.id)}
-                onSelect={() => onSelect(command)}
-              />
-            ))}
-          </div>
-        )}
-      </ScrollArea>
-      <PanelFooterHints />
-    </div>
-  );
-}
-
-interface SkillsPanelProps {
-  skills: MockSkill[];
-  query: string;
-  activeId: string | null;
-  onHover: (id: string) => void;
-  onSelect: (skill: MockSkill) => void;
-}
-
-export function SkillsPanel({
-  skills,
-  query,
-  activeId,
-  onHover,
-  onSelect,
-}: SkillsPanelProps) {
-  return (
-    <div className="flex w-80 flex-col">
-      <ScrollArea
-        id={KNOWLEDGE_LISTBOX_ID}
-        role="listbox"
-        className="h-72 px-1.5 py-1.5"
-        onMouseDown={(e) => e.preventDefault()}
-      >
-        {skills.length === 0 ? (
-          <EmptyState
-            message={
-              query.trim()
-                ? `No skills found for “${query}”`
-                : "No skills available"
-            }
-          />
-        ) : (
-          <div className="flex flex-col gap-0.5">
-            {skills.map((skill) => (
-              <SimpleListRow
-                key={skill.id}
-                id={skill.id}
-                icon={PuzzlePiece01}
-                label={skill.name}
-                description={skill.description}
-                isActive={skill.id === activeId}
-                onHover={() => onHover(skill.id)}
-                onSelect={() => onSelect(skill)}
-              />
-            ))}
+            {entries.map((entry) => {
+              const id = entry.id;
+              return (
+                <SimpleListRow
+                  key={id}
+                  id={id}
+                  icon={getSlashMenuEntryIcon(entry)}
+                  label={getSlashMenuEntryLabel(entry)}
+                  description={getSlashMenuEntryDescription(entry)}
+                  isActive={id === activeId}
+                  onHover={() => onHover(id)}
+                  onSelect={() => onSelect(entry)}
+                />
+              );
+            })}
           </div>
         )}
       </ScrollArea>
