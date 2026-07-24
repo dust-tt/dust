@@ -13,12 +13,6 @@ export const handleError = (
   return new EventError(categorizeGenAIError(err, metadata), metadata);
 };
 
-export const isGoogleAuthenticationErrorMessage = (
-  message: string
-): boolean => {
-  return message.toLowerCase().includes("api key not valid");
-};
-
 // Yes, this is mainly duplicated between all providers. We know for sure each provider has a different error handling and http status code.
 // So we want to be able to tweak this by provider
 function categorizeGenAIError(
@@ -28,11 +22,7 @@ function categorizeGenAIError(
   const normalized = normalizeError(originalError);
   const statusCode = originalError.status;
 
-  if (
-    statusCode === 401 ||
-    (statusCode === 400 &&
-      isGoogleAuthenticationErrorMessage(normalized.message))
-  ) {
+  if (statusCode === 401 || statusCode === 400) {
     return {
       type: "authentication_error",
       message: `Authentication failed for ${metadata.clientId}. ${normalized.message}`,
