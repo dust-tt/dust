@@ -1,10 +1,10 @@
-import { findActivationTrigger } from "@app/lib/api/activation/trigger";
 import type { Authenticator } from "@app/lib/auth";
 import { ActivationNudgeResource } from "@app/lib/resources/activation_nudge_resource";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import {
   DEFAULT_ACTIVATION_NUDGE_FREQUENCY_CAP_DAYS,
@@ -45,13 +45,13 @@ export function getActivationNudgeMaxUnansweredCount(
 // count stops at the first answered nudge, so a reply resets the streak.
 async function countUnansweredNudgeStreak(
   auth: Authenticator,
-  pod: SpaceResource,
+  activationPod: ActivationPodResource,
   { limit }: { limit: number }
 ): Promise<number> {
-  const recentNudges = await ActivationNudgeResource.listRecentForSpace(auth, {
-    pod,
-    limit,
-  });
+  const recentNudges = await ActivationNudgeResource.listRecentForActivationPod(
+    auth,
+    { activationPod, limit }
+  );
   if (recentNudges.length === 0) {
     return 0;
   }
@@ -119,7 +119,14 @@ export async function isEligibleForNudge(
   auth: Authenticator,
   pod: SpaceResource
 ): Promise<boolean> {
-  const trigger = await findActivationTrigger(auth, pod);
+  const activationPod = await ActivationPodResource.fetchBySpace(auth, pod);
+  if (!activationPod || activationPod.triggerId === null) {
+    return false;
+  }
+
+  const [trigger] = await TriggerResource.fetchByModelIds(auth, [
+    activationPod.triggerId,
+  ]);
   if (!trigger || trigger.status !== "enabled") {
     return false;
   }
@@ -128,9 +135,10 @@ export async function isEligibleForNudge(
     return false;
   }
 
-  const latestNudge = await ActivationNudgeResource.fetchLatestForSpace(auth, {
-    pod,
-  });
+  const latestNudge = await ActivationNudgeResource.fetchLatestForActivationPod(
+    auth,
+    { activationPod }
+  );
   if (!latestNudge) {
     return true;
   }
@@ -143,9 +151,13 @@ export async function isEligibleForNudge(
   }
 
   const maxUnansweredCount = getActivationNudgeMaxUnansweredCount(auth);
-  const unansweredStreak = await countUnansweredNudgeStreak(auth, pod, {
-    limit: maxUnansweredCount,
-  });
+  const unansweredStreak = await countUnansweredNudgeStreak(
+    auth,
+    activationPod,
+    {
+      limit: maxUnansweredCount,
+    }
+  );
 
   return unansweredStreak < maxUnansweredCount;
 }

@@ -56,7 +56,13 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     blob: Pick<
       CreationAttributes<ActivationRecommendationModel>,
       "title" | "content" | "conversationId"
-    >
+    > &
+      Partial<
+        Pick<
+          CreationAttributes<ActivationRecommendationModel>,
+          "activationPodId"
+        >
+      >
   ): Promise<ActivationRecommendationResource> {
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
@@ -68,6 +74,7 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       title: blob.title,
       content: blob.content,
       conversationId: blob.conversationId ?? null,
+      activationPodId: blob.activationPodId ?? null,
     });
 
     return new this(this.model, rec.get());
@@ -159,6 +166,23 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       resource: new this(this.model, rec.get()),
       conversationSId: rec.conversation?.sId ?? null,
     }));
+  }
+
+  // Detaches all recommendations from a Pod being deleted. Recommendations
+  // are owned by the user, not the pod, so they are kept and only unlinked.
+  static async detachActivationPod(
+    auth: Authenticator,
+    activationPodId: ModelId
+  ): Promise<void> {
+    await this.model.update(
+      { activationPodId: null },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          activationPodId,
+        },
+      }
+    );
   }
 
   async updateFields(fields: {

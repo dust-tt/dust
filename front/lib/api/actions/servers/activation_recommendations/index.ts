@@ -12,11 +12,13 @@ import {
   ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/activation_recommendations/metadata";
 import type { Authenticator } from "@app/lib/auth";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import { Err, Ok } from "@app/types/shared/result";
@@ -127,10 +129,23 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         ? runContext.conversation.id
         : null;
 
+      // Best-effort link to the pod the recommendation was made in: the
+      // activation conversation's space is the pod itself.
+      const podSpaceId = isAgentLoopRunContext(runContext)
+        ? runContext.conversation.spaceId
+        : null;
+      const pod = podSpaceId
+        ? await SpaceResource.fetchById(auth, podSpaceId)
+        : null;
+      const activationPod = pod
+        ? await ActivationPodResource.fetchBySpace(auth, pod)
+        : null;
+
       const rec = await ActivationRecommendationResource.makeNew(auth, {
         title,
         content,
         conversationId,
+        activationPodId: activationPod?.id ?? null,
       });
 
       return new Ok([
