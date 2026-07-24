@@ -27,7 +27,6 @@ import {
   handleInvalidToolJsonAnthropicError,
   isAnthropicErrorUnableToParseToolParam,
 } from "@app/lib/api/llm/clients/anthropic/utils/errors";
-import { stripUnreplayableToolSearchBlocks } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import {
   getInferenceClient,
   getModel,
@@ -52,6 +51,7 @@ import {
   ANTHROPIC_TOOL_SEARCH_INSTRUCTION,
   includesToolSearchTool,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
+import { stripUnreplayableToolSearchBlocks } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";

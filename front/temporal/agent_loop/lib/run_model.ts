@@ -38,10 +38,6 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { getStreamLLM } from "@app/lib/api/llm";
 import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
-import {
-  parseAnthropicToolSearchBlock,
-  TOOL_SEARCH_SERVER_TOOL_NAMES,
-} from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -58,6 +54,10 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
+import {
+  parseAnthropicToolSearchBlock,
+  TOOL_SEARCH_SERVER_TOOL_NAMES,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";

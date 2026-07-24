@@ -4,11 +4,11 @@ import type {
   ServerToolUseBlockParam,
   ToolSearchToolResultBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
-import type { AnthropicToolSearchBlock } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
+import type { AnthropicToolSearchBlock } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import {
   parseAnthropicToolSearchBlock,
   stripUnreplayableToolSearchBlocks,
-} from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 describe("parseAnthropicToolSearchBlock", () => {

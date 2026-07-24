@@ -11,10 +11,10 @@ import type {
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
-import { parseAnthropicToolSearchBlock } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
+import { parseAnthropicToolSearchBlock } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   AgentFunctionCallContentType,

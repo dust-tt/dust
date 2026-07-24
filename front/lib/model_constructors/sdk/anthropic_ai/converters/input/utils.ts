@@ -16,10 +16,10 @@ import type {
   ToolResultBlockParam,
   ToolUseBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
-import { parseAnthropicToolSearchBlock } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import type { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
 import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
+import { parseAnthropicToolSearchBlock } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import type {
   OutputFormat,
   ToolChoiceInput,

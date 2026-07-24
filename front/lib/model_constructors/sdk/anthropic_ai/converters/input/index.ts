@@ -4,13 +4,13 @@ import type {
   MessageParam,
   TextBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
-import { stripUnreplayableToolSearchBlocks } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { Client } from "@app/lib/model_constructors/client";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import {
   ANTHROPIC_TOOL_SEARCH_INSTRUCTION,
   includesToolSearchTool,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
+import { stripUnreplayableToolSearchBlocks } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import {
   assistantProviderPassthroughMessageToBlocks,
   assistantReasoningMessageToThinkingBlocks,
