@@ -40,6 +40,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { Attributes, Transaction } from "sequelize";
 import { z } from "zod";
@@ -58,14 +59,14 @@ const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 2;
 // `code` is not narrowed to `SandboxFunctionCallErrorCode`: it is forwarded from whatever
 // classified the failure (runner, API error type, front), and a code introduced by a newer deploy
 // must stay readable rather than fail to parse.
-const InvocationCallErrorSchema = z.object({
+const StoredCallErrorSchema = z.object({
   code: z.string(),
   message: z.string(),
   status: z.number().optional(),
 });
 
-export type PersistedSandboxFunctionCallError = z.infer<
-  typeof InvocationCallErrorSchema
+export type StoredSandboxFunctionCallError = z.infer<
+  typeof StoredCallErrorSchema
 >;
 
 const InvocationDataBaseSchema = z.object({
@@ -90,33 +91,35 @@ const StoredInvocationDataSchema = z.discriminatedUnion("version", [
   // v2 records the whole call error, so `inspect_invocations` can report its code and status.
   InvocationDataBaseSchema.extend({
     version: z.literal(2),
-    error: InvocationCallErrorSchema.optional(),
+    error: StoredCallErrorSchema.optional(),
   }),
 ]);
 
 type StoredInvocationData = z.infer<typeof StoredInvocationDataSchema>;
 
-type SandboxFunctionInvocationData = {
-  version: typeof SANDBOX_FUNCTION_INVOCATION_DATA_VERSION;
-  input?: unknown;
-  result?: unknown;
-  error?: PersistedSandboxFunctionCallError;
-};
+// Derived from the current arm rather than written out, so the two cannot drift. Bumping the
+// version constant makes `case 2` below stop typechecking until a migration exists.
+type SandboxFunctionInvocationData = Extract<
+  StoredInvocationData,
+  { version: typeof SANDBOX_FUNCTION_INVOCATION_DATA_VERSION }
+>;
 
 function migrateStoredInvocationData(
   stored: StoredInvocationData
 ): SandboxFunctionInvocationData {
   switch (stored.version) {
     case 1:
+      // Spread rather than list fields, so a field added to the shared base carries through
+      // instead of being silently dropped from every v1 blob on read.
       return {
+        ...stored,
         version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
-        input: stored.input,
-        result: stored.result,
         // v1 only ever recorded errors that went through `fail(Error)`, which classified them as
         // `invocation_failed`.
-        ...(stored.error !== undefined
-          ? { error: { code: "invocation_failed", message: stored.error } }
-          : {}),
+        error:
+          stored.error !== undefined
+            ? { code: "invocation_failed", message: stored.error }
+            : undefined,
       };
     case 2:
       return stored;
@@ -127,7 +130,7 @@ function migrateStoredInvocationData(
 
 export interface SandboxFunctionInvocationForLLM {
   createdAt: string;
-  error?: PersistedSandboxFunctionCallError;
+  error?: StoredSandboxFunctionCallError;
   input: unknown;
   invocationId: string;
   result?: unknown;
@@ -138,14 +141,12 @@ export interface SandboxFunctionInvocationForLLM {
 function safeParseStoredInvocationData(
   content: string
 ): Result<StoredInvocationData, Error> {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(content);
-  } catch (err) {
-    return new Err(normalizeError(err));
+  const jsonResult = safeParseJSON(content);
+  if (jsonResult.isErr()) {
+    return jsonResult;
   }
 
-  const parseResult = StoredInvocationDataSchema.safeParse(raw);
+  const parseResult = StoredInvocationDataSchema.safeParse(jsonResult.value);
   if (!parseResult.success) {
     return new Err(new Error(fromError(parseResult.error).toString()));
   }
@@ -219,7 +220,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return this.data.result;
   }
 
-  get error(): PersistedSandboxFunctionCallError | undefined {
+  get error(): StoredSandboxFunctionCallError | undefined {
     return this.data.error;
   }
 

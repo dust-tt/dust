@@ -234,7 +234,7 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(invocation.context).toEqual({ timezone: "Europe/Paris" });
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toBe(
       JSON.stringify({
-        version: 1,
+        version: 2,
         context: { timezone: "Europe/Paris" },
       })
     );
@@ -400,6 +400,7 @@ describe("SandboxFunctionInvocationResource", () => {
           JSON.stringify({
             version: 1,
             input: { message: "hello" },
+            context: { timezone: "Europe/Paris" },
             error: "written before codes existed",
           }),
           "utf-8"
@@ -411,10 +412,35 @@ describe("SandboxFunctionInvocationResource", () => {
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.input).toEqual({ message: "hello" });
+    // Fields the v1 and v2 shapes have in common survive the migration.
+    expect(refetched?.context).toEqual({ timezone: "Europe/Paris" });
     expect(refetched?.error).toEqual({
       code: "invocation_failed",
       message: "written before codes existed",
     });
+
+    // The next write persists it as v2, so a blob is migrated once rather than on every read.
+    await refetched!.succeed({ commentId: "comment-1" });
+    expect(fileStorageMock.getObject(invocation.gcsPath!)).toContain(
+      '"version":2'
+    );
+  });
+
+  it("migrates a v1 blob that recorded no error", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+
+    // The GCS path backfill wrote bare v1 blobs, so this shape is real.
+    await getPrivateUploadBucket()
+      .file(invocation.gcsPath!)
+      .save(Buffer.from(JSON.stringify({ version: 1 }), "utf-8"));
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.error).toBeUndefined();
+    expect(refetched?.input).toBeUndefined();
   });
 
   it("executes an invocation on the pod sandbox", async () => {
