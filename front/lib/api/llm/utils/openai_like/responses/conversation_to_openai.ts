@@ -6,7 +6,6 @@ import {
 } from "@app/lib/api/llm/clients/openai/types";
 import { OPENAI_TOOL_SEARCH_TOOL } from "@app/lib/api/llm/clients/openai/utils/tool_search";
 import { parseOpenAIToolSearchItem } from "@app/lib/api/llm/clients/openai/utils/tool_search_passthrough";
-import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type {
   ExclusiveToolChoiceParameters,
   SystemPromptInput,
@@ -319,7 +318,7 @@ const REASONING_CONFIG_MAPPING: Record<ReasoningEffort, OpenAIReasoningEffort> =
   };
 
 export function toReasoning(
-  modelId: OpenAIWhitelistedModelId | XaiWhitelistedModelId,
+  modelId: OpenAIWhitelistedModelId,
   reasoningEffort: ReasoningEffort | null
 ): Reasoning | null {
   if (!reasoningEffort) {
