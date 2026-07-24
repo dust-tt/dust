@@ -20,6 +20,7 @@ import {
   logToolSearchQuery,
   logToolSearchResult,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/tool_search_logging";
+import { isAnthropicFileDownloadError } from "@app/lib/model_constructors/sdk/anthropic_ai/errors";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
 import type {
@@ -437,6 +438,15 @@ function apiErrorToErrorEvent(
   metadata: EndpointMetadata,
   error: APIError
 ): ErrorEvent {
+  if (isAnthropicFileDownloadError(error)) {
+    return buildErrorEvent({
+      metadata,
+      type: "server_error",
+      message: `Server error from Anthropic: ${error.message}`,
+      originalError: error,
+    });
+  }
+
   // Mid-stream SSE `error` events surface as an `APIError` with no HTTP status;
   // the old router defaulted those to 500, so mirror that here.
   const status = error.status ?? 500;

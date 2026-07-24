@@ -5,6 +5,7 @@ import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import { isAnthropicFileDownloadError } from "@app/lib/model_constructors/sdk/anthropic_ai/errors";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 // https://github.com/anthropics/anthropic-sdk-typescript#handling-errors
@@ -61,6 +62,15 @@ function categorizeAnthropicError(
 
   const statusCode = originalError.status ?? 500;
   const isRetryable = shouldRetry(originalError);
+
+  if (isAnthropicFileDownloadError(originalError)) {
+    return {
+      type: "server_error",
+      message: `Server error from ${metadata.clientId}. ${normalized.message}`,
+      isRetryable: true,
+      originalError,
+    };
+  }
 
   // With eager_input_streaming enabled, the model may produce invalid tool parameter JSON.
   // The Anthropic API sometimes detects this server-side and aborts the stream with an SSE
