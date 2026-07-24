@@ -89,7 +89,7 @@ export function RunsPage() {
 
   return (
     <>
-      <div className="mt-8 flex">
+      <div className="flex">
         <nav className="flex" aria-label="Tabs">
           {tabs.map((tab, tabIdx) => (
             <a

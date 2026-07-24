@@ -360,7 +360,7 @@ export function AppViewPage() {
 
   return (
     <>
-      <div className="mt-8 flex flex-auto flex-col">
+      <div className="flex flex-auto flex-col">
         <div className="mb-4 flex flex-row items-center space-x-2">
           <NewBlock
             disabled={readOnly}

@@ -91,7 +91,8 @@ export function DustAppPageLayout({ children }: DustAppPageLayoutProps) {
           ))}
         </TabsList>
       </Tabs>
-      {children}
+      {/* The layout owns the Tabs-to-content rhythm (was a per-page mt-8). */}
+      <div className="flex flex-1 flex-col pt-8">{children}</div>
     </div>
   );
 }

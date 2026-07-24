@@ -138,7 +138,7 @@ export function DatasetPage() {
   }
 
   return (
-    <div className="mt-8 flex flex-col">
+    <div className="flex flex-col">
       <div className="flex flex-1">
         <div className="mb-8 w-full">
           <div className="space-y-6 divide-y divide-primary-200">
