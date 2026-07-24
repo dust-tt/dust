@@ -1,5 +1,6 @@
 // Okay to use public API types because here front is talking to core API.
 
+import { fetchContentFragmentsForConversation } from "@app/lib/api/assistant/content_fragments";
 import {
   getAttachmentFromContentFragment,
   makeFileAttachment,
@@ -7,12 +8,12 @@ import {
 import { truncateLegacyPastedSnippet } from "@app/lib/api/files/snippet";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type {
   ContentNodeAttachmentType,
   ConversationAttachmentType,
 } from "@app/types/api/assistant/conversation/attachments";
-import type { ConversationType } from "@app/types/assistant/conversation";
-import { isContentFragmentType } from "@app/types/content_fragment";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
@@ -22,41 +23,35 @@ export async function listAttachments(
     conversation,
     upToRank,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType | ConversationResource;
     /** When set, only attachments from messages with `rank <= upToRank` are included. */
     upToRank?: number;
   }
 ): Promise<ConversationAttachmentType[]> {
-  // Using a map to avoid duplicated, order matters, project files should override directly attached files as they could have be moved from conversation to project.
+  // Using a map to avoid duplicated, order matters, project files should override directly
+  // attached files as they could have been moved from conversation to project.
   const attachments: Map<string, ConversationAttachmentType> = new Map();
-  for (const versions of conversation.content) {
-    const m = versions[versions.length - 1];
-    if (upToRank !== undefined && m.rank > upToRank) {
-      continue;
-    }
-    if (isContentFragmentType(m)) {
-      // Only list the latest version of a content fragment.
-      if (m.contentFragmentVersion !== "latest") {
-        continue;
-      }
 
-      const attachment = getAttachmentFromContentFragment(m);
-      if (attachment) {
-        attachments.set(
-          m.contentFragmentId,
-          truncateLegacyPastedSnippet(attachment)
-        );
-      }
-    }
-  }
-
-  // Agent-generated files are fetched independently of conversation.content so trimmed /
-  // paginated conversations still expose the full set of generated attachments.
-  const generatedFiles =
-    await AgentMCPActionResource.listGeneratedFilesForConversation(auth, {
+  const [contentFragments, generatedFiles] = await Promise.all([
+    fetchContentFragmentsForConversation(auth, {
+      conversation,
+      upToRank,
+    }),
+    AgentMCPActionResource.listGeneratedFilesForConversation(auth, {
       conversationId: conversation.id,
       upToRank,
-    });
+    }),
+  ]);
+
+  for (const m of contentFragments) {
+    const attachment = getAttachmentFromContentFragment(m);
+    if (attachment) {
+      attachments.set(
+        m.contentFragmentId,
+        truncateLegacyPastedSnippet(attachment)
+      );
+    }
+  }
 
   for (const f of generatedFiles) {
     attachments.set(

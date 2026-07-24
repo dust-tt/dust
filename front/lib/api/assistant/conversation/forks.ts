@@ -37,10 +37,7 @@ import type {
   FileAttachmentType,
 } from "@app/types/api/assistant/conversation/attachments";
 import type { CompactionAttachmentIdReplacements } from "@app/types/assistant/compaction";
-import type {
-  ConversationType,
-  ConversationWithoutContentType,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isFileContentFragment } from "@app/types/content_fragment";
@@ -408,8 +405,8 @@ async function carryOverConversationAttachments(
     childConversation,
     sourceMessageRank,
   }: {
-    parentConversation: ConversationType;
-    childConversation: ConversationType;
+    parentConversation: ConversationWithoutContentType;
+    childConversation: ConversationWithoutContentType;
     sourceMessageRank: number;
   }
 ): Promise<CompactionAttachmentIdReplacements> {

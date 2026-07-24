@@ -1,7 +1,6 @@
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
@@ -10,12 +9,12 @@ import {
   isSandboxExecTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
 } from "@app/lib/api/sandbox/access_tokens";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import { sandboxAuth } from "@front-api/middlewares/sandbox_auth";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-
 import aId from "./[aId]";
 import call from "./call";
 
@@ -130,9 +129,8 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
   );
 
   // Fetch conversation-jitted servers.
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
-  const conversationResult = await getConversation(auth, cId);
-  if (conversationResult.isErr()) {
+  const conversationResource = await ConversationResource.fetchById(auth, cId);
+  if (!conversationResource) {
     return apiError(ctx, {
       status_code: 404,
       api_error: {
@@ -141,9 +139,11 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
       },
     });
   }
+  const conversation = conversationResource.toJSON();
 
-  const conversation = conversationResult.value;
-  const attachments = await listAttachments(auth, { conversation });
+  const attachments = await listAttachments(auth, {
+    conversation: conversationResource,
+  });
   const jitServers = await getJITServers(auth, {
     agentConfiguration: agentConfig,
     conversation,
