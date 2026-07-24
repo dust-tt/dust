@@ -26,8 +26,17 @@ app.get("/", async (ctx): HandlerResult<PokeListGroups> => {
         !isSkillEditorGroupKind(kind)
     ),
   });
+  const memberCounts = await GroupResource.getMemberCountsForGroups(
+    auth,
+    groups
+  );
 
-  return ctx.json({ groups: groups.map((g) => g.toJSON()) });
+  return ctx.json({
+    groups: groups.map((group) => ({
+      ...group.toJSON(),
+      memberCount: memberCounts.get(group.id) ?? 0,
+    })),
+  });
 });
 
 app.route("/:groupId", groupId);
