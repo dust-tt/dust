@@ -1434,6 +1434,58 @@ describe("softDeleteUserMessageAndReplies", () => {
     });
   });
 
+  it("starts a follow-up after deleting the previous running reply", async () => {
+    const oneTurnConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    const fetched = await getConversation(auth, oneTurnConversation.sId);
+    if (fetched.isErr()) {
+      throw fetched.error;
+    }
+    const userMessage = fetched.value.content
+      .flat()
+      .find((message): message is UserMessageType =>
+        isUserMessageType(message)
+      );
+    if (!userMessage) {
+      throw new Error("No user message found in conversation");
+    }
+
+    const deleted = await softDeleteUserMessageAndReplies(auth, {
+      message: userMessage,
+      conversation: fetched.value,
+    });
+    expect(deleted.isOk()).toBe(true);
+
+    const afterDelete = await getConversation(auth, oneTurnConversation.sId);
+    if (afterDelete.isErr()) {
+      throw afterDelete.error;
+    }
+
+    const user = auth.getNonNullableUser().toJSON();
+    const followUp = await postUserMessage(auth, {
+      conversation: afterDelete.value,
+      content: "Follow-up",
+      mentions: [{ configurationId: agentConfig.sId }],
+      context: {
+        username: user.username,
+        timezone: "UTC",
+        fullName: user.fullName,
+        email: user.email,
+        profilePictureUrl: user.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(followUp.isOk()).toBe(true);
+    if (followUp.isOk()) {
+      expect(followUp.value.userMessage.visibility).toBe("visible");
+      expect(followUp.value.agentMessages).toHaveLength(1);
+    }
+  });
+
   it("does not signal gracefullyStopAgentLoop when the cascaded agent reply already finished", async () => {
     const firstUserMessage = conversation.content
       .flat()

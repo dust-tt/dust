@@ -703,7 +703,11 @@ export async function postUserMessage(
   }
 
   let runningAgentMessage = conversation.content
-    .flat()
+    .map((versions) =>
+      versions.reduce((latest, message) =>
+        message.version > latest.version ? message : latest
+      )
+    )
     .find(
       (m): m is AgentMessageType =>
         isAgentMessageType(m) && m.status === "created"
