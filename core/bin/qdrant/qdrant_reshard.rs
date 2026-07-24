@@ -245,7 +245,15 @@ impl QdrantHttp {
     }
 
     async fn get<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T> {
-        let req = self.with_api_key(self.client.get(format!("{}{}", self.base_url, path)));
+        self.get_at(&self.base_url.clone(), path).await
+    }
+
+    async fn get_at<T: serde::de::DeserializeOwned>(
+        &self,
+        base_url: &str,
+        path: &str,
+    ) -> Result<T> {
+        let req = self.with_api_key(self.client.get(format!("{}{}", base_url, path)));
         let res = req.send().await?;
         let status = res.status();
         let body = res.text().await?;
@@ -633,9 +641,12 @@ async fn wait_for_no_resharding(
     collection: &str,
     shard_key: &str,
     poll_interval: Duration,
+    peer_url_overrides: &[(u64, String)],
 ) -> Result<()> {
     let started = std::time::Instant::now();
     let mut last_transfer_seen = std::time::Instant::now();
+    // Peers already compensated (or with nothing to move) for the new shard they received.
+    let mut compensated_peers: HashSet<u64> = HashSet::new();
     loop {
         match qdrant.cluster_info(collection).await {
             Ok(info) => {
@@ -675,6 +686,50 @@ async fn wait_for_no_resharding(
                         format!(" | transfers: {}", transfers)
                     }
                 );
+
+                // Proactive room-making (scale-up): every peer that receives a replica of the
+                // new shard takes on one shard's worth of extra RAM while the operator
+                // migrates/replicates. Move one other shard away from each such peer — one
+                // shard in, one shard out — so the operation never waits on peer capacity.
+                for op in ops {
+                    if op.direction != "up" {
+                        continue;
+                    }
+                    let replica_peers: Vec<u64> = topology
+                        .shards
+                        .get(&op.shard_id)
+                        .map(|replicas| replicas.iter().map(|(peer_id, _, _)| *peer_id).collect())
+                        .unwrap_or_default();
+                    for peer_id in replica_peers {
+                        if compensated_peers.contains(&peer_id) {
+                            continue;
+                        }
+                        match make_room_on_peer(
+                            qdrant,
+                            collection,
+                            peer_id,
+                            shard_key,
+                            &info,
+                            peer_url_overrides,
+                        )
+                        .await
+                        {
+                            Ok(Some(description)) => {
+                                println!("[{}] making room: {}", shard_key, description);
+                                compensated_peers.insert(peer_id);
+                            }
+                            Ok(None) => {
+                                compensated_peers.insert(peer_id);
+                            }
+                            Err(e) => {
+                                println!(
+                                    "[{}] failed to make room on peer {} (will retry): {}",
+                                    shard_key, peer_id, e
+                                );
+                            }
+                        }
+                    }
+                }
             }
             Err(e) => {
                 println!(
@@ -687,6 +742,99 @@ async fn wait_for_no_resharding(
         }
         tokio::time::sleep(poll_interval).await;
     }
+}
+
+// Moves one shard away from `peer_id`, which just received a replica of the shard being
+// resharded ("one shard in, one shard out"). Picks the peer's largest Active shard outside the
+// resharded key — so the freed RAM is commensurate with the incoming shard — and sends it to the
+// least-loaded peer below MAX_TARGET_PEER_RAM_USED_FRACTION that does not already host a replica
+// of it. Returns a description of the move, or None when the peer hosts nothing movable or no
+// destination qualifies (logged; the resharding watch goes on either way).
+async fn make_room_on_peer(
+    qdrant: &QdrantHttp,
+    collection: &str,
+    peer_id: u64,
+    reshard_key: &str,
+    info: &ClusterInfoResult,
+    peer_url_overrides: &[(u64, String)],
+) -> Result<Option<String>> {
+    let peer_urls = qdrant.peer_urls(peer_url_overrides).await?;
+    let peer_url = peer_urls.get(&peer_id).ok_or_else(|| {
+        anyhow!(
+            "No REST URL for peer {} (use --peer-url {}=<url>)",
+            peer_id,
+            peer_id
+        )
+    })?;
+
+    // The peer's own view is the only one with local point counts.
+    let local_info: ClusterInfoResult = qdrant
+        .get_at(peer_url, &format!("/collections/{}/cluster", collection))
+        .await?;
+    let candidate = match local_info
+        .local_shards
+        .iter()
+        .filter(|s| s.state == "Active")
+        .filter(|s| shard_key_label(&s.shard_key).as_deref() != Some(reshard_key))
+        .max_by_key(|s| s.points_count)
+    {
+        Some(candidate) => candidate,
+        // Nothing movable (e.g. a fresh node that only hosts the new shard).
+        None => return Ok(None),
+    };
+
+    // A shard cannot be moved to a peer already holding one of its replicas.
+    let hosting_peers: HashSet<u64> = info
+        .local_shards
+        .iter()
+        .filter(|s| s.shard_id == candidate.shard_id)
+        .map(|_| info.peer_id)
+        .chain(
+            info.remote_shards
+                .iter()
+                .filter(|s| s.shard_id == candidate.shard_id)
+                .map(|s| s.peer_id),
+        )
+        .collect();
+
+    let peers_ram = gather_peer_ram(qdrant, peer_url_overrides).await?;
+    let destination = match peers_ram.iter().find(|peer| {
+        peer.qualifies() && peer.peer_id != peer_id && !hosting_peers.contains(&peer.peer_id)
+    }) {
+        Some(destination) => destination,
+        None => {
+            println!(
+                "WARNING: [{}] cannot make room on peer {}: no peer below {:.0}% RAM used can \
+                 receive shard {}.",
+                reshard_key,
+                peer_id,
+                MAX_TARGET_PEER_RAM_USED_FRACTION * 100.0,
+                candidate.shard_id
+            );
+            return Ok(None);
+        }
+    };
+
+    qdrant
+        .post_cluster_operation(
+            collection,
+            &serde_json::json!({
+                "move_shard": {
+                    "shard_id": candidate.shard_id,
+                    "from_peer_id": peer_id,
+                    "to_peer_id": destination.peer_id,
+                }
+            }),
+        )
+        .await?;
+
+    Ok(Some(format!(
+        "moving shard {} ({} pts) off peer {} -> {}",
+        candidate.shard_id,
+        candidate.points_count,
+        peer_id,
+        destination.describe()
+    )))
 }
 
 // Waits until the collection has no in-flight shard transfer (used between --drive stages).
@@ -1165,7 +1313,14 @@ async fn main() -> Result<()> {
                 )
                 .await?;
             }
-            wait_for_no_resharding(&qdrant, &args.collection, &shard_key, poll_interval).await?;
+            wait_for_no_resharding(
+                &qdrant,
+                &args.collection,
+                &shard_key,
+                poll_interval,
+                &args.peer_urls,
+            )
+            .await?;
             current = *shard_counts_per_key(&qdrant.cluster_info(&args.collection).await?)
                 .get(&shard_key)
                 .ok_or_else(|| anyhow!("Shard key {} disappeared", shard_key))?;
@@ -1225,7 +1380,14 @@ async fn main() -> Result<()> {
                 )
                 .await?;
             }
-            wait_for_no_resharding(&qdrant, &args.collection, &shard_key, poll_interval).await?;
+            wait_for_no_resharding(
+                &qdrant,
+                &args.collection,
+                &shard_key,
+                poll_interval,
+                &args.peer_urls,
+            )
+            .await?;
 
             let new_count = *shard_counts_per_key(&qdrant.cluster_info(&args.collection).await?)
                 .get(&shard_key)
