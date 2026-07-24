@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { frameContentType } from "@app/types/files";
@@ -43,10 +43,11 @@ async function setSharingPolicy(
   workspace: { sId: string },
   sharingPolicy: WorkspaceSharingPolicy
 ) {
-  await WorkspaceModel.update(
-    { sharingPolicy },
-    { where: { sId: workspace.sId } }
-  );
+  const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+  if (!workspaceResource) {
+    throw new Error(`Workspace ${workspace.sId} not found.`);
+  }
+  await workspaceResource.updateWorkspaceSettings({ sharingPolicy });
 }
 
 function postShare(workspace: { sId: string }, fileId: string, body: unknown) {
