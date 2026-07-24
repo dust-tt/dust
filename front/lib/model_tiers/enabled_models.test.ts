@@ -10,7 +10,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
-  CLAUDE_OPUS_4_8_MODEL_ID,
+  CLAUDE_OPUS_5_MODEL_ID,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { MODEL_STREAMS } from "@app/types/assistant/models/auto";
@@ -201,7 +201,7 @@ describe("getModelForStream", () => {
     const resolved = await getModelForStream(adminAuth, "auto_complex");
 
     expect(resolved).not.toBeNull();
-    expect(resolved?.model.modelId).toBe(CLAUDE_OPUS_4_8_MODEL_ID);
+    expect(resolved?.model.modelId).toBe(CLAUDE_OPUS_5_MODEL_ID);
     expect(resolved?.reasoningEffort).toBe("high");
   });
 

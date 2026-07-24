@@ -1,5 +1,5 @@
 import {
-  CLAUDE_OPUS_4_8_MODEL_ID,
+  CLAUDE_OPUS_5_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
 } from "./anthropic";
 import {
@@ -134,7 +134,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
     [AUTO_COMPLEX_MODEL_ID]: [
       {
         providerId: "anthropic",
-        modelId: CLAUDE_OPUS_4_8_MODEL_ID,
+        modelId: CLAUDE_OPUS_5_MODEL_ID,
         reasoningEffort: "high",
       },
       {
