@@ -47,6 +47,7 @@ export async function fetchPluginResource<T extends SupportedResourceType>(
       result = await AppResource.fetchById(auth, resourceId);
       break;
     case "conversations": {
+      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
       const conversationRes = await getConversation(auth, resourceId);
       result = conversationRes.isOk() ? conversationRes.value : null;
       break;

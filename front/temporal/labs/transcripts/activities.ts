@@ -601,6 +601,7 @@ export async function processTranscriptActivity(
     );
 
     // Get first from array with type='agent_message' in conversation.content;
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
     const lightConversationRes = await getLightConversation(
       auth,
       conversation.sId

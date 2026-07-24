@@ -474,6 +474,7 @@ app.post(
       // conversation again will allow to have an up to date view of the
       // conversation with agent messages included so that the user of the API
       // can start streaming events from these agent messages directly.
+      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
       const updatedRes = await getConversation(auth, newConversation.sId);
 
       if (updatedRes.isOk()) {

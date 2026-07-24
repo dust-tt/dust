@@ -74,6 +74,7 @@ export async function createSandboxChildAction(
     return new Err(new Error("Agent configuration not found."));
   }
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const conversationResult = await getConversation(auth, conversationId);
   if (conversationResult.isErr()) {
     return new Err(new Error("Conversation not found."));

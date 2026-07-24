@@ -1308,6 +1308,7 @@ export function createProjectManagerTools(
           if (includeMessages) {
             const conversationResults = await concurrentExecutor(
               resourcePage,
+              // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
               async (c) => getLightConversation(auth, c.sId, false),
               { concurrency: 10 }
             );
@@ -1366,6 +1367,7 @@ export function createProjectManagerTools(
         if (includeMessages) {
           const conversationResults = await concurrentExecutor(
             pageResources,
+            // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
             async (c) => getLightConversation(auth, c.sId, false),
             { concurrency: 10 }
           );
