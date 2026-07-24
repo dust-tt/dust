@@ -1,0 +1,18 @@
+engine biome(1.0)
+language js
+
+// md: is the single viewport breakpoint for layout decisions in page files
+// (design_docs/LAYOUT_SYSTEM.md §3.3 R3). sm: spacing/width classes were the
+// AdminLayout-era divergence; reusable components should use container
+// queries instead of viewport breakpoints.
+pattern sm_layout_breakpoint_in_pages() {
+    r"\"[^\"]*\bsm:(?:p[xytrbl]?-|m[xytrbl]?-|max-w-|gap-)[^\"]*\""
+}
+
+sm_layout_breakpoint_in_pages() as $val where {
+    register_diagnostic(
+        span = $val,
+        message = "sm: layout classes (padding/margin/max-width/gap) are not allowed in page files: md: is the single layout breakpoint (LAYOUT_SYSTEM.md §3.3 R3). Reusable components should use container queries.",
+        severity = "error"
+    )
+}

@@ -449,20 +449,22 @@ Rules (the PR-review checklist):
 
 ### 3.8 Roadmap
 
-- **Phase 0 — Ratify.** This doc merged; archetypes, tokens, and AP names agreed in
-  review. *(No code.)*
-- **Phase 1 — Sparkle foundations.** Tokens in `theme.css`; `Container` consolidated
-  as the canonical width/padding mechanism; deprecation notices (`Page` scaffold,
-  `SidebarLayout`, toolbar consolidation decision).
-- **Phase 2 — Shell.** Extend enum with `"full"`; mechanical PR classifying all 65
-  pages per §2.4 — first pass **preserves current behavior** (declares what each page
-  does today), so it's zero-visual-risk; behavior corrections land as small follow-ups
-  per cluster. Fold `AdminLayout`/`GovernancePageLayout` in. Make the declaration
-  required once all pages declare.
-- **Phase 3 — Interiors.** Cluster-by-cluster cleanup (workspace → spaces → builder):
-  remove local `max-w-*`/`px-*`, normalize to the gap ramp.
-- **Phase 4 — Enforcement.** Lint rule; CODING_RULES/AGENTS updates; Storybook
-  archetype documentation.
+- **Phase 0 — Ratify.** ✅ (this doc, landed with the `layout-system` PR).
+- **Phase 1 — Sparkle foundations.** ✅ Tokens in `theme.css` (`content`, `narrow`;
+  `conversation` re-based to 70ch); `Foundations/Layout` storybook story; `Page`
+  scaffold deprecated. *(Deferred: `SidebarLayout` removal, toolbar consolidation.)*
+- **Phase 2 — Shell.** ✅ `"full"` added to the enum; every in-shell surface declares
+  (pages, middlemen, or cluster layouts); `AdminLayout` dissolved (admin snap);
+  dev warning for undeclared pages. *(Hard requirement deferred — see §3.9 #10.)*
+- **Phase 3 — Interiors.** ◐ Semantic gaps remapped onto the numeric ramp
+  (`md`→gap-4, `lg`→gap-6); targeted fixes landed (CreateAgentPage double gutter,
+  GovernancePageLayout → header-only, spacer/margin/`h-screen` cleanups).
+  *(Deferred: Flow/Standalone scaffolds, `--container-flow`, onboarding width
+  consolidation, full cluster sweep, `page-gutter` utility.)*
+- **Phase 4 — Enforcement.** ✅ Grit rules `noRawContentWidthInPages` +
+  `noSmLayoutBreakpointInPages` (page files, standalone clusters excluded);
+  `CODING_RULES.md` `## LAYOUT` section ([LAYOUT1–5]); `AGENTS.md` tech-stack fix.
+  *(Deferred: warn→error escalation — see §3.9 #12.)*
 
 ### 3.9 Open questions / decision log
 
@@ -474,8 +476,12 @@ Rules (the PR-review checklist):
 | 4 | Toolbar consolidation: which of `Bar`/`HoveringBar`/`Toolbar` survives? | open — Phase 1 |
 | 5 | Poke: permanently separate, or should tokens be adoptable there later? | leaning: tokens live in Sparkle so Poke *can* adopt; no active migration |
 | 6 | Designer counterpart: Figma templates per archetype? | open — needs design owner |
-| 7 | Implement shell archetypes as a fluid grid (Linear-style, §4.2) instead of `Container` + max-w? | open — Phase 1 spike |
+| 7 | Implement shell archetypes as a fluid grid (Linear-style, §4.2) instead of `Container` + max-w? | **decided (2026-07)**: keep flex + centralize; fluid grid stays a future spike |
 | 8 | Is `max-w-4xl` (896px) too wide for settings-style Centered pages? Linear uses 640px (§4.2) | open — decide with design |
+| 9 | Gap remap (`md`→gap-4, `lg`→gap-6) | **decided (2026-07)**: shipped; +4px product-wide on md/lg semantic gaps, design review on the PR |
+| 10 | Onboarding width consolidation (6 variants → tokens) | **deferred (2026-07)**: document-only; target mapping = `narrow` for auth/join cards, a future `flow` token for content steps |
+| 11 | Interior cleanup scope | **decided (2026-07)**: targeted fixes only; full cluster sweep is a follow-up |
+| 12 | Escalate undeclared-width dev warn to an error? | **decided (2026-07)**: no — transient `undefined` is structural (lazy loads, redirects); lint + warn suffice |
 
 ---
 

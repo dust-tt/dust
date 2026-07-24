@@ -2,10 +2,11 @@ Dust is a platform to build and operate agents for work. `front` is our main ser
 
 # Tech Stack
 
-- **Framework**: Next.js 14 (Pages Router with SSR)
+- **Framework**: Vite + React Router SPA (routes and app shell live in the `front-spa` workspace; page components live here in `front/components/pages/`)
 - **Language**: TypeScript (strict mode)
 - **UI**: React 18 with Sparkle Design System (shadcn/ui + Tailwind + Radix)
-- **Styling**: Tailwind CSS 3.x
+- **Styling**: Tailwind CSS 4.x (CSS-first theme in `sparkle/src/styles/theme.css`)
+- **Layout**: pages declare a layout archetype via `useSetContentWidth` — see `design_docs/LAYOUT_SYSTEM.md` and the LAYOUT rules in `CODING_RULES.md`
 - **Database**: PostgreSQL via Sequelize ORM (with Resources abstraction)
 - **State Management**: SWR for data fetching
 

@@ -197,7 +197,7 @@ export function RunsPage() {
                       ({inputCount(run.status)} inputs)
                     </span>
                   </div>
-                  <div className="mt-2 flex items-center pr-1 text-sm text-muted-foreground sm:mt-0">
+                  <div className="mt-2 flex items-center pr-1 text-sm text-muted-foreground md:mt-0">
                     <p>{timeAgoFrom(run.created)} ago</p>
                   </div>
                 </div>

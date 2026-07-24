@@ -1,0 +1,18 @@
+engine biome(1.0)
+language js
+
+// Prevents raw content-column max-width caps in page files. Page width is
+// owned by the app shell via the layout archetype (useSetContentWidth);
+// named tokens (max-w-content, max-w-narrow, max-w-conversation) are the
+// only sanctioned page-level widths. See design_docs/LAYOUT_SYSTEM.md §3.3.
+pattern raw_content_width_in_pages() {
+    r"\"[^\"]*\bmax-w-(?:xl|[2-7]xl)\b[^\"]*\""
+}
+
+raw_content_width_in_pages() as $val where {
+    register_diagnostic(
+        span = $val,
+        message = "Raw max-w-*xl caps are not allowed in page files: the shell owns page width via the layout archetype (useSetContentWidth). Use a named token (max-w-content, max-w-narrow, max-w-conversation) if a width is genuinely needed. See design_docs/LAYOUT_SYSTEM.md.",
+        severity = "error"
+    )
+}
