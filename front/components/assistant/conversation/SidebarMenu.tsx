@@ -1521,7 +1521,11 @@ function NavigationListWithInbox({
   loadMore,
   isLoadingMore,
 }: NavigationListWithInboxProps) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // The Radix ScrollArea root never scrolls (overflow-hidden); the inner
+  // viewport does. Keep it in state so InfiniteScroll re-binds once mounted.
+  const [scrollViewport, setScrollViewport] = useState<HTMLDivElement | null>(
+    null
+  );
   const {
     readConversations,
     inboxConversations,
@@ -1562,7 +1566,7 @@ function NavigationListWithInbox({
         nextPage={loadMore}
         hasMore={hasMore}
         showLoader={isLoadingMore}
-        options={{ root: scrollContainerRef.current, rootMargin: "400px" }}
+        options={{ root: scrollViewport, rootMargin: "400px" }}
         loader={
           <div className="flex justify-center py-2">
             <Spinner size="sm" />
@@ -1574,7 +1578,7 @@ function NavigationListWithInbox({
 
   return (
     <ScrollArea
-      ref={scrollContainerRef}
+      viewportRef={setScrollViewport}
       className="dd-privacy-mask h-full w-full"
     >
       <div className="flex flex-col gap-4">
