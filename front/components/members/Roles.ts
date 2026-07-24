@@ -22,8 +22,7 @@ export const ROLES_DATA: Record<
     color: "warning",
   },
   manager: {
-    description:
-      "Can use and create agents, manage members, groups, roles, and workspace analytics.",
+    description: "",
     color: "highlight",
   },
   builder: {
@@ -36,3 +35,23 @@ export const ROLES_DATA: Record<
     color: "success",
   },
 };
+
+// Role descriptions shown to workspaces with the `admin_governance` feature
+const ADMIN_GOVERNANCE_ROLE_DESCRIPTIONS: Record<ActiveRoleType, string> = {
+  user: "Can use agents in conversations. Building permissions are set by admins.",
+  builder:
+    "Can use agents in conversations. Building permissions are set by admins.",
+  manager: "Can manage members, groups, roles, and workspace analytics.",
+  admin:
+    "Full administrative control, including settings, connections, billing, and governance.",
+};
+
+export function getRoleDescription(
+  role: ActiveRoleType,
+  hasAdminGovernance: boolean
+): string {
+  if (hasAdminGovernance) {
+    return ADMIN_GOVERNANCE_ROLE_DESCRIPTIONS[role];
+  }
+  return ROLES_DATA[role].description;
+}

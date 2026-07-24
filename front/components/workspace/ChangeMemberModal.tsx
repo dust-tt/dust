@@ -1,7 +1,8 @@
-import { ROLES_DATA } from "@app/components/members/Roles";
+import { getRoleDescription } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type {
@@ -46,6 +47,7 @@ export function ChangeMemberModal({
   const { role = null } = member?.workspace ?? {};
 
   const sendNotification = useSendNotification();
+  const { hasFeature } = useFeatureFlags();
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(
     role !== "none" ? role : null
   );
@@ -129,7 +131,11 @@ export function ChangeMemberModal({
                     ) : (
                       <>
                         The role defines the rights of a member of the
-                        workspace. {ROLES_DATA[role]["description"]}
+                        workspace.{" "}
+                        {getRoleDescription(
+                          role,
+                          hasFeature("admin_governance")
+                        )}
                       </>
                     )}
                   </Page.P>
