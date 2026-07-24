@@ -131,11 +131,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/similar", () => {
     const response = await post(workspace, {});
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({
-      error: {
-        type: "invalid_request_error",
-        message: "naturalDescription is required and must be a string.",
-      },
-    });
+    const data = (await response.json()) as { error: { type: string } };
+    expect(data.error.type).toBe("invalid_request_error");
   });
 });

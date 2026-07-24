@@ -1,10 +1,11 @@
 import { getSimilarAgents } from "@app/lib/api/assistant/existing_agent_checker";
 import logger from "@app/logger/logger";
 import type { GetSimilarAgentsResponseBody } from "@app/types/api/assistant/configuration/existing_agent_checker";
-import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/similar.
 const app = workspaceApp();
@@ -27,17 +28,6 @@ app.post("/", async (ctx): HandlerResult<GetSimilarAgentsResponseBody> => {
     });
   }
   const { naturalDescription } = parsed.data;
-  const naturalDescription = body?.naturalDescription;
-
-  if (!isString(naturalDescription)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "naturalDescription is required and must be a string.",
-      },
-    });
-  }
 
   const result = await getSimilarAgents(auth, { naturalDescription });
 
