@@ -1,6 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import Custom404 from "@app/components/pages/Custom404";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   LinkWrapper,
@@ -9,6 +9,7 @@ import {
 } from "@app/lib/platform";
 import { useApp } from "@app/lib/swr/apps";
 import { useDatasets } from "@app/lib/swr/datasets";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { classNames } from "@app/lib/utils";
 import { Button, Chip, Plus, Spinner, Trash01 } from "@dust-tt/sparkle";
 import { useContext } from "react";
@@ -18,7 +19,7 @@ export function DatasetsPage() {
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const owner = useWorkspace();
-  const { isBuilder } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
 
   const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
@@ -32,7 +33,7 @@ export function DatasetsPage() {
   });
 
   const confirm = useContext(ConfirmContext);
-  const readOnly = !isBuilder;
+  const readOnly = !hasPermission("admin", "dust_app");
 
   const handleDelete = async (datasetName: string) => {
     if (!app) {
