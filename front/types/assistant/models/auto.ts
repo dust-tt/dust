@@ -1,4 +1,5 @@
 import {
+  CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_OPUS_5_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
 } from "./anthropic";
@@ -135,6 +136,14 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       {
         providerId: "anthropic",
         modelId: CLAUDE_OPUS_5_MODEL_ID,
+        reasoningEffort: "high",
+      },
+      // Opus 5 is global-only until Vertex EU quota is provisioned, so keep 4.8
+      // right behind it: without this, regional-only workspaces would fall all
+      // the way through to OpenAI.
+      {
+        providerId: "anthropic",
+        modelId: CLAUDE_OPUS_4_8_MODEL_ID,
         reasoningEffort: "high",
       },
       {

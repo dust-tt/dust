@@ -140,10 +140,10 @@ export const STREAM_ENDPOINT_SETUPS = {
     AnthropicClaudeFableFiveGlobalAnthropicStreamSetup,
   [AnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream.id]:
     AnthropicClaudeHaikuFourDotFiveGlobalAnthropicStreamSetup,
-  [AnthropicClaudeOpusFourDotEightGlobalAnthropicStream.id]:
-    AnthropicClaudeOpusFourDotEightGlobalAnthropicStreamSetup,
   [AnthropicClaudeOpusFiveGlobalAnthropicStream.id]:
     AnthropicClaudeOpusFiveGlobalAnthropicStreamSetup,
+  [AnthropicClaudeOpusFourDotEightGlobalAnthropicStream.id]:
+    AnthropicClaudeOpusFourDotEightGlobalAnthropicStreamSetup,
   [AnthropicClaudeOpusFourDotSevenGlobalAnthropicStream.id]:
     AnthropicClaudeOpusFourDotSevenGlobalAnthropicStreamSetup,
   [AnthropicClaudeOpusFourDotSixGlobalAnthropicStream.id]:

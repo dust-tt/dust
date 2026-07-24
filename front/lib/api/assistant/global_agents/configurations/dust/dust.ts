@@ -44,7 +44,6 @@ import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-  CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
@@ -538,7 +537,7 @@ export function _getDustEdgeGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_EDGE,
     name: "dust-edge",
-    preferredModelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }

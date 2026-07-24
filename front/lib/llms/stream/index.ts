@@ -87,10 +87,10 @@ export const DUST_STREAM_ENDPOINTS = {
     DustAnthropicClaudeFableFiveGlobalAnthropicStream,
   [DustAnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream.id]:
     DustAnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream,
-  [DustAnthropicClaudeOpusFourDotEightGlobalAnthropicStream.id]:
-    DustAnthropicClaudeOpusFourDotEightGlobalAnthropicStream,
   [DustAnthropicClaudeOpusFiveGlobalAnthropicStream.id]:
     DustAnthropicClaudeOpusFiveGlobalAnthropicStream,
+  [DustAnthropicClaudeOpusFourDotEightGlobalAnthropicStream.id]:
+    DustAnthropicClaudeOpusFourDotEightGlobalAnthropicStream,
   [DustAnthropicClaudeOpusFourDotSevenGlobalAnthropicStream.id]:
     DustAnthropicClaudeOpusFourDotSevenGlobalAnthropicStream,
   [DustAnthropicClaudeOpusFourDotSixGlobalAnthropicStream.id]:
