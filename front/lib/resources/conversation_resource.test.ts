@@ -2939,9 +2939,14 @@ describe("listPrivateConversationsForUser", () => {
         action: "posted",
         user: userAuth.getNonNullableUser().toJSON(),
       });
-      // Raw SQL: Sequelize refuses to write an explicit updatedAt.
+      // Raw SQL: Sequelize refuses to write an explicit updatedAt. Mirror onto the participant
+      // rows like every resource write path does — listings order on conversationUpdatedAt.
       await frontSequelize.query(
         `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        { replacements: { updatedAt, id: conversation.id } }
+      );
+      await frontSequelize.query(
+        `UPDATE conversation_participants SET "conversationUpdatedAt" = :updatedAt WHERE "conversationId" = :id`,
         { replacements: { updatedAt, id: conversation.id } }
       );
       return conversation;
@@ -3143,6 +3148,148 @@ describe("listPrivateConversationsForUser", () => {
     const privateIds = privateConversations.map((c) => c.sId);
     expect(privateIds).toContain(conversationIds[0]); // original private conversation
     expect(privateIds).not.toContain(spaceConvo.sId); // space conversation should be filtered out
+  });
+});
+
+describe("listPrivateConversationsForUserPaginated", () => {
+  let adminAuth: Authenticator;
+  let userAuth: Authenticator;
+  let workspace: LightWorkspaceType;
+  let agents: LightAgentConfigurationType[];
+
+  const sleep = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+
+  const createParticipatingConversation = async () => {
+    const conversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [new Date()],
+    });
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+    return conversation;
+  };
+
+  beforeEach(async () => {
+    const {
+      authenticator,
+      user,
+      workspace: w,
+    } = await createResourceTest({
+      role: "admin",
+    });
+
+    workspace = w;
+    const adminUser = user;
+    const regularUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, regularUser, {
+      role: "user",
+    });
+
+    adminAuth = authenticator;
+    userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      regularUser.sId,
+      workspace.sId
+    );
+
+    agents = await setupTestAgents(workspace, adminUser);
+  });
+
+  it("orders by conversation activity and paginates with the cursor", async () => {
+    const convA = await createParticipatingConversation();
+    await sleep(5);
+    const convB = await createParticipatingConversation();
+    await sleep(5);
+    const convC = await createParticipatingConversation();
+
+    // Bump A: it becomes the most recent activity.
+    await sleep(5);
+    await ConversationResource.markAsUpdated(adminAuth, {
+      conversation: convA,
+    });
+
+    const page1 =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        userAuth,
+        { limit: 2 }
+      );
+    expect(page1.conversations.map((c) => c.sId)).toEqual([
+      convA.sId,
+      convC.sId,
+    ]);
+    expect(page1.hasMore).toBe(true);
+    assert(page1.lastValue, "Expected a pagination cursor");
+
+    const page2 =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        userAuth,
+        { limit: 2, lastValue: page1.lastValue }
+      );
+    expect(page2.conversations.map((c) => c.sId)).toEqual([convB.sId]);
+    expect(page2.hasMore).toBe(false);
+  });
+
+  it("reorders when a conversation update mirrors onto participations", async () => {
+    const convA = await createParticipatingConversation();
+    await sleep(5);
+    const convB = await createParticipatingConversation();
+
+    // B is the most recent. Updating A's title bumps the conversation and must mirror onto the
+    // participant rows.
+    await sleep(5);
+    const resourceA = await ConversationResource.fetchById(
+      adminAuth,
+      convA.sId
+    );
+    assert(resourceA, "Conversation not found");
+    await resourceA.updateTitle(adminAuth, "Renamed");
+
+    const page =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        userAuth,
+        { limit: 10 }
+      );
+    expect(page.conversations.map((c) => c.sId)).toEqual([
+      convA.sId,
+      convB.sId,
+    ]);
+  });
+
+  it("keeps paginating past conversations excluded by listing filters", async () => {
+    const convA = await createParticipatingConversation();
+    await sleep(5);
+    const convB = await createParticipatingConversation();
+    await sleep(5);
+    const convC = await createParticipatingConversation();
+
+    // Delete the newest conversation: its participation row remains (with the freshest
+    // activity stamp) but the listing join filters it out.
+    const resourceC = await ConversationResource.fetchById(
+      adminAuth,
+      convC.sId
+    );
+    assert(resourceC, "Conversation not found");
+    await resourceC.updateVisibilityToDeleted(adminAuth);
+
+    const page =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        userAuth,
+        { limit: 1 }
+      );
+    expect(page.conversations.map((c) => c.sId)).toEqual([convB.sId]);
+    expect(page.hasMore).toBe(true);
+
+    assert(page.lastValue, "Expected a pagination cursor");
+    const page2 =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        userAuth,
+        { limit: 1, lastValue: page.lastValue }
+      );
+    expect(page2.conversations.map((c) => c.sId)).toEqual([convA.sId]);
+    expect(page2.hasMore).toBe(false);
   });
 });
 
