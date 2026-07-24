@@ -35,12 +35,12 @@ export type ReaperCursor = {
   timestampMs: number;
 };
 
-export interface ReapStaleSandboxesActivityInput {
+export interface ReapSandboxPhaseActivityInput {
   cursor: ReaperCursor | null;
   phase: ReaperPhase;
 }
 
-export interface ReapStaleSandboxesActivityResult {
+export interface ReapSandboxPhaseActivityResult {
   failedCount: number;
   nextCursor: ReaperCursor | null;
   processedCount: number;
@@ -414,7 +414,7 @@ async function processReaperBatch(
   ) => Promise<Result<void, Error>>,
   getTimestamp: (sandbox: SandboxResource) => Date,
   errorMessage: string
-): Promise<ReapStaleSandboxesActivityResult> {
+): Promise<ReapSandboxPhaseActivityResult> {
   if (sandboxes.length === 0) {
     return {
       failedCount: 0,
@@ -454,10 +454,10 @@ async function processReaperBatch(
  * cannot spin within one workflow run or starve newer candidates. A new
  * scheduled workflow starts without a cursor and retries failures.
  */
-export async function reapStaleSandboxesActivity({
+export async function reapSandboxPhaseActivity({
   cursor,
   phase,
-}: ReapStaleSandboxesActivityInput): Promise<ReapStaleSandboxesActivityResult> {
+}: ReapSandboxPhaseActivityInput): Promise<ReapSandboxPhaseActivityResult> {
   const after = toResourceCursor(cursor);
 
   switch (phase) {
@@ -523,4 +523,27 @@ export async function reapStaleSandboxesActivity({
     default:
       return assertNever(phase);
   }
+}
+
+/**
+ * Compatibility activity for sandbox reaper workflows started before the
+ * phase-pagination patch. Keep its no-argument input and boolean output until
+ * every pre-patch workflow execution has closed.
+ */
+export async function reapStaleSandboxesActivity(): Promise<boolean> {
+  const phases: ReaperPhase[] = [
+    "kill_requested",
+    "running",
+    "pending_approval",
+    "sleeping",
+  ];
+  let hasMore = false;
+
+  for (const phase of phases) {
+    const result = await reapSandboxPhaseActivity({ cursor: null, phase });
+    hasMore ||=
+      result.processedCount >= BATCH_SIZE && result.succeededCount > 0;
+  }
+
+  return hasMore;
 }

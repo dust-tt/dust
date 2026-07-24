@@ -38,7 +38,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
-import { Op } from "sequelize";
+import { col, fn, Op, where } from "sequelize";
 
 export interface EnsureSandboxResult {
   freshlyCreated: boolean;
@@ -78,6 +78,21 @@ export type SandboxTimestampCursor = {
   sandboxModelId: ModelId;
   timestamp: Date;
 };
+
+function timestampCursorCondition(
+  timestampColumn: "killRequestedAt" | "lastActivityAt",
+  cursor: SandboxTimestampCursor | undefined
+) {
+  return cursor
+    ? [
+        where(
+          fn("ROW", col(timestampColumn), col("id")),
+          Op.gt,
+          fn("ROW", cursor.timestamp, cursor.sandboxModelId)
+        ),
+      ]
+    : [];
+}
 
 export type SandboxDeleteOwner = SandboxLifecycleOwner & {
   deleteSandbox: (
@@ -254,18 +269,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     limit: number;
     after?: SandboxTimestampCursor;
   }): Promise<SandboxResource[]> {
-    const afterCursorClause = opts.after
-      ? {
-          [Op.or]: [
-            { lastActivityAt: { [Op.gt]: opts.after.timestamp } },
-            {
-              lastActivityAt: opts.after.timestamp,
-              id: { [Op.gt]: opts.after.sandboxModelId },
-            },
-          ],
-        }
-      : {};
-
     const rows = await this.model.findAll({
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
@@ -275,7 +278,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         lastActivityAt: {
           [Op.lt]: new Date(Date.now() - opts.olderThanMs),
         },
-        ...afterCursorClause,
+        [Op.and]: timestampCursorCondition("lastActivityAt", opts.after),
       },
       order: [
         ["lastActivityAt", "ASC"],
@@ -977,25 +980,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     limit: number;
     after?: SandboxTimestampCursor;
   }): Promise<SandboxResource[]> {
-    const afterCursorClause = opts.after
-      ? {
-          [Op.or]: [
-            { killRequestedAt: { [Op.gt]: opts.after.timestamp } },
-            {
-              killRequestedAt: opts.after.timestamp,
-              id: { [Op.gt]: opts.after.sandboxModelId },
-            },
-          ],
-        }
-      : {};
-
     const rows = await this.model.findAll({
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         killRequestedAt: { [Op.ne]: null },
         status: { [Op.ne]: "deleted" },
-        ...afterCursorClause,
+        [Op.and]: timestampCursorCondition("killRequestedAt", opts.after),
       },
       order: [
         ["killRequestedAt", "ASC"],

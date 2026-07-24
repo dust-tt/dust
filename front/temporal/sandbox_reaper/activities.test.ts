@@ -2,15 +2,14 @@ import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { ensurePodStateHealthOnSleep } from "@app/lib/api/sandbox/db";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
-import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
-import { reapStaleSandboxesActivity } from "@app/temporal/sandbox_reaper/activities";
+import { reapSandboxPhaseActivity } from "@app/temporal/sandbox_reaper/activities";
 import { SLEEP_THRESHOLD_MS } from "@app/temporal/sandbox_reaper/config";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockEnsurePodStateHealthOnSleep,
@@ -58,8 +57,9 @@ vi.mock("@app/lib/lock", () => ({
   executeWithLock: mockExecuteWithLock,
 }));
 
-describe("reapStaleSandboxesActivity", () => {
+describe("reapSandboxPhaseActivity", () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.restoreAllMocks();
     vi.clearAllMocks();
     mockExecuteWithLock.mockImplementation(
@@ -77,6 +77,10 @@ describe("reapStaleSandboxesActivity", () => {
     vi.spyOn(DustFileSystem.prototype, "refreshSandboxMount").mockResolvedValue(
       new Ok(undefined)
     );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("sleeps stale conversation and pod sandboxes", async () => {
@@ -122,20 +126,9 @@ describe("reapStaleSandboxesActivity", () => {
     if (podSandboxResult.isErr()) {
       throw podSandboxResult.error;
     }
-    const staleLastActivityAt = new Date(Date.now() - SLEEP_THRESHOLD_MS - 1);
-    await SandboxModel.update(
-      { lastActivityAt: staleLastActivityAt },
-      {
-        where: {
-          id: [
-            conversationSandboxResult.value.sandbox.id,
-            podSandboxResult.value.sandbox.id,
-          ],
-        },
-      }
-    );
+    vi.advanceTimersByTime(SLEEP_THRESHOLD_MS + 1);
 
-    const result = await reapStaleSandboxesActivity({
+    const result = await reapSandboxPhaseActivity({
       cursor: null,
       phase: "running",
     });
@@ -186,21 +179,16 @@ describe("reapStaleSandboxesActivity", () => {
     if (podSandboxResult.isErr()) {
       throw podSandboxResult.error;
     }
+    vi.advanceTimersByTime(SLEEP_THRESHOLD_MS + 1);
     await podSandboxResult.value.sandbox.requestKill();
-    await SandboxModel.update(
-      {
-        lastActivityAt: new Date(Date.now() - SLEEP_THRESHOLD_MS - 1),
-      },
-      { where: { id: podSandboxResult.value.sandbox.id } }
-    );
 
-    const runningResult = await reapStaleSandboxesActivity({
+    const runningResult = await reapSandboxPhaseActivity({
       cursor: null,
       phase: "running",
     });
     expect(runningResult.processedCount).toBe(0);
 
-    const result = await reapStaleSandboxesActivity({
+    const result = await reapSandboxPhaseActivity({
       cursor: null,
       phase: "kill_requested",
     });
