@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 export function makeSandboxKillRequesterWorkflowId({
   baseImage,
   version,
@@ -5,5 +7,9 @@ export function makeSandboxKillRequesterWorkflowId({
   baseImage: string;
   version?: string;
 }): string {
-  return `sandbox-kill-requester-${baseImage}-${version ?? "all"}`;
+  const inputHash = createHash("sha256")
+    .update(JSON.stringify([baseImage, version ?? null]))
+    .digest("base64url");
+
+  return `sandbox-kill-requester-${inputHash}`;
 }

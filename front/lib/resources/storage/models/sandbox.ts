@@ -77,13 +77,17 @@ SandboxModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["status", "lastActivityAt"],
-        name: "sandboxes_status_last_activity_idx",
+        fields: ["killRequestedAt", "id"],
+        name: "sandboxes_reaper_kill_requested_idx",
+        where: {
+          killRequestedAt: { [Op.ne]: null },
+          status: { [Op.ne]: "deleted" },
+        },
       },
       {
-        fields: ["killRequestedAt"],
-        name: "sandboxes_kill_requested_at_idx",
-        where: { killRequestedAt: { [Op.ne]: null } },
+        fields: ["status", "lastActivityAt", "id"],
+        name: "sandboxes_reaper_stale_idx",
+        where: { killRequestedAt: { [Op.is]: null } },
       },
       {
         fields: ["baseImage", "version"],

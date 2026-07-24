@@ -1,4 +1,5 @@
 import { launchSandboxKillRequesterWorkflow } from "@app/temporal/sandbox_reaper/kill_requester/client";
+import { makeSandboxKillRequesterWorkflowId } from "@app/temporal/sandbox_reaper/kill_requester/helpers";
 import { sandboxKillRequesterWorkflow } from "@app/temporal/sandbox_reaper/kill_requester/workflows";
 import { WorkflowIdReusePolicy } from "@temporalio/client";
 import { WorkflowIdConflictPolicy } from "@temporalio/common";
@@ -38,10 +39,32 @@ describe("launchSandboxKillRequesterWorkflow", () => {
     expect(mockWorkflowStart).toHaveBeenCalledWith(
       sandboxKillRequesterWorkflow,
       expect.objectContaining({
-        workflowId: "sandbox-kill-requester-dust-base-1.2.3",
+        workflowId: makeSandboxKillRequesterWorkflowId(input),
         workflowIdConflictPolicy: WorkflowIdConflictPolicy.USE_EXISTING,
         workflowIdReusePolicy: WorkflowIdReusePolicy.ALLOW_DUPLICATE,
       })
     );
+  });
+
+  it("uses distinct workflow ids for inputs that share display delimiters", () => {
+    const workflowIds = [
+      makeSandboxKillRequesterWorkflowId({
+        baseImage: "dust-base",
+      }),
+      makeSandboxKillRequesterWorkflowId({
+        baseImage: "dust-base",
+        version: "all",
+      }),
+      makeSandboxKillRequesterWorkflowId({
+        baseImage: "dust-base-a",
+        version: "b",
+      }),
+      makeSandboxKillRequesterWorkflowId({
+        baseImage: "dust-base",
+        version: "a-b",
+      }),
+    ];
+
+    expect(new Set(workflowIds).size).toBe(workflowIds.length);
   });
 });
