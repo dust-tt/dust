@@ -155,11 +155,15 @@ interface PageLayoutProps {
   gap?: "xs" | "sm" | "md" | "lg" | "xl" | "none";
 }
 
+// The semantic scale maps onto the numeric vertical-rhythm ramp
+// (design_docs/LAYOUT_SYSTEM.md §3.3 R2): 2 tight / 4 default / 6 blocks /
+// 8 sections. xs (gap-1) predates the ramp and is kept for icon-to-label
+// tightness.
 const gapSizes = {
   xs: "gap-1",
   sm: "gap-2",
-  md: "gap-3",
-  lg: "gap-5",
+  md: "gap-4",
+  lg: "gap-6",
   xl: "gap-8",
   none: "",
 };
