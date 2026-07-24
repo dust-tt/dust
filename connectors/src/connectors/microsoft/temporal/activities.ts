@@ -623,10 +623,8 @@ export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
     return;
   }
 
-  // if node was updated more recently than this sync, we don't need to mark it
-  if (node.lastSeenTs && node.lastSeenTs < new Date()) {
-    await node.update({ lastSeenTs: new Date() });
-  }
+  // Newly discovered folders have no lastSeenTs until their first traversal completes.
+  await node.update({ lastSeenTs: new Date() });
 }
 
 // A 404 returned while listing the children of a drive/folder is ambiguous: the
@@ -2056,7 +2054,13 @@ export async function microsoftGarbageCollectionActivity({
   idCursor: ModelId;
   startGarbageCollectionTs: number;
 }) {
-  const rootNodeIds = await getRootNodesToSync(connectorId);
+  const rootResources =
+    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
+  const rootIds = new Set(rootResources.map((root) => root.internalId));
+  const rootNodeIds = await getRootNodesToSyncFromResources(
+    connectorId,
+    rootResources
+  );
 
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -2084,6 +2088,16 @@ export async function microsoftGarbageCollectionActivity({
   }
 
   const nextIdCursor = lastNode.id + 1;
+
+  const shouldAbortGc = async () => {
+    const currentRoots =
+      await MicrosoftRootResource.listRootsByConnectorId(connectorId);
+    const rootsChanged =
+      currentRoots.length !== rootIds.size ||
+      currentRoots.some((root) => !rootIds.has(root.internalId));
+
+    return rootsChanged || (await isMicrosoftFullSyncRunning(connectorId));
+  };
 
   // only consider nodes that were not seen after the start of the garbage
   // collection. This avoids edge cases such as if a node is moved back to sync
@@ -2203,21 +2217,25 @@ export async function microsoftGarbageCollectionActivity({
         switch (node.nodeType) {
           case "drive":
             if (!driveOrItem) {
+              if (await shouldAbortGc()) {
+                return nextIdCursor;
+              }
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
-                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_drive_not_found",
               });
             } else if (!rootNodeIds.includes(node.internalId)) {
+              if (await shouldAbortGc()) {
+                return nextIdCursor;
+              }
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
                 internalId: node.internalId,
-                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_drive_removed_from_selection",
               });
@@ -2227,22 +2245,26 @@ export async function microsoftGarbageCollectionActivity({
             const folder = driveOrItem as DriveItem | null;
 
             if (!folder) {
+              if (await shouldAbortGc()) {
+                return nextIdCursor;
+              }
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
-                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_not_found",
               });
             } else if (folder.deleted) {
+              if (await shouldAbortGc()) {
+                return nextIdCursor;
+              }
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
-                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_marked_deleted",
               });
@@ -2255,12 +2277,14 @@ export async function microsoftGarbageCollectionActivity({
                 startGarbageCollectionTs,
               })
             ) {
+              if (await shouldAbortGc()) {
+                return nextIdCursor;
+              }
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
-                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_outside_sync_scope",
               });
@@ -2281,11 +2305,13 @@ export async function microsoftGarbageCollectionActivity({
                 startGarbageCollectionTs,
               }))
             ) {
+              if (await shouldAbortGc()) {
+                return nextIdCursor;
+              }
               await deleteFile({
                 connectorId,
                 internalId: node.internalId,
                 dataSourceConfig,
-                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
               });
             }
