@@ -1,4 +1,4 @@
-import type { ToolContext } from "@app/lib/actions/types";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -46,10 +46,11 @@ vi.mock("@app/lib/api/file_system", async (importOriginal) => {
   };
 });
 
-function makeToolContext(conversation: ConversationType): ToolContext {
+function makeRunContext(conversation: ConversationType): AgentLoopRunContext {
   return {
-    runContext: { contextType: "agent_loop", conversation },
-  } as unknown as ToolContext;
+    contextType: "agent_loop",
+    conversation,
+  } as unknown as AgentLoopRunContext;
 }
 
 function makeReadableStream(content: string): Readable {
@@ -97,7 +98,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         canonicalPath,
-        makeExtra(auth, conversation)
+        makeExtra(auth, conversation).runContext
       );
 
       expect(result.isOk()).toBe(true);
@@ -130,7 +131,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         `conversation-${conversation.sId}/missing.pdf`,
-        makeExtra(auth, conversation)
+        makeExtra(auth, conversation).runContext
       );
 
       expect(result.isErr()).toBe(true);
@@ -158,7 +159,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         `conversation-${conversation.sId}/file.txt`,
-        makeExtra(auth, conversation)
+        makeExtra(auth, conversation).runContext
       );
 
       expect(result.isErr()).toBe(true);
@@ -215,7 +216,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         file.sId,
-        makeToolContext(conversationRes.value)
+        makeRunContext(conversationRes.value)
       );
 
       expect(result.isOk()).toBe(true);
@@ -252,7 +253,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         "fil_notfound",
-        makeToolContext(conversationRes.value)
+        makeRunContext(conversationRes.value)
       );
 
       expect(result.isErr()).toBe(true);
@@ -287,7 +288,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         "conversation/notes.txt",
-        makeExtra(auth, conversation)
+        makeExtra(auth, conversation).runContext
       );
 
       expect(result.isOk()).toBe(true);
@@ -317,7 +318,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         "conversation/missing.pdf",
-        makeExtra(auth, conversation)
+        makeExtra(auth, conversation).runContext
       );
 
       expect(result.isErr()).toBe(true);
@@ -366,7 +367,7 @@ describe("resolveConversationFileRef", () => {
       const result = await resolveConversationFileRef(
         auth,
         canonicalPath,
-        undefined // canonical paths do not need toolContext
+        makeExtra(auth, conversation).runContext
       );
 
       expect(result.isOk()).toBe(true);
@@ -399,7 +400,7 @@ describe("resolveConversationFileRef", () => {
       const result = await resolveConversationFileRef(
         auth,
         `conversation-${conversation.sId}/missing.png`,
-        makeExtra(auth, conversation)
+        makeExtra(auth, conversation).runContext
       );
 
       expect(result.isErr()).toBe(true);
@@ -433,7 +434,7 @@ describe("resolveConversationFileRef", () => {
     const result = await resolveConversationFileRef(
       auth,
       file.sId,
-      makeExtra(auth, conversation)
+      makeExtra(auth, conversation).runContext
     );
 
     expect(result.isOk()).toBe(true);
@@ -476,7 +477,7 @@ describe("resolveConversationFileRef", () => {
     const result = await resolveConversationFileRef(
       auth,
       file.sId,
-      makeExtra(auth, conversationB)
+      makeExtra(auth, conversationB).runContext
     );
 
     expect(result.isErr()).toBe(true);
