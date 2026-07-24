@@ -80,7 +80,9 @@ TPayload = unknown,
     this.modelId = modelConfig.modelId;
     this.modelConfig = modelConfig;
     this.temperature = modelInfo.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES["balanced"];
-    this.reasoningEffort = modelInfo.reasoningEffort ?? null;
+    // TODO(new-llm-router): We should not set reasoning effort to none
+    // Not in scope of the current refactor
+    this.reasoningEffort = modelInfo.reasoningEffort ?? "none";
     this.responseFormat = modelInfo.responseFormat ?? null;
     this.bypassFeatureFlag = bypassFeatureFlag;
     this.metadata = {
