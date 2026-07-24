@@ -104,6 +104,7 @@ export const AUDIT_ACTIONS = [
   "workspace.open_projects_updated",
   "workspace.private_conversation_urls_updated",
   "workspace.programmatic_usage_limit_updated",
+  "workspace.published_agents_restricted_models_updated",
   "workspace.regional_models_only_updated",
   "workspace.reinforcement_cap_updated",
   "workspace.self_improvement_cap_per_skill_updated",

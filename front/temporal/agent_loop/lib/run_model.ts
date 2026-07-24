@@ -465,6 +465,7 @@ export async function runModel(
         model,
         reasoningEffort: model.reasoningEffort,
         featureFlags,
+        agentScope: agentConfiguration.scope,
       }
     );
     if (accessError) {
