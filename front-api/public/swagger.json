@@ -3432,6 +3432,25 @@
                 "suggested"
               ]
             }
+          },
+          {
+            "in": "query",
+            "name": "availability",
+            "required": false,
+            "description": "Filter skills by availability. Repeatable to match several values. Unpublished (editors) skills are only returned to admin API keys.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "editors",
+                  "workspace_users",
+                  "users_and_agents"
+                ]
+              }
+            },
+            "style": "form",
+            "explode": true
           }
         ],
         "responses": {
