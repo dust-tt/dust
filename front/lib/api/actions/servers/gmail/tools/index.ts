@@ -367,6 +367,12 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     },
     { authInfo, auth, runContext }
   ) => {
+    let attachmentRunContext: AgentLoopRunContext | undefined;
+    if (attachmentFilePath) {
+      assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+      attachmentRunContext = runContext;
+    }
+
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
@@ -397,11 +403,11 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       }
     }
     let attachment = null;
-    if (attachmentFilePath && isAgentLoopRunContext(runContext)) {
+    if (attachmentFilePath && attachmentRunContext) {
       const attachmentResult = await fetchAttachment(
         auth,
         attachmentFilePath,
-        runContext
+        attachmentRunContext
       );
       if (attachmentResult.isErr()) {
         return attachmentResult;
@@ -983,6 +989,12 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     },
     { authInfo, auth, runContext }
   ) => {
+    let attachmentRunContext: AgentLoopRunContext | undefined;
+    if (attachmentFilePath) {
+      assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+      attachmentRunContext = runContext;
+    }
+
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
@@ -1012,11 +1024,11 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       }
     }
     let attachment = null;
-    if (attachmentFilePath && isAgentLoopRunContext(runContext)) {
+    if (attachmentFilePath && attachmentRunContext) {
       const attachmentResult = await fetchAttachment(
         auth,
         attachmentFilePath,
-        runContext
+        attachmentRunContext
       );
       if (attachmentResult.isErr()) {
         return attachmentResult;
