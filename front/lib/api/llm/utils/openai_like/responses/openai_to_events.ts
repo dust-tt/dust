@@ -1,9 +1,9 @@
-import { logOpenAIToolSearchItem } from "@app/lib/api/llm/clients/openai/utils/tool_search_logging";
 import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
+import { logOpenAIToolSearchItem } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search_logging";
 import type { AgentMessagePhase } from "@app/types/assistant/agent_message_content";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import flatMap from "lodash/flatMap";

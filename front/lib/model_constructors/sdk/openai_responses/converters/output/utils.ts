@@ -1,4 +1,4 @@
-import { logOpenAIToolSearchItem } from "@app/lib/api/llm/clients/openai/utils/tool_search_logging";
+import { logOpenAIToolSearchItem } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search_logging";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   ErrorEvent,
