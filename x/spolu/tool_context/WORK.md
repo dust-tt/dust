@@ -86,7 +86,7 @@ to dynamically express that a server is not usable.
   - [x] make processToolResults conversation-free
   - [x] make getExitOrPauseEvents conversation-free
 - [x] data_warehouse: flow to tool_outputs if in sandbox function
-- [ ] image_generation: flow to tool_outputs if in sandbox function
+- [x] image_generation: flow to tool_outputs if in sandbox function
 - [x] query_tables_v2: flow to tool_outputs if in sandbox function
 - [ ] interactive_content: allow conversation-less create and publish (big one, flavien has context) 
 - [x] timezone on invocation for:
