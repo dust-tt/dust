@@ -792,7 +792,7 @@ describe("POST /api/w/:wId/skills", () => {
     expect(response.status).toBe(400);
   });
 
-  it("keeps the default availability without requiring the publish permission when governance is on", async () => {
+  it("defaults new skills to unpublished, without requiring the publish permission, when governance is on", async () => {
     const { auth, workspace, user } = await setupTest("builder");
     await grantCreateSkillCapability(workspace, user);
     await FeatureFlagFactory.basic(auth, "admin_governance_skill_publication");
@@ -810,7 +810,7 @@ describe("POST /api/w/:wId/skills", () => {
 
     expect(response.status).toBe(200);
     const responseData = await response.json();
-    expect(responseData.skill.availability).toBe("workspace_users");
+    expect(responseData.skill.availability).toBe("editors");
   });
 
   it("requires the publish permission to create a published skill when governance is on", async () => {
