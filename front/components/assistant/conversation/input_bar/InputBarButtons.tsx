@@ -280,6 +280,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
         </>
       ) : (
         <>
+          {agentButton}
           <InputBarPlusMenu
             owner={owner}
             user={user}
@@ -304,7 +305,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             onCapabilitiesPickerOpenChange={onCapabilitiesPickerOpenChange}
             onAttachmentsPickerOpenChange={onAttachmentsPickerOpenChange}
           />
-          {agentButton}
         </>
       )}
     </>
