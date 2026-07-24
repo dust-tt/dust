@@ -239,7 +239,9 @@ export const ComposerInput = React.forwardRef<
       cn(
         "block w-full resize-none bg-transparent p-0",
         "max-h-[40vh] min-h-11 overflow-y-auto",
-        "text-base text-foreground placeholder:text-faint",
+        // dark:placeholder override: `faint` (stone-600) is too
+        // low-contrast against the composer's dark surface — brighten it.
+        "text-base text-foreground placeholder:text-faint dark:placeholder:text-stone-400",
         "border-none outline-none focus:outline-none focus:ring-0",
         "disabled:cursor-not-allowed disabled:opacity-50",
         className
