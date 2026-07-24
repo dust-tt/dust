@@ -759,9 +759,6 @@ function ComposerDemo({
                     ? {
                         className: cn(
                           "rounded-full",
-                          // Match the Send button's "highlight" variant exactly (same
-                          // gradient tokens + white-overlay hover) since this mic button
-                          // substitutes for Send when the editor is empty.
                           "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:transition-colors",
                           "bg-linear-to-b from-highlight-400 to-highlight-500 dark:from-blue-500 dark:to-blue-600 text-white",
                           "shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_color-mix(in_oklch,var(--color-foreground)_10%,transparent)]",

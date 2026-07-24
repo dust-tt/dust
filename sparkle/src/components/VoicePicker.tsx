@@ -226,10 +226,6 @@ export function VoicePicker({
   }
 
   const icon = shouldShowStop ? Square : Microphone01;
-  // "highlight" maps to a white ("light") spinner via Button's own
-  // variant→spinner-color mapping — buttonProps deliberately excludes
-  // `variant`, so this is the only way to get a white spinner while
-  // authorizing the microphone (Spinner recolors via variant, not CSS).
   const variant = shouldShowStop || isLoading ? "highlight" : "ghost-secondary";
   const label = isTranscribing
     ? `${transcribingProgress ?? 0}%`
@@ -299,10 +295,7 @@ function VoiceLevelDisplay({
       {heights.map((height, index) => (
         <div
           key={index}
-          // Scale (compositor-only) instead of animating `height` (layout)
-          // on every ~120ms level tick while recording.
           className="h-full w-0.5 origin-bottom rounded-full bg-muted-foreground transition-transform duration-150 ease-out motion-reduce:transition-none"
-          // 20% floor matches the old min-h-1 (4px) against the h-5 (20px) parent.
           style={{ transform: `scaleY(${Math.max(height, 20) / 100})` }}
         />
       ))}

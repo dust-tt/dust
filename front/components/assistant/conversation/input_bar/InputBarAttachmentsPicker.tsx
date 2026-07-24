@@ -107,9 +107,6 @@ interface InputBarAttachmentsPickerProps {
   onExternalOpenChange?: (open: boolean) => void;
   onOpenChange?: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement | null>;
-  // See the identical `prefetch` prop on CapabilitiesPicker: lets a parent
-  // menu kick off the fetch on its own open/hover instead of waterfalling
-  // on this picker's own click.
   prefetch?: boolean;
 }
 

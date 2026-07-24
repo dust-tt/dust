@@ -43,9 +43,6 @@ export function Composer({
             ? "bg-[oklch(0.994_0.001_106.423)]"
             : "bg-[oklch(0.988_0_89.876)]",
           "dark:border-transparent",
-          // Default: stone-775, a clear step above the dark app background
-          // (stone-900, L20.6%) without reading as too bright. Focus: a
-          // small nudge lighter, not the near-double jump of stone-750.
           isFocused
             ? "dark:bg-[oklch(0.310_0.007_75)]"
             : "dark:bg-[oklch(0.294_0.008_84.593)]",

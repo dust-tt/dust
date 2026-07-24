@@ -157,9 +157,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             aria-disabled={isInputDisabled}
             className={cn(
               "inline-flex box-border items-center rounded-full heading-xs px-2 gap-1.5 text-primary-900 transition-colors duration-200",
-              // Match the Button component's own height for this size (xs=h-6,
-              // sm=h-8) so this custom chip lines up with the "+" button and
-              // other Button-based controls in the same row.
               buttonSize === "xs" ? "h-6" : "h-8",
               INPUT_BAR_PILL_SURFACE_CLASSNAME,
               isWidthConstrained && "pl-1",
@@ -169,8 +166,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             )}
           >
             <Avatar size="3xs" visual={selectedAgent.pictureUrl} />
-            {/* Extension stays icon-only (very narrow toolbar); mobile shows
-                the name too, just like desktop. */}
             {(!isWidthConstrained || isMobile) && (
               <span className="grow truncate notranslate">
                 {selectedAgent.label}
@@ -218,9 +213,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   );
   const isExtension = clientType === "extension";
 
-  // The extension has its own separate attachment/capture flow, so it keeps
-  // the pre-redesign left cluster (agent + model + capabilities, no
-  // attachments) unchanged.
   const toolsButton = actions.includes("capabilities") && (
     <CapabilitiesPicker
       owner={owner}

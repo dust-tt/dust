@@ -313,11 +313,6 @@ const InputBarContainer = ({
   const [startsWithUserMention, setStartsWithUserMention] = useState(false);
   const canSubmitEmpty = !!selectedSingleAgent;
 
-  // Selected via the "+" menu's Spaces picker. Fetched here (separately
-  // from the picker's own lazy fetch) purely to resolve names for the
-  // chips rendered below the editor — SWR dedupes with the picker's own
-  // call when both are enabled at once, so this doesn't add a request
-  // beyond what's needed once a Space is actually selected.
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
   const { spaces: selectableSpaces } = useSpaces({
     workspaceId: owner.sId,
@@ -822,9 +817,6 @@ const InputBarContainer = ({
     setOverlayOpen("toolbar", isToolbarOpen);
   }, [isToolbarOpen, setOverlayOpen]);
 
-  // Stable references so InputBarButtons's React.memo isn't defeated by a
-  // fresh closure on every keystroke (handleEditorUpdate re-renders this
-  // component on every editor update, e.g. for the mic/send toggle).
   const handleAgentRemove = useCallback(() => {
     setSelectedSingleAgent(null);
   }, [setSelectedSingleAgent]);
@@ -1044,8 +1036,6 @@ const InputBarContainer = ({
 
     // Sync: when a dataSourceLink chip is deleted from the editor, remove
     // the corresponding attached node so the attachment card disappears.
-    // Skip the full-document walk when there's nothing to unselect — this
-    // runs on every keystroke, and most messages have no attachments.
     if (currentEditor && attachedNodesRef.current.length > 0) {
       const chipNodeIds = new Set<string>();
       currentEditor.state.doc.descendants((node) => {
@@ -1475,9 +1465,6 @@ const InputBarContainer = ({
 
   const hideCapabilities = startsWithUserMention && !selectedSingleAgent;
 
-  // Mic and send share the same slot: mic while idle/typing nothing, send
-  // once there's text to submit. Stays on mic mid-recording even if the
-  // editor is technically empty.
   const canShowVoicePicker =
     !subscription.plan.isByok &&
     owner.metadata?.allowVoiceTranscription !== false &&
@@ -1925,9 +1912,6 @@ const InputBarContainer = ({
                       buttonProps={{
                         className: cn(
                           "rounded-full",
-                          // Match the Send button's "highlight" variant exactly (same
-                          // gradient tokens + white-overlay hover) since this mic button
-                          // substitutes for Send when the editor is empty.
                           "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:transition-colors",
                           "bg-linear-to-b from-highlight-400 to-highlight-500 dark:from-blue-500 dark:to-blue-600 text-white",
                           "shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_color-mix(in_oklch,var(--color-foreground)_10%,transparent)]",

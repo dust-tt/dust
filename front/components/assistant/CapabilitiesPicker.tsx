@@ -185,9 +185,6 @@ interface CapabilitiesPickerProps {
   buttonSize?: "xs" | "sm" | "md";
   onOpenChange?: (open: boolean) => void;
   type?: "dropdown" | "subdropdown";
-  // Start fetching before this picker's own dropdown opens, so a parent
-  // menu (e.g. the "+" menu) can kick off the fetch on ITS open/hover
-  // instead of waterfalling on this picker's own click.
   prefetch?: boolean;
 }
 

@@ -13,9 +13,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-// Matches the row height/shape of a real DropdownMenuCheckboxItem so there's
-// no layout jump when the skeleton is replaced by actual Spaces (see the
-// same pattern in CapabilitiesPicker's loading rows).
 function SpacesPickerLoading({ count = 3 }: { count?: number }) {
   return (
     <div className="py-1">
@@ -34,18 +31,11 @@ function SpacesPickerLoading({ count = 3 }: { count?: number }) {
 interface InputBarSpacesPickerProps {
   owner: LightWorkspaceType;
   disabled?: boolean;
-  // See the identical `prefetch` prop on CapabilitiesPicker: lets a parent
-  // menu kick off the fetch on its own open/hover instead of waterfalling
-  // on this picker's own click.
   prefetch?: boolean;
-  // Controlled from the parent so the selection can also be rendered as
-  // chips below the text editor, like the other selectable items.
   selectedSpaceIds: string[];
   onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
 }
 
-// Shell: lets users see which Spaces are accessible from the input bar.
-// Selection isn't yet wired into message submission.
 export function InputBarSpacesPicker({
   owner,
   disabled = false,

@@ -21,8 +21,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-// Same border/background/shadow treatment as the agent pill, so both trigger
-// buttons in the input bar's left cluster read as one consistent set.
 const PLUS_BUTTON_CLASSNAME = cn(
   INPUT_BAR_PILL_SURFACE_CLASSNAME,
   INPUT_BAR_PILL_HOVER_CLASSNAME
@@ -74,9 +72,6 @@ export function InputBarPlusMenu({
   onAttachmentsPickerOpenChange,
 }: InputBarPlusMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
-  // Sticky once true: a hover almost always precedes the click by a beat,
-  // so kicking off the fetch on hover (in addition to on open) shaves that
-  // gap off the perceived load time for the common mouse-driven case.
   const [hasHovered, setHasHovered] = useState(false);
   const shouldPrefetch = isOpen || hasHovered;
 

@@ -468,9 +468,6 @@ export const buildEditorExtensions = ({
         }
         return placeholderOverride ?? INPUT_BAR_DEFAULT_PLACEHOLDER;
       },
-      // dark:first:before override: the shared `faint` token (stone-600,
-      // L44.4%) is too low-contrast to read comfortably against the
-      // composer's dark surface — brighten it a step (stone-400).
       emptyNodeClass:
         "first:before:text-faint dark:first:before:text-stone-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
     }),
