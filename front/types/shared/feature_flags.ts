@@ -49,7 +49,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   dust_agent_gpt_5_6_luna_default: {
     description:
       "Use GPT 5.6 Luna (high reasoning) as the default model for the @dust agent",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   dust_agent_sonnet_5_default: {
     description: "Use Claude Sonnet 5 as the default model for the @dust agent",
