@@ -4,7 +4,6 @@ import {
   overwriteLLMParameters,
   supportsOpenAIExplicitPromptCaching,
 } from "@app/lib/api/llm/clients/openai/types";
-import { includesOpenAIToolSearchTool } from "@app/lib/api/llm/clients/openai/utils/tool_search";
 import { LLM } from "@app/lib/api/llm/llm";
 import type {
   BatchDeletionOutcome,
@@ -36,6 +35,7 @@ import {
 import { getOpenAIPromptCacheKey } from "@app/lib/api/llm/utils/prompt_cache_key";
 import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/api/llm/utils/tool_search";
 import type { Authenticator } from "@app/lib/auth";
+import { includesOpenAIToolSearchTool } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

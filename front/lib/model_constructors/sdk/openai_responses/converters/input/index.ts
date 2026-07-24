@@ -1,6 +1,6 @@
-import { includesOpenAIToolSearchTool } from "@app/lib/api/llm/clients/openai/utils/tool_search";
 import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/api/llm/utils/tool_search";
 import type { Client } from "@app/lib/model_constructors/client";
+import { includesOpenAIToolSearchTool } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search";
 import {
   assistantProviderPassthroughMessageToInputItems,
   assistantReasoningMessageToInputItems,
