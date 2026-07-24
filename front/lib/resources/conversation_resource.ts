@@ -1777,6 +1777,30 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
+  // Every non-silent conversation write bumps `updatedAt`; mirror the new value onto the
+  // participants' `conversationUpdatedAt` so per-user listings can order by activity without
+  // joining conversations.
+  protected override async update(
+    blob: Partial<Attributes<ConversationModel>>,
+    transaction?: Transaction
+  ): Promise<[affectedCount: number]> {
+    const result = await super.update(blob, transaction);
+
+    await ConversationParticipantModel.update(
+      { conversationUpdatedAt: this.updatedAt },
+      {
+        where: {
+          workspaceId: this.workspaceId,
+          conversationId: this.id,
+        },
+        silent: true,
+        transaction,
+      }
+    );
+
+    return result;
+  }
+
   static async listPrivateConversationsForUser(
     auth: Authenticator
   ): Promise<ConversationResource[]> {
@@ -2632,15 +2656,32 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       t,
     }: { conversation: ConversationWithoutContentType; t?: Transaction }
   ): Promise<Result<number, Error>> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    // Set explicitly (instead of relying on the automatic bump) so participants mirror the
+    // exact same value.
+    const now = new Date();
+
     const updated = await ConversationModel.update(
-      {
-        id: col("id"), // no real change
-      },
+      { updatedAt: now },
       {
         where: {
           id: conversation.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId,
         },
+        silent: true,
+        transaction: t,
+      }
+    );
+
+    await ConversationParticipantModel.update(
+      { conversationUpdatedAt: now },
+      {
+        where: {
+          workspaceId,
+          conversationId: conversation.id,
+        },
+        // Participants' own `updatedAt` tracks the user's last interaction; don't bump it.
+        silent: true,
         transaction: t,
       }
     );
@@ -2947,6 +2988,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             userId: user.id,
             workspaceId: auth.getNonNullableWorkspace().id,
             actionRequired: false,
+            conversationUpdatedAt:
+              "updated" in conversation
+                ? new Date(conversation.updated)
+                : conversation.updatedAt,
           },
           { transaction: t }
         );
