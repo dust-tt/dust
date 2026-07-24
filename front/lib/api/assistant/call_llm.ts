@@ -1,4 +1,5 @@
 import { getStreamLLM } from "@app/lib/api/llm";
+import { getStreamEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -55,10 +56,17 @@ export async function runMultiActionsAgent(
     skipEmbeddingApiKeyRequirement: true,
   });
 
+  const endpoint = await getStreamEndpointFromLegacyModelId(
+    auth,
+    config.modelId
+  );
+  if (!endpoint) {
+    return new Err(new Error(`Model ${config.modelId} not supported`));
+  }
+
   const llm = await getStreamLLM(auth, {
     credentials,
-    modelId: config.modelId,
-    temperature: config.temperature,
+    modelInfo: { endpoint, temperature: config.temperature },
     context: options.context,
   });
 

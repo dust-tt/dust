@@ -2,10 +2,15 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { getBatchLLM } from "@app/lib/api/llm";
 import { writeBatchUserMessages } from "@app/lib/api/llm/batch_llm";
 import type { LLM } from "@app/lib/api/llm/llm";
+import { getBatchEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
+import type {
+  LLMParameters,
+  LLMStreamParameters,
+} from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
+import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import { getLargeWhitelistedModelWithBatchMode } from "@app/lib/reinforcement/models";
 import {
   hasSuggestionSelfConflict,
@@ -272,7 +277,7 @@ export async function createReinforcedSkillsConversation(
 export async function getReinforcedSkillsLLM(
   auth: Authenticator,
   operationType: ReinforcedSkillsOperationType
-): Promise<LLM | null> {
+): Promise<LLM<DustBatchEndpointConstructor> | null> {
   const owner = auth.workspace();
   if (!owner) {
     return null;
@@ -283,12 +288,20 @@ export async function getReinforcedSkillsLLM(
     return null;
   }
 
+  const endpoint = await getBatchEndpointFromLegacyModelId(
+    auth,
+    model.modelId
+  );
+  if (!endpoint) {
+    return null;
+  }
+
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  const llmParameters = {
-    modelId: model.modelId,
+  const llmParameters: LLMParameters<DustBatchEndpointConstructor> = {
     credentials,
+    modelInfo: { endpoint },
     context: {
       operationType,
       workspaceId: owner.sId,

@@ -5,7 +5,7 @@ import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ModelInfo } from "@app/types/assistant/agent_run";
+import type { StreamModelInfo } from "@app/types/assistant/agent_run";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { CoreAPISearchFilter } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
@@ -31,7 +31,7 @@ export type CoreDataSourceSearchCriteria = {
 type ProcessDataSourcesParams = {
   auth: Authenticator;
   coreDataSourceSearchCriterias: CoreDataSourceSearchCriteria[];
-  modelInfo: ModelInfo;
+  modelInfo: StreamModelInfo;
   prompt: string;
   objective: string;
   jsonSchema: JSONSchema;

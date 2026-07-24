@@ -24,13 +24,14 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
 import type { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
+
 import type {
   ModelConfigurationType,
   ModelIdType,
@@ -44,7 +45,10 @@ import { randomUUID } from "crypto";
 import pickBy from "lodash/pickBy";
 import startCase from "lodash/startCase";
 
-export abstract class LLM<TPayload = unknown> {
+export abstract class LLM<
+TEndpoint extends DustStreamEndpointConstructor | DustBatchEndpointConstructor = DustStreamEndpointConstructor | DustBatchEndpointConstructor,
+TPayload = unknown,
+> {
   protected modelId: ModelIdType;
   protected modelConfig: ModelConfigurationType;
   protected temperature: number | null;
@@ -69,24 +73,15 @@ export abstract class LLM<TPayload = unknown> {
       bypassFeatureFlag = false,
       context,
       getTraceOutput,
-      modelId,
-      reasoningEffort = "none",
-      responseFormat = null,
-      temperature = AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
-    }: LLMParameters
+      modelInfo,
+    }: LLMParameters<TEndpoint>
   ) {
-    this.modelId = modelId;
-    const modelConfig = getSupportedModelConfig({
-      modelId: this.modelId,
-      providerId,
-    });
-    if (!modelConfig) {
-      throw new Error(`Model config not found for ${modelId}/${providerId}`);
-    }
+    const modelConfig = modelInfo.endpoint.modelConfig;
+    this.modelId = modelConfig.modelId;
     this.modelConfig = modelConfig;
-    this.temperature = temperature;
-    this.reasoningEffort = reasoningEffort;
-    this.responseFormat = responseFormat;
+    this.temperature = modelInfo.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES["balanced"];
+    this.reasoningEffort = modelInfo.reasoningEffort ?? null;
+    this.responseFormat = modelInfo.responseFormat ?? null;
     this.bypassFeatureFlag = bypassFeatureFlag;
     this.metadata = {
       clientId: providerId,

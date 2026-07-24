@@ -1,5 +1,3 @@
-import { getStreamLLM } from "@app/lib/api/llm";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import {
   type DedupTestCase,
@@ -7,6 +5,7 @@ import {
   getTestCaseInputForDisplay,
   type JudgeResult,
 } from "@app/tests/dedup-evals/lib/types";
+import { getJudgeLLM } from "@app/tests/utils/eval_llm";
 
 const JUDGE_PROMPT = `You are evaluating the quality of a TODO deduplication system's decisions.
 
@@ -76,18 +75,7 @@ export async function evaluateWithJudge(
   const scores: number[] = [];
   let lastReasoning = "";
 
-  const credentials = await getLlmCredentials(auth, {
-    skipEmbeddingApiKeyRequirement: true,
-  });
-  const llm = await getStreamLLM(auth, {
-    credentials,
-    modelId: "gpt-5-mini",
-    temperature: 0.2,
-    bypassFeatureFlag: true,
-  });
-  if (!llm) {
-    throw new Error("Failed to initialize LLM for judge evaluation");
-  }
+  const llm = await getJudgeLLM(auth);
 
   for (let i = 0; i < numRuns; i++) {
     const events = llm.stream({

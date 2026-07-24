@@ -8,7 +8,7 @@ import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandb
 import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { FileModel } from "@app/lib/resources/storage/models/files";
 import type { AgentConfigurationWithoutModelType } from "@app/types/assistant/agent";
-import type { ModelInfo } from "@app/types/assistant/agent_run";
+import type { StreamModelInfo } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageType,
   ConversationType,
@@ -166,7 +166,7 @@ export type AgentLoopRunContext = {
   contextType: "agent_loop";
   action: AgentMCPActionResource;
   agentConfiguration: AgentConfigurationWithoutModelType;
-  modelInfo: ModelInfo;
+  modelInfo: StreamModelInfo;
   agentMessage: AgentMessageType;
   conversation: ConversationType;
   stepContext: StepContext;

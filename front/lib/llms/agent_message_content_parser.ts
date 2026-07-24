@@ -4,7 +4,7 @@ import type {
   LightAgentConfigurationType,
   LightAgentConfigurationWithoutModelType,
 } from "@app/types/assistant/agent";
-import type { ModelInfo } from "@app/types/assistant/agent_run";
+import type { StreamModelInfo } from "@app/types/assistant/agent_run";
 import {
   CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
@@ -286,7 +286,7 @@ const DEEPSEEK_MODELS: ModelIdType[] = [DEEPSEEK_CHAT_MODEL_ID];
 export function getDelimitersConfiguration({
   endpoint,
   reasoningEffort,
-}: ModelInfo): DelimitersConfiguration {
+}: StreamModelInfo): DelimitersConfiguration {
   if (DEEPSEEK_MODELS.includes(endpoint.modelConfig.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
   }

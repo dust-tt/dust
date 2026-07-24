@@ -768,11 +768,7 @@ export async function runModel(
 
   const llm = await getStreamLLM(auth, {
     credentials,
-    modelId: modelConfig.modelId,
-    temperature: modelInfo.temperature,
-    reasoningEffort: modelInfo.reasoningEffort,
-    responseFormat: modelInfo.responseFormat,
-    metaData: modelInfo.metaData,
+    modelInfo,
     context: traceContext,
     omittedThinking: agentConfiguration.omittedThinking,
     // Custom trace input: show only the last user message instead of full conversation.

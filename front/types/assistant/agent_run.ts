@@ -5,15 +5,11 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
-import { getWorkspaceFilter, legacyModelIdToModel } from "@app/lib/api/llm";
+import { legacyModelIdToModel } from "@app/lib/api/llm";
+import { selectPreferredStreamEndpointForWorkspace } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
-import { getStreamEndpoints } from "@app/lib/llms/stream";
+import { Authenticator } from "@app/lib/auth";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
-import {
-  isCreditPricedPlanPrefix,
-  isEnterpriseOrDust,
-} from "@app/lib/plans/plan_codes";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import type {
@@ -140,18 +136,20 @@ export type AgentMessageRef = {
   conversationId: string;
 };
 
-export type ModelInfo = {
-  endpoint: DustStreamEndpointConstructor;
+export type ModelInfo<E> = {
+  endpoint: E;
   temperature: number;
   reasoningEffort?: ReasoningEffort;
   responseFormat?: string;
   metaData?: Record<string, unknown>;
 };
 
+export type StreamModelInfo = ModelInfo<DustStreamEndpointConstructor>;
+
 export type AgentLoopExecutionData = {
   // No models on the agent configuration as it might be different at run time (eg: auto mode, override by inputbar picker)
   agentConfiguration: AgentConfigurationWithoutModelType;
-  modelInfo: ModelInfo;
+  modelInfo: StreamModelInfo;
   agentMessage: AgentMessageType;
   conversation: ConversationType;
   userMessage: UserMessageType;
@@ -357,23 +355,11 @@ export async function getAgentLoopDataWithAuth(
   // with legacy model selection.
   const model = legacyModelIdToModel(resolvedModelConfig.modelId);
 
-  const workspaceFilters = await getWorkspaceFilter(auth);
-  const plan = auth.getNonNullablePlan();
-  const endpoints = model
-    ? getStreamEndpoints(
-        {
-          featureFlags: await getFeatureFlags(auth),
-          isEnterprise: isEnterpriseOrDust(plan),
-          isCreditPriced: isCreditPricedPlanPrefix(plan.code),
-        },
-        {
-          ...workspaceFilters,
-          model: { eq: model },
-        }
-      )
-    : [];
-
-  const endpoint = endpoints[0];
+  const endpoint = model
+    ? await selectPreferredStreamEndpointForWorkspace(auth, {
+        model: { eq: model },
+      })
+    : null;
 
   if (!endpoint) {
     return new Err(

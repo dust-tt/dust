@@ -18,7 +18,7 @@ import type {
   AgentConfigurationType,
   AgentConfigurationWithoutModelType,
 } from "@app/types/assistant/agent";
-import type { ModelInfo } from "@app/types/assistant/agent_run";
+import type { StreamModelInfo } from "@app/types/assistant/agent_run";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   ConversationType,
@@ -39,7 +39,7 @@ function withoutModel(
 function agentLoopModel(
   config: AgentConfigurationType,
   modelConfig: ModelConfigurationType
-): ModelInfo {
+): StreamModelInfo {
   const { temperature, reasoningEffort, responseFormat, metaData } =
     config.model;
   return {

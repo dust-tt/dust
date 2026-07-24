@@ -2,13 +2,25 @@ import {
   formatAvailableTools,
   formatMcpDescription,
 } from "@app/lib/api/assistant/global_agents/sidekick_context";
-import { getBatchLLM, getStreamLLM } from "@app/lib/api/llm";
+import {
+  getBatchLLM,
+  getStreamLLM,
+  legacyModelIdToModel,
+} from "@app/lib/api/llm";
 import type { LLM } from "@app/lib/api/llm/llm";
+import { selectPreferredBatchEndpointForWorkspace, selectPreferredStreamEndpointForWorkspace } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { BatchResultWithRunIds } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
+import type {
+  LLMParameters,
+  LLMStreamParameters,
+} from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
+import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
+import type { EndpointConfig, Where } from "@app/lib/llms/types/filter";
+import type { Model } from "@app/lib/model_constructors/types/models";
 import { buildSkillAggregationPrompt } from "@app/lib/reinforcement/aggregate_suggestions";
 import { buildSkillAnalysisPrompt } from "@app/lib/reinforcement/analyze_conversation";
 import { MAX_REINFORCED_ANALYSIS_STEPS } from "@app/lib/reinforcement/constants";
@@ -43,6 +55,7 @@ import {
   type WorkspaceContext,
 } from "@app/tests/reinforcement-evals/lib/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 
@@ -354,28 +367,94 @@ async function executeMultiStep(
   return { toolCalls: allToolCalls, responseText: lastResponseText };
 }
 
+async function getBatchLLMInstance(
+  auth: Authenticator,
+  credentials: LLMCredentialsType,
+  model: Model
+): Promise<LLM> {
+  const filter: Where<EndpointConfig> = {
+    model: { eq: model },
+  };
+  const endpoint = await selectPreferredBatchEndpointForWorkspace(auth, filter);
+
+  if (!endpoint) {
+    throw new Error(
+      `Failed to get endpoint for reinforcement eval (batch model: ${model})`
+    );
+  }
+
+  const llmParameters: LLMParameters<DustBatchEndpointConstructor> = {
+    credentials,
+    modelInfo: { endpoint },
+    bypassFeatureFlag: true,
+  };
+
+  const llm = await getBatchLLM(auth, llmParameters);
+  if (!llm) {
+    throw new Error(
+      `Failed to initialize LLM for reinforcement eval (batch model: ${model})`
+    );
+  }
+
+  return llm;
+}
+
+async function getStreamLLMInstance(
+  auth: Authenticator,
+  credentials: LLMCredentialsType,
+  model: Model
+): Promise<LLM<DustStreamEndpointConstructor>> {
+  const filter: Where<EndpointConfig> = {
+    model: { eq: model },
+  };
+  const endpoint = await selectPreferredStreamEndpointForWorkspace(
+    auth,
+    filter
+  );
+
+  if (!endpoint) {
+    throw new Error(
+      `Failed to get endpoint for reinforcement eval (stream model: ${model})`
+    );
+  }
+
+  const llmParameters: LLMParameters<DustStreamEndpointConstructor> = {
+    credentials,
+    modelInfo: { endpoint },
+    bypassFeatureFlag: true,
+  };
+
+  const llm = await getStreamLLM(auth, llmParameters);
+  if (!llm) {
+    throw new Error(
+      `Failed to initialize LLM for reinforcement eval (stream model: ${model})`
+    );
+  }
+
+  return llm;
+}
+
 async function getLLMInstance(
   auth: Authenticator,
   surface: "stream" | "batch" = "stream"
 ): Promise<LLM> {
+  const model = legacyModelIdToModel(MODEL_ID);
+  if (!model) {
+    throw new Error(`Unknown model for reinforcement eval: ${MODEL_ID}`);
+  }
+
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  const llmParameters = {
-    credentials,
-    modelId: MODEL_ID,
-    bypassFeatureFlag: true,
-  };
-  const llm =
-    surface === "batch"
-      ? await getBatchLLM(auth, llmParameters)
-      : await getStreamLLM(auth, llmParameters);
-  if (!llm) {
-    throw new Error(
-      `Failed to initialize LLM for reinforcement eval (model: ${MODEL_ID})`
-    );
+
+  switch (surface) {
+    case "stream":
+      return getStreamLLMInstance(auth, credentials, model);
+    case "batch":
+      return getBatchLLMInstance(auth, credentials, model);
+    default:
+      assertNever(surface);
   }
-  return llm;
 }
 
 export async function executeReinforced(
