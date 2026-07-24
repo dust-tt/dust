@@ -645,17 +645,6 @@ async fn wait_for_no_resharding(
                 }
                 if !info.shard_transfers.is_empty() {
                     last_transfer_seen = std::time::Instant::now();
-                } else if last_transfer_seen.elapsed() > Duration::from_secs(600) {
-                    // The operation exists but nothing has moved it in 10 minutes: whatever was
-                    // supposed to drive it is not doing so. Stop instead of polling forever; the
-                    // operation stays registered server-side.
-                    return Err(anyhow!(
-                        "[{}] resharding is registered but no shard transfer happened for 10 \
-                         minutes: nothing is driving it. Re-run with --drive to drive it \
-                         (self-hosted/OSS), re-run as-is to resume watching (managed cluster \
-                         mid-cleanup), or cancel with --abort.",
-                        shard_key
-                    ));
                 }
                 let topology = KeyTopology::from_cluster_info(&info, shard_key);
                 let transfers = info
@@ -668,14 +657,20 @@ async fn wait_for_no_resharding(
                     })
                     .collect::<Vec<_>>()
                     .join("; ");
+                // This watch never gives up on its own: the operation belongs to whoever drives
+                // it (the cloud operator on managed clusters) and only a human decides to stop
+                // (ctrl-c, --abort). Transfer inactivity is surfaced as data on the poll line.
                 println!(
                     "[{}] [{}elapsed] resharding: {} | {}{}",
                     shard_key,
                     format_elapsed(started.elapsed()),
                     describe_resharding_ops(ops),
                     topology.describe(),
-                    if transfers.is_empty() {
-                        "".to_string()
+                    if info.shard_transfers.is_empty() {
+                        format!(
+                            " | no transfer for {}",
+                            format_elapsed(last_transfer_seen.elapsed()).trim_end()
+                        )
                     } else {
                         format!(" | transfers: {}", transfers)
                     }
