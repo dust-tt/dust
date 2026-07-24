@@ -166,7 +166,7 @@ export function AgentBuilderSimilarAgentsSection({
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Spinner size="xs" />
-        <span>Checking for similar agents...</span>
+        <span>Checking for similar agents…</span>
       </div>
     );
   }
