@@ -165,8 +165,7 @@ export function ShareFrameSheet({
   const canPublish =
     owner.sharingPolicy === "all_scopes" && hasPermission("publish", "frame");
 
-  const lostPublishPermission =
-    currentScope === "public" && !canPublish;
+  const lostPublishPermission = currentScope === "public" && !canPublish;
 
   const availableScopeOptions = getAvailableScopeOptions({
     sharingPolicy: owner.sharingPolicy,
