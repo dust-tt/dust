@@ -1,10 +1,13 @@
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/sandbox_reaper/config";
+import { makeSandboxKillRequesterWorkflowId } from "@app/temporal/sandbox_reaper/kill_requester/helpers";
 import { sandboxKillRequesterWorkflow } from "@app/temporal/sandbox_reaper/kill_requester/workflows";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { WorkflowIdReusePolicy } from "@temporalio/client";
+import { WorkflowIdConflictPolicy } from "@temporalio/common";
 
 interface LaunchSandboxKillRequesterWorkflowInput {
   baseImage: string;
@@ -18,15 +21,18 @@ export async function launchSandboxKillRequesterWorkflow({
   Result<{ workflowId: string }, Error>
 > {
   const client = await getTemporalClientForFrontNamespace();
-  const workflowId = `sandbox-kill-requester-${baseImage}-${
-    version ?? "all"
-  }-${Date.now()}`;
+  const workflowId = makeSandboxKillRequesterWorkflowId({
+    baseImage,
+    version,
+  });
 
   try {
     await client.workflow.start(sandboxKillRequesterWorkflow, {
       args: [{ baseImage, version }],
       taskQueue: QUEUE_NAME,
       workflowId,
+      workflowIdConflictPolicy: WorkflowIdConflictPolicy.USE_EXISTING,
+      workflowIdReusePolicy: WorkflowIdReusePolicy.ALLOW_DUPLICATE,
       memo: { baseImage, version: version ?? "all" },
     });
   } catch (err) {

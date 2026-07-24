@@ -2,13 +2,17 @@ import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
-import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import {
+  SandboxResource,
+  type SandboxTimestampCursor,
+} from "@app/lib/resources/sandbox_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { heartbeat } from "@temporalio/activity";
 
 import {
@@ -20,9 +24,34 @@ import {
 
 const REAPER_CONCURRENCY = 16;
 
+export type ReaperPhase =
+  | "kill_requested"
+  | "running"
+  | "pending_approval"
+  | "sleeping";
+
+export type ReaperCursor = {
+  sandboxModelId: ModelId;
+  timestampMs: number;
+};
+
+export interface ReapStaleSandboxesActivityInput {
+  cursor: ReaperCursor | null;
+  phase: ReaperPhase;
+}
+
+export interface ReapStaleSandboxesActivityResult {
+  failedCount: number;
+  nextCursor: ReaperCursor | null;
+  processedCount: number;
+  skippedCount: number;
+  succeededCount: number;
+}
+
 type ReaperSandboxLifecycleOwner = {
   kind: "conversation" | "pod";
   modelId: ModelId;
+  workspaceModelId: ModelId;
   dangerouslyDestroySandboxIfKillRequested(
     auth: Authenticator
   ): Promise<Result<void, Error>>;
@@ -47,33 +76,78 @@ type SandboxOwnerMaps = {
   ownersBySandboxModelId: Map<ModelId, ReaperSandboxLifecycleOwner>;
 };
 
+type ReaperAuthMaps = {
+  conversation: Map<ModelId, Authenticator>;
+  pod: Map<ModelId, Authenticator>;
+};
+
 /**
- * Build a workspace-scoped internal Authenticator for each workspace touched by
- * the batch. One query for all workspaces, then one builder per workspace.
+ * Build workspace-scoped authenticators for each owner kind touched by the
+ * batch. Conversation lifecycle calls retain builder auth. Pod lifecycle calls
+ * need the workspace's project groups so their pre-sleep filesystem flush can
+ * access restricted projects.
  */
-async function fetchAuthMap(
-  sandboxes: SandboxResource[]
-): Promise<Map<ModelId, Authenticator>> {
+async function fetchAuthMaps(
+  sandboxes: SandboxResource[],
+  ownerMaps: SandboxOwnerMaps
+): Promise<ReaperAuthMaps> {
+  const workspaceModelIdsByOwnerKind = {
+    conversation: new Set<ModelId>(),
+    pod: new Set<ModelId>(),
+  };
+
+  for (const sandbox of sandboxes) {
+    const ownerRef = ownerMaps.ownerRefsBySandboxModelId.get(sandbox.id);
+    if (ownerRef) {
+      workspaceModelIdsByOwnerKind[ownerRef.kind].add(sandbox.workspaceId);
+    }
+  }
+
   const uniqueWorkspaceModelIds = [
-    ...new Set(sandboxes.map((s) => s.workspaceId)),
+    ...new Set([
+      ...workspaceModelIdsByOwnerKind.conversation,
+      ...workspaceModelIdsByOwnerKind.pod,
+    ]),
   ];
 
   const workspaces = await WorkspaceResource.fetchByModelIds(
     uniqueWorkspaceModelIds
   );
 
-  const entries = await concurrentExecutor(
-    workspaces,
-    async (w) => {
-      const authenticator = await Authenticator.internalBuilderForWorkspace(
-        w.sId
-      );
-      return [w.id, authenticator] as const;
-    },
-    { concurrency: REAPER_CONCURRENCY }
-  );
+  const [conversationEntries, podEntries] = await Promise.all([
+    concurrentExecutor(
+      workspaces.filter((workspace) =>
+        workspaceModelIdsByOwnerKind.conversation.has(workspace.id)
+      ),
+      async (workspace) => {
+        const authenticator = await Authenticator.internalBuilderForWorkspace(
+          workspace.sId
+        );
+        return [workspace.id, authenticator] as const;
+      },
+      { concurrency: REAPER_CONCURRENCY }
+    ),
+    concurrentExecutor(
+      workspaces.filter((workspace) =>
+        workspaceModelIdsByOwnerKind.pod.has(workspace.id)
+      ),
+      async (workspace) => {
+        const authenticator = await Authenticator.internalAdminForWorkspace(
+          workspace.sId,
+          {
+            dangerouslyRequestAllGroups: true,
+          }
+        );
+        return [workspace.id, authenticator] as const;
+      },
+      { concurrency: REAPER_CONCURRENCY }
+    ),
+  ]);
 
-  return new Map(entries);
+  return {
+    conversation: new Map(conversationEntries),
+    pod: new Map(podEntries),
+  };
 }
 
 /**
@@ -126,6 +200,7 @@ async function fetchSandboxOwnerMaps(
         ownersBySandboxModelId.set(sandbox.id, {
           kind: "conversation",
           modelId: conversation.id,
+          workspaceModelId: conversation.workspaceId,
           dangerouslyDestroySandboxIfKillRequested: (auth) =>
             ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
               auth,
@@ -166,6 +241,7 @@ async function fetchSandboxOwnerMaps(
       ownersBySandboxModelId.set(sandbox.id, {
         kind: "pod",
         modelId: pod.id,
+        workspaceModelId: pod.workspaceId,
         dangerouslyDestroySandboxIfKillRequested: (auth) =>
           PodSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(auth, pod),
         dangerouslyDestroySandboxIfSleeping: (auth) =>
@@ -187,6 +263,14 @@ async function fetchSandboxOwnerMaps(
  * lifecycle methods run from the owner adapter so callers do not need to know
  * the sandbox lookup details.
  */
+type ProcessSandboxOutcome = "succeeded" | "failed" | "skipped";
+
+interface ProcessSandboxesResult {
+  failedCount: number;
+  skippedCount: number;
+  succeededCount: number;
+}
+
 async function processSandboxes(
   sandboxes: SandboxResource[],
   action: (
@@ -194,15 +278,17 @@ async function processSandboxes(
     owner: ReaperSandboxLifecycleOwner
   ) => Promise<Result<void, Error>>,
   errorMessage: string
-): Promise<void> {
-  const authMap = await fetchAuthMap(sandboxes);
+): Promise<ProcessSandboxesResult> {
   const ownerMaps = await fetchSandboxOwnerMaps(sandboxes);
+  const authMaps = await fetchAuthMaps(sandboxes, ownerMaps);
 
-  await concurrentExecutor(
+  const outcomes = await concurrentExecutor(
     sandboxes,
-    async (sandbox) => {
-      const auth = authMap.get(sandbox.workspaceId);
+    async (sandbox): Promise<ProcessSandboxOutcome> => {
       const owner = ownerMaps.ownersBySandboxModelId.get(sandbox.id);
+      const auth = owner
+        ? authMaps[owner.kind].get(sandbox.workspaceId)
+        : undefined;
 
       if (!auth || !owner) {
         const ownerRef = ownerMaps.ownerRefsBySandboxModelId.get(sandbox.id);
@@ -215,7 +301,23 @@ async function processSandboxes(
           },
           "Reaper: workspace or sandbox owner not found, skipping."
         );
-        return;
+        heartbeat();
+        return "skipped";
+      }
+
+      if (owner.workspaceModelId !== sandbox.workspaceId) {
+        logger.error(
+          {
+            ownerKind: owner.kind,
+            ownerModelId: owner.modelId,
+            ownerWorkspaceModelId: owner.workspaceModelId,
+            sandboxModelId: sandbox.id,
+            sandboxWorkspaceModelId: sandbox.workspaceId,
+          },
+          "Reaper: sandbox owner workspace mismatch, skipping."
+        );
+        heartbeat();
+        return "failed";
       }
 
       const result = await action(auth, owner);
@@ -224,106 +326,201 @@ async function processSandboxes(
           {
             ownerKind: owner.kind,
             ownerModelId: owner.modelId,
+            sandboxModelId: sandbox.id,
+            workspaceModelId: sandbox.workspaceId,
             error: result.error.message,
           },
           errorMessage
         );
+        heartbeat();
+        return "failed";
       }
+
       heartbeat();
+      return "succeeded";
     },
     { concurrency: REAPER_CONCURRENCY }
   );
+
+  let failedCount = 0;
+  let skippedCount = 0;
+  let succeededCount = 0;
+
+  for (const outcome of outcomes) {
+    switch (outcome) {
+      case "failed":
+        failedCount += 1;
+        break;
+      case "skipped":
+        skippedCount += 1;
+        break;
+      case "succeeded":
+        succeededCount += 1;
+        break;
+      default:
+        assertNever(outcome);
+    }
+  }
+
+  return { failedCount, skippedCount, succeededCount };
+}
+
+function toResourceCursor(
+  cursor: ReaperCursor | null
+): SandboxTimestampCursor | undefined {
+  if (!cursor) {
+    return undefined;
+  }
+  return {
+    sandboxModelId: cursor.sandboxModelId,
+    timestamp: new Date(cursor.timestampMs),
+  };
+}
+
+function getKillRequestedAt(sandbox: SandboxResource): Date {
+  if (!sandbox.killRequestedAt) {
+    throw new Error(
+      `Kill-requested sandbox ${sandbox.sId} has no killRequestedAt.`
+    );
+  }
+  return sandbox.killRequestedAt;
+}
+
+function makeNextCursor(
+  sandboxes: SandboxResource[],
+  getTimestamp: (sandbox: SandboxResource) => Date
+): ReaperCursor | null {
+  if (sandboxes.length < BATCH_SIZE) {
+    return null;
+  }
+
+  const lastSandbox = sandboxes.at(-1);
+  if (!lastSandbox) {
+    return null;
+  }
+
+  return {
+    sandboxModelId: lastSandbox.id,
+    timestampMs: getTimestamp(lastSandbox).getTime(),
+  };
+}
+
+async function processReaperBatch(
+  phase: ReaperPhase,
+  sandboxes: SandboxResource[],
+  action: (
+    auth: Authenticator,
+    owner: ReaperSandboxLifecycleOwner
+  ) => Promise<Result<void, Error>>,
+  getTimestamp: (sandbox: SandboxResource) => Date,
+  errorMessage: string
+): Promise<ReapStaleSandboxesActivityResult> {
+  if (sandboxes.length === 0) {
+    return {
+      failedCount: 0,
+      nextCursor: null,
+      processedCount: 0,
+      skippedCount: 0,
+      succeededCount: 0,
+    };
+  }
+
+  logger.info(
+    { count: sandboxes.length, phase },
+    "Reaper: sandbox batch found."
+  );
+
+  const result = await processSandboxes(sandboxes, action, errorMessage);
+
+  logger.info(
+    {
+      phase,
+      processedCount: sandboxes.length,
+      ...result,
+    },
+    "Reaper: sandbox batch processed."
+  );
+
+  return {
+    ...result,
+    nextCursor: makeNextCursor(sandboxes, getTimestamp),
+    processedCount: sandboxes.length,
+  };
 }
 
 /**
- * Process one batch of stale sandboxes. Returns `true` when any query returned a
- * full batch, signalling the workflow to loop for more.
+ * Process one ordered batch for one reaper phase. The cursor advances past
+ * failed rows as well as successful rows so a permanently failing oldest batch
+ * cannot spin within one workflow run or starve newer candidates. A new
+ * scheduled workflow starts without a cursor and retries failures.
  */
-export async function reapStaleSandboxesActivity(): Promise<boolean> {
-  // Phase 0: Destroy sandboxes flagged with killRequestedAt. These bypass the
-  // sleep→destroy cycle and are reaped immediately regardless of status/age.
-  const killRequestedSandboxes =
-    await SandboxResource.dangerouslyGetKillRequestedSandboxes({
-      limit: BATCH_SIZE,
-    });
+export async function reapStaleSandboxesActivity({
+  cursor,
+  phase,
+}: ReapStaleSandboxesActivityInput): Promise<ReapStaleSandboxesActivityResult> {
+  const after = toResourceCursor(cursor);
 
-  if (killRequestedSandboxes.length > 0) {
-    logger.info(
-      { count: killRequestedSandboxes.length },
-      "Reaper: kill-requested sandboxes found."
-    );
-
-    await processSandboxes(
-      killRequestedSandboxes,
-      (auth, owner) => owner.dangerouslyDestroySandboxIfKillRequested(auth),
-      "Reaper: failed to destroy kill-requested sandbox — continuing."
-    );
+  switch (phase) {
+    case "kill_requested": {
+      const sandboxes =
+        await SandboxResource.dangerouslyGetKillRequestedSandboxes({
+          limit: BATCH_SIZE,
+          after,
+        });
+      return processReaperBatch(
+        phase,
+        sandboxes,
+        (auth, owner) => owner.dangerouslyDestroySandboxIfKillRequested(auth),
+        getKillRequestedAt,
+        "Reaper: failed to destroy kill-requested sandbox — continuing."
+      );
+    }
+    case "running": {
+      const sandboxes = await SandboxResource.dangerouslyGetStaleSandboxes({
+        status: "running",
+        olderThanMs: SLEEP_THRESHOLD_MS,
+        limit: BATCH_SIZE,
+        after,
+      });
+      return processReaperBatch(
+        phase,
+        sandboxes,
+        (auth, owner) => owner.dangerouslySleepSandboxIfRunning(auth),
+        (sandbox) => sandbox.lastActivityAt,
+        "Reaper: failed to sleep sandbox — continuing."
+      );
+    }
+    case "pending_approval": {
+      const sandboxes = await SandboxResource.dangerouslyGetStaleSandboxes({
+        status: "pending_approval",
+        olderThanMs: PENDING_APPROVAL_THRESHOLD_MS,
+        limit: BATCH_SIZE,
+        after,
+      });
+      return processReaperBatch(
+        phase,
+        sandboxes,
+        (auth, owner) => owner.dangerouslySleepSandboxIfPendingApproval(auth),
+        (sandbox) => sandbox.lastActivityAt,
+        "Reaper: failed to transition pending_approval sandbox — continuing."
+      );
+    }
+    case "sleeping": {
+      const sandboxes = await SandboxResource.dangerouslyGetStaleSandboxes({
+        status: "sleeping",
+        olderThanMs: DESTROY_THRESHOLD_MS,
+        limit: BATCH_SIZE,
+        after,
+      });
+      return processReaperBatch(
+        phase,
+        sandboxes,
+        (auth, owner) => owner.dangerouslyDestroySandboxIfSleeping(auth),
+        (sandbox) => sandbox.lastActivityAt,
+        "Reaper: failed to destroy sandbox — continuing."
+      );
+    }
+    default:
+      return assertNever(phase);
   }
-
-  // Phase 1: Sleep running sandboxes that have been idle > SLEEP_THRESHOLD_MS.
-  const runningSandboxes = await SandboxResource.dangerouslyGetStaleSandboxes({
-    status: "running",
-    olderThanMs: SLEEP_THRESHOLD_MS,
-    limit: BATCH_SIZE,
-  });
-
-  if (runningSandboxes.length > 0) {
-    logger.info(
-      { count: runningSandboxes.length },
-      "Reaper: stale running sandboxes found."
-    );
-
-    await processSandboxes(
-      runningSandboxes,
-      (auth, owner) => owner.dangerouslySleepSandboxIfRunning(auth),
-      "Reaper: failed to sleep sandbox — continuing."
-    );
-  }
-
-  // Phase 2: Transition abandoned pending_approval sandboxes to sleeping.
-  const pendingSandboxes = await SandboxResource.dangerouslyGetStaleSandboxes({
-    status: "pending_approval",
-    olderThanMs: PENDING_APPROVAL_THRESHOLD_MS,
-    limit: BATCH_SIZE,
-  });
-
-  if (pendingSandboxes.length > 0) {
-    logger.info(
-      { count: pendingSandboxes.length },
-      "Reaper: stale pending_approval sandboxes found."
-    );
-
-    await processSandboxes(
-      pendingSandboxes,
-      (auth, owner) => owner.dangerouslySleepSandboxIfPendingApproval(auth),
-      "Reaper: failed to transition pending_approval sandbox — continuing."
-    );
-  }
-
-  // Phase 3: Destroy sleeping sandboxes that have been idle > DESTROY_THRESHOLD_MS.
-  const sleepingSandboxes = await SandboxResource.dangerouslyGetStaleSandboxes({
-    status: "sleeping",
-    olderThanMs: DESTROY_THRESHOLD_MS,
-    limit: BATCH_SIZE,
-  });
-
-  if (sleepingSandboxes.length > 0) {
-    logger.info(
-      { count: sleepingSandboxes.length },
-      "Reaper: stale sleeping sandboxes found."
-    );
-
-    await processSandboxes(
-      sleepingSandboxes,
-      (auth, owner) => owner.dangerouslyDestroySandboxIfSleeping(auth),
-      "Reaper: failed to destroy sandbox — continuing."
-    );
-  }
-
-  return (
-    killRequestedSandboxes.length >= BATCH_SIZE ||
-    runningSandboxes.length >= BATCH_SIZE ||
-    pendingSandboxes.length >= BATCH_SIZE ||
-    sleepingSandboxes.length >= BATCH_SIZE
-  );
 }

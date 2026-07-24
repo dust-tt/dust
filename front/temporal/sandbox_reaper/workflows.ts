@@ -1,5 +1,9 @@
 import type * as activities from "@app/temporal/sandbox_reaper/activities";
-import { proxyActivities } from "@temporalio/workflow";
+import type {
+  ReaperCursor,
+  ReaperPhase,
+} from "@app/temporal/sandbox_reaper/activities";
+import { log, proxyActivities } from "@temporalio/workflow";
 
 const { reapStaleSandboxesActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
@@ -9,10 +13,40 @@ const { reapStaleSandboxesActivity } = proxyActivities<typeof activities>({
   },
 });
 
+const REAPER_PHASES = [
+  "kill_requested",
+  "running",
+  "pending_approval",
+  "sleeping",
+] satisfies ReaperPhase[];
+
+const MAX_BATCHES_PER_PHASE = 100;
+
 export async function sandboxReaperWorkflow(): Promise<void> {
-  let hasMore = true;
-  while (hasMore) {
-    hasMore = await reapStaleSandboxesActivity();
+  for (const phase of REAPER_PHASES) {
+    let cursor: ReaperCursor | null = null;
+    let processedBatches = 0;
+
+    while (processedBatches < MAX_BATCHES_PER_PHASE) {
+      const result: activities.ReapStaleSandboxesActivityResult =
+        await reapStaleSandboxesActivity({ cursor, phase });
+      processedBatches += 1;
+
+      if (!result.nextCursor) {
+        cursor = null;
+        break;
+      }
+      cursor = result.nextCursor;
+    }
+
+    if (cursor) {
+      log.warn("Reaper phase reached its batch limit.", {
+        phase,
+        processedBatches,
+        sandboxModelId: cursor.sandboxModelId,
+        timestampMs: cursor.timestampMs,
+      });
+    }
   }
 }
 
