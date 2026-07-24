@@ -2090,7 +2090,7 @@ export async function microsoftGarbageCollectionActivity({
   // during the garbage collection and the caching below prevents this from
   // being detected
   const nodesToCheck = nodes
-    .filter((n) => n.lastSeenTs ?? 0 < startGarbageCollectionTs)
+    .filter((n) => (n.lastSeenTs?.getTime() ?? 0) < startGarbageCollectionTs)
     .filter(
       (n) =>
         n.nodeType === "drive" ||
