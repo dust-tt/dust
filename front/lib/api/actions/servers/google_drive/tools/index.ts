@@ -37,6 +37,7 @@ import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import assert from "assert";
 import { Common } from "googleapis";
 import { Readable } from "stream";
 
@@ -1770,6 +1771,8 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     { fileId, parentId, fileName },
     { auth, authInfo, runContext }
   ) => {
+    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
     const folderError = await ensureParentFolderWritable(parentId, authInfo);
     if (folderError) {
       return folderError;
@@ -1780,9 +1783,11 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
 
     try {
-      const fileResult = await getFileFromConversationAttachment(auth, fileId, {
-        runContext,
-      });
+      const fileResult = await getFileFromConversationAttachment(
+        auth,
+        fileId,
+        runContext
+      );
 
       if (fileResult.isErr()) {
         return new Err(new MCPError(fileResult.error));

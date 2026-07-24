@@ -9,6 +9,7 @@ import {
   getFileFromConversationAttachment,
   sanitizeFilename,
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   downloadAndProcessMicrosoftFile,
   downloadDriveItemAsBuffer,
@@ -23,6 +24,7 @@ import { MICROSOFT_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/mic
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type AdmZip from "adm-zip";
+import assert from "assert";
 import { z } from "zod";
 
 const driveChildItemSchema = z.object({
@@ -565,6 +567,8 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
     { fileId, driveId, siteId, parentFolderId, fileName },
     { auth, authInfo, runContext }
   ) => {
+    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
     const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
@@ -574,9 +578,11 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
     try {
       // Get the file from conversation attachment
-      const fileResult = await getFileFromConversationAttachment(auth, fileId, {
-        runContext,
-      });
+      const fileResult = await getFileFromConversationAttachment(
+        auth,
+        fileId,
+        runContext
+      );
 
       if (fileResult.isErr()) {
         return new Err(new MCPError(fileResult.error));
