@@ -263,15 +263,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         lastActivityAt: {
           [Op.lt]: new Date(Date.now() - opts.olderThanMs),
         },
-        [Op.and]: opts.after
-          ? [
-              where(
-                fn("ROW", col("lastActivityAt"), col("id")),
-                Op.gt,
-                fn("ROW", opts.after.timestamp, opts.after.sandboxModelId)
-              ),
-            ]
-          : [],
+        ...(opts.after && {
+          [Op.and]: where(
+            fn("ROW", col("lastActivityAt"), col("id")),
+            Op.gt,
+            fn("ROW", opts.after.timestamp, opts.after.sandboxModelId)
+          ),
+        }),
       },
       order: [
         ["lastActivityAt", "ASC"],
@@ -979,15 +977,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       where: {
         killRequestedAt: { [Op.ne]: null },
         status: { [Op.ne]: "deleted" },
-        [Op.and]: opts.after
-          ? [
-              where(
-                fn("ROW", col("killRequestedAt"), col("id")),
-                Op.gt,
-                fn("ROW", opts.after.timestamp, opts.after.sandboxModelId)
-              ),
-            ]
-          : [],
+        ...(opts.after && {
+          [Op.and]: where(
+            fn("ROW", col("killRequestedAt"), col("id")),
+            Op.gt,
+            fn("ROW", opts.after.timestamp, opts.after.sandboxModelId)
+          ),
+        }),
       },
       order: [
         ["killRequestedAt", "ASC"],
