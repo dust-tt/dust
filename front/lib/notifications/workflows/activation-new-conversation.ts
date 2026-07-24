@@ -9,7 +9,7 @@ import {
   getUserNotificationDelay,
 } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
-import { getConversationDetails } from "@app/lib/notifications/workflows/conversation-unread";
+import { getConversationDetails } from "@app/lib/notifications/helpers";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -157,8 +157,7 @@ export const activationNewConversationWorkflow = workflow(
             id: payload.workspaceId,
             name: details.workspaceName,
           },
-          content: `Test test test! Hi you are recieving a secret message from Phoebe :)
-          There's something new waiting for you: "${details.subject}".`,
+          content: `There's something new waiting for you: "${details.subject}".`,
           action: {
             label: "Open conversation",
             url:
