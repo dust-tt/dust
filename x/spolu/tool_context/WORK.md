@@ -23,20 +23,13 @@
 [-]     1  front/lib/api/actions/servers/helpers.ts:44
            // TODO: sidekick should be removed from list
 
-[~]     1  front/lib/api/actions/servers/data_warehouses/tools/index.ts:262
-           // TODO: end state is a migration of the whole system here but today it relies on table
-                    query. To re-enable likely different path when sandbox function that writes to
-                    the pod tool outputs. Will need to change the tool return (currently returns a
-                    file should now be a path for that flow). See TODOs below.
 [~]     1  front/lib/api/actions/servers/image_generation/helpers.ts:217
            // TODO: similar to data_warehouse, we need a specific flow to write to the pod
                     tool_outputs when in sandbox function. See TODOs below.
 [~]     7  front/lib/api/actions/servers/interactive_content/tools/index.ts:52
            // We don't know how to create frames directly in pods for now.
            // Create still conversation tied. Will have to skip for now the server.
-[~]     1  front/lib/api/actions/servers/query_tables_v2/tools/index.ts:284
-           // TODO: similar to data_warehouse, relies on generateCSVFileAndSnippet.
-
+[+]     1  front/lib/api/actions/servers/data_warehouses/tools/index.ts:247
 [+]     1  front/lib/api/actions/servers/data_sources_file_system/tools/cat.ts:169
 [+]     1  front/lib/api/actions/servers/data_sources_file_system/tools/search.ts:55
 [+]     1  front/lib/api/actions/servers/common_utilities/tools/index.ts:100
@@ -52,6 +45,7 @@
            // TODO: create_conversation should have timezone
                     origin defaults to "web" which is fine for now
 [+]     3  front/lib/api/actions/servers/pod_tasks/tools/index.ts:303
+[+]     1  front/lib/api/actions/servers/query_tables_v2/tools/index.ts:262
 [+]     3  front/lib/api/actions/servers/run_dust_app/index.ts:141
 [+]     2  front/lib/api/actions/servers/search/tools/index.ts:65
 [+]     3  front/lib/api/actions/servers/slack_personal/tools/index.ts:449
@@ -72,12 +66,11 @@ to dynamically express that a server is not usable.
   - [x] make processToolNotification conversation-free
   - [x] make processToolResults conversation-free
   - [x] make getExitOrPauseEvents conversation-free
-- [ ] data_warehouse: flow to tool_outputs if in sandbox function
+- [x] data_warehouse: flow to tool_outputs if in sandbox function
 - [ ] image_generation: flow to tool_outputs if in sandbox function
-- [ ] query_tables_v2: flow to tool_outputs if in sandbox function
-- [ ] interactive_content: allow conversation-less create and publish (big one, flavien has context)
-- [ ] pod_manager: filter add_message_to_conversation tool when in sandbox function 
-- [ ] timezone on invocation for:
+- [x] query_tables_v2: flow to tool_outputs if in sandbox function
+- [ ] interactive_content: allow conversation-less create and publish (big one, flavien has context) 
+- [x] timezone on invocation for:
       - google_calendar
       - pod_manager/create_conversation
 
