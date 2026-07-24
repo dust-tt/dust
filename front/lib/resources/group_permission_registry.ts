@@ -78,6 +78,9 @@ export const ROLE_REGISTRY: Record<
   models_tier: {
     use: { verbs: ["use"], levels: ["instance"] },
   },
+  dust_app: {
+    admin: { verbs: ["admin"], levels: ["type"] },
+  },
 };
 
 interface GrantSpec {
@@ -197,6 +200,7 @@ export function workspacePermissionsFromGrants(
     identity: new Set(),
     audit_log: new Set(),
     models_tier: new Set(),
+    dust_app: new Set(),
   };
 
   for (const { grantType, resourceType } of grants) {

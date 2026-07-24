@@ -142,6 +142,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
       billing: ["admin"],
       identity: ["admin"],
       audit_log: ["read"],
+      dust_app: ["admin"],
     });
   });
 
