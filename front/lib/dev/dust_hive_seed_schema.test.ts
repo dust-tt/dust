@@ -83,6 +83,13 @@ describe("dust-hive seed SQL schema compatibility", () => {
         }
       );
       await frontSequelize.query(
+        `DELETE FROM group_permissions WHERE "workspaceId" = :workspaceId`,
+        {
+          replacements: { workspaceId: createdWorkspaceId },
+          type: QueryTypes.DELETE,
+        }
+      );
+      await frontSequelize.query(
         `DELETE FROM group_vaults WHERE "workspaceId" = :workspaceId`,
         {
           replacements: { workspaceId: createdWorkspaceId },
