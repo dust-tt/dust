@@ -1,4 +1,4 @@
-import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/api/llm/utils/tool_search";
+import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/model_constructors/types/tool_search";
 
 // Shared by the legacy LLM client (lib/api/llm/clients/anthropic) and the
 // model_constructors client. Both prepend the tool search tool when at least one

@@ -1,4 +1,4 @@
-import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/api/llm/utils/tool_search";
+import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/model_constructors/types/tool_search";
 import {
   assistantProviderPassthroughMessageToInputItems,
   assistantReasoningMessageToInputItems,
