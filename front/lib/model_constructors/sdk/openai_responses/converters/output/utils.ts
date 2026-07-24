@@ -1,4 +1,3 @@
-import { OPENAI_PROVIDER_ID } from "@app/lib/api/llm/clients/openai/types";
 import { logOpenAIToolSearchItem } from "@app/lib/api/llm/clients/openai/utils/tool_search_logging";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
@@ -229,7 +228,7 @@ export function toolSearchItemToProviderPassthroughEvent(
 
   return {
     type: "provider_passthrough",
-    content: { provider: OPENAI_PROVIDER_ID, block: item },
+    content: { provider: "openai", block: item },
     metadata,
   };
 }

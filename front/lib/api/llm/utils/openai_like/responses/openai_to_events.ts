@@ -1,4 +1,3 @@
-import { OPENAI_PROVIDER_ID } from "@app/lib/api/llm/clients/openai/types";
 import { logOpenAIToolSearchItem } from "@app/lib/api/llm/clients/openai/utils/tool_search_logging";
 import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -162,7 +161,7 @@ function itemToEvents(
       return [
         {
           type: "provider_passthrough",
-          content: { provider: OPENAI_PROVIDER_ID, block: item },
+          content: { provider: "openai", block: item },
           metadata,
         },
       ];

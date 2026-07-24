@@ -42,7 +42,6 @@ import {
   parseAnthropicToolSearchBlock,
   TOOL_SEARCH_SERVER_TOOL_NAMES,
 } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
-import { OPENAI_PROVIDER_ID } from "@app/lib/api/llm/clients/openai/types";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -637,7 +636,7 @@ export async function runModel(
   // deferred behind tool search is a provider-specific policy applied downstream.
   const toolSearchEnabled =
     (model.providerId === ANTHROPIC_PROVIDER_ID ||
-      model.providerId === OPENAI_PROVIDER_ID) &&
+      model.providerId === "openai") &&
     !!model.supportsToolSearch;
   const baseSpecifications: AgentActionSpecification[] =
     buildBaseSpecifications(availableActions, agentConfiguration);
