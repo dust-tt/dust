@@ -24,8 +24,6 @@
            // TODO: sidekick should be removed from list
 
 [~]     1  front/lib/api/actions/servers/image_generation/helpers.ts:217
-           // TODO: similar to data_warehouse, we need a specific flow to write to the pod
-                    tool_outputs when in sandbox function. See TODOs below.
 [~]     7  front/lib/api/actions/servers/interactive_content/tools/index.ts:52
            // We don't know how to create frames directly in pods for now.
            // Create still conversation tied. Will have to skip for now the server.
@@ -35,15 +33,12 @@
 [+]     1  front/lib/api/actions/servers/common_utilities/tools/index.ts:100
 [+]     3  front/lib/actions/mcp_internal_actions/wrappers.ts:141
 [+]     1  front/lib/api/actions/servers/google_calendar/helpers.ts:176
-           // TODO: user timezone for calendar, once we have it in invocations
 [+]     2  front/lib/api/actions/servers/google_drive/tools/index.ts:300
 [+]     4  front/lib/api/actions/servers/include_data/tools/index.ts:33
 [+]     3  front/lib/api/actions/servers/microsoft_teams/tools/index.ts:532
 [+]     2  front/lib/api/actions/servers/notion/tools/index.ts:118
 [+]     2  front/lib/api/actions/servers/pod_manager/helpers.ts:147
 [+]    11  front/lib/api/actions/servers/pod_manager/tools/index.ts:986
-           // TODO: create_conversation should have timezone
-                    origin defaults to "web" which is fine for now
 [+]     3  front/lib/api/actions/servers/pod_tasks/tools/index.ts:303
 [+]     1  front/lib/api/actions/servers/query_tables_v2/tools/index.ts:262
 [+]     3  front/lib/api/actions/servers/run_dust_app/index.ts:141
