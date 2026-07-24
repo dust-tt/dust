@@ -76,7 +76,7 @@ export function MembersPage() {
   );
 
   return (
-    <div className="mb-4 pb-8">
+    <div className="pb-8">
       <div className="flex flex-col gap-6">
         <Page.Header
           title="People"

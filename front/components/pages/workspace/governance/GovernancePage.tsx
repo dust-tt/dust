@@ -1,4 +1,4 @@
-import { GovernancePageLayout } from "@app/components/pages/workspace/governance/GovernancePageLayout";
+import { GovernancePageHeader } from "@app/components/pages/workspace/governance/GovernancePageHeader";
 import { GovernancePageSkeleton } from "@app/components/pages/workspace/governance/GovernancePageSkeleton";
 import { GovernanceSettingRow } from "@app/components/pages/workspace/governance/GovernanceSettingRow";
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
@@ -186,7 +186,8 @@ export const GovernancePage = () => {
 
   if (isError) {
     return (
-      <GovernancePageLayout>
+      <div className="flex flex-col gap-6">
+        <GovernancePageHeader />
         <ContentMessage
           variant="warning"
           icon={InfoCircle}
@@ -195,12 +196,13 @@ export const GovernancePage = () => {
         >
           Governance settings could not be loaded.
         </ContentMessage>
-      </GovernancePageLayout>
+      </div>
     );
   }
 
   return (
-    <GovernancePageLayout>
+    <div className="flex flex-col gap-6">
+      <GovernancePageHeader />
       <ContentMessage>
         This page is WIP. Do not change unless you know what you are doing.
       </ContentMessage>
@@ -262,6 +264,6 @@ export const GovernancePage = () => {
           </>
         )}
       </div>
-    </GovernancePageLayout>
+    </div>
   );
 };

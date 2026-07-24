@@ -27,7 +27,7 @@ export function WorkspaceIdentityProvisioningPage() {
   }
 
   return (
-    <div className="mb-4">
+    <div className="pb-8">
       <Page.Vertical gap="lg" align="stretch">
         <Page.Header
           title={

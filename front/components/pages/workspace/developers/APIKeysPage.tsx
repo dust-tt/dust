@@ -244,7 +244,7 @@ export function APIKeysPage() {
   const owner = useWorkspace();
 
   return (
-    <>
+    <div className="pb-8">
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="API Keys"
@@ -255,7 +255,6 @@ export function APIKeysPage() {
           <APIKeys owner={owner} />
         </Page.Vertical>
       </Page.Vertical>
-      <div className="h-12" />
-    </>
+    </div>
   );
 }
