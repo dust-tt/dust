@@ -129,8 +129,12 @@ export const MANUAL_ACTION_REQUIRED_TRIGGER_ID =
   "manual-action-required" as const;
 export const MANUAL_ACTION_REQUIRED_TAG = "manual-action-required" as const;
 
+export const ACTIVATION_NEW_CONVERSATION_TRIGGER_ID =
+  "activation-new-conversation" as const;
+
 export type WorkflowTriggerId =
   | typeof CONVERSATION_UNREAD_TRIGGER_ID
+  | typeof ACTIVATION_NEW_CONVERSATION_TRIGGER_ID
   | typeof POD_ADDED_AS_MEMBER_TRIGGER_ID
   | typeof AGENT_SUGGESTIONS_READY_TRIGGER_ID
   | typeof SKILL_SUGGESTIONS_READY_TRIGGER_ID
