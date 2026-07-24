@@ -42,6 +42,9 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
+// Do not remove: front-api routes call into this client for the similar skill
+// and similar agent discovery features. Without an explicit version front-api can silently
+// resolve a stale, incompatible `openai` version through node_modules hoisting.
 import { APIError, OpenAI, toFile } from "openai";
 import type {
   Response,
