@@ -224,7 +224,7 @@ describe("formatMessagesForUpsert", () => {
           fallback: "[no preview available]",
         },
       ],
-    } as unknown as MessageElement;
+    } as MessageElement;
 
     const text = sectionFullText(await upsert([message]));
 
@@ -250,7 +250,7 @@ describe("formatMessagesForUpsert", () => {
           text: { type: "mrkdwn", text: "*Summary*: service is down" },
         },
       ],
-    } as unknown as MessageElement;
+    } as MessageElement;
 
     const text = sectionFullText(await upsert([message]));
 
@@ -275,7 +275,7 @@ describe("formatMessagesForUpsert", () => {
           fallback: "CPU alert",
         },
       ],
-    } as unknown as MessageElement;
+    } as MessageElement;
 
     const text = sectionFullText(await upsert([message]));
 
