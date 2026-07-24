@@ -13,6 +13,7 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useApp, useCancelRun, useSavedRunStatus } from "@app/lib/swr/apps";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type {
   BlockRunConfig,
   SpecificationBlockType,
@@ -99,8 +100,9 @@ export function AppViewPage() {
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const owner = useWorkspace();
-  const { isAdmin, isBuilder } = useAuth();
-  const readOnly = !isBuilder;
+  const { isAdmin } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
+  const readOnly = !hasPermission("admin", "dust_app");
 
   const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
