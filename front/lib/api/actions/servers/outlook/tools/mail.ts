@@ -10,7 +10,7 @@ import {
   processAttachment,
 } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import {
-  getFileFromConversationAttachment,
+  getFileFromToolFileRef,
   sanitizeFilename,
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { getAllowedLabelsForMCPServer } from "@app/lib/api/actions/servers/microsoft/utils";
@@ -35,10 +35,10 @@ async function fetchAttachment(
     return new Ok(null);
   }
 
-  const fileResult = await getFileFromConversationAttachment(
+  const fileResult = await getFileFromToolFileRef(
     auth,
     attachmentFilePath,
-    { runContext }
+    runContext
   );
 
   if (fileResult.isErr()) {

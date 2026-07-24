@@ -238,12 +238,12 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = [
   {
     name: "upload_file",
     description:
-      "Upload a file from the Dust conversation to Microsoft OneDrive or SharePoint. Supports files up to 250MB using the simple upload API. Uses driveId if provided, otherwise falls back to siteId.",
+      "Upload a file from the current Dust execution to Microsoft OneDrive or SharePoint. Supports files up to 250MB using the simple upload API. Uses driveId if provided, otherwise falls back to siteId.",
     schema: {
       fileId: z
         .string()
         .describe(
-          "The file reference from the conversation. Accepts a scoped file path (e.g. 'conversation/report.pdf') or a legacy file sId."
+          "The file to upload. In an agent conversation, provide a scoped file path or legacy file sId. In a pod function, provide the file path in the pod sandbox (e.g. '/files/pod-<id>/report.pdf' or 'pod-<id>/report.pdf')."
         ),
       driveId: z
         .string()

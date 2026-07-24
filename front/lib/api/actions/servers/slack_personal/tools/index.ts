@@ -579,21 +579,15 @@ export function createSlackPersonalTools(
         unfurlMedia,
         show_sent_by_footer,
       },
-      { authInfo }
+      { authInfo, runContext }
     ) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
       }
 
-      if (!toolContext?.runContext) {
-        return new Err(
-          new MCPError("Unreachable: missing agentLoopRunContext.")
-        );
-      }
-
       try {
-        return await executePostMessage(auth, toolContext, {
+        return await executePostMessage(auth, runContext, {
           to,
           message,
           threadTs,

@@ -119,7 +119,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = [
         .string()
         .optional()
         .describe(
-          "Optional file to attach to the message. Accepts a scoped file path (e.g. 'conversation/report.pdf') or a legacy file sId."
+          "Optional file to attach to the message. In an agent conversation, provide a scoped file path or legacy file sId. In a pod function, provide the file path in the pod sandbox (e.g. '/files/pod-<id>/report.pdf' or 'pod-<id>/report.pdf')."
         ),
       unfurlLinks: z
         .boolean()

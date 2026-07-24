@@ -3,7 +3,7 @@ import { Readable } from "node:stream";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { resolveConversationFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import { resolveToolFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
   getContentTypeFromOutputFormat,
   isBinaryFormat,
@@ -63,14 +63,14 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
     const convertapi = new ConvertAPI(convertAPIKey);
     let url = file_id_or_url;
 
-    // When the input is not a URL it references a conversation file: either a
-    // legacy `fil_` id or a canonical scoped path (e.g. `conversation-{id}/x.csv`)
-    // as returned by generate_file for text outputs. Resolve it to a signed URL
-    // that ConvertAPI can fetch.
+    // When the input is not a URL, resolve it from the current tool run to a
+    // signed URL that ConvertAPI can fetch.
     if (!validateUrl(file_id_or_url).valid) {
-      const refResult = await resolveConversationFileRef(auth, file_id_or_url, {
-        runContext,
-      });
+      const refResult = await resolveToolFileRef(
+        auth,
+        file_id_or_url,
+        runContext
+      );
       if (refResult.isErr()) {
         return new Err(
           new MCPError(`File not found: ${file_id_or_url}`, {

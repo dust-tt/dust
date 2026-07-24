@@ -82,7 +82,7 @@ export const GMAIL_TOOLS_METADATA = [
         .string()
         .optional()
         .describe(
-          "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
+          "Optional. File to attach to the email. In an agent conversation, provide a scoped file path or legacy file sId. In a pod function, provide the file path in the pod sandbox (e.g. `/files/pod-<id>/report.pdf` or `pod-<id>/report.pdf`)."
         ),
     },
     stake: "medium",
@@ -272,7 +272,7 @@ export const GMAIL_TOOLS_METADATA = [
         .string()
         .optional()
         .describe(
-          "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
+          "Optional. File to attach to the email. In an agent conversation, provide a scoped file path or legacy file sId. In a pod function, provide the file path in the pod sandbox (e.g. `/files/pod-<id>/report.pdf` or `pod-<id>/report.pdf`)."
         ),
     },
     stake: "high",

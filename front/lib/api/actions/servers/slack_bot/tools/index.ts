@@ -33,19 +33,15 @@ export function createSlackBotTools(
         unfurlMedia,
         showSentByFooter,
       },
-      { authInfo }
+      { authInfo, runContext }
     ) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
       }
 
-      if (!toolContext?.runContext) {
-        return new Err(new MCPError("Issue with agent context"));
-      }
-
       try {
-        return await executePostMessage(auth, toolContext, {
+        return await executePostMessage(auth, runContext, {
           to,
           message,
           threadTs,

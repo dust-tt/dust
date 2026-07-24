@@ -53,7 +53,7 @@ export const FILE_GENERATION_TOOLS_METADATA = [
   {
     name: "convert_file_format",
     description:
-      "Convert an existing conversation file into another format, for example turn a document into a PDF.",
+      "Convert an existing Dust file into another format, for example turn a document into a PDF.",
     schema: {
       file_name: z
         .string()
@@ -63,7 +63,7 @@ export const FILE_GENERATION_TOOLS_METADATA = [
       file_id_or_url: z
         .string()
         .describe(
-          "The ID or URL of the file to convert. You can either provide the ID of a file in the conversation (note: if the file ID is already in the desired format, no conversion is needed) or the URL to a file."
+          "The URL or Dust file to convert. In an agent conversation, provide a scoped file path or legacy file sId. In a pod function, provide the file path in the pod sandbox (e.g. '/files/pod-<id>/report.pdf' or 'pod-<id>/report.pdf'). If the file is already in the desired format, no conversion is needed."
         ),
       source_format: z
         .string()

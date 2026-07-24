@@ -6,7 +6,7 @@ import {
   processAttachment,
 } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import {
-  getFileFromConversationAttachment,
+  getFileFromToolFileRef,
   sanitizeFilename,
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
@@ -573,10 +573,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
     }
 
     try {
-      // Get the file from conversation attachment
-      const fileResult = await getFileFromConversationAttachment(auth, fileId, {
-        runContext,
-      });
+      const fileResult = await getFileFromToolFileRef(auth, fileId, runContext);
 
       if (fileResult.isErr()) {
         return new Err(new MCPError(fileResult.error));

@@ -26,8 +26,9 @@ export const imageGenerationToolInputSchema = z.object({
     .max(14)
     .optional()
     .describe(
-      "Optional reference images for editing or compositing. Accepts scoped file paths " +
-        "(e.g. 'conversation/photo.png') or legacy file sIds. Use to edit photos " +
+      "Optional reference images for editing or compositing. In an agent conversation, " +
+        "provide scoped file paths or legacy file sIds. In a pod function, provide file paths " +
+        "in the pod sandbox (e.g. '/files/pod-<id>/photo.png' or 'pod-<id>/photo.png'). Use to edit photos " +
         "(background removal, color changes, adding elements), combine multiple images, " +
         "apply a style from one image to another, or generate variations of an existing image. " +
         "Supports PNG, JPEG, and WebP. Up to 14 images."

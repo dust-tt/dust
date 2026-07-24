@@ -1,22 +1,28 @@
-import type { ToolContext } from "@app/lib/actions/types";
+import type {
+  SandboxFunctionRunContext,
+  ToolContext,
+  ToolRunContext,
+} from "@app/lib/actions/types";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { makeExtra } from "@app/tests/utils/conversation_test_factories";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
+import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { Err, Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  getFileFromConversationAttachment,
-  resolveConversationFileRef,
-} from "./file_utils";
+import { getFileFromToolFileRef, resolveToolFileRef } from "./file_utils";
 
-const { mockResolveFile, mockFromScopedPath } = vi.hoisted(() => ({
+const { mockResolveFile, mockForPod, mockFromScopedPath } = vi.hoisted(() => ({
   mockResolveFile: vi.fn(),
+  mockForPod: vi.fn(),
   mockFromScopedPath: vi.fn(),
 }));
 
@@ -41,6 +47,7 @@ vi.mock("@app/lib/api/file_system", async (importOriginal) => {
     ...actual,
     DustFileSystem: {
       ...actual.DustFileSystem,
+      forPod: mockForPod,
       fromScopedPath: mockFromScopedPath,
     },
   };
@@ -52,6 +59,13 @@ function makeToolContext(conversation: ConversationType): ToolContext {
   } as unknown as ToolContext;
 }
 
+function getRunContext(toolContext: ToolContext): ToolRunContext {
+  if (!toolContext.runContext) {
+    throw new Error("Tool run context expected");
+  }
+  return toolContext.runContext;
+}
+
 function makeReadableStream(content: string): Readable {
   return new Readable({
     read() {
@@ -61,7 +75,42 @@ function makeReadableStream(content: string): Readable {
   });
 }
 
-describe("getFileFromConversationAttachment", () => {
+async function makeSandboxRunContext(): Promise<{
+  auth: Awaited<
+    ReturnType<typeof createPersistedSandboxFunctionInvocationTokenTestContext>
+  >["auth"];
+  podId: string;
+  runContext: SandboxFunctionRunContext;
+}> {
+  const { auth, workspace, invocation, globalSpace, podSpace } =
+    await createPersistedSandboxFunctionInvocationTokenTestContext();
+  const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
+    name: "common_utilities",
+    useCase: null,
+  });
+  const view = await MCPServerViewFactory.create(
+    workspace,
+    server.id,
+    globalSpace
+  );
+  const action = await SandboxFunctionMCPActionFactory.create(auth, {
+    invocation,
+    mcpServerView: view,
+  });
+
+  return {
+    auth,
+    podId: podSpace.sId,
+    runContext: {
+      contextType: "sandbox_function",
+      action,
+      invocation,
+      toolConfiguration: action.toolConfiguration,
+    },
+  };
+}
+
+describe("getFileFromToolFileRef", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -94,10 +143,10 @@ describe("getFileFromConversationAttachment", () => {
         })
       );
 
-      const result = await getFileFromConversationAttachment(
+      const result = await getFileFromToolFileRef(
         auth,
         canonicalPath,
-        makeExtra(auth, conversation)
+        getRunContext(makeExtra(auth, conversation))
       );
 
       expect(result.isOk()).toBe(true);
@@ -127,10 +176,10 @@ describe("getFileFromConversationAttachment", () => {
         })
       );
 
-      const result = await getFileFromConversationAttachment(
+      const result = await getFileFromToolFileRef(
         auth,
         `conversation-${conversation.sId}/missing.pdf`,
-        makeExtra(auth, conversation)
+        getRunContext(makeExtra(auth, conversation))
       );
 
       expect(result.isErr()).toBe(true);
@@ -155,13 +204,48 @@ describe("getFileFromConversationAttachment", () => {
         new Err({ message: "Conversation not found" })
       );
 
-      const result = await getFileFromConversationAttachment(
+      const result = await getFileFromToolFileRef(
         auth,
         `conversation-${conversation.sId}/file.txt`,
-        makeExtra(auth, conversation)
+        getRunContext(makeExtra(auth, conversation))
       );
 
       expect(result.isErr()).toBe(true);
+    });
+  });
+
+  describe("sandbox function path", () => {
+    it("reads an absolute path from the invoking function's pod", async () => {
+      const { auth, podId, runContext } = await makeSandboxRunContext();
+      const expectedContent = "col1,col2\nval1,val2";
+      const stat = vi
+        .fn()
+        .mockResolvedValue(new Ok({ contentType: "text/csv", sizeBytes: 19 }));
+      const read = vi
+        .fn()
+        .mockResolvedValue(new Ok(makeReadableStream(expectedContent)));
+
+      mockForPod.mockResolvedValue(new Ok({ stat, read }));
+
+      const result = await getFileFromToolFileRef(
+        auth,
+        `/files/pod-${podId}/reports/data.csv`,
+        runContext
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
+      }
+      expect(result.value.buffer.toString()).toBe(expectedContent);
+      expect(result.value.filename).toBe("data.csv");
+      expect(mockForPod).toHaveBeenCalledWith(
+        auth,
+        runContext.invocation.sandboxFunction.space
+      );
+      expect(stat).toHaveBeenCalledWith(`pod-${podId}/reports/data.csv`);
+      expect(read).toHaveBeenCalledWith(`pod-${podId}/reports/data.csv`);
+      expect(mockFromScopedPath).not.toHaveBeenCalled();
     });
   });
 
@@ -212,10 +296,10 @@ describe("getFileFromConversationAttachment", () => {
         makeReadableStream(expectedContent)
       );
 
-      const result = await getFileFromConversationAttachment(
+      const result = await getFileFromToolFileRef(
         auth,
         file.sId,
-        makeToolContext(conversationRes.value)
+        getRunContext(makeToolContext(conversationRes.value))
       );
 
       expect(result.isOk()).toBe(true);
@@ -249,10 +333,10 @@ describe("getFileFromConversationAttachment", () => {
         );
       }
 
-      const result = await getFileFromConversationAttachment(
+      const result = await getFileFromToolFileRef(
         auth,
         "fil_notfound",
-        makeToolContext(conversationRes.value)
+        getRunContext(makeToolContext(conversationRes.value))
       );
 
       expect(result.isErr()).toBe(true);
@@ -284,10 +368,10 @@ describe("getFileFromConversationAttachment", () => {
         })
       );
 
-      const result = await getFileFromConversationAttachment(
+      const result = await getFileFromToolFileRef(
         auth,
         "conversation/notes.txt",
-        makeExtra(auth, conversation)
+        getRunContext(makeExtra(auth, conversation))
       );
 
       expect(result.isOk()).toBe(true);
@@ -314,10 +398,10 @@ describe("getFileFromConversationAttachment", () => {
         new Err({ message: "GCS object not found" })
       );
 
-      const result = await getFileFromConversationAttachment(
+      const result = await getFileFromToolFileRef(
         auth,
         "conversation/missing.pdf",
-        makeExtra(auth, conversation)
+        getRunContext(makeExtra(auth, conversation))
       );
 
       expect(result.isErr()).toBe(true);
@@ -329,7 +413,7 @@ describe("getFileFromConversationAttachment", () => {
   });
 });
 
-describe("resolveConversationFileRef", () => {
+describe("resolveToolFileRef", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -363,10 +447,10 @@ describe("resolveConversationFileRef", () => {
         })
       );
 
-      const result = await resolveConversationFileRef(
+      const result = await resolveToolFileRef(
         auth,
         canonicalPath,
-        undefined // canonical paths do not need toolContext
+        getRunContext(makeExtra(auth, conversation))
       );
 
       expect(result.isOk()).toBe(true);
@@ -379,7 +463,7 @@ describe("resolveConversationFileRef", () => {
       expect(await result.value.getSignedUrl()).toBe(signedUrl);
     });
 
-    it("does not require toolContext", async () => {
+    it("resolves a canonical path from the agent loop", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
@@ -404,11 +488,10 @@ describe("resolveConversationFileRef", () => {
         })
       );
 
-      // Pass undefined — should succeed for canonical paths.
-      const result = await resolveConversationFileRef(
+      const result = await resolveToolFileRef(
         auth,
         `conversation-${conversation.sId}/file.txt`,
-        undefined
+        getRunContext(makeExtra(auth, conversation))
       );
 
       expect(result.isOk()).toBe(true);
@@ -431,10 +514,10 @@ describe("resolveConversationFileRef", () => {
         })
       );
 
-      const result = await resolveConversationFileRef(
+      const result = await resolveToolFileRef(
         auth,
         `conversation-${conversation.sId}/missing.png`,
-        makeExtra(auth, conversation)
+        getRunContext(makeExtra(auth, conversation))
       );
 
       expect(result.isErr()).toBe(true);
@@ -442,6 +525,43 @@ describe("resolveConversationFileRef", () => {
         return;
       }
       expect(result.error).toContain("not found");
+    });
+  });
+
+  describe("sandbox function path", () => {
+    it("resolves a scoped path from the invoking function's pod", async () => {
+      const { auth, podId, runContext } = await makeSandboxRunContext();
+      const signedUrl = "https://storage.example.com/signed";
+      const stat = vi
+        .fn()
+        .mockResolvedValue(
+          new Ok({ contentType: "image/png", sizeBytes: 512 })
+        );
+      const getDownloadUrl = vi.fn().mockResolvedValue(new Ok(signedUrl));
+
+      mockForPod.mockResolvedValue(
+        new Ok({
+          stat,
+          getDownloadUrl,
+        })
+      );
+
+      const scopedPath = `pod-${podId}/images/reference.png`;
+      const result = await resolveToolFileRef(auth, scopedPath, runContext);
+
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
+      }
+      expect(result.value.fileName).toBe("reference.png");
+      expect(await result.value.getSignedUrl()).toBe(signedUrl);
+      expect(mockForPod).toHaveBeenCalledWith(
+        auth,
+        runContext.invocation.sandboxFunction.space
+      );
+      expect(stat).toHaveBeenCalledWith(scopedPath);
+      expect(getDownloadUrl).toHaveBeenCalledWith(scopedPath);
+      expect(mockFromScopedPath).not.toHaveBeenCalled();
     });
   });
 
@@ -465,10 +585,10 @@ describe("resolveConversationFileRef", () => {
       useCaseMetadata: { conversationId: conversation.sId },
     });
 
-    const result = await resolveConversationFileRef(
+    const result = await resolveToolFileRef(
       auth,
       file.sId,
-      makeExtra(auth, conversation)
+      getRunContext(makeExtra(auth, conversation))
     );
 
     expect(result.isOk()).toBe(true);
@@ -508,10 +628,10 @@ describe("resolveConversationFileRef", () => {
     });
 
     // But toolContext points to conversation B.
-    const result = await resolveConversationFileRef(
+    const result = await resolveToolFileRef(
       auth,
       file.sId,
-      makeExtra(auth, conversationB)
+      getRunContext(makeExtra(auth, conversationB))
     );
 
     expect(result.isErr()).toBe(true);

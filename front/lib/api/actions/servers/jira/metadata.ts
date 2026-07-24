@@ -399,18 +399,18 @@ export const JIRA_TOOLS_METADATA = [
   {
     name: "upload_attachment",
     description:
-      "Attach a file to a Jira issue (upload). The file can come from the current Dust conversation or be provided as base64 data.",
+      "Attach a file to a Jira issue (upload). The file can come from the current Dust execution or be provided as base64 data.",
     schema: {
       issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
       attachment: z.union([
         z.object({
           type: z
             .literal("conversation_file")
-            .describe("Use this for files already in the Dust conversation"),
+            .describe("Use this for files already in the Dust execution"),
           fileId: z
             .string()
             .describe(
-              "The file reference from the conversation. Accepts a scoped file path (e.g. 'conversation/report.pdf') or a legacy file sId."
+              "The file to upload. In an agent conversation, provide a scoped file path or legacy file sId. In a pod function, provide the file path in the pod sandbox (e.g. '/files/pod-<id>/report.pdf' or 'pod-<id>/report.pdf')."
             ),
         }),
         z.object({

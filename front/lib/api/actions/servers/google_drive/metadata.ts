@@ -648,12 +648,12 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
   {
     name: "upload_file",
     description:
-      "Upload a file from the Dust conversation to Google Drive. Optionally specify a folder to upload into.",
+      "Upload a file from the current Dust execution to Google Drive. Optionally specify a folder to upload into.",
     schema: {
       fileId: z
         .string()
         .describe(
-          "The file reference from the conversation. Accepts a scoped file path (e.g. 'conversation/report.pdf') or a legacy file sId."
+          "The file to upload. In an agent conversation, provide a scoped file path or legacy file sId. In a pod function, provide the file path in the pod sandbox (e.g. '/files/pod-<id>/report.pdf' or 'pod-<id>/report.pdf')."
         ),
       parentId: z
         .string()
@@ -665,7 +665,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
         .string()
         .optional()
         .describe(
-          "Optional custom filename for the uploaded file. If not provided, uses the original filename from the conversation attachment."
+          "Optional custom filename for the uploaded file. If not provided, uses the original filename."
         ),
     },
     stake: "low",

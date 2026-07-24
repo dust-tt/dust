@@ -1,8 +1,9 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import { getFileFromToolFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
   isAgentLoopRunContext,
   type ToolContext,
+  type ToolRunContext,
 } from "@app/lib/actions/types";
 import {
   formatSlackMessageForLLM,
@@ -753,7 +754,7 @@ export async function executeListPublicChannels(
 
 export async function executePostMessage(
   auth: Authenticator,
-  toolContext: ToolContext,
+  runContext: ToolRunContext,
   {
     accessToken,
     to,
@@ -794,17 +795,14 @@ export async function executePostMessage(
 
   const originalMessage = message;
 
-  if (
-    showSentByFooter !== false &&
-    isAgentLoopRunContext(toolContext.runContext)
-  ) {
+  if (showSentByFooter !== false && isAgentLoopRunContext(runContext)) {
     const agentUrl = getConversationRoute(
       auth.getNonNullableWorkspace().sId,
       "new",
-      `agentDetails=${toolContext.runContext?.agentConfiguration.sId}`,
+      `agentDetails=${runContext.agentConfiguration.sId}`,
       config.getAppUrl()
     );
-    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${toolContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${runContext.agentConfiguration.name} Agent> on Dust_`;
   } else {
     message = slackifyMarkdown(originalMessage);
   }
@@ -815,11 +813,7 @@ export async function executePostMessage(
 
   // If a file is provided, upload it as attachment of the original message.
   if (fileId) {
-    const fileResult = await getFileFromConversationAttachment(
-      auth,
-      fileId,
-      toolContext
-    );
+    const fileResult = await getFileFromToolFileRef(auth, fileId, runContext);
     if (fileResult.isErr()) {
       return new Err(
         new MCPError(`File not found: ${fileId}`, { tracked: false })

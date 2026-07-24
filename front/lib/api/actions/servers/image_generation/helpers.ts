@@ -4,11 +4,12 @@ import type {
   ToolGeneratedFilePathType,
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { resolveConversationFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import { resolveToolFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type {
   AgentLoopRunContext,
   SandboxFunctionRunContext,
   ToolContext,
+  ToolRunContext,
 } from "@app/lib/actions/types";
 import type { ReferenceImageFile } from "@app/lib/api/actions/servers/image_generation/imageGeneration";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
@@ -393,22 +394,18 @@ async function processSingleImageFile(
     maxImageSize,
     supportedContentTypes,
     providerId,
-    toolContext,
+    runContext,
   }: {
     imageFileId: string;
     maxImageSize: number;
     supportedContentTypes: string[];
     providerId: ModelProviderIdType;
-    toolContext: ToolContext | undefined;
+    runContext: ToolRunContext;
   }
 ): Promise<Ok<ReferenceImageFile> | Err<MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const refResult = await resolveConversationFileRef(
-    auth,
-    imageFileId,
-    toolContext
-  );
+  const refResult = await resolveToolFileRef(auth, imageFileId, runContext);
   if (refResult.isErr()) {
     return new Err(
       new MCPError(`File not found: ${imageFileId}`, { tracked: false })
@@ -474,12 +471,13 @@ export async function processImageFileIds(
 ): Promise<Ok<ReferenceImageFile[]> | Err<MCPError>> {
   if (!toolContext?.runContext) {
     return new Err(
-      new MCPError("No conversation context available for file access", {
+      new MCPError("No tool run context available for file access", {
         tracked: false,
       })
     );
   }
 
+  const { runContext } = toolContext;
   const maxImageSize = MAX_FILE_SIZES.image;
 
   const results = await concurrentExecutor(
@@ -490,7 +488,7 @@ export async function processImageFileIds(
         maxImageSize,
         supportedContentTypes,
         providerId,
-        toolContext,
+        runContext,
       }),
     { concurrency: 8 }
   );
