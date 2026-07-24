@@ -513,9 +513,28 @@ export async function postSkillSuggestionStatusUpdate(
     // as unread for the acting editor. Push `lastReadAt` a minute into the
     // future so the ack holds through the imminent agent completion — the
     // NOOP reply lands within milliseconds.
-    await ConversationResource.markAsReadForAuthUser(auth, {
-      conversation: conversationResource,
-      lastReadAt: new Date(Date.now() + 60_000),
-    });
+    const lastReadAt = new Date(Date.now() + 60_000);
+
+    // When the last pending suggestion of this notification conversation has
+    // been handled, mark the conversation as read for every participant: the
+    // other editors have nothing left to act on and should not be notified
+    // about an already-handled suggestion list.
+    const hasPending =
+      await SkillSuggestionResource.hasPendingForNotificationConversation(
+        auth,
+        conversationResource.id
+      );
+
+    if (hasPending) {
+      await ConversationResource.markAsReadForAuthUser(auth, {
+        conversation: conversationResource,
+        lastReadAt,
+      });
+    } else {
+      await ConversationResource.markAsReadForAllParticipants(auth, {
+        conversation: conversationResource,
+        lastReadAt,
+      });
+    }
   }
 }

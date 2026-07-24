@@ -62,7 +62,9 @@ async function buildConnectedServerIdsByType(
       auth,
       { connectionType: "personal" }
     );
-    connectedByType["personal"] = new Set(connections.map((c) => c.mcpServerId));
+    connectedByType["personal"] = new Set(
+      connections.map((c) => c.mcpServerId)
+    );
   }
   if (neededTypes.has("workspace")) {
     const connections = await MCPServerConnectionResource.listByWorkspace(
@@ -84,9 +86,9 @@ function isServerConnected(
   if (!view.oAuthUseCase) {
     return true;
   }
-  return connectedByType[
-    connectionTypeForOAuthUseCase(view.oAuthUseCase)
-  ].has(view.mcpServerId);
+  return connectedByType[connectionTypeForOAuthUseCase(view.oAuthUseCase)].has(
+    view.mcpServerId
+  );
 }
 
 async function resolveToolExecutionMode(

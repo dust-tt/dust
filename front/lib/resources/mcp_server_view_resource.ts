@@ -1705,7 +1705,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         this.internalMCPServerId
       );
       if (nameResult.isOk()) {
-        const tools = INTERNAL_MCP_SERVERS[nameResult.value.name].metadata.tools;
+        const tools =
+          INTERNAL_MCP_SERVERS[nameResult.value.name].metadata.tools;
         const overrides = new Map(
           this.allToolsMetadata.map((m) => [m.toolName, m])
         );

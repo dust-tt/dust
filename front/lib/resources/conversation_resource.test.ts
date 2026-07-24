@@ -8,6 +8,7 @@ import {
   ConversationModel,
   ConversationParticipantModel,
   MessageModel,
+  UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
@@ -6424,6 +6425,89 @@ describe("markAsReadForAuthUser", () => {
     });
     assert(row);
     expect(row.lastReadAt.getTime()).toBe(explicit.getTime());
+  });
+});
+
+describe("markAsReadForAllParticipants", () => {
+  let workspace: LightWorkspaceType;
+  let auth: Authenticator;
+  let otherAuth: Authenticator;
+  let conversation: ConversationWithoutContentType;
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+    const [agent] = await setupTestAgents(workspace, user);
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+      lastReadAt: null,
+    });
+    await ConversationResource.upsertParticipation(otherAuth, {
+      conversation,
+      action: "posted",
+      user: otherAuth.getNonNullableUser().toJSON(),
+      lastReadAt: null,
+    });
+  });
+
+  it("marks the conversation as read for every participant", async () => {
+    const lastReadAt = new Date(Date.now() + 60_000);
+    await ConversationResource.markAsReadForAllParticipants(auth, {
+      conversation,
+      lastReadAt,
+    });
+
+    const rows = await UserConversationReadsModel.findAll({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    expect(rows).toHaveLength(2);
+    expect(
+      rows.every((row) => row.lastReadAt.getTime() === lastReadAt.getTime())
+    ).toBe(true);
+  });
+
+  it("overwrites existing read entries", async () => {
+    const earlier = new Date(Date.now() - 60_000);
+    await ConversationResource.markAsReadForAuthUser(otherAuth, {
+      conversation,
+      lastReadAt: earlier,
+    });
+
+    const lastReadAt = new Date(Date.now() + 60_000);
+    await ConversationResource.markAsReadForAllParticipants(auth, {
+      conversation,
+      lastReadAt,
+    });
+
+    const row = await UserConversationReadsModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        userId: otherAuth.getNonNullableUser().id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    assert(row);
+    expect(row.lastReadAt.getTime()).toBe(lastReadAt.getTime());
   });
 });
 
