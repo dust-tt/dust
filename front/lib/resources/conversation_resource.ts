@@ -1199,23 +1199,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async fetchParticipationMapForUser(
     auth: Authenticator,
-    conversationIds?: number[]
+    conversationIds: number[]
   ): Promise<Map<number, UserParticipation>> {
     const user = auth.user();
 
     assert(user, "User is expected to be authenticated");
 
-    const whereClause: WhereOptions<ConversationParticipantModel> = {
-      userId: user.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    };
-
-    if (conversationIds && conversationIds.length > 0) {
-      whereClause.conversationId = { [Op.in]: conversationIds };
+    if (conversationIds.length === 0) {
+      return new Map();
     }
 
     const participations = await ConversationParticipantModel.findAll({
-      where: whereClause,
+      where: {
+        userId: user.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: { [Op.in]: conversationIds },
+      },
       attributes: ["actionRequired", "conversationId", "updatedAt"],
     });
 
@@ -1804,9 +1803,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async listPrivateConversationsForUser(
     auth: Authenticator
   ): Promise<ConversationResource[]> {
-    // First get all participations for the user to get conversation IDs and metadata.
-    const participationMap = await this.fetchParticipationMapForUser(auth);
-    const conversationIds = Array.from(participationMap.keys());
+    const user = auth.user();
+
+    assert(user, "User is expected to be authenticated");
+
+    // The public v1 listing is deliberately unbounded: the user's whole participation history.
+    const participations = await ConversationParticipantModel.findAll({
+      where: {
+        userId: user.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      attributes: ["conversationId"],
+    });
+    const conversationIds = participations.map((p) => p.conversationId);
 
     if (conversationIds.length === 0) {
       return [];
@@ -1824,15 +1833,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     );
 
-    // Attach participation data to resources.
-    conversations.forEach((c) => {
-      const participation = participationMap.get(c.id);
-      if (participation) {
-        c.userParticipation = participation;
-      }
-    });
-
-    await this.enrichWithReadState(auth, conversations);
+    await this.enrichWithParticipationAndReadState(auth, conversations);
 
     // Sort by participation updated time descending.
     return conversations.sort(
@@ -1868,11 +1869,21 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       lastValue: null,
     };
 
-    const participationMap = await this.fetchParticipationMapForUser(
-      auth,
-      restrictToConversationModelIds
-    );
-    let conversationIds = Array.from(participationMap.keys());
+    const user = auth.user();
+
+    assert(user, "User is expected to be authenticated");
+
+    const participations = await ConversationParticipantModel.findAll({
+      where: {
+        userId: user.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        ...(restrictToConversationModelIds
+          ? { conversationId: { [Op.in]: restrictToConversationModelIds } }
+          : {}),
+      },
+      attributes: ["conversationId"],
+    });
+    const conversationIds = participations.map((p) => p.conversationId);
 
     if (conversationIds.length === 0) {
       return emptyResult;
@@ -1930,14 +1941,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const resultConversations = conversations.slice(0, pagination.limit);
 
-    resultConversations.forEach((c) => {
-      const participation = participationMap.get(c.id);
-      if (participation) {
-        c.userParticipation = participation;
-      }
-    });
-
-    await this.enrichWithReadState(auth, resultConversations);
+    await this.enrichWithParticipationAndReadState(auth, resultConversations);
 
     // Advance the cursor past the scanned window, unless accessible rows were
     // cut by the limit — those must reappear on the next page.
@@ -1954,6 +1958,114 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  private static async fetchPrivateConversationsPaginatedByActivity(
+    auth: Authenticator,
+    pagination: {
+      limit: number;
+      lastValue?: string;
+      orderDirection?: "asc" | "desc";
+    }
+  ): Promise<{
+    conversations: ConversationResource[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const user = auth.user();
+
+    assert(user, "User is expected to be authenticated");
+
+    const emptyResult = {
+      conversations: [],
+      hasMore: false,
+      lastValue: null,
+    };
+
+    const orderDirection = pagination.orderDirection ?? "desc";
+    const fetchLimit = pagination.limit + 1;
+
+    let cursorDate: Date | null = null;
+    if (pagination.lastValue) {
+      const timestampMs = parseInt(pagination.lastValue, 10);
+      if (!Number.isNaN(timestampMs)) {
+        cursorDate = new Date(timestampMs);
+      }
+    }
+
+    // One scan of the (workspaceId, userId, conversationUpdatedAt) index joined to
+    // conversations, with every SQL-expressible filter inside the join so the limit only counts
+    // surviving rows. baseFetchWithAuthorization still filters rows after the SQL limit (deleted
+    // space references, ACLs); as in fetchPrivateConversationsPaginated, hasMore and the cursor
+    // are derived from the scanned window, not the filtered rows.
+    const participations = await ConversationParticipantModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user.id,
+        conversationUpdatedAt: cursorDate
+          ? { [orderDirection === "desc" ? Op.lt : Op.gt]: cursorDate }
+          : // Null = not backfilled yet; never listed.
+            { [Op.ne]: null },
+      },
+      include: [
+        {
+          model: ConversationModel,
+          required: true,
+          attributes: [],
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            spaceId: { [Op.is]: null },
+            visibility: { [Op.eq]: "unlisted" },
+          },
+        },
+      ],
+      order: [
+        ["conversationUpdatedAt", orderDirection === "desc" ? "DESC" : "ASC"],
+      ],
+      limit: fetchLimit,
+      attributes: ["conversationId", "conversationUpdatedAt"],
+    });
+
+    if (participations.length === 0) {
+      return emptyResult;
+    }
+
+    const hasMore = participations.length === fetchLimit;
+    const activityByConversationId = new Map(
+      participations.map((p) => [p.conversationId, p.conversationUpdatedAt])
+    );
+
+    const conversations = await this.baseFetchWithAuthorization(
+      auth,
+      {},
+      {
+        where: { id: { [Op.in]: participations.map((p) => p.conversationId) } },
+      }
+    );
+
+    // Back to scan (activity) order.
+    const conversationById = new Map(conversations.map((c) => [c.id, c]));
+    const authorized = removeNulls(
+      participations.map((p) => conversationById.get(p.conversationId) ?? null)
+    );
+
+    const resultConversations = authorized.slice(0, pagination.limit);
+
+    await this.enrichWithParticipationAndReadState(auth, resultConversations);
+
+    // Advance the cursor past the scanned window, unless accessible rows were
+    // cut by the limit — those must reappear on the next page.
+    const lastReturned = resultConversations[resultConversations.length - 1];
+    const lastCursorDate =
+      authorized.length > pagination.limit && lastReturned
+        ? activityByConversationId.get(lastReturned.id)
+        : participations[participations.length - 1].conversationUpdatedAt;
+
+    return {
+      conversations: resultConversations,
+      hasMore,
+      lastValue: lastCursorDate ? lastCursorDate.getTime().toString() : null,
+    };
+  }
+
   static async listPrivateConversationsForUserPaginated(
     auth: Authenticator,
     pagination: {
@@ -1966,9 +2078,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     hasMore: boolean;
     lastValue: string | null;
   }> {
-    const result = await this.fetchPrivateConversationsPaginated(auth, {
-      pagination,
-    });
+    const result = await this.fetchPrivateConversationsPaginatedByActivity(
+      auth,
+      pagination
+    );
     const nextWakeupAtByConversationId =
       await this.fetchNextWakeupAtByConversationId(
         auth,
