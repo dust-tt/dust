@@ -7,9 +7,26 @@ import { Icon } from "./Icon";
 
 interface PageProps {
   children: React.ReactNode;
+  /**
+   * @deprecated The `Page` scaffold (root `max-w-4xl` / padding, including
+   * this `variant` prop) is deprecated for in-shell pages: the app shell
+   * (`AppContentLayout` in `front`) owns page width and gutters — declare an
+   * archetype with `useSetContentWidth` instead. The `Page.Vertical`,
+   * `Page.Horizontal`, `Page.Header`, `Page.SectionHeader`, `Page.H` and
+   * `Page.P` primitives remain fully supported.
+   * See design_docs/LAYOUT_SYSTEM.md §3.4.
+   */
   variant?: "modal" | "normal";
 }
 
+/**
+ * @deprecated As a page *scaffold* (the root `max-w-4xl` + padding wrapper),
+ * `Page` is deprecated for in-shell pages — the app shell owns width and
+ * gutters (design_docs/LAYOUT_SYSTEM.md §3.4). Keep using the `Page.*`
+ * primitives (`Page.Vertical`, `Page.Horizontal`, `Page.Header`, ...); only
+ * the root wrapper role is going away. Standalone surfaces (onboarding,
+ * auth) may keep it until the Standalone scaffold ships (Phase 3).
+ */
 export function Page({ children, variant = "normal" }: PageProps) {
   const mainVariantClasses =
     variant === "normal" ? "h-full py-16" : "h-full py-4 px-2";
