@@ -59,7 +59,7 @@
 - `file_generation`: `convert_file_format` accepts URLs, but conversation file references still
   require an agent loop context.
 - `gmail`: draft and send operations work in a pod function context; conversation attachments are
-  only resolved in an agent loop context and are omitted otherwise.
+  require an agent loop context.
 - `google_drive`: `upload_file` still requires an agent loop context to read a conversation file.
 - `image_generation`: reference-image files still require an agent loop context.
 - `jira`: URL attachments work in a pod function context; conversation file attachments still
