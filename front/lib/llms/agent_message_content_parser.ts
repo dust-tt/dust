@@ -1,5 +1,4 @@
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import assert from "@app/lib/utils/assert";
 import type {
   LightAgentConfigurationType,
   LightAgentConfigurationWithoutModelType,

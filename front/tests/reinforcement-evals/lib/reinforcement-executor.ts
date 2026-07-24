@@ -8,7 +8,10 @@ import {
   legacyModelIdToModel,
 } from "@app/lib/api/llm";
 import type { LLM } from "@app/lib/api/llm/llm";
-import { selectPreferredBatchEndpointForWorkspace, selectPreferredStreamEndpointForWorkspace } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
+import {
+  selectPreferredBatchEndpointForWorkspace,
+  selectPreferredStreamEndpointForWorkspace,
+} from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { BatchResultWithRunIds } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {

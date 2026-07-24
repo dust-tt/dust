@@ -288,10 +288,7 @@ export async function getReinforcedSkillsLLM(
     return null;
   }
 
-  const endpoint = await getBatchEndpointFromLegacyModelId(
-    auth,
-    model.modelId
-  );
+  const endpoint = await getBatchEndpointFromLegacyModelId(auth, model.modelId);
   if (!endpoint) {
     return null;
   }

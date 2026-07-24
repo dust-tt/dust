@@ -4,12 +4,12 @@ import { renderConversationForModel } from "@app/lib/api/assistant/conversation_
 import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
 import { getStreamLLM } from "@app/lib/api/llm";
 import type { LlmConversationOptions } from "@app/lib/api/llm/batch_llm";
-import { getStreamEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import {
   downloadBatchResultFromLlm,
   sendBatchCallToLlm,
   storeLlmResult,
 } from "@app/lib/api/llm/batch_llm";
+import { getStreamEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {

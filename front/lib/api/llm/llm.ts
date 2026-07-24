@@ -46,8 +46,12 @@ import pickBy from "lodash/pickBy";
 import startCase from "lodash/startCase";
 
 export abstract class LLM<
-TEndpoint extends DustStreamEndpointConstructor | DustBatchEndpointConstructor = DustStreamEndpointConstructor | DustBatchEndpointConstructor,
-TPayload = unknown,
+  TEndpoint extends
+    | DustStreamEndpointConstructor
+    | DustBatchEndpointConstructor =
+    | DustStreamEndpointConstructor
+    | DustBatchEndpointConstructor,
+  TPayload = unknown,
 > {
   protected modelId: ModelIdType;
   protected modelConfig: ModelConfigurationType;
@@ -79,7 +83,8 @@ TPayload = unknown,
     const modelConfig = modelInfo.endpoint.modelConfig;
     this.modelId = modelConfig.modelId;
     this.modelConfig = modelConfig;
-    this.temperature = modelInfo.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES["balanced"];
+    this.temperature =
+      modelInfo.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES["balanced"];
     // TODO(new-llm-router): We should not set reasoning effort to none
     // Not in scope of the current refactor
     this.reasoningEffort = modelInfo.reasoningEffort ?? "none";
