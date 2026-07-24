@@ -1528,7 +1528,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           workspaceId: this.workspaceId,
           roles: [
             { role: "admin", permissions: ["admin", "read", "write"] },
+            // TODO(governance): remove once manager is available for everyone
             { role: "builder", permissions: ["read", "write"] },
+            { role: "manager", permissions: ["read", "write"] },
           ],
           groups: this.groups.map((group) => ({
             id: group.groupId,
@@ -1554,7 +1556,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           workspaceId: this.workspaceId,
           roles: [
             { role: "admin", permissions: ["admin", "read", "write"] },
+            // TODO(governance): remove once manager is available for everyone
             { role: "builder", permissions: ["read", "write"] },
+            { role: "manager", permissions: ["read", "write"] },
             { role: "user", permissions: ["read"] },
           ],
           groups: this.groups.reduce((acc, group) => {

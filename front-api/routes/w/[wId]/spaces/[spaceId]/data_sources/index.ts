@@ -93,6 +93,7 @@ app.post(
         });
       }
     } else {
+      // TODO(governance) - replace with isManager() once builder is removed (isBuilder allows builder+manager+admin)
       if (space.isGlobal() && !auth.isBuilder()) {
         return apiError(ctx, {
           status_code: 403,
