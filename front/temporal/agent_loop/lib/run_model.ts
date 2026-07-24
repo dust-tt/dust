@@ -37,7 +37,6 @@ import {
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { getStreamLLM } from "@app/lib/api/llm";
-import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -188,7 +187,7 @@ function getReplayedToolNames(
           }
           if (
             content.type === "provider_passthrough" &&
-            content.value.provider === ANTHROPIC_PROVIDER_ID
+            content.value.provider === "anthropic"
           ) {
             // OpenAI keeps loaded definitions in the replayed tool_search_output
             // item. Anthropic requires referenced tools in the current request.
@@ -635,8 +634,7 @@ export async function runModel(
   // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
   // deferred behind tool search is a provider-specific policy applied downstream.
   const toolSearchEnabled =
-    (model.providerId === ANTHROPIC_PROVIDER_ID ||
-      model.providerId === "openai") &&
+    (model.providerId === "anthropic" || model.providerId === "openai") &&
     !!model.supportsToolSearch;
   const baseSpecifications: AgentActionSpecification[] =
     buildBaseSpecifications(availableActions, agentConfiguration);
