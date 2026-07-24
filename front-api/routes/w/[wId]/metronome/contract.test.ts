@@ -1,6 +1,9 @@
+import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -67,6 +70,29 @@ async function setActiveSubscriptionBilling({
       throw updateResult.error;
     }
   }
+}
+
+// Grants the workspace-level "admin" capability on "billing" to a non-admin user by placing them
+// in a group that holds a type-wide grant, mirroring how governance grants billing access.
+async function grantBillingAdmin(
+  workspace: Awaited<
+    ReturnType<typeof createPrivateApiMockRequest>
+  >["workspace"],
+  user: Awaited<ReturnType<typeof createPrivateApiMockRequest>>["user"]
+) {
+  const adminAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
+  const group = await GroupFactory.regularAuto(
+    workspace,
+    `billing-admin-${user.sId}`
+  );
+  await GroupFactory.withMembers(adminAuth, group, [user]);
+  await GroupPermissionResource.grantTypeWide(adminAuth, {
+    group,
+    grantType: "admin",
+    resourceType: "billing",
+  });
 }
 
 function makeCurrentDraftInvoice({ contractId }: { contractId: string }) {
@@ -261,6 +287,33 @@ describe("/api/w/[wId]/metronome/contract", () => {
 
       expect(vi.mocked(scheduleMetronomeContractEnd)).not.toHaveBeenCalled();
       expect(vi.mocked(reactivateMetronomeContract)).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("authorization", () => {
+    it("rejects a member without the billing admin permission", async () => {
+      const { workspace } = await createPrivateApiMockRequest({
+        method: "GET",
+        role: "user",
+      });
+
+      const response = await honoApp.request(contractUrl(workspace.sId));
+
+      expect(response.status).toBe(403);
+    });
+
+    it("allows a member with the billing admin permission", async () => {
+      const { workspace, user } = await createPrivateApiMockRequest({
+        method: "GET",
+        role: "user",
+      });
+
+      await grantBillingAdmin(workspace, user);
+
+      const response = await honoApp.request(contractUrl(workspace.sId));
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ contract: null });
     });
   });
 });

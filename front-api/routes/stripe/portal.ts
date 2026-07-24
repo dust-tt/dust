@@ -41,14 +41,13 @@ app.post(
       });
     }
 
-    // biome-ignore lint/plugin/noDirectRoleCheck: custom auth flow — auth created inline, not via workspaceAuth middleware
-    if (!auth.isAdmin()) {
+    if (!(await auth.hasWorkspacePermission("admin", "billing"))) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
           message:
-            "Only users that are `admins` for the current workspace can see the subscription or modify it.",
+            "You need billing access to manage billing settings, invoices, and payment methods.",
         },
       });
     }

@@ -1,5 +1,8 @@
+import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
 import type { Stripe } from "stripe";
@@ -32,6 +35,37 @@ function post(workspace: { sId: string }, body: unknown) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+function patch(workspace: { sId: string }, body: unknown) {
+  return honoApp.request(`/api/w/${workspace.sId}/subscriptions`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+// Grants the workspace-level "admin" capability on "billing" to a non-admin user by placing them
+// in a group that holds a type-wide grant, mirroring how governance grants billing access.
+async function grantBillingAdmin(
+  workspace: Awaited<
+    ReturnType<typeof createPrivateApiMockRequest>
+  >["workspace"],
+  user: Awaited<ReturnType<typeof createPrivateApiMockRequest>>["user"]
+) {
+  const adminAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
+  const group = await GroupFactory.regularAuto(
+    workspace,
+    `billing-admin-${user.sId}`
+  );
+  await GroupFactory.withMembers(adminAuth, group, [user]);
+  await GroupPermissionResource.grantTypeWide(adminAuth, {
+    group,
+    grantType: "admin",
+    resourceType: "billing",
   });
 }
 
@@ -149,5 +183,53 @@ describe("POST /api/w/:wId/subscriptions", () => {
     const response = await post(workspace, { billingPeriod: "monthly" });
 
     expect(response.status).toBe(403);
+  });
+
+  it("lets a member with the billing admin permission through the auth gate", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+
+    await grantBillingAdmin(workspace, user);
+
+    const response = await post(workspace, { billingPeriod: "monthly" });
+
+    // The caller clears the billing-permission gate: with metronome billing
+    // enabled the request now fails on the missing seat fields (400) rather
+    // than on authorization.
+    expect(response.status).not.toBe(403);
+  });
+});
+
+describe("PATCH /api/w/:wId/subscriptions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 403 for a member without the billing admin permission", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "user",
+    });
+
+    const response = await patch(workspace, { action: "cancel_free_trial" });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("lets a member with the billing admin permission through the auth gate", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "user",
+    });
+
+    await grantBillingAdmin(workspace, user);
+
+    const response = await patch(workspace, { action: "cancel_free_trial" });
+
+    // The caller clears the billing-permission gate: the request now fails on the subscription
+    // state (not trialing) rather than on authorization.
+    expect(response.status).not.toBe(403);
   });
 });

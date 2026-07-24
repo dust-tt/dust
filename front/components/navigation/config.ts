@@ -1,6 +1,10 @@
 import { computeIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType } from "@app/types/app";
+import type {
+  ConcreteResourceType,
+  GrantVerb,
+} from "@app/types/group_permissions";
 import { isCreditPricedPlan, type SubscriptionType } from "@app/types/plan";
 import {
   isComputerFeatureEnabled,
@@ -178,7 +182,9 @@ export type SidebarNavigation = {
 
 export const getTopNavigationTabs = (
   owner: WorkspaceType,
-  spaceMenuButtonRef: React.RefObject<HTMLDivElement>
+  spaceMenuButtonRef: React.RefObject<HTMLDivElement>,
+  showAdminSection: boolean,
+  adminSectionHref: string | null
 ) => {
   const nav: TabAppLayoutNavigation[] = [];
 
@@ -208,12 +214,12 @@ export const getTopNavigationTabs = (
     ref: spaceMenuButtonRef,
   });
 
-  if (isManager(owner)) {
+  if (showAdminSection) {
     nav.push({
       id: "settings",
       label: "Admin",
       icon: Settings01,
-      href: `/w/${owner.sId}/members`,
+      href: adminSectionHref ?? `/w/${owner.sId}/members`,
       isCurrent: (currentRoute) =>
         matchesRoutePattern(currentRoute, [
           "/w/[wId]/members",
@@ -246,17 +252,24 @@ export const subNavigationAdmin = ({
   currentRoute,
   featureFlags,
   subscription,
+  hasPermission,
 }: {
   owner: WorkspaceType;
   currentRoute: string;
   featureFlags: WhitelistableFeature[];
   subscription: SubscriptionType;
+  hasPermission: (
+    verb: GrantVerb,
+    resourceType: ConcreteResourceType
+  ) => boolean;
 }): SidebarNavigation[] => {
   const nav: SidebarNavigation[] = [];
 
+  const canAdminBilling = hasPermission("admin", "billing");
+
   // Admins and managers see the admin sidebar; builders and members do
   // not. Each item is then individually enabled/disabled based on permission.
-  if (!isManager(owner)) {
+  if (!isManager(owner) && !canAdminBilling) {
     return nav;
   }
 
@@ -358,7 +371,7 @@ export const subNavigationAdmin = ({
             icon: CreditCard01,
             href: `/w/${owner.sId}/billing`,
             current: isCurrent("billing"),
-            disabled: !hasAdminRole,
+            disabled: !canAdminBilling,
           }
         : {
             id: "subscription",
@@ -366,7 +379,7 @@ export const subNavigationAdmin = ({
             icon: CreditCard01,
             href: `/w/${owner.sId}/subscription`,
             current: isCurrent("subscription"),
-            disabled: !hasAdminRole,
+            disabled: !canAdminBilling,
           },
     ],
   });
