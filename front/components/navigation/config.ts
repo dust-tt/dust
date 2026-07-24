@@ -7,7 +7,7 @@ import {
   type WhitelistableFeature,
 } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
-import { isAdmin, isBuilder, isManager } from "@app/types/user";
+import { isAdmin, isManager } from "@app/types/user";
 import {
   BarChart01,
   Brackets,
@@ -453,10 +453,12 @@ export const subNavigationApp = ({
   owner,
   app,
   current,
+  canAdministrateApps,
 }: {
   owner: WorkspaceType;
   app: AppType;
   current: SubNavigationAppId;
+  canAdministrateApps: boolean;
 }) => {
   let nav = [
     {
@@ -475,7 +477,7 @@ export const subNavigationApp = ({
     },
   ];
 
-  if (isAdmin(owner) || isBuilder(owner)) {
+  if (canAdministrateApps) {
     nav = nav.concat([
       {
         value: "runs",
