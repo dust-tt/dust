@@ -7,6 +7,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "get_tool_execution_modes": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "list_recommendations": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -2598,6 +2602,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
 {
   "activation_recommendations": {
     "create_recommendation": "never_ask",
+    "get_tool_execution_modes": "never_ask",
     "list_recommendations": "never_ask",
     "update_recommendation": "never_ask",
   },

@@ -1,8 +1,10 @@
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
@@ -11,10 +13,110 @@ import {
 } from "@app/lib/api/actions/servers/activation_recommendations/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
+import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+type ToolExecutionMode = "auto" | "requires_approval" | "not_connected";
+
+function connectionTypeForOAuthUseCase(
+  oAuthUseCase: MCPOAuthUseCase
+): MCPServerConnectionConnectionType {
+  switch (oAuthUseCase) {
+    case "personal_actions":
+      return "personal";
+    case "platform_actions":
+      return "workspace";
+    default:
+      assertNever(oAuthUseCase);
+  }
+}
+
+async function buildConnectedServerIdsByType(
+  auth: Authenticator,
+  serverViews: MCPServerViewResource[]
+): Promise<Record<MCPServerConnectionConnectionType, Set<string>>> {
+  const neededTypes = new Set<MCPServerConnectionConnectionType>();
+  for (const view of serverViews) {
+    if (view.oAuthUseCase) {
+      neededTypes.add(connectionTypeForOAuthUseCase(view.oAuthUseCase));
+    }
+  }
+
+  const connectedByType: Record<
+    MCPServerConnectionConnectionType,
+    Set<string>
+  > = {
+    personal: new Set(),
+    workspace: new Set(),
+  };
+
+  if (neededTypes.has("personal") && auth.user()) {
+    const connections = await MCPServerConnectionResource.listByWorkspace(
+      auth,
+      { connectionType: "personal" }
+    );
+    connectedByType["personal"] = new Set(connections.map((c) => c.mcpServerId));
+  }
+  if (neededTypes.has("workspace")) {
+    const connections = await MCPServerConnectionResource.listByWorkspace(
+      auth,
+      { connectionType: "workspace" }
+    );
+    connectedByType["workspace"] = new Set(
+      connections.map((c) => c.mcpServerId)
+    );
+  }
+
+  return connectedByType;
+}
+
+function isServerConnected(
+  view: MCPServerViewResource,
+  connectedByType: Record<MCPServerConnectionConnectionType, Set<string>>
+): boolean {
+  if (!view.oAuthUseCase) {
+    return true;
+  }
+  return connectedByType[
+    connectionTypeForOAuthUseCase(view.oAuthUseCase)
+  ].has(view.mcpServerId);
+}
+
+async function resolveToolExecutionMode(
+  auth: Authenticator,
+  {
+    view,
+    toolName,
+    permission,
+    serverConnected,
+  }: {
+    view: MCPServerViewResource;
+    toolName: string;
+    permission: MCPToolStakeLevelType;
+    serverConnected: boolean;
+  }
+): Promise<ToolExecutionMode> {
+  if (!serverConnected) {
+    return "not_connected";
+  }
+
+  const { status } = await getExecutionStatusFromConfig(auth, {
+    actionConfiguration: {
+      permission,
+      toolServerId: view.mcpServerId,
+      name: toolName,
+    },
+  });
+
+  return status === "ready_allowed_implicitly" ? "auto" : "requires_approval";
+}
 
 const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
   {
@@ -121,6 +223,76 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         {
           type: "text" as const,
           text: `Previous recommendations (${recs.length}):\n${lines.join("\n")}`,
+        },
+      ]);
+    },
+
+    get_tool_execution_modes: async (
+      { executionModes: executionModeFilter },
+      { auth, runContext }
+    ) => {
+      if (!isAgentLoopRunContext(runContext)) {
+        return new Err(
+          new MCPError(
+            "get_tool_execution_modes is only available in agent loop runs."
+          )
+        );
+      }
+
+      const { conversation } = runContext;
+      const spaceIds = conversation.spaceId ? [conversation.spaceId] : [];
+
+      const serverViews =
+        await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
+          auth,
+          spaceIds,
+          { includeGlobalSpace: true, includeHeavyAttributes: ["cachedTools"] }
+        );
+
+      const connectedByType = await buildConnectedServerIdsByType(
+        auth,
+        serverViews
+      );
+
+      const lines: string[] = [];
+
+      for (const view of serverViews) {
+        const serverName = view.getDisplayName();
+        const serverConnected = isServerConnected(view, connectedByType);
+
+        for (const toolMeta of view.getToolPermissions) {
+          const executionMode = await resolveToolExecutionMode(auth, {
+            view,
+            toolName: toolMeta.toolName,
+            permission: toolMeta.permission,
+            serverConnected,
+          });
+
+          if (
+            !executionModeFilter ||
+            executionModeFilter.length === 0 ||
+            executionModeFilter.includes(executionMode)
+          ) {
+            lines.push(`${serverName}__${toolMeta.toolName}: ${executionMode}`);
+          }
+        }
+      }
+
+      if (lines.length === 0) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text: executionModeFilter?.length
+              ? `No tools with execution mode in [${executionModeFilter.join(", ")}].`
+              : "No tools found.",
+          },
+        ]);
+      }
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Tool execution modes:\n${lines.join("\n")}`,
         },
       ]);
     },
