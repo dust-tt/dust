@@ -50,8 +50,7 @@ export type SandboxStartupPhase =
   | "egress.wait_healthy"
   | "egress.healthcheck"
   | "egress.install_trust_bundle"
-  // Reserved GCS FUSE mount sub-steps for future finer-grained tracing. The current adapter
-  // groups setup under gcs_mount and refresh under gcs_refresh.
+  // GCS token minting, broker startup, and individual gcsfuse mount commands.
   | "gcs.mint_token"
   | "gcs.token_server"
   | "gcs.gcsfuse_mount"
