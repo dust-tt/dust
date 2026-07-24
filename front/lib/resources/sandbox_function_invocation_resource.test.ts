@@ -210,7 +210,7 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(invocation.result).toBeUndefined();
     expect(invocation.error).toBeUndefined();
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toBe(
-      JSON.stringify({ version: 1, input: { message: "hello" } })
+      JSON.stringify({ version: 2, input: { message: "hello" } })
     );
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
@@ -275,13 +275,13 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(invocation.userId).toBeNull();
   });
 
-  it("returns an empty record for unsupported stored data versions", async () => {
+  it("returns an empty record for a version it does not know", async () => {
     const { authenticator, sandboxFunction, invocation } =
       await setupExecutionTest();
 
     await getPrivateUploadBucket()
       .file(invocation.gcsPath!)
-      .save(Buffer.from(JSON.stringify({ version: 2 }), "utf-8"));
+      .save(Buffer.from(JSON.stringify({ version: 3 }), "utf-8"));
 
     // Listings load every invocation's blob, so one unreadable record must not fail the listing.
     const refetched = await SandboxFunctionInvocationResource.fetchById(
@@ -290,6 +290,22 @@ describe("SandboxFunctionInvocationResource", () => {
     );
     expect(refetched?.input).toBeUndefined();
     expect(refetched?.result).toBeUndefined();
+    expect(refetched?.error).toBeUndefined();
+  });
+
+  it("returns an empty record for a blob that is not valid JSON", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+
+    await getPrivateUploadBucket()
+      .file(invocation.gcsPath!)
+      .save(Buffer.from('{"version": 2, "input"', "utf-8"));
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.input).toBeUndefined();
     expect(refetched?.error).toBeUndefined();
   });
 
@@ -371,7 +387,7 @@ describe("SandboxFunctionInvocationResource", () => {
     });
   });
 
-  it("reads a blob written before the code was persisted", async () => {
+  it("migrates a v1 blob, which recorded the message only", async () => {
     const { authenticator, sandboxFunction, invocation } =
       await setupExecutionTest();
 
@@ -394,6 +410,7 @@ describe("SandboxFunctionInvocationResource", () => {
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
+    expect(refetched?.input).toEqual({ message: "hello" });
     expect(refetched?.error).toEqual({
       code: "invocation_failed",
       message: "written before codes existed",

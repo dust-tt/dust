@@ -38,10 +38,12 @@ import type {
 import { isDevelopment } from "@app/types/shared/env";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { Attributes, Transaction } from "sequelize";
 import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const SANDBOX_FUNCTION_WORKING_DIRECTORY = "/home/agent";
 const SANDBOX_FUNCTION_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
@@ -51,34 +53,22 @@ const DSBX_BIN_PATH = "/opt/bin/dsbx";
 const SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS = 2_048;
 const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
 const GCS_CONCURRENCY = 4;
-const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 1;
+const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 2;
 
 // `code` is not narrowed to `SandboxFunctionCallErrorCode`: it is forwarded from whatever
-// classified the failure (runner, API error type, front), and a blob written by a newer deploy
+// classified the failure (runner, API error type, front), and a code introduced by a newer deploy
 // must stay readable rather than fail to parse.
-const PersistedErrorSchema = z.object({
+const InvocationCallErrorSchema = z.object({
   code: z.string(),
   message: z.string(),
   status: z.number().optional(),
 });
 
 export type PersistedSandboxFunctionCallError = z.infer<
-  typeof PersistedErrorSchema
+  typeof InvocationCallErrorSchema
 >;
 
-const PersistedSandboxFunctionCallErrorSchema = z.union([
-  PersistedErrorSchema,
-  // Blobs written before the code and status were persisted only carry the message. Every such
-  // blob went through `fail(Error)`, which classified as `invocation_failed`. Piped back through
-  // the object schema so both arms infer one shape and `status` stays readable without narrowing.
-  z
-    .string()
-    .transform((message) => ({ code: "invocation_failed", message }))
-    .pipe(PersistedErrorSchema),
-]);
-
-const SandboxFunctionInvocationDataSchema = z.object({
-  version: z.literal(SANDBOX_FUNCTION_INVOCATION_DATA_VERSION),
+const InvocationDataBaseSchema = z.object({
   input: z.unknown().optional(),
   context: z
     .object({
@@ -86,12 +76,54 @@ const SandboxFunctionInvocationDataSchema = z.object({
     })
     .optional(),
   result: z.unknown().optional(),
-  error: PersistedSandboxFunctionCallErrorSchema.optional(),
 });
 
-type SandboxFunctionInvocationData = z.infer<
-  typeof SandboxFunctionInvocationDataSchema
->;
+// Every shape we have ever written, discriminated on `version` so a new one is an added arm rather
+// than a wider guess at what a blob contains. Reads accept all of them, writes always produce the
+// current version.
+const StoredInvocationDataSchema = z.discriminatedUnion("version", [
+  // v1 recorded the failure message only.
+  InvocationDataBaseSchema.extend({
+    version: z.literal(1),
+    error: z.string().optional(),
+  }),
+  // v2 records the whole call error, so `inspect_invocations` can report its code and status.
+  InvocationDataBaseSchema.extend({
+    version: z.literal(2),
+    error: InvocationCallErrorSchema.optional(),
+  }),
+]);
+
+type StoredInvocationData = z.infer<typeof StoredInvocationDataSchema>;
+
+type SandboxFunctionInvocationData = {
+  version: typeof SANDBOX_FUNCTION_INVOCATION_DATA_VERSION;
+  input?: unknown;
+  result?: unknown;
+  error?: PersistedSandboxFunctionCallError;
+};
+
+function migrateStoredInvocationData(
+  stored: StoredInvocationData
+): SandboxFunctionInvocationData {
+  switch (stored.version) {
+    case 1:
+      return {
+        version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+        input: stored.input,
+        result: stored.result,
+        // v1 only ever recorded errors that went through `fail(Error)`, which classified them as
+        // `invocation_failed`.
+        ...(stored.error !== undefined
+          ? { error: { code: "invocation_failed", message: stored.error } }
+          : {}),
+      };
+    case 2:
+      return stored;
+    default:
+      return assertNever(stored);
+  }
+}
 
 export interface SandboxFunctionInvocationForLLM {
   createdAt: string;
@@ -103,26 +135,22 @@ export interface SandboxFunctionInvocationForLLM {
   updatedAt: string;
 }
 
-function parseSandboxFunctionInvocationData(
-  gcsPath: string,
+function safeParseStoredInvocationData(
   content: string
-): SandboxFunctionInvocationData {
-  const result = SandboxFunctionInvocationDataSchema.safeParse(
-    JSON.parse(content)
-  );
-  if (!result.success) {
-    // Listings load every invocation's blob, so throwing here would fail the whole listing over
-    // one unreadable record. That includes a blob written by a newer deploy during a rollout, so
-    // degrade to an empty record and keep the rest readable.
-    logger.error(
-      { gcsPath, error: result.error.message },
-      "Invalid sandbox function invocation data"
-    );
-
-    return { version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION };
+): Result<StoredInvocationData, Error> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(content);
+  } catch (err) {
+    return new Err(normalizeError(err));
   }
 
-  return result.data;
+  const parseResult = StoredInvocationDataSchema.safeParse(raw);
+  if (!parseResult.success) {
+    return new Err(new Error(fromError(parseResult.error).toString()));
+  }
+
+  return new Ok(parseResult.data);
 }
 
 function dustAPIBaseUrlForSandbox(): string {
@@ -352,10 +380,23 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     }
 
     const [buffer] = downloadResult.value;
-    this.data = parseSandboxFunctionInvocationData(
-      this.gcsPath,
+    const storedResult = safeParseStoredInvocationData(
       buffer.toString("utf-8")
     );
+    if (storedResult.isErr()) {
+      // Listings load every invocation's blob, so failing here would take down a whole listing
+      // over one unreadable record: a truncated write, or a blob a newer deploy wrote mid-rollout.
+      // Degrade to an empty record and keep the rest of the listing readable.
+      logger.error(
+        { gcsPath: this.gcsPath, error: storedResult.error.message },
+        "Invalid sandbox function invocation data"
+      );
+      this.data = { version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION };
+
+      return;
+    }
+
+    this.data = migrateStoredInvocationData(storedResult.value);
   }
 
   private async writeDataToGcs(): Promise<void> {
