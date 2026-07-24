@@ -5,6 +5,7 @@ import { TableTagSelector } from "@app/components/assistant/manager/TableTagSele
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useAppRouter } from "@app/lib/platform";
 import { useTags } from "@app/lib/swr/tags";
 import {
@@ -50,6 +51,7 @@ type RowData = {
   feedbacks: { up: number; down: number } | undefined;
   lastUpdate: string | null;
   scope: AgentConfigurationScope;
+  model: string;
   onClick?: () => void;
   menuItems?: MenuItem[];
   agentTags: TagType[];
@@ -79,6 +81,7 @@ const getTableColumns = ({
    * Columns order:
    * - Select (if batch edit)
    * - Name (always)
+   * - Model (hidden on mobile)
    * - Access (hidden on mobile)
    * - Editors (hidden on mobile)
    * - Tags (always)
@@ -135,7 +138,20 @@ const getTableColumns = ({
         </DataTable.CellContent>
       ),
       meta: {
-        className: "w-40 @lg:w-full",
+        className: "w-32 @lg:w-full",
+      },
+    },
+    {
+      header: "Model",
+      accessorKey: "model",
+      cell: (info: CellContext<RowData, string>) => (
+        <DataTable.BasicCellContent
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+          label={info.getValue() || "-"}
+        />
+      ),
+      meta: {
+        className: "hidden @sm:w-48 @sm:table-cell",
       },
     },
     {
@@ -188,7 +204,7 @@ const getTableColumns = ({
         );
       },
       meta: {
-        className: "hidden @sm:w-32 @sm:table-cell",
+        className: "hidden @sm:w-24 @sm:table-cell",
       },
     },
     {
@@ -220,7 +236,7 @@ const getTableColumns = ({
       ),
       isFilterable: true,
       meta: {
-        className: "w-32 xl:w-60",
+        className: "w-24 xl:w-40",
         tooltip: "Tags",
       },
     },
@@ -384,6 +400,9 @@ export function AssistantsTable({
           feedbacks: agentConfiguration.feedbacks,
           editors: agentConfiguration.editors ?? [],
           scope: agentConfiguration.scope,
+          model:
+            getSupportedModelConfig(agentConfiguration.model)?.displayName ??
+            agentConfiguration.model.modelId,
           agentTags: agentConfiguration.tags,
           agentTagsAsString:
             agentConfiguration.tags.length > 0
