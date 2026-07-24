@@ -88,18 +88,29 @@ export function KnowledgeComposer() {
   // flow starts at the command menu and moves to whichever step was picked.
   const activePanel: SlashStep = mode === "button" ? "knowledge" : slashStep;
 
-  // Reset to the command menu every time a *new* "/" session starts (the
-  // trigger position moved), so the previous session's step doesn't leak
-  // into a fresh one.
-  const lastTriggerIndexRef = useRef(slashTrigger.triggerIndex);
-  if (
+  // Reset to the command menu every time a *new* "/" session starts — either
+  // the trigger just went from inactive to active (typed a fresh "/", even
+  // at a position used before) or it moved to a different position while
+  // staying active. Tracked as state (not a plain mutated ref) so this
+  // stays correct under Strict Mode's double-render.
+  const [prevSlash, setPrevSlash] = useState({
+    isActive: slashTrigger.isActive,
+    triggerIndex: slashTrigger.triggerIndex,
+  });
+  const isNewSlashSession =
     slashTrigger.isActive &&
-    slashTrigger.triggerIndex !== lastTriggerIndexRef.current
+    (!prevSlash.isActive || slashTrigger.triggerIndex !== prevSlash.triggerIndex);
+  if (isNewSlashSession && slashStep !== "menu") {
+    setSlashStep("menu");
+  }
+  if (
+    prevSlash.isActive !== slashTrigger.isActive ||
+    prevSlash.triggerIndex !== slashTrigger.triggerIndex
   ) {
-    lastTriggerIndexRef.current = slashTrigger.triggerIndex;
-    if (slashStep !== "menu") {
-      setSlashStep("menu");
-    }
+    setPrevSlash({
+      isActive: slashTrigger.isActive,
+      triggerIndex: slashTrigger.triggerIndex,
+    });
   }
 
   const caretCoords = useCaretCoordinates(
