@@ -25,8 +25,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.57";
-const DSBX_CLI_VERSION = "0.1.36";
+const DUST_BASE_IMAGE_VERSION = "0.8.58";
+const DSBX_CLI_VERSION = "0.1.37";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
 // list must not silently change this user's UID.
@@ -52,6 +52,7 @@ const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
 const LITESTREAM_LOCAL_DIR = path.resolve(__dirname, "litestream");
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
+const TOKEN_LOCAL_DIR = path.resolve(__dirname, "token");
 
 interface PythonLibrary {
   name: string;
@@ -304,7 +305,10 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
   .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
   .runCmd(getSshHardeningCommand(), { user: "root" })
-  // Create the token server script. Threaded on purpose: gcsfuse fetches the
+  // Both the compatibility broker and the new root-owned broker require /usr/bin/python3.
+  .runCmd("apt-get update && apt-get install -y python3", { user: "root" })
+  // Keep the legacy token server until the application cutover and kill sweep have completed.
+  // Threaded on purpose: gcsfuse fetches the
   // token on EVERY GCS request (--reuse-token-from-url=false), and a
   // single-connection nc loop drops concurrent fetches (connection reset →
   // gcsfuse retry backoff), starving call-dense consumers like the pod-state
@@ -346,6 +350,29 @@ SHELLEOF`,
     { user: "root" }
   )
   .runCmd("chmod 755 /home/agent/.bin/token-server.sh", { user: "root" })
+  // Stage the root-owned per-mount broker used by the application cutover. These helpers live
+  // outside the agent's group-writable home and serve mode-0600 tokens from /run/dust-gcs.
+  .runCmd("mkdir -p /usr/local/bin", { user: "root" })
+  .copy(
+    getLocalContent(TOKEN_LOCAL_DIR, "dust-gcs-token-server.py"),
+    "/usr/local/bin/dust-gcs-token-server.py",
+    { user: "root" }
+  )
+  .copy(
+    getLocalContent(TOKEN_LOCAL_DIR, "dust-gcs-write-token.sh"),
+    "/usr/local/bin/dust-gcs-write-token.sh",
+    { user: "root" }
+  )
+  .copy(
+    getLocalContent(TOKEN_LOCAL_DIR, "dust-gcs-token-firewall.sh"),
+    "/usr/local/bin/dust-gcs-token-firewall.sh",
+    { user: "root" }
+  )
+  .runCmd(
+    "chown root:root /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh && " +
+      "chmod 755 /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh",
+    { user: "root" }
+  )
   .runCmd(getEgressResolverUserSetupCommand(), { user: "root" })
   .runCmd(getDustStateUserSetupCommand(), { user: "root" })
   .runCmd(getPodStateSetupCommand(), { user: "root" })
