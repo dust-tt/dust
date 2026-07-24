@@ -1,6 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { untrustedFetch } from "@app/lib/egress/server";
-import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
@@ -27,7 +26,7 @@ function getWorkspaceUrl(authInfo?: AuthInfo): string | null {
   if (!isString(databricksWorkspaceUrl)) {
     return null;
   }
-  return databricksWorkspaceUrl;
+  return databricksWorkspaceUrl.trim().replace(/\/$/, "");
 }
 
 async function databricksApiCall<T extends z.ZodTypeAny>(
@@ -46,8 +45,7 @@ async function databricksApiCall<T extends z.ZodTypeAny>(
     body?: Record<string, unknown>;
   } = {}
 ): Promise<Result<z.infer<T>, MCPError>> {
-  const baseUrl = workspaceUrl.trim().replace(/\/$/, "");
-  const url = `${baseUrl}${endpoint}`;
+  const url = `${workspaceUrl}${endpoint}`;
 
   const response = await untrustedFetch(url, {
     method: options.method ?? "GET",
@@ -67,11 +65,9 @@ async function databricksApiCall<T extends z.ZodTypeAny>(
     } catch {
       errorMessage = `${errorMessage} - ${errorBody}`;
     }
-    logger.error({
-      error: errorMessage,
-      message: `[Databricks MCP Server] ${errorMessage}`,
-    });
-    return new Err(new MCPError(errorMessage));
+    return new Err(
+      new MCPError(errorMessage, { tracked: response.status >= 500 })
+    );
   }
 
   const responseText = await response.text();
@@ -84,7 +80,6 @@ async function databricksApiCall<T extends z.ZodTypeAny>(
 
   if (!parseResult.success) {
     const msg = `Invalid Databricks response format: ${parseResult.error.message}`;
-    logger.error(`[Databricks MCP Server] ${msg}`);
     return new Err(new MCPError(msg));
   }
 
@@ -130,7 +125,8 @@ export async function withAuth({
   if (!workspaceUrl) {
     return new Err(
       new MCPError(
-        "Workspace URL not found in connection metadata. Please reconnect your Databricks account."
+        "Workspace URL not found in connection metadata. Please reconnect your Databricks account.",
+        { tracked: false }
       )
     );
   }
