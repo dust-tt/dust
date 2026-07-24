@@ -6,6 +6,7 @@ import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/git
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createHono } from "@front-api/lib/hono";
 import type { PublicApiCtx } from "@front-api/middlewares/ctx";
@@ -24,10 +25,8 @@ const GetSkillsQuerySchema = z.object({
   status: z.enum(["active", "archived", "suggested"]).optional(),
 });
 
-// Unpublished (editors) skills are never exposed through the public API, so the filter only
-// accepts the published availabilities.
 const SkillAvailabilitiesSchema = z
-  .array(z.enum(["workspace_users", "users_and_agents"]))
+  .array(z.enum(SKILL_AVAILABILITIES))
   .optional();
 
 // Mounted at /api/v1/w/:wId/skills.
@@ -64,12 +63,12 @@ const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
  *       - in: query
  *         name: availability
  *         required: false
- *         description: Filter skills by availability. Repeatable to match several values. Unpublished (editors) skills are never returned through the public API.
+ *         description: Filter skills by availability. Repeatable to match several values. Unpublished (editors) skills are only returned to admin API keys.
  *         schema:
  *           type: array
  *           items:
  *             type: string
- *             enum: [workspace_users, users_and_agents]
+ *             enum: [editors, workspace_users, users_and_agents]
  *         style: form
  *         explode: true
  *     responses:
@@ -183,7 +182,7 @@ app.get(
         api_error: {
           type: "invalid_request_error",
           message:
-            'Invalid availability. Expected "workspace_users" or "users_and_agents".',
+            'Invalid availability. Expected "editors", "workspace_users", or "users_and_agents".',
         },
       });
     }
@@ -198,11 +197,12 @@ app.get(
       availability,
     });
 
-    // Unpublished (editors-only) skills are drafts and are never exposed through the
-    // public API: API keys have no editor-group membership to scope them by.
-    const skills = allSkills.filter(
-      (skill) => skill.availability !== "editors"
-    );
+    // Unpublished (editors-only) skills are drafts: API keys have no editor-group
+    // membership to scope them by, so they are only exposed to admin keys (e.g. for
+    // exporting all workspace skills).
+    const skills = auth.isAdmin()
+      ? allSkills
+      : allSkills.filter((skill) => skill.availability !== "editors");
 
     return ctx.json({
       skills: skills.map((skill) => skill.toJSON(auth)),

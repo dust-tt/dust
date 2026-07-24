@@ -178,7 +178,7 @@ describe("GET /api/v1/w/[wId]/skills", () => {
       availability: "editors",
     });
 
-    // Unpublished (editors-only) skills are never exposed through the public API.
+    // Unpublished (editors-only) skills are only exposed to admin API keys.
     const defaultResponse = await getSkills(workspace, key);
     expect(defaultResponse.status).toBe(200);
     const defaultSkillNames = (await defaultResponse.json()).skills.map(
@@ -210,16 +210,58 @@ describe("GET /api/v1/w/[wId]/skills", () => {
     expect(multiSkillNames).toContain("Discoverable Skill");
     expect(multiSkillNames).not.toContain("Unpublished Skill");
 
-    // The unpublished availability is not accepted as a filter value.
+    // For non-admin keys, filtering on the unpublished availability returns nothing.
     const editorsResponse = await getSkills(workspace, key, {
       availability: "editors",
     });
-    expect(editorsResponse.status).toBe(400);
+    expect(editorsResponse.status).toBe(200);
+    expect((await editorsResponse.json()).skills).toEqual([]);
 
     const invalidResponse = await getSkills(workspace, key, {
       availability: "everyone",
     });
     expect(invalidResponse.status).toBe(400);
+  });
+
+  it("exposes unpublished skills to admin API keys", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      role: "admin",
+    });
+    const user = await UserFactory.basic();
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
+
+    await SkillFactory.create(auth, {
+      name: "Workspace Skill",
+      availability: "workspace_users",
+    });
+    await SkillFactory.create(auth, {
+      name: "Unpublished Skill",
+      availability: "editors",
+    });
+
+    // Admin keys see unpublished skills, e.g. when exporting all workspace skills.
+    const defaultResponse = await getSkills(workspace, key);
+    expect(defaultResponse.status).toBe(200);
+    const defaultSkillNames = (await defaultResponse.json()).skills.map(
+      (skill: { name: string }) => skill.name
+    );
+    expect(defaultSkillNames).toContain("Workspace Skill");
+    expect(defaultSkillNames).toContain("Unpublished Skill");
+
+    const editorsResponse = await getSkills(workspace, key, {
+      availability: "editors",
+    });
+    expect(editorsResponse.status).toBe(200);
+    const editorsSkillNames = (await editorsResponse.json()).skills.map(
+      (skill: { name: string }) => skill.name
+    );
+    expect(editorsSkillNames).toEqual(["Unpublished Skill"]);
   });
 });
 
