@@ -9,46 +9,25 @@ import {
   ACTIVATION_RECOMMENDATIONS_SERVER_NAME,
   ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/activation_recommendations/metadata";
-import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import type { Authenticator } from "@app/lib/auth";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
   {
     create_recommendation: async ({ title, content }, { auth, runContext }) => {
-      const conversation = isAgentLoopRunContext(runContext)
-        ? runContext.conversation
+      const conversationId = isAgentLoopRunContext(runContext)
+        ? runContext.conversation.id
         : null;
 
       const rec = await ActivationRecommendationResource.makeNew(auth, {
         title,
         content,
-        conversationId: conversation?.id ?? null,
+        conversationId,
       });
-
-      // Give the activation nudge conversation a descriptive, user-facing title
-      // derived from the recommendation.
-      if (conversation) {
-        const titleRes = await updateConversationTitle(auth, {
-          conversationId: conversation.sId,
-          title: `Activation Recommendation: ${title}`,
-        });
-        if (titleRes.isErr()) {
-          logger.error(
-            {
-              conversationId: conversation.sId,
-              recommendationId: rec.sId,
-              error: titleRes.error,
-            },
-            "[activation] Failed to set conversation title from recommendation"
-          );
-        }
-      }
 
       return new Ok([
         {
