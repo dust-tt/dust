@@ -5,7 +5,7 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { EMPTY_WORKSPACE_PERMISSIONS } from "@app/types/group_permissions";
+import { emptyWorkspacePermissions } from "@app/types/group_permissions";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const CAPABILITY = { grantType: "create", resourceType: "agent" } as const;
@@ -135,7 +135,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
     // Admins hold every type-level capability by default; instance-only domains
     // (space, models_tier) stay empty.
     expect(await adminAuth.getWorkspacePermissions()).toEqual({
-      ...EMPTY_WORKSPACE_PERMISSIONS,
+      ...emptyWorkspacePermissions(),
       agent: ["create", "publish"],
       skill: ["create", "publish"],
       frame: ["invite", "publish"],
@@ -149,7 +149,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
     const auth = await memberAuthInGroup();
 
     expect(await auth.getWorkspacePermissions()).toEqual(
-      EMPTY_WORKSPACE_PERMISSIONS
+      emptyWorkspacePermissions()
     );
   });
 
@@ -161,7 +161,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
     const auth = await memberAuthInGroup();
 
     expect(await auth.getWorkspacePermissions()).toEqual({
-      ...EMPTY_WORKSPACE_PERMISSIONS,
+      ...emptyWorkspacePermissions(),
       agent: ["create"],
     });
   });
@@ -176,7 +176,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
     const auth = await memberAuthInGroup(group);
 
     expect(await auth.getWorkspacePermissions()).toEqual({
-      ...EMPTY_WORKSPACE_PERMISSIONS,
+      ...emptyWorkspacePermissions(),
       agent: ["publish"],
     });
   });
