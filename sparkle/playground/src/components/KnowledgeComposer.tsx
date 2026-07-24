@@ -105,7 +105,8 @@ export function KnowledgeComposer() {
   });
   const isNewSlashSession =
     slashTrigger.isActive &&
-    (!prevSlash.isActive || slashTrigger.triggerIndex !== prevSlash.triggerIndex);
+    (!prevSlash.isActive ||
+      slashTrigger.triggerIndex !== prevSlash.triggerIndex);
   if (isNewSlashSession && slashStep !== "menu") {
     setSlashStep("menu");
   }
@@ -419,10 +420,14 @@ export function KnowledgeComposer() {
         break;
       }
       case "Backspace":
+        // Shift+Backspace goes up one breadcrumb level — plain Backspace is
+        // already spoken for (deleting a character from the search query),
+        // so this needs its own combo rather than only firing when the
+        // query happens to be empty.
         if (
+          e.shiftKey &&
           activePanel === "knowledge" &&
           !isFiltering &&
-          activeQuery === "" &&
           browseStack.length > 0
         ) {
           e.preventDefault();
@@ -438,7 +443,9 @@ export function KnowledgeComposer() {
     }
   };
 
-  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleTextareaKeyDown = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>
+  ) => {
     if (!isInlineActive) {
       return;
     }
@@ -510,7 +517,7 @@ export function KnowledgeComposer() {
             aria-controls={isInlineActive ? KNOWLEDGE_LISTBOX_ID : undefined}
             aria-autocomplete={isInlineActive ? "list" : undefined}
             aria-activedescendant={
-              isInlineActive ? activeItemId ?? undefined : undefined
+              isInlineActive ? (activeItemId ?? undefined) : undefined
             }
             onFocus={() => {
               setIsTextareaFocused(true);
@@ -526,7 +533,11 @@ export function KnowledgeComposer() {
               // real dismissal — only close it when focus lands truly
               // outside the popover (e.g. back on the page, or on the
               // Attach knowledge button, which has its own open/close logic).
-              if (popoverContainerRef.current?.contains(e.relatedTarget as Node | null)) {
+              if (
+                popoverContainerRef.current?.contains(
+                  e.relatedTarget as Node | null
+                )
+              ) {
                 return;
               }
               setIsTextareaFocused(false);

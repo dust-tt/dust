@@ -79,8 +79,14 @@ export function KnowledgeFileRow({
         // the click handler runs.
         e.preventDefault();
       }}
-      onClick={() => (isFolder && onOpen ? onOpen(treeNode) : onSelect(treeNode))}
-      style={isGrouped ? { paddingLeft: BASE_PADDING_PX + depth * INDENT_PX } : undefined}
+      onClick={() =>
+        isFolder && onOpen ? onOpen(treeNode) : onSelect(treeNode)
+      }
+      style={
+        isGrouped
+          ? { paddingLeft: BASE_PADDING_PX + depth * INDENT_PX }
+          : undefined
+      }
       className={cn(
         "flex cursor-pointer items-center gap-2 rounded-lg transition-[background-color,transform] duration-100 ease-out motion-safe:active:scale-[0.98] data-[active]:bg-hover",
         isGrouped ? "min-h-8 pr-2" : "min-h-10 px-2"
@@ -109,10 +115,17 @@ export function KnowledgeFileRow({
         )}
       </div>
       {isFolder && onOpen && (
-        <AttachFolderButton
-          label={treeNode.label}
-          onAttach={() => onSelect(treeNode)}
-        />
+        <>
+          <AttachFolderButton
+            label={treeNode.label}
+            onAttach={() => onSelect(treeNode)}
+          />
+          <Icon
+            visual={ChevronRight}
+            size="xs"
+            className="shrink-0 text-muted-foreground"
+          />
+        </>
       )}
     </div>
   );
@@ -174,7 +187,10 @@ export function KnowledgeBrowseRow({
         </span>
       </div>
       {isFolder && (
-        <AttachFolderButton label={node.label} onAttach={() => onSelect(node)} />
+        <AttachFolderButton
+          label={node.label}
+          onAttach={() => onSelect(node)}
+        />
       )}
       {isContainer && (
         <Icon
