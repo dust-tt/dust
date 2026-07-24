@@ -168,6 +168,15 @@ const rootFolderNames = [
   "Frames",
   "Marketing",
   "Engineering",
+  "Team Weeklies",
+  "Onboarding",
+  "Legal",
+  "Finance",
+  "Product",
+  "Support",
+  "Hiring",
+  "Vendors",
+  "Roadmap",
 ];
 
 const nestedFolderNames = [
@@ -176,9 +185,15 @@ const nestedFolderNames = [
   "Shared",
   "Q1",
   "Q2",
+  "Q3",
+  "Q4",
   "Final",
   "Assets",
   "References",
+  "Meeting Notes",
+  "Templates",
+  "Old",
+  "Misc",
 ];
 
 // Generate a file name based on type and index
@@ -323,7 +338,7 @@ function generateDataSourcesForSpace(
   const dataSources: DataSource[] = [];
   let itemIndex = 0;
 
-  const rootFolderCount = Math.floor(seededRandom(spaceId, 100) * 3) + 2;
+  const rootFolderCount = Math.floor(seededRandom(spaceId, 100) * 5) + 4;
   const rootFolderIds: string[] = [];
   const allFolderIds: string[] = [];
 
@@ -345,7 +360,7 @@ function generateDataSourcesForSpace(
   }
 
   for (let f = 0; f < rootFolderIds.length; f++) {
-    if (seededRandom(spaceId, 200 + f) >= 0.3) {
+    if (seededRandom(spaceId, 200 + f) >= 0.6) {
       continue;
     }
 
@@ -364,7 +379,7 @@ function generateDataSourcesForSpace(
       updatedAt,
     });
 
-    if (seededRandom(spaceId, 300 + f) < 0.5) {
+    if (seededRandom(spaceId, 300 + f) < 0.65) {
       const deepId = `ds-${spaceId}-folder-${itemIndex++}`;
       const deepDates = generateDates(itemIndex, spaceId);
       allFolderIds.push(deepId);
@@ -546,17 +561,16 @@ const dataSourceCache = new Map<string, DataSource[]>();
 export function getDataSourcesBySpaceId(spaceId: string): DataSource[] {
   if (!dataSourceCache.has(spaceId)) {
     // Use seeded random to determine file count:
-    // 20% chance of 0 files, 80% chance of 3-80 files
+    // 5% chance of 0 files, 95% chance of 20-220 files — deliberately dense,
+    // so browsing/searching feels like a real, cluttered knowledge base.
     const randomValue = seededRandom(spaceId, 0);
     let fileCount: number;
 
-    if (randomValue < 0.2) {
-      // 20% probability: 0 files
+    if (randomValue < 0.05) {
       fileCount = 0;
     } else {
-      // 80% probability: 3-80 files (inclusive)
       const countRandom = seededRandom(spaceId, 1);
-      fileCount = Math.floor(countRandom * 78) + 3; // 78 possible values (3 to 80)
+      fileCount = Math.floor(countRandom * 201) + 20; // 20 to 220
     }
 
     dataSourceCache.set(

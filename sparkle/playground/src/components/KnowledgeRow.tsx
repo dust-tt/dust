@@ -1,4 +1,4 @@
-import { ChevronRight, cn, Icon } from "@dust-tt/sparkle";
+import { ChevronRight, Plus, cn, Icon } from "@dust-tt/sparkle";
 import React from "react";
 
 import { splitByMatch } from "../data/knowledgeItems";
@@ -7,6 +7,35 @@ import { formatRelativeTime } from "../data/knowledgeItems";
 
 const BASE_PADDING_PX = 8;
 const INDENT_PX = 16;
+
+// The dedicated "attach this folder without opening it" control — a folder
+// row's main click always browses in, so attaching the whole folder needs
+// its own target. Always visible (not hover-only), so it works on touch.
+function AttachFolderButton({
+  onAttach,
+  label,
+}: {
+  onAttach: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`Attach ${label}`}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onAttach();
+      }}
+      className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors duration-100 hover:bg-primary-100 hover:text-foreground"
+    >
+      <Icon visual={Plus} size="xs" />
+    </button>
+  );
+}
 
 interface KnowledgeFileRowProps {
   treeNode: KnowledgeTreeNode;
@@ -19,6 +48,10 @@ interface KnowledgeFileRowProps {
   // the file lives.
   depth?: number;
   metaLabel?: string;
+  // Search can surface a matched folder alongside matched files. Clicking
+  // one browses into it (dropping the query); attaching the whole folder
+  // goes through the dedicated "+" control instead.
+  onOpen?: (treeNode: KnowledgeTreeNode) => void;
 }
 
 export function KnowledgeFileRow({
@@ -29,8 +62,10 @@ export function KnowledgeFileRow({
   onHover,
   depth,
   metaLabel,
+  onOpen,
 }: KnowledgeFileRowProps) {
   const isGrouped = depth !== undefined;
+  const isFolder = treeNode.kind === "folder";
 
   return (
     <div
@@ -44,7 +79,7 @@ export function KnowledgeFileRow({
         // the click handler runs.
         e.preventDefault();
       }}
-      onClick={() => onSelect(treeNode)}
+      onClick={() => (isFolder && onOpen ? onOpen(treeNode) : onSelect(treeNode))}
       style={isGrouped ? { paddingLeft: BASE_PADDING_PX + depth * INDENT_PX } : undefined}
       className={cn(
         "flex cursor-pointer items-center gap-2 rounded-lg transition-[background-color,transform] duration-100 ease-out motion-safe:active:scale-[0.98] data-[active]:bg-hover",
@@ -73,6 +108,12 @@ export function KnowledgeFileRow({
           </span>
         )}
       </div>
+      {isFolder && onOpen && (
+        <AttachFolderButton
+          label={treeNode.label}
+          onAttach={() => onSelect(treeNode)}
+        />
+      )}
     </div>
   );
 }
@@ -97,7 +138,9 @@ interface KnowledgeBrowseRowProps {
 // the same single level (the current container's direct children only, so
 // there's never any indentation or nesting to render). Spaces and folders
 // get a trailing chevron marking them as "enterable" and a child-count
-// subtitle; files get the same two-line treatment as everywhere else.
+// subtitle; files get the same two-line treatment as everywhere else. A
+// folder also gets the dedicated "+" control, since its main click is
+// already taken by "browse in".
 export function KnowledgeBrowseRow({
   node,
   isActive,
@@ -106,6 +149,7 @@ export function KnowledgeBrowseRow({
   onHover,
 }: KnowledgeBrowseRowProps) {
   const isContainer = node.kind !== "file";
+  const isFolder = node.kind === "folder";
 
   return (
     <div
@@ -129,6 +173,9 @@ export function KnowledgeBrowseRow({
             : `${node.children.length} item${node.children.length === 1 ? "" : "s"}`}
         </span>
       </div>
+      {isFolder && (
+        <AttachFolderButton label={node.label} onAttach={() => onSelect(node)} />
+      )}
       {isContainer && (
         <Icon
           visual={ChevronRight}

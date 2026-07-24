@@ -10,6 +10,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import type { KnowledgeItem, KnowledgeTreeNode } from "../data/knowledgeItems";
 import {
+  findNodePath,
   getBrowseChildren,
   getFilteredTreeGroups,
   mockKnowledgeTree,
@@ -290,9 +291,12 @@ export function KnowledgeComposer() {
   // Selecting a command strips whatever was typed to filter the menu
   // (keeping the "/" itself) so the next step starts with an empty query at
   // the same trigger position, then moves to that command's own step.
-  const handleSelectSlashCommand = (command: SlashCommand) => {
-    if (command.id === "upload") {
-      uploadInputRef.current?.click();
+  // Strips whatever was typed to filter (keeping the "/" itself, in inline
+  // mode) so the query starts empty again at the same trigger position —
+  // used both when a command is picked and when a search hit is opened.
+  const clearQuery = () => {
+    if (mode === "button") {
+      setButtonQuery("");
       return;
     }
     if (selectionStart !== null) {
@@ -306,6 +310,14 @@ export function KnowledgeComposer() {
       });
       setSelectionStart(start);
     }
+  };
+
+  const handleSelectSlashCommand = (command: SlashCommand) => {
+    if (command.id === "upload") {
+      uploadInputRef.current?.click();
+      return;
+    }
+    clearQuery();
     setSlashStep(command.id);
   };
 
@@ -340,7 +352,13 @@ export function KnowledgeComposer() {
     if (node.kind === "file") {
       return;
     }
-    setBrowseStack((prev) => [...prev, node]);
+    // The full ancestor chain, not just an append onto the current stack —
+    // this is what lets opening a folder found via search (with no browse
+    // stack built up yet) land on a correct breadcrumb in one step.
+    setBrowseStack(findNodePath(node.id) ?? []);
+    if (isFiltering) {
+      clearQuery();
+    }
   };
 
   const handleBreadcrumbNavigate = (depth: number) => {
@@ -392,12 +410,12 @@ export function KnowledgeComposer() {
           handleSelectSkill(item as MockSkill);
           break;
         }
-        // Knowledge: search results are always files; browsing splits by
-        // kind — a file attaches either way, a folder attaches on plain
-        // Enter but browses into it on Shift+Enter, and a space only ever
-        // browses (there's no "attach a whole space" concept here).
+        // Knowledge, in browse or search results alike: a file attaches
+        // either way, a folder attaches on plain Enter but browses into it
+        // on Shift+Enter, and a space only ever browses (there's no
+        // "attach a whole space" concept here).
         const node = item as KnowledgeTreeNode;
-        if (isFiltering || node.kind === "file") {
+        if (node.kind === "file") {
           handleSelectItemById(node.id);
         } else if (e.shiftKey || node.kind === "space") {
           handleOpenNode(node);

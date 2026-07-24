@@ -137,6 +137,7 @@ export function KnowledgeSuggestionPanel({
                     query={query}
                     isActive={file.id === activeItemId}
                     onSelect={onSelectItem}
+                    onOpen={onOpenNode}
                     onHover={onHoverItem}
                     depth={1}
                   />

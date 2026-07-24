@@ -31,7 +31,7 @@ export interface KnowledgeItem {
 // More spaces than a real workspace's "recently used" would ever surface —
 // deliberately enough content that browsing into a space/folder feels like a
 // real knowledge base, not a 4-item demo.
-const SPACE_IDS_FOR_KNOWLEDGE = mockSpaces.slice(0, 12).map((space) => space.id);
+const SPACE_IDS_FOR_KNOWLEDGE = mockSpaces.slice(0, 30).map((space) => space.id);
 
 function buildKnowledgeTree(): KnowledgeNode[] {
   const nodes: KnowledgeNode[] = [];
@@ -125,9 +125,42 @@ export function getBrowseChildren({
   return children.filter((child) => !excludeIds.has(child.id));
 }
 
+// The ancestor chain from the space root down to (and including) the given
+// node — this is exactly what a browse-mode breadcrumb stack looks like, so
+// jumping into a folder found via search can reuse it as the new stack
+// rather than needing its own bespoke navigation state.
+export function findNodePath(nodeId: string): KnowledgeTreeNode[] | null {
+  function search(
+    node: KnowledgeTreeNode,
+    path: KnowledgeTreeNode[]
+  ): KnowledgeTreeNode[] | null {
+    const nextPath = [...path, node];
+    if (node.id === nodeId) {
+      return nextPath;
+    }
+    for (const child of node.children) {
+      const found = search(child, nextPath);
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }
+
+  for (const space of mockKnowledgeForest) {
+    const found = search(space, []);
+    if (found) {
+      return found;
+    }
+  }
+  return null;
+}
+
 export interface KnowledgeTreeGroup {
   id: string;
   pathLabel: string;
+  // Usually files, but a matched folder can be a hit too — grouped under
+  // its parent's path like any other match.
   files: KnowledgeTreeNode[];
 }
 
@@ -136,53 +169,50 @@ export interface FilteredTreeGroupsResult {
   matchCount: number;
 }
 
-function pruneToMatches(
-  treeNode: KnowledgeTreeNode,
-  isMatch: (node: KnowledgeTreeNode) => boolean
-): KnowledgeTreeNode | null {
-  if (treeNode.kind === "file") {
-    return isMatch(treeNode) ? treeNode : null;
-  }
-  const prunedChildren = treeNode.children
-    .map((child) => pruneToMatches(child, isMatch))
-    .filter((child): child is KnowledgeTreeNode => child !== null);
-  return prunedChildren.length > 0 ? { ...treeNode, children: prunedChildren } : null;
-}
-
-// Every matching file is grouped under its exact immediate folder, labeled
-// with its *full* path from the space root ("New Onboarding / Reports /
-// Drafts") — however many levels that is. Two files sharing a parent always
-// land under the same breadcrumb, one above the other. Unlike VS Code's
-// "compact folders", a folder is never given its own row unless it directly
-// holds a match — a branching ancestor with no files of its own just
-// contributes its label to its descendants' breadcrumbs instead of an
-// empty header.
-function collectPathGroups(
-  treeNode: KnowledgeTreeNode,
+function addToGroup(
   pathLabels: string[],
+  node: KnowledgeTreeNode,
   output: KnowledgeTreeGroup[],
   groupIndexByPath: Map<string, number>
 ) {
-  const files = treeNode.children.filter((child) => child.kind === "file");
-  if (files.length > 0) {
-    const pathLabel = pathLabels.join(" / ");
-    let index = groupIndexByPath.get(pathLabel);
-    if (index === undefined) {
-      index = output.length;
-      output.push({ id: treeNode.id, pathLabel, files: [] });
-      groupIndexByPath.set(pathLabel, index);
+  const pathLabel = pathLabels.join(" / ");
+  let index = groupIndexByPath.get(pathLabel);
+  if (index === undefined) {
+    index = output.length;
+    output.push({ id: pathLabel, pathLabel, files: [] });
+    groupIndexByPath.set(pathLabel, index);
+  }
+  output[index].files.push(node);
+}
+
+// A match can be a file OR a folder that matches by name — searching
+// "Team Weeklies" should surface that folder itself, not just files that
+// happen to contain the word. Either way the hit is grouped under its
+// *parent's* path (where it lives), same as a file would be: a folder is
+// never grouped under its own name. Recursion continues into every folder
+// regardless of whether the folder itself matched, so a file nested inside
+// a matching folder still shows up as its own, separate hit.
+function collectMatches(
+  treeNode: KnowledgeTreeNode,
+  parentPathLabels: string[],
+  output: KnowledgeTreeGroup[],
+  groupIndexByPath: Map<string, number>,
+  isMatch: (node: KnowledgeTreeNode) => boolean
+) {
+  if (treeNode.kind === "file") {
+    if (isMatch(treeNode)) {
+      addToGroup(parentPathLabels, treeNode, output, groupIndexByPath);
     }
-    output[index].files.push(...files);
+    return;
   }
 
-  const childFolders = treeNode.children.filter((child) => child.kind !== "file");
-  for (const childFolder of childFolders) {
-    collectPathGroups(
-      childFolder,
-      [...pathLabels, childFolder.label],
-      output,
-      groupIndexByPath
-    );
+  if (treeNode.kind === "folder" && isMatch(treeNode)) {
+    addToGroup(parentPathLabels, treeNode, output, groupIndexByPath);
+  }
+
+  const childPathLabels = [...parentPathLabels, treeNode.label];
+  for (const child of treeNode.children) {
+    collectMatches(child, childPathLabels, output, groupIndexByPath, isMatch);
   }
 }
 
@@ -205,10 +235,7 @@ export function getFilteredTreeGroups({
   const groups: KnowledgeTreeGroup[] = [];
   const groupIndexByPath = new Map<string, number>();
   for (const space of mockKnowledgeForest) {
-    const prunedSpace = pruneToMatches(space, isMatch);
-    if (prunedSpace) {
-      collectPathGroups(prunedSpace, [prunedSpace.label], groups, groupIndexByPath);
-    }
+    collectMatches(space, [], groups, groupIndexByPath, isMatch);
   }
 
   const matchCount = groups.reduce((sum, group) => sum + group.files.length, 0);
