@@ -72,6 +72,7 @@ import type {
   Attributes,
   CreationAttributes,
   InferAttributes,
+  Order,
   Transaction,
   WhereOptions,
 } from "sequelize";
@@ -1837,24 +1838,37 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     const fetchLimit = pagination.limit + 1;
+    const order: Order = [
+      ["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"],
+    ];
+
+    // baseFetchWithAuthorization filters rows after the SQL limit (deleted
+    // space references, ACLs), which corrupts the +1 sentinel: one dropped row
+    // makes a full window look like the last page. Scan the raw window first
+    // and derive hasMore and the cursor from the scan, not the filtered rows.
+    const rawRows = await ConversationModel.findAll({
+      where: { ...whereClause, workspaceId: auth.getNonNullableWorkspace().id },
+      order,
+      limit: fetchLimit,
+      attributes: ["id", "updatedAt"],
+    });
+
+    if (rawRows.length === 0) {
+      return emptyResult;
+    }
+
+    const hasMore = rawRows.length === fetchLimit;
 
     const conversations = await this.baseFetchWithAuthorization(
       auth,
       {},
       {
-        where: whereClause,
-        order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
-        limit: fetchLimit,
+        where: { id: { [Op.in]: rawRows.map((r) => r.id) } },
+        order,
       }
     );
 
-    let hasMore = false;
-    let resultConversations = conversations;
-
-    if (conversations.length > pagination.limit) {
-      hasMore = true;
-      resultConversations = conversations.slice(0, pagination.limit);
-    }
+    const resultConversations = conversations.slice(0, pagination.limit);
 
     resultConversations.forEach((c) => {
       const participation = participationMap.get(c.id);
@@ -1865,11 +1879,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     await this.enrichWithReadState(auth, resultConversations);
 
-    const lastConversation =
-      resultConversations[resultConversations.length - 1];
-    const lastValue = lastConversation
-      ? lastConversation.updatedAt.getTime().toString()
-      : null;
+    // Advance the cursor past the scanned window, unless accessible rows were
+    // cut by the limit — those must reappear on the next page.
+    const lastReturned = resultConversations[resultConversations.length - 1];
+    const lastValue =
+      conversations.length > pagination.limit && lastReturned
+        ? lastReturned.updatedAt.getTime().toString()
+        : rawRows[rawRows.length - 1].updatedAt.getTime().toString();
 
     return {
       conversations: resultConversations,

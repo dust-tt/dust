@@ -2917,6 +2917,92 @@ describe("listPrivateConversationsForUser", () => {
     expect(item?.nextWakeupAt).toBe(scheduledFireAt.getTime());
   });
 
+  it("keeps paginating when a full page window contains a filtered-out conversation", async () => {
+    const deletedSpace = await SpaceFactory.regular(workspace);
+
+    const createParticipatingConversation = async ({
+      updatedAt,
+      requestedSpaceIds,
+    }: {
+      updatedAt: Date;
+      requestedSpaceIds?: number[];
+    }) => {
+      const conversation = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        messagesCreatedAt: [new Date()],
+        requestedSpaceIds,
+      });
+      await ConversationResource.upsertParticipation(userAuth, {
+        conversation,
+        action: "posted",
+        user: userAuth.getNonNullableUser().toJSON(),
+      });
+      // Raw SQL: Sequelize refuses to write an explicit updatedAt.
+      await frontSequelize.query(
+        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        { replacements: { updatedAt, id: conversation.id } }
+      );
+      return conversation;
+    };
+
+    // updatedAt order: newest > poisoned > middle > oldest > the beforeEach
+    // conversation.
+    const baseMs = Date.now();
+    const hourMs = 60 * 60 * 1000;
+    const newest = await createParticipatingConversation({
+      updatedAt: new Date(baseMs + 4 * hourMs),
+    });
+    const poisoned = await createParticipatingConversation({
+      updatedAt: new Date(baseMs + 3 * hourMs),
+      requestedSpaceIds: [deletedSpace.id],
+    });
+    const middle = await createParticipatingConversation({
+      updatedAt: new Date(baseMs + 2 * hourMs),
+    });
+    const oldest = await createParticipatingConversation({
+      updatedAt: new Date(baseMs + 1 * hourMs),
+    });
+
+    const deleteRes = await deletedSpace.delete(adminAuth, {
+      hardDelete: false,
+    });
+    assert(deleteRes.isOk(), "Failed to soft-delete space");
+
+    // Page 1 scans limit+1 = 3 rows (newest, poisoned, middle). The poisoned
+    // row references a deleted space and is dropped in-memory, leaving exactly
+    // `limit` conversations: hasMore must not flip to false because of the
+    // drop.
+    const page1 =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        userAuth,
+        { limit: 2 }
+      );
+
+    expect(page1.conversations.map((c) => c.sId)).toEqual([
+      newest.sId,
+      middle.sId,
+    ]);
+    expect(page1.hasMore).toBe(true);
+    assert(page1.lastValue, "Expected a pagination cursor");
+
+    const page2 =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        userAuth,
+        { limit: 2, lastValue: page1.lastValue }
+      );
+
+    expect(page2.conversations.map((c) => c.sId)).toEqual([
+      oldest.sId,
+      conversationIds[0],
+    ]);
+    expect(page2.hasMore).toBe(false);
+
+    const returnedSIds = [...page1.conversations, ...page2.conversations].map(
+      (c) => c.sId
+    );
+    expect(returnedSIds).not.toContain(poisoned.sId);
+  });
+
   it("should return conversations with populated participation data", async () => {
     // First, get the raw participation data from the database to compare
     const { ConversationParticipantModel } = await import(
