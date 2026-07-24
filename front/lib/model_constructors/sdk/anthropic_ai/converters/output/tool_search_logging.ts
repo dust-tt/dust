@@ -6,7 +6,7 @@ import {
   logToolSearchError,
   logToolSearchRequest,
   logToolSearchResults,
-} from "@app/lib/api/llm/utils/tool_search_logging";
+} from "@app/lib/model_constructors/utils/tool_search_logging";
 import { isRecord, isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
