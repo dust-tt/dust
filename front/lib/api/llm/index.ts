@@ -267,7 +267,7 @@ export async function getStreamLLM(
     llmParameters
   );
 
-  if (featureFlags.includes("use_new_llm_router") && streamEndpointLLM) {
+  if (streamEndpointLLM) {
     return streamEndpointLLM;
   }
 
@@ -302,7 +302,7 @@ export async function getBatchLLM(
     llmParameters
   );
 
-  if (featureFlags.includes("use_new_llm_router") && batchEndpointLLM) {
+  if (batchEndpointLLM) {
     return batchEndpointLLM;
   }
 
