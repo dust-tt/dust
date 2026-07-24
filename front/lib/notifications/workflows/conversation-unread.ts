@@ -1,7 +1,5 @@
-import { isMessageUnread } from "@app/components/assistant/conversation/utils";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   countConversationMessages,
   renderConversationAsText,
@@ -16,6 +14,7 @@ import {
   getUserNotificationDelay,
   type NotificationAllowedTags,
 } from "@app/lib/notifications";
+import { fetchUnreadLightConversation } from "@app/lib/notifications/conversation_fetch";
 import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
 import {
   type ConversationDetailsPayload,
@@ -301,7 +300,7 @@ const generateUnreadMessagesSummary = async ({
     payload.workspaceId
   );
 
-  const conversationRes = await getLightConversation(
+  const conversationRes = await fetchUnreadLightConversation(
     auth,
     payload.conversationId
   );
@@ -314,11 +313,7 @@ const generateUnreadMessagesSummary = async ({
 
   const conversation = conversationRes.value;
 
-  const unreadMessages = conversation.content.filter((msg) =>
-    isMessageUnread(msg, conversation.lastReadMs)
-  );
-
-  if (unreadMessages.length === 0) {
+  if (conversation.content.length === 0) {
     return new Err(
       new DustError("no_unread_messages_found", "No unread messages")
     );
