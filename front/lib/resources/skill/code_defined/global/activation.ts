@@ -50,7 +50,7 @@ If the skill is used outside of a pod, you still leverage the recommendation ste
 
 # Workflow Steps
 
-Every conversation follows the same arc:
+Every conversation MUST follow the same arc:
 
 The first set of steps below will result in a single user message to start the activation flow.
 This will generally be triggered asynchronously, so minimizing tool calls is not a requirement. Accuracy and strict adherence to the defined workflow is critical.
@@ -203,6 +203,7 @@ This is presented a a quickReply option in the welcome message. It should also b
 
 We need to create a plan for the tool calls that will be made to execute the recommendation.
 A goal is to front load as many tool calls as possible to minimize the number of tool calls during execution.
+This should be done by creating a new by creating a new sub-conversation via the \`create_conversation\` tool and polling for completion
 
 You should following this sequence:
 1. Create a plan of what tool calls will need to be made to execute the recommendation.
@@ -210,7 +211,7 @@ You should following this sequence:
 3. Some tool calls will block on user approval. Call \`get_tool_execution_modes\` at the start of any multi-step plan to learn which tools
 run silently and which pause for approval. The tool returns a list of \`serverName__toolName: auto | requires_approval\` entries.
 4. Create an ordered list for those tool calls. Deprioritizing the tools that require user approval. This will not ALWAYS be possible, as a tool call might be a hard dependency of another tool call, but we should strive for it.
-5. Make all tool calls up to the first tool that requires user approval to prefetch as much information as possible. If it's too much information to store in context, write it to a file. You should generally focus on read tools, and avoid mutations/writes.
+5. Make all tool calls up to the first tool that requires user approval to prefetch as much information as possible. If it's too much information to store in context, write it to a pod file that can be shared between conversations. You should generally focus on read tools, and avoid mutations/writes.
 6. Move to the next stage for the synchronous portion of the execution workflow.
 
 # Stage 5 — Present the Recommendation
@@ -272,8 +273,8 @@ This is a container directive: the opening \`:::action_card{...}\` line holds th
 - \`description\`: the "found → suggest → what happens" chain, compressed: the evidence with its source and specifics (the WHY, leading), the artifact a stranger could visualize, and the no-commitment clause. This is the single most-read text in the whole flow.
 - \`cta\`: short accept button label naming exactly what the click does.
 - \`dismiss\`: short reject label, e.g. "Not now", "Not for me", "Already doing this". Display-only.
-- \`actionMessage\`: message sent when the user clicks accept. Plain text (e.g. "Yes, let's do it") to re-invoke you, or include a \`:mention[Name]{sId=<sId>}\` directive to hand off directly to an agent (from \`list_all_published_agents\`). Never include a mention for an agent you did not see in the respective discovery call. Defaults to "Accept".
-- \`dismissMessage\`: message sent to you when the user clicks dismiss, e.g. "Not for me". Defaults to "Dismiss".
+- \`actionMessage\`: conversation message generated when the user clicks accept. Will want to be clear, concise, instructions on how to execute the next steps.
+- \`dismissMessage\`: conversation message generated when the user clicks dismiss
 - \`collapsibleLabel\`: label for the collapsible section. Required if collapsible content is included; omit otherwise.
 - collapsible content: optional inline education markdown (see below).
 
@@ -300,6 +301,12 @@ Lead the user through the connection process:
 
 - Accept (the \`actionMessage\` arrives) → call \`update_recommendation\` with \`status: "executed"\`, then proceed with execution.
 - Decline (the \`dismissMessage\` arrives) → call \`update_recommendation\` with \`status: "dismissed"\`.
+
+## Executing a Custom Agent
+
+When the recommendation is a custom agent, you will need to execute the agent. NEVER hand-off the current conversation to the agent.
+Instead, create a new conversation with the agent by using the \`create_conversation\` tool and polling for completion.
+Avoid sleeps in this process in order to mitigate user facing latency. 
 
 # Stage 7 — Make it Recurring
 
