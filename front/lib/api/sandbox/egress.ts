@@ -447,8 +447,7 @@ export async function ensureSandboxEgressOnExec(
 // flows direct out of the (now permissive) E2B network, instead of being
 // redirected to the local forwarder port that has no listener in this mode.
 // Keep the dedicated GCS broker drop in place: that credential boundary must
-// survive dev-unrestricted mode. The legacy rule protects existing sandboxes
-// during the application cutover. Idempotent: safe to call on every fresh sandbox.
+// survive dev-unrestricted mode. Idempotent: safe to call on every fresh sandbox.
 export async function teardownInSandboxEgressRedirect(
   auth: Authenticator,
   sandbox: SandboxResource
@@ -465,11 +464,7 @@ export async function teardownInSandboxEgressRedirect(
     "/usr/bin/systemctl disable --now dust-egress-resolver.service dust-egress-nftables.service >/dev/null 2>&1 || true; " +
       "/usr/sbin/nft delete table ip dust-egress >/dev/null 2>&1 || true; " +
       "/usr/sbin/nft delete table ip6 dust-egress >/dev/null 2>&1 || true; " +
-      "if [ -x /usr/local/bin/dust-gcs-token-firewall.sh ]; then " +
-      "/usr/local/bin/dust-gcs-token-firewall.sh; fi; " +
-      "/usr/sbin/nft add table ip dust-gcs-token-legacy >/dev/null 2>&1 || true; " +
-      "/usr/sbin/nft add chain ip dust-gcs-token-legacy filter_output '{ type filter hook output priority 0 ; policy accept ; }' >/dev/null 2>&1 || true; " +
-      `/usr/sbin/nft add rule ip dust-gcs-token-legacy filter_output meta skuid ${EGRESS_PROXIED_UID} ip daddr 127.0.0.0/8 tcp dport 9876 drop >/dev/null 2>&1 || true`,
+      "/usr/local/bin/dust-gcs-token-firewall.sh",
     "dev-only teardown needs best-effort shell fallbacks and must retain the GCS broker UID drop"
   );
 

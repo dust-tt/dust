@@ -26,10 +26,6 @@ const TOKEN_DIRECTORY = "/run/dust-gcs";
 const TOKEN_SERVER_PATH = "/usr/local/bin/dust-gcs-token-server.py";
 const TOKEN_WRITER_PATH = "/usr/local/bin/dust-gcs-write-token.sh";
 const TOKEN_FIREWALL_PATH = "/usr/local/bin/dust-gcs-token-firewall.sh";
-const LEGACY_TOKEN_PATH = "/tmp/token.json";
-const LEGACY_TOKEN_FIREWALL_FAILURE_MARKER = "dust-gcs-legacy-firewall-failed";
-const CURRENT_TOKEN_FIREWALL_FAILURE_MARKER =
-  "dust-gcs-current-firewall-failed";
 const TOKEN_SERVER_POLL_ATTEMPTS = 100;
 const TOKEN_SERVER_POLL_INTERVAL_SECONDS = 0.05;
 const TOKEN_SERVER_EXEC_TIMEOUT_MS = 10_000;
@@ -332,22 +328,12 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
       return new Ok(undefined);
     }
 
-    // Re-establish both broker UID drops in one sandbox round-trip before replacing any token
-    // files. This protects old 9876 servers during the image rollout and closes the wake window
-    // where systemd/nftables state may have been reset before the lifecycle egress check runs.
-    const firewallResult = await ensureTokenFirewalls(auth, sandbox);
+    // Re-establish the dedicated broker UID drop before replacing any token files. This closes
+    // the wake window where systemd/nftables state may have been reset before the lifecycle
+    // egress check runs.
+    const firewallResult = await ensureTokenFirewall(auth, sandbox);
     if (firewallResult.isErr()) {
       if (firewallResult.error instanceof GCSMountImageHelperUnavailableError) {
-        if (firewallResult.error.helperPath === TOKEN_FIREWALL_PATH) {
-          const legacyRefreshResult = await mintAndWriteLegacyToken({
-            auth,
-            sandbox,
-            bucket: this.bucket,
-            targets: this.targets,
-          });
-          await sandbox.requestKill();
-          return legacyRefreshResult;
-        }
         await sandbox.requestKill();
       }
       return firewallResult;
@@ -372,16 +358,9 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
       if (writeError.error instanceof GCSMountTokenWriterUnavailableError) {
         logger.warn(
           { sandboxId: sandbox.sId, error: writeError.error },
-          "GCS token writer is unavailable; refreshing the legacy token and requesting sandbox recreation"
+          "GCS token writer is unavailable; requesting sandbox recreation"
         );
-        const legacyRefreshResult = await mintAndWriteLegacyToken({
-          auth,
-          sandbox,
-          bucket: this.bucket,
-          targets: this.targets,
-        });
         await sandbox.requestKill();
-        return legacyRefreshResult;
       }
       return writeError;
     }
@@ -565,112 +544,29 @@ async function mintAndWriteToken({
   return new Ok(undefined);
 }
 
-async function mintAndWriteLegacyToken({
-  auth,
-  sandbox,
-  bucket,
-  targets,
-}: {
-  auth: Authenticator;
-  sandbox: SandboxResource;
-  bucket: string;
-  targets: ReadonlyArray<GCSMountTarget>;
-}): Promise<Result<void, Error>> {
-  const tokenResult = await traceSandboxStartupPhase(
-    "gcs.mint_token",
-    () =>
-      mintDownscopedGcsToken({
-        bucket,
-        prefixes: targets.map((target) => ({
-          prefix: target.gcsPrefix,
-          readOnly: target.readOnly,
-        })),
-      }),
-    { credential_format: "legacy" }
-  );
-  if (tokenResult.isErr()) {
-    return tokenResult;
-  }
-
-  // Old images serve this file from the already-running agent-owned broker on port 9876. Keep
-  // this compatibility write for one image rollout so a pod's pre-destroy litestream flush can
-  // complete before the requested recreation.
-  const writeResult = await sandbox.exec(
-    auth,
-    `/usr/bin/tee ${LEGACY_TOKEN_PATH} >/dev/null`,
-    { stdin: buildTokenJson(tokenResult.value) }
-  );
-  if (writeResult.isErr()) {
-    return writeResult;
-  }
-  if (writeResult.value.exitCode !== 0) {
-    return new Err(
-      new Error(
-        `Legacy GCS token write failed: ${writeResult.value.stderr || writeResult.value.stdout}`
-      )
-    );
-  }
-
-  logger.warn(
-    {
-      sandboxId: sandbox.sId,
-      prefixes: targets.map((target) => target.gcsPrefix),
-    },
-    "GCS sandbox mount: refreshed legacy credential before sandbox recreation"
-  );
-
-  return new Ok(undefined);
-}
-
-async function ensureTokenFirewalls(
+async function ensureTokenFirewall(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<void, Error>> {
   const result = await sandbox.execRoot(
     auth,
-    rootCommand.unsafeShell(
-      "install_legacy_firewall() { " +
-        "if ! /usr/sbin/nft list table ip dust-gcs-token-legacy >/dev/null 2>&1; then " +
-        "/usr/sbin/nft add table ip dust-gcs-token-legacy || return $?; fi; " +
-        "if ! /usr/sbin/nft list chain ip dust-gcs-token-legacy filter_output >/dev/null 2>&1; then " +
-        "/usr/sbin/nft add chain ip dust-gcs-token-legacy filter_output '{ type filter hook output priority 0 ; policy accept ; }' || return $?; fi; " +
-        "legacy_rules=$(/usr/sbin/nft list chain ip dust-gcs-token-legacy filter_output 2>/dev/null || true); " +
-        "if ! /usr/bin/grep -Fq 'meta skuid 1003 ip daddr 127.0.0.0/8 tcp dport 9876 drop' <<<\"$legacy_rules\"; then " +
-        "/usr/sbin/nft add rule ip dust-gcs-token-legacy filter_output meta skuid 1003 ip daddr 127.0.0.0/8 tcp dport 9876 drop || return $?; fi; " +
-        "return 0; }; " +
-        "install_legacy_firewall; legacy_firewall_exit=$?; " +
-        "if [ $legacy_firewall_exit -ne 0 ]; then " +
-        `/usr/bin/printf '${LEGACY_TOKEN_FIREWALL_FAILURE_MARKER}\\n' >&2; ` +
-        "exit $legacy_firewall_exit; fi; " +
-        `${TOKEN_FIREWALL_PATH}; current_firewall_exit=$?; ` +
-        "if [ $current_firewall_exit -ne 0 ]; then " +
-        `/usr/bin/printf '${CURRENT_TOKEN_FIREWALL_FAILURE_MARKER}\\n' >&2; ` +
-        "fi; exit $current_firewall_exit",
-      "Protect legacy and current GCS token brokers during image rollout"
-    )
+    rootCommand.exec(TOKEN_FIREWALL_PATH)
   );
   if (result.isErr()) {
     return result;
   }
   if (result.value.exitCode === 126 || result.value.exitCode === 127) {
-    const helperPath = result.value.stderr.includes(
-      LEGACY_TOKEN_FIREWALL_FAILURE_MARKER
-    )
-      ? "/usr/sbin/nft"
-      : TOKEN_FIREWALL_PATH;
     return new Err(
-      new GCSMountImageHelperUnavailableError(helperPath, result.value.exitCode)
+      new GCSMountImageHelperUnavailableError(
+        TOKEN_FIREWALL_PATH,
+        result.value.exitCode
+      )
     );
   }
   if (result.value.exitCode !== 0) {
-    const firewall = result.value.stderr.includes(
-      CURRENT_TOKEN_FIREWALL_FAILURE_MARKER
-    )
-      ? "Current"
-      : "Legacy";
     return new Err(
       new Error(
-        `${firewall} GCS token firewall setup failed: ${result.value.stderr || result.value.stdout}`
+        `GCS token firewall setup failed: ${result.value.stderr || result.value.stdout}`
       )
     );
   }
