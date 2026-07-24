@@ -4259,6 +4259,150 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  /**
+   * Fetch message rows (with side-table includes) by model ids, ordered by rank/version ASC.
+   */
+  async fetchMessagesByModelIds(
+    auth: Authenticator,
+    messageIds: ModelId[]
+  ): Promise<MessageModel[]> {
+    if (messageIds.length === 0) {
+      return [];
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const sideTableWhere = {
+      workspaceId,
+      conversationId: this.id,
+    };
+
+    return MessageModel.findAll({
+      where: {
+        conversationId: this.id,
+        workspaceId,
+        id: { [Op.in]: messageIds },
+      },
+      order: [
+        ["rank", "ASC"],
+        ["version", "ASC"],
+      ],
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: false,
+          where: sideTableWhere,
+        },
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: false,
+          where: sideTableWhere,
+        },
+        {
+          model: ContentFragmentModel,
+          as: "contentFragment",
+          required: false,
+          where: sideTableWhere,
+        },
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
+          required: false,
+          where: sideTableWhere,
+        },
+      ],
+    });
+  }
+
+  /**
+   * Message ids that are unread for the given lastReadAt.
+   * Unread = created after lastRead, or agent message completed after lastRead.
+   * When lastReadAt is null, every main-branch message is unread.
+   */
+  async fetchUnreadMessageIds(
+    auth: Authenticator,
+    lastReadAt: Date | null
+  ): Promise<ModelId[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const baseWhere: WhereOptions<MessageModel> = {
+      workspaceId,
+      conversationId: this.id,
+      branchId: { [Op.is]: null },
+    };
+
+    if (lastReadAt === null) {
+      const messages = await MessageModel.findAll({
+        attributes: ["id"],
+        where: baseWhere,
+      });
+      return messages.map((message) => message.id);
+    }
+
+    const [createdAfter, completedAfter] = await Promise.all([
+      MessageModel.findAll({
+        attributes: ["id"],
+        where: {
+          ...baseWhere,
+          createdAt: { [Op.gt]: lastReadAt },
+        },
+      }),
+      MessageModel.findAll({
+        attributes: ["id"],
+        where: baseWhere,
+        include: [
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: true,
+            attributes: [],
+            where: {
+              workspaceId,
+              conversationId: this.id,
+              completedAt: { [Op.gt]: lastReadAt },
+            },
+          },
+        ],
+      }),
+    ]);
+
+    return [
+      ...new Set([
+        ...createdAfter.map((message) => message.id),
+        ...completedAfter.map((message) => message.id),
+      ]),
+    ];
+  }
+
+  /**
+   * Latest version message id per rank, earliest ranks first.
+   * Used to find the first visible message without loading the full conversation.
+   */
+  async fetchEarliestLatestVersionMessageIds(
+    auth: Authenticator,
+    { limit }: { limit: number }
+  ): Promise<ModelId[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const rankRows = await MessageModel.findAll({
+      attributes: [
+        [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
+        [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
+        [Sequelize.fn("MAX", Sequelize.col("rank")), "rank"],
+      ],
+      where: {
+        workspaceId,
+        conversationId: this.id,
+        branchId: { [Op.is]: null },
+        visibility: { [Op.ne]: "deleted" },
+      },
+      group: ["rank"],
+      order: [["rank", "ASC"]],
+      limit,
+    });
+
+    return rankRows.map((row) => row.id);
+  }
+
   static async updateRequirements(
     auth: Authenticator,
     sId: string,

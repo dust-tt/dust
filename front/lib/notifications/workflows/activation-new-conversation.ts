@@ -1,5 +1,3 @@
-import { isMessageUnread } from "@app/components/assistant/conversation/utils";
-import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
@@ -8,12 +6,12 @@ import {
   getNovuClient,
   getUserNotificationDelay,
 } from "@app/lib/notifications";
+import { hasUnreadSucceededAgentReply } from "@app/lib/notifications/conversation_fetch";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { getConversationDetails } from "@app/lib/notifications/helpers";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isLightAgentMessageType } from "@app/types/assistant/conversation";
 import {
   ACTIVATION_NEW_CONVERSATION_TRIGGER_ID,
   NOTIFICATION_DELAY_OPTIONS,
@@ -53,7 +51,7 @@ const userNotificationDelaySchema = z.object({
   delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
 });
 
-const shouldSkipActivationNewConversation = async ({
+export const shouldSkipActivationNewConversation = async ({
   subscriberId,
   payload,
 }: {
@@ -69,21 +67,10 @@ const shouldSkipActivationNewConversation = async ({
     payload.workspaceId
   );
 
-  const conversationRes = await getLightConversation(
+  // Send only when the agent has actually finished replying and that reply is still unread for this user.
+  const hasUnreadAgentReply = await hasUnreadSucceededAgentReply(
     auth,
     payload.conversationId
-  );
-  if (conversationRes.isErr()) {
-    return true;
-  }
-  const conversation = conversationRes.value;
-
-  // Send only when the agent has actually finished replying and that reply is still unread for this user.
-  const hasUnreadAgentReply = conversation.content.some(
-    (msg) =>
-      isLightAgentMessageType(msg) &&
-      msg.status === "succeeded" &&
-      isMessageUnread(msg, conversation.lastReadMs)
   );
 
   return !hasUnreadAgentReply;

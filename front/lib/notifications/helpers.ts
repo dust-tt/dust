@@ -1,10 +1,16 @@
-import { isMessageUnread } from "@app/components/assistant/conversation/utils";
-import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { Authenticator } from "@app/lib/auth";
 import {
   getAgentsDataRetention,
   getConversationsDataRetention,
 } from "@app/lib/data_retention";
+import {
+  conversationUsesAgentsWithRetention,
+  conversationWithoutContentForResource,
+  fetchFirstVisibleLightMessage,
+  fetchLightMessageBySId,
+  fetchUserMessageOriginBySId,
+  getUnreadNotificationFlags,
+} from "@app/lib/notifications/conversation_fetch";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
@@ -14,10 +20,8 @@ import {
   isLightAgentMessageType,
   isPodConversation,
   isUserMessageType,
-  isVisibleMessage,
 } from "@app/types/assistant/conversation";
 import { isRichUserMention } from "@app/types/assistant/mentions";
-import { isContentFragmentType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -103,12 +107,12 @@ export const getConversationDetails = async ({
     );
   }
 
-  const conversationRes = await getLightConversation(
+  const resource = await ConversationResource.fetchById(
     auth,
     payload.conversationId
   );
 
-  if (conversationRes.isErr()) {
+  if (!resource) {
     // Check if the conversation was deleted (expected during workflow delay).
     const deletedConversation = await ConversationResource.fetchById(
       auth,
@@ -122,7 +126,10 @@ export const getConversationDetails = async ({
     throw new Error(`Conversation not found: ${payload.conversationId}`);
   }
 
-  const conversation = conversationRes.value;
+  const conversation = await conversationWithoutContentForResource(
+    auth,
+    resource
+  );
 
   const workspaceName = auth.getNonNullableWorkspace().name;
   // Decode HTML entities in conversation title (e.g. from email subjects
@@ -132,14 +139,20 @@ export const getConversationDetails = async ({
   const isFromTrigger = !!conversation.triggerId;
 
   // Retrieve the message that triggered the notification.
-  // For new project conversations, use the first visible message
-  const message = !payload.isNewProjectConversation
-    ? conversation.content.find((msg) => msg.sId === payload.messageId)
-    : conversation.content.find(isVisibleMessage);
-  if (!message) {
-    // Message doesn't exist at all - could be true if it's in a branch.
-    return new Err(new ConversationError("message_not_found"));
+  // For new project conversations, use the first visible message.
+  const messageRes = !payload.isNewProjectConversation
+    ? await fetchLightMessageBySId(auth, {
+        resource,
+        conversation,
+        messageId: payload.messageId!,
+      })
+    : await fetchFirstVisibleLightMessage(auth, resource);
+
+  if (messageRes.isErr()) {
+    return messageRes;
   }
+
+  const message = messageRes.value;
   if (message.visibility === "deleted") {
     // Message was deleted during workflow delay - expected.
     return new Err(new ConversationError("message_not_found"));
@@ -153,30 +166,25 @@ export const getConversationDetails = async ({
     message.type === "agent_message" || message.type === "user_message"
       ? message.content
       : "";
-  const parentUserMessage = isLightAgentMessageType(message)
-    ? conversation.content
-        .flat()
-        .find((msg) => msg.sId === message.parentMessageId)
-    : undefined;
+
+  const parentOrigin = isLightAgentMessageType(message)
+    ? await fetchUserMessageOriginBySId(auth, {
+        conversation,
+        messageId: message.parentMessageId,
+      })
+    : null;
+
   const isFromEmailAgentConversation =
     (isUserMessageType(message) && message.context.origin === "email") ||
-    (parentUserMessage !== undefined &&
-      isUserMessageType(parentUserMessage) &&
-      parentUserMessage.context.origin === "email");
+    parentOrigin === "email";
 
   const isFromSlackAgentConversation =
     (isUserMessageType(message) && message.context.origin === "slack") ||
-    (parentUserMessage !== undefined &&
-      isUserMessageType(parentUserMessage) &&
-      parentUserMessage.context.origin === "slack");
+    parentOrigin === "slack";
 
   if (isCompactionMessageType(message)) {
     // Compaction messages don't trigger notifications.
     return new Err(new ConversationError("message_not_found"));
-  } else if (isContentFragmentType(message)) {
-    // Content fragments don't have author info.
-    author = "Someone else";
-    authorIsAgent = false;
   } else if (isUserMessageType(message)) {
     author =
       message.user?.fullName ?? message.context.fullName ?? "Someone else";
@@ -196,32 +204,18 @@ export const getConversationDetails = async ({
     assertNever(message);
   }
 
-  const unreadMessages = conversation.content.filter((msg) =>
-    isMessageUnread(msg, conversation.lastReadMs)
-  );
-
-  const hasUnreadMessages = unreadMessages.length > 0;
-
-  const hasUnreadMentions = unreadMessages.some((msg) => {
-    if (isContentFragmentType(msg) || isCompactionMessageType(msg)) {
-      return false;
-    }
-    return msg.richMentions.some(
-      (m) => isRichUserMention(m) && m.id === subscriberId
-    );
-  });
+  const { hasUnreadMessages, hasUnreadMentions } =
+    await getUnreadNotificationFlags(auth, { resource, conversation });
 
   const conversationsRetention = await getConversationsDataRetention(auth);
   const hasConversationRetentionPolicy = conversationsRetention !== null;
 
   const agentsRetention = await getAgentsDataRetention(auth);
-  const hasAgentRetentionPolicies = conversation.content.some((msg) => {
-    if (msg.type !== "agent_message") {
-      return false;
-    }
-
-    return msg.configuration.sId in agentsRetention;
-  });
+  const hasAgentRetentionPolicies = await conversationUsesAgentsWithRetention(
+    auth,
+    resource,
+    agentsRetention
+  );
 
   // Fetch project-specific details when this is a new project conversation notification.
   let projectName: string | undefined;
