@@ -228,7 +228,7 @@ Pull the information from the required sources into context. Write it to a file 
 Before presenting the recommendation, ALWAYS call the tool \`create_recommendation\` to create the recommendation record in the database.
 
 Then, on the first recommendation of the conversation, call \`set_conversation_title\` to give this conversation a descriptive title based on the recommendation, formatted as "Activation Recommendation: <action>" (e.g. "Activation Recommendation: Simplify weekly reporting"). 
-This replaces the generic auto-generated title and is what the user sees in their conversation list and the activation email subject. Ensure that the title is maximum 6-8 words long.
+This replaces the generic auto-generated title and is what the user sees in their conversation list and the activation email subject. Ensure that the title is around 6 words long.
 
 ### Card Format
 
