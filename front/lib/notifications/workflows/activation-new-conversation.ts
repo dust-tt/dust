@@ -7,8 +7,11 @@ import {
   getUserNotificationDelay,
 } from "@app/lib/notifications";
 import { hasUnreadSucceededAgentReply } from "@app/lib/notifications/conversation_fetch";
-import { renderEmail } from "@app/lib/notifications/email-templates/default";
-import { getConversationDetails } from "@app/lib/notifications/helpers";
+import { renderEmail } from "@app/lib/notifications/email-templates/activation-new-conversation";
+import {
+  getConversationDetails,
+  getEmailSummary,
+} from "@app/lib/notifications/helpers";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -41,6 +44,8 @@ export type activationNewConversationPayloadType = z.infer<
 const activationNewConversationDetailsSchema = z.object({
   subject: z.string(),
   workspaceName: z.string(),
+  // Short, human summary of what's inside; null when none could be generated.
+  summary: z.string().nullable(),
 });
 
 export type activationNewConversationDetailsType = z.infer<
@@ -90,12 +95,23 @@ const getActivationNewConversationDetails = async ({
   if (detailsResult.isErr()) {
     // Only reached for a deleted conversation, in which case the email step is
     // already skipped, so this value is never actually delivered.
-    return { subject: "A new conversation", workspaceName: "your workspace" };
+    return {
+      subject: "A new conversation",
+      workspaceName: "your workspace",
+      summary: null,
+    };
   }
+
+  const summary = await getEmailSummary({
+    details: detailsResult.value,
+    subscriberId: subscriberId ?? "",
+    payload,
+  });
 
   return {
     subject: detailsResult.value.subject,
     workspaceName: detailsResult.value.workspaceName,
+    summary,
   };
 };
 
@@ -144,7 +160,9 @@ export const activationNewConversationWorkflow = workflow(
             id: payload.workspaceId,
             name: details.workspaceName,
           },
-          content: `There's something new waiting for you: "${details.subject}".`,
+          title: details.subject,
+          summary: details.summary,
+          previewImageUrl: undefined,
           action: {
             label: "Open conversation",
             url:
@@ -154,7 +172,7 @@ export const activationNewConversationWorkflow = workflow(
         });
 
         return {
-          subject: `[Dust] ${details.subject}`,
+          subject: details.subject,
           body,
         };
       },
