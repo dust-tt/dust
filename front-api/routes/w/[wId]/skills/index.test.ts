@@ -148,6 +148,57 @@ describe("GET /api/w/:wId/skills", () => {
     expect(skillNames).not.toContain("Someone Else's Unpublished Skill");
   });
 
+  it("lets admins bypass editor visibility to list unpublished skills they do not edit", async () => {
+    const { workspace } = await setupTest("admin");
+
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "builder",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    await SkillFactory.create(skillOwnerAuth, {
+      name: "Someone Else's Unpublished Skill",
+      availability: "editors",
+    });
+
+    // The requesting admin is not in the skill's editor group: without the param the
+    // unpublished skill stays hidden.
+    const withoutParamResponse = await getSkills(workspace);
+    expect(withoutParamResponse.status).toBe(200);
+    const withoutParamNames = (await withoutParamResponse.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(withoutParamNames).not.toContain("Someone Else's Unpublished Skill");
+
+    const response = await getSkills(workspace, {
+      bypassEditorVisibility: "true",
+    });
+    expect(response.status).toBe(200);
+    const skillNames = (await response.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).toContain("Someone Else's Unpublished Skill");
+  });
+
+  it("rejects bypassEditorVisibility for non-admins", async () => {
+    const { workspace } = await setupTest("builder");
+
+    const response = await getSkills(workspace, {
+      bypassEditorVisibility: "true",
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "app_auth_error",
+        message: "Only admins can bypass editor visibility.",
+      },
+    });
+  });
+
   it("filters by availability, with isDefault=true as a deprecated alias", async () => {
     const { workspace, user } = await setupTest();
 

@@ -101,6 +101,7 @@ export function useSkills({
   status,
   globalSpaceOnly,
   availability,
+  bypassEditorVisibility,
   swrOptions,
 }: {
   owner: LightWorkspaceType;
@@ -108,6 +109,9 @@ export function useSkills({
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
   availability?: SkillAvailability | SkillAvailability[];
+  // Admin-only: bypass the editor-visibility rule and also list unpublished
+  // (editors-only) skills the caller does not edit.
+  bypassEditorVisibility?: boolean;
   swrOptions?: SWRConfiguration;
 }): {
   skills: SkillWithoutInstructionsAndToolsType[];
@@ -131,6 +135,9 @@ export function useSkills({
     for (const value of availabilities) {
       queryParams.append("availability", value);
     }
+  }
+  if (bypassEditorVisibility) {
+    queryParams.set("bypassEditorVisibility", "true");
   }
   const queryString = queryParams.toString();
 

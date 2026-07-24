@@ -131,6 +131,8 @@ app.get(
     const onlyCustom = ctx.req.query("onlyCustom");
     // @deprecated Use availability instead. Kept while old clients still send it.
     const isDefault = ctx.req.query("isDefault");
+    const bypassEditorVisibility =
+      ctx.req.query("bypassEditorVisibility") === "true";
     // Repeatable: ?availability=workspace_users&availability=users_and_agents.
     const availabilityParams = ctx.req.queries("availability");
 
@@ -165,6 +167,17 @@ app.get(
           ? ["users_and_agents" as const]
           : undefined;
 
+    // Only admins may list unpublished skills they don't edit (e.g. for governance views).
+    if (bypassEditorVisibility && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only admins can bypass editor visibility.",
+        },
+      });
+    }
+
     const allSkills = await SkillResource.listByWorkspace(auth, {
       status: skillStatus,
       globalSpaceOnly: globalSpaceOnly === "true",
@@ -177,9 +190,11 @@ app.get(
 
     // Skills with editors-only availability (unpublished) are only listed for members of
     // their editor group.
-    const skills = allSkills.filter(
-      (skill) => skill.availability !== "editors" || skill.canWrite(auth)
-    );
+    const skills = bypassEditorVisibility
+      ? allSkills
+      : allSkills.filter(
+          (skill) => skill.availability !== "editors" || skill.canWrite(auth)
+        );
 
     if (withRelations === "true") {
       const usageMap = await SkillResource.batchFetchUsage(auth, skills);
