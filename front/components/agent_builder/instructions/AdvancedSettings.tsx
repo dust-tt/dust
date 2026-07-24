@@ -141,7 +141,7 @@ export function AdvancedSettings() {
                     Auto
                     <Chip size="xs" color="highlight" label="Recommended" />
                   </span>
-                  <span className="text-xs font-normal text-muted-foreground">
+                  <span className="whitespace-normal text-xs font-normal text-muted-foreground">
                     Switches model depending on current availability for
                     balanced performance.
                   </span>
