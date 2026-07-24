@@ -239,7 +239,7 @@ function AgentBuilderForm({
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
 
-  const { hasPermission } = useWorkspacePermissions(owner);
+  const { hasPermission } = useWorkspacePermissions();
   const canPublishAgent = hasPermission("publish", "agent");
 
   const { slackChannels: slackChannelsLinkedWithAgent } =

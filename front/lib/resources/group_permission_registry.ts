@@ -7,6 +7,7 @@ import type {
   WorkspacePermissions,
 } from "@app/types/group_permissions";
 import {
+  EMPTY_WORKSPACE_PERMISSIONS,
   GROUP_PERMISSION_RESOURCE_TYPES,
   isConcreteResourceType,
   WHOLE_TYPE_RESOURCE_ID,
@@ -169,22 +170,9 @@ function allTypeLevelVerbsForResource(
   return [...verbs];
 }
 
-function emptyWorkspacePermissions(): WorkspacePermissions {
-  return {
-    space: [],
-    agent: [],
-    skill: [],
-    frame: [],
-    billing: [],
-    identity: [],
-    audit_log: [],
-    models_tier: [],
-  };
-}
-
 // Every type-level verb on every resource type — an admin's implicit full access.
 export function allWorkspacePermissions(): WorkspacePermissions {
-  const permissions = emptyWorkspacePermissions();
+  const permissions = EMPTY_WORKSPACE_PERMISSIONS;
   for (const resourceType of GROUP_PERMISSION_RESOURCE_TYPES) {
     if (!isConcreteResourceType(resourceType)) {
       continue;
@@ -226,7 +214,7 @@ export function workspacePermissionsFromGrants(
     }
   }
 
-  const permissions = emptyWorkspacePermissions();
+  const permissions = EMPTY_WORKSPACE_PERMISSIONS;
   for (const resource of GROUP_PERMISSION_RESOURCE_TYPES.filter(
     isConcreteResourceType
   )) {

@@ -56,7 +56,7 @@ export function AccessSection({
 
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { owner } = useAgentBuilderContext();
-  const { hasPermission } = useWorkspacePermissions(owner);
+  const { hasPermission } = useWorkspacePermissions();
 
   const canPublishAgent = hasPermission("publish", "agent");
 

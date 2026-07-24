@@ -419,7 +419,7 @@ export function AgentSidebarMenu({
   const router = useAppRouter();
   const activeConversationId = useActiveConversationId();
   const activePodId = useActivePodId();
-  const { hasPermission } = useWorkspacePermissions(owner);
+  const { hasPermission } = useWorkspacePermissions();
   const moveConversationToPod = useMoveConversationToPod(owner);
   const bulkMoveConversationsToPod = useBulkMoveConversationsToPod(owner);
 

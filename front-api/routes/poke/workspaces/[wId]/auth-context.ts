@@ -1,6 +1,7 @@
 import type { GetPokeWorkspaceAuthContextResponseType } from "@app/lib/api/poke/auth_context";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { Authenticator } from "@app/lib/auth";
+import { allWorkspacePermissions } from "@app/lib/resources/group_permission_registry";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -62,6 +63,8 @@ app.get(
 
     const user = auth.getNonNullableUser();
 
+    const workspacePermissions = allWorkspacePermissions();
+
     return ctx.json({
       user: user.toJSON(),
       workspace,
@@ -70,6 +73,7 @@ app.get(
       isManager: true,
       isBuilder: true,
       isSuperUser: true,
+      workspacePermissions,
     });
   }
 );

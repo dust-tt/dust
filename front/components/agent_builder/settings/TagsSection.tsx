@@ -48,7 +48,7 @@ export function TagsSection() {
   const { owner } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { tags: allTags } = useTags({ owner });
-  const { hasPermission } = useWorkspacePermissions(owner);
+  const { hasPermission } = useWorkspacePermissions();
   const canManageProtectedTags = hasPermission("publish", "agent");
   const {
     fields: selectedTags,

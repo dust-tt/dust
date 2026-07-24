@@ -163,9 +163,7 @@ export function AgentDetailsSheet({
     !isTriggersTabActive
   );
 
-  const { hasPermission } = useWorkspacePermissions(owner, {
-    disabled: !agentId,
-  });
+  const { hasPermission } = useWorkspacePermissions();
 
   const handleAddTrigger = useCallback(() => {
     setTriggerEditMode({ type: "add" });

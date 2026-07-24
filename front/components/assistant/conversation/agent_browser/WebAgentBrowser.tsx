@@ -55,7 +55,7 @@ export function WebAgentBrowser({
 }: WebAgentBrowserProps) {
   const router = useAppRouter();
   const { createAgentButtonRef } = useWelcomeTourGuide();
-  const { hasPermission } = useWorkspacePermissions(owner);
+  const { hasPermission } = useWorkspacePermissions();
 
   const canCreateAgent = hasPermission("create", "agent");
   const canPublishAgent = hasPermission("publish", "agent");

@@ -80,7 +80,7 @@ export function ManageAgentsPage() {
   const [isBatchEdit, setIsBatchEdit] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
 
-  const { hasPermission } = useWorkspacePermissions(owner);
+  const { hasPermission } = useWorkspacePermissions();
 
   const canCreateAgent = hasPermission("create", "agent");
   const canPublishAgent = hasPermission("publish", "agent");

@@ -1,6 +1,7 @@
 // Contract types for the poke auth-context endpoints, used by the poke
 // auth-context API routes (front-api/routes/poke/...).
 import type { PokeRole } from "@app/lib/poke/roles";
+import type { WorkspacePermissions } from "@app/types/group_permissions";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
@@ -18,4 +19,5 @@ export type GetPokeWorkspaceAuthContextResponseType = {
   isManager: true; // Superusers have manager privileges
   isBuilder: true; // Superusers have builder privileges
   isSuperUser: true;
+  workspacePermissions: WorkspacePermissions;
 };
