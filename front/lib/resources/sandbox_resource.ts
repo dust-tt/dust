@@ -74,6 +74,11 @@ export type SandboxCreateOwner = SandboxLifecycleOwner & {
   logLabel: string;
 };
 
+export type SandboxTimestampCursor = {
+  sandboxModelId: ModelId;
+  timestamp: Date;
+};
+
 export type SandboxDeleteOwner = SandboxLifecycleOwner & {
   deleteSandbox: (
     sandbox: SandboxResource,
@@ -237,8 +242,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
   /**
    * Return sandboxes with the given `status` whose `lastActivityAt` is older
-   * than `olderThanMs`. Used by the reaper workflow to identify candidates for
-   * sleep/destroy.
+   * than `olderThanMs` and which do not have a pending kill request. Used by
+   * the reaper workflow to identify candidates for the regular sleep/destroy
+   * phases; kill-requested sandboxes are handled by their dedicated phase.
    *
    * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
    */
@@ -246,17 +252,35 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     status: SandboxStatus;
     olderThanMs: number;
     limit: number;
+    after?: SandboxTimestampCursor;
   }): Promise<SandboxResource[]> {
+    const afterCursorClause = opts.after
+      ? {
+          [Op.or]: [
+            { lastActivityAt: { [Op.gt]: opts.after.timestamp } },
+            {
+              lastActivityAt: opts.after.timestamp,
+              id: { [Op.gt]: opts.after.sandboxModelId },
+            },
+          ],
+        }
+      : {};
+
     const rows = await this.model.findAll({
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         status: opts.status,
+        killRequestedAt: { [Op.is]: null },
         lastActivityAt: {
           [Op.lt]: new Date(Date.now() - opts.olderThanMs),
         },
+        ...afterCursorClause,
       },
-      order: [["lastActivityAt", "ASC"]],
+      order: [
+        ["lastActivityAt", "ASC"],
+        ["id", "ASC"],
+      ],
       limit: opts.limit,
     });
 
@@ -951,15 +975,32 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    */
   static async dangerouslyGetKillRequestedSandboxes(opts: {
     limit: number;
+    after?: SandboxTimestampCursor;
   }): Promise<SandboxResource[]> {
+    const afterCursorClause = opts.after
+      ? {
+          [Op.or]: [
+            { killRequestedAt: { [Op.gt]: opts.after.timestamp } },
+            {
+              killRequestedAt: opts.after.timestamp,
+              id: { [Op.gt]: opts.after.sandboxModelId },
+            },
+          ],
+        }
+      : {};
+
     const rows = await this.model.findAll({
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         killRequestedAt: { [Op.ne]: null },
         status: { [Op.ne]: "deleted" },
+        ...afterCursorClause,
       },
-      order: [["killRequestedAt", "ASC"]],
+      order: [
+        ["killRequestedAt", "ASC"],
+        ["id", "ASC"],
+      ],
       limit: opts.limit,
     });
 

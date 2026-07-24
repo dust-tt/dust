@@ -1,3 +1,5 @@
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import type { ensurePodStateHealthOnSleep } from "@app/lib/api/sandbox/db";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
@@ -8,7 +10,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockEnsurePodStateHealthOnSleep,
@@ -16,6 +18,7 @@ const {
   mockGetSandboxImage,
   mockGetSandboxProvider,
   mockHeartbeat,
+  mockProviderDestroy,
   mockProviderSleep,
 } = vi.hoisted(() => ({
   mockEnsurePodStateHealthOnSleep: vi.fn(),
@@ -23,6 +26,7 @@ const {
   mockGetSandboxImage: vi.fn(),
   mockGetSandboxProvider: vi.fn(),
   mockHeartbeat: vi.fn(),
+  mockProviderDestroy: vi.fn(),
   mockProviderSleep: vi.fn(),
 }));
 
@@ -55,10 +59,27 @@ vi.mock("@app/lib/lock", () => ({
 }));
 
 describe("reapStaleSandboxesActivity", () => {
-  it("sleeps stale conversation and pod sandboxes", async () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
     mockExecuteWithLock.mockImplementation(
       async (_key: string, fn: () => Promise<unknown>) => fn()
     );
+    mockEnsurePodStateHealthOnSleep.mockImplementation(
+      async (...args: Parameters<typeof ensurePodStateHealthOnSleep>) => {
+        const refreshMountCredential = args[2]?.refreshMountCredential;
+        if (!refreshMountCredential) {
+          throw new Error("Expected a mount credential refresh callback.");
+        }
+        return refreshMountCredential();
+      }
+    );
+    vi.spyOn(DustFileSystem.prototype, "refreshSandboxMount").mockResolvedValue(
+      new Ok(undefined)
+    );
+  });
+
+  it("sleeps stale conversation and pod sandboxes", async () => {
     mockGetSandboxImage.mockReturnValue(
       new Ok({
         toCreateConfig: () => ({
@@ -76,7 +97,6 @@ describe("reapStaleSandboxesActivity", () => {
         .mockResolvedValueOnce(new Ok({ providerId: "pod-provider" })),
       sleep: mockProviderSleep.mockResolvedValue(new Ok(undefined)),
     });
-    mockEnsurePodStateHealthOnSleep.mockResolvedValue(new Ok(undefined));
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -115,9 +135,18 @@ describe("reapStaleSandboxesActivity", () => {
       }
     );
 
-    const hasMore = await reapStaleSandboxesActivity();
+    const result = await reapStaleSandboxesActivity({
+      cursor: null,
+      phase: "running",
+    });
 
-    expect(hasMore).toBe(false);
+    expect(result).toEqual({
+      failedCount: 0,
+      nextCursor: null,
+      processedCount: 2,
+      skippedCount: 0,
+      succeededCount: 2,
+    });
     expect(mockProviderSleep).toHaveBeenCalledWith("conversation-provider", {
       workspaceId: workspace.sId,
     });
@@ -126,5 +155,70 @@ describe("reapStaleSandboxesActivity", () => {
     });
     // Pod sleeps run the pre-sleep state health check; conversations don't.
     expect(mockEnsurePodStateHealthOnSleep).toHaveBeenCalledTimes(1);
+    expect(DustFileSystem.prototype.refreshSandboxMount).toHaveBeenCalledTimes(
+      1
+    );
+  });
+
+  it("destroys a kill-requested sandbox in a restricted project", async () => {
+    mockGetSandboxImage.mockReturnValue(
+      new Ok({
+        toCreateConfig: () => ({
+          imageId: { imageName: "test-image", tag: "0.0.1" },
+          envVars: {},
+          network: { egress: "restricted" },
+          resources: { cpu: 1, memoryMB: 512 },
+        }),
+      })
+    );
+    mockGetSandboxProvider.mockReturnValue({
+      create: vi.fn().mockResolvedValue(new Ok({ providerId: "pod-provider" })),
+      destroy: mockProviderDestroy.mockResolvedValue(new Ok(undefined)),
+    });
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace);
+    const podSandboxResult = await PodSandboxAdapter.ensureSandboxActive(
+      authenticator,
+      pod
+    );
+    if (podSandboxResult.isErr()) {
+      throw podSandboxResult.error;
+    }
+    await podSandboxResult.value.sandbox.requestKill();
+    await SandboxModel.update(
+      {
+        lastActivityAt: new Date(Date.now() - SLEEP_THRESHOLD_MS - 1),
+      },
+      { where: { id: podSandboxResult.value.sandbox.id } }
+    );
+
+    const runningResult = await reapStaleSandboxesActivity({
+      cursor: null,
+      phase: "running",
+    });
+    expect(runningResult.processedCount).toBe(0);
+
+    const result = await reapStaleSandboxesActivity({
+      cursor: null,
+      phase: "kill_requested",
+    });
+
+    expect(result).toEqual({
+      failedCount: 0,
+      nextCursor: null,
+      processedCount: 1,
+      skippedCount: 0,
+      succeededCount: 1,
+    });
+    expect(mockProviderDestroy).toHaveBeenCalledWith("pod-provider", {
+      workspaceId: workspace.sId,
+    });
+    expect(DustFileSystem.prototype.refreshSandboxMount).toHaveBeenCalledTimes(
+      1
+    );
+    const sandbox = await PodSandboxAdapter.fetchSandbox(authenticator, pod);
+    expect(sandbox?.status).toBe("deleted");
   });
 });
