@@ -1,5 +1,4 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { AgentBuilderSimilarAgentsSection } from "@app/components/agent_builder/AgentBuilderSimilarAgentsSection";
 import { AgentBuilderSpacesBlock } from "@app/components/agent_builder/AgentBuilderSpacesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
@@ -66,9 +65,6 @@ export function AgentBuilderLeftPanel({
         <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
           {editorGateMessage}
           <AgentBuilderInstructionsBlock
-            agentConfigurationId={agentConfigurationId}
-          />
-          <AgentBuilderSimilarAgentsSection
             agentConfigurationId={agentConfigurationId}
           />
           <AgentBuilderSpacesBlock
