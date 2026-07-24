@@ -152,7 +152,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - pending agent"
         scope: "hidden",
         model: {
           providerId: "anthropic",
-          modelId: "claude-sonnet-4-5-20250929",
+          modelId: "claude-sonnet-5",
           temperature: 0.5,
         },
         actions: [],

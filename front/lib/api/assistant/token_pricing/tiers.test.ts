@@ -10,6 +10,7 @@ import {
   CLAUDE_SONNET_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
 import {
+  isStaticModelId,
   STATIC_MODEL_IDS,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types/assistant/models/models";
@@ -19,7 +20,6 @@ import {
 } from "@app/types/assistant/models/openai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
-import { GROK_4_FAST_REASONING_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 import { describe, expect, it } from "vitest";
 
 describe("token_pricing/tiers", () => {
@@ -38,16 +38,15 @@ describe("token_pricing/tiers", () => {
   });
 
   it("keeps STATIC_MODEL_SUPPORTED_REASONING_EFFORTS in sync with SUPPORTED_MODEL_CONFIGS", () => {
-    for (const modelId of STATIC_MODEL_IDS) {
-      const config =
-        SUPPORTED_MODEL_CONFIGS.find((entry) => entry.modelId === modelId) ??
-        (modelId === GROK_4_FAST_REASONING_MODEL_CONFIG.modelId
-          ? GROK_4_FAST_REASONING_MODEL_CONFIG
-          : null);
+    for (const config of SUPPORTED_MODEL_CONFIGS) {
+      // Custom models are generated at build time and priced via the fallback in
+      // getTierForModel, not the static map.
+      if (!isStaticModelId(config.modelId)) {
+        continue;
+      }
 
-      expect(config).not.toBeNull();
-      expect(STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[modelId]).toEqual(
-        config!.supportedReasoningEfforts
+      expect(STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[config.modelId]).toEqual(
+        config.supportedReasoningEfforts
       );
     }
   });

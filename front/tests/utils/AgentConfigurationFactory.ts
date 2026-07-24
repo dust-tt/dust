@@ -27,7 +27,7 @@ export class AgentConfigurationFactory {
     const description = overrides.description ?? "Test Agent Description";
     const scope = overrides.scope ?? "visible";
     const providerId = overrides.model?.providerId ?? "openai";
-    const modelId = overrides.model?.modelId ?? "gpt-4-turbo";
+    const modelId = overrides.model?.modelId ?? "gpt-5-mini";
     const temperature = overrides.model?.temperature ?? 0.7;
     const requestedSpaceIds = overrides.requestedSpaceIds ?? [];
 
@@ -104,7 +104,7 @@ export class AgentConfigurationFactory {
       scope: "visible",
       model: {
         providerId: "openai",
-        modelId: "gpt-4-turbo",
+        modelId: "gpt-5-mini",
         temperature: 0.7,
       },
       templateId: null,

@@ -46,7 +46,7 @@ async function createPatchableAgent({
     scope: "hidden",
     model: {
       providerId: "anthropic",
-      modelId: "claude-sonnet-4-5-20250929",
+      modelId: "claude-sonnet-5",
       temperature: 0.5,
     },
     agentConfigurationId: undefined,
@@ -374,7 +374,7 @@ describe("patchAgentConfigurationFromJSON", () => {
       scope: "hidden",
       model: {
         providerId: "anthropic",
-        modelId: "claude-sonnet-4-5-20250929",
+        modelId: "claude-sonnet-5",
         temperature: 0.5,
       },
       agentConfigurationId: undefined,
