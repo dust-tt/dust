@@ -1,5 +1,5 @@
 import { AuthContext, type AuthContextValue } from "@app/lib/auth/AuthContext";
-import { EMPTY_WORKSPACE_PERMISSIONS } from "@app/types/group_permissions";
+import { emptyWorkspacePermissions } from "@app/types/group_permissions";
 import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder, isManager } from "@app/types/user";
@@ -173,7 +173,7 @@ export function ExtensionAuthProvider({
       featureFlags,
       vizUrl: process.env.VIZ_PUBLIC_URL ?? "",
       providersHealth: null,
-      workspacePermissions: EMPTY_WORKSPACE_PERMISSIONS,
+      workspacePermissions: emptyWorkspacePermissions(),
     };
   }, [user, workspace, featureFlags]);
 

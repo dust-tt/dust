@@ -12,6 +12,18 @@ export function displayRoleCapitalized(role: RoleType): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
+// `builder` is deprecated under admin governance: when the feature flag is
+// enabled, surface it to end users as a regular member.
+export function normalizeDisplayRole<T extends RoleType>(
+  role: T,
+  isAdminGovernanceEnabled: boolean
+): T | "user" {
+  if (role === "builder" && isAdminGovernanceEnabled) {
+    return "user";
+  }
+  return role;
+}
+
 export const ROLES_DATA: Record<
   ActiveRoleType,
   { description: string; color: "warning" | "info" | "success" | "highlight" }
