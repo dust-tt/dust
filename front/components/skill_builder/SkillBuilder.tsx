@@ -29,6 +29,7 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { useAppRouter } from "@app/lib/platform";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
@@ -62,6 +63,7 @@ interface SkillBuilderProps {
 
 export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
+  const { featureFlags } = useFeatureFlags();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
@@ -107,8 +109,9 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 
     return getDefaultSkillFormData({
       user,
+      featureFlags,
     });
-  }, [skill, user]);
+  }, [skill, user, featureFlags]);
 
   const form = useForm<SkillBuilderFormData>({
     disabled: isEditorLocked,

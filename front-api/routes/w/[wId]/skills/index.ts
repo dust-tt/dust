@@ -4,7 +4,7 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
-import { hasFeatureFlag } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -17,7 +17,7 @@ import type {
 } from "@app/types/api/skills";
 import {
   availabilityFromIsDefault,
-  DEFAULT_SKILL_AVAILABILITY,
+  getDefaultSkillAvailability,
   SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
   type SkillAvailability,
@@ -286,8 +286,8 @@ app.post(
       });
     }
 
-    const hasSkillPublicationGovernance = await hasFeatureFlag(
-      auth,
+    const featureFlags = await getFeatureFlags(auth);
+    const hasSkillPublicationGovernance = featureFlags.includes(
       "admin_governance_skill_publication"
     );
 
@@ -324,7 +324,8 @@ app.post(
       });
     }
 
-    const availability = requestedAvailability ?? DEFAULT_SKILL_AVAILABILITY;
+    const availability =
+      requestedAvailability ?? getDefaultSkillAvailability(featureFlags);
 
     const existingSkill = await SkillResource.fetchByName(auth, name);
 
