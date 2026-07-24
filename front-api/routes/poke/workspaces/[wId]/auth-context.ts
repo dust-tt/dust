@@ -71,7 +71,6 @@ app.get(
       subscription,
       isAdmin: true,
       isManager: true,
-      isBuilder: true,
       isSuperUser: true,
       workspacePermissions,
     });
