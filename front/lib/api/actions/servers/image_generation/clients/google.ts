@@ -7,7 +7,7 @@ import {
   type ImageGenerationInput,
   ImageGenerationLLM,
   type ImageGenerationOutput,
-} from "@app/lib/api/llm/imageGeneration";
+} from "@app/lib/api/actions/servers/image_generation/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
@@ -21,7 +21,6 @@ import {
 } from "@google/genai";
 import assert from "assert";
 import z from "zod";
-import { GOOGLE_AI_STUDIO_PROVIDER_ID } from "./types";
 
 const geminiInlineDataPartSchema = z.object({
   inlineData: z.object({
@@ -31,6 +30,8 @@ const geminiInlineDataPartSchema = z.object({
 });
 
 type GeminiInlineDataPart = z.infer<typeof geminiInlineDataPartSchema>;
+
+export const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio";
 
 export class ImageGenerationGoogleLLM extends ImageGenerationLLM {
   readonly supportedContentTypes: string[];

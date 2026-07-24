@@ -9,7 +9,7 @@ import {
   type ImageGenerationOutput,
   type ReferenceImageFile,
   type TokenCountDetails,
-} from "@app/lib/api/llm/imageGeneration";
+} from "@app/lib/api/actions/servers/image_generation/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
 import { trustedFetch } from "@app/lib/egress/server";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
@@ -24,7 +24,6 @@ import type {
   ImageGenerateParamsBase,
   ImagesResponse,
 } from "openai/resources/images";
-import { OPENAI_PROVIDER_ID } from "./types";
 
 const SQUARE = "1024x1024";
 const LANDSCAPE = "1536x1024";
@@ -50,6 +49,8 @@ const ASPECT_RATIO_TO_IMAGE_SIZE: Record<
   "4:5": PORTRAIT,
   "9:16": PORTRAIT,
 };
+
+export const OPENAI_PROVIDER_ID = "openai";
 
 function isSafetyBlockError(
   error: unknown
