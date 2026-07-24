@@ -1,5 +1,4 @@
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
-import type { DataSourceConfig, ModelId } from "@connectors/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -38,21 +37,47 @@ import { formatMessagesForUpsert } from "./messages";
 
 function upsert(messages: MessageElement[]) {
   return formatMessagesForUpsert({
-    dataSourceConfig: {} as DataSourceConfig,
+    dataSourceConfig: {
+      workspaceAPIKey: "test",
+      workspaceId: "test",
+      dataSourceId: "test",
+    },
     channelName: "alerts",
     messages,
     isThread: true,
-    connectorId: 1 as ModelId,
+    connectorId: 1,
+    // getUserInfo/getBotOrUserName are mocked, so the client is never used; it is
+    // only a placeholder for the (large, external) WebClient type.
     slackClient: {} as WebClient,
   });
+}
+
+interface SlackMessageFixture {
+  type?: "message";
+  user?: string;
+  bot_id?: string;
+  ts?: string;
+  text?: string;
+  blocks?: unknown[];
+  attachments?: unknown[];
+  files?: unknown[];
+}
+
+// Build fixtures through this factory so the single cast lives here, not at every
+// call site. `MessageElement` is a generated Slack response type whose block and
+// attachment element types are narrower than real payloads (the block `type` union
+// has no "rich_text"/"header"/"section", `Attachment` has no `is_share`), so a real
+// fixture can't be written against it. `SlackMessageFixture` accepts the literals
+// via `unknown[]`, then we assert the result back to `MessageElement`.
+function makeSlackMessage(fields: SlackMessageFixture): MessageElement {
+  return { type: "message", ...fields } as MessageElement;
 }
 
 // Structure taken from a real `conversations.replies` payload, with all
 // identifiable content replaced. A human posts a public link: the URL lives in
 // `text`, a `rich_text` block repeats the exact same content, and Slack adds a
 // link-unfurl attachment (from_url/original_url) previewing the URL.
-const LINK_MESSAGE = {
-  type: "message",
+const LINK_MESSAGE = makeSlackMessage({
   user: "U0POSTER0001",
   ts: "1720000000.000100",
   text: "*« Multiplayer AI » in the Fall 2026 RFS*\n<https://www.example.com/rfs#multiplayer-ai|https://www.example.com/rfs#multiplayer-ai> ",
@@ -94,14 +119,13 @@ const LINK_MESSAGE = {
       ],
     },
   ],
-} as unknown as MessageElement;
+});
 
 // Structure taken from a real `conversations.replies` payload, with all
 // identifiable content replaced. The author writes text (with a user mention), a
 // `rich_text` block repeats it, and the shared message rides along as an
 // `is_msg_unfurl` attachment.
-const FORWARDED_MESSAGE = {
-  type: "message",
+const FORWARDED_MESSAGE = makeSlackMessage({
   user: "U0POSTER0002",
   ts: "1720000000.000200",
   text: ":wave: <@U0MENTION001> saw this and was wondering:\n=&gt; not sure, but I sense that:\n• either there's a good reason we did it\n• or it's an easy fix\nright?",
@@ -165,7 +189,7 @@ const FORWARDED_MESSAGE = {
       ],
     },
   ],
-} as unknown as MessageElement;
+});
 
 describe("formatMessagesForUpsert", () => {
   beforeEach(() => {
@@ -212,8 +236,7 @@ describe("formatMessagesForUpsert", () => {
   it("drops a failed link preview ([no preview available]) when text is present", async () => {
     // Slack could not build the preview, so the attachment's only content is the
     // "[no preview available]" fallback. With `text` present, it must not leak.
-    const message = {
-      type: "message",
+    const message = makeSlackMessage({
       user: "U1",
       ts: "1720000000.000300",
       text: "look at this https://example.com/x",
@@ -224,7 +247,7 @@ describe("formatMessagesForUpsert", () => {
           fallback: "[no preview available]",
         },
       ],
-    } as MessageElement;
+    });
 
     const text = sectionFullText(await upsert([message]));
 
@@ -235,8 +258,7 @@ describe("formatMessagesForUpsert", () => {
   it("reconstructs a block-only bot alert whose top-level text is empty", async () => {
     // The original bug: empty `text`, content lives entirely in the blocks. With
     // no `text` fallback to fall back on, we reconstruct from the blocks.
-    const message = {
-      type: "message",
+    const message = makeSlackMessage({
       bot_id: "B1",
       ts: "1720000000.000400",
       text: "",
@@ -250,7 +272,7 @@ describe("formatMessagesForUpsert", () => {
           text: { type: "mrkdwn", text: "*Summary*: service is down" },
         },
       ],
-    } as MessageElement;
+    });
 
     const text = sectionFullText(await upsert([message]));
 
@@ -263,8 +285,7 @@ describe("formatMessagesForUpsert", () => {
   it("reconstructs a block-only bot alert's content from a legacy attachment when text is empty", async () => {
     // Some alerts (e.g. Grafana/Zendesk) carry their content in a legacy
     // attachment card rather than blocks. With empty `text`, it must surface.
-    const message = {
-      type: "message",
+    const message = makeSlackMessage({
       bot_id: "B1",
       ts: "1720000000.000500",
       text: "",
@@ -275,7 +296,7 @@ describe("formatMessagesForUpsert", () => {
           fallback: "CPU alert",
         },
       ],
-    } as MessageElement;
+    });
 
     const text = sectionFullText(await upsert([message]));
 
