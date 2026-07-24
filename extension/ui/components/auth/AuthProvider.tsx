@@ -2,7 +2,7 @@ import { AuthContext, type AuthContextValue } from "@app/lib/auth/AuthContext";
 import { emptyWorkspacePermissions } from "@app/types/group_permissions";
 import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
-import { isAdmin, isBuilder, isManager } from "@app/types/user";
+import { isAdmin, isManager } from "@app/types/user";
 import type { AuthError } from "@extension/shared/services/auth";
 import { useAuthHook } from "@extension/ui/components/auth/useAuth";
 import type { ReactNode } from "react";
@@ -169,7 +169,6 @@ export function ExtensionAuthProvider({
       subscription: EXTENSION_SUBSCRIPTION,
       isAdmin: isAdmin(workspace),
       isManager: isManager(workspace),
-      isBuilder: isBuilder(workspace),
       featureFlags,
       vizUrl: process.env.VIZ_PUBLIC_URL ?? "",
       providersHealth: null,
