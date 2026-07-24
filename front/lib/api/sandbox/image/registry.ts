@@ -25,8 +25,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.58";
-const DSBX_CLI_VERSION = "0.1.37";
+const DUST_BASE_IMAGE_VERSION = "0.8.59";
+const DSBX_CLI_VERSION = "0.1.38";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
 // list must not silently change this user's UID.
@@ -305,53 +305,10 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
   .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
   .runCmd(getSshHardeningCommand(), { user: "root" })
-  // Both the compatibility broker and the new root-owned broker require /usr/bin/python3.
+  // The root-owned token broker requires /usr/bin/python3.
   .runCmd("apt-get update && apt-get install -y python3", { user: "root" })
-  // Keep the legacy token server until the application cutover and kill sweep have completed.
-  // Threaded on purpose: gcsfuse fetches the
-  // token on EVERY GCS request (--reuse-token-from-url=false), and a
-  // single-connection nc loop drops concurrent fetches (connection reset →
-  // gcsfuse retry backoff), starving call-dense consumers like the pod-state
-  // litestream restore.
-  .runCmd("mkdir -p /home/agent/.bin", { user: "root" })
-  // TODO(2026-03-06 SANDBOX): .copy is broken, use file once fixed.
-  .runCmd(
-    `tee /home/agent/.bin/token-server.sh > /dev/null << 'SHELLEOF'
-#!/bin/bash
-exec python3 - << 'PYEOF'
-import http.server
-import socketserver
-
-
-class Handler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        try:
-            body = open("/tmp/token.json", "rb").read()
-        except OSError:
-            body = b"{}"
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, *args):
-        pass
-
-
-class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
-    daemon_threads = True
-    allow_reuse_address = True
-
-
-Server(("127.0.0.1", 9876), Handler).serve_forever()
-PYEOF
-SHELLEOF`,
-    { user: "root" }
-  )
-  .runCmd("chmod 755 /home/agent/.bin/token-server.sh", { user: "root" })
-  // Stage the root-owned per-mount broker used by the application cutover. These helpers live
-  // outside the agent's group-writable home and serve mode-0600 tokens from /run/dust-gcs.
+  // The per-mount broker helpers live outside the agent's group-writable home and serve
+  // mode-0600 tokens from /run/dust-gcs.
   .runCmd("mkdir -p /usr/local/bin", { user: "root" })
   .copy(
     getLocalContent(TOKEN_LOCAL_DIR, "dust-gcs-token-server.py"),

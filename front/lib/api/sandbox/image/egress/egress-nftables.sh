@@ -4,7 +4,6 @@ set -eu
 PROXIED_UID=1003
 DNS_STUB_PORT=1053
 GCS_TOKEN_SERVER_PORT=987
-LEGACY_GCS_TOKEN_SERVER_PORT=9876
 
 # Reinstall a single canonical ruleset on every sandbox boot.
 nft delete table ip dust-egress 2>/dev/null || true
@@ -32,10 +31,8 @@ nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID ip daddr 192.168.
 nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID tcp dport != 0 redirect to :9990
 
 nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.1 udp dport $DNS_STUB_PORT accept
-# The GCS token broker serves live bearer credentials. Keep the untrusted workload UID out of
-# both the staged root-owned broker and the legacy broker during the application cutover.
+# The GCS token broker serves live bearer credentials. Keep the untrusted workload UID out.
 nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.0/8 tcp dport $GCS_TOKEN_SERVER_PORT drop
-nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.0/8 tcp dport $LEGACY_GCS_TOKEN_SERVER_PORT drop
 # Loopback SSH kill switch: the image masks sshd, this drops uid 1003 to local
 # tcp/22 in case anything restores it. IPv6 ::1:22 is covered by the catch-all
 # ip6 drop below. Relies on the 127.0.0.0/8 return in nat_output above.
