@@ -158,11 +158,7 @@ export function ShareFrameSheet({
   const externalSharingDisabledByPolicy =
     owner.sharingPolicy === "workspace_only";
 
-  // When the workspace policy forbids external sharing, we can skip the permission fetch entirely.
-  const { hasPermission, isWorkspacePermissionsLoading } =
-    useWorkspacePermissions(owner, {
-      disabled: externalSharingDisabledByPolicy,
-    });
+  const { hasPermission } = useWorkspacePermissions();
 
   const canInviteExternal =
     !externalSharingDisabledByPolicy && hasPermission("invite", "frame");
@@ -170,7 +166,7 @@ export function ShareFrameSheet({
     owner.sharingPolicy === "all_scopes" && hasPermission("publish", "frame");
 
   const lostPublishPermission =
-    currentScope === "public" && !canPublish && !isWorkspacePermissionsLoading;
+    currentScope === "public" && !canPublish;
 
   const availableScopeOptions = getAvailableScopeOptions({
     sharingPolicy: owner.sharingPolicy,
