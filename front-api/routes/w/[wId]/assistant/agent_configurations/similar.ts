@@ -15,6 +15,18 @@ app.post("/", async (ctx): HandlerResult<GetSimilarAgentsResponseBody> => {
   const owner = auth.getNonNullableWorkspace();
 
   const body = await ctx.req.json().catch(() => null);
+  const bodySchema = z.object({ naturalDescription: z.string() });
+  const parsed = bodySchema.safeParse(body);
+  if (!parsed.success) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: fromError(parsed.error).toString(),
+      },
+    });
+  }
+  const { naturalDescription } = parsed.data;
   const naturalDescription = body?.naturalDescription;
 
   if (!isString(naturalDescription)) {
