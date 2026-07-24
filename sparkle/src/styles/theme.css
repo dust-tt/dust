@@ -90,8 +90,10 @@
   --spacing-125: 500px;
   --spacing-150: 600px;
 
-  /* Named max-width (max-w-conversation). v4 maps `max-w-*` onto `--container-*`. */
-  --container-conversation: 48rem;
+  /* Named max-width (max-w-conversation). v4 maps `max-w-*` onto `--container-*`.
+     70ch: the conversation column is a reading measure, so it tracks the font
+     (~620px at the 16px base) rather than a fixed pixel width. */
+  --container-conversation: 70ch;
 
   /* Layout archetype widths (design_docs/LAYOUT_SYSTEM.md §3.3).
      content: the centered reading/settings column owned by the app shell.

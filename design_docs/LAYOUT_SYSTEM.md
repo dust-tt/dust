@@ -378,7 +378,7 @@ Tokens land in `sparkle/src/styles/theme.css` next to `--container-conversation`
 | `--container-narrow` | `28rem` (`max-w-md`) | ad-hoc narrow columns |
 | `--container-flow` | `48rem`-ish, ratify in review (`max-w-3xl` = 48rem/768px) | wizard column widths |
 | `--container-content` | `56rem` (`max-w-4xl`) | the three competing `max-w-4xl`s |
-| `--container-conversation` | `48rem` (exists) | — |
+| `--container-conversation` | `70ch` (reading measure, ~620px at 16px base; was 48rem) | — |
 
 Rules (the PR-review checklist):
 
