@@ -380,15 +380,16 @@ function ContentNodeTreeChildren({
                 setSelectAllClicked(isSelected);
                 setSelectedNodes((prev) => {
                   const newState = { ...prev };
-                  filteredNodes
-                    .filter((n) => n.preventSelection !== true)
-                    .forEach((n) => {
-                      newState[n.internalId] = {
-                        isSelected,
-                        node: n,
-                        parents: isSelected ? parentIds : [],
-                      };
-                    });
+                  const nodesToUpdate = isSelected
+                    ? filteredNodes.filter((n) => n.preventSelection !== true)
+                    : filteredNodes;
+                  nodesToUpdate.forEach((n) => {
+                    newState[n.internalId] = {
+                      isSelected,
+                      node: n,
+                      parents: isSelected ? parentIds : [],
+                    };
+                  });
                   return newState;
                 });
               }}

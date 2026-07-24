@@ -13,7 +13,7 @@ vi.stubGlobal(
 );
 
 describe("ContentNodeTree", () => {
-  it("does not select nodes that prevent selection with Select All", () => {
+  it("does not select prevented nodes but can unselect them", () => {
     const selectableNode = {
       childrenCount: 0,
       expandable: false,
@@ -55,6 +55,30 @@ describe("ContentNodeTree", () => {
       selectable: {
         isSelected: true,
         node: selectableNode,
+        parents: [],
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Unselect All" }));
+
+    const clearSelection = setSelectedNodes.mock.lastCall?.[0];
+    expect(
+      clearSelection?.({
+        prevented: {
+          isSelected: true,
+          node: preventedNode,
+          parents: [],
+        },
+      })
+    ).toEqual({
+      selectable: {
+        isSelected: false,
+        node: selectableNode,
+        parents: [],
+      },
+      prevented: {
+        isSelected: false,
+        node: preventedNode,
         parents: [],
       },
     });
