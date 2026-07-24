@@ -5,7 +5,7 @@ import type { Model } from "@app/lib/model_constructors/types/models";
 
 import { z } from "zod";
 
-// Shared input contract for Claude Opus 4.7 and 4.8 — identical config: same
+// Shared input contract for Claude Opus 4.7, 4.8 and 5 — identical config: same
 // context window, output cap, the full reasoning-effort set (incl. `xhigh`/
 // `max`), and no caller-supplied temperature (non-default temperature/top_p/
 // top_k are rejected with a 400 on Opus 4.7+). Opus 4.6 differs on both axes
@@ -37,7 +37,7 @@ const opusConfigSchema = z.union([
 
 export type AnthropicOpusInputConfig = z.infer<typeof opusConfigSchema>;
 
-// Builds the config mixin shared by Claude Opus 4.7 and 4.8. The models differ
+// Builds the config mixin shared by Claude Opus 4.7, 4.8 and 5. The models differ
 // only by `modelId`; everything else (schema, context window, output cap) is
 // identical, so each model file is a one-line binding of this factory.
 export function withAnthropicOpusConfig<const M extends Model>(modelId: M) {

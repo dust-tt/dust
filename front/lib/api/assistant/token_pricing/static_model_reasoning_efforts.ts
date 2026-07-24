@@ -190,6 +190,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: true,
     high: true,
   },
+  "claude-opus-5": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "claude-fable-5": {
     none: false,
     light: true,
