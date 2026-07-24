@@ -47,6 +47,7 @@ export const GROUP_PERMISSION_RESOURCE_TYPES = [
   "identity",
   "audit_log",
   "models_tier",
+  "dust_app",
   "*",
 ] as const;
 export type GroupPermissionResourceType =
@@ -130,6 +131,7 @@ export function emptyWorkspacePermissions(): WorkspacePermissions {
     identity: [],
     audit_log: [],
     models_tier: [],
+    dust_app: [],
   };
 }
 
