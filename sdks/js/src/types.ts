@@ -799,7 +799,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_vertex_for_supported_models"
   | "admin_governance"
   | "admin_governance_skill_publication"
-  | "use_new_llm_router"
   | "live_speech_to_text"
   | "workspace_default_agent"
   | "whitelabel_frames"

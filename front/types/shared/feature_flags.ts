@@ -295,10 +295,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Admin Governance: govern skill publication. Shows the skill state (availability) dropdown in the UI, defaults new skills to unpublished (editors-only), and allows unpublishing a skill.",
     stage: "dust_only",
   },
-  use_new_llm_router: {
-    description: "Use the new LLM router for model selection and routing",
-    stage: "dust_only",
-  },
   pod_default_agent: {
     description:
       "Per-pod default agent: pre-select an agent for new conversations started in a project (pod).",
