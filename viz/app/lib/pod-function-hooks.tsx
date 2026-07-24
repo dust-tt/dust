@@ -21,7 +21,7 @@ interface PodFunctionContextValue {
 }
 
 interface PodFunctionHooksProviderProps extends PodFunctionContextValue {
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 export interface UsePodFunctionResult {
@@ -44,6 +44,10 @@ type PodFunctionQueryKey = readonly ["pod-function", string, unknown];
 type PodFunctionMutationKey = readonly ["pod-function-mutation", string];
 
 const PodFunctionContext = createContext<PodFunctionContextValue | null>(null);
+
+async function noopMutate(): Promise<undefined> {
+  return undefined;
+}
 
 function resolvePodFunction(slug: string | null): {
   functionId: string | null;
@@ -118,15 +122,7 @@ export function usePodFunction(
       shouldRetryOnError: false,
     }
   );
-  const revalidate = result.mutate;
-
-  const mutate = useCallback(async () => {
-    if (!functionId) {
-      return undefined;
-    }
-
-    return revalidate();
-  }, [functionId, revalidate]);
+  const mutate = functionId ? result.mutate : noopMutate;
 
   return {
     data: key === null ? undefined : result.data,
@@ -162,29 +158,28 @@ export function usePodFunctionMutation(
     },
     { populateCache: false, revalidate: false, throwOnError: true }
   );
-  const runMutation = result.trigger;
   const mutationFunctionIdRef = useRef(functionId);
   const mutationKeyChanged = mutationFunctionIdRef.current !== functionId;
 
   useEffect(() => {
-    if (mutationFunctionIdRef.current !== functionId) {
-      mutationFunctionIdRef.current = functionId;
+    if (mutationFunctionIdRef.current !== resolution.functionId) {
+      mutationFunctionIdRef.current = resolution.functionId;
       result.reset();
     }
-  }, [functionId, result.reset]);
+  }, [resolution.functionId, result.reset]);
 
   const trigger = useCallback(
     async (input: unknown) => {
       if (resolution.error) {
         throw resolution.error;
       }
-      if (!functionId) {
+      if (!resolution.functionId) {
         throw new Error("Cannot trigger a disabled Pod Function mutation.");
       }
 
-      return runMutation(input);
+      return result.trigger(input);
     },
-    [functionId, resolution.error, runMutation]
+    [resolution.error, resolution.functionId, result.trigger]
   );
 
   return {
