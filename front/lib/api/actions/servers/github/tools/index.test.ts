@@ -36,7 +36,6 @@ const pullRequest = {
   changedFiles: 1,
   labels: { nodes: [] },
   assignees: { nodes: [] },
-  reviewRequests: { nodes: [{ requestedReviewer: null }] },
   comments: { totalCount: 0 },
   reviews: { totalCount: 0 },
 };
@@ -74,7 +73,7 @@ describe("GitHub pull request tools", () => {
   it.each([
     ["search_advanced", { query: "is:pr" }, searchResponse],
     ["list_pull_requests", { owner: "dust-tt", repo: "dust" }, listResponse],
-  ])("retries %s without team details when GitHub denies them", async (toolName, params, response) => {
+  ])("retries %s without review requests when GitHub denies team details", async (toolName, params, response) => {
     const reviewerAccessError = Object.assign(
       new Error("Resource not accessible by integration"),
       {
@@ -128,13 +127,17 @@ describe("GitHub pull request tools", () => {
     expect(result.isOk()).toBe(true);
     expect(graphqlMock).toHaveBeenNthCalledWith(
       1,
-      expect.stringContaining("... on Team"),
-      expect.any(Object)
+      expect.stringContaining(
+        "reviewRequests(first: 10) @include(if: $includeReviewRequests)"
+      ),
+      expect.objectContaining({ includeReviewRequests: true })
     );
     expect(graphqlMock).toHaveBeenNthCalledWith(
       2,
-      expect.not.stringContaining("... on Team"),
-      expect.any(Object)
+      expect.stringContaining(
+        "reviewRequests(first: 10) @include(if: $includeReviewRequests)"
+      ),
+      expect.objectContaining({ includeReviewRequests: false })
     );
     if (result.isOk()) {
       expect(result.value[1]).toMatchObject({
