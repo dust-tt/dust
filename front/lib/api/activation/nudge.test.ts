@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/activation/nudge";
 import { ACTIVATION_WEBHOOK_SOURCE_NAME } from "@app/lib/api/activation/trigger";
 import { Authenticator } from "@app/lib/auth";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -25,11 +26,11 @@ import { describe, expect, it } from "vitest";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Wires a trigger the same way `createActivationTrigger` does in production:
-// on the pod's own view of the shared Activation webhook source. This is
-// required for `isEligibleForNudge` to find it via `findActivationTrigger`,
-// which pinpoints the trigger by `webhookSourceViewId` rather than just
-// `kind === "webhook"` (a pod's space can hold other webhook triggers).
+// Wires a trigger the same way `createActivationTrigger` does in production
+// (on the pod's own view of the shared Activation webhook source), plus the
+// ActivationPod row `join_activation_pod.ts` creates alongside it. This is
+// required for `isEligibleForNudge`, which resolves the pod's trigger via
+// `ActivationPodResource` rather than the source/view/trigger join.
 async function createPodActivationTrigger(
   auth: Authenticator,
   pod: SpaceResource,
@@ -43,12 +44,20 @@ async function createPodActivationTrigger(
     webhookSourceId: source.sId,
   });
 
-  return TriggerFactory.webhook(auth, {
+  const trigger = await TriggerFactory.webhook(auth, {
     agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
     status: options.status ?? "enabled",
     spaceId: pod.id,
     webhookSourceViewId: podView.id,
   });
+
+  await ActivationPodResource.makeNew(auth, {
+    pod,
+    user: auth.getNonNullableUser(),
+    trigger,
+  });
+
+  return trigger;
 }
 
 describe("getActivationNudgeFrequencyCapDays", () => {

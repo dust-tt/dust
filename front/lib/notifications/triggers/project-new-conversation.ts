@@ -2,8 +2,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getNovuClient } from "@app/lib/notifications";
 import { triggerActivationNewConversationEmail } from "@app/lib/notifications/workflows/activation-new-conversation";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
@@ -130,11 +130,8 @@ const triggerProjectNewConversationNotifications = async (
   }
 
   // Activation pods send a dedicated email to the target user after the agent has replied.
-  const projectMetadata = await ProjectMetadataResource.fetchBySpace(
-    auth,
-    space
-  );
-  if (projectMetadata?.provisioningSource === "activation") {
+  const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
+  if (activationPod !== null) {
     return new Ok(undefined);
   }
 
@@ -269,11 +266,8 @@ export async function notifyActivationConversationAgentReplied(
     return;
   }
 
-  const projectMetadata = await ProjectMetadataResource.fetchBySpace(
-    auth,
-    space
-  );
-  if (projectMetadata?.provisioningSource !== "activation") {
+  const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
+  if (activationPod === null) {
     return;
   }
 

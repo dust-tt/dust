@@ -159,6 +159,15 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return res.length > 0 ? res[0] : null;
   }
 
+  static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<TriggerResource[]> {
+    return this.baseFetch(auth, {
+      where: { id: ids },
+    });
+  }
+
   static listByAgentConfigurationId(
     auth: Authenticator,
     agentConfigurationId: string
