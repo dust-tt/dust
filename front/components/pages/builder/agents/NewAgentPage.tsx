@@ -26,7 +26,7 @@ function isBuilderFlow(value: string): value is BuilderFlow {
 export function NewAgentPage() {
   const owner = useWorkspace();
   const { user, isAdmin, providersHealth } = useAuth();
-  const { hasPermission } = useWorkspacePermissions(owner);
+  const { hasPermission } = useWorkspacePermissions();
 
   const flowParam = useSearchParam("flow");
   const flow: BuilderFlow =

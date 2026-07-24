@@ -53,7 +53,7 @@ export const TagsSelector = ({
     owner,
   });
   const { createTag } = useCreateTag({ owner });
-  const { hasPermission } = useWorkspacePermissions(owner);
+  const { hasPermission } = useWorkspacePermissions();
   const canManageProtectedTags = hasPermission("publish", "agent");
 
   const onMenuOpenChange = (open: boolean) => {

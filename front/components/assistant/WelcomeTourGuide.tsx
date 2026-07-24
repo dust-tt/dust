@@ -158,7 +158,7 @@ export function WelcomeTourGuide({
   const centeredRef = useRef<HTMLDivElement>(null);
   const [currentStep, setCurrentStep] = useState(0);
 
-  const { hasPermission } = useWorkspacePermissions(owner);
+  const { hasPermission } = useWorkspacePermissions();
 
   const canCreateAgent = hasPermission("create", "agent");
 

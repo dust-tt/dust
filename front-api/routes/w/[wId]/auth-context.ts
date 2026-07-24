@@ -69,6 +69,8 @@ app.get(
 
     const featureFlags = await getFeatureFlags(auth);
 
+    const workspacePermissions = await auth.getWorkspacePermissions();
+
     return ctx.json({
       user: user.toJSON(),
       workspace,
@@ -80,6 +82,7 @@ app.get(
       ...(isEligibleForTrial !== undefined && { isEligibleForTrial }),
       vizUrl: config.getVizPublicUrl(),
       providersHealth: auth.providersHealth(),
+      workspacePermissions,
     });
   }
 );

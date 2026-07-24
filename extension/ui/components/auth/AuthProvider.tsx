@@ -1,4 +1,5 @@
-import { AuthContext } from "@app/lib/auth/AuthContext";
+import { AuthContext, type AuthContextValue } from "@app/lib/auth/AuthContext";
+import { EMPTY_WORKSPACE_PERMISSIONS } from "@app/types/group_permissions";
 import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder, isManager } from "@app/types/user";
@@ -158,7 +159,7 @@ export function ExtensionAuthProvider({
     ]
   );
 
-  const frontAuthValue = useMemo(() => {
+  const frontAuthValue: AuthContextValue | null = useMemo(() => {
     if (!user || !workspace) {
       return null;
     }
@@ -172,6 +173,7 @@ export function ExtensionAuthProvider({
       featureFlags,
       vizUrl: process.env.VIZ_PUBLIC_URL ?? "",
       providersHealth: null,
+      workspacePermissions: EMPTY_WORKSPACE_PERMISSIONS,
     };
   }, [user, workspace, featureFlags]);
 

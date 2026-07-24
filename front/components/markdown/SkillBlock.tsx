@@ -21,7 +21,7 @@ export function SkillBlock({
   skillIcon,
   skillName,
 }: SkillBlockProps) {
-  const { hasPermission } = useWorkspacePermissions(owner);
+  const { hasPermission } = useWorkspacePermissions();
   const canCreateSkill = hasPermission("create", "skill");
 
   const href = canCreateSkill

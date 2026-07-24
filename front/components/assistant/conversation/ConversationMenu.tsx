@@ -173,7 +173,7 @@ export function ConversationMenu({
 
   const router = useAppRouter();
 
-  const { hasPermission } = useWorkspacePermissions(owner);
+  const { hasPermission } = useWorkspacePermissions();
 
   const canCreateAgent = hasPermission("create", "agent");
   const canTurnIntoAgent =
