@@ -14,19 +14,19 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
     schema: {
       title: z
         .string()
-        .max(4096)
+        .max(60)
         .describe(
-          "Action label shown in the recommendations list (6-8 words). " +
+          "Short action label shown in the recommendations list (3-5 words, keep it tight). " +
             "Be specific enough that the user knows exactly what they would be doing. " +
-            "Example: 'Ask about recent Slack decisions'."
+            "Example: 'Ask about Slack decisions'."
         ),
       content: z
         .string()
-        .max(4096)
+        .max(100)
         .describe(
-          "Brief subtitle shown under the title in the recommendations list (8-10 words). " +
+          "Very brief subtitle shown under the title in the recommendations list (6-8 words max). " +
             "Explain the 'how' or 'why' in plain language. " +
-            "Example: 'Find past decisions in your Slack workspace in seconds'."
+            "Example: 'Find past decisions in Slack fast'."
         ),
     },
     stake: "never_ask",
