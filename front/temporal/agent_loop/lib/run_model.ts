@@ -92,7 +92,11 @@ import {
   isTextContent,
   type ModelConversationTypeMultiActions,
 } from "@app/types/assistant/generation";
-import { isByokProviderId } from "@app/types/assistant/models/providers";
+import {
+  ANTHROPIC_PROVIDER_ID,
+  isByokProviderId,
+  OPENAI_PROVIDER_ID,
+} from "@app/types/assistant/models/providers";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -634,7 +638,7 @@ export async function runModel(
   // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
   // deferred behind tool search is a provider-specific policy applied downstream.
   const toolSearchEnabled =
-    (model.providerId === "anthropic" || model.providerId === "openai") &&
+    (model.providerId === ANTHROPIC_PROVIDER_ID || model.providerId === OPENAI_PROVIDER_ID) &&
     !!model.supportsToolSearch;
   const baseSpecifications: AgentActionSpecification[] =
     buildBaseSpecifications(availableActions, agentConfiguration);

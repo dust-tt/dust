@@ -11,6 +11,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
+import { GOOGLE_AI_STUDIO_PROVIDER_ID } from "@app/types/assistant/models/providers";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import {
@@ -30,8 +31,6 @@ const geminiInlineDataPartSchema = z.object({
 });
 
 type GeminiInlineDataPart = z.infer<typeof geminiInlineDataPartSchema>;
-
-export const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio";
 
 export class ImageGenerationGoogleLLM extends ImageGenerationLLM {
   readonly supportedContentTypes: string[];

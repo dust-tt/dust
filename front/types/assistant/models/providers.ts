@@ -10,11 +10,15 @@ import { z } from "zod";
  * PROVIDER IDS
  */
 
+export const ANTHROPIC_PROVIDER_ID = "anthropic";
+export const OPENAI_PROVIDER_ID = "openai";
+export const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio";
+
 export const MODEL_PROVIDER_IDS = [
-  "openai",
-  "anthropic",
+  OPENAI_PROVIDER_ID,
+  ANTHROPIC_PROVIDER_ID,
   "mistral",
-  "google_ai_studio",
+  GOOGLE_AI_STUDIO_PROVIDER_ID,
   "deepseek",
   "fireworks",
   "xai",
