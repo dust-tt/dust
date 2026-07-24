@@ -497,6 +497,10 @@ export function AgentSidebarMenu({
     useStarredPodsSectionCollapsed();
 
   const canCreateAgent = hasPermission("create", "agent");
+  const canPublishAgent = hasPermission("publish", "agent");
+  // Users who can publish agents can reach the manage agents page to discover
+  // existing agents and edit the ones they can, even without create permission.
+  const canManageAgents = canCreateAgent || canPublishAgent;
   const canCreateSkill = hasPermission("create", "skill");
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<
@@ -990,66 +994,68 @@ export function AgentSidebarMenu({
                         />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        {canCreateAgent && (
+                        {canManageAgents && (
                           <>
                             <DropdownMenuLabel>Agents</DropdownMenuLabel>
-                            <DropdownMenuSub>
-                              <DropdownMenuSubTrigger
-                                icon={Plus}
-                                label="New agent"
-                                disabled={noHealthyProviders}
-                              />
-                              <DropdownMenuPortal>
-                                <DropdownMenuSubContent className="pointer-events-auto">
-                                  <DropdownMenuItem
-                                    href={getAgentBuilderRoute(
-                                      owner.sId,
-                                      "new"
-                                    )}
-                                    icon={File02}
-                                    label="From scratch"
-                                    data-gtm-label="assistantCreationButton"
-                                    data-gtm-location="sidebarMenu"
-                                    onClick={withTracking(
-                                      TRACKING_AREAS.BUILDER,
-                                      "create_from_scratch"
-                                    )}
-                                  />
-                                  <DropdownMenuItem
-                                    href={getAgentBuilderRoute(
-                                      owner.sId,
-                                      "create"
-                                    )}
-                                    icon={MagicWand02}
-                                    label="From template"
-                                    data-gtm-label="assistantCreationButton"
-                                    data-gtm-location="sidebarMenu"
-                                    onClick={withTracking(
-                                      TRACKING_AREAS.BUILDER,
-                                      "create_from_template"
-                                    )}
-                                  />
-                                  <DropdownMenuItem
-                                    icon={
-                                      isUploadingYAML ? (
-                                        <Spinner size="xs" />
-                                      ) : (
-                                        Brackets
-                                      )
-                                    }
-                                    label={
-                                      isUploadingYAML
-                                        ? "Uploading..."
-                                        : "From YAML"
-                                    }
-                                    disabled={isUploadingYAML}
-                                    onClick={triggerYAMLUpload}
-                                    data-gtm-label="yamlUploadButton"
-                                    data-gtm-location="sidebarMenu"
-                                  />
-                                </DropdownMenuSubContent>
-                              </DropdownMenuPortal>
-                            </DropdownMenuSub>
+                            {canCreateAgent && (
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger
+                                  icon={Plus}
+                                  label="New agent"
+                                  disabled={noHealthyProviders}
+                                />
+                                <DropdownMenuPortal>
+                                  <DropdownMenuSubContent className="pointer-events-auto">
+                                    <DropdownMenuItem
+                                      href={getAgentBuilderRoute(
+                                        owner.sId,
+                                        "new"
+                                      )}
+                                      icon={File02}
+                                      label="From scratch"
+                                      data-gtm-label="assistantCreationButton"
+                                      data-gtm-location="sidebarMenu"
+                                      onClick={withTracking(
+                                        TRACKING_AREAS.BUILDER,
+                                        "create_from_scratch"
+                                      )}
+                                    />
+                                    <DropdownMenuItem
+                                      href={getAgentBuilderRoute(
+                                        owner.sId,
+                                        "create"
+                                      )}
+                                      icon={MagicWand02}
+                                      label="From template"
+                                      data-gtm-label="assistantCreationButton"
+                                      data-gtm-location="sidebarMenu"
+                                      onClick={withTracking(
+                                        TRACKING_AREAS.BUILDER,
+                                        "create_from_template"
+                                      )}
+                                    />
+                                    <DropdownMenuItem
+                                      icon={
+                                        isUploadingYAML ? (
+                                          <Spinner size="xs" />
+                                        ) : (
+                                          Brackets
+                                        )
+                                      }
+                                      label={
+                                        isUploadingYAML
+                                          ? "Uploading..."
+                                          : "From YAML"
+                                      }
+                                      disabled={isUploadingYAML}
+                                      onClick={triggerYAMLUpload}
+                                      data-gtm-label="yamlUploadButton"
+                                      data-gtm-location="sidebarMenu"
+                                    />
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                              </DropdownMenuSub>
+                            )}
                             {editableAgents.length > 0 && (
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger

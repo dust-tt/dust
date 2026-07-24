@@ -58,6 +58,10 @@ export function WebAgentBrowser({
   const { hasPermission } = useWorkspacePermissions(owner);
 
   const canCreateAgent = hasPermission("create", "agent");
+  const canPublishAgent = hasPermission("publish", "agent");
+  // Users who can publish agents can reach the manage agents page to discover
+  // existing agents and edit the ones they can, even without create permission.
+  const canManageAgents = canCreateAgent || canPublishAgent;
   const canCreateSkill = hasPermission("create", "skill");
 
   const sortTypeLabel = useMemo(() => {
@@ -108,9 +112,9 @@ export function WebAgentBrowser({
                 <CreateDropdown owner={owner} dataGtmLocation="homepage" />
               </div>
             )}
-            {canCreateAgent && canCreateSkill ? (
+            {canManageAgents && canCreateSkill ? (
               <ManageDropdownMenu owner={owner} />
-            ) : canCreateAgent ? (
+            ) : canManageAgents ? (
               <Button
                 href={getAgentBuilderRoute(owner.sId, "manage")}
                 variant="primary"
