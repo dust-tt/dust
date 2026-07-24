@@ -23,12 +23,17 @@ const GITHUB_TEAM_REVIEWER_FRAGMENT = `... on Team {
   slug
 }`;
 
-function isTeamReviewerAccessError(error: unknown): boolean {
+function isTeamReviewerAccessError(
+  error: unknown
+): error is { data: object; errors: unknown[] } {
   if (
     typeof error !== "object" ||
     error === null ||
     !("errors" in error) ||
-    !Array.isArray(error.errors)
+    !Array.isArray(error.errors) ||
+    !("data" in error) ||
+    typeof error.data !== "object" ||
+    error.data === null
   ) {
     return false;
   }
@@ -48,8 +53,9 @@ function isTeamReviewerAccessError(error: unknown): boolean {
   );
 }
 
-// GitHub App tokens without organization Members access cannot resolve Team reviewers. Retry
-// without the Team fragment so valid pull request data is not discarded with the error.
+// GitHub App tokens without organization Members access cannot resolve Team reviewers. Octokit
+// throws on these field-level errors but keeps the valid GraphQL data on the error, with the
+// inaccessible nullable reviewer set to null. Return that data instead of retrying the union.
 async function graphqlWithReviewerFallback<T>(
   octokit: Octokit,
   query: string,
@@ -62,10 +68,7 @@ async function graphqlWithReviewerFallback<T>(
       throw error;
     }
 
-    return octokit.graphql<T>(
-      query.replace(GITHUB_TEAM_REVIEWER_FRAGMENT, ""),
-      variables
-    );
+    return error.data as T;
   }
 }
 
