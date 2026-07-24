@@ -151,7 +151,7 @@ function typeLevelVerbsForGrant(
   grantType: ConcreteGrantType,
   resourceType: ConcreteResourceType
 ): GrantVerb[] {
-  const role = ROLE_REGISTRY[resourceType][grantType];
+  const role = ROLE_REGISTRY[resourceType]?.[grantType];
   if (!role || !role.levels.includes("type")) {
     return [];
   }
@@ -210,6 +210,10 @@ export function workspacePermissionsFromGrants(
         : [resourceType];
 
     for (const resource of resources) {
+      if (!ROLE_REGISTRY[resource]) {
+        continue;
+      }
+
       const verbs =
         grantType === "*"
           ? allTypeLevelVerbsForResource(resource)
