@@ -1,3 +1,4 @@
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
 import {
   useAuth,
@@ -8,6 +9,7 @@ import { useWorkspaceVerifiedDomains } from "@app/lib/swr/workspaces";
 import { Fingerprint04, Page, Spinner } from "@dust-tt/sparkle";
 
 export function WorkspaceIdentityProvisioningPage() {
+  useSetContentWidth("centered");
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const plan = subscription.plan;

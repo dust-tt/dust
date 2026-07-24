@@ -1,10 +1,12 @@
 import { ModelProvidersPageContent } from "@app/components/pages/workspace/model_providers/ModelProvidersPageContent";
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { useProvidersSelection } from "@app/hooks/useProvidersSelection";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspace as useWorkspaceDetails } from "@app/lib/swr/workspaces";
 import { Brain, Page, Spinner } from "@dust-tt/sparkle";
 
 export function ModelProvidersPage() {
+  useSetContentWidth("centered");
   const owner = useWorkspace();
   const { workspace, isWorkspaceValidating, mutateWorkspace } =
     useWorkspaceDetails({ owner });

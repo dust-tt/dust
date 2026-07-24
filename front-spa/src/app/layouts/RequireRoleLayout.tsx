@@ -1,4 +1,4 @@
-import { AdminLayout } from "@dust-tt/front/components/layouts/AdminLayout";
+import { AdminSubNavigation } from "@dust-tt/front/components/navigation/AdminSubNavigation";
 import Custom404 from "@dust-tt/front/components/pages/Custom404";
 import { useAuth } from "@dust-tt/front/lib/auth/AuthContext";
 import { isAdmin, isManager, type RoleType } from "@dust-tt/front/types/user";
@@ -19,8 +19,8 @@ export function RequireRoleLayout({ requiredRole }: RequireRoleProps) {
   }
 
   return (
-    <AdminLayout>
+    <AdminSubNavigation>
       <Outlet />
-    </AdminLayout>
+    </AdminSubNavigation>
   );
 }

@@ -2,6 +2,7 @@ import { GovernancePageLayout } from "@app/components/pages/workspace/governance
 import { GovernancePageSkeleton } from "@app/components/pages/workspace/governance/GovernancePageSkeleton";
 import { GovernanceSettingRow } from "@app/components/pages/workspace/governance/GovernanceSettingRow";
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcpToolsSection";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
 import { AuditLogsGovernanceSection } from "@app/components/workspace/settings/AuditLogsToggle";
@@ -100,6 +101,7 @@ function groupGovernancePermissionsBySection(
 }
 
 export const GovernancePage = () => {
+  useSetContentWidth("centered");
   const { hasFeature } = useFeatureFlags();
   const hasAdminGovernanceFeature = hasFeature("admin_governance");
 
