@@ -1,8 +1,4 @@
-import {
-  type AgentLoopRunContext,
-  isAgentLoopRunContext,
-  type ToolContext,
-} from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { FileResource } from "@app/lib/resources/file_resource";
