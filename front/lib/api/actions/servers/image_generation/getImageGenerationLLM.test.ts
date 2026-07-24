@@ -18,19 +18,13 @@ vi.mock("@app/lib/api/assistant/models", () => ({
   isProviderWhitelistedForAuth: mockIsProviderWhitelistedForAuth,
 }));
 
-vi.mock(
-  "@app/lib/api/actions/servers/image_generation/clients/google",
-  () => ({
-    ImageGenerationGoogleLLM: mockGoogleImageGenerationLLM,
-  })
-);
+vi.mock("@app/lib/api/actions/servers/image_generation/clients/google", () => ({
+  ImageGenerationGoogleLLM: mockGoogleImageGenerationLLM,
+}));
 
-vi.mock(
-  "@app/lib/api/actions/servers/image_generation/clients/openai",
-  () => ({
-    ImageGenerationOpenAILLM: mockOpenAIImageGenerationLLM,
-  })
-);
+vi.mock("@app/lib/api/actions/servers/image_generation/clients/openai", () => ({
+  ImageGenerationOpenAILLM: mockOpenAIImageGenerationLLM,
+}));
 
 vi.mock("@app/lib/api/regions/config", () => ({
   SUPPORTED_REGIONS: ["europe-west1", "us-central1"],

@@ -1,4 +1,3 @@
-import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/model_constructors/types/tool_search";
 import type { Client } from "@app/lib/model_constructors/client";
 import { includesOpenAIToolSearchTool } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search";
 import {
@@ -23,6 +22,7 @@ import type {
   Payload,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
+import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/model_constructors/types/tool_search";
 import type {
   ResponseCreateParamsNonStreaming,
   ResponseInputItem,

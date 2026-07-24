@@ -616,9 +616,7 @@ async function isCredentialHealthy({
   }
 }
 
-const isGoogleAuthenticationErrorMessage = (
-  message: string
-): boolean => {
+const isGoogleAuthenticationErrorMessage = (message: string): boolean => {
   return message.toLowerCase().includes("api key not valid");
 };
 

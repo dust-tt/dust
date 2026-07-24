@@ -638,7 +638,8 @@ export async function runModel(
   // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
   // deferred behind tool search is a provider-specific policy applied downstream.
   const toolSearchEnabled =
-    (model.providerId === ANTHROPIC_PROVIDER_ID || model.providerId === OPENAI_PROVIDER_ID) &&
+    (model.providerId === ANTHROPIC_PROVIDER_ID ||
+      model.providerId === OPENAI_PROVIDER_ID) &&
     !!model.supportsToolSearch;
   const baseSpecifications: AgentActionSpecification[] =
     buildBaseSpecifications(availableActions, agentConfiguration);
