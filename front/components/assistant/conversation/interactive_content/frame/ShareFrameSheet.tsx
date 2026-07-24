@@ -1,3 +1,4 @@
+import { getAvailableScopeOptions } from "@app/components/assistant/conversation/interactive_content/frame/shareFrameScopeOptions";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import type {
   ShareFrameViewerFile,
@@ -8,6 +9,7 @@ import {
   useShareInteractiveContentFile,
   useSharingGrants,
 } from "@app/lib/swr/files";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { isEmailValid } from "@app/lib/utils";
 import {
@@ -15,10 +17,7 @@ import {
   MAX_EMAILS_PER_INVITE,
   type SharingGrantType,
 } from "@app/types/files";
-import type {
-  LightWorkspaceType,
-  WorkspaceSharingPolicy,
-} from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -28,13 +27,11 @@ import {
   ContextItem,
   Cube01,
   File02,
-  Globe01,
   Icon,
   IconButton,
   InfoCircle,
   Input,
   Label,
-  Lock01,
   MessageChatSquare,
   Sheet,
   SheetContainer,
@@ -43,7 +40,6 @@ import {
   SheetTitle,
   Spinner,
   Upload01,
-  Users01,
   useCopyToClipboard,
   XClose,
 } from "@dust-tt/sparkle";
@@ -53,50 +49,27 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-function getScopeOptions(sharingPolicy: WorkspaceSharingPolicy): {
-  icon: typeof Lock01;
-  label: string;
-  description: string;
-  value: FileShareScope;
-}[] {
-  const externalOff = sharingPolicy === "workspace_only";
-  return [
-    {
-      icon: Lock01,
-      label: externalOff ? "Invited members only" : "Invite only",
-      description: externalOff
-        ? "Only the workspace members you invite"
-        : "Only the people you invite",
-      value: "emails_only",
-    },
-    {
-      icon: Users01,
-      label: externalOff
-        ? "All workspace members + invited members"
-        : "All workspace members + invites",
-      description: externalOff
-        ? "Everyone in your workspace, plus members you invite individually"
-        : "Everyone in your workspace, plus anyone you invite",
-      value: "workspace_and_emails",
-    },
-    {
-      icon: Globe01,
-      label: "Anyone with the link",
-      description: "No sign-in required",
-      value: "public",
-    },
-  ];
-}
+const baseScopeOptionClassNames =
+  "flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors";
 
-// Scopes allowed by each workspace sharing policy.
-const ALLOWED_SCOPES_BY_POLICY: Record<
-  WorkspaceSharingPolicy,
-  FileShareScope[]
-> = {
-  workspace_only: ["emails_only", "workspace_and_emails"],
-  workspace_and_emails: ["emails_only", "workspace_and_emails"],
-  all_scopes: ["emails_only", "workspace_and_emails", "public"],
-};
+function getScopeOptionClassName({
+  isSelected,
+  isDisabled,
+}: {
+  isSelected: boolean;
+  isDisabled: boolean;
+}): string {
+  const cursor = isDisabled
+    ? "cursor-not-allowed opacity-60"
+    : "cursor-pointer";
+  const state = isSelected
+    ? "border-highlight-300 bg-muted-background"
+    : isDisabled
+      ? "border-transparent"
+      : "border-transparent hover:bg-muted-background/50";
+
+  return `${baseScopeOptionClassNames} ${cursor} ${state}`;
+}
 
 const inviteFormSchema = z.object({
   emailsRaw: z
@@ -182,10 +155,29 @@ export function ShareFrameSheet({
   const shareURL = fileShare?.shareUrl ?? "";
   const viewerFiles = fileShare?.viewerFiles ?? [];
 
-  const allowedScopes = ALLOWED_SCOPES_BY_POLICY[owner.sharingPolicy];
-  const availableScopeOptions = getScopeOptions(owner.sharingPolicy).filter(
-    (o) => allowedScopes.includes(o.value)
-  );
+  const externalSharingDisabledByPolicy =
+    owner.sharingPolicy === "workspace_only";
+
+  // When the workspace policy forbids external sharing, we can skip the permission fetch entirely.
+  const { hasPermission, isWorkspacePermissionsLoading } =
+    useWorkspacePermissions(owner, {
+      disabled: externalSharingDisabledByPolicy,
+    });
+
+  const canInviteExternal =
+    !externalSharingDisabledByPolicy && hasPermission("invite", "frame");
+  const canPublish =
+    owner.sharingPolicy === "all_scopes" && hasPermission("publish", "frame");
+
+  const lostPublishPermission =
+    currentScope === "public" && !canPublish && !isWorkspacePermissionsLoading;
+
+  const availableScopeOptions = getAvailableScopeOptions({
+    sharingPolicy: owner.sharingPolicy,
+    canInviteExternal,
+    canPublish,
+    currentScope,
+  });
 
   const showEmailSection =
     currentScope === "emails_only" || currentScope === "workspace_and_emails";
@@ -269,14 +261,25 @@ export function ShareFrameSheet({
               </div>
             ) : (
               <div className="flex flex-col gap-6">
-                {owner.sharingPolicy === "workspace_only" && (
+                {!canInviteExternal && (
                   <ContentMessage
                     icon={InfoCircle}
                     variant="info"
                     title="Only workspace members can be added"
                   >
-                    Your admin has disabled external sharing. You can only share
-                    with people already in your workspace.
+                    {externalSharingDisabledByPolicy
+                      ? "Your admin has disabled external sharing. You can only invite people already in your workspace."
+                      : "You don’t have permission to invite people outside your workspace. You can only invite people already in your workspace."}
+                  </ContentMessage>
+                )}
+                {lostPublishPermission && (
+                  <ContentMessage
+                    icon={InfoCircle}
+                    variant="info"
+                    title="You no longer have permission to share frames publicly"
+                  >
+                    This frame is currently shared publicly. You can restrict
+                    access, but you won’t be able to make it public again.
                   </ContentMessage>
                 )}
                 {shareBlockError && shareBlockError.length > 0 && (
@@ -297,16 +300,16 @@ export function ShareFrameSheet({
                   <div className="flex flex-col gap-1">
                     {availableScopeOptions.map((option) => {
                       const isSelected = option.value === currentScope;
+                      const isDisabled = option.disabled;
                       const inputId = `share-scope-${option.value}`;
                       return (
                         <Label
                           key={option.value}
                           htmlFor={inputId}
-                          className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
-                            isSelected
-                              ? "border-highlight-300 bg-muted-background"
-                              : "border-transparent hover:bg-muted-background/50"
-                          }`}
+                          className={getScopeOptionClassName({
+                            isSelected,
+                            isDisabled,
+                          })}
                         >
                           <input
                             type="radio"
@@ -314,6 +317,7 @@ export function ShareFrameSheet({
                             name="share-scope"
                             value={option.value}
                             checked={isSelected}
+                            disabled={isDisabled}
                             onChange={async () => {
                               setShareBlockError(null);
                               const result = await doShare(option.value);
@@ -351,7 +355,7 @@ export function ShareFrameSheet({
                       className="flex flex-col gap-2"
                       onSubmit={handleSubmit(onInviteSubmit)}
                     >
-                      <Label htmlFor="email-invite">Invite by email</Label>
+                      <Label htmlFor="email-invite">{`Invite ${!canInviteExternal ? "workspace members " : ""}by email`}</Label>
                       <div className="flex items-start gap-2">
                         <div className="flex-1">
                           <Input

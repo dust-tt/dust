@@ -81,6 +81,27 @@ app.post(
 
     const { shareScope } = ctx.req.valid("json");
 
+    if (shareScope === "public") {
+      const workspace = auth.getNonNullableWorkspace();
+      const publicSharingAllowedByPolicy =
+        workspace.sharingPolicy === "all_scopes";
+      const canPublish =
+        publicSharingAllowedByPolicy &&
+        (await auth.hasWorkspacePermission("publish", "frame"));
+
+      if (!canPublish) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: publicSharingAllowedByPolicy
+              ? "You do not have permission to share this frame publicly."
+              : "Public sharing is disabled for this workspace.",
+          },
+        });
+      }
+    }
+
     await file.setShareScope(auth, shareScope);
 
     const allowlistResult = await ensureAuthorizedFileAccessForShare(
