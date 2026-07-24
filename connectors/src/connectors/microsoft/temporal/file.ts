@@ -722,6 +722,7 @@ export async function deleteFolder({
   dataSourceConfig,
   internalId,
   deleteRootNode,
+  lastSeenCutoffMs,
   logger,
   reason,
 }: {
@@ -729,6 +730,7 @@ export async function deleteFolder({
   dataSourceConfig: DataSourceConfig;
   internalId: string;
   deleteRootNode?: boolean;
+  lastSeenCutoffMs?: number;
   logger: Logger;
   reason: MicrosoftFolderDeletionReason;
 }) {
@@ -738,6 +740,14 @@ export async function deleteFolder({
   );
 
   if (!folder) {
+    return false;
+  }
+
+  if (
+    lastSeenCutoffMs !== undefined &&
+    folder.lastSeenTs &&
+    folder.lastSeenTs.getTime() >= lastSeenCutoffMs
+  ) {
     return false;
   }
 
@@ -756,6 +766,10 @@ export async function deleteFolder({
   );
 
   if (root) {
+    if (reason === "gc_outside_sync_scope") {
+      return false;
+    }
+
     // Roots represent the user selection for synchronization As such, they
     // should be deleted first, explicitly by users, before deleting the
     // underlying folder
@@ -777,11 +791,13 @@ export async function deleteFile({
   connectorId,
   dataSourceConfig,
   internalId,
+  lastSeenCutoffMs,
   logger,
 }: {
   connectorId: number;
   dataSourceConfig: DataSourceConfig;
   internalId: string;
+  lastSeenCutoffMs?: number;
   logger: Logger;
 }) {
   const file = await MicrosoftNodeResource.fetchByInternalId(
@@ -790,6 +806,14 @@ export async function deleteFile({
   );
 
   if (!file) {
+    return false;
+  }
+
+  if (
+    lastSeenCutoffMs !== undefined &&
+    file.lastSeenTs &&
+    file.lastSeenTs.getTime() >= lastSeenCutoffMs
+  ) {
     return false;
   }
 

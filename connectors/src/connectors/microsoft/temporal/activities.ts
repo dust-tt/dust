@@ -2208,6 +2208,7 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_drive_not_found",
               });
@@ -2216,6 +2217,7 @@ export async function microsoftGarbageCollectionActivity({
                 connectorId,
                 dataSourceConfig,
                 internalId: node.internalId,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_drive_removed_from_selection",
               });
@@ -2230,6 +2232,7 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_not_found",
               });
@@ -2239,6 +2242,7 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_marked_deleted",
               });
@@ -2256,6 +2260,7 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_outside_sync_scope",
               });
@@ -2280,6 +2285,7 @@ export async function microsoftGarbageCollectionActivity({
                 connectorId,
                 internalId: node.internalId,
                 dataSourceConfig,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
               });
             }
