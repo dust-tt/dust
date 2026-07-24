@@ -253,6 +253,7 @@ async function runReinforcedSkillsStep({
     };
   }
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const conversationRes = await getConversation(
     auth,
     reinforcementConversationId

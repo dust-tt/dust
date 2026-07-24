@@ -57,6 +57,7 @@ makeScript(
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
     const [conversationRes, agentConfiguration] = await Promise.all([
+      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
       getConversation(auth, conversationId, true),
       getAgentConfiguration(auth, { agentId, variant: "full" }),
     ]);

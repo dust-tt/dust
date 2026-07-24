@@ -80,6 +80,7 @@ async function getConversationForAgentLoop(
   _workspaceId: string,
   _unicitySuffix: string
 ): Promise<ConversationType> {
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const res = await getConversation(
     auth,
     conversationId,
@@ -215,6 +216,7 @@ export async function getAgentLoopDataWithAuth(
       throw error;
     }
   } else {
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
     const conversationRes = await getConversation(
       auth,
       conversationId,

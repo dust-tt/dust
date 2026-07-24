@@ -161,6 +161,7 @@ app.get(
           }
         : undefined;
 
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
     const conversationRes = await getConversation(
       auth,
       cId,
