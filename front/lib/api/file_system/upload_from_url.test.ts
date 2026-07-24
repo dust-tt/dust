@@ -67,7 +67,10 @@ describe("uploadFileFromUrlToFileSystem", () => {
       spaceId: null,
     });
 
-    const fsResult = await DustFileSystem.forConversation(auth, conversation);
+    const fsResult = await DustFileSystem.forConversation(
+      auth,
+      conversation.toJSON()
+    );
     expect(fsResult.isOk()).toBe(true);
     if (!fsResult.isOk()) {
       return;
@@ -92,7 +95,10 @@ describe("uploadFileFromUrlToFileSystem", () => {
       spaceId: null,
     });
 
-    const fsResult = await DustFileSystem.forConversation(auth, conversation);
+    const fsResult = await DustFileSystem.forConversation(
+      auth,
+      conversation.toJSON()
+    );
     expect(fsResult.isOk()).toBe(true);
     if (!fsResult.isOk()) {
       return;
@@ -123,7 +129,10 @@ describe("uploadFileFromUrlToFileSystem", () => {
       contentLength: "15",
     });
 
-    const fsResult = await DustFileSystem.forConversation(auth, conversation);
+    const fsResult = await DustFileSystem.forConversation(
+      auth,
+      conversation.toJSON()
+    );
     expect(fsResult.isOk()).toBe(true);
     if (!fsResult.isOk()) {
       return;
@@ -158,7 +167,10 @@ describe("uploadFileFromUrlToFileSystem", () => {
       body: "ignored",
     });
 
-    const fsResult = await DustFileSystem.forConversation(auth, conversation);
+    const fsResult = await DustFileSystem.forConversation(
+      auth,
+      conversation.toJSON()
+    );
     expect(fsResult.isOk()).toBe(true);
     if (!fsResult.isOk()) {
       return;
@@ -196,7 +208,10 @@ describe("uploadFileFromUrlToFileSystem", () => {
       body: Readable.from(abortedBodyChunks()),
     });
 
-    const fsResult = await DustFileSystem.forConversation(auth, conversation);
+    const fsResult = await DustFileSystem.forConversation(
+      auth,
+      conversation.toJSON()
+    );
     expect(fsResult.isOk()).toBe(true);
     if (!fsResult.isOk()) {
       return;
@@ -226,7 +241,10 @@ describe("uploadFileFromUrlToFileSystem", () => {
       body: "<html></html>",
     });
 
-    const fsResult = await DustFileSystem.forConversation(auth, conversation);
+    const fsResult = await DustFileSystem.forConversation(
+      auth,
+      conversation.toJSON()
+    );
     expect(fsResult.isOk()).toBe(true);
     if (!fsResult.isOk()) {
       return;

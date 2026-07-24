@@ -1,12 +1,9 @@
-import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolRunContext } from "@app/lib/actions/types";
 import { deleteHandler } from "@app/lib/api/actions/servers/files/tools/delete";
-import { createConversation } from "@app/lib/api/assistant/conversation";
-import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import {
+  makeExtra,
+  setupProjectConversation,
+} from "@app/tests/utils/conversation_test_factories";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,45 +13,6 @@ vi.mock("@app/lib/file_storage/config", () => ({
 vi.mock("@app/lib/api/config", () => ({
   default: { getApiBaseUrl: vi.fn(() => "https://dust.tt") },
 }));
-
-function makeExtra(
-  auth: Authenticator,
-  conversation: ConversationType
-): ToolHandlerExtra {
-  const runContext = {
-    contextType: "agent_loop",
-    conversation,
-  } as unknown as ToolRunContext;
-  return { auth, runContext } as unknown as ToolHandlerExtra;
-}
-
-async function setupProjectConversation(): Promise<{
-  auth: Authenticator;
-  conversation: ConversationType;
-  projectId: string;
-}> {
-  const { authenticator: auth, workspace } = await createResourceTest({
-    role: "admin",
-  });
-  const user = auth.getNonNullableUser();
-
-  const space = await SpaceFactory.project(workspace, user.id);
-  const addRes = await space.addMembers(auth, { userIds: [user.sId] });
-  assert(addRes.isOk(), "Failed to add user to project space");
-
-  const projectAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    user.sId,
-    workspace.sId
-  );
-
-  const conversation = await createConversation(projectAuth, {
-    title: "Test",
-    visibility: "unlisted",
-    spaceId: space.id,
-  });
-
-  return { auth: projectAuth, conversation, projectId: space.sId };
-}
 
 describe("deleteHandler", () => {
   let deleteMock: ReturnType<typeof vi.fn>;

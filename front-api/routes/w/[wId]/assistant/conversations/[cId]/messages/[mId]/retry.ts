@@ -1,10 +1,9 @@
 import { retryAgentMessage } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
-import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -92,28 +91,47 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const branchId = messageRes.value.getBranchId() ?? null;
-
-  const conversationRes = await getConversation(
-    auth,
-    conversationId,
-    false,
-    branchId
-  );
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(ctx, conversationRes.error);
-  }
-
-  const conversation = conversationRes.value;
-
-  const message = conversation.content.flat().find((m) => m.sId === messageId);
-  if (!message || !isAgentMessageType(message)) {
+  const messageModel = messageRes.value;
+  if (!messageModel.agentMessage) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message:
           "The message you're trying to retry does not exist or is not an agent message.",
+      },
+    });
+  }
+
+  const branchId = messageModel.getBranchId() ?? null;
+  const conversation = {
+    ...conversationResource.toJSON(),
+    branchId,
+  };
+
+  const renderRes = await batchRenderMessages(
+    auth,
+    conversationResource,
+    [messageModel],
+    "full"
+  );
+  if (renderRes.isErr()) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to render message.",
+      },
+    });
+  }
+
+  const message = renderRes.value[0];
+  if (!message || !isAgentMessageType(message)) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to render message.",
       },
     });
   }
@@ -156,7 +174,8 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const retriedMessageRes = await retryAgentMessage(auth, {
-    conversation,
+    conversationResource,
+    branchId,
     message,
   });
   if (retriedMessageRes.isErr()) {

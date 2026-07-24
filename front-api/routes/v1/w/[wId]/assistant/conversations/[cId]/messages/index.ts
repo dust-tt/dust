@@ -3,7 +3,6 @@ import {
   isUserMessageContextValid,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isUserMessageContextOverflowing } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
@@ -16,7 +15,6 @@ import {
   type PostMessagesResponseBody,
   PublicPostMessagesRequestBodySchema,
 } from "@dust-tt/client";
-import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { validatePublicModelSelection } from "@front-api/lib/api/assistant/conversation/model_selection";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -88,13 +86,19 @@ app.post(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
-    const conversationRes = await getConversation(auth, cId);
-
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      cId
+    );
+    if (!conversationResource) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "conversation_not_found",
+          message: "Conversation not found",
+        },
+      });
     }
-
-    const conversation = conversationRes.value;
 
     const {
       content,
@@ -191,7 +195,7 @@ app.post(
       );
 
       const upsertRes = await ConversationResource.upsertMCPServerViews(auth, {
-        conversation,
+        conversation: conversationResource,
         mcpServerViews,
         enabled: true,
         source: "conversation",
@@ -240,7 +244,7 @@ app.post(
             content,
             context: messageContext,
             agenticMessageData,
-            conversation,
+            conversationResource,
             mentions,
             modelSelection,
             skipToolsValidation: skipToolsValidation ?? false,
@@ -249,7 +253,7 @@ app.post(
             content,
             context: messageContext,
             agenticMessageData,
-            conversation,
+            conversationResource,
             mentions,
             modelSelection,
             skipToolsValidation: skipToolsValidation ?? false,
