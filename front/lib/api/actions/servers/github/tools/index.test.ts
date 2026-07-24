@@ -127,12 +127,16 @@ describe("GitHub pull request tools", () => {
     expect(result.isOk()).toBe(true);
     expect(graphqlMock).toHaveBeenNthCalledWith(
       1,
-      expect.stringContaining("... on Team"),
+      expect.stringContaining(
+        "reviewRequests(first: 10) @include(if: $includeReviewRequests)"
+      ),
       expect.objectContaining({ includeReviewRequests: true })
     );
     expect(graphqlMock).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining("... on Team"),
+      expect.stringContaining(
+        "reviewRequests(first: 10) @include(if: $includeReviewRequests)"
+      ),
       expect.objectContaining({ includeReviewRequests: false })
     );
     if (result.isOk()) {
