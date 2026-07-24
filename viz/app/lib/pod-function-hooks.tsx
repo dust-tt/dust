@@ -1,0 +1,197 @@
+"use client";
+
+import { normalizeSandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
+import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
+import {
+  createContext,
+  createElement,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import useSWR, { SWRConfig } from "swr";
+import useSWRMutation from "swr/mutation";
+
+interface PodFunctionContextValue {
+  dataAPI: VisualizationDataAPI;
+}
+
+interface PodFunctionHooksProviderProps extends PodFunctionContextValue {
+  children: ReactNode;
+}
+
+export interface UsePodFunctionResult {
+  data: unknown;
+  error: Error | undefined;
+  isLoading: boolean;
+  isValidating: boolean;
+  mutate: () => Promise<unknown>;
+}
+
+export interface UsePodFunctionMutationResult {
+  data: unknown;
+  error: Error | undefined;
+  isMutating: boolean;
+  reset: () => void;
+  trigger: (input: unknown) => Promise<unknown>;
+}
+
+type PodFunctionQueryKey = readonly ["pod-function", string, unknown];
+type PodFunctionMutationKey = readonly ["pod-function-mutation", string];
+
+const PodFunctionContext = createContext<PodFunctionContextValue | null>(null);
+
+function resolvePodFunction(slug: string | null): {
+  functionId: string | null;
+  error?: Error;
+} {
+  if (slug === null) {
+    return { functionId: null };
+  }
+  if (!/^[^/]+\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    return {
+      functionId: null,
+      error: new Error(
+        "Pod Function hooks require a fully qualified <podId>/<slug> reference."
+      ),
+    };
+  }
+
+  return { functionId: slug };
+}
+
+export function PodFunctionHooksProvider({
+  children,
+  dataAPI,
+}: PodFunctionHooksProviderProps) {
+  const [cache] = useState(() => new Map());
+  const swrConfig = useMemo(() => ({ provider: () => cache }), [cache]);
+  const contextValue = useMemo(() => ({ dataAPI }), [dataAPI]);
+
+  return createElement(
+    PodFunctionContext.Provider,
+    { value: contextValue },
+    createElement(SWRConfig, { value: swrConfig }, children)
+  );
+}
+
+function usePodFunctionContext(): PodFunctionContextValue {
+  const context = useContext(PodFunctionContext);
+  if (!context) {
+    throw new Error("Pod Function hooks must run inside a Frame wrapper.");
+  }
+
+  return context;
+}
+
+export function usePodFunction(
+  slug: string | null,
+  input: unknown
+): UsePodFunctionResult {
+  const { dataAPI } = usePodFunctionContext();
+  const resolution = useMemo(() => resolvePodFunction(slug), [slug]);
+  const functionId = resolution.functionId;
+  const key: PodFunctionQueryKey | null = functionId
+    ? ["pod-function", functionId, input]
+    : null;
+  const result = useSWR<unknown, Error, PodFunctionQueryKey | null>(
+    key,
+    async ([, functionId, functionInput]) => {
+      try {
+        return await dataAPI.callFunction(functionId, functionInput);
+      } catch (error) {
+        throw normalizeSandboxFunctionCallError(error);
+      }
+    },
+    {
+      dedupingInterval: 0,
+      errorRetryCount: 0,
+      keepPreviousData: true,
+      refreshInterval: 0,
+      revalidateIfStale: true,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      shouldRetryOnError: false,
+    }
+  );
+  const revalidate = result.mutate;
+
+  const mutate = useCallback(async () => {
+    if (!functionId) {
+      return undefined;
+    }
+
+    return revalidate();
+  }, [functionId, revalidate]);
+
+  return {
+    data: key === null ? undefined : result.data,
+    error: resolution.error ?? (key === null ? undefined : result.error),
+    isLoading: key !== null && result.isLoading,
+    isValidating: key !== null && result.isValidating,
+    mutate,
+  };
+}
+
+export function usePodFunctionMutation(
+  slug: string | null
+): UsePodFunctionMutationResult {
+  const { dataAPI } = usePodFunctionContext();
+  const resolution = useMemo(() => resolvePodFunction(slug), [slug]);
+  const functionId = resolution.functionId;
+  const key: PodFunctionMutationKey | null = functionId
+    ? ["pod-function-mutation", functionId]
+    : null;
+  const result = useSWRMutation<
+    unknown,
+    Error,
+    PodFunctionMutationKey | null,
+    unknown
+  >(
+    key,
+    async ([, functionId], { arg }) => {
+      try {
+        return await dataAPI.callFunction(functionId, arg);
+      } catch (error) {
+        throw normalizeSandboxFunctionCallError(error);
+      }
+    },
+    { populateCache: false, revalidate: false, throwOnError: true }
+  );
+  const runMutation = result.trigger;
+  const mutationFunctionIdRef = useRef(functionId);
+  const mutationKeyChanged = mutationFunctionIdRef.current !== functionId;
+
+  useEffect(() => {
+    if (mutationFunctionIdRef.current !== functionId) {
+      mutationFunctionIdRef.current = functionId;
+      result.reset();
+    }
+  }, [functionId, result.reset]);
+
+  const trigger = useCallback(
+    async (input: unknown) => {
+      if (resolution.error) {
+        throw resolution.error;
+      }
+      if (!functionId) {
+        throw new Error("Cannot trigger a disabled Pod Function mutation.");
+      }
+
+      return runMutation(input);
+    },
+    [functionId, resolution.error, runMutation]
+  );
+
+  return {
+    data: mutationKeyChanged ? undefined : result.data,
+    error: resolution.error ?? (mutationKeyChanged ? undefined : result.error),
+    isMutating: key !== null && !mutationKeyChanged && result.isMutating,
+    reset: result.reset,
+    trigger,
+  };
+}

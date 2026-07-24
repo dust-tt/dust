@@ -5,6 +5,11 @@ import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
 import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
+import {
+  PodFunctionHooksProvider,
+  usePodFunction,
+  usePodFunctionMutation,
+} from "@viz/app/lib/pod-function-hooks";
 import { transformEditableText } from "@viz/app/lib/transformEditableText";
 import type {
   VisualizationAPI,
@@ -468,6 +473,8 @@ export function VisualizationWrapper({
             captureScreenshot: handleScreenshotDownload,
             triggerUserFileDownload: memoizedDownloadFile,
             useFile: (fileId: string) => useFile(fileId, api.data),
+            usePodFunction,
+            usePodFunctionMutation,
           },
         };
 
@@ -643,7 +650,9 @@ export function VisualizationWrapper({
         </div>
       )}
       <VizContext.Provider value={vizContextValue}>
-        {isEditable ? <EditableFrame>{runner}</EditableFrame> : runner}
+        <PodFunctionHooksProvider dataAPI={api.data}>
+          {isEditable ? <EditableFrame>{runner}</EditableFrame> : runner}
+        </PodFunctionHooksProvider>
       </VizContext.Provider>
     </div>
   );
