@@ -1,12 +1,13 @@
-import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   closeActivePlan,
   getActivePlanContent,
 } from "@app/lib/api/assistant/plan_mode";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type {
   DeleteConversationPlanModeResponseBody,
   GetConversationPlanModeResponseBody,
 } from "@app/types/api/assistant/plan_mode";
+import { ConversationError } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -29,12 +30,20 @@ app.get(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
-    const conversationRes = await getLightConversation(auth, cId);
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      cId
+    );
+    if (!conversationResource) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
+      );
     }
 
-    const contentRes = await getActivePlanContent(auth, conversationRes.value);
+    const conversation = conversationResource.toJSON();
+
+    const contentRes = await getActivePlanContent(auth, conversation);
     if (contentRes.isErr()) {
       // A missing plan is Ok(null); an Err here is a real read failure, surfaced not silenced.
       return apiError(
@@ -62,12 +71,19 @@ app.delete(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
-    const conversationRes = await getLightConversation(auth, cId);
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      cId
+    );
+    if (!conversationResource) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
+      );
     }
 
-    const closeRes = await closeActivePlan(auth, conversationRes.value);
+    const conversation = conversationResource.toJSON();
+    const closeRes = await closeActivePlan(auth, conversation);
     if (closeRes.isErr()) {
       return apiError(
         ctx,
