@@ -5,7 +5,6 @@ import {
   OPENAI_MODEL_CONFIGS,
 } from "@app/lib/api/llm/clients/openai/types";
 import { OPENAI_TOOL_SEARCH_TOOL } from "@app/lib/api/llm/clients/openai/utils/tool_search";
-import { parseOpenAIToolSearchItem } from "@app/lib/api/llm/clients/openai/utils/tool_search_passthrough";
 import type {
   ExclusiveToolChoiceParameters,
   SystemPromptInput,
@@ -19,6 +18,7 @@ import {
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
 import { config } from "@app/lib/api/regions/config";
+import { parseOpenAIToolSearchItem } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search_passthrough";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 import type {
   Content,
