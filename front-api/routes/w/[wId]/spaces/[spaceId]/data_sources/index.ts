@@ -93,13 +93,13 @@ app.post(
         });
       }
     } else {
-      if (space.isGlobal() && !auth.isBuilder()) {
+      if (space.isGlobal() && !auth.isManager()) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
             message:
-              "Only the users that are `builders` for the current workspace can update a data source.",
+              "Only the users that are `managers` for the current workspace can update a data source.",
           },
         });
       }

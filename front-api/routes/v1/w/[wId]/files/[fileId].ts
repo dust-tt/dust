@@ -162,13 +162,13 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     return accessError;
   }
 
-  if (!auth.isBuilder() && file.useCase !== "conversation") {
+  if (!auth.isManager() && file.useCase !== "conversation") {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can delete files.",
+          "Only users that are `managers` for the current workspace can delete files.",
       },
     });
   }
@@ -219,13 +219,13 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     return accessError;
   }
 
-  if (!auth.isBuilder() && file.useCase !== "conversation") {
+  if (!auth.isManager() && file.useCase !== "conversation") {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can modify files.",
+          "Only users that are `managers` for the current workspace can modify files.",
       },
     });
   }

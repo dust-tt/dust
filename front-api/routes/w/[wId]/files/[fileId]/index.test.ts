@@ -223,11 +223,11 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
     vi.clearAllMocks();
   });
 
-  it("should allow builder to delete any file", async () => {
+  it("should allow manager to delete any file", async () => {
     const { auth, user, workspace, globalSpace } =
       await createPrivateApiMockRequest({
         method: "DELETE",
-        role: "builder",
+        role: "manager",
       });
 
     const file = await FileFactory.create(auth, user, {
@@ -273,7 +273,7 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
     expect(response.status).toBe(204);
   });
 
-  it("should deny non-author without builder role from deleting upload files", async () => {
+  it("should deny non-author without manager role from deleting upload files", async () => {
     const { auth, workspace, globalSpace } = await createPrivateApiMockRequest({
       method: "DELETE",
       role: "user",
@@ -303,7 +303,7 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
     });
   });
 
-  it("should deny non-builder from deleting non-conversation files", async () => {
+  it("should deny non-manager from deleting non-conversation files", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "DELETE",
       role: "user",
@@ -326,7 +326,7 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
       error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can modify files.",
+          "Only users that are `managers` for the current workspace can modify files.",
       },
     });
   });
@@ -337,10 +337,10 @@ describe("POST /api/w/:wId/files/:fileId", () => {
     vi.clearAllMocks();
   });
 
-  it("should allow builder to upload any file", async () => {
+  it("should allow manager to upload any file", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "manager",
     });
 
     const conversation = await ConversationFactory.create(auth, {
@@ -392,7 +392,7 @@ describe("POST /api/w/:wId/files/:fileId", () => {
     expect(response.status).toBe(200);
   });
 
-  it("should deny non-author without builder role from uploading to space", async () => {
+  it("should deny non-author without manager role from uploading to space", async () => {
     const { auth, workspace, globalSpace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",

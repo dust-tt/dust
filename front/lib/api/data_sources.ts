@@ -225,7 +225,7 @@ export async function softDeleteDataSourceAndLaunchScrubWorkflow(
   if (!isAuthorized) {
     return new Err({
       code: "unauthorized_deletion",
-      message: "Only builders can delete data sources.",
+      message: "Only managers can delete data sources.",
     });
   }
 
@@ -267,7 +267,7 @@ export async function hardDeleteDataSource(
   auth: Authenticator,
   dataSource: DataSourceResource
 ) {
-  assert(auth.isBuilder(), "Only builders can delete data sources.");
+  assert(auth.isManager(), "Only managers can delete data sources.");
 
   // Delete all files in the data source's bucket.
   //
