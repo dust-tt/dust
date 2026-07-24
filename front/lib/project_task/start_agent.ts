@@ -9,7 +9,6 @@ import {
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { serializeProjectTaskDirective } from "@app/lib/project_task/format";
@@ -24,6 +23,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { resolveDefaultAgentId } from "@app/types/user";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { toFileContentFragment } from "../api/assistant/conversation/content_fragment";
+import { ConversationResource } from "../resources/conversation_resource";
 
 type StartProjectTaskAgentError = {
   statusCode: ContentfulStatusCode;
@@ -224,11 +224,11 @@ export async function startAgentForProjectTask(
   });
 
   let conversationId = await task.getLatestConversationId(auth);
-  let conversation;
+  let conversationResource: ConversationResource | null = null;
   let action: "created" | "appended" = "appended";
 
   if (!conversationId) {
-    conversation = await createConversation(auth, {
+    conversationResource = await createConversation(auth, {
       title: `Task · ${task.text.slice(0, 80)}`,
       visibility: "unlisted",
       spaceId: space.id,
@@ -238,27 +238,27 @@ export async function startAgentForProjectTask(
     });
 
     await task.addConversation(auth, {
-      conversationModelId: conversation.id,
+      conversationModelId: conversationResource.id,
     });
-    conversationId = conversation.sId;
+    conversationId = conversationResource.sId;
     action = "created";
   } else {
-    const conversationRes = await getConversation(auth, conversationId, false);
-    if (conversationRes.isErr()) {
-      const conversationErrorType = conversationRes.error.type;
+    conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversationResource) {
       return new Err({
-        statusCode:
-          conversationErrorType === "conversation_not_found" ? 404 : 403,
-        type: conversationErrorType,
-        message: conversationRes.error.message,
+        statusCode: 404,
+        type: "conversation_not_found",
+        message: "Conversation not found",
       });
     }
-    conversation = conversationRes.value;
   }
 
   // Add the prompt as a file attachment to the conversation.
   const contentFragmentRes = await toFileContentFragment(auth, {
-    conversation,
+    conversation: conversationResource,
     contentFragment: {
       title: "How to complete the task",
       content: prompt,
@@ -276,7 +276,7 @@ export async function startAgentForProjectTask(
 
   const contentFragmentMsgRes = await postNewContentFragment(
     auth,
-    conversation,
+    conversationResource.toJSON(),
     contentFragmentRes.value,
     null
   );
@@ -288,18 +288,6 @@ export async function startAgentForProjectTask(
       message: contentFragmentMsgRes.error.message,
     });
   }
-
-  // Get the updated conversation with the new content fragment.
-  const conversationRes = await getConversation(auth, conversationId);
-  if (conversationRes.isErr()) {
-    return new Err({
-      statusCode: 400,
-      type: "invalid_request_error",
-      message: conversationRes.error.message,
-    });
-  }
-
-  conversation = conversationRes.value;
 
   const taskDirective = serializeProjectTaskDirective({
     label: task.text,
@@ -320,7 +308,7 @@ export async function startAgentForProjectTask(
     agentConfigurationId ?? (await resolveDefaultAgentIdForTask(auth, space));
 
   const messageRes = await postUserMessage(auth, {
-    conversation,
+    conversationResource,
     content,
     mentions: [
       {

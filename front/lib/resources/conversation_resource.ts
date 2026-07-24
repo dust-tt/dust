@@ -3418,6 +3418,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
   }
 
+  /**
+   * Finds an in-flight agent reply using only the latest message version at each
+   * rank. Soft-delete writes a newer `visibility: "deleted"` placeholder while the
+   * older row can remain `status: "created"`; scanning historical versions would
+   * incorrectly treat that deleted turn as still running (see #29418).
+   */
   async getRunningAgentMessage(
     auth: Authenticator,
     {
@@ -3428,46 +3434,62 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction?: Transaction;
     } = {}
   ): Promise<RunningAgentMessageContext | null> {
-    const { scopeWhere } = await this.resolveMessageViewScope(auth, {
-      branchId,
-      transaction,
-    });
-
     const owner = auth.getNonNullableWorkspace();
-    const message = await MessageModel.findOne({
-      attributes: ["sId", "rank"],
-      where: {
-        ...scopeWhere,
-        visibility: { [Op.ne]: "deleted" },
+    const { branchFilterSql, sqlReplacements } =
+      await this.resolveMessageViewScope(auth, { branchId, transaction });
+
+    const query = `
+      SELECT
+        latest."sId",
+        latest.rank,
+        am.id AS "agentMessageId",
+        am."agentConfigurationId"
+      FROM (
+        SELECT DISTINCT ON (m.rank)
+          m."sId",
+          m.rank,
+          m.visibility,
+          m."agentMessageId"
+        FROM messages m
+        WHERE m."workspaceId" = :workspaceId
+          AND m."conversationId" = :conversationId
+          AND ${branchFilterSql}
+        ORDER BY m.rank DESC, m.version DESC
+      ) latest
+      INNER JOIN agent_messages am
+        ON am.id = latest."agentMessageId"
+        AND am."workspaceId" = :workspaceId
+        AND am."conversationId" = :conversationId
+      WHERE latest.visibility != 'deleted'
+        AND am.status = 'created'
+      ORDER BY latest.rank DESC
+      LIMIT 1
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: DISTINCT ON latest version per rank
+    const [message] = await frontSequelize.query<{
+      sId: string;
+      rank: number;
+      agentMessageId: number;
+      agentConfigurationId: string;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        ...sqlReplacements,
       },
-      include: [
-        {
-          model: AgentMessageModel,
-          as: "agentMessage",
-          required: true,
-          attributes: ["id", "agentConfigurationId"],
-          where: {
-            status: "created",
-            conversationId: this.id,
-            workspaceId: owner.id,
-          },
-        },
-      ],
-      order: [
-        ["rank", "DESC"],
-        ["version", "DESC"],
-      ],
       transaction,
     });
 
-    if (!message?.agentMessage) {
+    if (!message) {
       return null;
     }
 
     return {
       sId: message.sId,
-      agentMessageId: message.agentMessage.id,
-      agentConfigurationId: message.agentMessage.agentConfigurationId,
+      agentMessageId: message.agentMessageId,
+      agentConfigurationId: message.agentConfigurationId,
       rank: message.rank,
     };
   }

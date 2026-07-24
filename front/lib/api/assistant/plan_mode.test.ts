@@ -36,7 +36,7 @@ async function setup(): Promise<{
     visibility: "unlisted",
     spaceId: null,
   });
-  return { auth, conversation };
+  return { auth, conversation: conversation.toJSON() };
 }
 
 function lastPlanWrite(): string | null {

@@ -2919,15 +2919,27 @@ describe("listPrivateConversationsForUser", () => {
 
   it("keeps paginating when a full page window contains a filtered-out conversation", async () => {
     const deletedSpace = await SpaceFactory.regular(workspace);
+    // Admin must be a space member (with a refreshed authenticator) before
+    // ConversationFactory.create can fetch a conversation that references it.
+    const addMembersRes = await deletedSpace.addMembers(adminAuth, {
+      userIds: [adminAuth.getNonNullableUser().sId],
+    });
+    assert(addMembersRes.isOk(), "Failed to add admin to space");
+    const adminWithSpaceAccess = await Authenticator.fromUserIdAndWorkspaceId(
+      adminAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
 
     const createParticipatingConversation = async ({
       updatedAt,
       requestedSpaceIds,
+      auth = adminAuth,
     }: {
       updatedAt: Date;
       requestedSpaceIds?: number[];
+      auth?: Authenticator;
     }) => {
-      const conversation = await ConversationFactory.create(adminAuth, {
+      const conversation = await ConversationFactory.create(auth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [new Date()],
         requestedSpaceIds,
@@ -2955,6 +2967,7 @@ describe("listPrivateConversationsForUser", () => {
     const poisoned = await createParticipatingConversation({
       updatedAt: new Date(baseMs + 3 * hourMs),
       requestedSpaceIds: [deletedSpace.id],
+      auth: adminWithSpaceAccess,
     });
     const middle = await createParticipatingConversation({
       updatedAt: new Date(baseMs + 2 * hourMs),
@@ -2963,7 +2976,7 @@ describe("listPrivateConversationsForUser", () => {
       updatedAt: new Date(baseMs + 1 * hourMs),
     });
 
-    const deleteRes = await deletedSpace.delete(adminAuth, {
+    const deleteRes = await deletedSpace.delete(adminWithSpaceAccess, {
       hardDelete: false,
     });
     assert(deleteRes.isOk(), "Failed to soft-delete space");

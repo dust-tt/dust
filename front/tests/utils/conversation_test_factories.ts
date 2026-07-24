@@ -1,5 +1,10 @@
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
+import type { ToolRunContext } from "@app/lib/actions/types";
+import { createConversation } from "@app/lib/api/assistant/conversation";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
+import { Authenticator } from "@app/lib/auth";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentMessageType,
@@ -11,6 +16,69 @@ import type {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { UserType } from "@app/types/user";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
+import { createResourceTest } from "./generic_resource_tests";
+import { SpaceFactory } from "./SpaceFactory";
+
+export function makeExtra(
+  auth: Authenticator,
+  conversation: ConversationResource
+): ToolHandlerExtra {
+  const runContext = {
+    contextType: "agent_loop",
+    conversation: {
+      ...conversation.toJSON(),
+      visibility: conversation.visibility,
+      owner: auth.getNonNullableWorkspace(),
+    },
+  } as unknown as ToolRunContext;
+  return { auth, runContext } as unknown as ToolHandlerExtra;
+}
+
+export async function setupPlainConversation(
+  role: "admin" | "user" = "admin"
+): Promise<{
+  auth: Authenticator;
+  conversation: ConversationResource;
+}> {
+  const { authenticator: auth } = await createResourceTest({ role });
+  const conversation = await createConversation(auth, {
+    title: "Test",
+    visibility: "unlisted",
+    spaceId: null,
+  });
+  return { auth, conversation };
+}
+
+export async function setupProjectConversation(
+  role: "admin" | "user" = "admin"
+): Promise<{
+  auth: Authenticator;
+  conversation: ConversationResource;
+  projectId: string;
+}> {
+  const { authenticator: auth, workspace } = await createResourceTest({
+    role,
+  });
+  const user = auth.getNonNullableUser();
+
+  const space = await SpaceFactory.project(workspace, user.id);
+  const addRes = await space.addMembers(auth, { userIds: [user.sId] });
+  assert(addRes.isOk(), "Failed to add user to project space");
+
+  const projectAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
+
+  const conversation = await createConversation(projectAuth, {
+    title: "Test",
+    visibility: "unlisted",
+    spaceId: space.id,
+  });
+
+  return { auth: projectAuth, conversation, projectId: space.sId };
+}
 
 function mockUser(username: string): UserType {
   return {

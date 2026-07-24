@@ -9,7 +9,7 @@ import {
 } from "@dust-tt/client";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { publicApiApp } from "@front-api/middlewares/ctx";
-import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
@@ -204,27 +204,36 @@ app.patch(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
-    const conversationRes = await getConversation(auth, cId);
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      cId
+    );
+    if (!conversationResource) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "conversation_not_found",
+          message: "Conversation not found",
+        },
+      });
     }
 
     const data = ctx.req.valid("json");
     if ("read" in data) {
       if (data.read) {
         await ConversationResource.markAsReadForAuthUser(auth, {
-          conversation: conversationRes.value,
+          conversation: conversationResource,
         });
       } else {
         await ConversationResource.markAsUnreadForAuthUser(auth, {
-          conversation: conversationRes.value,
+          conversation: conversationResource,
         });
       }
       return ctx.json({ success: true });
     }
 
     const titleUpdateRes = await updateConversationTitle(auth, {
-      conversationId: conversationRes.value.sId,
+      conversationId: conversationResource.sId,
       title: data.title,
     });
     if (titleUpdateRes.isErr()) {
@@ -232,7 +241,7 @@ app.patch(
     }
 
     await ConversationResource.markAsReadForAuthUser(auth, {
-      conversation: conversationRes.value,
+      conversation: conversationResource,
     });
 
     return ctx.json({ success: true });
