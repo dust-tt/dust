@@ -499,7 +499,7 @@ export function getItemTypeLabel(item: DataSource): string {
   return item.fileType ? getFileTypeLabel(item.fileType) : "File";
 }
 
-export function sortDataSourcesForDisplay(items: DataSource[]): DataSource[] {
+export function sortDataSourcesForDisplay<T extends DataSource>(items: T[]): T[] {
   return [...items].sort((a, b) => {
     if (a.kind !== b.kind) {
       return a.kind === "folder" ? -1 : 1;
