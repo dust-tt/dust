@@ -159,25 +159,22 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
           target,
           targetIndex: index,
         });
-        if (result.isErr()) {
-          childLogger.error(
-            { err: result.error, mountPoint: target.sandboxMountPoint },
-            "GCS sandbox mount: failed to prepare token"
-          );
-        }
-        return result;
+        return { result, target };
       },
       { concurrency: targets.length }
     );
 
-    const tokenWriteError = tokenResults.find((result) => result.isErr());
-    if (tokenWriteError) {
-      if (
-        tokenWriteError.error instanceof GCSMountTokenWriterUnavailableError
-      ) {
+    const tokenWriteFailure = tokenResults.find(({ result }) => result.isErr());
+    if (tokenWriteFailure?.result.isErr()) {
+      const { result, target } = tokenWriteFailure;
+      childLogger.error(
+        { err: result.error, mountPoint: target.sandboxMountPoint },
+        "GCS sandbox mount: failed to prepare token"
+      );
+      if (result.error instanceof GCSMountTokenWriterUnavailableError) {
         await sandbox.requestKill();
       }
-      return tokenWriteError;
+      return result;
     }
 
     // 3-4. Start the root-owned token server and poll it ready in
