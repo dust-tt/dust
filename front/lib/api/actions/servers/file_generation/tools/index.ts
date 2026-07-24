@@ -62,6 +62,9 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
     { file_id_or_url, source_format, output_format },
     { auth, runContext }
   ) => {
+    // This tool actually has 2 modes: you either pass an ID or an URL.
+    // TODO(2026-07-24 aubin): In the branch where we use an ID we need an agent loop context.
+    // Not a true requirement, but requires some work to support sandbox contexts.
     const isInputUrl = validateUrl(file_id_or_url).valid;
     let inputFileRunContext: AgentLoopRunContext | undefined;
     if (!isInputUrl) {
