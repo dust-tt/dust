@@ -1,7 +1,7 @@
+import { ImageGenerationGoogleLLM } from "@app/lib/api/actions/servers/image_generation/clients/google";
+import { ImageGenerationOpenAILLM } from "@app/lib/api/actions/servers/image_generation/clients/openai";
+import type { ImageGenerationLLM } from "@app/lib/api/actions/servers/image_generation/imageGeneration";
 import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
-import { ImageGenerationGoogleLLM } from "@app/lib/api/llm/clients/google/imageGeneration";
-import { ImageGenerationOpenAILLM } from "@app/lib/api/llm/clients/openai/imageGeneration";
-import type { ImageGenerationLLM } from "@app/lib/api/llm/imageGeneration";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";

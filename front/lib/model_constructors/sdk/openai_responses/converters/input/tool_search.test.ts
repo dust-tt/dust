@@ -1,7 +1,7 @@
 import {
   includesOpenAIToolSearchTool,
   OPENAI_TOOL_SEARCH_TOOL,
-} from "@app/lib/api/llm/clients/openai/utils/tool_search";
+} from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search";
 import { describe, expect, it } from "vitest";
 
 describe("includesOpenAIToolSearchTool", () => {

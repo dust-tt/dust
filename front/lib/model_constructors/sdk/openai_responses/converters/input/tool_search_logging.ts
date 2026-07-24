@@ -1,7 +1,7 @@
 import {
   logToolSearchRequest,
   logToolSearchResults,
-} from "@app/lib/api/llm/utils/tool_search_logging";
+} from "@app/lib/model_constructors/utils/tool_search_logging";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type {

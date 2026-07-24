@@ -10,11 +10,11 @@ import type {
   SandboxFunctionRunContext,
   ToolContext,
 } from "@app/lib/actions/types";
+import type { ReferenceImageFile } from "@app/lib/api/actions/servers/image_generation/imageGeneration";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
-import type { ReferenceImageFile } from "@app/lib/api/llm/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";

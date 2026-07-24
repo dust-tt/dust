@@ -9,12 +9,13 @@ import {
   type ImageGenerationOutput,
   type ReferenceImageFile,
   type TokenCountDetails,
-} from "@app/lib/api/llm/imageGeneration";
+} from "@app/lib/api/actions/servers/image_generation/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
 import { trustedFetch } from "@app/lib/egress/server";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
 import { GPT_IMAGE_2_MODEL_ID } from "@app/types/assistant/models/openai";
+import { OPENAI_PROVIDER_ID } from "@app/types/assistant/models/providers";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
@@ -24,7 +25,6 @@ import type {
   ImageGenerateParamsBase,
   ImagesResponse,
 } from "openai/resources/images";
-import { OPENAI_PROVIDER_ID } from "./types";
 
 const SQUARE = "1024x1024";
 const LANDSCAPE = "1536x1024";
