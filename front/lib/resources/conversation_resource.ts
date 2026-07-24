@@ -3033,7 +3033,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    * Get the latest agent message id by rank for a given conversation.
    * @returns The latest agent message id, version and rank.
    */
-  async getLatestAgentMessageIdByRank(auth: Authenticator): Promise<
+  static async getLatestAgentMessageIdByRank(
+    auth: Authenticator,
+    { conversationId }: { conversationId: ModelId }
+  ): Promise<
     {
       rank: number;
       agentMessageId: number;
@@ -3067,7 +3070,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       type: QueryTypes.SELECT,
       replacements: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        conversationId: this.id,
+        conversationId,
       },
     });
 
@@ -3723,6 +3726,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       rank: message.rank,
       compactionStatus: message.compactionMessage?.status ?? null,
     };
+  }
+
+  async getLatestAgentMessageIdByRank(auth: Authenticator): Promise<
+    {
+      rank: number;
+      agentMessageId: number;
+      version: number;
+    }[]
+  > {
+    return ConversationResource.getLatestAgentMessageIdByRank(auth, {
+      conversationId: this.id,
+    });
   }
 
   async getMessageById(

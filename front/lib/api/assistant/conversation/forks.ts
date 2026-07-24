@@ -75,19 +75,6 @@ type CarriedAttachmentResult = {
 const ATTACHMENT_CARRY_OVER_CONCURRENCY = 4;
 const INTERACTIVE_CONTENT_REWRITE_CONCURRENCY = 4;
 
-function filterConversationContentUpToRank(
-  conversation: ConversationType,
-  maxRank: number
-): ConversationType {
-  return {
-    ...conversation,
-    content: conversation.content.filter((versions) => {
-      const latestVersion = versions[versions.length - 1];
-      return latestVersion ? latestVersion.rank <= maxRank : false;
-    }),
-  };
-}
-
 async function getForkCompactionModel(
   auth: Authenticator,
   {
@@ -426,12 +413,9 @@ async function carryOverConversationAttachments(
     sourceMessageRank: number;
   }
 ): Promise<CompactionAttachmentIdReplacements> {
-  const parentConversationAtSource = filterConversationContentUpToRank(
-    parentConversation,
-    sourceMessageRank
-  );
   const attachments = await listAttachments(auth, {
-    conversation: parentConversationAtSource,
+    conversation: parentConversation,
+    upToRank: sourceMessageRank,
   });
   // We carry over direct conversation attachments and agent-generated tool outputs that were
   // attached before the fork point. Project-context files remain accessible via the shared
