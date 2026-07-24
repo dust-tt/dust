@@ -36,7 +36,6 @@ const pullRequest = {
   changedFiles: 1,
   labels: { nodes: [] },
   assignees: { nodes: [] },
-  reviewRequests: { nodes: [{ requestedReviewer: null }] },
   comments: { totalCount: 0 },
   reviews: { totalCount: 0 },
 };
@@ -74,11 +73,10 @@ describe("GitHub pull request tools", () => {
   it.each([
     ["search_advanced", { query: "is:pr" }, searchResponse],
     ["list_pull_requests", { owner: "dust-tt", repo: "dust" }, listResponse],
-  ])("uses partial %s data when GitHub denies team details", async (toolName, params, response) => {
+  ])("retries %s without review requests when GitHub denies team details", async (toolName, params, response) => {
     const reviewerAccessError = Object.assign(
       new Error("Resource not accessible by integration"),
       {
-        data: response,
         errors: [
           {
             type: "FORBIDDEN",
@@ -97,7 +95,8 @@ describe("GitHub pull request tools", () => {
         ],
       }
     );
-    graphqlMock.mockRejectedValue(reviewerAccessError);
+    graphqlMock.mockRejectedValueOnce(reviewerAccessError);
+    graphqlMock.mockResolvedValueOnce(response);
 
     const { authenticator } = await createResourceTest({ role: "admin" });
     const tool = createGithubTools(authenticator).find(
@@ -126,10 +125,15 @@ describe("GitHub pull request tools", () => {
     const result = await tool.handler(params, extra);
 
     expect(result.isOk()).toBe(true);
-    expect(graphqlMock).toHaveBeenCalledOnce();
-    expect(graphqlMock).toHaveBeenCalledWith(
+    expect(graphqlMock).toHaveBeenNthCalledWith(
+      1,
       expect.stringContaining("... on Team"),
-      expect.any(Object)
+      expect.objectContaining({ includeReviewRequests: true })
+    );
+    expect(graphqlMock).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("... on Team"),
+      expect.objectContaining({ includeReviewRequests: false })
     );
     if (result.isOk()) {
       expect(result.value[1]).toMatchObject({

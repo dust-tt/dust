@@ -23,17 +23,12 @@ const GITHUB_TEAM_REVIEWER_FRAGMENT = `... on Team {
   slug
 }`;
 
-function isTeamReviewerAccessError(
-  error: unknown
-): error is { data: object; errors: unknown[] } {
+function isTeamReviewerAccessError(error: unknown): boolean {
   if (
     typeof error !== "object" ||
     error === null ||
     !("errors" in error) ||
-    !Array.isArray(error.errors) ||
-    !("data" in error) ||
-    typeof error.data !== "object" ||
-    error.data === null
+    !Array.isArray(error.errors)
   ) {
     return false;
   }
@@ -53,22 +48,28 @@ function isTeamReviewerAccessError(
   );
 }
 
-// GitHub App tokens without organization Members access cannot resolve Team reviewers. Octokit
-// throws on these field-level errors but keeps the valid GraphQL data on the error, with the
-// inaccessible nullable reviewer set to null. Return that data instead of retrying the union.
+// GitHub App tokens without organization Members access cannot resolve Team reviewers. Retry with
+// the entire reviewRequests field skipped: requestedReviewer can require that permission even if
+// the query no longer selects Team fields.
 async function graphqlWithReviewerFallback<T>(
   octokit: Octokit,
   query: string,
   variables: Record<string, unknown>
 ): Promise<T> {
   try {
-    return await octokit.graphql<T>(query, variables);
+    return await octokit.graphql<T>(query, {
+      ...variables,
+      includeReviewRequests: true,
+    });
   } catch (error) {
     if (!isTeamReviewerAccessError(error)) {
       throw error;
     }
 
-    return error.data as T;
+    return octokit.graphql<T>(query, {
+      ...variables,
+      includeReviewRequests: false,
+    });
   }
 }
 
@@ -2192,7 +2193,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
 
       try {
         const searchQuery = `
-          query($searchQuery: String!, $first: Int!, $after: String, $before: String) {
+          query($searchQuery: String!, $first: Int!, $after: String, $before: String, $includeReviewRequests: Boolean!) {
             search(query: $searchQuery, type: ISSUE_ADVANCED, first: $first, after: $after, before: $before) {
               issueCount
               pageInfo {
@@ -2272,7 +2273,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                       login
                     }
                   }
-                  reviewRequests(first: 10) {
+                  reviewRequests(first: 10) @include(if: $includeReviewRequests) {
                     nodes {
                       requestedReviewer {
                         ... on User {
@@ -2373,14 +2374,14 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                       login: string;
                     }>;
                   };
-                  reviewRequests: {
+                  reviewRequests?: {
                     nodes: Array<{
                       requestedReviewer: {
                         login?: string;
                         slug?: string;
                       } | null;
                     }>;
-                  };
+                  } | null;
                   comments: {
                     totalCount: number;
                   };
@@ -2427,11 +2428,13 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
               additions: node.additions,
               deletions: node.deletions,
               changedFiles: node.changedFiles,
-              reviewRequests: removeNulls(
-                node.reviewRequests.nodes.map((request) =>
-                  getReviewerIdentifier(request.requestedReviewer)
-                )
-              ),
+              reviewRequests: node.reviewRequests
+                ? removeNulls(
+                    node.reviewRequests.nodes.map((request) =>
+                      getReviewerIdentifier(request.requestedReviewer)
+                    )
+                  )
+                : [],
               reviewCount: node.reviews.totalCount,
             };
           } else {
@@ -2495,7 +2498,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
 
       try {
         const query = `
-          query($owner: String!, $repo: String!, $first: Int!, $orderBy: IssueOrder, $states: [PullRequestState!], $after: String, $before: String) {
+          query($owner: String!, $repo: String!, $first: Int!, $orderBy: IssueOrder, $states: [PullRequestState!], $after: String, $before: String, $includeReviewRequests: Boolean!) {
             repository(owner: $owner, name: $repo) {
               pullRequests(first: $first, orderBy: $orderBy, states: $states, after: $after, before: $before) {
                 pageInfo {
@@ -2531,7 +2534,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                       login
                     }
                   }
-                  reviewRequests(first: 10) {
+                  reviewRequests(first: 10) @include(if: $includeReviewRequests) {
                     nodes {
                       requestedReviewer {
                         ... on User {
@@ -2599,14 +2602,14 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                     login: string;
                   }[];
                 };
-                reviewRequests: {
+                reviewRequests?: {
                   nodes: {
                     requestedReviewer: {
                       login?: string;
                       slug?: string;
                     } | null;
                   }[];
-                };
+                } | null;
                 comments: {
                   totalCount: number;
                 };
@@ -2649,11 +2652,13 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
               color: label.color,
             })),
             assignees: pr.assignees.nodes.map((assignee) => assignee.login),
-            reviewRequests: removeNulls(
-              pr.reviewRequests.nodes.map((request) =>
-                getReviewerIdentifier(request.requestedReviewer)
-              )
-            ),
+            reviewRequests: pr.reviewRequests
+              ? removeNulls(
+                  pr.reviewRequests.nodes.map((request) =>
+                    getReviewerIdentifier(request.requestedReviewer)
+                  )
+                )
+              : [],
             commentCount: pr.comments.totalCount,
             reviewCount: pr.reviews.totalCount,
           }));
