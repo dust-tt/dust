@@ -176,12 +176,14 @@ export const SpaceCategoriesList = ({
             icon={Globe01}
             label="Scrape a website"
           />
-          <DropdownMenuItem
-            disabled={!isBuilder || !canWriteInSpace}
-            href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps?modal=apps`}
-            icon={Terminal}
-            label="Create a Dust App"
-          />
+          {hasFeature("legacy_dust_apps") && (
+            <DropdownMenuItem
+              disabled={!isBuilder || !canWriteInSpace}
+              href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps?modal=apps`}
+              icon={Terminal}
+              label="Create a Dust App"
+            />
+          )}
           <DropdownMenuItem
             disabled={!isAdmin}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/actions?modal=tools`}
