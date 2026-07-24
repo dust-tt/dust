@@ -258,6 +258,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
 
   if (
     isUploadUseCase &&
+    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
     !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
   ) {
     return apiError(ctx, {
@@ -267,6 +268,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
         message: "You cannot edit files in that space.",
       },
     });
+    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
   } else if (!auth.isBuilder() && file.useCase !== "conversation") {
     return apiError(ctx, {
       status_code: 403,
@@ -317,6 +319,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
 
   if (
     isUploadUseCase &&
+    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
     !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
   ) {
     return apiError(ctx, {
@@ -328,6 +331,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     });
   } else if (
     !space &&
+    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
     !auth.isBuilder() &&
     file.useCase !== "conversation" &&
     file.useCase !== "avatar"
