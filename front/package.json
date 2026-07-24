@@ -64,7 +64,7 @@
     "@metronome/sdk": "^3.4.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@mistralai/mistralai": "^2.2.1",
-    "@modelcontextprotocol/sdk": "^1.27.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@napi-rs/blake-hash": "^1.3.6",
     "@notionhq/client": "^5.13.0",
     "@novu/api": "^3.13.0",
