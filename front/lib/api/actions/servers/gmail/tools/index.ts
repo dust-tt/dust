@@ -266,7 +266,7 @@ async function fetchAttachment(
   attachmentFilePath: string,
   runContext: AgentLoopRunContext
 ): Promise<
-  Ok<{ buffer: Buffer; filename: string; contentType: string }> | Err<MCPError>
+  Result<{ buffer: Buffer; filename: string; contentType: string }, MCPError>
 > {
   const fileResult = await getFileFromConversationAttachment(
     auth,

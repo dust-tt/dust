@@ -20,6 +20,7 @@ import {
 import { getAllowedLabelsForMCPServer } from "@app/lib/api/actions/servers/microsoft/utils";
 import { OUTLOOK_TOOLS_METADATA } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
@@ -33,7 +34,7 @@ async function fetchAttachment(
   attachmentFilePath: string,
   runContext: AgentLoopRunContext
 ): Promise<
-  Ok<{ buffer: Buffer; filename: string; contentType: string }> | Err<MCPError>
+  Result<{ buffer: Buffer; filename: string; contentType: string }, MCPError>
 > {
   const fileResult = await getFileFromConversationAttachment(
     auth,
