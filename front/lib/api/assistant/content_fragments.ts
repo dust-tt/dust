@@ -5,11 +5,13 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type {
   ConversationType,
+  ConversationWithoutContentType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
-import { Op, type Transaction } from "sequelize";
+import type { Transaction, WhereOptions } from "sequelize";
+import { Op } from "sequelize";
 
 export function getRelatedContentFragments(
   conversation: ConversationType,
@@ -112,4 +114,62 @@ function collectConsecutivePrecedingContentFragments(
   }
 
   return relatedContentFragments;
+}
+
+/**
+ * Fetch content fragments for a conversation without loading full conversation content.
+ * Returns the latest message version per rank, only fragments with
+ * `contentFragmentVersion === "latest"`, optionally limited to `rank <= upToRank`.
+ * Main branch only (`branchId` null).
+ */
+export async function fetchContentFragmentsForConversation(
+  auth: Authenticator,
+  {
+    conversation,
+    upToRank,
+  }: {
+    conversation: Pick<ConversationWithoutContentType, "id" | "sId">;
+    upToRank?: number;
+  }
+): Promise<ContentFragmentType[]> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const where: WhereOptions<MessageModel> = {
+    conversationId: conversation.id,
+    workspaceId: owner.id,
+    branchId: null,
+    visibility: { [Op.ne]: "deleted" },
+    ...(upToRank !== undefined ? { rank: { [Op.lte]: upToRank } } : {}),
+  };
+
+  const messages = await MessageModel.findAll({
+    where,
+    include: [
+      {
+        model: ContentFragmentModel,
+        as: "contentFragment",
+        required: true,
+        where: {
+          version: "latest",
+        },
+      },
+    ],
+    order: [
+      ["rank", "ASC"],
+      ["version", "DESC"],
+    ],
+  });
+
+  // Keep only the latest message version per rank.
+  const latestPerRank = new Map<number, MessageModel>();
+  for (const m of messages) {
+    if (!latestPerRank.has(m.rank)) {
+      latestPerRank.set(m.rank, m);
+    }
+  }
+
+  return ContentFragmentResource.batchRenderFromMessages(auth, {
+    conversationId: conversation.sId,
+    messages: [...latestPerRank.values()],
+  });
 }
