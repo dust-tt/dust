@@ -54,6 +54,25 @@
 [+]     4  front/lib/api/actions/servers/web_search_browse/tools/index.ts:59
 [+]     1  front/lib/api/mcp/run_tool.ts:91
 
+## MCP servers with partial pod function support
+
+- `file_generation`: `convert_file_format` accepts URLs, but conversation file references still
+  require an agent loop context.
+- `gmail`: draft and send operations work in a pod function context; conversation attachments are
+  only resolved in an agent loop context and are omitted otherwise.
+- `google_drive`: `upload_file` still requires an agent loop context to read a conversation file.
+- `image_generation`: reference-image files still require an agent loop context.
+- `jira`: URL attachments work in a pod function context; conversation file attachments still
+  require an agent loop context.
+- `microsoft_drive`: `upload_file` still requires an agent loop context to read a conversation
+  file.
+- `outlook`: mail operations work in a pod function context without attachments; conversation
+  attachments still require an agent loop context.
+- `slack_bot`: message posting works in a pod function context without a file; conversation file
+  attachments still require an agent loop context.
+- `slack_personal`: message posting works in a pod function context without a file; conversation
+  file attachments still require an agent loop context.
+
 ## notes
 
 Ideally if createServer returns 0 tools we should not expose the server at all. Would be a nice way
