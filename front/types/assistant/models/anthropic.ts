@@ -390,7 +390,7 @@ export const CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "Anthropic's Claude Opus 5 model, the latest and most capable model for complex agentic coding and enterprise work (200k context).",
+    "Anthropic's Claude Opus 5 model, the latest and most capable model for complex agentic coding and enterprise work (250k context).",
   shortDescription: "Anthropic's latest flagship model.",
   isLegacy: false,
   isLatest: true,
