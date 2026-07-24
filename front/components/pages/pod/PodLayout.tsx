@@ -4,6 +4,7 @@ import { FileDropProvider } from "@app/components/assistant/conversation/FileUpl
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import {
+  useSetContentWidth,
   useSetHasTitle,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
@@ -30,6 +31,8 @@ export function PodLayout({ children, owner, user }: PodLayoutProps) {
   const pageTitle = spaceInfo ? `Dust - ${spaceInfo.name}` : "Dust";
 
   useSetHasTitle(!!activePodId);
+  // Full archetype: the pod surface owns its own width/scroll.
+  useSetContentWidth("full");
   useSetPageTitle(pageTitle);
 
   return (

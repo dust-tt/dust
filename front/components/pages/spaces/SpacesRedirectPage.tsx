@@ -1,3 +1,4 @@
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
@@ -13,6 +14,10 @@ export function SpacesRedirectPage() {
 
   const { navigationSelection, isLoading: isNavSelectionLoading } =
     usePersistedNavigationSelection();
+
+  // Transient redirect page; declare an archetype so the spinner sits in the
+  // shell column instead of an accidental full-bleed.
+  useSetContentWidth("centered");
 
   const lastSpaceId = navigationSelection.lastSpaceId;
   const lastSpaceCategory = navigationSelection.lastSpaceCategory;
@@ -94,7 +99,7 @@ export function SpacesRedirectPage() {
   ]);
 
   return (
-    <div className="flex h-screen items-center justify-center">
+    <div className="flex h-full items-center justify-center">
       <Spinner />
     </div>
   );

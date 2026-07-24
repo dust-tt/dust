@@ -12,9 +12,20 @@ import {
 const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
+/**
+ * The layout archetype a page declares (design_docs/LAYOUT_SYSTEM.md §3.2):
+ * - "centered": single-column reading/settings surface (max-w-content + gutter)
+ * - "wide": lists/tables/grids (full available width + gutter)
+ * - "full": immersive — the page owns everything, including scroll
+ *
+ * Every in-shell page must declare one via `useSetContentWidth`; `undefined`
+ * is only valid transiently (lazy chunk loads, redirects).
+ */
+export type ContentWidthType = "centered" | "wide" | "full";
+
 interface AppLayoutConfig {
   contentClassName?: string;
-  contentWidth?: "centered" | "wide";
+  contentWidth?: ContentWidthType;
   hasTitle?: boolean;
   hideSidebar?: boolean;
   navChildren?: ReactNode;
@@ -25,7 +36,7 @@ interface AppLayoutConfig {
 
 interface AppLayoutSetters {
   setContentClassName: (v: string | undefined) => void;
-  setContentWidth: (v: "centered" | "wide" | undefined) => void;
+  setContentWidth: (v: ContentWidthType | undefined) => void;
   setHasTitle: (v: boolean | undefined) => void;
   setHideSidebar: (v: boolean | undefined) => void;
   setNavChildren: (v: ReactNode) => void;
@@ -60,7 +71,7 @@ export function AppLayoutProvider({ children }: AppLayoutProviderProps) {
     string | undefined
   >();
   const [contentWidth, setContentWidth] = useState<
-    "centered" | "wide" | undefined
+    ContentWidthType | undefined
   >();
   const [hasTitle, setHasTitle] = useState<boolean | undefined>();
   const [hideSidebar, setHideSidebar] = useState<boolean | undefined>();

@@ -1,5 +1,8 @@
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import { useSetSubNavigation } from "@app/components/sparkle/AppLayoutContext";
+import {
+  useSetContentWidth,
+  useSetSubNavigation,
+} from "@app/components/sparkle/AppLayoutContext";
 import {
   useAuth,
   useFeatureFlags,
@@ -34,6 +37,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   );
 
   useSetSubNavigation(subNavigation);
+  // Temporary: AdminLayout renders its own max-w-6xl wrapper below, so the
+  // shell must stay hands-off. Removed when AdminLayout dissolves into
+  // per-page archetypes (LAYOUT_SYSTEM.md Phase 2, admin snap).
+  useSetContentWidth("full");
 
   return (
     <div
