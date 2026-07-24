@@ -9,7 +9,9 @@ export function makeSandboxKillRequesterWorkflowId({
 }): string {
   const inputHash = createHash("sha256")
     .update(JSON.stringify([baseImage, version ?? null]))
-    .digest("base64url");
+    .digest()
+    .subarray(0, 16)
+    .toString("base64url");
 
   return `sandbox-kill-requester-${inputHash}`;
 }

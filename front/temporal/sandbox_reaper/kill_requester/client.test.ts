@@ -66,5 +66,8 @@ describe("launchSandboxKillRequesterWorkflow", () => {
     ];
 
     expect(new Set(workflowIds).size).toBe(workflowIds.length);
+    expect(workflowIds.every((workflowId) => workflowId.length === 45)).toBe(
+      true
+    );
   });
 });
