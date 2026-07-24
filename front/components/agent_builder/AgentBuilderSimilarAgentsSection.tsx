@@ -8,12 +8,59 @@ import {
 } from "@app/lib/swr/assistants";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Avatar, Icon, LinkExternal01, Spinner } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useReducer } from "react";
 import { useWatch } from "react-hook-form";
 
 const DEBOUNCE_DELAY_MS = 250;
 const MIN_DESCRIPTION_LENGTH = 10;
+
+type State = {
+  similarAgents: LightAgentConfigurationType[];
+  isLoading: boolean;
+  hasError: boolean;
+};
+
+type Action =
+  | { type: "reset" }
+  | { type: "fetch_start" }
+  | { type: "fetch_success"; similarAgents: LightAgentConfigurationType[] }
+  | { type: "fetch_settled" }
+  | { type: "fetch_error" };
+
+const initialState: State = {
+  similarAgents: [],
+  isLoading: false,
+  hasError: false,
+};
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case "reset":
+      return { ...state, similarAgents: [], isLoading: false, hasError: false };
+
+    case "fetch_start":
+      return { ...state, isLoading: true, hasError: false };
+
+    case "fetch_success":
+      return {
+        ...state,
+        isLoading: false,
+        similarAgents: action.similarAgents,
+      };
+
+    case "fetch_settled":
+      return { ...state, isLoading: false };
+
+    case "fetch_error":
+      return { ...state, isLoading: false, hasError: true };
+
+    default:
+      assertNeverAndIgnore(action);
+      return state;
+  }
+}
 
 interface AgentBuilderSimilarAgentsSectionProps {
   agentConfigurationId: string | null;
@@ -36,23 +83,17 @@ export function AgentBuilderSimilarAgentsSection({
     agentsGetView: isCreatingNew ? "list" : null,
   });
 
-  const [similarAgents, setSimilarAgents] = useState<
-    LightAgentConfigurationType[]
-  >([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { similarAgents, isLoading, hasError } = state;
 
   const fetchSimilarAgents = useCallback(
     async (naturalDescription: string, signal: AbortSignal) => {
       if (naturalDescription.length < MIN_DESCRIPTION_LENGTH) {
-        setSimilarAgents([]);
-        setIsLoading(false);
-        setHasError(false);
+        dispatch({ type: "reset" });
         return;
       }
 
-      setIsLoading(true);
-      setHasError(false);
+      dispatch({ type: "fetch_start" });
 
       try {
         const result = await getSimilarAgents(naturalDescription, { signal });
@@ -61,21 +102,22 @@ export function AgentBuilderSimilarAgentsSection({
           return;
         }
 
-        setIsLoading(false);
         if (result.isOk()) {
           const similarAgentIds = new Set(result.value);
-          setSimilarAgents(
-            agentConfigurations.filter((agent) =>
+          dispatch({
+            type: "fetch_success",
+            similarAgents: agentConfigurations.filter((agent) =>
               similarAgentIds.has(agent.sId)
-            )
-          );
+            ),
+          });
+        } else {
+          dispatch({ type: "fetch_settled" });
         }
       } catch {
         if (signal.aborted) {
           return;
         }
-        setIsLoading(false);
-        setHasError(true);
+        dispatch({ type: "fetch_error" });
       }
     },
     [agentConfigurations, getSimilarAgents]
@@ -96,12 +138,9 @@ export function AgentBuilderSimilarAgentsSection({
     // shows up as soon as typing stops, rather than only once the debounce
     // delay has elapsed and the request has actually started.
     if (naturalDescription.length < MIN_DESCRIPTION_LENGTH) {
-      setIsLoading(false);
-      setHasError(false);
-      setSimilarAgents([]);
+      dispatch({ type: "reset" });
     } else {
-      setIsLoading(true);
-      setHasError(false);
+      dispatch({ type: "fetch_start" });
     }
 
     triggerSimilarAgentsFetch(naturalDescription);
