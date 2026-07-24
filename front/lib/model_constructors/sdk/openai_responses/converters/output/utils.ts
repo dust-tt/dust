@@ -17,6 +17,7 @@ import type {
 } from "@app/lib/model_constructors/types/output/events";
 import type { Phase } from "@app/lib/model_constructors/types/phases";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import { OPENAI_PROVIDER_ID } from "@app/types/assistant/models/providers";
 import {
   assertNever,
   assertNeverAndIgnore,
@@ -228,7 +229,7 @@ export function toolSearchItemToProviderPassthroughEvent(
 
   return {
     type: "provider_passthrough",
-    content: { provider: "openai", block: item },
+    content: { provider: OPENAI_PROVIDER_ID, block: item },
     metadata,
   };
 }
