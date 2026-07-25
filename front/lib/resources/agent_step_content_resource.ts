@@ -165,10 +165,12 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       agentMessageIds,
       transaction,
       latestVersionsOnly = false,
+      textContentOnly = false,
     }: {
       agentMessageIds: ModelId[];
       transaction?: Transaction;
       latestVersionsOnly?: boolean;
+      textContentOnly?: boolean;
     }
   ): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
@@ -185,6 +187,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         this.model.findAll({
           where: {
             workspaceId: owner.id,
+            ...(textContentOnly ? { type: "text_content" } : {}),
             agentMessageId: {
               [Op.any]: Sequelize.literal("$agentMessageIds::bigint[]"),
             },

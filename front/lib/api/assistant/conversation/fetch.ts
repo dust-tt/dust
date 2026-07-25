@@ -88,7 +88,8 @@ export const getLightConversation = async (
     branchId,
     "light",
     lastInteractionsToFetchToolOutputContentFor,
-    messagePagination
+    messagePagination,
+    true
   );
 
 // Batch size (in interactions) for extending the tool-output-content fetch window beyond the
@@ -142,7 +143,8 @@ async function _getConversation<V extends "light" | "full">(
   branchId: string | null = null,
   viewType: V = "full" as V,
   lastInteractionsToFetchToolOutputContentFor: number | null = null,
-  messagePagination?: { limit: number; lastRank: number | null }
+  messagePagination?: { limit: number; lastRank: number | null },
+  textContentOnly: boolean = false
 ): Promise<
   Result<
     (V extends "light"
@@ -308,7 +310,8 @@ async function _getConversation<V extends "light" | "full">(
     conversation,
     messages,
     viewType,
-    messagesWithToolOutputContent
+    messagesWithToolOutputContent,
+    textContentOnly
   );
 
   if (renderRes.isErr()) {
