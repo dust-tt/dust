@@ -144,6 +144,11 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "google_ai_studio",
   },
   {
+    modelId: "gemini-3.6-flash",
+    displayName: "Gemini 3.6 Flash",
+    providerId: "google_ai_studio",
+  },
+  {
     modelId: "accounts/fireworks/models/deepseek-v4-pro",
     displayName: "DeepSeek V4 Pro (Fireworks)",
     providerId: "fireworks",
