@@ -20,6 +20,7 @@ import {
 import { useState } from "react";
 
 import { DeleteAssistantsDialog } from "./DeleteAssistantsDialog";
+import { SetModelAssistantsDialog } from "./SetModelAssistantsDialog";
 import { UnpublishAssistantsDialog } from "./UnpublishAssistantsDialog";
 
 type AgentEditBarProps = {
@@ -144,6 +145,12 @@ export const AgentEditBar = ({
             </DropdownMenuTagList>
           </DropdownMenuContent>
         </DropdownMenu>
+        <SetModelAssistantsDialog
+          owner={owner}
+          agentConfigurations={selectedAgents}
+          disabled={selectedAgents.length === 0 || isLoading}
+          mutateAgentConfigurations={mutateAgentConfigurations}
+        />
         <UnpublishAssistantsDialog
           owner={owner}
           agentConfigurations={selectedAgents}
