@@ -37,10 +37,8 @@ import {
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
 import type { GetAgentUsageResponseBody } from "@app/types/api/assistant/agent_usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";
-import type {
-  BatchUpdateAgentModelResponseBody,
-  GetAgentConfigurationsResponseBody,
-} from "@app/types/api/assistant/configuration";
+import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
+import { BatchUpdateAgentModelResponseBodySchema } from "@app/types/api/assistant/configuration";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/types/api/assistant/mcp_configurations";
 import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
 import type { GetAgentSummaryResponseBody } from "@app/types/api/assistant/observability/summary";
@@ -877,8 +875,21 @@ export function useBatchUpdateAgentModel({
       }
 
       // Each agent is saved on its own, so some of them may have been skipped.
-      const { updatedAgentIds, skippedAgentIds } =
-        (await res.json()) as BatchUpdateAgentModelResponseBody;
+      const parsed = BatchUpdateAgentModelResponseBodySchema.safeParse(
+        await res.json()
+      );
+      if (!parsed.success) {
+        sendNotification({
+          type: "info",
+          title: "Model update outcome unknown",
+          description:
+            "The update was submitted but the server response could not be read. " +
+            "The list has been refreshed with the current state.",
+        });
+        return true;
+      }
+
+      const { updatedAgentIds, skippedAgentIds } = parsed.data;
 
       sendNotification({
         type: skippedAgentIds.length > 0 ? "info" : "success",
