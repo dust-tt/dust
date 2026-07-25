@@ -139,6 +139,11 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "google_ai_studio",
   },
   {
+    modelId: "gemini-3.5-flash-lite",
+    displayName: "Gemini 3.5 Flash Lite",
+    providerId: "google_ai_studio",
+  },
+  {
     modelId: "gemini-3.5-flash",
     displayName: "Gemini 3.5 Flash",
     providerId: "google_ai_studio",

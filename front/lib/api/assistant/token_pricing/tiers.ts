@@ -299,6 +299,12 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     medium: "cost_efficient",
     high: "balanced",
   },
+  "gemini-3.5-flash-lite": {
+    none: "cost_efficient",
+    light: "cost_efficient",
+    medium: "cost_efficient",
+    high: "balanced",
+  },
   "gemini-3.1-flash-lite-preview": {
     none: "cost_efficient",
     light: "cost_efficient",

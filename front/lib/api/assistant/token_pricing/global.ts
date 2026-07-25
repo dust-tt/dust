@@ -326,6 +326,13 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 1.5,
     cache_read_input_tokens: 0.025,
   },
+  // https://ai.google.dev/gemini-api/docs/pricing (2026-07-25): matches the
+  // Flash-Lite family rate.
+  "gemini-3.5-flash-lite": {
+    input: 0.25,
+    output: 1.5,
+    cache_read_input_tokens: 0.025,
+  },
   // Deprecated: superseded by gemini-3.1-flash-lite. Kept until existing agents are migrated.
   "gemini-3.1-flash-lite-preview": {
     input: 0.25,

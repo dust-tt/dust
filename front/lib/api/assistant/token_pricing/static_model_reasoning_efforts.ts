@@ -310,6 +310,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: true,
     high: true,
   },
+  "gemini-3.5-flash-lite": {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "gemini-3.1-flash-lite-preview": {
     none: true,
     light: true,
