@@ -49,6 +49,14 @@ function getAuditLogDecision(
 
 type ApprovalRequestAuditStatus = "active" | "retry" | "stale";
 
+// Attribution for the audit event, kept separate from the deciding identity:
+// proposed_by_type explains the origin of the tool action, decided_by_type who
+// held the authority to approve or reject it.
+type AuditActorType = "ai_agent" | "human_user" | "system" | "integration";
+
+// Every approval request on this path originates from an agent's tool call.
+const PROPOSED_BY_AI_AGENT: AuditActorType = "ai_agent";
+
 function extractDataSourceId(input: unknown): string | null {
   if (isString(input)) {
     return input.split("/").pop() ?? input;
@@ -134,6 +142,8 @@ async function emitToolApprovalDecidedAuditEvent({
         request_status: requestStatus,
         deciding_user_id: user?.sId ?? "unknown",
         deciding_user_email: user?.email ?? "unknown",
+        proposed_by_type: PROPOSED_BY_AI_AGENT,
+        decided_by_type: user ? "human_user" : "system",
         accessed_data_source_ids: extractAccessedDataSourceIds(
           action.augmentedInputs
         ),
