@@ -20,6 +20,8 @@ import { GoogleAiStudioGeminiThreeDotOneProGlobalAgentPlatformStream } from "@ap
 import { GoogleAiStudioGeminiThreeDotOneProGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_gemini_3_1_pro_global_google_ai_studio";
 import { GoogleAiStudioGeminiThreeDotFiveFlashGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_gemini_3_5_flash_global_agent_platform";
 import { GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_gemini_3_5_flash_global_google_ai_studio";
+import { GoogleAiStudioGeminiThreeDotSixFlashGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_gemini_3_6_flash_global_agent_platform";
+import { GoogleAiStudioGeminiThreeDotSixFlashGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_gemini_3_6_flash_global_google_ai_studio";
 import { MistralCodestralEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_codestral_eu_mistral";
 import { MistralMistralLargeEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { MistralMistralMedium35EuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
@@ -71,6 +73,8 @@ export const STREAM_ENDPOINTS = {
     AnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream,
   [GoogleAiStudioGeminiThreeDotFiveFlashGlobalAgentPlatformStream.id]:
     GoogleAiStudioGeminiThreeDotFiveFlashGlobalAgentPlatformStream,
+  [GoogleAiStudioGeminiThreeDotSixFlashGlobalAgentPlatformStream.id]:
+    GoogleAiStudioGeminiThreeDotSixFlashGlobalAgentPlatformStream,
   [GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream.id]:
     GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream,
   [GoogleAiStudioGeminiThreeDotOneProGlobalAgentPlatformStream.id]:
@@ -103,6 +107,8 @@ export const STREAM_ENDPOINTS = {
     GoogleAiStudioGeminiThreeDotOneProGlobalGoogleAiStudioStream,
   [GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream.id]:
     GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream,
+  [GoogleAiStudioGeminiThreeDotSixFlashGlobalGoogleAiStudioStream.id]:
+    GoogleAiStudioGeminiThreeDotSixFlashGlobalGoogleAiStudioStream,
   [MistralCodestralEuropeMistralStream.id]: MistralCodestralEuropeMistralStream,
   [MistralMistralLargeEuropeMistralStream.id]:
     MistralMistralLargeEuropeMistralStream,
