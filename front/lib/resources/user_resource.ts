@@ -49,6 +49,8 @@ import { Op } from "sequelize";
 export interface SearchMembersPaginationParams {
   offset: number;
   limit: number;
+  sortBy?: "name" | "email" | "role" | "status" | "groups";
+  sortDirection?: "asc" | "desc";
 }
 
 export interface GetUserApprovalsResponseBody {

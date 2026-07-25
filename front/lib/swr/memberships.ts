@@ -24,6 +24,7 @@ import type {
   LightWorkspaceType,
 } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { SortingState } from "@tanstack/react-table";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
 import { z } from "zod";
@@ -129,6 +130,7 @@ export function useSearchMembers<
   pageSize,
   groupKind,
   buildersOnly,
+  sorting,
   disabled,
 }: {
   workspaceId: string;
@@ -137,6 +139,7 @@ export function useSearchMembers<
   pageSize: number;
   groupKind?: Exclude<GroupKind, "system">;
   buildersOnly?: boolean;
+  sorting?: SortingState;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -167,6 +170,12 @@ export function useSearchMembers<
 
   if (buildersOnly) {
     searchParams.set("buildersOnly", "true");
+  }
+
+  const sort = sorting?.[0];
+  if (sort) {
+    searchParams.set("sortBy", sort.id);
+    searchParams.set("sortDirection", sort.desc ? "desc" : "asc");
   }
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =

@@ -24,6 +24,8 @@ const SearchMembersQuerySchema = z.object({
     .string()
     .transform((v) => v === "true")
     .optional(),
+  sortBy: z.enum(["name", "email", "role", "status", "groups"]).optional(),
+  sortDirection: z.enum(["asc", "desc"]).optional(),
 });
 
 // Mounted at /api/w/:wId/members/search.
