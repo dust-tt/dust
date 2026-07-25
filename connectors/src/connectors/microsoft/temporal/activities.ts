@@ -2054,13 +2054,7 @@ export async function microsoftGarbageCollectionActivity({
   idCursor: ModelId;
   startGarbageCollectionTs: number;
 }) {
-  const rootResources =
-    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
-  const rootIds = new Set(rootResources.map((root) => root.internalId));
-  const rootNodeIds = await getRootNodesToSyncFromResources(
-    connectorId,
-    rootResources
-  );
+  const rootNodeIds = await getRootNodesToSync(connectorId);
 
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -2088,16 +2082,6 @@ export async function microsoftGarbageCollectionActivity({
   }
 
   const nextIdCursor = lastNode.id + 1;
-
-  const shouldAbortGc = async () => {
-    const currentRoots =
-      await MicrosoftRootResource.listRootsByConnectorId(connectorId);
-    const rootsChanged =
-      currentRoots.length !== rootIds.size ||
-      currentRoots.some((root) => !rootIds.has(root.internalId));
-
-    return rootsChanged || (await isMicrosoftFullSyncRunning(connectorId));
-  };
 
   // only consider nodes that were not seen after the start of the garbage
   // collection. This avoids edge cases such as if a node is moved back to sync
@@ -2217,9 +2201,6 @@ export async function microsoftGarbageCollectionActivity({
         switch (node.nodeType) {
           case "drive":
             if (!driveOrItem) {
-              if (await shouldAbortGc()) {
-                return nextIdCursor;
-              }
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
@@ -2230,9 +2211,6 @@ export async function microsoftGarbageCollectionActivity({
                 reason: "gc_drive_not_found",
               });
             } else if (!rootNodeIds.includes(node.internalId)) {
-              if (await shouldAbortGc()) {
-                return nextIdCursor;
-              }
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
@@ -2247,9 +2225,6 @@ export async function microsoftGarbageCollectionActivity({
             const folder = driveOrItem as DriveItem | null;
 
             if (!folder) {
-              if (await shouldAbortGc()) {
-                return nextIdCursor;
-              }
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
@@ -2260,9 +2235,6 @@ export async function microsoftGarbageCollectionActivity({
                 reason: "gc_not_found",
               });
             } else if (folder.deleted) {
-              if (await shouldAbortGc()) {
-                return nextIdCursor;
-              }
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
@@ -2281,9 +2253,6 @@ export async function microsoftGarbageCollectionActivity({
                 startGarbageCollectionTs,
               })
             ) {
-              if (await shouldAbortGc()) {
-                return nextIdCursor;
-              }
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
@@ -2310,9 +2279,6 @@ export async function microsoftGarbageCollectionActivity({
                 startGarbageCollectionTs,
               }))
             ) {
-              if (await shouldAbortGc()) {
-                return nextIdCursor;
-              }
               await deleteFile({
                 connectorId,
                 internalId: node.internalId,
