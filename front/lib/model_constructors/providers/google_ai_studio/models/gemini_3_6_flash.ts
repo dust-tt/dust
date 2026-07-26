@@ -8,9 +8,6 @@ import { GEMINI_3_6_FLASH } from "@app/lib/model_constructors/types/models";
 
 import { z } from "zod";
 
-export const CONTEXT_SIZE = 1_000_000;
-export const MAX_OUTPUT_TOKENS = 65_536;
-
 const DEFAULT_REASONING_EFFORT = "high";
 
 // Narrowed from the general `inputConfigSchema` after running the endpoint
