@@ -10,10 +10,9 @@ interface BuildSwaggerSpecOptions {
 }
 
 // Build an OpenAPI spec by scanning route files for `@swagger` JSDoc annotations.
-// Replaces `next-swagger-doc`'s `createSwaggerSpec`: same glob-building behavior,
-// minus its Next.js-only bits (`.next/server` build-dir scanning and the
-// `__NEXT_ROUTER_BASEPATH` server injection), neither of which applies to our
-// Hono server.
+// Replaces the former swagger-spec generator: same glob-building behavior,
+// minus its framework-specific bits (build-dir scanning and base-path server
+// injection), neither of which applies here.
 export function buildSwaggerSpec({
   apiFolder,
   schemaFolders = [],

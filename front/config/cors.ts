@@ -18,10 +18,10 @@ const STATIC_ALLOWED_ORIGINS = [
   "https://poke.dust.tt",
   // Main app (front-spa).
   "https://app.dust.tt",
-  // Next.js server (landing page, OAuth, API routes).
+  // The front web app (landing page, OAuth).
   "https://dust.tt",
   "https://eu.dust.tt",
-  // Marketing edge (standalone marketing Next.js app).
+  // Marketing edge (standalone marketing app).
   "https://marketing-edge.dust.tt",
 ] as const;
 

@@ -76,7 +76,7 @@ export function useQueryParams<T extends string[]>(
             shallow: true,
           })
           .then(() => {
-            // Restore hash after router.push (Next.js doesn't preserve it)
+            // Restore hash after router.push (the router doesn't preserve it)
             if (hash && window.location.hash !== hash) {
               window.history.replaceState(
                 null,

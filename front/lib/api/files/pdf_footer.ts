@@ -1,6 +1,6 @@
 // 16x16 inline version of public/static/landing/logos/dust/Dust_LogoSquare.svg.
 // Inlined to avoid bundler-dependent __dirname / cwd path resolution across
-// front (Next.js standalone) and front-api (esbuild bundle).
+// front (Vite app) and front-api (esbuild bundle).
 const logoSvg = `<svg width="16" height="16" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M36 24H24V48H36V24Z" fill="#FE9C1A"/>
 <path fill-rule="evenodd" clip-rule="evenodd" d="M12 36C8.68629 36 6 33.3137 6 30C6 26.6863 8.68629 24 12 24H48V36H12Z" fill="#3B82F6"/>

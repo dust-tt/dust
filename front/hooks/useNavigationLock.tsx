@@ -36,7 +36,7 @@ export function useNavigationLock(
     }
   }, [isEnabled]);
 
-  // Next.js: use routeChangeStart events to intercept navigation.
+  // Use routeChangeStart events to intercept navigation.
   // This is a noop in the SPA since routeChangeStart is not emitted
   // for browser-initiated navigation.
   useEffect(() => {

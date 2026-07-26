@@ -6,7 +6,7 @@ import type { ReadableSpan, Span } from "@opentelemetry/sdk-trace-base";
  * Filtered Langfuse Span Processor
  *
  * Problem: LangfuseSpanProcessor captures ALL OpenTelemetry spans by default,
- * including Next.js routes, HTTP requests, etc., polluting the Langfuse UI.
+ * including HTTP routes and requests, etc., polluting the Langfuse UI.
  *
  * Solution: Only process spans from our manual Langfuse traces.
  * All auto-instrumentation spans are silently ignored.

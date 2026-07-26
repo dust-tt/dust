@@ -232,13 +232,13 @@ export class SequelizeWithComments<
 
       const comments: Record<string, string> = {};
 
-      // Get Next.js route from OpenTelemetry span.
+      // Get the route from the OpenTelemetry span.
       const span = trace.getSpan(otelContext.active());
       if (span && span.isRecording()) {
         const readableSpan = span as unknown as ReadableSpan;
         const attrs = readableSpan.attributes;
 
-        // Case 1: getServerSideProps/getStaticProps: has explicit `next.route`.
+        // Case 1: spans with an explicit `next.route` attribute.
         if (attrs?.["next.route"]) {
           comments.route = attrs["next.route"] as string;
         }

@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 
 // Redirects an SSE path to its /api/sse counterpart with a 307 so the ingress
-// routes it to dedicated front-sse pods. Mirrors the Next middleware redirect in
+// routes it to dedicated front-sse pods. Mirrors the legacy middleware redirect in
 // front/lib/api/sse_redirect.ts.
 //
 // The Location is relative (path + query only) on purpose. front-api runs as a

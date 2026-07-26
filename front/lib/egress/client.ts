@@ -45,7 +45,7 @@ export async function clientFetch(
   init?: RequestInit
 ): Promise<Response> {
   // Only rewrite URLs when a base URL resolver is active (SPA context).
-  // In Next.js, relative URLs work fine and should not be rewritten.
+  // Relative URLs work fine and should not be rewritten.
   const baseUrl = getBaseUrl();
 
   if (baseUrl && isString(input) && input.startsWith("/")) {

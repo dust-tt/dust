@@ -33,7 +33,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
 
   // Validate the client IP address. Hono does not surface the underlying Node
   // `req.socket.remoteAddress`, so we rely on the forwarded headers WorkOS
-  // sends (which the Next handler also prioritized via `getClientIpFromHeaders`).
+  // sends (which the legacy handler also prioritized via `getClientIpFromHeaders`).
   const headers: Record<string, string | string[] | undefined> = {};
   ctx.req.raw.headers.forEach((value, key) => {
     headers[key] = value;

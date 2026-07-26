@@ -32,7 +32,7 @@ type MembersCtx = PublicApiCtx & {
 /**
  * Fetches the space named by `:spaceId`, validates it exists and is editable
  * (not managed by provisioned groups, no global group). Used by GET and POST
- * below to dedupe the space lookup that the Next handler had inline.
+ * below to dedupe the space lookup that the legacy handler had inline.
  *
  * Reads `spaceId` from `ctx.req.valid("param")`, so a `validate("param", ...)`
  * with a schema containing `spaceId` must precede it in the handler chain.

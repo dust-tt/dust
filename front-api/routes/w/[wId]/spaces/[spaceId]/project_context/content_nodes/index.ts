@@ -19,7 +19,7 @@ const DeleteContentNodeBodySchema = z.object({
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_context/content_nodes.
 //
-// The Next handler enforces these as project-only and require write access;
+// The legacy handler enforces these as project-only and require write access;
 // we keep the same checks here.
 const app = workspaceApp();
 

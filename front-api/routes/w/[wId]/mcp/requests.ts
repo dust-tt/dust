@@ -8,8 +8,8 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 // `/api/sse/` prefix that the ingress routes to dedicated front-sse pods.
 //
 // Hono only registers a 307 redirect here for two reasons:
-//   1. Match the Next middleware redirect at the same path, so the routing
-//      contract is the same whether the request first hits Hono or Next.
+//   1. Match the legacy middleware redirect at the same path, so the routing
+//      contract is the same regardless of which stack first handles the request.
 //   2. Reserve the literal `requests` segment so Hono's sibling `:serverId`
 //      param route under `/mcp/` does not swallow it as a server id.
 const app = workspaceApp();

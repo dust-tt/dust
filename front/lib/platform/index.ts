@@ -3,7 +3,7 @@
  *
  * Aliased by consumers (front-spa via Vite) to a concrete implementation.
  * The runtime stubs below throw if invoked unaliased — that path should
- * not exist now that front/ no longer runs as a Next.js app.
+ * not exist now that front/ no longer runs as a server-rendered app.
  */
 import type { SparkleLinkProps } from "@dust-tt/sparkle";
 import type { ComponentType, ReactNode } from "react";
