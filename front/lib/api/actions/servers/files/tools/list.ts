@@ -19,10 +19,7 @@ import {
   type ConversationWithoutContentType,
   isPodConversation,
 } from "@app/types/assistant/conversation";
-import {
-  isInteractiveContentType,
-  stripMimeParameters,
-} from "@app/types/files";
+import { stripMimeParameters } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import partition from "lodash/partition";
@@ -231,13 +228,9 @@ export async function listHandler(
     const annotation = sourcePath
       ? ` (processed version of ${sourcePath})`
       : "";
-    // Frames are created and updated via the interactive_content MCP server, which
-    // identifies them by file ID rather than path. Exposing the ID here lets the agent
-    // reference the correct frame when calling those tools.
-    const fileIdSuffix =
-      isInteractiveContentType(mimeType) && file.fileId
-        ? ` [id: ${file.fileId}]`
-        : "";
+    // The file id is the stable handle for tools that read conversation files: paths must be
+    // reproduced byte-for-byte (typographic apostrophes, accents), which models get wrong.
+    const fileIdSuffix = file.fileId ? ` [id: ${file.fileId}]` : "";
     lines.push(
       `${file.path} (${mimeType}, ${kb} KB)${fileIdSuffix}${annotation}`
     );
