@@ -5,7 +5,7 @@ import { isEUCountry } from "@marketing/lib/geo/eu-detection";
 import { useGeolocation } from "@marketing/lib/swr/geo";
 import { TRACKING_AREAS, trackEvent } from "@marketing/lib/tracking";
 import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
-import { LegacyButton as Button } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -242,7 +242,10 @@ export default function TrustedBy({
       )}
     >
       {showTitle && (
-        <H4 className="mb-6 w-full text-center text-foreground">
+        <H4
+          className="mb-6 w-full text-center text-foreground"
+          style={{ textAlign: "center" }}
+        >
           Trusted by <span className="text-blue-500">3,000+</span> organizations
         </H4>
       )}

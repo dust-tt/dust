@@ -1,170 +1,128 @@
-import { H2, P } from "@marketing/components/home/ContentComponents";
-import { ChevronUp, Separator } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
+import UTMButton from "@marketing/components/UTMButton";
+import { useEffect, useRef } from "react";
 
 interface FeatureItem {
   id: string;
   title: string;
   description: string;
+  // Figma node 3942:1729 — 125deg pastel gradient per card panel.
+  panelGradient: string;
+  imageSrc?: string;
+  videoSrc?: string;
+  ctaLabel: string;
+  ctaHref: string;
 }
 
 const features: FeatureItem[] = [
   {
-    id: "connections",
-    title: "Build custom connections",
+    id: "pods",
+    title: "Pods",
     description:
-      "Create custom integrations with your existing tools and APIs.",
+      "Persistent shared workspace where humans and agents collaborate around any topic, project, or initiative. Shared conversations, tasks, files and agents, all in one place.",
+    panelGradient: "linear-gradient(125deg, #FFF1F7 0.54%, #FFC3DF 100%)",
+    videoSrc: "/static/landing/product/PODS_Website-asset%201.mp4",
+    ctaLabel: "Learn more",
+    ctaHref:
+      "https://docs.dust.tt/changelog/pods-a-shared-workspace-for-your-team-and-your-agents",
   },
   {
-    id: "integrations",
-    title: "Build custom integrations",
+    id: "skill",
+    title: "Self-improving skills",
     description:
-      "Connect Dust to your internal systems and workflows, such as Slack, GitHub, Notion and more.",
-  },
-  {
-    id: "tools",
-    title: "Build custom agentic tools",
-    description:
-      "Extend your agents with custom tools such as semantic search, SQL queries, data visualization, and more.",
-  },
-  {
-    id: "access",
-    title: "Access from your tools",
-    description:
-      "Integrate Dust directly into your existing development environment.",
-  },
-  {
-    id: "workflows",
-    title: "Add to workflows",
-    description:
-      "Automate complex workflows with Dust agents like multi-step processes, data orchestration, and more.",
+      "Skills that get smarter with every use. As your team runs agents, the system learns and improves, compounding your organization's intelligence over time without any manual effort.",
+    panelGradient: "linear-gradient(125deg, #E9F7FF 0.54%, #9FDBFF 100%)",
+    videoSrc: "/static/landing/product/Self-improving%20Skills.mp4",
+    ctaLabel: "Learn more",
+    ctaHref:
+      "https://dust.tt/blog/introducing-self-improving-skills-reusable-ai-capabilities",
   },
 ];
 
-const getBackgroundColor = (activeFeature: string) => {
-  switch (activeFeature) {
-    case "connections":
-      return "bg-golden-50";
-    case "integrations":
-      return "bg-green-50";
-    case "tools":
-      return "bg-gray-50";
-    case "access":
-      return "bg-blue-50";
-    case "workflows":
-      return "bg-purple-50";
-    default:
-      return "bg-gray-50";
-  }
-};
+// Plays on hover for pointer devices; autoplays on touch devices (no hover).
+function HoverAutoplayVideo({ src, alt }: { src: string; alt: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-const getImageSrc = (activeFeature: string) => {
-  switch (activeFeature) {
-    case "connections":
-      return "/static/landing/product/connectors.svg";
-    case "integrations":
-      return "/static/landing/product/slack-incident.svg";
-    case "tools":
-      return "/static/landing/product/support.svg";
-    case "access":
-      return "/static/landing/product/slack-ticket.svg";
-    case "workflows":
-      return "/static/landing/product/zendesk-dust.svg";
-    default:
-      return "";
-  }
-};
-
-const getImageAlt = (activeFeature: string) => {
-  switch (activeFeature) {
-    case "connections":
-      return "Custom Connections";
-    case "integrations":
-      return "Custom Integrations";
-    case "tools":
-      return "Custom Tools";
-    case "access":
-      return "Tool Access";
-    case "workflows":
-      return "Workflow Integration";
-    default:
-      return "";
-  }
-};
-
-export function InteractiveFeaturesSection() {
-  const [activeFeature, setActiveFeature] = useState<string>("connections");
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+    if (window.matchMedia("(hover: none)").matches) {
+      video.play().catch(() => {});
+    }
+  }, []);
 
   return (
-    <div className="w-full">
-      <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6 lg:px-8">
-        <H2 className="text-center text-3xl font-medium md:text-4xl xl:text-5xl">
-          Extend your capabilities
-        </H2>
-        <P size="lg" className="text-base text-muted-foreground sm:text-lg">
-          Sometimes you need to build something specific. We get it. <br />
-          Code your own tools and integrations without breaking everything else.
-        </P>
+    <video
+      ref={videoRef}
+      src={src}
+      aria-label={alt}
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      className="absolute inset-0 h-full w-full object-cover"
+      onMouseEnter={(e) => e.currentTarget.play()}
+      onMouseLeave={(e) => {
+        e.currentTarget.pause();
+        e.currentTarget.currentTime = 0;
+      }}
+    />
+  );
+}
+
+export function InteractiveFeaturesSection() {
+  return (
+    <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] flex w-screen flex-col gap-[48px] bg-[#020618] py-[128px]">
+      <div className="mx-auto flex w-full max-w-[1180px] flex-col items-center px-6">
+        <HomeReveal>
+          <h2 className="m-0 py-[8px] text-center font-sans text-[48px] font-normal leading-[52px] tracking-[-0.06em] text-white">
+            Capabilities built for AI Operator
+          </h2>
+        </HomeReveal>
       </div>
 
-      <div className="mt-16 flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-12">
-        <div className="order-1 w-full lg:order-2 lg:w-1/2">
-          <div
-            className={`relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-2xl ${getBackgroundColor(activeFeature)}`}
-          >
-            <div className="flex h-full w-full items-center justify-center">
-              <img
-                src={getImageSrc(activeFeature)}
-                alt={getImageAlt(activeFeature)}
-                className="h-auto max-h-full w-auto max-w-full object-contain"
+      <div className="mx-auto grid w-full max-w-[1180px] grid-cols-1 gap-[16px] px-6 md:grid-cols-2">
+        {features.map((feature, i) => (
+          <HomeReveal key={feature.id} delay={80 + i * 80} className="h-full">
+            <div className="flex h-full flex-col items-center gap-[32px] rounded-[16px] bg-[#090F2A] p-[32px]">
+              <div
+                className="relative h-[286px] w-full shrink-0 overflow-hidden rounded-[8px]"
+                style={{ backgroundImage: feature.panelGradient }}
+              >
+                {feature.videoSrc ? (
+                  <HoverAutoplayVideo
+                    src={feature.videoSrc}
+                    alt={feature.title}
+                  />
+                ) : (
+                  feature.imageSrc && (
+                    <img
+                      src={feature.imageSrc}
+                      alt={feature.title}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  )
+                )}
+              </div>
+              <div className="flex w-full flex-1 flex-col items-center gap-[16px]">
+                <h4 className="m-0 text-center font-sans text-[32px] font-semibold leading-[30px] tracking-[-0.03em] text-white">
+                  {feature.title}
+                </h4>
+                <p className="m-0 text-center font-sans text-[16px] leading-[25.6px] tracking-[-0.02em] text-white/70">
+                  {feature.description}
+                </p>
+              </div>
+              <UTMButton
+                variant="outline"
+                size="sm"
+                label={feature.ctaLabel}
+                href={feature.ctaHref}
               />
             </div>
-          </div>
-        </div>
-
-        <div className="order-2 w-full lg:order-1 lg:w-1/2">
-          <div className="w-full">
-            {features.map((feature) => {
-              const isActive = activeFeature === feature.id;
-              return (
-                <div key={feature.id} className="w-full">
-                  <button
-                    className="flex w-full items-center justify-between py-6 text-left focus:outline-hidden"
-                    onClick={() => setActiveFeature(feature.id)}
-                    aria-expanded={isActive}
-                  >
-                    <span className="text-lg font-medium text-foreground">
-                      {feature.title}
-                    </span>
-                    <span
-                      className={`ml-6 flex h-6 w-6 flex-shrink-0 items-center justify-center text-muted-foreground transition-transform duration-200 ${
-                        isActive ? "rotate-180" : "rotate-0"
-                      }`}
-                    >
-                      <ChevronUp className="h-5 w-5" />
-                    </span>
-                  </button>
-                  <div
-                    className={`grid overflow-hidden transition-all duration-300 ease-in-out ${
-                      isActive
-                        ? "grid-rows-[1fr] opacity-100"
-                        : "grid-rows-[0fr] opacity-0"
-                    }`}
-                  >
-                    <div className="overflow-hidden">
-                      <div className="pb-6">
-                        <div className="prose prose-gray max-w-none text-base leading-relaxed text-gray-600">
-                          {feature.description}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <Separator className="my-0" />
-                </div>
-              );
-            })}
-          </div>
-        </div>
+          </HomeReveal>
+        ))}
       </div>
     </div>
   );

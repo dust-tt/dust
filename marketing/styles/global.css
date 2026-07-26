@@ -81,6 +81,9 @@ main {
 body {
   overflow-x: hidden;
   overscroll-behavior: none;
+  /* Pages rely on the browser's default canvas otherwise — gray or black in
+     dark-mode/embedded viewers. Paint the theme background explicitly. */
+  @apply bg-background;
 }
 
 #__next {
