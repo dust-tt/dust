@@ -31,7 +31,6 @@ export const GRANT_TYPES = [
   "create",
   "publish",
   "invite",
-  "read",
   "use",
   "*",
 ] as const;
@@ -45,7 +44,6 @@ export const GROUP_PERMISSION_RESOURCE_TYPES = [
   "frame",
   "billing",
   "identity",
-  "audit_log",
   "models_tier",
   "dust_app",
   "*",
@@ -129,7 +127,6 @@ export function emptyWorkspacePermissions(): WorkspacePermissions {
     frame: [],
     billing: [],
     identity: [],
-    audit_log: [],
     models_tier: [],
     dust_app: [],
   };

@@ -92,7 +92,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
     const auth = await memberAuthInGroup(group);
 
     expect(await auth.hasWorkspacePermission("admin", "billing")).toBe(true);
-    expect(await auth.hasWorkspacePermission("read", "audit_log")).toBe(true);
+    expect(await auth.hasWorkspacePermission("admin", "identity")).toBe(true);
   });
 
   it("rejects an invalid capability query, even for admins", async () => {
@@ -141,7 +141,6 @@ describe("Authenticator.getWorkspacePermissions", () => {
       frame: ["invite", "publish"],
       billing: ["admin"],
       identity: ["admin"],
-      audit_log: ["read"],
       dust_app: ["admin"],
     });
   });

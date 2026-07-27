@@ -72,9 +72,6 @@ export const ROLE_REGISTRY: Record<
   identity: {
     admin: { verbs: ["admin"], levels: ["type"] },
   },
-  audit_log: {
-    read: { verbs: ["read"], levels: ["type"] },
-  },
   models_tier: {
     use: { verbs: ["use"], levels: ["instance"] },
   },
@@ -198,7 +195,6 @@ export function workspacePermissionsFromGrants(
     frame: new Set(),
     billing: new Set(),
     identity: new Set(),
-    audit_log: new Set(),
     models_tier: new Set(),
     dust_app: new Set(),
   };
