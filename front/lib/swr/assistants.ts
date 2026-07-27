@@ -857,8 +857,8 @@ export function useBatchUpdateAgentModel({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            agentIds,
             ...body,
+            agentIds,
           }),
         }
       );
