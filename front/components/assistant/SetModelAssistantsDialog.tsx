@@ -149,7 +149,10 @@ export function SetModelAssistantsDialog({
                         className="flex min-w-0 grow cursor-pointer items-center gap-2"
                       >
                         <Icon
-                          visual={getModelMakerLogo(getModelMaker(model), isDark)}
+                          visual={getModelMakerLogo(
+                            getModelMaker(model),
+                            isDark
+                          )}
                           size="md"
                           className="flex-shrink-0"
                         />
