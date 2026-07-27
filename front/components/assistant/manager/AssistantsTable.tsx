@@ -73,13 +73,11 @@ const getTableColumns = ({
   owner,
   tags,
   isBatchEdit,
-  hasSelection,
   mutateAgentConfigurations,
 }: {
   owner: WorkspaceType;
   tags: TagType[];
   isBatchEdit: boolean;
-  hasSelection: boolean;
   mutateAgentConfigurations: () => Promise<any>;
 }) => {
   /**
@@ -103,6 +101,9 @@ const getTableColumns = ({
             header: (info: HeaderContext<RowData, boolean>) => {
               const areAllPageRowsSelected =
                 info.table.getIsAllPageRowsSelected();
+              const hasSelection = Object.values(
+                info.table.getState().rowSelection
+              ).some((isSelected) => isSelected);
 
               return (
                 <Checkbox
@@ -404,6 +405,17 @@ export function AssistantsTable({
 }: AssistantsTableProps) {
   const { tags } = useTags({ owner });
   const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mutateAgentConfigurations has an unstable identity but always mutates the same SWR cache key.
+  const columns = useMemo(
+    () =>
+      getTableColumns({
+        owner,
+        tags: sortedTags,
+        isBatchEdit,
+        mutateAgentConfigurations,
+      }),
+    [owner, sortedTags, isBatchEdit]
+  );
 
   const { isDark } = useTheme();
 
@@ -591,13 +603,7 @@ export function AssistantsTable({
           <DataTable
             className="relative"
             data={rows}
-            columns={getTableColumns({
-              owner,
-              tags: sortedTags,
-              isBatchEdit,
-              hasSelection: selection.length > 0,
-              mutateAgentConfigurations,
-            })}
+            columns={columns}
             pagination={pagination}
             setPagination={setPagination}
             getRowId={(row) => row.sId}
