@@ -2,6 +2,7 @@ import { ToolValidationDetails } from "@app/components/assistant/conversation/To
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import { validateToolInputs } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   EDIT_INFORMATION_TOOL_NAME,
   POD_MANAGER_SERVER_NAME,
@@ -20,6 +21,7 @@ import {
   isPodTasksCreateTasksInput,
   isPodTasksUpdateTasksInput,
 } from "@app/lib/api/actions/servers/pod_tasks/types";
+import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { WAKEUPS_SERVER_NAME } from "@app/lib/api/actions/servers/wakeups/metadata";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -61,6 +63,19 @@ const MCP_TOOL_OVERRIDES: Partial<
     add_egress_domain: {
       title: () => `Allow agent to add a domain to the Computer?`,
       detailsExpanded: true,
+    },
+  },
+  [SANDBOX_FUNCTIONS_SERVER_NAME]: {
+    publish: {
+      title: (inputs) => {
+        if (
+          !validateToolInputs(SANDBOX_FUNCTIONS_SERVER_NAME, "publish", inputs)
+        ) {
+          return "Allow agent to publish a Pod function?";
+        }
+        return `Allow agent to publish ${inputs.slug}?`;
+      },
+      alwaysAllowLabel: () => "Always allow agent to publish Pod functions",
     },
   },
   [POD_TASKS_SERVER_NAME]: {
