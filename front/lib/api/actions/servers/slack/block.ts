@@ -20,7 +20,8 @@ export function makeMarkdownBlock(
   if (!text) {
     return [];
   }
-
+   // New markdown block has better support for markdown formatting,
+  // but is not supported when uploading files.
   if (!isUpload) {
     return [
       {
