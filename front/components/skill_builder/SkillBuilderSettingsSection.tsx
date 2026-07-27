@@ -29,7 +29,6 @@ import {
 import { useContext } from "react";
 import { useController } from "react-hook-form";
 
-
 const AVAILABILITY_OPTIONS = [
   {
     label: "Editors only",
@@ -66,39 +65,42 @@ export function SkillBuilderSettingsSection({
 
   const confirm = useContext(ConfirmContext);
 
-
-
   const { hasFeature } = useFeatureFlags();
-  const isAdminGovernanceEnabled = hasFeature("admin_governance_skill_publication");
+  const isAdminGovernanceEnabled = hasFeature(
+    "admin_governance_skill_publication"
+  );
   const { hasPermission } = useWorkspacePermissions(owner);
   const canUpdateAvailability = hasPermission("publish", "skill");
   const githubSkillFolderUrl = getGitHubSkillFolderUrl(skill);
 
-  const currentOption = AVAILABILITY_OPTIONS.find(
-    (option) => option.values.includes(availability)
+  const currentOption = AVAILABILITY_OPTIONS.find((option) =>
+    option.values.includes(availability)
   );
 
   const isAutoDiscoverableOn = availability === "users_and_agents";
 
-  const onAvailablityChange = async (option: typeof AVAILABILITY_OPTIONS[0], isAutoDiscoverableOn: boolean) => {
+  const onAvailablityChange = async (
+    option: (typeof AVAILABILITY_OPTIONS)[0],
+    isAutoDiscoverableOn: boolean
+  ) => {
     if (isAutoDiscoverableOn) {
       const confirmed = await confirm({
-  title: "Auto discoverable mode will be off",
-  message: "Editors only skill cannot be auto-discoverable. Are you sure to change the availablity?",
-  validateLabel: "Confirm",
-  validateVariant: "warning",
-});
- if (!confirmed) {
-  return;
- }
-
+        title: "Auto discoverable mode will be off",
+        message:
+          "Editors only skill cannot be auto-discoverable. Are you sure to change the availablity?",
+        validateLabel: "Confirm",
+        validateVariant: "warning",
+      });
+      if (!confirmed) {
+        return;
+      }
     }
     if (option.values.includes("workspace_users")) {
       onChange("workspace_users");
     } else {
-      onChange(option.values[0])
+      onChange(option.values[0]);
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -142,9 +144,9 @@ export function SkillBuilderSettingsSection({
         </div>
         {isAdminGovernanceEnabled && (
           <div>
-              <h3 className="text-base font-semibold text-foreground mb-2">
-                Availability
-              </h3>
+            <h3 className="text-base font-semibold text-foreground mb-2">
+              Availability
+            </h3>
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <Button
@@ -160,7 +162,7 @@ export function SkillBuilderSettingsSection({
                     key={option.label}
                     label={option.label}
                     onClick={async () => {
-                     await onAvailablityChange(option, isAutoDiscoverableOn)
+                      await onAvailablityChange(option, isAutoDiscoverableOn);
                     }}
                   />
                 ))}
@@ -171,16 +173,23 @@ export function SkillBuilderSettingsSection({
       </div>
       {isAdminGovernanceEnabled && canUpdateAvailability && (
         <p className="text-muted-foreground text-sm">
-          <span className="font-semibold">Auto-discovery is {isAutoDiscoverableOn ? "on" : "off"}. </span>Agents with the Discover Skills tool {isAutoDiscoverableOn ? "can use" : "won’t find"} this skill automatically. 
-           
-          <br /><div className="mt-1">Edit in{" "}
-          <Hoverable
-            href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
-            target="_blank"
-            className="inline-flex items-center gap-1 underline"
-          >
-            Manage Skills <Icon visual={LinkExternal01} size="xs" />
-          </Hoverable></div>
+          <span className="font-semibold">
+            Auto-discovery is {isAutoDiscoverableOn ? "on" : "off"}.{" "}
+          </span>
+          Agents with the Discover Skills tool{" "}
+          {isAutoDiscoverableOn ? "can use" : "won’t find"} this skill
+          automatically.
+          <br />
+          <div className="mt-1">
+            Edit in{" "}
+            <Hoverable
+              href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
+              target="_blank"
+              className="inline-flex items-center gap-1 underline"
+            >
+              Manage Skills <Icon visual={LinkExternal01} size="xs" />
+            </Hoverable>
+          </div>
         </p>
       )}
 
