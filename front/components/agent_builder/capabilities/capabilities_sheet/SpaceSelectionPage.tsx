@@ -84,10 +84,9 @@ export function SpaceSelectionSheet({
     >
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Add Spaces and Pods</SheetTitle>
+          <SheetTitle>Visibility control and available data</SheetTitle>
           <SheetDescription>
-            Choose the spaces and Pods you want the {entityName} to have access
-            to.
+            Select a space or pod to make this skill private to members of the space or pod. 
           </SheetDescription>
           <SearchInput
             name="space"

@@ -4,12 +4,13 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
+import { SpaceRestrictionMessage } from "@app/components/shared/SpaceRestrictionMessage";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
-import { Button, ContentMessage, Planet } from "@dust-tt/sparkle";
+import { Button, Planet } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
@@ -171,9 +172,11 @@ export function AgentBuilderSpacesBlock({
     <div className="space-y-3">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="heading-lg text-foreground">Spaces and Pods</h2>
+          <h2 className="heading-lg text-foreground">
+            Visibility control and available data
+          </h2>
           <p className="text-sm text-muted-foreground">
-            Set what knowledge and capabilities the agent can access.
+            Select a space or pod to make this agent private to its members and add access to its data and tools.
           </p>
         </div>
         <Button
@@ -183,18 +186,11 @@ export function AgentBuilderSpacesBlock({
           onClick={handleOpenSheet}
         />
       </div>
-      {nonGlobalSpacesWithRestrictions.length > 0 && (
-        <div className="mb-4 w-full">
-          <ContentMessage variant="golden" size="lg">
-            Based on your selection of knowledge and capabilities, this agent
-            can only be used by users with access to:{" "}
-            <strong>
-              {nonGlobalSpacesWithRestrictions.map((v) => v.name).join(", ")}
-            </strong>
-            .
-          </ContentMessage>
-        </div>
-      )}
+      <SpaceRestrictionMessage
+        entityName="agent"
+        owner={owner}
+        spaces={nonGlobalSpacesWithRestrictions}
+      />
       <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
 
       <SpaceSelectionSheet
