@@ -5,7 +5,6 @@ import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import type { HttpBindings } from "@hono/node-server";
 import formidable from "formidable";
@@ -18,8 +17,18 @@ import formidable from "formidable";
 const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
 /** @ignoreswagger */
-app.post("/", ensureIsBuilder(), async (ctx) => {
+app.post("/", async (ctx) => {
   const auth = ctx.get("auth");
+
+  if (!(await auth.hasWorkspacePermission("create", "skill"))) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Detecting skills is restricted.",
+      },
+    });
+  }
 
   const incoming = ctx.env?.incoming;
   if (!incoming) {
