@@ -875,9 +875,8 @@ export function useBatchUpdateAgentModel({
       }
 
       // Each agent is saved on its own, so some of them may have been skipped.
-      const parsed = BatchUpdateAgentModelResponseBodySchema.safeParse(
-        await res.json()
-      );
+      const json = await res.json();
+      const parsed = BatchUpdateAgentModelResponseBodySchema.safeParse(json);
       if (!parsed.success) {
         sendNotification({
           type: "info",
