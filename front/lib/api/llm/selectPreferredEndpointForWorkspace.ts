@@ -44,8 +44,7 @@ export async function selectPreferredEndpointForWorkspace<
       isCreditPriced: isCreditPricedPlanPrefix(plan.code),
     },
     {
-      ...getWorkspaceFilter(auth),
-      ...filter,
+      and: [getWorkspaceFilter(auth), filter],
     }
   );
 
