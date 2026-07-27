@@ -1,10 +1,9 @@
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import assert from "@app/lib/utils/assert";
 import type {
-  AgentModelConfigurationType,
   LightAgentConfigurationType,
   LightAgentConfigurationWithoutModelType,
 } from "@app/types/assistant/agent";
+import type { StreamModelInfo } from "@app/types/assistant/agent_run";
 import {
   CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
@@ -284,27 +283,22 @@ export class AgentMessageContentParser {
 const DEEPSEEK_MODELS: ModelIdType[] = [DEEPSEEK_CHAT_MODEL_ID];
 
 export function getDelimitersConfiguration({
-  model,
-}: {
-  model: AgentModelConfigurationType;
-}): DelimitersConfiguration {
-  const supportedModel = getSupportedModelConfig(model);
-  assert(
-    supportedModel,
-    "Model configuration not found in getDelimitersConfiguration"
-  );
-
-  if (DEEPSEEK_MODELS.includes(model.modelId)) {
+  endpoint,
+  reasoningEffort,
+}: StreamModelInfo): DelimitersConfiguration {
+  if (DEEPSEEK_MODELS.includes(endpoint.modelConfig.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
   }
-  const reasoningEffort =
-    model.reasoningEffort ?? supportedModel.defaultReasoningEffort;
-  if (reasoningEffort !== "light") {
+
+  if (
+    (reasoningEffort ?? endpoint.modelConfig.defaultReasoningEffort) !== "light"
+  ) {
     return {
       delimiters: [],
       incompleteDelimiterPatterns: [],
     };
   }
+
   return {
     delimiters: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.delimiters,
     incompleteDelimiterPatterns:

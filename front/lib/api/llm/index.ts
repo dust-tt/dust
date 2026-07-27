@@ -9,17 +9,13 @@ import {
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
-import { getBatchEndpoints } from "@app/lib/llms/batch";
-import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
-import { getStreamEndpoints } from "@app/lib/llms/stream";
+import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type {
   EndpointConfig,
   ValueFilter,
   Where,
-  WorkspaceConfig,
 } from "@app/lib/llms/types/filter";
-import { sortEndpointsByPreferredRegion } from "@app/lib/llms/utils/sort_endpoints";
 import { FIREWORKS_MODEL_PREFIX } from "@app/lib/model_constructors/stream/clients/fireworks";
 import {
   GOOGLE_AI_STUDIO_HOST,
@@ -31,23 +27,13 @@ import {
   type Model,
   NOOP_MODEL,
 } from "@app/lib/model_constructors/types/models";
-import {
-  EUROPE,
-  GLOBAL,
-  type Region,
-} from "@app/lib/model_constructors/types/regions";
-import {
-  isCreditPricedPlanPrefix,
-  isEnterpriseOrDust,
-} from "@app/lib/plans/plan_codes";
+import { EUROPE, type Region } from "@app/lib/model_constructors/types/regions";
 import { BYOK_MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
-import type { RegionType } from "@app/types/region";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import compact from "lodash/compact";
 import intersection from "lodash/intersection";
 
@@ -69,48 +55,6 @@ function withEapAnthropicKey(
     );
   }
   return { ...credentials, ANTHROPIC_API_KEY: eapApiKey };
-}
-
-// Resolves an LLM for the streaming surface: the new `StreamEndpoint`-backed
-// router when enabled, falling back to the legacy per-provider clients.
-export async function getStreamLLM(
-  auth: Authenticator,
-  llmParameters: LLMParameters
-): Promise<LLM | null> {
-  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
-  if (!modelConfig) {
-    return null;
-  }
-  const featureFlags = await getFeatureFlags(auth);
-
-  const streamEndpointLLM = getStreamEndpointLLM(
-    auth,
-    featureFlags,
-    llmParameters
-  );
-
-  return streamEndpointLLM;
-}
-
-// Resolves an LLM for the batch surface: the new `BatchEndpoint`-backed router
-// when enabled, falling back to the legacy per-provider clients.
-export async function getBatchLLM(
-  auth: Authenticator,
-  llmParameters: LLMParameters
-): Promise<LLM | null> {
-  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
-  if (!modelConfig) {
-    return null;
-  }
-  const featureFlags = await getFeatureFlags(auth);
-
-  const batchEndpointLLM = await getBatchEndpointLLM(
-    auth,
-    featureFlags,
-    llmParameters
-  );
-
-  return batchEndpointLLM;
 }
 
 function getRegionFilter(auth: Authenticator): ValueFilter<Region> | undefined {
@@ -199,11 +143,6 @@ export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
   };
 }
 
-const REGION_MAPPING: Record<RegionType, Region> = {
-  "europe-west1": EUROPE,
-  "us-central1": GLOBAL,
-};
-
 // Maps a legacy `ModelIdType` (Fireworks ids still carry the
 // `accounts/fireworks/models/` prefix) to the bare `Model` id the router keys
 // endpoints by. Returns null for unknown ids.
@@ -215,67 +154,11 @@ export function legacyModelIdToModel(modelId: string): Model | null {
   return isModel(bare) ? bare : null;
 }
 
-// Selects the endpoint best matching the current region for the given model,
-// shared by the stream and batch resolvers. The only thing that varies between
-// the two surfaces is which registry of endpoints we filter over.
-function selectPreferredEndpoint<T extends { region: Region; host: Host }>(
+export function getStreamLLM(
   auth: Authenticator,
-  featureFlags: WhitelistableFeature[],
-  llmParameters: LLMParameters,
-  getEndpoints: (
-    workspaceConfiguration: WorkspaceConfig,
-    inputCondition: Where<EndpointConfig>
-  ) => T[]
-): T | null {
-  // llmParameters.modelId is a legacy ModelIdType (Fireworks ids still carry the
-  // `accounts/fireworks/models/` prefix); map it to the bare router Model id.
-  const modelId = legacyModelIdToModel(llmParameters.modelId);
-  if (!modelId) {
-    return null;
-  }
-
-  const workspaceFilter = getWorkspaceFilter(auth);
-  const plan = auth.getNonNullablePlan();
-
-  const endpoints = getEndpoints(
-    {
-      featureFlags,
-      isEnterprise: isEnterpriseOrDust(plan),
-      isCreditPriced: isCreditPricedPlanPrefix(plan.code),
-    },
-    {
-      ...workspaceFilter,
-      model: {
-        eq: modelId,
-      },
-    }
-  );
-
-  const preferredRegion = REGION_MAPPING[multiRegionsConfig.getCurrentRegion()];
-
-  const sortedEndpoints = sortEndpointsByPreferredRegion(
-    endpoints,
-    preferredRegion
-  );
-
-  return sortedEndpoints[0] ?? null;
-}
-
-function getStreamEndpointLLM(
-  auth: Authenticator,
-  featureFlags: WhitelistableFeature[],
-  llmParameters: LLMParameters
-): LLM | null {
-  const endpoint = selectPreferredEndpoint(
-    auth,
-    featureFlags,
-    llmParameters,
-    getStreamEndpoints
-  );
-
-  if (!endpoint) {
-    return null;
-  }
+  llmParameters: LLMParameters<DustStreamEndpointConstructor>
+): LLM<DustStreamEndpointConstructor> | null {
+  const endpoint = llmParameters.modelInfo.endpoint;
 
   // The noop model needs a dedicated transition to preserve its static-response
   // and simulated-credit behaviors, which the generic transition drops.
@@ -283,9 +166,9 @@ function getStreamEndpointLLM(
     return new NoopStreamTransition(auth, llmParameters, endpoint);
   }
 
-  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
+  const modelConfig = llmParameters.modelInfo.endpoint.modelConfig;
   const credentials = modelConfig?.useEapKey
-    ? withEapAnthropicKey(llmParameters.modelId, llmParameters.credentials)
+    ? withEapAnthropicKey(modelConfig.modelId, llmParameters.credentials)
     : llmParameters.credentials;
 
   return new StreamEndpointTransition(
@@ -295,30 +178,11 @@ function getStreamEndpointLLM(
   );
 }
 
-export async function getBatchEndpointLLM(
+export async function getBatchLLM(
   auth: Authenticator,
-  featureFlags: WhitelistableFeature[],
-  llmParameters: LLMParameters
+  llmParameters: LLMParameters<DustBatchEndpointConstructor>
 ): Promise<LLM | null> {
-  const endpoint = selectPreferredEndpoint(
-    auth,
-    featureFlags,
-    llmParameters,
-    getBatchEndpoints
-  );
+  const endpoint = llmParameters.modelInfo.endpoint;
 
-  if (!endpoint) {
-    return null;
-  }
-
-  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
-  const credentials = modelConfig?.useEapKey
-    ? withEapAnthropicKey(llmParameters.modelId, llmParameters.credentials)
-    : llmParameters.credentials;
-
-  return new BatchEndpointTransition(
-    auth,
-    { ...llmParameters, credentials },
-    endpoint
-  );
+  return new BatchEndpointTransition(auth, llmParameters, endpoint);
 }

@@ -6,25 +6,19 @@ export function WithDustGptFiveDotFourNanoConfig<
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  // Spread the legacy model config onto the class statics (see
-  // `DustStreamEndpointConfiguration`). `Object.assign` returns
-  // `class & ModelConfigurationType`, so the fields are visible to the type
-  // checker without an unsafe cast.
-  abstract class DustGptFiveDotFourNanoConfig extends Base {}
-  const WithConfig = Object.assign(
-    DustGptFiveDotFourNanoConfig,
-    GPT_5_4_NANO_MODEL_CONFIG
-  );
-
-  // Declared last so these own statics shadow (take precedence over) the spread
-  // config values.
-  abstract class DustGptFiveDotFourNano extends WithConfig {
+  abstract class DustGptFiveDotFourNano extends Base {
     static readonly displayName = "GPT-5.4 Nano";
     static readonly description =
       "OpenAI's fastest, most cost-efficient GPT-5.4 (400k context).";
     static readonly byok = true;
     // The Responses API rejects an explicit temperature while reasoning is on.
     static readonly configParsers = [dropTemperatureWhenReasoning];
+
+    // Nest the legacy model config under a single `modelConfig` static (see
+    // `DustStreamEndpointConfiguration`) so consumers can retrieve the full
+    // `ModelConfigurationType` off the endpoint without spreading its fields
+    // onto the class statics.
+    static readonly modelConfig = GPT_5_4_NANO_MODEL_CONFIG;
   }
 
   return DustGptFiveDotFourNano;

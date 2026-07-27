@@ -24,7 +24,6 @@ import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import type { ServerSideMCPToolTypeWithStakeAndRetryPolicy } from "@app/lib/api/mcp";
 import { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   AgentMessageModel,
   MessageModel,
@@ -39,6 +38,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -715,18 +715,14 @@ describe("tryCallMCPTool", () => {
     };
 
     const { model: agentModel, ...agentConfiguration } = agentConfig;
-    const modelConfig = getSupportedModelConfig(agentModel);
-    if (!modelConfig) {
-      throw new Error("Supported model config should exist");
-    }
 
     // Create agent loop run context
     const agentLoopRunContext: AgentLoopRunContext = {
       contextType: "agent_loop",
       agentConfiguration,
-      model: {
+      modelInfo: {
+        endpoint: getTestStreamEndpoint(agentModel.modelId),
         ...agentModel,
-        ...modelConfig,
       },
       agentMessage,
       conversation,

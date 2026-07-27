@@ -5,20 +5,17 @@ export function WithDustGrok45Config<
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  // Spread the legacy model config onto the class statics (see
-  // `DustStreamEndpointConfiguration`). `Object.assign` returns
-  // `class & ModelConfigurationType`, so the fields are visible to the type
-  // checker without an unsafe cast.
-  abstract class DustGrok45Config extends Base {}
-  const WithConfig = Object.assign(DustGrok45Config, GROK_4_5_MODEL_CONFIG);
-
-  // Declared last so these own statics shadow (take precedence over) the spread
-  // config values.
-  abstract class DustGrok45 extends WithConfig {
+  abstract class DustGrok45 extends Base {
     static readonly displayName = "Grok 4.5";
     static readonly description =
       "xAI's Grok 4.5 flagship model (500k context, reasoning, vision).";
     static readonly byok = false;
+
+    // Nest the legacy model config under a single `modelConfig` static (see
+    // `DustStreamEndpointConfiguration`) so consumers can retrieve the full
+    // `ModelConfigurationType` off the endpoint without spreading its fields
+    // onto the class statics.
+    static readonly modelConfig = GROK_4_5_MODEL_CONFIG;
   }
 
   return DustGrok45;

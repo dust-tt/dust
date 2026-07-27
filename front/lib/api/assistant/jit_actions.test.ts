@@ -5,7 +5,6 @@ import {
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -16,6 +15,7 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
@@ -394,16 +394,13 @@ describe("getJITServers", () => {
       );
 
       const { model: agentModel, ...agentConfiguration } = agentConfig;
-      const modelConfig = getSupportedModelConfig(agentModel);
-      if (!modelConfig) {
-        throw new Error("Supported model config should exist");
-      }
+      const endpoint = getTestStreamEndpoint(agentModel.modelId);
 
       const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
         agentConfiguration,
-        model: {
+        modelInfo: {
+          endpoint,
           ...agentModel,
-          ...modelConfig,
         },
         agentMessage,
         conversation,

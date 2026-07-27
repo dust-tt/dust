@@ -410,7 +410,7 @@ export async function runModel(
 
   localLogger.info("Starting multi-action loop iteration");
 
-  const model = runAgentData.model;
+  const modelInfo = runAgentData.modelInfo;
 
   async function publishAgentError(
     error: {
@@ -464,8 +464,8 @@ export async function runModel(
       auth,
       {
         agentName: agentConfiguration.name,
-        model,
-        reasoningEffort: model.reasoningEffort,
+        model: modelInfo.endpoint.modelConfig,
+        reasoningEffort: modelInfo.reasoningEffort,
         featureFlags,
         agentScope: agentConfiguration.scope,
       }
@@ -617,7 +617,7 @@ export async function runModel(
     userMessage,
     agentConfiguration,
     fallbackPrompt,
-    model,
+    modelInfo,
     hasAvailableActions: availableActions.length > 0,
     conversation,
     serverToolsAndInstructions: filteredMcpActions,
@@ -635,12 +635,14 @@ export async function runModel(
     renderEquippedSkillsUserMessage(equippedSkills),
   ]);
 
+  const modelConfig = modelInfo.endpoint.modelConfig;
+
   // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
   // deferred behind tool search is a provider-specific policy applied downstream.
   const toolSearchEnabled =
-    (model.providerId === ANTHROPIC_PROVIDER_ID ||
-      model.providerId === OPENAI_PROVIDER_ID) &&
-    !!model.supportsToolSearch;
+    (modelConfig.providerId === ANTHROPIC_PROVIDER_ID ||
+      modelConfig.providerId === OPENAI_PROVIDER_ID) &&
+    !!modelConfig.supportsToolSearch;
   const baseSpecifications: AgentActionSpecification[] =
     buildBaseSpecifications(availableActions, agentConfiguration);
 
@@ -659,10 +661,11 @@ export async function runModel(
       tracer.trace("renderConversationForModel", async () =>
         renderConversationForModel(auth, {
           conversation,
-          model,
+          model: modelConfig,
           prompt: promptText,
           tools,
-          allowedTokenCount: model.contextSize - model.generationTokensCount,
+          allowedTokenCount:
+            modelConfig.contextSize - modelConfig.generationTokensCount,
           agentConfiguration,
           leadingMessages,
           enabledSkills,
@@ -748,7 +751,7 @@ export async function runModel(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    getDelimitersConfiguration({ model })
+    getDelimitersConfiguration(modelInfo)
   );
 
   const traceContext: LLMTraceContext = {
@@ -765,11 +768,7 @@ export async function runModel(
 
   const llm = await getStreamLLM(auth, {
     credentials,
-    modelId: model.modelId,
-    temperature: model.temperature,
-    reasoningEffort: model.reasoningEffort,
-    responseFormat: model.responseFormat,
-    metaData: model.metaData,
+    modelInfo,
     context: traceContext,
     omittedThinking: agentConfiguration.omittedThinking,
     // Custom trace input: show only the last user message instead of full conversation.
@@ -794,7 +793,7 @@ export async function runModel(
     await publishAgentError({
       code: "model_not_available",
       message:
-        `The model you selected (${model.modelId}) ` +
+        `The model you selected (${modelConfig.modelId}) ` +
         `is not available. Please edit the agent to use another model ` +
         `(advanced settings in the Instructions panel).`,
       metadata: null,
@@ -814,7 +813,7 @@ export async function runModel(
 
   localLogger.info(
     {
-      modelId: model.modelId,
+      modelId: modelConfig.modelId,
       messageCount:
         modelConversationRes.value.modelConversation.messages.length,
       toolCount: specifications.length,
@@ -861,7 +860,7 @@ export async function runModel(
     agentMessage,
     step,
     agentConfiguration,
-    model,
+    model: modelConfig,
     activityTimeoutDeadlineMs,
     publishAgentError,
     prompt,
@@ -884,12 +883,12 @@ export async function runModel(
 
         if (
           plan.isByok &&
-          isByokProviderId(model.providerId) &&
+          isByokProviderId(modelConfig.providerId) &&
           (type === "authentication_error" || type === "permission_error")
         ) {
           const invalidatedCredential =
             await ProviderCredentialResource.markAsUnhealthy(auth, {
-              providerId: model.providerId,
+              providerId: modelConfig.providerId,
             });
 
           if (invalidatedCredential) {
@@ -908,12 +907,12 @@ export async function runModel(
                 ),
                 buildAuditLogTarget("credential", {
                   sId: invalidatedCredential.sId,
-                  name: model.providerId,
+                  name: modelConfig.providerId,
                 }),
               ],
               context: { location: "internal" },
               metadata: {
-                provider_id: model.providerId,
+                provider_id: modelConfig.providerId,
                 reason: "authentication_failed",
               },
             });
@@ -921,7 +920,7 @@ export async function runModel(
         }
 
         const errorMessage =
-          plan.isByok && isByokProviderId(model.providerId)
+          plan.isByok && isByokProviderId(modelConfig.providerId)
             ? getByokUserFacingLLMErrorMessage(type, metadata)
             : getUserFacingLLMErrorMessage(type, metadata);
 
@@ -1013,7 +1012,7 @@ export async function runModel(
     if (!processedContent.length) {
       localLogger.warn(
         {
-          modelId: model.modelId,
+          modelId: modelConfig.modelId,
         },
         "No content generated by the agent."
       );
@@ -1249,7 +1248,7 @@ export async function runModel(
   agentMessage.contents.push(...newContents);
 
   const stepContexts = computeStepContexts({
-    model,
+    model: modelConfig,
     stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
   });
