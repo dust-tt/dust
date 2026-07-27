@@ -41,7 +41,7 @@ export function ToggleEnforceEnterpriseConnectionModal({
 
   const handleToggleSsoEnforced = React.useCallback(
     async (ssoEnforced: boolean) => {
-      const res = await clientFetch(`/api/w/${owner.sId}`, {
+      const res = await clientFetch(`/api/w/${owner.sId}/sso`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
