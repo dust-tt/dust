@@ -6,6 +6,10 @@ import { TOOLS } from "@app/lib/api/actions/servers/agent_memory/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+export function foo() {
+  return "qqq";
+}
+
 function createServer(
   auth: Authenticator,
   toolContext?: ToolContext
