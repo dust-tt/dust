@@ -3,17 +3,22 @@ import {
   fireworksConfigSchema,
 } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
 import { WithOpenAICompletionsInputConverter } from "@app/lib/model_constructors/sdk/openai_completions/converters/input";
+import { toolCallResultMessageToMessage } from "@app/lib/model_constructors/sdk/openai_completions/converters/input/utils";
 import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_completions/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { FIREWORKS_HOST } from "@app/lib/model_constructors/types/hosts";
-import type { Payload } from "@app/lib/model_constructors/types/input/messages";
+import type {
+  BaseToolCallResultMessage,
+  Payload,
+} from "@app/lib/model_constructors/types/input/messages";
 import type { Model } from "@app/lib/model_constructors/types/models";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import OpenAI from "openai";
 import type {
   ChatCompletionChunk,
   ChatCompletionCreateParamsStreaming,
+  ChatCompletionToolMessageParam,
 } from "openai/resources/chat/completions";
 
 const FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1";
@@ -21,6 +26,20 @@ const FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1";
 // Fireworks model ids are stored bare (e.g. `glm-5p2`) but legacy `ModelIdType`
 // and the Fireworks API both use the full account-scoped path.
 export const FIREWORKS_MODEL_PREFIX = "accounts/fireworks/models/";
+
+type FireworksToolMessageParam = ChatCompletionToolMessageParam & {
+  name: string;
+};
+
+function toolCallResultMessageToFireworksMessage(
+  message: BaseToolCallResultMessage
+): FireworksToolMessageParam {
+  return {
+    ...toolCallResultMessageToMessage(message),
+    // Preserve the name for Fireworks models that require it to resolve parallel results.
+    name: message.content.toolName,
+  };
+}
 
 export abstract class FireworksStream extends WithOpenAICompletionsInputConverter(
   StreamEndpoint<
@@ -42,6 +61,9 @@ export abstract class FireworksStream extends WithOpenAICompletionsInputConverte
       baseURL: FIREWORKS_BASE_URL,
     });
   }
+
+  override toolCallResultMessageToMessage =
+    toolCallResultMessageToFireworksMessage;
 
   // Model ids are stored bare (e.g. `glm-5p2`); Fireworks' API expects the full
   // account-scoped model path.
