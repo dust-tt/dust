@@ -24,7 +24,7 @@ describe("executeUpdateMessage", () => {
     vi.clearAllMocks();
   });
 
-  it("updates a Slack message with Slack-formatted Markdown", async () => {
+  it("updates a Slack message with a markdown block preserving raw Markdown", async () => {
     mockChatUpdate.mockResolvedValue({
       ok: true,
       channel: "C123",
@@ -44,8 +44,12 @@ describe("executeUpdateMessage", () => {
       channel: "C123",
       ts: "1710000000.000100",
     });
-    expect(updateArgs.text).toContain("*Edited*");
-    expect(updateArgs.text).not.toContain("**Edited**");
+    // The message goes into a `markdown` block with the raw GFM preserved (not
+    // slackified), so tables/rich Markdown render. `text` is the plain fallback.
+    expect(updateArgs.blocks).toEqual([
+      { type: "markdown", text: "**Edited** message" },
+    ]);
+    expect(updateArgs.text).toBe("**Edited** message");
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value[0].text).toBe(

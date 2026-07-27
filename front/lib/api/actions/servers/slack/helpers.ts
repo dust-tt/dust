@@ -4,6 +4,7 @@ import {
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
+import { makeMarkdownBlock } from "@app/lib/api/actions/servers/slack/block";
 import {
   formatSlackMessageForLLM,
   renderFormattedMessage,
@@ -794,6 +795,12 @@ export async function executePostMessage(
 
   const originalMessage = message;
 
+  // Regular messages are sent as a `markdown` block (GFM: tables, headers, ...),
+  // so the footer uses GFM link syntax. The file-upload path uses legacy Slack
+  // mrkdwn via `initial_comment`, so it keeps `<url|label>` link syntax.
+  let gfmMessage = originalMessage;
+  let mrkdwnMessage = slackifyMarkdown(originalMessage);
+
   if (
     showSentByFooter !== false &&
     isAgentLoopRunContext(toolContext.runContext)
@@ -804,9 +811,9 @@ export async function executePostMessage(
       `agentDetails=${toolContext.runContext?.agentConfiguration.sId}`,
       config.getAppUrl()
     );
-    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${toolContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
-  } else {
-    message = slackifyMarkdown(originalMessage);
+    const agentName = toolContext.runContext?.agentConfiguration.name;
+    gfmMessage = `${originalMessage}\n_Sent via [${agentName} Agent](${agentUrl}) on Dust_`;
+    mrkdwnMessage = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentName} Agent> on Dust_`;
   }
 
   if (!(await hasSlackScope(accessToken, "files:write"))) {
@@ -852,7 +859,7 @@ export async function executePostMessage(
       file: fileBuffer,
       filename,
       filetype,
-      initial_comment: message,
+      initial_comment: mrkdwnMessage,
     };
     const uploadResp = threadTs
       ? await slackClient.filesUploadV2({
@@ -874,10 +881,13 @@ export async function executePostMessage(
     ]);
   }
 
-  // No file provided: regular message.
+  // No file provided: regular message. Sent as a `markdown` block so full GFM
+  // (tables, headers, lists) renders; `text` is a plain fallback for places
+  // that cannot render blocks (e.g. push notifications).
   const response = await slackClient.chat.postMessage({
     channel: resolvedTo,
-    text: message,
+    blocks: makeMarkdownBlock(gfmMessage),
+    text: originalMessage,
     mrkdwn: true,
     thread_ts: threadTs,
     unfurl_links: unfurlLinks,
@@ -906,12 +916,13 @@ export async function executeUpdateMessage({
   message: string;
 }) {
   const slackClient = await getSlackClient(accessToken);
-  const slackFormattedMessage = slackifyMarkdown(message);
+  const originalMessage = message;
 
   const response = await slackClient.chat.update({
     channel,
     ts: timestamp,
-    text: slackFormattedMessage,
+    text: originalMessage,
+    blocks: makeMarkdownBlock(originalMessage),
   });
 
   if (!response.ok) {
@@ -952,6 +963,10 @@ export async function executeScheduleMessage(
   const slackClient = await getSlackClient(accessToken);
   const originalMessage = message;
 
+  // Regular messages are sent as a `markdown` block (GFM: tables, headers, ...),
+  // so the footer uses GFM link syntax.
+  let gfmMessage = originalMessage;
+
   if (
     showSentByFooter !== false &&
     isAgentLoopRunContext(toolContext.runContext)
@@ -962,9 +977,8 @@ export async function executeScheduleMessage(
       `agentDetails=${toolContext.runContext?.agentConfiguration.sId}`,
       config.getAppUrl()
     );
-    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${toolContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
-  } else {
-    message = slackifyMarkdown(originalMessage);
+    const agentName = toolContext.runContext?.agentConfiguration.name;
+    gfmMessage = `${originalMessage}\n_Sent via [${agentName} Agent](${agentUrl}) on Dust_`;
   }
 
   // Convert post_at to Unix timestamp in seconds.
@@ -1009,7 +1023,8 @@ export async function executeScheduleMessage(
 
   const response = await slackClient.chat.scheduleMessage({
     channel: to,
-    text: message,
+    blocks: makeMarkdownBlock(gfmMessage),
+    text: gfmMessage,
     post_at: timestampSeconds.toString(),
     thread_ts: threadTs,
     unfurl_links: unfurlLinks,
