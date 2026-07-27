@@ -53,7 +53,7 @@ export async function selectPreferredEndpointForWorkspace<
   return sortEndpointsByPreferredRegion(endpoints, preferredRegion)[0] ?? null;
 }
 
-export function selectPreferredStreamEndpointForWorkspace(
+export async function selectPreferredStreamEndpointForWorkspace(
   auth: Authenticator,
   filter: Where<EndpointConfig>
 ) {
@@ -64,7 +64,7 @@ export function selectPreferredStreamEndpointForWorkspace(
   );
 }
 
-export function selectPreferredBatchEndpointForWorkspace(
+export async function selectPreferredBatchEndpointForWorkspace(
   auth: Authenticator,
   filter: Where<EndpointConfig>
 ) {
@@ -77,13 +77,13 @@ export function selectPreferredBatchEndpointForWorkspace(
 
 // Resolves a legacy model id to its preferred stream endpoint for the
 // workspace, or null if the model id is unknown or no endpoint is available.
-export function getStreamEndpointFromLegacyModelId(
+export async function getStreamEndpointFromLegacyModelId(
   auth: Authenticator,
   modelId: ModelIdType
 ) {
   const model = legacyModelIdToModel(modelId);
   if (!model) {
-    return Promise.resolve(null);
+    return null;
   }
 
   return selectPreferredStreamEndpointForWorkspace(auth, {
@@ -93,13 +93,13 @@ export function getStreamEndpointFromLegacyModelId(
 
 // Resolves a legacy model id to its preferred batch endpoint for the
 // workspace, or null if the model id is unknown or no endpoint is available.
-export function getBatchEndpointFromLegacyModelId(
+export async function getBatchEndpointFromLegacyModelId(
   auth: Authenticator,
   modelId: ModelIdType
 ) {
   const model = legacyModelIdToModel(modelId);
   if (!model) {
-    return Promise.resolve(null);
+    return null;
   }
 
   return selectPreferredBatchEndpointForWorkspace(auth, {
