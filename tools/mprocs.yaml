@@ -59,7 +59,6 @@ procs:
   sparkle:
     cwd: "<CONFIG_DIR>/../sparkle"
     shell: |
-      trap 'npm run build; exit' TERM INT
       npm run watch
 
   sdks-js:
