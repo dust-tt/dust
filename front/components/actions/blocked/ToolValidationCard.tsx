@@ -42,7 +42,6 @@ type ToolOverride = {
   approveLabel?: string;
   alwaysAllowLabel?: (inputs: Record<string, unknown>) => string;
   detailsExpanded?: boolean;
-  hideIcon?: boolean;
   inlineActions?: boolean;
 };
 
@@ -73,7 +72,6 @@ const MCP_TOOL_OVERRIDES: Partial<
       title: () => "Publish this function?",
       approveLabel: "Publish",
       alwaysAllowLabel: () => "Always allow agent to publish Pod functions",
-      hideIcon: true,
       inlineActions: true,
     },
   },
@@ -280,11 +278,8 @@ export function ToolValidationCard({
     <ContentMessage
       title={title}
       variant="primary"
-      className={cn(
-        "flex w-full flex-col gap-3 sm:w-80 sm:min-w-[500px]",
-        toolOverride?.inlineActions && "gap-4 p-5"
-      )}
-      icon={toolOverride?.hideIcon ? undefined : icon}
+      className="flex w-full flex-col gap-3 sm:w-80 sm:min-w-[500px]"
+      icon={icon}
     >
       {canCurrentUserRespond ? (
         <>
@@ -304,7 +299,7 @@ export function ToolValidationCard({
             className={cn(
               "flex flex-col gap-3 sm:mt-3",
               toolOverride?.inlineActions &&
-                "mt-1 pt-2 sm:mt-2 sm:flex-row sm:items-center sm:justify-between"
+                "mt-1 pt-1 sm:mt-2 sm:flex-row sm:items-center sm:justify-between"
             )}
           >
             {(validationRequest.stake === "low" ||
