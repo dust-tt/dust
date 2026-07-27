@@ -127,7 +127,7 @@ export function SpaceCategoryPage() {
 
   if (isLoading || !space || !systemSpace || !validCategory || !user) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <Spinner />
       </div>
     );

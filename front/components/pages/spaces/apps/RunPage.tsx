@@ -100,7 +100,7 @@ export function RunPage() {
 
   return (
     <>
-      <div className="mt-8 flex flex-col">
+      <div className="flex flex-col">
         <div className="mb-4 flex flex-row items-center justify-between space-x-2 text-sm">
           <div className="flex flex-col items-start">
             <div className="flex items-center">

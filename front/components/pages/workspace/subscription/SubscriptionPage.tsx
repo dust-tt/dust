@@ -4,6 +4,7 @@ import {
   type PaidPlanTier,
 } from "@app/components/pages/onboarding/SubscriptionPlans";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   useCancelWorkspaceMigration,
@@ -259,6 +260,7 @@ function CancelMigrationDialog({
 }
 
 export function SubscriptionPage() {
+  useSetContentWidth("centered");
   const owner = useWorkspace();
   const { subscription, user: authUser } = useAuth();
   const isMetronomeCheckout = useIsMetronomeCheckout();

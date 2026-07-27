@@ -1,8 +1,10 @@
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { BrandingSection } from "@app/components/workspace/settings/BrandingSection";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { cn, Page, Palette } from "@dust-tt/sparkle";
 
 export function WorkspaceBrandingPage() {
+  useSetContentWidth("centered");
   const owner = useWorkspace();
   const { hasFeature } = useFeatureFlags();
   const isWhitelabelFramesAllowed = hasFeature("whitelabel_frames");

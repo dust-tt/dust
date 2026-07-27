@@ -38,7 +38,7 @@ export function SpacePage() {
 
   if (isSpaceInfoLoading || !space) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <Spinner />
       </div>
     );
@@ -47,7 +47,7 @@ export function SpacePage() {
   // Don't render if system space (redirect is happening)
   if (space.kind === "system") {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <Spinner />
       </div>
     );

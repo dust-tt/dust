@@ -6,20 +6,24 @@ import {
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { cn } from "@dust-tt/sparkle";
-import type { ReactElement } from "react";
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 
-interface AdminLayoutProps {
-  children: ReactElement;
+interface AdminSubNavigationProps {
+  children: ReactNode;
 }
 
-export function AdminLayout({ children }: AdminLayoutProps) {
+/**
+ * Registers the admin sidebar sub-navigation for the admin route cluster.
+ * Mounted once by front-spa's RequireRoleLayout; unregisters on unmount via
+ * the setter hook's cleanup. Layout (width/gutters) is NOT decided here —
+ * each admin page declares its own archetype with useSetContentWidth
+ * (design_docs/LAYOUT_SYSTEM.md §3.4).
+ */
+export function AdminSubNavigation({ children }: AdminSubNavigationProps) {
   const owner = useWorkspace();
   const { subscription } = useAuth();
-
   const { featureFlags } = useFeatureFlags();
-
   const router = useAppRouter();
 
   const subNavigation = useMemo(
@@ -35,13 +39,5 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   useSetSubNavigation(subNavigation);
 
-  return (
-    <div
-      className={cn("flex h-full w-full flex-col items-center pt-4 sm:pt-8")}
-    >
-      <div className="flex w-full max-w-6xl grow flex-col px-4 sm:px-8 pb-4 sm:pb-8">
-        {children}
-      </div>
-    </div>
-  );
+  return <>{children}</>;
 }

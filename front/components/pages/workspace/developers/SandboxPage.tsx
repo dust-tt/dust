@@ -1,10 +1,12 @@
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
 import { NetworkSection } from "@app/components/pages/workspace/developers/sections/NetworkSection";
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { ContentMessage, Globe01, InfoCircle, Page } from "@dust-tt/sparkle";
 
 export function SandboxPage() {
+  useSetContentWidth("centered");
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
   const hasSandboxAdmin = isComputerFeatureEnabled(featureFlags);

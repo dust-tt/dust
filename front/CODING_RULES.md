@@ -673,3 +673,55 @@ switch (event.type) {
 
 Reviewer: If you see `assertNever` used in frontend component or hook code, require the author to
 switch to `assertNeverAndIgnore`.
+
+## LAYOUT
+
+Full system: `design_docs/LAYOUT_SYSTEM.md`. Anti-pattern names (AP1–AP7) defined there are the
+review vocabulary for layout issues.
+
+### [LAYOUT1] Every in-shell page declares a layout archetype
+
+Pages rendered inside the app shell must declare exactly one archetype via
+`useSetContentWidth("centered" | "wide" | "full")` (or inherit it from a route-cluster layout like
+`SpaceLayout`). An undeclared page renders full-bleed by accident and triggers a dev warning.
+
+| Archetype | Meaning |
+|---|---|
+| `centered` | Single-column reading/settings surface — shell applies `max-w-content` + gutter |
+| `wide` | Lists/tables/grids — full available width + gutter |
+| `full` | Immersive — the page owns everything, including scroll |
+
+### [LAYOUT2] The shell owns width and gutters — pages never set them
+
+No `max-w-*` or horizontal `px-*` on a page's top-level wrapper. If a width is genuinely needed,
+use a named token (`max-w-content`, `max-w-narrow`, `max-w-conversation`), never a raw
+`max-w-*xl`. Enforced by `.grit/patterns/noRawContentWidthInPages.grit`.
+
+```
+// BAD — page re-decides its own width
+<div className="mx-auto max-w-5xl px-6">
+
+// GOOD — archetype declared, shell provides width and gutter
+useSetContentWidth("centered");
+<div className="flex flex-col gap-8">
+```
+
+### [LAYOUT3] `md:` is the only viewport breakpoint for layout
+
+Layout media queries (padding, margin, width, gap) in page files use `md:` exclusively. Reusable
+components use container queries (`@container` + `@sm/@md/@lg`), not viewport breakpoints —
+inside split panes and sheets, viewport width lies. Enforced by
+`.grit/patterns/noSmLayoutBreakpointInPages.grit`.
+
+### [LAYOUT4] Vertical rhythm uses the numeric gap ramp
+
+`gap-2` (within a control cluster) / `gap-4` (between related elements) / `gap-6` (between blocks)
+/ `gap-8` (between page sections). `Page.Vertical`/`Page.Horizontal` semantic props map onto this
+ramp (`sm`→2, `md`→4, `lg`→6, `xl`→8). Off-ramp values (`gap-3`, `gap-5`, ad-hoc `mt-*` between
+siblings) are review flags at page level.
+
+### [LAYOUT5] Standalone surfaces are exempt until their scaffold ships
+
+Onboarding, OAuth, share, and email pages live outside the app shell and own their layout for now
+(they are excluded from the lint rules). Do not add new width variants to these clusters; the
+Standalone scaffold consolidation is tracked in `LAYOUT_SYSTEM.md` §3.8 Phase 3.

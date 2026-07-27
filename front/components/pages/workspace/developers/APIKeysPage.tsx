@@ -1,3 +1,4 @@
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
 import { APIKeysList } from "@app/components/workspace/api-keys/APIKeysList";
 import { EditKeyCapDialog } from "@app/components/workspace/api-keys/EditKeyCapDialog";
@@ -239,10 +240,11 @@ export function APIKeys({ owner }: APIKeysProps) {
 }
 
 export function APIKeysPage() {
+  useSetContentWidth("centered");
   const owner = useWorkspace();
 
   return (
-    <>
+    <div className="pb-8">
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="API Keys"
@@ -253,7 +255,6 @@ export function APIKeysPage() {
           <APIKeys owner={owner} />
         </Page.Vertical>
       </Page.Vertical>
-      <div className="h-12" />
-    </>
+    </div>
   );
 }

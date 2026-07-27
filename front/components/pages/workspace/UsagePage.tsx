@@ -2,6 +2,7 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { ConfirmContext } from "@app/components/Confirm";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { BulkEditSpendLimitModal } from "@app/components/workspace/BulkEditSpendLimitModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
@@ -152,6 +153,7 @@ function memberFromUpgradeRequest(
 const DEFAULT_PAGE_SIZE = 25;
 
 export function UsagePage() {
+  useSetContentWidth("wide");
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const router = useAppRouter();

@@ -13,6 +13,7 @@ import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import {
+  useSetContentWidth,
   useSetHasTitle,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
@@ -93,6 +94,8 @@ const ConversationLayoutContent = ({
     : "Dust - New Conversation";
 
   useSetHasTitle(!!activeConversationId);
+  // Full archetype: the conversation surface owns its own width/scroll.
+  useSetContentWidth("full");
   useSetPageTitle(pageTitle);
 
   return (

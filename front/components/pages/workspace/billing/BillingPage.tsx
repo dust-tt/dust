@@ -1,3 +1,4 @@
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { BillingInformation } from "@app/components/workspace/billing/BillingInformation";
 import { BillingOverview } from "@app/components/workspace/billing/BillingOverview";
 import { BillingSeatsOverview } from "@app/components/workspace/billing/BillingSeatsOverview";
@@ -24,6 +25,7 @@ import {
 import { useEffect } from "react";
 
 export function BillingPage() {
+  useSetContentWidth("centered");
   const { workspace: owner, subscription } = useAuth();
   const router = useAppRouter();
   const freePlan = isCreditPricedFreePlan(subscription.plan.code);

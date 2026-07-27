@@ -1,4 +1,5 @@
 import { SelfImprovingSkillsConsumptionSection } from "@app/components/pages/workspace/developers/SelfImprovingSkillsConsumptionSection";
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { SelfImprovingSkillsListSection } from "@app/components/workspace/settings/SelfImprovingSkillsListSection";
 import { SelfImprovingSkillsSettingsSection } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -14,6 +15,7 @@ import { ContentMessage, InfoCircle, Page, Stars02 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 export function SelfImprovingSkillsPage() {
+  useSetContentWidth("centered");
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
   const hasSelfImprovement = useIsSelfImprovementAvailable();

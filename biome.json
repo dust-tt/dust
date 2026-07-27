@@ -154,6 +154,21 @@
       "plugins": ["./.grit/patterns/noSparkleClassInFront.grit"]
     },
     {
+      "includes": [
+        "front/components/pages/**/*.tsx",
+        "!front/components/pages/onboarding/**",
+        "!front/components/pages/share/**",
+        "!front/components/pages/oauth/**",
+        "!front/components/pages/email/**",
+        "!front/components/pages/SsoEnforcedPage.tsx",
+        "!front/components/pages/MaintenancePage.tsx"
+      ],
+      "plugins": [
+        "./.grit/patterns/noRawContentWidthInPages.grit",
+        "./.grit/patterns/noSmLayoutBreakpointInPages.grit"
+      ]
+    },
+    {
       "includes": ["marketing/pages/**/*.{js,jsx,ts,tsx}"],
       "plugins": [
         "./.grit/patterns/nextjsPageComponentNaming.grit",

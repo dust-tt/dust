@@ -93,7 +93,9 @@ export function CreateAgentPage() {
 
   return (
     <div id="pageContent">
-      <Page variant="modal">
+      {/* The centered archetype provides width and gutters; this wrapper only
+          keeps the deprecated Page scaffold's rhythm and typography. */}
+      <div className="flex h-full flex-col py-4 text-sm text-foreground">
         <div className="flex flex-col gap-6">
           <Page.Header
             title="Start with a template"
@@ -139,7 +141,7 @@ export function CreateAgentPage() {
             </>
           )}
         </div>
-      </Page>
+      </div>
     </div>
   );
 }

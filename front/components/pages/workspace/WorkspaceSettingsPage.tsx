@@ -1,3 +1,4 @@
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { CapabilitiesSection } from "@app/components/workspace/settings/CapabilitiesSection";
 import { IntegrationsSection } from "@app/components/workspace/settings/IntegrationsSection";
 import { PreferencesSection } from "@app/components/workspace/settings/PreferencesSection";
@@ -7,6 +8,7 @@ import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { Building04, Page } from "@dust-tt/sparkle";
 
 export function WorkspaceSettingsPage() {
+  useSetContentWidth("centered");
   const owner = useWorkspace();
   const { featureFlags, hasFeature } = useFeatureFlags();
 

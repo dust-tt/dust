@@ -1,5 +1,6 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { AnalyticsExportPanel } from "@app/components/workspace/analytics/AnalyticsExportPanel";
 import type { AnalyticsFilter } from "@app/components/workspace/analytics/analyticsFilter";
 import { toggleScopeEntity } from "@app/components/workspace/analytics/analyticsFilter";
@@ -67,6 +68,7 @@ function ChartFallback() {
 }
 
 export function AnalyticsPage() {
+  useSetContentWidth("wide");
   const owner = useWorkspace();
   const [period, setPeriod] =
     useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
@@ -74,65 +76,67 @@ export function AnalyticsPage() {
   const [filter, setFilter] = useState<AnalyticsFilter>({});
 
   return (
-    <Page.Vertical align="stretch" gap="xl">
-      <Page.Header
-        title={
-          <div className="flex flex-row w-full justify-between">
-            <div>
-              <Page.H variant="h3">Analytics</Page.H>
+    <div className="pb-8">
+      <Page.Vertical align="stretch" gap="xl">
+        <Page.Header
+          title={
+            <div className="flex flex-row w-full justify-between">
+              <div>
+                <Page.H variant="h3">Analytics</Page.H>
+              </div>
+              <div>
+                <WorkspaceAnalyticsTimeRangeSelector
+                  period={period}
+                  onPeriodChange={setPeriod}
+                />
+              </div>
             </div>
-            <div>
-              <WorkspaceAnalyticsTimeRangeSelector
-                period={period}
-                onPeriodChange={setPeriod}
-              />
-            </div>
-          </div>
-        }
-        icon={BarChart01}
-        description="Track how your team uses Dust"
-      />
-      <WorkspaceAnalyticsOverviewCards
-        workspaceId={owner.sId}
-        period={period}
-      />
-      <div className="flex flex-col pb-8 gap-8">
-        <SafeSuspense fallback={<ChartFallback />}>
-          <AwuUsageFromAnalyticsChart
+          }
+          icon={BarChart01}
+          description="Track how your team uses Dust"
+        />
+        <WorkspaceAnalyticsOverviewCards
+          workspaceId={owner.sId}
+          period={period}
+        />
+        <div className="flex flex-col pb-8 gap-8">
+          <SafeSuspense fallback={<ChartFallback />}>
+            <AwuUsageFromAnalyticsChart
+              workspaceId={owner.sId}
+              period={period}
+              filter={filter}
+              onFilterChange={setFilter}
+            />
+          </SafeSuspense>
+          <WorkspaceUserCreditsTable
             workspaceId={owner.sId}
             period={period}
-            filter={filter}
-            onFilterChange={setFilter}
+            onSelectUser={(entity) =>
+              setFilter((prev) => toggleScopeEntity(prev, "user", entity))
+            }
           />
-        </SafeSuspense>
-        <WorkspaceUserCreditsTable
-          workspaceId={owner.sId}
-          period={period}
-          onSelectUser={(entity) =>
-            setFilter((prev) => toggleScopeEntity(prev, "user", entity))
-          }
-        />
-        <WorkspaceAgentCreditsTable
-          workspaceId={owner.sId}
-          period={period}
-          onSelectAgent={(entity) =>
-            setFilter((prev) => toggleScopeEntity(prev, "agent", entity))
-          }
-        />
-        <SafeSuspense fallback={<ChartFallback />}>
-          <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
-        </SafeSuspense>
-        <SafeSuspense fallback={<ChartFallback />}>
-          <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
-        </SafeSuspense>
-        <SafeSuspense fallback={<ChartFallback />}>
-          <WorkspaceToolUsageChart workspaceId={owner.sId} period={period} />
-        </SafeSuspense>
-        <SafeSuspense fallback={<ChartFallback />}>
-          <WorkspaceSkillUsageChart workspaceId={owner.sId} period={period} />
-        </SafeSuspense>
-        <AnalyticsExportPanel workspaceId={owner.sId} />
-      </div>
-    </Page.Vertical>
+          <WorkspaceAgentCreditsTable
+            workspaceId={owner.sId}
+            period={period}
+            onSelectAgent={(entity) =>
+              setFilter((prev) => toggleScopeEntity(prev, "agent", entity))
+            }
+          />
+          <SafeSuspense fallback={<ChartFallback />}>
+            <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
+          </SafeSuspense>
+          <SafeSuspense fallback={<ChartFallback />}>
+            <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
+          </SafeSuspense>
+          <SafeSuspense fallback={<ChartFallback />}>
+            <WorkspaceToolUsageChart workspaceId={owner.sId} period={period} />
+          </SafeSuspense>
+          <SafeSuspense fallback={<ChartFallback />}>
+            <WorkspaceSkillUsageChart workspaceId={owner.sId} period={period} />
+          </SafeSuspense>
+          <AnalyticsExportPanel workspaceId={owner.sId} />
+        </div>
+      </Page.Vertical>
+    </div>
   );
 }

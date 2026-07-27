@@ -1,5 +1,6 @@
 import { WorkspaceGroupsList } from "@app/components/groups/WorkspaceGroupsList";
 import { WorkspaceMembersSection } from "@app/components/members/WorkspaceMembersSection";
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import {
   useAuth,
@@ -24,6 +25,7 @@ import {
 } from "@dust-tt/sparkle";
 
 export function MembersPage() {
+  useSetContentWidth("wide");
   const { featureFlags, hasFeature } = useFeatureFlags();
   const isAdminGovernanceEnabled = hasFeature("admin_governance");
 
@@ -74,7 +76,7 @@ export function MembersPage() {
   );
 
   return (
-    <div className="mb-4">
+    <div className="pb-8">
       <div className="flex flex-col gap-6">
         <Page.Header
           title="People"

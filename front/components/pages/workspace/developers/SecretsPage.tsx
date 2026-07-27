@@ -1,3 +1,4 @@
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -25,6 +26,7 @@ import { useState } from "react";
 import { useSWRConfig } from "swr";
 
 export function SecretsPage() {
+  useSetContentWidth("centered");
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
 

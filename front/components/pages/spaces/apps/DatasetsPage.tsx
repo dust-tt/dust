@@ -78,7 +78,7 @@ export function DatasetsPage() {
   }
 
   return (
-    <div className="mt-8 flex flex-col">
+    <div className="flex flex-col">
       <div className="flex flex-1">
         <div className="mb-4 flex flex-auto flex-col gap-y-4">
           <div className="flex flex-row items-center justify-between">

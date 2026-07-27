@@ -3,6 +3,7 @@ import {
   ProviderSetup,
   SERVICE_PROVIDER_CONFIGS,
 } from "@app/components/providers/ProviderSetup";
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   APP_MODEL_PROVIDER_IDS,
@@ -191,6 +192,7 @@ function ProviderListItem({
 }
 
 export function ProvidersPage() {
+  useSetContentWidth("centered");
   const owner = useWorkspace();
 
   return (

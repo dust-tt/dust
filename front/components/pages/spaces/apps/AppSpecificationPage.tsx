@@ -49,7 +49,7 @@ export function AppSpecificationPage() {
   }
 
   return (
-    <div className="mt-8 flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <h3>Current specifications:</h3>
       <div className="whitespace-pre font-mono text-sm text-foreground">
         {specification}

@@ -160,7 +160,7 @@ export function AppSettingsPage() {
   }
 
   return (
-    <div className="mt-8 flex flex-1">
+    <div className="flex flex-1">
       <div className="flex flex-col">
         <div className="flex flex-col gap-6">
           <div className="flex w-64 flex-col gap-2">

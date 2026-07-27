@@ -13,10 +13,11 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { MOBILE_DOCUMENT_SCROLL_CLASSES } from "@app/lib/documentScrollLayoutClasses";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
+import { isDevelopment } from "@app/types/shared/env";
 import { isAdmin } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
 import type React from "react";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 
 // Lazy-load the dev panel only when dev mode is active.
 // The module is never fetched/parsed/executed when dev mode is off.
@@ -32,6 +33,34 @@ const DevFeatureFlagPanel = DEV_MODE_ACTIVE
 
 interface AppContentLayoutProps {
   children: React.ReactNode;
+}
+
+// The horizontal page gutter — the only place pages get horizontal padding
+// from. Pages never set their own top-level px-* (design_docs/LAYOUT_SYSTEM.md
+// §3.3 R1). md: is the single layout breakpoint (R3).
+export const PAGE_GUTTER_CLASSES = "px-4 md:px-8";
+
+// Warn (dev only) when a page stays undeclared. Lazy chunk loads and redirect
+// elements legitimately leave contentWidth undefined for a moment — the delay
+// keeps those quiet; anything undeclared past it is a real missing archetype.
+const UNDECLARED_WARN_DELAY_MS = 1500;
+
+function useWarnOnUndeclaredContentWidth(
+  contentWidth: string | undefined
+): void {
+  useEffect(() => {
+    if (!isDevelopment() || contentWidth !== undefined) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      console.warn(
+        `[layout] No contentWidth declared for ${window.location.pathname} — ` +
+          `rendering as "full". Declare useSetContentWidth("centered" | "wide" | "full") ` +
+          `(see design_docs/LAYOUT_SYSTEM.md §3.4).`
+      );
+    }, UNDECLARED_WARN_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [contentWidth]);
 }
 
 interface AppContentInnerWrapperProps {
@@ -87,6 +116,10 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
   const isFullScreen = fullScreenHash === "true";
 
   const hasTitleBar = !!title || hasTitle;
+  // "centered" and "wide" get the shell-managed width wrapper; "full" (and
+  // transient undefined) renders children bare — the page owns everything.
+  const isManagedWidth = contentWidth === "centered" || contentWidth === "wide";
+  useWarnOnUndeclaredContentWidth(contentWidth);
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   useDocumentTitle(pageTitle || `Dust - ${owner.name}`);
   useAppKeyboardShortcuts(owner);
@@ -151,7 +184,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                 )}
               >
                 <AppLayoutTitle />
-                {contentWidth ? (
+                {isManagedWidth ? (
                   <div
                     className={cn(
                       "flex w-full flex-col items-center",
@@ -164,8 +197,9 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                   >
                     <div
                       className={cn(
-                        "flex w-full grow flex-col px-4 md:px-8",
-                        contentWidth === "centered" && "max-w-4xl"
+                        "flex w-full grow flex-col",
+                        PAGE_GUTTER_CLASSES,
+                        contentWidth === "centered" && "max-w-content"
                       )}
                     >
                       {children}
@@ -185,7 +219,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                     : "min-h-0 overflow-y-auto [scrollbar-gutter:stable]"
                 )}
               >
-                {contentWidth ? (
+                {isManagedWidth ? (
                   <>
                     {title}
                     <div
@@ -205,8 +239,9 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                     >
                       <div
                         className={cn(
-                          "flex w-full grow flex-col px-4 md:px-8",
-                          contentWidth === "centered" && "max-w-4xl"
+                          "flex w-full grow flex-col",
+                          PAGE_GUTTER_CLASSES,
+                          contentWidth === "centered" && "max-w-content"
                         )}
                       >
                         {children}
