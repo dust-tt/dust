@@ -31,6 +31,7 @@ import { DustMistralMistralMedium35EuropeMistralStream } from "@app/lib/llms/str
 import { DustMistralMistralSmallEuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_small_eu_mistral";
 import { DustMoonshotAiKimiK2Dot5GlobalFireworksStream } from "@app/lib/llms/stream/endpoints/moonshot_ai_kimi_k2_dot_five_global_fireworks";
 import { DustMoonshotAiKimiK2Dot6GlobalFireworksStream } from "@app/lib/llms/stream/endpoints/moonshot_ai_kimi_k2_dot_six_global_fireworks";
+import { DustMoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/llms/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
 import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_noop_global_noop";
 import { DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_five_eu_openai_responses";
 import { DustOpenAIGptFiveDotFiveGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_five_global_openai_responses";
@@ -118,6 +119,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustMoonshotAiKimiK2Dot5GlobalFireworksStream,
   [DustMoonshotAiKimiK2Dot6GlobalFireworksStream.id]:
     DustMoonshotAiKimiK2Dot6GlobalFireworksStream,
+  [DustMoonshotAiKimiK3GlobalFireworksStream.id]:
+    DustMoonshotAiKimiK3GlobalFireworksStream,
 
   [DustGoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream.id]:
     DustGoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream,
