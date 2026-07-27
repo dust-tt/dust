@@ -31,7 +31,6 @@ export const GRANT_TYPES = [
   "create",
   "publish",
   "invite",
-  "read",
   "use",
   "*",
 ] as const;
@@ -44,9 +43,9 @@ export const GROUP_PERMISSION_RESOURCE_TYPES = [
   "skill",
   "frame",
   "billing",
-  "identity",
-  "audit_log",
+  "security",
   "models_tier",
+  "dust_app",
   "*",
 ] as const;
 export type GroupPermissionResourceType =
@@ -120,6 +119,19 @@ export type CapabilitySpec = Pick<
 // The workspace-level (type-wide) verbs a caller holds, grouped by resource type.
 export type WorkspacePermissions = Record<ConcreteResourceType, GrantVerb[]>;
 
+export function emptyWorkspacePermissions(): WorkspacePermissions {
+  return {
+    space: [],
+    agent: [],
+    skill: [],
+    frame: [],
+    billing: [],
+    security: [],
+    models_tier: [],
+    dust_app: [],
+  };
+}
+
 // Stable string key for a governance capability.
 export type CapabilityKey = `${GrantType}:${GroupPermissionResourceType}`;
 
@@ -150,6 +162,6 @@ export const GOVERNANCE_CAPABILITIES = {
   ],
   billingAndSecurity: [
     { grantType: "admin", resourceType: "billing" },
-    { grantType: "admin", resourceType: "identity" },
+    { grantType: "admin", resourceType: "security" },
   ],
 } satisfies Record<string, CapabilitySpec[]>;

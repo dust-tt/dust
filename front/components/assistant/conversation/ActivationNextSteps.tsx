@@ -23,16 +23,20 @@ import { useContext, useState } from "react";
 
 interface ActivationNextStepsProps {
   owner: LightWorkspaceType;
+  podId?: string;
 }
 
-export function ActivationNextSteps({ owner }: ActivationNextStepsProps) {
+export function ActivationNextSteps({
+  owner,
+  podId,
+}: ActivationNextStepsProps) {
   const router = useAppRouter();
   const { setPendingInputText, setShouldFocusInput } =
     useContext(InputBarContext);
   const [isOpen, setIsOpen] = useState(false);
 
   const { recommendations, isRecommendationsLoading, mutateRecommendations } =
-    useActivationRecommendations({ workspaceId: owner.sId });
+    useActivationRecommendations({ workspaceId: owner.sId, podId });
   const { updateRecommendation } = useUpdateActivationRecommendation({
     workspaceId: owner.sId,
   });
@@ -91,7 +95,11 @@ export function ActivationNextSteps({ owner }: ActivationNextStepsProps) {
           <Icon visual={ChevronDown} size="xs" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="center" className="w-[420px] p-0">
+      <PopoverContent
+        align="center"
+        className="w-[440px] max-w-[90vw] p-0"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <div className="flex flex-col">
           {recommendations.map((rec) => (
             <div
@@ -106,7 +114,7 @@ export function ActivationNextSteps({ owner }: ActivationNextStepsProps) {
                 <span className="truncate text-sm font-semibold text-foreground">
                   {rec.title}
                 </span>
-                <span className="truncate text-xs text-muted-foreground">
+                <span className="line-clamp-2 text-xs text-muted-foreground">
                   {rec.content}
                 </span>
               </div>

@@ -95,26 +95,8 @@ const WorkspaceNameUpdateBodySchema = z.object({
   name: z.string(),
 });
 
-const WorkspaceSsoEnforceUpdateBodySchema = z.object({
-  ssoEnforced: z.boolean(),
-});
-
 const WorkspaceRegionalModelsOnlyUpdateBodySchema = z.object({
   regionalModelsOnly: z.boolean(),
-});
-
-const WorkspaceAllowedDomainUpdateBodySchema = z.object({
-  domain: z.string().optional(),
-  domainAutoJoinEnabled: z.boolean(),
-});
-
-const WorkspaceBatchDomainUpdateBodySchema = z.object({
-  domainUpdates: z.array(
-    z.object({
-      domain: z.string(),
-      domainAutoJoinEnabled: z.boolean(),
-    })
-  ),
 });
 
 const WorkspaceProvidersUpdateBodySchema = z.object({
@@ -222,10 +204,7 @@ const WorkspaceDefaultAgentUpdateBodySchema = z.object({
 });
 
 const PostWorkspaceRequestBodySchema = z.union([
-  WorkspaceAllowedDomainUpdateBodySchema,
-  WorkspaceBatchDomainUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
-  WorkspaceSsoEnforceUpdateBodySchema,
   WorkspaceRegionalModelsOnlyUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
   WorkspaceWorkOSUpdateBodySchema,
@@ -386,22 +365,6 @@ app.post(
         metadata: {
           previous_name: previousName,
           new_name: newName,
-        },
-      });
-    } else if ("ssoEnforced" in body) {
-      await workspace.updateWorkspaceSettings({
-        ssoEnforced: body.ssoEnforced,
-      });
-
-      owner.ssoEnforced = body.ssoEnforced;
-
-      void emitAuditLogEvent({
-        auth,
-        action: "workspace.sso_enforcement_updated",
-        targets: [buildAuditLogTarget("workspace", owner)],
-        context: getAuditLogContext(auth),
-        metadata: {
-          enabled: String(body.ssoEnforced),
         },
       });
     } else if ("regionalModelsOnly" in body) {
@@ -981,59 +944,6 @@ app.post(
           enabled: String(body.slackPersonalAllowFooterRemoval),
         },
       });
-    } else if ("domainUpdates" in body) {
-      for (const update of body.domainUpdates) {
-        const updateResult = await workspace.updateDomainAutoJoinEnabled({
-          domainAutoJoinEnabled: update.domainAutoJoinEnabled,
-          domain: update.domain,
-        });
-        if (updateResult.isErr()) {
-          return apiError(ctx, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: updateResult.error.message,
-            },
-          });
-        }
-
-        void emitAuditLogEvent({
-          auth,
-          action: "workspace.domain_auto_join_updated",
-          targets: [buildAuditLogTarget("workspace", owner)],
-          context: getAuditLogContext(auth),
-          metadata: {
-            domain: update.domain,
-            enabled: String(update.domainAutoJoinEnabled),
-          },
-        });
-      }
-    } else {
-      const { domain, domainAutoJoinEnabled } = body;
-      const updateResult = await workspace.updateDomainAutoJoinEnabled({
-        domainAutoJoinEnabled,
-        domain,
-      });
-      if (updateResult.isErr()) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: updateResult.error.message,
-          },
-        });
-      }
-
-      void emitAuditLogEvent({
-        auth,
-        action: "workspace.domain_auto_join_updated",
-        targets: [buildAuditLogTarget("workspace", owner)],
-        context: getAuditLogContext(auth),
-        metadata: {
-          domain: domain ?? "*",
-          enabled: String(domainAutoJoinEnabled),
-        },
-      });
     }
 
     return ctx.json({ workspace: owner });
@@ -1077,9 +987,9 @@ app.route("/members", members);
 app.route("/metronome", metronome);
 app.route("/models", models);
 app.route("/oauth/:provider/setup", oauthSetup);
-app.route("/permissions", permissions);
 app.route("/pods", pods);
 app.route("/usage-status", usageStatus);
+app.route("/permissions", permissions);
 app.route("/project_tasks", projectTasks);
 app.route("/provider_credentials/:providerId", providerCredential);
 app.route("/provider_credentials", providerCredentials);

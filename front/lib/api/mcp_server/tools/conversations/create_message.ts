@@ -1,9 +1,8 @@
 import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { getConversationApiError } from "@app/lib/api/assistant/conversation/helper";
 import config from "@app/lib/api/config";
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -36,13 +35,13 @@ export function registerConversationsCreateMessageTool(server: McpServer) {
     async (auth, { conversationId, message, agentName }) => {
       const user = auth.user();
 
-      const conversationRes = await getConversation(auth, conversationId);
-      if (conversationRes.isErr()) {
-        const apiError = getConversationApiError(conversationRes.error);
-        return mcpError(apiError.api_error.message);
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversationId
+      );
+      if (!conversationResource) {
+        return mcpError("Conversation not found");
       }
-
-      const conversation = conversationRes.value;
 
       let mentions: { configurationId: string }[] = [];
       if (agentName !== null) {
@@ -57,7 +56,7 @@ export function registerConversationsCreateMessageTool(server: McpServer) {
       }
 
       const messageRes = await postUserMessage(auth, {
-        conversation,
+        conversationResource,
         content: message,
         mentions,
         context: {
@@ -81,11 +80,11 @@ export function registerConversationsCreateMessageTool(server: McpServer) {
       const owner = auth.workspace();
       const conversationUrl = `${config.getAppUrl()}${getConversationRoute(
         owner.sId,
-        conversation.sId
+        conversationResource.sId
       )}`;
 
       return mcpJsonResponse({
-        conversationId: conversation.sId,
+        conversationId: conversationResource.sId,
         conversationUrl,
         userMessageId: messageRes.value.userMessage.sId,
         agentMessageIds: messageRes.value.agentMessages.map(

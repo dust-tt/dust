@@ -7,6 +7,7 @@ import type {
   WorkspacePermissions,
 } from "@app/types/group_permissions";
 import {
+  emptyWorkspacePermissions,
   GROUP_PERMISSION_RESOURCE_TYPES,
   isConcreteResourceType,
   WHOLE_TYPE_RESOURCE_ID,
@@ -68,14 +69,14 @@ export const ROLE_REGISTRY: Record<
   billing: {
     admin: { verbs: ["admin"], levels: ["type"] },
   },
-  identity: {
+  security: {
     admin: { verbs: ["admin"], levels: ["type"] },
-  },
-  audit_log: {
-    read: { verbs: ["read"], levels: ["type"] },
   },
   models_tier: {
     use: { verbs: ["use"], levels: ["instance"] },
+  },
+  dust_app: {
+    admin: { verbs: ["admin"], levels: ["type"] },
   },
 };
 
@@ -147,7 +148,7 @@ function typeLevelVerbsForGrant(
   grantType: ConcreteGrantType,
   resourceType: ConcreteResourceType
 ): GrantVerb[] {
-  const role = ROLE_REGISTRY[resourceType][grantType];
+  const role = ROLE_REGISTRY[resourceType]?.[grantType];
   if (!role || !role.levels.includes("type")) {
     return [];
   }
@@ -167,19 +168,6 @@ function allTypeLevelVerbsForResource(
     }
   }
   return [...verbs];
-}
-
-function emptyWorkspacePermissions(): WorkspacePermissions {
-  return {
-    space: [],
-    agent: [],
-    skill: [],
-    frame: [],
-    billing: [],
-    identity: [],
-    audit_log: [],
-    models_tier: [],
-  };
 }
 
 // Every type-level verb on every resource type — an admin's implicit full access.
@@ -206,9 +194,9 @@ export function workspacePermissionsFromGrants(
     skill: new Set(),
     frame: new Set(),
     billing: new Set(),
-    identity: new Set(),
-    audit_log: new Set(),
+    security: new Set(),
     models_tier: new Set(),
+    dust_app: new Set(),
   };
 
   for (const { grantType, resourceType } of grants) {
@@ -218,6 +206,10 @@ export function workspacePermissionsFromGrants(
         : [resourceType];
 
     for (const resource of resources) {
+      if (!ROLE_REGISTRY[resource]) {
+        continue;
+      }
+
       const verbs =
         grantType === "*"
           ? allTypeLevelVerbsForResource(resource)

@@ -8,16 +8,12 @@ import {
 } from "@app/lib/agent_builder/server_side_props_helpers";
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import type { AgentYAMLConfig } from "@app/lib/agent_yaml_converter/schemas";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
@@ -26,113 +22,11 @@ import type { UserType } from "@app/types/user";
 
 const AGENT_NAME_SANITATION_REGEX = /[^a-zA-Z0-9-_]/g;
 
-export type ExportableAgentConfiguration = AgentConfigurationType & {
-  scope: Exclude<AgentConfigurationType["scope"], "global">;
-  status: "active";
-};
-
-type AgentConfigurationYAMLContext = {
-  agentConfiguration: ExportableAgentConfiguration;
-  editorUsers: UserResource[];
-  skills: SkillResource[];
-};
-
-function isExportableAgentConfiguration(
-  agentConfiguration: AgentConfigurationType
-): agentConfiguration is ExportableAgentConfiguration {
-  return (
-    agentConfiguration.status === "active" &&
-    agentConfiguration.scope !== "global"
-  );
-}
-
-export async function getExportableAgentConfiguration(
-  auth: Authenticator,
-  agentId: string
-): Promise<
-  Result<ExportableAgentConfiguration, APIErrorWithContentfulStatusCode>
-> {
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "full",
-  });
-
-  if (!agentConfiguration || (!agentConfiguration.canRead && !auth.isAdmin())) {
-    return new Err({
-      status_code: 404,
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The agent configuration you requested was not found.",
-      },
-    });
-  }
-
-  if (!isExportableAgentConfiguration(agentConfiguration)) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Cannot export archived or global agents.",
-      },
-    });
-  }
-
-  return new Ok(agentConfiguration);
-}
-
-export async function getAgentConfigurationYAMLContext(
-  auth: Authenticator,
-  agentId: string,
-  { requireEditorGroup = false }: { requireEditorGroup?: boolean } = {}
-): Promise<
-  Result<AgentConfigurationYAMLContext, APIErrorWithContentfulStatusCode>
-> {
-  const agentResult = await getExportableAgentConfiguration(auth, agentId);
-  if (agentResult.isErr()) {
-    return agentResult;
-  }
-
-  const agentConfiguration = agentResult.value;
-
-  const skills = await SkillResource.listByAgentConfiguration(
-    auth,
-    agentConfiguration
-  );
-  const editorsResult = await GroupResource.findEditorGroupForAgent(
-    auth,
-    agentConfiguration
-  );
-
-  if (editorsResult.isErr()) {
-    if (requireEditorGroup) {
-      return new Err({
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Unable to resolve existing agent editors: ${editorsResult.error.message}`,
-        },
-      });
-    }
-
-    return new Ok({
-      agentConfiguration,
-      editorUsers: [],
-      skills,
-    });
-  }
-
-  return new Ok({
-    agentConfiguration,
-    editorUsers: await editorsResult.value.getActiveMembers(auth),
-    skills,
-  });
-}
-
 export async function getAgentConfigurationAsYAMLConfig(
   auth: Authenticator,
   agentId: string
 ): Promise<Result<AgentYAMLConfig, APIErrorWithContentfulStatusCode>> {
-  const contextResult = await getAgentConfigurationYAMLContext(auth, agentId);
+  const contextResult = await getAgentConfigurationContext(auth, agentId);
   if (contextResult.isErr()) {
     return contextResult;
   }

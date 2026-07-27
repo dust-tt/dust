@@ -2,17 +2,22 @@ import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import type { AgentModelFilterType } from "@app/components/assistant/ModelsFilterMenu";
+import { ModelsFilterMenu } from "@app/components/assistant/ModelsFilterMenu";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import Custom404 from "@app/components/pages/Custom404";
+import { getModelLogoByModelId } from "@app/components/providers/types";
 import {
   useSetContentWidth,
   useSetNavChildren,
 } from "@app/components/sparkle/AppLayoutContext";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
@@ -77,10 +82,15 @@ export function ManageAgentsPage() {
     useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "all");
   const [selectedTags, setSelectedTags] = useState<TagType[]>([]);
+  const [selectedModels, setSelectedModels] = useState<AgentModelFilterType[]>(
+    []
+  );
   const [isBatchEdit, setIsBatchEdit] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
 
-  const { hasPermission } = useWorkspacePermissions(owner);
+  const { isDark } = useTheme();
+
+  const { hasPermission } = useWorkspacePermissions();
 
   const canCreateAgent = hasPermission("create", "agent");
   const canPublishAgent = hasPermission("publish", "agent");
@@ -122,13 +132,25 @@ export function ManageAgentsPage() {
   });
 
   const agentsByTab = useMemo(() => {
-    const selectedTagIds = selectedTags.map((tag) => tag.sId);
+    const selectedTagIds = new Set(selectedTags.map((tag) => tag.sId));
+    const selectedModelIds = new Set(
+      selectedModels.map((model) => model.modelId)
+    );
     const allAgents: LightAgentConfigurationType[] = agentConfigurations
       .filter((a) => {
-        if (selectedTagIds.length === 0) {
-          return true;
+        if (
+          selectedTagIds.size > 0 &&
+          !a.tags.some((t) => selectedTagIds.has(t.sId))
+        ) {
+          return false;
         }
-        return a.tags.some((t) => selectedTagIds.includes(t.sId));
+        if (
+          selectedModelIds.size > 0 &&
+          !selectedModelIds.has(a.model.modelId)
+        ) {
+          return false;
+        }
+        return true;
       })
       .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
@@ -162,6 +184,7 @@ export function ManageAgentsPage() {
     agentConfigurations,
     archivedAgentConfigurations,
     selectedTags,
+    selectedModels,
     assistantSearch,
     isSearchActive,
   ]);
@@ -174,6 +197,20 @@ export function ManageAgentsPage() {
     ).sort((a, b) => a.name.localeCompare(b.name));
 
     return { uniqueTags };
+  }, [agentConfigurations]);
+
+  const uniqueModels = useMemo(() => {
+    // Agents pointing at a model we no longer support fall back to their raw
+    // modelId, as the Model column of the agents table does.
+    const models = agentConfigurations.map((a) => ({
+      modelId: a.model.modelId,
+      displayName:
+        getSupportedModelConfig(a.model)?.displayName ?? a.model.modelId,
+    }));
+    // Remove duplicate models by unique modelId.
+    return Array.from(
+      new Map(models.map((model) => [model.modelId, model])).values()
+    ).sort((a, b) => a.displayName.localeCompare(b.displayName));
   }, [agentConfigurations]);
 
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
@@ -282,6 +319,11 @@ export function ManageAgentsPage() {
                       />
                     )}
 
+                    <ModelsFilterMenu
+                      models={uniqueModels}
+                      selectedModels={selectedModels}
+                      setSelectedModels={setSelectedModels}
+                    />
                     <TagsFilterMenu
                       tags={uniqueTags}
                       selectedTags={selectedTags}
@@ -297,8 +339,24 @@ export function ManageAgentsPage() {
                   </div>
                 )}
               </div>
-              {selectedTags.length > 0 && (
-                <div className="flex flex-row gap-2">
+              {(selectedModels.length > 0 || selectedTags.length > 0) && (
+                <div className="flex flex-row flex-wrap gap-2">
+                  {selectedModels.map((model) => (
+                    <Chip
+                      key={model.modelId}
+                      label={model.displayName}
+                      size="xs"
+                      color="primary"
+                      icon={getModelLogoByModelId(model.modelId, isDark)}
+                      onRemove={() =>
+                        setSelectedModels(
+                          selectedModels.filter(
+                            (m) => m.modelId !== model.modelId
+                          )
+                        )
+                      }
+                    />
+                  ))}
                   {selectedTags.map((tag) => (
                     <Chip
                       key={tag.sId}

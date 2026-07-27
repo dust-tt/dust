@@ -195,7 +195,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       conversation,
       stepContent,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       stepContent: AgentStepContentResource;
     },
     blob: Omit<CreationAttributes<AgentMCPActionModel>, "workspaceId">,

@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { ActivationRecommendationStatus } from "@app/lib/models/activation/activation_recommendation";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 
 const NEXT_STEPS_WINDOW_DAYS = 30;
 const NEXT_STEPS_LIMIT = 5;
@@ -21,13 +22,24 @@ export interface UpdateActivationRecommendationResponseBody {
 }
 
 export async function listActivationRecommendationsForUser(
-  auth: Authenticator
+  auth: Authenticator,
+  { podId }: { podId?: string } = {}
 ): Promise<ActivationRecommendationForUserType[]> {
+  let spaceModelId: number | undefined;
+  if (podId !== undefined) {
+    const space = await SpaceResource.fetchById(auth, podId);
+    if (!space) {
+      return [];
+    }
+    spaceModelId = space.id;
+  }
+
   const recs = await ActivationRecommendationResource.listSuggestedByUser(
     auth,
     {
       limit: NEXT_STEPS_LIMIT,
       sinceDaysAgo: NEXT_STEPS_WINDOW_DAYS,
+      spaceModelId,
     }
   );
 

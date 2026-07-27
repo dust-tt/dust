@@ -9,13 +9,18 @@ import {
   sendBatchCallToLlm,
   storeLlmResult,
 } from "@app/lib/api/llm/batch_llm";
+import { getStreamEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
+import type {
+  LLMParameters,
+  LLMStreamParameters,
+} from "@app/lib/api/llm/types/options";
 import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { intelligenceAwuFromRunUsages } from "@app/lib/metronome/events";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
 import { getRemainingProgrammaticUsageFromMetronome } from "@app/lib/metronome/programmatic_awu_usage";
@@ -230,9 +235,26 @@ async function runReinforcedSkillsStep({
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  const llmParameters = {
-    modelId: model.modelId,
+
+  const endpoint = await getStreamEndpointFromLegacyModelId(
+    auth,
+    model.modelId
+  );
+  if (!endpoint) {
+    logger.error(
+      { contextId, workspaceId: owner.sId, modelId: model.modelId },
+      "ReinforcedSkills: no stream endpoint available for step activity"
+    );
+    return {
+      isTerminal: true,
+      suggestionsCreated: 0,
+      approvedSourceSuggestionIds: [],
+    };
+  }
+
+  const llmParameters: LLMParameters<DustStreamEndpointConstructor> = {
     credentials,
+    modelInfo: { endpoint },
     context: {
       operationType,
       workspaceId: owner.sId,
@@ -253,6 +275,7 @@ async function runReinforcedSkillsStep({
     };
   }
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const conversationRes = await getConversation(
     auth,
     reinforcementConversationId

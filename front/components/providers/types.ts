@@ -1,6 +1,8 @@
 export { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 
+import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import { getModelMaker } from "@app/types/assistant/models/providers";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import {
   AnthropicLogo,
@@ -87,4 +89,16 @@ export const getModelMakerLogo = (
     default:
       return getModelProviderLogo(makerId, isDark);
   }
+};
+
+// Resolve the logo for a model known only by its modelId. Returns undefined for
+// models we no longer support.
+export const getModelLogoByModelId = (
+  modelId: string,
+  isDark: boolean
+): ComponentType | undefined => {
+  const modelConfig = getModelConfigByModelId(modelId);
+  return modelConfig
+    ? getModelMakerLogo(getModelMaker(modelConfig), isDark)
+    : undefined;
 };

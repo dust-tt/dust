@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { MessageModel } from "@app/lib/models/agent/conversation";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -15,7 +16,7 @@ import type { Transaction } from "sequelize";
  */
 export async function getConversationRankVersionLock(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType,
+  conversation: ConversationWithoutContentType | ConversationResource,
   t: Transaction
 ) {
   const now = new Date();

@@ -8,6 +8,7 @@ import {
   ConversationModel,
   ConversationParticipantModel,
   MessageModel,
+  UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
@@ -2915,6 +2916,105 @@ describe("listPrivateConversationsForUser", () => {
     const item = result.conversations.find((c) => c.sId === conversation.sId);
 
     expect(item?.nextWakeupAt).toBe(scheduledFireAt.getTime());
+  });
+
+  it("keeps paginating when a full page window contains a filtered-out conversation", async () => {
+    const deletedSpace = await SpaceFactory.regular(workspace);
+    // Admin must be a space member (with a refreshed authenticator) before
+    // ConversationFactory.create can fetch a conversation that references it.
+    const addMembersRes = await deletedSpace.addMembers(adminAuth, {
+      userIds: [adminAuth.getNonNullableUser().sId],
+    });
+    assert(addMembersRes.isOk(), "Failed to add admin to space");
+    const adminWithSpaceAccess = await Authenticator.fromUserIdAndWorkspaceId(
+      adminAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+
+    const createParticipatingConversation = async ({
+      updatedAt,
+      requestedSpaceIds,
+      auth = adminAuth,
+    }: {
+      updatedAt: Date;
+      requestedSpaceIds?: number[];
+      auth?: Authenticator;
+    }) => {
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agents[0].sId,
+        messagesCreatedAt: [new Date()],
+        requestedSpaceIds,
+      });
+      await ConversationResource.upsertParticipation(userAuth, {
+        conversation,
+        action: "posted",
+        user: userAuth.getNonNullableUser().toJSON(),
+      });
+      // Raw SQL: Sequelize refuses to write an explicit updatedAt.
+      await frontSequelize.query(
+        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        { replacements: { updatedAt, id: conversation.id } }
+      );
+      return conversation;
+    };
+
+    // updatedAt order: newest > poisoned > middle > oldest > the beforeEach
+    // conversation.
+    const baseMs = Date.now();
+    const hourMs = 60 * 60 * 1000;
+    const newest = await createParticipatingConversation({
+      updatedAt: new Date(baseMs + 4 * hourMs),
+    });
+    const poisoned = await createParticipatingConversation({
+      updatedAt: new Date(baseMs + 3 * hourMs),
+      requestedSpaceIds: [deletedSpace.id],
+      auth: adminWithSpaceAccess,
+    });
+    const middle = await createParticipatingConversation({
+      updatedAt: new Date(baseMs + 2 * hourMs),
+    });
+    const oldest = await createParticipatingConversation({
+      updatedAt: new Date(baseMs + 1 * hourMs),
+    });
+
+    const deleteRes = await deletedSpace.delete(adminWithSpaceAccess, {
+      hardDelete: false,
+    });
+    assert(deleteRes.isOk(), "Failed to soft-delete space");
+
+    // Page 1 scans limit+1 = 3 rows (newest, poisoned, middle). The poisoned
+    // row references a deleted space and is dropped in-memory, leaving exactly
+    // `limit` conversations: hasMore must not flip to false because of the
+    // drop.
+    const page1 =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        userAuth,
+        { limit: 2 }
+      );
+
+    expect(page1.conversations.map((c) => c.sId)).toEqual([
+      newest.sId,
+      middle.sId,
+    ]);
+    expect(page1.hasMore).toBe(true);
+    assert(page1.lastValue, "Expected a pagination cursor");
+
+    const page2 =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        userAuth,
+        { limit: 2, lastValue: page1.lastValue }
+      );
+
+    expect(page2.conversations.map((c) => c.sId)).toEqual([
+      oldest.sId,
+      conversationIds[0],
+    ]);
+    expect(page2.hasMore).toBe(false);
+
+    const returnedSIds = [...page1.conversations, ...page2.conversations].map(
+      (c) => c.sId
+    );
+    expect(returnedSIds).not.toContain(poisoned.sId);
   });
 
   it("should return conversations with populated participation data", async () => {
@@ -6325,6 +6425,89 @@ describe("markAsReadForAuthUser", () => {
     });
     assert(row);
     expect(row.lastReadAt.getTime()).toBe(explicit.getTime());
+  });
+});
+
+describe("markAsReadForAllParticipants", () => {
+  let workspace: LightWorkspaceType;
+  let auth: Authenticator;
+  let otherAuth: Authenticator;
+  let conversation: ConversationWithoutContentType;
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+    const [agent] = await setupTestAgents(workspace, user);
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+      lastReadAt: null,
+    });
+    await ConversationResource.upsertParticipation(otherAuth, {
+      conversation,
+      action: "posted",
+      user: otherAuth.getNonNullableUser().toJSON(),
+      lastReadAt: null,
+    });
+  });
+
+  it("marks the conversation as read for every participant", async () => {
+    const lastReadAt = new Date(Date.now() + 60_000);
+    await ConversationResource.markAsReadForAllParticipants(auth, {
+      conversation,
+      lastReadAt,
+    });
+
+    const rows = await UserConversationReadsModel.findAll({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    expect(rows).toHaveLength(2);
+    expect(
+      rows.every((row) => row.lastReadAt.getTime() === lastReadAt.getTime())
+    ).toBe(true);
+  });
+
+  it("overwrites existing read entries", async () => {
+    const earlier = new Date(Date.now() - 60_000);
+    await ConversationResource.markAsReadForAuthUser(otherAuth, {
+      conversation,
+      lastReadAt: earlier,
+    });
+
+    const lastReadAt = new Date(Date.now() + 60_000);
+    await ConversationResource.markAsReadForAllParticipants(auth, {
+      conversation,
+      lastReadAt,
+    });
+
+    const row = await UserConversationReadsModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        userId: otherAuth.getNonNullableUser().id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    assert(row);
+    expect(row.lastReadAt.getTime()).toBe(lastReadAt.getTime());
   });
 });
 

@@ -1,10 +1,12 @@
 import {
   CLAUDE_OPUS_4_8_MODEL_ID,
+  CLAUDE_OPUS_5_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
 } from "./anthropic";
 import {
   GEMINI_3_1_FLASH_LITE_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
+  GEMINI_3_6_FLASH_MODEL_ID,
 } from "./google_ai_studio";
 import {
   MISTRAL_LARGE_MODEL_ID,
@@ -122,6 +124,11 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
       {
         providerId: "google_ai_studio",
+        modelId: GEMINI_3_6_FLASH_MODEL_ID,
+        reasoningEffort: "light",
+      },
+      {
+        providerId: "google_ai_studio",
         modelId: GEMINI_3_1_FLASH_LITE_MODEL_ID,
         reasoningEffort: "medium",
       },
@@ -132,6 +139,14 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
     ],
     [AUTO_COMPLEX_MODEL_ID]: [
+      {
+        providerId: "anthropic",
+        modelId: CLAUDE_OPUS_5_MODEL_ID,
+        reasoningEffort: "high",
+      },
+      // Opus 5 is global-only until Vertex EU quota is provisioned, so keep 4.8
+      // right behind it: without this, regional-only workspaces would fall all
+      // the way through to OpenAI.
       {
         providerId: "anthropic",
         modelId: CLAUDE_OPUS_4_8_MODEL_ID,

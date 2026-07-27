@@ -223,7 +223,7 @@ describe("GET /api/v1/w/[wId]/skills", () => {
     expect(invalidResponse.status).toBe(400);
   });
 
-  it("exposes unpublished skills to admin API keys", async () => {
+  it("lets admin API keys bypass editor visibility to list unpublished skills", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
@@ -245,23 +245,55 @@ describe("GET /api/v1/w/[wId]/skills", () => {
       availability: "editors",
     });
 
-    // Admin keys see unpublished skills, e.g. when exporting all workspace skills.
+    // The bypass is opt-in: without the param, admin keys don't see unpublished skills.
     const defaultResponse = await getSkills(workspace, key);
     expect(defaultResponse.status).toBe(200);
     const defaultSkillNames = (await defaultResponse.json()).skills.map(
       (skill: { name: string }) => skill.name
     );
     expect(defaultSkillNames).toContain("Workspace Skill");
-    expect(defaultSkillNames).toContain("Unpublished Skill");
+    expect(defaultSkillNames).not.toContain("Unpublished Skill");
+
+    // With the param, admin keys see unpublished skills, e.g. when exporting all
+    // workspace skills.
+    const bypassResponse = await getSkills(workspace, key, {
+      bypassEditorVisibility: "true",
+    });
+    expect(bypassResponse.status).toBe(200);
+    const bypassSkillNames = (await bypassResponse.json()).skills.map(
+      (skill: { name: string }) => skill.name
+    );
+    expect(bypassSkillNames).toContain("Workspace Skill");
+    expect(bypassSkillNames).toContain("Unpublished Skill");
 
     const editorsResponse = await getSkills(workspace, key, {
       availability: "editors",
+      bypassEditorVisibility: "true",
     });
     expect(editorsResponse.status).toBe(200);
     const editorsSkillNames = (await editorsResponse.json()).skills.map(
       (skill: { name: string }) => skill.name
     );
     expect(editorsSkillNames).toEqual(["Unpublished Skill"]);
+  });
+
+  it("rejects bypassEditorVisibility for non-admin API keys", async () => {
+    const { workspace, key } = await createPublicApiMockRequest();
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
+
+    const response = await getSkills(workspace, key, {
+      bypassEditorVisibility: "true",
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "app_auth_error",
+        message: "Only admins can bypass editor visibility.",
+      },
+    });
   });
 });
 

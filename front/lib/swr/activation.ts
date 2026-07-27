@@ -12,17 +12,23 @@ import type { Fetcher } from "swr";
 
 export function useActivationRecommendations({
   workspaceId,
+  podId,
   disabled,
 }: {
   workspaceId: string;
+  podId?: string;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const recommendationsFetcher: Fetcher<GetActivationRecommendationsResponseBody> =
     fetcher;
 
+  const url = podId
+    ? `/api/w/${workspaceId}/action-recommendations?podId=${podId}`
+    : `/api/w/${workspaceId}/action-recommendations`;
+
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/action-recommendations`,
+    url,
     recommendationsFetcher,
     { disabled }
   );

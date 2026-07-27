@@ -38,6 +38,7 @@ import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
 import type { GetAgentUsageResponseBody } from "@app/types/api/assistant/agent_usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";
 import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
+import { BatchUpdateAgentModelResponseBodySchema } from "@app/types/api/assistant/configuration";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/types/api/assistant/mcp_configurations";
 import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
 import type { GetAgentSummaryResponseBody } from "@app/types/api/assistant/observability/summary";
@@ -48,7 +49,9 @@ import type {
   AgentsGetViewType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
@@ -828,6 +831,78 @@ export function useBatchUpdateAgentTags({
   );
 
   return batchUpdateAgentTags;
+}
+
+export function useBatchUpdateAgentModel({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const batchUpdateAgentModel = useCallback(
+    async (
+      agentIds: string[],
+      body: {
+        modelId: string;
+        reasoningEffort?: ReasoningEffort;
+        responseFormat?: string;
+      }
+    ) => {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_model`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...body,
+            agentIds,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+
+        sendNotification({
+          type: "error",
+          title: "Error updating model",
+          description: `Error: ${errorData.message}`,
+        });
+        return false;
+      }
+
+      // Each agent is saved on its own, so some of them may have been skipped.
+      const json = await res.json();
+      const parsed = BatchUpdateAgentModelResponseBodySchema.safeParse(json);
+      if (!parsed.success) {
+        sendNotification({
+          type: "error",
+          title: "Error updating model",
+          description: "An unknown error occurred.",
+        });
+        return true;
+      }
+
+      const { updatedAgentIds, skippedAgentIds } = parsed.data;
+
+      sendNotification({
+        type: skippedAgentIds.length > 0 ? "info" : "success",
+        title: "Model updated",
+        description:
+          skippedAgentIds.length > 0
+            ? `Model updated on ${updatedAgentIds.length} agent${pluralize(updatedAgentIds.length)}, ` +
+              `${skippedAgentIds.length} could not be updated.`
+            : `Model updated on ${updatedAgentIds.length} agent${pluralize(updatedAgentIds.length)}.`,
+      });
+      return true;
+    },
+    [owner.sId, sendNotification]
+  );
+
+  return batchUpdateAgentModel;
 }
 
 export function useBatchUpdateAgentScope({

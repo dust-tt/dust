@@ -221,6 +221,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     medium: "premium",
     high: "premium",
   },
+  "claude-opus-5": {
+    light: "premium",
+    medium: "premium",
+    high: "premium",
+  },
   "claude-fable-5": {
     light: "premium",
     medium: "premium",
@@ -299,6 +304,12 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     medium: "cost_efficient",
     high: "balanced",
   },
+  "gemini-3.5-flash-lite": {
+    none: "cost_efficient",
+    light: "cost_efficient",
+    medium: "cost_efficient",
+    high: "balanced",
+  },
   "gemini-3.1-flash-lite-preview": {
     none: "cost_efficient",
     light: "cost_efficient",
@@ -316,6 +327,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     high: "balanced",
   },
   "gemini-3.5-flash": {
+    light: "balanced",
+    medium: "balanced",
+    high: "premium",
+  },
+  "gemini-3.6-flash": {
     light: "balanced",
     medium: "balanced",
     high: "premium",

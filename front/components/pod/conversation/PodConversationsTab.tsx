@@ -1,3 +1,4 @@
+import { ActivationNextSteps } from "@app/components/assistant/conversation/ActivationNextSteps";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
@@ -196,7 +197,10 @@ export function PodConversationsTab({
         >
           <div className="flex w-full flex-col gap-3">
             <PodPinnedBanner owner={owner} podInfo={podInfo} />
-            <div className="flex items-center gap-2">
+            <div className="flex w-full justify-center">
+              <ActivationNextSteps owner={owner} podId={podInfo.sId} />
+            </div>
+            <div className="flex w-full items-center justify-center gap-2">
               <h2
                 className={cn(
                   "heading-2xl text-foreground",

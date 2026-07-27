@@ -1,5 +1,4 @@
-import { OPENAI_PROVIDER_ID } from "@app/lib/api/llm/clients/openai/types";
-import { logOpenAIToolSearchItem } from "@app/lib/api/llm/clients/openai/utils/tool_search_logging";
+import { logOpenAIToolSearchItem } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search_logging";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   ErrorEvent,
@@ -18,6 +17,7 @@ import type {
 } from "@app/lib/model_constructors/types/output/events";
 import type { Phase } from "@app/lib/model_constructors/types/phases";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import { OPENAI_PROVIDER_ID } from "@app/types/assistant/models/providers";
 import {
   assertNever,
   assertNeverAndIgnore,

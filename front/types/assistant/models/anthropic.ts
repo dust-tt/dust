@@ -24,6 +24,7 @@ export const CLAUDE_4_5_OPUS_20251101_MODEL_ID =
 export const CLAUDE_OPUS_4_6_MODEL_ID = "claude-opus-4-6" as const;
 export const CLAUDE_OPUS_4_7_MODEL_ID = "claude-opus-4-7" as const;
 export const CLAUDE_OPUS_4_8_MODEL_ID = "claude-opus-4-8" as const;
+export const CLAUDE_OPUS_5_MODEL_ID = "claude-opus-5" as const;
 export const CLAUDE_FABLE_5_MODEL_ID = "claude-fable-5" as const;
 export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
 export const CLAUDE_SONNET_5_MODEL_ID = "claude-sonnet-5" as const;
@@ -344,10 +345,10 @@ export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "Anthropic's Claude Opus 4.8 model, the latest and most capable model with stronger agentic coding, reasoning, and judgement (200k context).",
-  shortDescription: "Anthropic's latest flagship model.",
+    "Anthropic's Claude Opus 4.8 model, an advanced model with strong agentic coding, reasoning, and judgement (200k context).",
+  shortDescription: "Anthropic's previous flagship model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   supportsResponseFormat: true,
@@ -377,6 +378,53 @@ export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,
+  },
+};
+// https://platform.claude.com/docs/en/about-claude/models/overview
+export const CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_OPUS_5_MODEL_ID,
+  displayName: "Claude Opus 5",
+  contextSize: 250_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Anthropic's Claude Opus 5 model, the latest and most capable model for complex agentic coding and enterprise work (250k context).",
+  shortDescription: "Anthropic's latest flagship model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  // Opus 5 shares the Opus 4.7/4.8 tokenizer (~555k words/1M tokens vs ~750k
+  // for anthropic_base). Ratio: 750/555 ≈ 1.35, applied on top of the base 1.3
+  // adjustment → 1.3 × 1.35 ≈ 1.75.
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT * 1.35,
+  supportsPromptCaching: true,
+  supportsBatchProcessing: true,
+  supportsToolSearch: true,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  customThinkingType: "auto",
+  availableIfOneOf: {
+    plansWithAdvancedModels: true,
+    featureFlag: "claude_4_5_opus_feature",
+  },
+  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
+  disablePrefill: true,
+  // Global (Anthropic direct) only for now; Vertex EU comes in a follow-up once
+  // quota is provisioned, like Opus 4.8 and Sonnet 5 did.
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
   },
 };
 // https://platform.claude.com/docs/en/about-claude/models/overview

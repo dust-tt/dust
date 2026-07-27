@@ -12,6 +12,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
 
@@ -24,6 +25,16 @@ const PostAppBodySchema = z.object({
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps.
 const app = workspaceApp();
+
+// Legacy Dust Apps are gated behind the `legacy_dust_apps` feature flag. This
+// gates the whole surface: listing, creation, and every per-app sub-route
+// (datasets, runs, state) mounted under /:aId below.
+app.use(
+  "*",
+  withFeatureFlag("legacy_dust_apps", {
+    message: "Dust Apps are not enabled for this workspace.",
+  })
+);
 
 // GET / — list apps in space.
 /** @ignoreswagger */
@@ -48,13 +59,16 @@ app.post(
     const space = ctx.get("space");
     const owner = auth.getNonNullableWorkspace();
 
-    if (!space.canWrite(auth) || !auth.isBuilder()) {
+    if (
+      !space.canWrite(auth) ||
+      !(await auth.hasWorkspacePermission("admin", "dust_app"))
+    ) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
           message:
-            "Only the users that are `builders` for the current workspace can create an app.",
+            "You do not have permission to administrate apps in the current workspace.",
         },
       });
     }

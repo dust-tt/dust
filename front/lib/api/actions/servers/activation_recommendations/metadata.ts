@@ -14,19 +14,19 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
     schema: {
       title: z
         .string()
-        .max(4096)
+        .max(60)
         .describe(
-          "Action label shown in the recommendations list (6-8 words). " +
+          "Short action label shown in the recommendations list (3-5 words, keep it tight). " +
             "Be specific enough that the user knows exactly what they would be doing. " +
-            "Example: 'Ask about recent Slack decisions'."
+            "Example: 'Ask about Slack decisions'."
         ),
       content: z
         .string()
-        .max(4096)
+        .max(100)
         .describe(
-          "Brief subtitle shown under the title in the recommendations list (8-10 words). " +
+          "Very brief subtitle shown under the title in the recommendations list (6-8 words max). " +
             "Explain the 'how' or 'why' in plain language. " +
-            "Example: 'Find past decisions in your Slack workspace in seconds'."
+            "Example: 'Find past decisions in Slack fast'."
         ),
     },
     stake: "never_ask",
@@ -84,6 +84,30 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
     displayLabels: {
       running: "Fetching recommendation history",
       done: "Recommendation history fetched",
+    },
+  },
+  {
+    name: "get_tool_execution_modes",
+    description:
+      "Get the resolved execution mode for each tool available in the current run. " +
+      "Returns one of three modes for each tool: " +
+      "'auto' — runs silently without user approval; " +
+      "'requires_approval' — pauses execution until the user approves; " +
+      "'not_connected' — the user has not connected to this server yet (OAuth required).",
+    schema: {
+      executionModes: z
+        .array(z.enum(["auto", "requires_approval", "not_connected"]))
+        .optional()
+        .describe(
+          "When set, only return tools whose execution mode is one of these values. Omit to return all tools."
+        ),
+    },
+    stake: "never_ask",
+    toolCostCategory: "basic",
+    freeUsage: true,
+    displayLabels: {
+      running: "Checking tool execution modes",
+      done: "Tool execution modes ready",
     },
   },
 ] as const;

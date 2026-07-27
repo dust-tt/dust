@@ -199,9 +199,6 @@ export const GovernancePage = () => {
 
   return (
     <GovernancePageLayout>
-      <ContentMessage>
-        This page is WIP. Do not change unless you know what you are doing.
-      </ContentMessage>
       {isAdmin && <WorkspaceNameEditor owner={owner} />}
       <LinkedSectionNotice
         description="Groups assigned here are managed in"

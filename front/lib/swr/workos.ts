@@ -243,6 +243,7 @@ export function useProvisioningStatus({
     if (!data) {
       return {
         hasAdminGroup: false,
+        hasManagerGroup: false,
         hasBuilderGroup: false,
       };
     }

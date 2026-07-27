@@ -1,0 +1,22 @@
+engine biome(1.0)
+language js
+
+// Discourages getConversation() and getLightConversation() which load the full
+// conversation content (messages, actions, etc.) and can be expensive.
+// Prefer ConversationResource.fetchById / fetchConversationWithoutContent when
+// message content is not needed. Suppress with:
+//   // biome-ignore lint/plugin/noExpensiveConversationFetch: <reason>
+pattern expensive_conversation_fetch() {
+    or {
+        `getConversation($args)`,
+        `getLightConversation($args)`,
+    }
+}
+
+expensive_conversation_fetch() as $match where {
+    register_diagnostic(
+        span = $match,
+        message = "getConversation/getLightConversation load the full conversation content and can be expensive. Prefer ConversationResource.fetchById or fetchConversationWithoutContent when message content is not needed. Suppress with biome-ignore only when a full (or light) conversation load is intentional.",
+        severity = "error"
+    )
+}

@@ -103,7 +103,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
 
     const {
       agentConfiguration,
-      model,
+      modelInfo,
       agentMessage,
       conversation,
       userMessage,
@@ -111,7 +111,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
 
     const agentLoopData = {
       agentConfiguration,
-      model,
+      modelInfo,
       agentMessage,
       conversation,
       userMessage,

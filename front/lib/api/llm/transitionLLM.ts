@@ -30,7 +30,7 @@ import {
 } from "@app/lib/api/llm/utils";
 import { getOpenAIPromptCacheKey } from "@app/lib/api/llm/utils/prompt_cache_key";
 import type { Authenticator } from "@app/lib/auth";
-import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch/configuration";
 import type {
@@ -56,7 +56,11 @@ import type {
   SystemTextMessage,
   ToolCallResultPart,
 } from "@app/lib/model_constructors/types/input/messages";
-import { GOOGLE_LAB, NOOP_LAB } from "@app/lib/model_constructors/types/labs";
+import {
+  GOOGLE_LAB,
+  type Lab,
+  NOOP_LAB,
+} from "@app/lib/model_constructors/types/labs";
 import { NOOP_MODEL } from "@app/lib/model_constructors/types/models";
 import type {
   ErrorType,
@@ -79,7 +83,6 @@ import { isAgentMessagePhase } from "@app/types/assistant/agent_message_content"
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import {
   getMinimumReasoningEffort,
-  type ModelIdType,
   type ModelProviderIdType,
   type ReasoningEffort,
 } from "@app/types/assistant/models/types";
@@ -631,18 +634,6 @@ function convertBatchEventsToOld(
   return events.map((event) => convertToOldEvent(event, metadata));
 }
 
-// The endpoint's `lab` is the model's developer ("deepseek" for a
-// fireworks-hosted DeepSeek model), not the legacy `ModelProviderIdType` the LLM
-// base keys its config on — that's the serving provider ("fireworks"). Resolve
-// it from the model config, which is unique by modelId.
-function legacyProviderIdForModel(modelId: ModelIdType): ModelProviderIdType {
-  const modelConfig = getModelConfigByModelId(modelId);
-  if (!modelConfig) {
-    throw new Error(`Model config not found for ${modelId}`);
-  }
-  return modelConfig.providerId;
-}
-
 /**
  * Shared base bridging the old LLM system with the new model_constructors one.
  *
@@ -800,10 +791,14 @@ export class StreamEndpointTransition extends BaseTransition {
 
   constructor(
     auth: Authenticator,
-    llmParameters: LLMParameters,
+    llmParameters: LLMParameters<DustStreamEndpointConstructor>,
     modelConstructor: DustStreamEndpointConstructor
   ) {
-    super(auth, legacyProviderIdForModel(llmParameters.modelId), llmParameters);
+    super(
+      auth,
+      llmParameters.modelInfo.endpoint.modelConfig.providerId,
+      llmParameters
+    );
     this.endpointConstructor = modelConstructor;
     this.model = new modelConstructor(llmParameters.credentials);
 
@@ -870,11 +865,11 @@ export class NoopStreamTransition extends StreamEndpointTransition {
 
   constructor(
     auth: Authenticator,
-    llmParameters: LLMParameters,
+    llmParameters: LLMParameters<DustStreamEndpointConstructor>,
     modelConstructor: DustStreamEndpointConstructor
   ) {
     super(auth, llmParameters, modelConstructor);
-    this.noopMetaData = llmParameters.metaData;
+    this.noopMetaData = llmParameters.modelInfo.metaData;
   }
 
   protected override buildStreamRequestPayload(
@@ -919,6 +914,19 @@ export class NoopStreamTransition extends StreamEndpointTransition {
   }
 }
 
+const LAB_TO_PROVIDER_ID: Record<Lab, ModelProviderIdType> = {
+  openai: "openai",
+  anthropic: "anthropic",
+  mistral: "mistral",
+  google: "google_ai_studio",
+  deepseek: "deepseek",
+  xai: "xai",
+  noop: "noop",
+  // Should never happen
+  moonshot_ai: "fireworks",
+  z_ai: "fireworks",
+};
+
 /**
  * Batch transition: wraps a new `BatchEndpoint` and delegates batch submission,
  * polling, and result conversion to it. Returned by `getBatchLLM`.
@@ -928,10 +936,14 @@ export class BatchEndpointTransition extends BaseTransition {
 
   constructor(
     auth: Authenticator,
-    llmParameters: LLMParameters,
+    llmParameters: LLMParameters<DustBatchEndpointConstructor>,
     modelConstructor: BatchEndpointConstructor
   ) {
-    super(auth, legacyProviderIdForModel(llmParameters.modelId), llmParameters);
+    super(
+      auth,
+      LAB_TO_PROVIDER_ID[llmParameters.modelInfo.endpoint.lab],
+      llmParameters
+    );
     this.model = new modelConstructor(llmParameters.credentials);
   }
 

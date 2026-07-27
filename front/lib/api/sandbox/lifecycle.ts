@@ -103,16 +103,16 @@ async function ensureOwnerSandboxReady(
       const image = imageResult.value;
 
       // Only mount on first creation. e2b preserves the FUSE mount and the
-      // token server across betaPause + connect (verified empirically), so on
-      // wake we just need a fresh GCS access token in /tmp/token.json (the
-      // running token server will hand it to gcsfuse on the next request).
+      // root-owned token server across betaPause + connect (verified empirically),
+      // so on wake we just need fresh per-mount credentials in /run/dust-gcs.
       if (freshlyCreated) {
         // The image seeds /etc/dust/ca-bundle.pem with system roots, and
         // gcsfuse runs as root to storage.googleapis.com, which the in-sandbox
         // nftables ruleset never touches: every rule is scoped to the agent uid
         // (1003) and the chains default to accept, so root egress is never
-        // dropped, even mid-setup. The dev-unrestricted branch only tears the
-        // table down (loosening egress further), so it's safe to overlap too.
+        // dropped, even mid-setup. The dev-unrestricted branch tears down the
+        // general table but recreates the dedicated GCS broker drop, so it's
+        // safe to overlap too.
         // Egress prep can therefore run alongside the GCS mount, with egress
         // errors still taking precedence.
         const [prepResult, mountResult] = await Promise.all([

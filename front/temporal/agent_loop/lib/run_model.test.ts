@@ -1,8 +1,6 @@
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp_schemas";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
-import { OPENAI_PROVIDER_ID } from "@app/lib/api/llm/clients/openai/types";
 import {
   buildBaseSpecifications,
   buildSpecificationsWithReplayPlaceholders,
@@ -49,7 +47,7 @@ function assistantMessageWithToolSearchResult(
       {
         type: "provider_passthrough",
         value: {
-          provider: ANTHROPIC_PROVIDER_ID,
+          provider: "anthropic",
           block: {
             type: "tool_search_tool_result",
             tool_use_id: "srvtoolu_test",
@@ -77,7 +75,7 @@ function assistantMessageWithOpenAIToolSearchOutput(
       {
         type: "provider_passthrough",
         value: {
-          provider: OPENAI_PROVIDER_ID,
+          provider: "openai",
           block: {
             type: "tool_search_output",
             id: "tool_search_output_test",

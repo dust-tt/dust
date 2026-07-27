@@ -57,6 +57,7 @@ import { col, fn, Op, QueryTypes, UniqueConstraintError } from "sequelize";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const BUILDER_GROUP_NAME = "dust-builders";
+export const MANAGER_GROUP_NAME = "dust-managers";
 // User-facing name of the manual builders group synced from the builder role (see
 // syncBuilderGroupMembership). Distinct from BUILDER_GROUP_NAME: workspaces provisioning
 // builders via SCIM keep their "dust-builders" IdP group alongside this one.
@@ -1376,16 +1377,21 @@ export class GroupResource extends BaseResource<GroupModel> {
   ): Promise<Map<ModelId, number>> {
     const owner = auth.getNonNullableWorkspace();
     const counts = new Map<ModelId, number>();
+    if (groups.length === 0) {
+      return counts;
+    }
 
     const globalGroup = groups.find((g) => g.isGlobal());
     const regularGroups = groups.filter((g) => !g.isGlobal());
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({ workspace: owner });
+    const activeUserIds = new Set(
+      workspaceMemberships.map((membership) => membership.userId)
+    );
 
     // Global group count comes from workspace active memberships.
     if (globalGroup) {
-      const { total } = await MembershipResource.getActiveMemberships({
-        workspace: owner,
-      });
-      counts.set(globalGroup.id, total);
+      counts.set(globalGroup.id, workspaceMemberships.length);
     }
 
     // All regular group counts in one query, reusing the existing method.
@@ -1393,7 +1399,10 @@ export class GroupResource extends BaseResource<GroupModel> {
       const membershipsByGroup =
         await GroupResource.getActiveMembershipsForGroups(auth, regularGroups);
       for (const [groupId, userIds] of Object.entries(membershipsByGroup)) {
-        counts.set(Number(groupId), userIds.length);
+        counts.set(
+          Number(groupId),
+          userIds.filter((userId) => activeUserIds.has(userId)).length
+        );
       }
     }
 
@@ -2439,6 +2448,10 @@ export class GroupResource extends BaseResource<GroupModel> {
           roles: [
             { role: "admin", permissions: ["read", "admin"] },
             {
+              role: "manager",
+              permissions: ["read"],
+            },
+            {
               role: "user",
               permissions: ["read"],
             },
@@ -2556,8 +2569,9 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Checks if dust-builders and dust-admins groups exist and are actively provisioned
-   * in the workspace. This indicates that role management should be restricted in the UI.
+   * Checks if dust-admins, dust-managers and dust-builders groups exist and are actively
+   * provisioned in the workspace. This indicates that role management should be restricted
+   * in the UI.
    */
   static async listRoleProvisioningGroupsForWorkspace(
     auth: Authenticator
@@ -2573,7 +2587,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       where: {
         kind: "provisioned",
         name: {
-          [Op.in]: [ADMIN_GROUP_NAME, BUILDER_GROUP_NAME],
+          [Op.in]: [ADMIN_GROUP_NAME, MANAGER_GROUP_NAME, BUILDER_GROUP_NAME],
         },
       },
     });

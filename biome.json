@@ -99,6 +99,16 @@
       ]
     },
     {
+      "includes": [
+        "front/**/*.{js,jsx,ts,tsx}",
+        "front-api/**/*.{js,jsx,ts,tsx}",
+        "!front/lib/api/assistant/conversation/fetch.ts",
+        "!**/*.{test,spec}.{js,jsx,ts,tsx}",
+        "!front/tests/**"
+      ],
+      "plugins": ["./.grit/patterns/noExpensiveConversationFetch.grit"]
+    },
+    {
       "includes": ["front-api/**/*.ts", "!front-api/routes/types.ts"],
       "plugins": ["./.grit/patterns/noInlineSuccessResponseBody.grit"]
     },

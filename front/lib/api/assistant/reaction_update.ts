@@ -1,3 +1,4 @@
+import { fetchPrecedingContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import {
   publishAgentMessagesEvents,
@@ -10,17 +11,14 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
-import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { Op } from "sequelize";
 
 export type ReactionTargetMessageType =
   | "user"
@@ -162,7 +160,7 @@ export async function publishReactionUpdate(
     // attachments from the UI. A dedicated `reactions_updated` event carrying
     // just { messageId, reactions } would remove the need for this fetch.
     const contentFragments = await fetchPrecedingContentFragments(auth, {
-      conversation,
+      conversationResource: conversation,
       targetRank: message.rank,
     });
     await publishMessageEventsOnMessagePostOrEdit(
@@ -179,61 +177,4 @@ export async function publishReactionUpdate(
   }
 
   return new Err(new Error("Unexpected message type for reaction update."));
-}
-
-// Fetch the contiguous content fragments that immediately precede the given
-// rank in the conversation (main branch). Mirrors the behavior of
-// getRelatedContentFragments but avoids loading the full conversation content.
-async function fetchPrecedingContentFragments(
-  auth: Authenticator,
-  {
-    conversation,
-    targetRank,
-  }: { conversation: ConversationResource; targetRank: number }
-): Promise<ContentFragmentType[]> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const messages = await MessageModel.findAll({
-    where: {
-      conversationId: conversation.id,
-      workspaceId: owner.id,
-      branchId: null,
-      rank: { [Op.lt]: targetRank },
-    },
-    include: [
-      { model: ContentFragmentModel, as: "contentFragment", required: true },
-    ],
-    order: [
-      ["rank", "DESC"],
-      ["version", "DESC"],
-    ],
-  });
-
-  // Keep only the latest version per rank.
-  const latestPerRank = new Map<number, MessageModel>();
-  for (const m of messages) {
-    if (!latestPerRank.has(m.rank)) {
-      latestPerRank.set(m.rank, m);
-    }
-  }
-
-  const fragments = await ContentFragmentResource.batchRenderFromMessages(
-    auth,
-    {
-      conversationId: conversation.sId,
-      messages: [...latestPerRank.values()],
-    }
-  );
-
-  const related: ContentFragmentType[] = [];
-  let lastRank = targetRank;
-  for (const cf of fragments) {
-    if (cf.rank === lastRank - 1) {
-      related.push(cf);
-      lastRank = cf.rank;
-    } else {
-      break;
-    }
-  }
-  return related;
 }

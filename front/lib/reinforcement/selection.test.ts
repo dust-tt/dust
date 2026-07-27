@@ -11,6 +11,7 @@ import {
   findConversationsWithSkills,
   scoreAndSelectConversations,
 } from "@app/lib/reinforcement/selection";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -320,14 +321,16 @@ describe("findConversationsWithSkills", () => {
     const skillOff = await SkillFactory.create(auth, { name: "Skill Off" });
     await skillOff.updateReinforcement("off");
 
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+
     // Conversation A uses all 3 skills. Has 2 user messages to pass the scoring filter.
     const convA = await ConversationFactory.create(auth, {
-      agentConfigurationId: "test-agent",
+      agentConfigurationId: agentConfig.sId,
       messagesCreatedAt: [new Date(), new Date()],
     });
     const agentMessageA = await AgentMessageModel.create({
       status: "created",
-      agentConfigurationId: "test-agent",
+      agentConfigurationId: agentConfig.sId,
       agentConfigurationVersion: 0,
       conversationId: convA.id,
       workspaceId: workspace.id,
@@ -347,12 +350,12 @@ describe("findConversationsWithSkills", () => {
 
     // Conversation B uses only the "off" skill. Has 2 user messages.
     const convB = await ConversationFactory.create(auth, {
-      agentConfigurationId: "test-agent",
+      agentConfigurationId: agentConfig.sId,
       messagesCreatedAt: [new Date(), new Date()],
     });
     const agentMessageB = await AgentMessageModel.create({
       status: "created",
-      agentConfigurationId: "test-agent",
+      agentConfigurationId: agentConfig.sId,
       agentConfigurationVersion: 0,
       conversationId: convB.id,
       workspaceId: workspace.id,

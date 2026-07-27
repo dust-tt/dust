@@ -10,7 +10,11 @@ import {
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { isDustProvidedSkill, SKILL_ICON } from "@app/lib/skill";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
@@ -80,6 +84,10 @@ function sortSkillsByName(
 export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
+  const { hasFeature } = useFeatureFlags();
+  const hasSkillPublicationGovernance = hasFeature(
+    "admin_governance_skill_publication"
+  );
   const [selectedSkill, setSelectedSkill] =
     useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
@@ -154,9 +162,12 @@ export function ManageSkillsPage() {
       ),
       default: filteredList(
         sortedActiveSkills
-          .filter(
-            (s) =>
-              s.availability === "users_and_agents" || isDustProvidedSkill(s)
+          .filter((s) =>
+            // With skill publication governance the tab lists auto-discoverable
+            // skills: exactly the ones agents can activate on their own.
+            hasSkillPublicationGovernance
+              ? s.availability === "users_and_agents"
+              : s.availability === "users_and_agents" || isDustProvidedSkill(s)
           )
           .sort((a, b) => {
             // Display Dust-managed skills first.
@@ -171,7 +182,14 @@ export function ManageSkillsPage() {
       ),
       archived: filteredList(sortedArchivedSkills),
     };
-  }, [activeSkills, archivedSkills, skillSearch, user, isSearchActive]);
+  }, [
+    activeSkills,
+    archivedSkills,
+    skillSearch,
+    user,
+    isSearchActive,
+    hasSkillPublicationGovernance,
+  ]);
 
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
@@ -315,7 +333,11 @@ export function ManageSkillsPage() {
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}
-                    label={tab.label}
+                    label={
+                      tab.id === "default" && hasSkillPublicationGovernance
+                        ? "Auto-discoverable"
+                        : tab.label
+                    }
                     onClick={() => setSelectedTab(tab.id)}
                     tooltip={tab.description}
                     isCounter={tab.id !== "archived"}
@@ -344,6 +366,7 @@ export function ManageSkillsPage() {
                   onSkillClick={handleSkillSelect}
                   onAgentClick={setAgentId}
                   onUsedBySkillClick={handleUsedBySkillSelect}
+                  showAvailability={hasSkillPublicationGovernance}
                 />
               </>
             )}

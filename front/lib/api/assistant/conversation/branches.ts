@@ -3,7 +3,6 @@ import {
   createAgentMessageFromText,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -154,23 +153,27 @@ export async function mergeConversationBranch(
 > {
   const owner = auth.getNonNullableWorkspace();
 
-  const conversation = await ConversationResource.fetchById(
+  const conversationResource = await ConversationResource.fetchById(
     auth,
     conversationId
   );
-  if (!conversation) {
+  if (!conversationResource) {
     return new Err(
       new DustError("conversation_not_found", "Conversation not found.")
     );
   }
 
-  const branch = await ConversationBranchResource.fetchById(auth, branchId);
+  const branch = await ConversationBranchResource.fetchById(
+    auth,
+    branchId,
+    transaction
+  );
 
   if (!branch) {
     return new Err(new DustError("branch_not_found", "Branch not found."));
   }
 
-  if (branch.conversationId !== conversation.id) {
+  if (branch.conversationId !== conversationResource.id) {
     return new Err(new DustError("branch_not_found", "Branch not found."));
   }
 
@@ -189,11 +192,9 @@ export async function mergeConversationBranch(
 
   const branchMessages = await branch.fetchAllMessages(auth);
 
-  const effectiveConversation = conversation;
-
   const renderedRes = await batchRenderMessages(
     auth,
-    effectiveConversation,
+    conversationResource,
     branchMessages,
     "light"
   );
@@ -257,19 +258,8 @@ export async function mergeConversationBranch(
     authMethod: src.userContextAuthMethod,
   };
 
-  const fullConversationRes = await getConversation(
-    auth,
-    conversationId,
-    false
-  );
-  if (fullConversationRes.isErr()) {
-    return new Err(
-      new DustError("conversation_not_found", "Conversation not found.")
-    );
-  }
-
   const postRes = await postUserMessage(auth, {
-    conversation: fullConversationRes.value,
+    conversationResource,
     content: src.content,
     mentions: [],
     context,
@@ -333,7 +323,7 @@ export async function mergeConversationBranch(
         : undefined;
 
     const created = await createAgentMessageFromText(auth, {
-      conversation: fullConversationRes.value,
+      conversation: conversationResource?.toJSON(),
       parentId: mergedUserMessage.id,
       rank: rankCursor++,
       content: contentOnly,
@@ -400,7 +390,11 @@ export async function closeConversationBranch(
       );
     }
 
-    const branch = await ConversationBranchResource.fetchById(auth, branchId);
+    const branch = await ConversationBranchResource.fetchById(
+      auth,
+      branchId,
+      effectiveTransaction
+    );
 
     if (!branch) {
       return new Err(new DustError("branch_not_found", "Branch not found."));

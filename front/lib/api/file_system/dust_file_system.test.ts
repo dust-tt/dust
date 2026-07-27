@@ -1,3 +1,4 @@
+import { createConversation } from "@app/lib/api/assistant/conversation";
 import {
   DustFileSystem,
   sanitizeFileSystemName,
@@ -595,17 +596,15 @@ describe("DustFileSystem.forAgentLoop", () => {
         )
       ).toBeNull();
 
-      const userAgentConfig = await AgentConfigurationFactory.createTestAgent(
-        userSessionAuth,
-        { name: "User Agent", description: "User Agent" }
-      );
-      const userConversation = await ConversationFactory.create(
+      const userConversationResource = await createConversation(
         userSessionAuth,
         {
-          agentConfigurationId: userAgentConfig.sId,
-          messagesCreatedAt: [],
+          title: "User Conversation",
+          visibility: "unlisted",
+          spaceId: null,
         }
       );
+      const userConversation = userConversationResource.toJSON();
 
       const result = await DustFileSystem.forAgentLoop(userSessionAuth, {
         conversation: userConversation,

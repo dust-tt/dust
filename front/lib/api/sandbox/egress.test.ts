@@ -860,6 +860,8 @@ describe("sandbox egress helpers", () => {
       );
       expect(command).toContain("/usr/sbin/nft delete table ip dust-egress");
       expect(command).toContain("/usr/sbin/nft delete table ip6 dust-egress");
+      expect(command).toContain("/usr/local/bin/dust-gcs-token-firewall.sh");
+      expect(command).not.toContain("tcp dport 9876 drop");
       expect(sandbox.execRoot).toHaveBeenCalledWith(auth, expect.any(Object));
     });
 

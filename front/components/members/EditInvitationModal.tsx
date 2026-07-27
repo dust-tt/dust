@@ -1,7 +1,11 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { ROLES_DATA } from "@app/components/members/Roles";
+import {
+  getRoleDescription,
+  getRoleProvisioningGroupsLabel,
+} from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
@@ -20,6 +24,27 @@ import {
 } from "@dust-tt/sparkle";
 import { useContext, useEffect, useState } from "react";
 
+function getInvitationRoleMessage({
+  isRoleManagedByProvisioning,
+  isAdminGovernanceEnabled,
+  role,
+}: {
+  isRoleManagedByProvisioning: boolean;
+  isAdminGovernanceEnabled: boolean;
+  role: ActiveRoleType;
+}): string {
+  if (isRoleManagedByProvisioning) {
+    return `This invitation's role is managed by your identity provider through group provisioning (${getRoleProvisioningGroupsLabel(
+      isAdminGovernanceEnabled
+    )}). Role changes must be made in your identity provider.`;
+  }
+
+  return `The role defines the rights of a member for the workspace. ${getRoleDescription(
+    role,
+    isAdminGovernanceEnabled
+  )}`;
+}
+
 export function EditInvitationModal({
   owner,
   invitation,
@@ -35,6 +60,9 @@ export function EditInvitationModal({
 
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
+  const { hasFeature } = useFeatureFlags();
+
+  const isAdminGovernanceEnabled = hasFeature("admin_governance");
 
   const { roleProvisioningStatus } = useProvisioningStatus({
     workspaceId: owner.sId,
@@ -43,7 +71,18 @@ export function EditInvitationModal({
   // Check if this invitation's role would be managed by provisioning groups
   const isRoleManagedByProvisioning =
     (roleProvisioningStatus.hasAdminGroup && selectedRole === "admin") ||
+    (isAdminGovernanceEnabled &&
+      roleProvisioningStatus.hasManagerGroup &&
+      selectedRole === "manager") ||
     (roleProvisioningStatus.hasBuilderGroup && selectedRole === "builder");
+
+  const roleMessage = invitation
+    ? getInvitationRoleMessage({
+        isRoleManagedByProvisioning,
+        isAdminGovernanceEnabled,
+        role: invitation.initialRole,
+      })
+    : "";
 
   useEffect(() => {
     if (invitation) {
@@ -102,16 +141,7 @@ export function EditInvitationModal({
                     disabled={isRoleManagedByProvisioning}
                   />
                 </div>
-                <div className="text-muted-foreground">
-                  {isRoleManagedByProvisioning ? (
-                    "This invitation's role is managed by your identity provider through group provisioning (dust-admins and dust-builders groups). Role changes must be made in your identity provider."
-                  ) : (
-                    <>
-                      The role defines the rights of a member for the workspace.{" "}
-                      {ROLES_DATA[invitation.initialRole].description}
-                    </>
-                  )}
-                </div>
+                <div className="text-muted-foreground">{roleMessage}</div>
               </div>
 
               <div className="flex items-center gap-2">

@@ -7,12 +7,13 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
+  SkillAvailability,
   SkillUsageType,
   SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
-import { DataTable, Edit04, Eye, Trash01 } from "@dust-tt/sparkle";
+import { Chip, DataTable, Edit04, Eye, Trash01 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
@@ -21,12 +22,22 @@ type RowData = {
   icon: string | null;
   editedBy: number | null;
   description: string;
+  availability: SkillAvailability;
   editors: UserType[] | null;
   usage: SkillUsageType;
   updatedAt: number | null;
   createdAt: number | null;
   onClick: () => void;
   menuItems: MenuItem[];
+};
+
+export const SKILL_AVAILABILITY_DISPLAY: Record<
+  SkillAvailability,
+  { label: string; color: "primary" | "success" | "highlight" }
+> = {
+  editors: { label: "Editor only", color: "primary" },
+  workspace_users: { label: "Workspace members", color: "success" },
+  users_and_agents: { label: "Auto-discoverable", color: "highlight" },
 };
 
 const nameColumn = {
@@ -55,6 +66,23 @@ const nameColumn = {
   },
   meta: {
     className: "w-40 @lg:w-full",
+  },
+};
+
+const availabilityColumn = {
+  header: "Access",
+  accessorKey: "availability",
+  cell: (info: CellContext<RowData, SkillAvailability>) => {
+    const display = SKILL_AVAILABILITY_DISPLAY[info.getValue()];
+    return (
+      <DataTable.CellContent>
+        <Chip size="xs" color={display.color} label={display.label} />
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    // Wide enough for the longest chip label ("Workspace members").
+    className: "hidden @sm:w-44 @sm:table-cell",
   },
 };
 
@@ -131,21 +159,28 @@ const menuColumn = {
   },
 };
 
-const getTableColumns = (
-  onAgentClick: (agentId: string) => void,
-  onUsedBySkillClick: (skillId: string) => void
-) => {
+const getTableColumns = ({
+  onAgentClick,
+  onUsedBySkillClick,
+  showAvailability,
+}: {
+  onAgentClick: (agentId: string) => void;
+  onUsedBySkillClick: (skillId: string) => void;
+  showAvailability: boolean;
+}) => {
   /**
    * Columns order:
    * - Name (always)
-   * - Editors (hidden on mobile)
+   * - Access (skill publication governance only, hidden on mobile)
    * - Used by (hidden on mobile)
+   * - Editors (hidden on mobile)
    * - Last Edited (hidden on mobile)
    * - Actions (always)
    */
 
   return [
     nameColumn,
+    ...(showAvailability ? [availabilityColumn] : []),
     usedByColumn(onAgentClick, onUsedBySkillClick),
     editorsColumn,
     lastEditedColumn,
@@ -161,6 +196,7 @@ type SkillsTableProps = {
   ) => void;
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
+  showAvailability?: boolean;
 };
 
 export function SkillsTable({
@@ -169,6 +205,7 @@ export function SkillsTable({
   onSkillClick,
   onAgentClick,
   onUsedBySkillClick,
+  showAvailability = false,
 }: SkillsTableProps) {
   const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
@@ -183,6 +220,7 @@ export function SkillsTable({
         icon: skill.icon,
         editedBy: skill.editedBy,
         description: skill.userFacingDescription,
+        availability: skill.availability,
         editors: skill.relations.editors,
         usage: skill.relations.usage,
         updatedAt: skill.updatedAt,
@@ -251,7 +289,11 @@ export function SkillsTable({
       <DataTable
         className="relative"
         data={rows}
-        columns={getTableColumns(onAgentClick, onUsedBySkillClick)}
+        columns={getTableColumns({
+          onAgentClick,
+          onUsedBySkillClick,
+          showAvailability,
+        })}
         pagination={pagination}
         setPagination={setPagination}
       />

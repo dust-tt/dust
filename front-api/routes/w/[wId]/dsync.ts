@@ -14,7 +14,6 @@ import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
 
@@ -23,6 +22,18 @@ const app = workspaceApp();
 
 async function checkAccess(ctx: Context) {
   const auth = ctx.get("auth");
+
+  if (!(await auth.hasWorkspacePermission("admin", "security"))) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "You do not have permission to manage identity and provisioning settings.",
+      },
+    });
+  }
+
   const workspace = auth.getNonNullableWorkspace();
   if (!workspace.workOSOrganizationId) {
     return apiError(ctx, {
@@ -72,44 +83,39 @@ async function checkAccess(ctx: Context) {
 }
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  ensureIsAdmin(),
-  async (ctx): HandlerResult<WorkOSConnectionSyncStatus> => {
-    const result = await checkAccess(ctx);
-    if (result instanceof Response) {
-      return result;
-    }
-    const { auth, workspace, activeDirectory } = result;
-
-    let status: "not_configured" | "configured" | "configuring" =
-      "not_configured";
-    if (activeDirectory) {
-      status =
-        activeDirectory.state === "active" ? "configured" : "configuring";
-    }
-
-    const { link } = await generateWorkOSAdminPortalUrl({
-      organization: workspace.workOSOrganizationId!,
-      workOSIntent: WorkOSPortalIntent.DSync,
-      returnUrl: `${ctx.req.header("origin")}/w/${auth.getNonNullableWorkspace().sId}/members`,
-    });
-
-    return ctx.json({
-      status,
-      connection: activeDirectory
-        ? {
-            id: activeDirectory.id,
-            state: activeDirectory.state,
-            type: activeDirectory.type,
-          }
-        : null,
-      setupLink: link,
-    });
+app.get("/", async (ctx): HandlerResult<WorkOSConnectionSyncStatus> => {
+  const result = await checkAccess(ctx);
+  if (result instanceof Response) {
+    return result;
   }
-);
+  const { auth, workspace, activeDirectory } = result;
 
-app.delete("/", ensureIsAdmin(), async (ctx) => {
+  let status: "not_configured" | "configured" | "configuring" =
+    "not_configured";
+  if (activeDirectory) {
+    status = activeDirectory.state === "active" ? "configured" : "configuring";
+  }
+
+  const { link } = await generateWorkOSAdminPortalUrl({
+    organization: workspace.workOSOrganizationId!,
+    workOSIntent: WorkOSPortalIntent.DSync,
+    returnUrl: `${ctx.req.header("origin")}/w/${auth.getNonNullableWorkspace().sId}/members`,
+  });
+
+  return ctx.json({
+    status,
+    connection: activeDirectory
+      ? {
+          id: activeDirectory.id,
+          state: activeDirectory.state,
+          type: activeDirectory.type,
+        }
+      : null,
+    setupLink: link,
+  });
+});
+
+app.delete("/", async (ctx) => {
   const result = await checkAccess(ctx);
   if (result instanceof Response) {
     return result;

@@ -412,6 +412,7 @@ describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested", 
 
 describe("SandboxResource.dangerouslyGetKillRequestedSandboxes", () => {
   let authenticator: Authenticator;
+  let agentConfigurationId: string;
   let conversation: ConversationType;
 
   beforeEach(async () => {
@@ -421,8 +422,9 @@ describe("SandboxResource.dangerouslyGetKillRequestedSandboxes", () => {
 
     const agentConfig =
       await AgentConfigurationFactory.createTestAgent(authenticator);
+    agentConfigurationId = agentConfig.sId;
     conversation = await ConversationFactory.create(authenticator, {
-      agentConfigurationId: agentConfig.sId,
+      agentConfigurationId,
       messagesCreatedAt: [new Date()],
     });
   });
@@ -464,6 +466,43 @@ describe("SandboxResource.dangerouslyGetKillRequestedSandboxes", () => {
     });
 
     expect(rows).toHaveLength(0);
+  });
+
+  it("paginates rows sharing a kill request timestamp", async () => {
+    const secondConversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId,
+      messagesCreatedAt: [new Date()],
+    });
+    const killRequestedAt = new Date();
+    await SandboxFactory.create(authenticator, conversation, {
+      status: "running",
+      killRequestedAt,
+    });
+    await SandboxFactory.create(authenticator, secondConversation, {
+      status: "running",
+      killRequestedAt,
+    });
+
+    const firstPage =
+      await SandboxResource.dangerouslyGetKillRequestedSandboxes({
+        limit: 1,
+      });
+    const firstSandbox = firstPage[0];
+    if (!firstSandbox?.killRequestedAt) {
+      throw new Error("Expected a kill-requested sandbox.");
+    }
+
+    const secondPage =
+      await SandboxResource.dangerouslyGetKillRequestedSandboxes({
+        limit: 1,
+        after: {
+          sandboxModelId: firstSandbox.id,
+          timestamp: firstSandbox.killRequestedAt,
+        },
+      });
+
+    expect(secondPage).toHaveLength(1);
+    expect(secondPage[0]?.id).not.toBe(firstSandbox.id);
   });
 });
 

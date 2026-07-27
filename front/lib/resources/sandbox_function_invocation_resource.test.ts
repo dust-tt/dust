@@ -160,7 +160,10 @@ describe("SandboxFunctionInvocationResource", () => {
       secondInvocation.sId,
     ]);
     expect(recentInvocations[0]?.result).toEqual({ commentId: "comment-3" });
-    expect(recentInvocations[1]?.error).toBe("second invocation failed");
+    expect(recentInvocations[1]?.error).toEqual({
+      code: "invocation_failed",
+      message: "second invocation failed",
+    });
     expect(recentInvocations[0]?.toJSONForLLM()).toMatchObject({
       invocationId: thirdInvocation.sId,
       status: "succeeded",
@@ -171,7 +174,10 @@ describe("SandboxFunctionInvocationResource", () => {
       invocationId: secondInvocation.sId,
       status: "errored",
       input: { message: "second" },
-      error: "second invocation failed",
+      error: {
+        code: "invocation_failed",
+        message: "second invocation failed",
+      },
     });
 
     const formatted = formatSandboxFunctionInvocations(
@@ -181,7 +187,8 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(formatted).toContain('"status": "succeeded"');
     expect(formatted).toContain('"input": {');
     expect(formatted).toContain('"result": {');
-    expect(formatted).toContain('"error": "second invocation failed"');
+    expect(formatted).toContain('"message": "second invocation failed"');
+    expect(formatted).toContain('"code": "invocation_failed"');
     expect(formatted).toContain('"createdAt":');
     expect(formatted).toContain('"updatedAt":');
   });
@@ -203,7 +210,7 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(invocation.result).toBeUndefined();
     expect(invocation.error).toBeUndefined();
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toBe(
-      JSON.stringify({ version: 1, input: { message: "hello" } })
+      JSON.stringify({ version: 2, input: { message: "hello" } })
     );
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
@@ -227,7 +234,7 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(invocation.context).toEqual({ timezone: "Europe/Paris" });
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toBe(
       JSON.stringify({
-        version: 1,
+        version: 2,
         context: { timezone: "Europe/Paris" },
       })
     );
@@ -268,20 +275,38 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(invocation.userId).toBeNull();
   });
 
-  it("rejects unsupported stored data versions", async () => {
+  it("returns an empty record for a version it does not know", async () => {
     const { authenticator, sandboxFunction, invocation } =
       await setupExecutionTest();
 
     await getPrivateUploadBucket()
       .file(invocation.gcsPath!)
-      .save(Buffer.from(JSON.stringify({ version: 2 }), "utf-8"));
+      .save(Buffer.from(JSON.stringify({ version: 3 }), "utf-8"));
 
-    await expect(
-      SandboxFunctionInvocationResource.fetchById(authenticator, {
-        sandboxFunction,
-        invocationId: invocation.sId,
-      })
-    ).rejects.toThrow("Invalid sandbox function invocation data");
+    // Listings load every invocation's blob, so one unreadable record must not fail the listing.
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.input).toBeUndefined();
+    expect(refetched?.result).toBeUndefined();
+    expect(refetched?.error).toBeUndefined();
+  });
+
+  it("returns an empty record for a blob that is not valid JSON", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+
+    await getPrivateUploadBucket()
+      .file(invocation.gcsPath!)
+      .save(Buffer.from('{"version": 2, "input"', "utf-8"));
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.input).toBeUndefined();
+    expect(refetched?.error).toBeUndefined();
   });
 
   it("stores and reloads its result from GCS on success", async () => {
@@ -318,13 +343,19 @@ describe("SandboxFunctionInvocationResource", () => {
 
     expect(invocation.status).toBe("errored");
     expect(invocation.result).toBeUndefined();
-    expect(invocation.error).toBe("sandbox unavailable");
+    expect(invocation.error).toEqual({
+      code: "invocation_failed",
+      message: "sandbox unavailable",
+    });
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.result).toBeUndefined();
-    expect(refetched?.error).toBe("sandbox unavailable");
+    expect(refetched?.error).toEqual({
+      code: "invocation_failed",
+      message: "sandbox unavailable",
+    });
     expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "sandbox_function_invocation_error",
@@ -333,6 +364,83 @@ describe("SandboxFunctionInvocationResource", () => {
       }),
       { invocationId: invocation.sId }
     );
+  });
+
+  it("keeps the code and status of a classified failure", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+
+    await invocation.fail({
+      code: "http_error",
+      message: "Function returned HTTP 503.",
+      status: 503,
+    });
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.error).toEqual({
+      code: "http_error",
+      message: "Function returned HTTP 503.",
+      status: 503,
+    });
+  });
+
+  it("migrates a v1 blob, which recorded the message only", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+
+    // A message distinct from anything the current code writes, so the assertion can only pass
+    // by reading the seeded blob.
+    await getPrivateUploadBucket()
+      .file(invocation.gcsPath!)
+      .save(
+        Buffer.from(
+          JSON.stringify({
+            version: 1,
+            input: { message: "hello" },
+            context: { timezone: "Europe/Paris" },
+            error: "written before codes existed",
+          }),
+          "utf-8"
+        )
+      );
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.input).toEqual({ message: "hello" });
+    // Fields the v1 and v2 shapes have in common survive the migration.
+    expect(refetched?.context).toEqual({ timezone: "Europe/Paris" });
+    expect(refetched?.error).toEqual({
+      code: "invocation_failed",
+      message: "written before codes existed",
+    });
+
+    // The next write persists it as v2, so a blob is migrated once rather than on every read.
+    await refetched!.succeed({ commentId: "comment-1" });
+    expect(fileStorageMock.getObject(invocation.gcsPath!)).toContain(
+      '"version":2'
+    );
+  });
+
+  it("migrates a v1 blob that recorded no error", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+
+    // The GCS path backfill wrote bare v1 blobs, so this shape is real.
+    await getPrivateUploadBucket()
+      .file(invocation.gcsPath!)
+      .save(Buffer.from(JSON.stringify({ version: 1 }), "utf-8"));
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.error).toBeUndefined();
+    expect(refetched?.input).toBeUndefined();
   });
 
   it("executes an invocation on the pod sandbox", async () => {

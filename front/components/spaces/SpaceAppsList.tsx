@@ -61,7 +61,7 @@ const hasAppsModalQuery = (
   isString(query.modal) && query.modal === "apps";
 
 interface SpaceAppsListProps {
-  isBuilder: boolean;
+  canAdministrateApps: boolean;
   onSelect: (sId: string) => void;
   owner: LightWorkspaceType;
   space: SpaceType;
@@ -69,7 +69,7 @@ interface SpaceAppsListProps {
 
 export const SpaceAppsList = ({
   owner,
-  isBuilder,
+  canAdministrateApps,
   space,
   onSelect,
 }: SpaceAppsListProps) => {
@@ -103,7 +103,7 @@ export const SpaceAppsList = ({
 
   React.useEffect(() => {
     // Extract modal=apps query param to open modal on first render and remove it from URL
-    if (!router.isReady || !isBuilder) {
+    if (!router.isReady || !canAdministrateApps) {
       return;
     }
     const { query } = router;
@@ -112,7 +112,7 @@ export const SpaceAppsList = ({
     }
     setIsCreateAppModalOpened(true);
     void removeParamFromRouter(router, "modal");
-  }, [router.isReady, router.query.modal, isBuilder, router]);
+  }, [router.isReady, router.query.modal, canAdministrateApps, router]);
 
   const { portalToHeader } = useActionButtonsPortal({
     containerId: ACTION_BUTTONS_CONTAINER_ID,
@@ -131,7 +131,7 @@ export const SpaceAppsList = ({
 
   const actionButtons = (
     <>
-      {isBuilder && (
+      {canAdministrateApps && (
         <Button
           label="New App"
           variant="primary"
@@ -152,7 +152,7 @@ export const SpaceAppsList = ({
         <div className="flex h-36 w-full items-center justify-center gap-2 rounded-lg bg-muted-background">
           <Button
             label="Create App"
-            disabled={!isBuilder}
+            disabled={!canAdministrateApps}
             onClick={() => {
               setIsCreateAppModalOpened(true);
             }}

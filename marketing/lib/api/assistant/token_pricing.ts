@@ -194,6 +194,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     cache_creation_input_tokens: 6.25,
     cache_read_input_tokens: 0.5,
   },
+  "claude-opus-5": {
+    input: 5.0,
+    output: 25.0,
+    cache_creation_input_tokens: 6.25,
+    cache_read_input_tokens: 0.5,
+  },
   // https://platform.claude.com/docs/en/about-claude/models/overview
   "claude-fable-5": {
     input: 10.0,
@@ -301,6 +307,13 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 9.0,
     cache_read_input_tokens: 0.15,
   },
+  // https://ai.google.dev/gemini-api/docs/pricing (2026-07-25): output-only
+  // cut vs 3.5 Flash (input unchanged at $1.50, output $9.0 -> $7.5).
+  "gemini-3.6-flash": {
+    input: 1.5,
+    output: 7.5,
+    cache_read_input_tokens: 0.15,
+  },
   "gemini-2.5-flash": {
     input: 0.15,
     output: 0.6,
@@ -310,6 +323,11 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 0.3,
   },
   "gemini-3.1-flash-lite": {
+    input: 0.25,
+    output: 1.5,
+    cache_read_input_tokens: 0.025,
+  },
+  "gemini-3.5-flash-lite": {
     input: 0.25,
     output: 1.5,
     cache_read_input_tokens: 0.025,

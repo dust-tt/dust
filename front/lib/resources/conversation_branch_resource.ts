@@ -64,7 +64,8 @@ export class ConversationBranchResource extends BaseResource<ConversationBranchM
    */
   static async fetchByModelIds(
     auth: Authenticator,
-    ids: ModelId[]
+    ids: ModelId[],
+    transaction?: Transaction
   ): Promise<ConversationBranchResource[]> {
     if (ids.length === 0) {
       return [];
@@ -77,6 +78,7 @@ export class ConversationBranchResource extends BaseResource<ConversationBranchM
         workspaceId: workspace.id,
         id: ids,
       } as WhereOptions<ConversationBranchModel>,
+      transaction,
     });
 
     return branches.map(
@@ -184,19 +186,22 @@ export class ConversationBranchResource extends BaseResource<ConversationBranchM
 
   static async fetchById(
     auth: Authenticator,
-    sId: string
+    sId: string,
+    transaction?: Transaction
   ): Promise<ConversationBranchResource | null> {
-    const [branch] = await this.fetchByIds(auth, [sId]);
+    const [branch] = await this.fetchByIds(auth, [sId], transaction);
     return branch ?? null;
   }
 
   static async fetchByIds(
     auth: Authenticator,
-    sIds: string[]
+    sIds: string[],
+    transaction?: Transaction
   ): Promise<ConversationBranchResource[]> {
     const branches = await this.fetchByModelIds(
       auth,
-      removeNulls(sIds.map(getResourceIdFromSId))
+      removeNulls(sIds.map(getResourceIdFromSId)),
+      transaction
     );
 
     // When fetching by sIds, we check read access to the branches.

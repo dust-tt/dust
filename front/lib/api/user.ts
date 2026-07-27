@@ -1,9 +1,10 @@
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlagsForWorkspace } from "@app/lib/auth";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import {
   ADMIN_GROUP_NAME,
   BUILDER_GROUP_NAME,
   GroupResource,
+  MANAGER_GROUP_NAME,
 } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -301,17 +302,29 @@ export async function determineUserRoleFromGroups(
     workspace,
   });
 
+  const featureFlags = await getFeatureFlagsForWorkspace(workspace);
+  const isManagerProvisioningEnabled =
+    featureFlags.includes("admin_governance");
+
+  let atLeastManager = false;
   let atLeastBuilder = false;
 
   for (const group of userGroups) {
     if (group.name === ADMIN_GROUP_NAME) {
       return "admin";
     }
+    if (group.name === MANAGER_GROUP_NAME) {
+      atLeastManager = true;
+    }
     if (group.name === BUILDER_GROUP_NAME) {
       atLeastBuilder = true;
     }
   }
-  // If we're here, the user is not in the admin group.
+  // If we're here, the user is not in the admin group. Role precedence is
+  // admin > manager > builder > user.
+  if (atLeastManager && isManagerProvisioningEnabled) {
+    return "manager";
+  }
   if (atLeastBuilder) {
     return "builder";
   }

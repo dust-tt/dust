@@ -1,4 +1,5 @@
 import { DustAppRouterLayout } from "@spa/app/layouts/DustAppRouterLayout";
+import { RequireFeatureFlagLayout } from "@spa/app/layouts/RequireFeatureFlagLayout";
 import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
 
@@ -38,20 +39,25 @@ const RunsPage = withSuspense(
 
 export const appsRoutes: RouteObject[] = [
   {
-    path: "spaces/:spaceId/apps/:aId",
-    element: <DustAppRouterLayout />,
+    element: <RequireFeatureFlagLayout flag="legacy_dust_apps" />,
     children: [
-      { index: true, element: <AppViewPage /> },
-      { path: "settings", element: <AppSettingsPage /> },
       {
-        path: "specification",
-        element: <AppSpecificationPage />,
+        path: "spaces/:spaceId/apps/:aId",
+        element: <DustAppRouterLayout />,
+        children: [
+          { index: true, element: <AppViewPage /> },
+          { path: "settings", element: <AppSettingsPage /> },
+          {
+            path: "specification",
+            element: <AppSpecificationPage />,
+          },
+          { path: "datasets", element: <DatasetsPage /> },
+          { path: "datasets/new", element: <NewDatasetPage /> },
+          { path: "datasets/:name", element: <DatasetPage /> },
+          { path: "runs", element: <RunsPage /> },
+          { path: "runs/:runId", element: <RunPage /> },
+        ],
       },
-      { path: "datasets", element: <DatasetsPage /> },
-      { path: "datasets/new", element: <NewDatasetPage /> },
-      { path: "datasets/:name", element: <DatasetPage /> },
-      { path: "runs", element: <RunsPage /> },
-      { path: "runs/:runId", element: <RunPage /> },
     ],
   },
 ];

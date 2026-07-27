@@ -70,21 +70,21 @@ app.get(
 
     const query = ctx.req.valid("query");
 
-    // Auth gating: read = anyone, write = builder, undefined (all) = admin.
+    // Auth gating: read = anyone, write = agent publishers, undefined (all) = admin.
     switch (query.filterPermission) {
       case "read":
         // `read` is used for data source selection when creating personal assistants.
         break;
       case "write":
-        // `write` is used for selection of default slack channel in the workspace agent builder.
-        // biome-ignore lint/plugin/noDirectRoleCheck: conditional role check based on filterPermission query param
-        if (!auth.isBuilder()) {
+        // `write` is used for selection of default slack channel in the workspace agent builder,
+        // so it is gated on the agent publishing permission.
+        if (!(await auth.hasWorkspacePermission("publish", "agent"))) {
           return apiError(ctx, {
             status_code: 403,
             api_error: {
               type: "data_source_auth_error",
               message:
-                "Only builders of the current workspace can view 'write' permissions of a data source.",
+                "You do not have permission to view 'write' permissions of a data source.",
             },
           });
         }

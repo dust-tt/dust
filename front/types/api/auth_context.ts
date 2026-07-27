@@ -1,3 +1,4 @@
+import type { WorkspacePermissions } from "@app/types/group_permissions";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -14,9 +15,9 @@ export type GetWorkspaceAuthContextResponseType = {
   subscription: SubscriptionType;
   isAdmin: boolean;
   isManager: boolean;
-  isBuilder: boolean;
   featureFlags: WhitelistableFeature[];
   isEligibleForTrial?: boolean;
   vizUrl: string;
   providersHealth: ProvidersHealth | null;
+  workspacePermissions: WorkspacePermissions;
 };

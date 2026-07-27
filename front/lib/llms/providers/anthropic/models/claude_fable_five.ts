@@ -6,19 +6,7 @@ export function WithDustClaudeFableFiveConfig<
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  // Spread the legacy model config onto the class statics (see
-  // `DustStreamEndpointConfiguration`). `Object.assign` returns
-  // `class & ModelConfigurationType`, so the fields are visible to the type
-  // checker without an unsafe cast.
-  abstract class DustClaudeFableFiveConfig extends Base {}
-  const WithConfig = Object.assign(
-    DustClaudeFableFiveConfig,
-    CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG
-  );
-
-  // Declared last so these own statics shadow (take precedence over) the spread
-  // config values.
-  abstract class DustClaudeFableFive extends WithConfig {
+  abstract class DustClaudeFableFive extends Base {
     static readonly displayName = "Claude Fable 5";
     static readonly description =
       "Anthropic's Claude Fable 5 model, their most intelligent model, a new tier above Opus (250k context).";
@@ -29,6 +17,12 @@ export function WithDustClaudeFableFiveConfig<
     static readonly byok = true;
     // Anthropic rejects an explicit temperature for this model.
     static readonly configParsers = [dropTemperature];
+
+    // Nest the legacy model config under a single `modelConfig` static (see
+    // `DustStreamEndpointConfiguration`) so consumers can retrieve the full
+    // `ModelConfigurationType` off the endpoint without spreading its fields
+    // onto the class statics.
+    static readonly modelConfig = CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG;
   }
 
   return DustClaudeFableFive;

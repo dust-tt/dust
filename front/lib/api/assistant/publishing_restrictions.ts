@@ -1,5 +1,3 @@
-import type { Authenticator } from "@app/lib/auth";
-
 export const PUBLISHING_RESTRICTIONS = {
   builders_and_admins: {
     message: "Publishing agents is restricted to builders and admins.",
@@ -30,21 +28,4 @@ export function getPublishingRestrictionMessage(
 ): string | null {
   const level = getPublishingRestrictionLevel(featureFlags);
   return level ? PUBLISHING_RESTRICTIONS[level].message : null;
-}
-
-function canPublishForRole(
-  role: "admin" | "builder",
-  check: { isAdmin: boolean; isBuilder: boolean }
-): boolean {
-  return role === "admin" ? check.isAdmin : check.isBuilder;
-}
-
-export function canPublishForAuth(
-  auth: Authenticator,
-  level: PublishingRestriction
-): boolean {
-  return canPublishForRole(PUBLISHING_RESTRICTIONS[level].requiredRole, {
-    isAdmin: auth.isAdmin(),
-    isBuilder: auth.isBuilder(),
-  });
 }

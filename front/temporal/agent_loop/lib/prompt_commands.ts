@@ -406,7 +406,7 @@ async function handleToolRunFirstStep(
 } | null> {
   const {
     agentConfiguration,
-    model,
+    modelInfo,
     conversation: originalConversation,
     userMessage,
     agentMessage: originalAgentMessage,
@@ -513,7 +513,7 @@ async function handleToolRunFirstStep(
   );
 
   const stepContexts = computeStepContexts({
-    model,
+    model: modelInfo.endpoint.modelConfig,
     stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
   });

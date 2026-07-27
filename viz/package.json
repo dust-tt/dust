@@ -65,6 +65,7 @@
     "react-runner": "^1.0.5",
     "recharts": "2.15.4",
     "sonner": "^2.0.7",
+    "swr": "^2.4.1",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
     "tw-animate-css": "^1.3.6",
@@ -73,6 +74,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.1.0",
     "@types/node": "^24.12.2",
     "@types/papaparse": "^5.3.14",
     "@types/react": "^18.3.18",

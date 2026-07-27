@@ -1,6 +1,8 @@
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { createConversation } from "@app/lib/api/assistant/conversation";
-import type { Authenticator } from "@app/lib/auth";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -10,10 +12,14 @@ import {
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageStatus,
@@ -28,6 +34,53 @@ import type { SupportedContentFragmentType } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
 import type { Transaction } from "sequelize";
+
+async function authForConversationFetch(
+  auth: Authenticator,
+  t?: Transaction
+): Promise<Authenticator> {
+  if (auth.isUser()) {
+    return auth;
+  }
+
+  const user = auth.user();
+  if (!user) {
+    return auth;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const role = await MembershipResource.getActiveRoleForUserInWorkspace({
+    user,
+    workspace,
+    transaction: t,
+  });
+
+  if (role === "none") {
+    await MembershipFactory.associate(workspace, user, { role: "user" }, t);
+  }
+
+  return Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId, {
+    transaction: t,
+  });
+}
+
+async function resolveAgentConfigurationId(
+  auth: Authenticator,
+  agentConfigurationId: string,
+  t?: Transaction
+): Promise<string> {
+  const fetchAuth = await authForConversationFetch(auth, t);
+  const existing = await getAgentConfiguration(fetchAuth, {
+    agentId: agentConfigurationId,
+    variant: "extra_light",
+  });
+  if (existing) {
+    return agentConfigurationId;
+  }
+
+  const agent = await AgentConfigurationFactory.createTestAgent(fetchAuth);
+  return agent.sId;
+}
 
 export class ConversationFactory {
   static async create(
@@ -73,6 +126,11 @@ export class ConversationFactory {
       );
     }
 
+    const resolvedAgentConfigurationId =
+      messagesCreatedAt.length > 0
+        ? await resolveAgentConfigurationId(auth, agentConfigurationId, t)
+        : agentConfigurationId;
+
     // Note: fetchConversationParticipants rely on the existence of UserMessage even if we have a table for ConversationParticipant.
     for (let i = 0; i < messagesCreatedAt.length; i++) {
       const createdAt = messagesCreatedAt[i];
@@ -87,7 +145,7 @@ export class ConversationFactory {
       await createMessageAndAgentMessage({
         workspace,
         conversationModelId: conversation.id,
-        agentConfigurationId,
+        agentConfigurationId: resolvedAgentConfigurationId,
         createdAt,
         rank: i * 2 + 1,
         parentId: userMessageRow.id,
@@ -95,7 +153,16 @@ export class ConversationFactory {
       });
     }
 
-    return conversation;
+    const fetchAuth = await authForConversationFetch(auth, t);
+    const res = await getConversation(
+      fetchAuth,
+      conversation.sId,
+      visibility === "deleted"
+    );
+    if (res.isErr()) {
+      throw new Error(`Failed to fetch conversation: ${res.error.type}`);
+    }
+    return res.value;
   }
 
   static async setTriggerIdForTest(
@@ -179,7 +246,7 @@ export class ConversationFactory {
   }: {
     auth: Authenticator;
     workspace: WorkspaceType;
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType | ConversationResource;
     content: string;
     origin?: UserMessageOrigin;
     rank?: number;
@@ -359,7 +426,10 @@ export class ConversationFactory {
       mcpAction,
     }: {
       workspace: WorkspaceType;
-      conversation: ConversationType | ConversationWithoutContentType;
+      conversation:
+        | ConversationType
+        | ConversationWithoutContentType
+        | ConversationResource;
       agentConfig: LightAgentConfigurationType;
       mcpAction?: {
         toolConfiguration: LightServerSideMCPToolConfigurationType;

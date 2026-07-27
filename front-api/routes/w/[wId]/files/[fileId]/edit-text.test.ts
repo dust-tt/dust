@@ -1,3 +1,5 @@
+import { createConversation } from "@app/lib/api/assistant/conversation";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -137,11 +139,15 @@ describe("POST /api/w/:wId/files/:fileId/edit-text", () => {
     });
 
     const restrictedSpace = await SpaceFactory.regular(workspace);
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: "test-agent",
-      messagesCreatedAt: [new Date()],
-      requestedSpaceIds: [restrictedSpace.id],
+    const restrictedConversation = await createConversation(auth, {
+      title: "Restricted conversation",
+      visibility: "unlisted",
+      spaceId: null,
     });
+    await ConversationModel.update(
+      { requestedSpaceIds: [restrictedSpace.id] },
+      { where: { id: restrictedConversation.id } }
+    );
 
     const file = await FileFactory.create(auth, user, {
       contentType: "application/vnd.dust.frame",
@@ -149,7 +155,7 @@ describe("POST /api/w/:wId/files/:fileId/edit-text", () => {
       fileSize: 1024,
       status: "ready",
       useCase: "conversation",
-      useCaseMetadata: { conversationId: conversation.sId },
+      useCaseMetadata: { conversationId: restrictedConversation.sId },
     });
 
     const response = await postEdit(workspace, file.sId, {

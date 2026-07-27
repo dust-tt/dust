@@ -5,6 +5,10 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { resolveConversationFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
+  type AgentLoopRunContext,
+  isAgentLoopRunContext,
+} from "@app/lib/actions/types";
+import {
   getContentTypeFromOutputFormat,
   isBinaryFormat,
   isValidOutputType,
@@ -19,6 +23,7 @@ import { cacheWithRedis } from "@app/lib/utils/cache";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
+import assert from "assert";
 import ConvertAPI from "convertapi";
 import { marked } from "marked";
 
@@ -57,6 +62,15 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
     { file_id_or_url, source_format, output_format },
     { auth, runContext }
   ) => {
+    // This tool actually has 2 modes: you either pass an ID or an URL.
+    // We currently only support file IDs in an agent loop context.
+    const isInputUrl = validateUrl(file_id_or_url).valid;
+    let inputFileRunContext: AgentLoopRunContext | undefined;
+    if (!isInputUrl) {
+      assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+      inputFileRunContext = runContext;
+    }
+
     const convertAPIKey = config.getConvertAPIKey();
     const contentType = getContentTypeFromOutputFormat(output_format);
 
@@ -67,10 +81,12 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
     // legacy `fil_` id or a canonical scoped path (e.g. `conversation-{id}/x.csv`)
     // as returned by generate_file for text outputs. Resolve it to a signed URL
     // that ConvertAPI can fetch.
-    if (!validateUrl(file_id_or_url).valid) {
-      const refResult = await resolveConversationFileRef(auth, file_id_or_url, {
-        runContext,
-      });
+    if (!isInputUrl && inputFileRunContext) {
+      const refResult = await resolveConversationFileRef(
+        auth,
+        file_id_or_url,
+        inputFileRunContext
+      );
       if (refResult.isErr()) {
         return new Err(
           new MCPError(`File not found: ${file_id_or_url}`, {

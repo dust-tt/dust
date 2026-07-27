@@ -514,6 +514,25 @@ describe("streamErrorToErrorEvent", () => {
     expect(result.content.originalError).toBe(err);
   });
 
+  it("maps file download failures to server_error", () => {
+    const err = new APIError(
+      400,
+      {
+        type: "error",
+        error: {
+          type: "invalid_request_error",
+          message: "Unable to download the file. Please verify the URL.",
+        },
+      },
+      "Unable to download the file. Please verify the URL.",
+      undefined,
+      "invalid_request_error"
+    );
+    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
+      "server_error"
+    );
+  });
+
   it.each([
     [400, "invalid_request_error"],
     [422, "invalid_request_error"],

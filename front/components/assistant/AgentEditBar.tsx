@@ -1,9 +1,9 @@
 import { useBatchUpdateAgentTags } from "@app/lib/swr/assistants";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -20,6 +20,7 @@ import {
 import { useState } from "react";
 
 import { DeleteAssistantsDialog } from "./DeleteAssistantsDialog";
+import { SetModelAssistantsDialog } from "./SetModelAssistantsDialog";
 import { UnpublishAssistantsDialog } from "./UnpublishAssistantsDialog";
 
 type AgentEditBarProps = {
@@ -44,8 +45,11 @@ export const AgentEditBar = ({
     owner,
   });
 
+  const { hasPermission } = useWorkspacePermissions();
+  const canPublishAgents = hasPermission("publish", "agent");
+
   const filteredTags = tags
-    .filter((t) => isBuilder(owner) || t.kind !== "protected")
+    .filter((t) => canPublishAgents || t.kind !== "protected")
     .filter((a) => {
       return subFilter(tagSearch, a.name.toLowerCase());
     })
@@ -141,6 +145,11 @@ export const AgentEditBar = ({
             </DropdownMenuTagList>
           </DropdownMenuContent>
         </DropdownMenu>
+        <SetModelAssistantsDialog
+          owner={owner}
+          agentConfigurations={selectedAgents}
+          disabled={selectedAgents.length === 0 || isLoading}
+        />
         <UnpublishAssistantsDialog
           owner={owner}
           agentConfigurations={selectedAgents}

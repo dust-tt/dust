@@ -6,6 +6,7 @@ import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils_ui";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
 import type { AgentsUsageType } from "@app/types/data_source";
@@ -77,7 +78,6 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
 
 type SpaceCategoriesListProps = {
   isAdmin: boolean;
-  isBuilder: boolean;
   canWriteInSpace: boolean;
   onButtonClick?: () => void;
   onSelect: (category: string) => void;
@@ -87,7 +87,6 @@ type SpaceCategoriesListProps = {
 
 export const SpaceCategoriesList = ({
   isAdmin,
-  isBuilder,
   onButtonClick,
   canWriteInSpace,
   onSelect,
@@ -101,6 +100,8 @@ export const SpaceCategoriesList = ({
 
   const { user } = useAuth();
   const { hasFeature } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions();
+  const canAdministrateApps = hasPermission("admin", "dust_app");
   const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
 
   const [assistantId, setAssistantId] = React.useState<string | null>(null);
@@ -176,12 +177,14 @@ export const SpaceCategoriesList = ({
             icon={Globe01}
             label="Scrape a website"
           />
-          <DropdownMenuItem
-            disabled={!isBuilder || !canWriteInSpace}
-            href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps?modal=apps`}
-            icon={Terminal}
-            label="Create a Dust App"
-          />
+          {hasFeature("legacy_dust_apps") && (
+            <DropdownMenuItem
+              disabled={!canAdministrateApps || !canWriteInSpace}
+              href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps?modal=apps`}
+              icon={Terminal}
+              label="Create a Dust App"
+            />
+          )}
           <DropdownMenuItem
             disabled={!isAdmin}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/actions?modal=tools`}

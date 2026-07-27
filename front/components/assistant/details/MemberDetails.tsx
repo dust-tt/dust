@@ -35,7 +35,7 @@ const formatDate = (dateString: string | null) => {
 
 const getRoleBadgeColor = (
   role: RoleType
-): "info" | "warning" | "success" | "primary" => {
+): "info" | "warning" | "success" | "primary" | "highlight" => {
   if (role === "none") {
     return "primary";
   }

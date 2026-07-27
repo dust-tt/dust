@@ -25,6 +25,7 @@ import {
   useMyUsage,
   useSeatPlan,
 } from "@app/lib/swr/credits";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   usePatchUser,
   usePendingInvitations,
@@ -216,7 +217,9 @@ interface UsageSectionProps {
 }
 
 function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
-  const { isAdmin, isManager, subscription } = useAuth();
+  const { isManager, subscription } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
+  const canAccessBilling = hasPermission("admin", "billing");
 
   const isCreditBased = isCreditPricedPlan(subscription.plan);
 
@@ -327,7 +330,7 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
         visible={visible}
       />
 
-      {isAdmin && (
+      {canAccessBilling && (
         <section className="flex items-center justify-between border-b border-border dark:border-border-dark pb-4">
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-semibold text-foreground">

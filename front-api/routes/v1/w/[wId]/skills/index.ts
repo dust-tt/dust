@@ -63,7 +63,7 @@ const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
  *       - in: query
  *         name: availability
  *         required: false
- *         description: Filter skills by availability. Repeatable to match several values. Unpublished (editors) skills are only returned to admin API keys.
+ *         description: Filter skills by availability. Repeatable to match several values. Unpublished (editors) skills are only returned when bypassEditorVisibility is set.
  *         schema:
  *           type: array
  *           items:
@@ -71,6 +71,12 @@ const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
  *             enum: [editors, workspace_users, users_and_agents]
  *         style: form
  *         explode: true
+ *       - in: query
+ *         name: bypassEditorVisibility
+ *         required: false
+ *         description: When true, also return unpublished (editors) skills. Requires an admin API key.
+ *         schema:
+ *           type: boolean
  *     responses:
  *       200:
  *         description: Skills available in the workspace.
@@ -191,16 +197,30 @@ app.get(
         ? availabilityValidation.data
         : undefined;
 
+    const bypassEditorVisibility =
+      ctx.req.query("bypassEditorVisibility") === "true";
+
+    // Only admin keys may bypass editor visibility to list unpublished skills (e.g. for
+    // exporting all workspace skills).
+    if (bypassEditorVisibility && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only admins can bypass editor visibility.",
+        },
+      });
+    }
+
     const allSkills = await SkillResource.listByWorkspace(auth, {
       status,
       onlyCustom: true,
       availability,
     });
 
-    // Unpublished (editors-only) skills are drafts: API keys have no editor-group
-    // membership to scope them by, so they are only exposed to admin keys (e.g. for
-    // exporting all workspace skills).
-    const skills = auth.isAdmin()
+    // API keys have no editor-group membership to scope them by, so they can't see
+    // editor restricted skills unless editor visibility is explicitly bypassed.
+    const skills = bypassEditorVisibility
       ? allSkills
       : allSkills.filter((skill) => skill.availability !== "editors");
 

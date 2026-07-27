@@ -4,7 +4,7 @@ import {
   getAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
-import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
+import { fetchPrecedingContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { cleanupDeniedBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
@@ -95,7 +95,10 @@ import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import {
+  ConversationResource,
+  type RunningAgentMessageContext,
+} from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -132,9 +135,7 @@ import type {
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
   CitationType,
-  CompactionMessageType,
   ConversationMetadata,
-  ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
   MessageVisibility,
@@ -146,7 +147,6 @@ import type {
 import {
   ConversationError,
   isAgentMessageType,
-  isCompactionMessageType,
   isPodConversation,
   isUserMessageType,
   UNRESUMABLE_AGENT_MESSAGE_STATUSES,
@@ -162,7 +162,6 @@ import type {
   ContentFragmentContextType,
   ContentFragmentType,
 } from "@app/types/content_fragment";
-import { isContentFragmentType } from "@app/types/content_fragment";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -171,9 +170,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import assert from "assert";
 import type { IncomingHttpHeaders } from "http";
-import uniq from "lodash/uniq";
 import { col } from "sequelize";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
@@ -230,8 +227,7 @@ export async function createConversation(
     spaceId: ModelId | null;
     metadata?: ConversationMetadata;
   }
-): Promise<ConversationType> {
-  const owner = auth.getNonNullableWorkspace();
+): Promise<ConversationResource> {
   let space: SpaceResource | null = null;
 
   if (spaceId) {
@@ -267,27 +263,7 @@ export async function createConversation(
     });
   }
 
-  return {
-    id: conversation.id,
-    owner,
-    created: conversation.createdAt.getTime(),
-    updated: conversation.updatedAt.getTime(),
-    sId: conversation.sId,
-    title: conversation.title,
-    depth: conversation.depth,
-    content: [],
-    lastReadMs: Date.now(),
-    unread: false,
-    actionRequired: false,
-    hasError: false,
-    visibility: conversation.visibility,
-    requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
-    spaceId: space?.sId ?? null,
-    triggerId: conversation.triggerSId,
-    metadata: conversation.metadata,
-    branchId: null,
-    isRunningAgentLoop: conversation.isRunningAgentLoop,
-  };
+  return conversation;
 }
 
 /**
@@ -546,7 +522,8 @@ export function isUserMessageContextValid(
 export async function postUserMessage(
   auth: Authenticator,
   {
-    conversation,
+    conversationResource,
+    branchId: initialBranchId = null,
     content,
     mentions,
     context,
@@ -556,7 +533,8 @@ export async function postUserMessage(
     doNotAssociateUser,
     modelSelection,
   }: {
-    conversation: ConversationType;
+    conversationResource: ConversationResource;
+    branchId?: string | null;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
@@ -580,7 +558,12 @@ export async function postUserMessage(
   const subscription = auth.subscription();
   const plan = subscription?.plan;
 
-  if (!owner || owner.id !== conversation.owner.id || !subscription || !plan) {
+  const conversation: ConversationWithoutContentType = {
+    ...conversationResource.toJSON(),
+    branchId: initialBranchId,
+  };
+
+  if (!owner || !subscription || !plan) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -634,12 +617,10 @@ export async function postUserMessage(
     (context.origin === "web" || context.origin === "extension")
   ) {
     const hasOtherHumans =
-      uniq(
-        conversation.content
-          .map((versions) => versions[versions.length - 1])
-          .filter(isUserMessageType)
-          .filter((m) => m.user?.sId && m.user.sId !== auth.user()?.sId)
-      ).length >= 1;
+      await conversationResource.hasUserMessageFromOtherUser(auth, {
+        excludeUserId: user?.id,
+        branchId: conversation.branchId,
+      });
 
     if (!hasOtherHumans) {
       const dustAgent = await getAgentConfiguration(auth, {
@@ -677,12 +658,10 @@ export async function postUserMessage(
   // we don't currently re-check the existence of a compaction message inside the critical section
   // below which means an agent loop could be triggered whle a compaction is running. This is not
   // that problematic if it happens (agent message after the compaction message).
-  const runningCompactionMessage = conversation.content
-    .flat()
-    .find(
-      (m): m is CompactionMessageType =>
-        isCompactionMessageType(m) && m.status === "created"
-    );
+  const { runningAgentMessage: runningAgentContext, runningCompactionMessage } =
+    await conversationResource.getInFlightMessages(auth, {
+      branchId: conversation.branchId,
+    });
   if (runningCompactionMessage) {
     return new Err({
       status_code: 409,
@@ -702,12 +681,8 @@ export async function postUserMessage(
     return canInteractRes;
   }
 
-  let runningAgentMessage = conversation.content
-    .flat()
-    .find(
-      (m): m is AgentMessageType =>
-        isAgentMessageType(m) && m.status === "created"
-    );
+  let runningAgentMessage: RunningAgentMessageContext | undefined =
+    runningAgentContext ?? undefined;
 
   // Steering invariants: enforce single agent loop per conversation.
   if (explicitAgentMentions.length > 1) {
@@ -729,7 +704,7 @@ export async function postUserMessage(
     runningAgentMessage &&
     explicitAgentMentions.length > 0 &&
     explicitAgentMentions[0].configurationId !==
-      runningAgentMessage.configuration.sId &&
+      runningAgentMessage.agentConfigurationId &&
     !isHandover
   ) {
     return new Err({
@@ -866,21 +841,20 @@ export async function postUserMessage(
           "Message has user mentions, for now we do not support branching with user mentions."
         );
       } else {
-        const latestMessages = removeNulls(
-          conversation.content.map((versions) => versions.at(-1))
-        );
+        const branchContext =
+          await conversationResource.getBranchCreationContext(auth, {
+            branchId: conversation.branchId,
+            transaction: t,
+          });
         const shouldCreateAnchorMessage =
-          latestMessages.length === 0 ||
-          latestMessages.every(isContentFragmentType);
+          branchContext.isEmpty || branchContext.onlyContentFragments;
 
         if (shouldCreateAnchorMessage) {
           // Create an invisible anchor message so the branch has a previousMessageId
           // to reference. If the conversation only contains content fragments, keep
           // them before the anchor so they remain attached to the branch context.
           const anchorMessageRank =
-            latestMessages.length > 0
-              ? Math.max(...latestMessages.map((m) => m.rank)) + 1
-              : 0;
+            branchContext.maxRank !== null ? branchContext.maxRank + 1 : 0;
           const anchorMessage = await createUserMessage(auth, {
             conversation,
             content: "",
@@ -911,8 +885,7 @@ export async function postUserMessage(
           conversation.branchId = branch.sId;
           nextMessageRank = anchorMessageRank + 1;
         } else {
-          // Get the last message in the conversation.
-          const previousMessage = latestMessages.at(-1);
+          const previousMessage = branchContext.lastMessage;
           if (!previousMessage) {
             logger.error(
               "Last message in conversation has no content, cannot create branch."
@@ -1070,14 +1043,7 @@ export async function postUserMessage(
   // If a user is mentioned, we want to make sure the conversation has a title.
   // This ensures that mentioned users receive a notification with a conversation title.
   if (mentions.some(isUserMention)) {
-    await ensureConversationTitle(auth, {
-      conversation,
-      userMessage: {
-        ...userMessage,
-        richMentions: [],
-        mentions: [],
-      },
-    });
+    await ensureConversationTitle(auth, { conversation });
   }
 
   await triggerConversationUnreadNotifications(auth, {
@@ -1087,7 +1053,7 @@ export async function postUserMessage(
 
   void ServerSideTracking.trackUserMessage({
     userMessage,
-    workspace: conversation.owner,
+    workspace: owner,
     userId: user ? `user-${user.id}` : `api-${context.username}`,
     conversationId: conversation.sId,
     agentMessages,
@@ -1108,7 +1074,7 @@ export async function postUserMessage(
       auth,
       action: "agent.executed",
       targets: [
-        buildAuditLogTarget("workspace", conversation.owner),
+        buildAuditLogTarget("workspace", owner),
         buildAuditLogTarget("agent", agentMessage.configuration),
       ],
       metadata: {
@@ -1151,7 +1117,11 @@ export async function postUserMessage(
       conversation,
       {
         ...userMessage,
-        contentFragments: getRelatedContentFragments(conversation, userMessage),
+        contentFragments: await fetchPrecedingContentFragments(auth, {
+          conversationResource,
+          targetRank: userMessage.rank,
+          branchId: conversation.branchId,
+        }),
       },
       agentMessages
     ),
@@ -1160,7 +1130,6 @@ export async function postUserMessage(
     userMessage.rank >= 3
       ? ensureConversationTitle(auth, {
           conversation,
-          userMessage,
         })
       : Promise.resolve(undefined),
   ]);
@@ -1201,13 +1170,15 @@ class UserMessageError extends Error {}
 export async function editUserMessage(
   auth: Authenticator,
   {
-    conversation,
+    conversationResource,
+    branchId: initialBranchId = null,
     message,
     content,
     mentions,
     skipToolsValidation,
   }: {
-    conversation: ConversationType;
+    conversationResource: ConversationResource;
+    branchId?: string | null;
     message: UserMessageType;
     content: string;
     mentions: MentionType[];
@@ -1222,7 +1193,7 @@ export async function editUserMessage(
   const user = auth.user();
   const owner = auth.workspace();
 
-  if (!owner || owner.id !== conversation.owner.id) {
+  if (!owner) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -1241,6 +1212,11 @@ export async function editUserMessage(
       },
     });
   }
+
+  const conversation: ConversationWithoutContentType = {
+    ...conversationResource.toJSON(),
+    branchId: initialBranchId,
+  };
 
   const canInteractRes = await WakeUpResource.canUserInteract(
     auth,
@@ -1374,16 +1350,11 @@ export async function editUserMessage(
       const hasAgentMentions = mentions.some(isAgentMention);
 
       if (hasAgentMentions) {
-        // Check if there are any agent messages after the edited user message
-        // by checking conversation.content (which is indexed by rank)
-        const hasAgentMessagesAfter = conversation.content
-          .slice(messageRow.rank + 1)
-          .some((versions) => {
-            if (versions.length === 0) {
-              return false;
-            }
-            const latestVersion = versions[versions.length - 1];
-            return isAgentMessageType(latestVersion);
+        const hasAgentMessagesAfter =
+          await conversationResource.hasAgentMessageAfterRank(auth, {
+            afterRank: messageRow.rank,
+            branchId: conversation.branchId,
+            transaction: t,
           });
 
         const agentMessages: AgentMessageType[] = [];
@@ -1483,7 +1454,11 @@ export async function editUserMessage(
     conversation,
     {
       ...userMessage,
-      contentFragments: getRelatedContentFragments(conversation, userMessage),
+      contentFragments: await fetchPrecedingContentFragments(auth, {
+        conversationResource,
+        targetRank: userMessage.rank,
+        branchId: conversation.branchId,
+      }),
     },
     agentMessages
   );
@@ -1550,7 +1525,7 @@ export async function createAgentMessageFromText(
     skipToolsValidation = true,
     citationsAndFilesFromOutputItems,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     parentId: ModelId;
     rank: number;
     content: string;
@@ -1775,23 +1750,67 @@ export async function createAgentMessageFromText(
 export async function retryAgentMessage(
   auth: Authenticator,
   {
-    conversation,
+    conversationResource,
+    branchId: initialBranchId = null,
     message,
   }: {
-    conversation: ConversationType;
+    conversationResource: ConversationResource;
+    branchId?: string | null;
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithContentfulStatusCode>> {
-  // Find the parent user message to get the original context for rate limiting.
-  // This ensures retries are counted with the same origin (web vs programmatic) as the original.
-  const parentUserMessage = conversation.content
-    .flat()
-    .find(
-      (m): m is UserMessageType =>
-        isUserMessageType(m) && m.sId === message.parentMessageId
-    );
+  const conversation: ConversationWithoutContentType = {
+    ...conversationResource.toJSON(),
+    branchId: initialBranchId,
+  };
 
-  if (!parentUserMessage) {
+  const parentMessageRes = await conversationResource.getMessageById(
+    auth,
+    message.parentMessageId
+  );
+  if (parentMessageRes.isErr() || !parentMessageRes.value.userMessage) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Could not find the parent user message for this retry.",
+      },
+    });
+  }
+
+  const latestParentMessageModel =
+    await conversationResource.getLatestUserMessageModelAtRank(auth, {
+      rank: parentMessageRes.value.rank,
+      branchId: message.branchId,
+    });
+  if (!latestParentMessageModel) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Could not find the parent user message for this retry.",
+      },
+    });
+  }
+
+  const parentUserMessageRenderRes = await batchRenderMessages(
+    auth,
+    conversationResource,
+    [latestParentMessageModel],
+    "full"
+  );
+  if (parentUserMessageRenderRes.isErr()) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Could not find the parent user message for this retry.",
+      },
+    });
+  }
+
+  const parentUserMessage = parentUserMessageRenderRes.value[0];
+  if (!parentUserMessage || !isUserMessageType(parentUserMessage)) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -1944,34 +1963,6 @@ export async function retryAgentMessage(
 
   const { agentMessage } = agentMessageResult;
 
-  // First, find the array of the parent message in conversation.content.
-  const parentMessageIndex = conversation.content.findIndex((messages) => {
-    return messages.some((m) => m.sId === agentMessage.parentMessageId);
-  });
-  if (parentMessageIndex === -1) {
-    throw new Error(
-      `Parent message ${agentMessage.parentMessageId} not found in conversation`
-    );
-  }
-
-  const userMessage =
-    conversation.content[parentMessageIndex][
-      conversation.content[parentMessageIndex].length - 1
-    ];
-  if (!isUserMessageType(userMessage)) {
-    throw new Error("Unreachable: parent message must be a user message");
-  }
-
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentMessage.configuration.sId,
-    variant: "light",
-  });
-
-  assert(
-    agentConfiguration,
-    "Unreachable: could not find detailed configuration for agent"
-  );
-
   void launchAgentLoopWorkflow({
     auth,
     agentLoopArgs: {
@@ -1980,9 +1971,9 @@ export async function retryAgentMessage(
       conversationId: conversation.sId,
       conversationTitle: conversation.title,
       conversationBranchId: conversation.branchId,
-      userMessageId: userMessage.sId,
-      userMessageVersion: userMessage.version,
-      userMessageOrigin: userMessage.context.origin,
+      userMessageId: parentUserMessage.sId,
+      userMessageVersion: parentUserMessage.version,
+      userMessageOrigin: parentUserMessage.context.origin,
     },
     startStep: 0,
   });
@@ -2193,42 +2184,6 @@ export async function postNewContentFragment(
 }
 
 /**
- * Returns the agent replies that follow `userMessage` in the conversation and would be orphaned
- * by soft-deleting it. These are agent messages at subsequent ranks up to (but not including) the
- * next non-agent rank. Already-deleted agent messages are skipped.
- *
- * Invariant: agent replies are immediately contiguous to the user message they respond to (no
- * compaction, content fragment, or another user message inserted in between). If that ever
- * changes, this walk will stop short and leave orphans that re-introduce the trailing-assistant
- * bug this cascade is meant to fix.
- *
- * New conversations are capped at one mention per user message (enforced in postUserMessage) so
- * in practice there's at most one, but legacy conversations can have multiple agent replies in a
- * single turn, which is why the return type is an array.
- */
-function getAgentRepliesToCascadeOnUserDelete(
-  conversation: ConversationType,
-  userMessage: UserMessageType
-): AgentMessageType[] {
-  const orphans: AgentMessageType[] = [];
-  let sawUserMessage = false;
-  for (const versions of conversation.content) {
-    const latest = versions[versions.length - 1];
-    if (!sawUserMessage) {
-      sawUserMessage = latest.sId === userMessage.sId;
-      continue;
-    }
-    if (!isAgentMessageType(latest)) {
-      break;
-    }
-    if (latest.visibility !== "deleted") {
-      orphans.push(latest);
-    }
-  }
-  return orphans;
-}
-
-/**
  * Soft-delete a user message and the agent replies that followed it.
  *
  * Both deletions are represented as new v+1 `messages` rows with `visibility: "deleted"` rather
@@ -2245,15 +2200,22 @@ export async function softDeleteUserMessageAndReplies(
   auth: Authenticator,
   {
     message,
-    conversation,
+    conversationResource,
+    branchId: initialBranchId = null,
   }: {
     message: UserMessageType;
-    conversation: ConversationType;
+    conversationResource: ConversationResource;
+    branchId?: string | null;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
   if (message.visibility === "deleted") {
     return new Ok({ success: true });
   }
+
+  const conversation: ConversationWithoutContentType = {
+    ...conversationResource.toJSON(),
+    branchId: initialBranchId,
+  };
 
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
@@ -2263,22 +2225,45 @@ export async function softDeleteUserMessageAndReplies(
     return new Err(new ConversationError("message_deletion_not_authorized"));
   }
 
-  // Known small race: this snapshot of `conversation.content` is taken before the rank lock
-  // below. A concurrent retry/edit that takes the lock first and writes a v+1 at the same rank
-  // could cause the cascade insert to hit the (rank, version) unique constraint.
-  const orphanAgentMessages = getAgentRepliesToCascadeOnUserDelete(
-    conversation,
-    message
+  const branchId = message.branchId ?? initialBranchId;
+
+  // Known small race: this snapshot is taken before the rank lock below. A concurrent retry/edit
+  // that takes the lock first and writes a v+1 at the same rank could cause the cascade insert to
+  // hit the (rank, version) unique constraint.
+  const orphanAgentMessageModels =
+    await conversationResource.getConsecutiveAgentReplyModelsAfterRank(auth, {
+      afterRank: message.rank,
+      branchId,
+    });
+
+  const orphanModelsToCascade = orphanAgentMessageModels.filter(
+    (m) => m.visibility !== "deleted"
   );
+
+  let orphanAgentMessages: AgentMessageType[] = [];
+  if (orphanModelsToCascade.length > 0) {
+    const orphanRenderRes = await batchRenderMessages(
+      auth,
+      conversationResource,
+      orphanModelsToCascade,
+      "full"
+    );
+    if (orphanRenderRes.isErr()) {
+      throw new Error("Failed to render agent replies to cascade on delete");
+    }
+    orphanAgentMessages = orphanRenderRes.value.filter(isAgentMessageType);
+  }
 
   const cascadedAgentMessages: AgentMessageType[] = [];
   const userMessage = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    const relatedContentFragments = getRelatedContentFragments(
-      conversation,
-      message
-    );
+    const relatedContentFragments = await fetchPrecedingContentFragments(auth, {
+      conversationResource,
+      targetRank: message.rank,
+      branchId,
+      transaction: t,
+    });
 
     const userMessage = await createUserMessage(auth, {
       conversation,
@@ -2376,7 +2361,7 @@ export async function softDeleteAgentMessage(
     conversation,
   }: {
     message: AgentMessageType;
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
   if (message.visibility === "deleted") {

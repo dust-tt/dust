@@ -1,3 +1,4 @@
+import { activationNewConversationWorkflow } from "@app/lib/notifications/workflows/activation-new-conversation";
 import { agentMessageFeedbackWorkflow } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { agentSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import { balanceThresholdReachedWorkflow } from "@app/lib/notifications/workflows/balance-threshold-reached";
@@ -67,6 +68,7 @@ const options: ServeHandlerOptions = {
     agentSuggestionsReadyWorkflow,
     skillSuggestionsReadyWorkflow,
     podAddedAsMemberWorkflow,
+    activationNewConversationWorkflow,
     providerCredentialsHealthUpdatedWorkflow,
     userAwuCapReachedWorkflow,
     balanceThresholdReachedWorkflow,

@@ -20,9 +20,8 @@ import {
    and only the newest thing on the page is ever fully expanded.
 
    LEVEL is set by the agent from pod state each interaction:
-     "day1"  — pod intro + how-it-works timeline + "your first
-               idea is waiting in the chat". Nothing else exists,
-               so nothing else renders.
+     "day1"  — pod intro + how-it-works timeline. Nothing else
+               exists, so nothing else renders.
      "grown" — greeting + the latest result (expanded) + any
                collapsed Running/Earlier rows + exactly one Next
                idea + how-it-works decayed to a collapsed row.
@@ -186,12 +185,6 @@ function DayOneView() {
       </Reveal>
 
       <HowItWorksTimeline />
-
-      <Reveal i={HOW_IT_WORKS.length + 2}>
-        <p className="text-center text-sm text-muted-foreground">
-          Your first idea is waiting in the chat, right next to this page.
-        </p>
-      </Reveal>
     </div>
   );
 }
@@ -422,9 +415,6 @@ function BannerDay1() {
           );
         })}
       </div>
-      <p className="mt-auto text-xs text-muted-foreground">
-        Your first idea is waiting in the chat.
-      </p>
     </div>
   );
 }

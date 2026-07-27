@@ -86,7 +86,14 @@ app.post(
     const { emails: rawEmails } = ctx.req.valid("json");
 
     const workspace = auth.getNonNullableWorkspace();
-    if (workspace.sharingPolicy === "workspace_only") {
+
+    const externalSharingDisabledByPolicy =
+      workspace.sharingPolicy === "workspace_only";
+    const canInviteExternal =
+      !externalSharingDisabledByPolicy &&
+      (await auth.hasWorkspacePermission("invite", "frame"));
+
+    if (!canInviteExternal) {
       const emails = rawEmails.map((e) => e.toLowerCase());
       const users = await UserResource.fetchByEmails(emails);
 
@@ -109,8 +116,9 @@ app.post(
           status_code: 403,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "Only workspace members can be invited when external sharing is disabled.",
+            message: externalSharingDisabledByPolicy
+              ? "Only workspace members can be invited when external sharing is disabled."
+              : "You do not have permission to invite people outside the workspace. Only workspace members can be invited.",
           },
         });
       }
