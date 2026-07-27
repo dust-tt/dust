@@ -2447,6 +2447,10 @@ export class GroupResource extends BaseResource<GroupModel> {
           roles: [
             { role: "admin", permissions: ["read", "admin"] },
             {
+              role: "manager",
+              permissions: ["read"],
+            },
+            {
               role: "user",
               permissions: ["read"],
             },
