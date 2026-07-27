@@ -40,7 +40,7 @@ import {
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, HeaderContext } from "@tanstack/react-table";
 import type { ComponentType, ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -61,7 +61,6 @@ type RowData = {
   agentTags: TagType[];
   agentTagsAsString: string;
   action?: ReactNode;
-  isSelected: boolean;
   canArchive: boolean;
 };
 
@@ -74,11 +73,13 @@ const getTableColumns = ({
   owner,
   tags,
   isBatchEdit,
+  hasSelection,
   mutateAgentConfigurations,
 }: {
   owner: WorkspaceType;
   tags: TagType[];
   isBatchEdit: boolean;
+  hasSelection: boolean;
   mutateAgentConfigurations: () => Promise<any>;
 }) => {
   /**
@@ -99,23 +100,58 @@ const getTableColumns = ({
     ...(isBatchEdit
       ? [
           {
-            header: "",
+            header: (info: HeaderContext<RowData, boolean>) => {
+              const areAllPageRowsSelected =
+                info.table.getIsAllPageRowsSelected();
+
+              return (
+                <Checkbox
+                  checked={
+                    areAllPageRowsSelected
+                      ? true
+                      : hasSelection
+                        ? "partial"
+                        : false
+                  }
+                  disabled={
+                    !info.table
+                      .getRowModel()
+                      .rows.some((row) => row.getCanSelect())
+                  }
+                  tooltip={
+                    areAllPageRowsSelected
+                      ? "Clear selection"
+                      : "Select all on page"
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      info.table.toggleAllPageRowsSelected(true);
+                    } else {
+                      // Unticking clears the whole selection across pages.
+                      info.table.resetRowSelection();
+                    }
+                  }}
+                />
+              );
+            },
             accessorKey: "select",
             cell: (info: CellContext<RowData, boolean>) => (
               <DataTable.CellContent
                 disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
               >
                 <Checkbox
-                  checked={info.row.original.isSelected}
-                  disabled={!info.row.original.canArchive}
+                  checked={info.row.getIsSelected()}
+                  disabled={!info.row.getCanSelect()}
                 />
               </DataTable.CellContent>
             ),
             meta: {
               className: "w-10",
-              tooltip: "Select",
             },
-            sortable: false,
+            enableSorting: false,
           },
         ]
       : []),
@@ -384,6 +420,13 @@ export function AssistantsTable({
   const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
 
+  // The selection lives in the table state (and not in the rows) so that
+  // selecting an agent does not change the rows, which would reset pagination.
+  const rowSelection = useMemo(
+    () => Object.fromEntries(selection.map((agentId) => [agentId, true])),
+    [selection]
+  );
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(
     () =>
@@ -419,7 +462,6 @@ export function AssistantsTable({
             agentConfiguration.tags.length > 0
               ? agentConfiguration.tags.map((t) => t.name).join(", ")
               : "",
-          isSelected: selection.includes(agentConfiguration.sId),
           canArchive,
           action:
             agentConfiguration.scope === "global" ? (
@@ -433,19 +475,13 @@ export function AssistantsTable({
                 }
               />
             ) : undefined,
-          onClick: () => {
-            if (isBatchEdit) {
-              if (canArchive) {
-                setSelection(
-                  selection.includes(agentConfiguration.sId)
-                    ? selection.filter((s) => s !== agentConfiguration.sId)
-                    : [...selection, agentConfiguration.sId]
-                );
-              }
-            } else {
-              setDetailedAgentId(agentConfiguration.sId);
-            }
-          },
+          // In batch edit, row clicks toggle the selection, which the table
+          // handles through `enableRowSelection`.
+          onClick: isBatchEdit
+            ? undefined
+            : () => {
+                setDetailedAgentId(agentConfiguration.sId);
+              },
           menuItems:
             agentConfiguration.scope !== "global" &&
             agentConfiguration.status !== "archived"
@@ -532,8 +568,6 @@ export function AssistantsTable({
       setDetailedAgentId,
       setShowDisabledFreeWorkspacePopup,
       showDisabledFreeWorkspacePopup,
-      selection,
-      setSelection,
       isBatchEdit,
       isDark,
     ]
@@ -561,10 +595,23 @@ export function AssistantsTable({
               owner,
               tags: sortedTags,
               isBatchEdit,
+              hasSelection: selection.length > 0,
               mutateAgentConfigurations,
             })}
             pagination={pagination}
             setPagination={setPagination}
+            getRowId={(row) => row.sId}
+            enableRowSelection={
+              isBatchEdit ? (row) => row.original.canArchive : false
+            }
+            rowSelection={rowSelection}
+            setRowSelection={(newRowSelection) => {
+              setSelection(
+                Object.keys(newRowSelection).filter(
+                  (agentId) => newRowSelection[agentId]
+                )
+              );
+            }}
           />
         )}
       </div>
