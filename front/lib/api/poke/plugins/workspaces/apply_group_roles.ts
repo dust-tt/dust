@@ -1,23 +1,50 @@
 import { createPlugin } from "@app/lib/api/poke/types";
+import { hasFeatureFlag } from "@app/lib/auth";
 import {
   ADMIN_GROUP_NAME,
   BUILDER_GROUP_NAME,
   GroupResource,
+  MANAGER_GROUP_NAME,
 } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { ActiveRoleType } from "@app/types/user";
+
+function determineExpectedRoleFromGroups(
+  userModelId: ModelId,
+  provisioningGroupMembers: {
+    adminUserIds: Set<ModelId>;
+    managerUserIds: Set<ModelId>;
+    builderUserIds: Set<ModelId>;
+  }
+): ActiveRoleType {
+  const { adminUserIds, managerUserIds, builderUserIds } =
+    provisioningGroupMembers;
+
+  if (adminUserIds.has(userModelId)) {
+    return "admin";
+  }
+  if (managerUserIds.has(userModelId)) {
+    return "manager";
+  }
+  if (builderUserIds.has(userModelId)) {
+    return "builder";
+  }
+  return "user";
+}
 
 export const applyGroupRoles = createPlugin({
   manifest: {
     id: "apply-roles-from-groups",
     name: "Apply group roles",
     description:
-      "Force resync roles using dust-admins and dust-builders groups",
+      "Force resync roles using dust-admins, dust-managers and dust-builders groups",
     resourceTypes: ["workspaces"],
     warning:
-      "This action will override the existing membership roles based on the dust-admins and dust-builders groups. " +
+      "This action will override the existing membership roles based on the dust-admins, dust-managers and dust-builders groups. " +
       "Make sure the user is aware of this and does not want to keep the roles assigned manually.",
     args: {},
     requiredRoles: ["engineering"],
@@ -46,6 +73,14 @@ export const applyGroupRoles = createPlugin({
       });
     }
 
+    const isManagerProvisioningEnabled = await hasFeatureFlag(
+      auth,
+      "admin_governance"
+    );
+    const [managerGroup] = isManagerProvisioningEnabled
+      ? provisioningGroups.filter((g) => g.name === MANAGER_GROUP_NAME)
+      : [];
+
     const [builderGroup] = provisioningGroups.filter(
       (g) => g.name === BUILDER_GROUP_NAME
     );
@@ -62,11 +97,16 @@ export const applyGroupRoles = createPlugin({
     const membershipsByProvisioningGroup =
       await GroupResource.getActiveMembershipsForGroups(
         auth,
-        removeNulls([adminGroup, builderGroup])
+        removeNulls([adminGroup, managerGroup, builderGroup])
       );
 
     const adminUserIds = new Set(
       membershipsByProvisioningGroup[adminGroup.id] ?? []
+    );
+    const managerUserIds = new Set(
+      managerGroup
+        ? (membershipsByProvisioningGroup[managerGroup.id] ?? [])
+        : []
     );
     const builderUserIds = new Set(
       builderGroup
@@ -85,11 +125,11 @@ export const applyGroupRoles = createPlugin({
       }
 
       const currentRole = membership.role;
-      const expectedRole = adminUserIds.has(user.id)
-        ? "admin"
-        : builderUserIds.has(user.id)
-          ? "builder"
-          : "user";
+      const expectedRole = determineExpectedRoleFromGroups(user.id, {
+        adminUserIds,
+        managerUserIds,
+        builderUserIds,
+      });
 
       if (currentRole !== expectedRole) {
         const updateResult = await MembershipResource.updateMembershipRole({

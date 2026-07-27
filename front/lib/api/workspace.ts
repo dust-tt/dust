@@ -803,6 +803,7 @@ export type GetWorkspaceVerifiedDomainsResponseBody = {
 
 export type GetProvisioningStatusResponseBody = {
   hasAdminGroup: boolean;
+  hasManagerGroup: boolean;
   hasBuilderGroup: boolean;
 };
 

@@ -67,3 +67,11 @@ export function getRoleDescription(
   }
   return ROLES_DATA[role].description;
 }
+
+export function getRoleProvisioningGroupsLabel(
+  isAdminGovernanceEnabled: boolean
+): string {
+  return isAdminGovernanceEnabled
+    ? "dust-admins, dust-managers and dust-builders groups"
+    : "dust-admins and dust-builders groups";
+}

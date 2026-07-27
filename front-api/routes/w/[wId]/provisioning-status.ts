@@ -3,6 +3,7 @@ import {
   ADMIN_GROUP_NAME,
   BUILDER_GROUP_NAME,
   GroupResource,
+  MANAGER_GROUP_NAME,
 } from "@app/lib/resources/group_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -19,6 +20,7 @@ app.get("/", async (ctx): HandlerResult<GetProvisioningStatusResponseBody> => {
 
   return ctx.json({
     hasAdminGroup: groups.some((g) => g.name === ADMIN_GROUP_NAME),
+    hasManagerGroup: groups.some((g) => g.name === MANAGER_GROUP_NAME),
     hasBuilderGroup: groups.some((g) => g.name === BUILDER_GROUP_NAME),
   });
 });
