@@ -20,7 +20,7 @@ export function SandboxFunctionPublishValidationDetails({
           <dt className="text-xs font-medium text-muted-foreground">
             Function
           </dt>
-          <dd className="break-words text-sm font-medium text-foreground">
+          <dd className="wrap-break-word text-sm font-medium text-foreground">
             {input.slug}
           </dd>
         </div>
@@ -28,7 +28,7 @@ export function SandboxFunctionPublishValidationDetails({
           <dt className="text-xs font-medium text-muted-foreground">
             Description
           </dt>
-          <dd className="whitespace-pre-wrap break-words text-sm text-foreground">
+          <dd className="whitespace-pre-wrap wrap-break-word text-sm text-foreground">
             {input.description}
           </dd>
         </div>
