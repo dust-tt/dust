@@ -6,47 +6,45 @@ import type { GetPreparePaymentResponseBody } from "@app/types/api/checkout/prep
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/subscriptions/checkout/prepare-payment.
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get("/", async (ctx): HandlerResult<GetPreparePaymentResponseBody> => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
+  async (ctx): HandlerResult<GetPreparePaymentResponseBody> => {
+    const auth = ctx.get("auth");
 
-  if (!(await auth.hasWorkspacePermission("admin", "billing"))) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "You need billing access to manage billing settings, invoices, and payment methods.",
-      },
-    });
+    const setup_session_id = ctx.req.query("setup_session_id");
+    if (!isString(setup_session_id)) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Missing or invalid setup_session_id query parameter.",
+        },
+      });
+    }
+
+    // Prevent HTTP caching as session status can change on every call.
+    ctx.header("Cache-Control", "no-store");
+
+    const result = await getPreparePaymentData(auth, setup_session_id);
+    if (result.isErr()) {
+      return mapPreparePaymentError(ctx, result.error);
+    }
+
+    return ctx.json<GetPreparePaymentResponseBody>(result.value);
   }
-
-  const setup_session_id = ctx.req.query("setup_session_id");
-  if (!isString(setup_session_id)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing or invalid setup_session_id query parameter.",
-      },
-    });
-  }
-
-  // Prevent HTTP caching as session status can change on every call.
-  ctx.header("Cache-Control", "no-store");
-
-  const result = await getPreparePaymentData(auth, setup_session_id);
-  if (result.isErr()) {
-    return mapPreparePaymentError(ctx, result.error);
-  }
-
-  return ctx.json<GetPreparePaymentResponseBody>(result.value);
-});
+);
 
 function mapPreparePaymentError(
   ctx: Parameters<typeof apiError>[0],

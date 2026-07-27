@@ -14,6 +14,7 @@ import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
 import type { GetWorkspaceDomainsResponseBody } from "@app/types/api/workos/organization";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -48,68 +49,61 @@ const SECURITY_PERMISSION_ERROR_MESSAGE =
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get("/", async (ctx): HandlerResult<GetWorkspaceDomainsResponseBody> => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  ensureHasWorkspacePermission(
+    "admin",
+    "security",
+    SECURITY_PERMISSION_ERROR_MESSAGE
+  ),
+  async (ctx): HandlerResult<GetWorkspaceDomainsResponseBody> => {
+    const auth = ctx.get("auth");
 
-  if (!(await auth.hasWorkspacePermission("admin", "security"))) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: SECURITY_PERMISSION_ERROR_MESSAGE,
-      },
+    // If the workspace doesn't have a WorkOS organization (which can happen for workspaces
+    // created via admin tools), we create one before fetching domains. This ensures the
+    // endpoint works for all workspaces, regardless of how they were created.
+    const organizationRes = await getOrCreateWorkOSOrganization(
+      auth.getNonNullableWorkspace()
+    );
+
+    if (organizationRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to get WorkOS organization",
+        },
+      });
+    }
+
+    // If there is no organization, return an empty array.
+    if (!organizationRes.value) {
+      return ctx.json({ domains: [] });
+    }
+
+    const { link } = await generateWorkOSAdminPortalUrl({
+      organization: organizationRes.value.id,
+      workOSIntent: WorkOSPortalIntent.DomainVerification,
+      returnUrl: `${ctx.req.header("origin")}/w/${auth.getNonNullableWorkspace().sId}/members`,
+    });
+
+    return ctx.json({
+      addDomainLink: link,
+      domains: organizationRes.value.domains,
     });
   }
-
-  // If the workspace doesn't have a WorkOS organization (which can happen for workspaces
-  // created via admin tools), we create one before fetching domains. This ensures the
-  // endpoint works for all workspaces, regardless of how they were created.
-  const organizationRes = await getOrCreateWorkOSOrganization(
-    auth.getNonNullableWorkspace()
-  );
-
-  if (organizationRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to get WorkOS organization",
-      },
-    });
-  }
-
-  // If there is no organization, return an empty array.
-  if (!organizationRes.value) {
-    return ctx.json({ domains: [] });
-  }
-
-  const { link } = await generateWorkOSAdminPortalUrl({
-    organization: organizationRes.value.id,
-    workOSIntent: WorkOSPortalIntent.DomainVerification,
-    returnUrl: `${ctx.req.header("origin")}/w/${auth.getNonNullableWorkspace().sId}/members`,
-  });
-
-  return ctx.json({
-    addDomainLink: link,
-    domains: organizationRes.value.domains,
-  });
-});
+);
 
 app.delete(
   "/",
   validate("json", DeleteWorkspaceDomainRequestBodySchema),
+  ensureHasWorkspacePermission(
+    "admin",
+    "security",
+    SECURITY_PERMISSION_ERROR_MESSAGE
+  ),
   async (ctx) => {
     const auth = ctx.get("auth");
-
-    if (!(await auth.hasWorkspacePermission("admin", "security"))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: SECURITY_PERMISSION_ERROR_MESSAGE,
-        },
-      });
-    }
 
     const body = ctx.req.valid("json");
 
@@ -155,18 +149,13 @@ app.delete(
 app.post(
   "/",
   validate("json", PostDomainAutoJoinBodySchema),
+  ensureHasWorkspacePermission(
+    "admin",
+    "security",
+    SECURITY_PERMISSION_ERROR_MESSAGE
+  ),
   async (ctx): HandlerResult<GetWorkspaceResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!(await auth.hasWorkspacePermission("admin", "security"))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: SECURITY_PERMISSION_ERROR_MESSAGE,
-        },
-      });
-    }
 
     const owner = auth.getNonNullableWorkspace();
     const body = ctx.req.valid("json");
