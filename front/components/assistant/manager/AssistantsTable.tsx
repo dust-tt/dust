@@ -414,7 +414,6 @@ export function AssistantsTable({
         isBatchEdit,
         mutateAgentConfigurations,
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mutateAgentConfigurations has an unstable identity but always mutates the same SWR cache key.
     [owner, sortedTags, isBatchEdit]
   );
 
