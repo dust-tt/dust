@@ -26,6 +26,7 @@ import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { launchReconcileWorkspaceUserCreditStatesWorkflow } from "@app/temporal/metronome_events_queue/client";
 import {
   launchScheduleWorkspaceScrubWorkflow,
   terminateScheduleWorkspaceScrubWorkflow,
@@ -54,6 +55,10 @@ vi.mock(import("@app/lib/metronome/client"), async (importOriginal) => {
 vi.mock("@app/temporal/scrub_workspace/client", () => ({
   launchScheduleWorkspaceScrubWorkflow: vi.fn(),
   terminateScheduleWorkspaceScrubWorkflow: vi.fn(),
+}));
+
+vi.mock("@app/temporal/metronome_events_queue/client", () => ({
+  launchReconcileWorkspaceUserCreditStatesWorkflow: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/subscription", () => ({
@@ -1011,6 +1016,9 @@ describe("processMetronomeWebhook — credit.create pool reconcile", () => {
       new Ok(undefined)
     );
     vi.mocked(syncPoolCreditStateFromBalance).mockResolvedValue(undefined);
+    vi.mocked(
+      launchReconcileWorkspaceUserCreditStatesWorkflow
+    ).mockResolvedValue(undefined);
   });
 
   it("reconciles the pool when an AWU credit is created", async () => {
@@ -1029,6 +1037,9 @@ describe("processMetronomeWebhook — credit.create pool reconcile", () => {
       workspace,
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
+    expect(
+      launchReconcileWorkspaceUserCreditStatesWorkflow
+    ).not.toHaveBeenCalled();
   });
 
   it("does not reconcile the pool for a non-AWU credit", async () => {
@@ -1046,7 +1057,7 @@ describe("processMetronomeWebhook — credit.create pool reconcile", () => {
     expect(syncPoolCreditStateFromBalance).not.toHaveBeenCalled();
   });
 
-  it("does not reconcile the pool for a per-seat (INDIVIDUAL) credit", async () => {
+  it("reconciles per-user (not pool) state for a per-seat (INDIVIDUAL) credit", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
     vi.mocked(getMetronomeCredit).mockResolvedValue(
       new Ok(credit(getCreditTypeAwuId(), { allocation: "INDIVIDUAL" }))
@@ -1059,5 +1070,8 @@ describe("processMetronomeWebhook — credit.create pool reconcile", () => {
 
     expect(result.isOk()).toBe(true);
     expect(syncPoolCreditStateFromBalance).not.toHaveBeenCalled();
+    expect(
+      launchReconcileWorkspaceUserCreditStatesWorkflow
+    ).toHaveBeenCalledWith({ workspaceId: workspace.sId });
   });
 });

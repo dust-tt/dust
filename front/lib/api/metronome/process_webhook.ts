@@ -1363,21 +1363,24 @@ export async function processMetronomeWebhook({
         return stampResult;
       }
 
-      // Reconcile the workspace pool credit state against the live AWU
-      // balance now that this credit exists and is stamped. A recurring free
-      // AWU credit granted at contract-switch time (see `stepContractEdits`)
-      // is added to the already-active contract *after* `contract.start`
-      // fired, so that handler's reconcile ran before the credit existed and
-      // left the pool stuck (e.g. `depleted`). Metronome only fires
-      // `credit.create` — not `credit.segment.start` — for a segment that is
-      // already active when the credit is created, so the segment reconcile
-      // path would never re-run for it.
+      // Reconcile now that this credit exists and is stamped. A credit granted
+      // at contract-switch time (see `stepContractEdits`) is added to the
+      // already-active contract *after* `contract.start` fired, so that
+      // handler's reconcile ran before the credit existed. Metronome only
+      // fires `credit.create` — not `credit.segment.start` — for a segment
+      // that is already active when the credit is created, so the segment
+      // reconcile path would never re-run for it. Mirror both reconciles that
+      // `credit.segment.start` performs, split by allocation:
       //
-      // Skip per-seat (INDIVIDUAL) credits: they never count toward the pool
-      // balance (only "pool"-stamped credits do), so reconciling for them
-      // would be a wasted no-op `getNetBalance` on every seat created at
-      // onboarding. Per-period renewals of seat credits are still covered by
-      // the `credit.segment.start` handler.
+      //   - Per-seat (INDIVIDUAL) AWU credit → reconcile per-user credit
+      //     states (a new seat allocation lands each user in the right
+      //     seat↔pool state). The workspace-scoped reconcile workflow collapses
+      //     concurrent launches, so onboarding many seats triggers one run.
+      //     No pool reconcile: seat credits never count toward the pool
+      //     balance (only "pool"-stamped credits do).
+      //   - Pool AWU credit (e.g. the recurring free credit) → reconcile the
+      //     workspace pool credit state, which would otherwise stay stuck
+      //     (e.g. `depleted`).
       const creditResult = await getMetronomeCredit({
         metronomeCustomerId,
         creditId,
@@ -1390,15 +1393,24 @@ export async function processMetronomeWebhook({
           )
         );
       }
-      if (
-        creditResult.value &&
-        creditResult.value.subscription_config?.allocation !== "INDIVIDUAL"
-      ) {
-        await reconcilePoolStateFromSegmentEvent({
-          workspace,
-          metronomeCustomerId,
-          commitOrCredit: creditResult.value,
-        });
+      if (creditResult.value) {
+        if (isSeatAwuCredit(creditResult.value)) {
+          await launchReconcileWorkspaceUserCreditStatesWorkflow({
+            workspaceId: workspace.sId,
+          });
+          logger.info(
+            { metronomeCustomerId, creditId, workspaceId: workspace.sId },
+            "[Metronome Webhook] credit.create: seat credit created, user state reconcile triggered"
+          );
+        } else if (
+          creditResult.value.subscription_config?.allocation !== "INDIVIDUAL"
+        ) {
+          await reconcilePoolStateFromSegmentEvent({
+            workspace,
+            metronomeCustomerId,
+            commitOrCredit: creditResult.value,
+          });
+        }
       }
       break;
     }
@@ -1550,27 +1562,33 @@ export async function processMetronomeWebhook({
         );
       }
       if (creditResult.value) {
-        await reconcilePoolStateFromSegmentEvent({
-          workspace,
-          metronomeCustomerId,
-          commitOrCredit: creditResult.value,
-        });
-
-        // A new seat segment starting means a seat type was activated (e.g.
-        // a planned Pro→Max downgrade takes effect). Re-sync the seat count so
-        // the per-user allocation is reassigned and each user's credit state
-        // reflects the new seat type.
-        if (
-          event.type === "credit.segment.start" &&
-          isSeatAwuCredit(creditResult.value)
+        if (isSeatAwuCredit(creditResult.value)) {
+          // Per-seat (INDIVIDUAL) AWU credit: seat credits never count toward
+          // the pool balance, so a pool reconcile would be a wasted no-op.
+          // A new seat segment starting means a seat type was activated (e.g.
+          // a planned Pro→Max downgrade takes effect), so re-sync the seat
+          // count to reassign the per-user allocation and land each user's
+          // credit state in the right seat↔pool state. (credit.edit — an
+          // amount change — does not shift seat assignments, so it is left
+          // alone.)
+          if (event.type === "credit.segment.start") {
+            await launchReconcileWorkspaceUserCreditStatesWorkflow({
+              workspaceId: workspace.sId,
+            });
+            logger.info(
+              { metronomeCustomerId, creditId, workspaceId: workspace.sId },
+              "[Metronome Webhook] credit.segment.start: seat credit activated, reconcile triggered"
+            );
+          }
+        } else if (
+          creditResult.value.subscription_config?.allocation !== "INDIVIDUAL"
         ) {
-          await launchReconcileWorkspaceUserCreditStatesWorkflow({
-            workspaceId: workspace.sId,
+          // Pool AWU credit: reconcile the workspace pool credit state.
+          await reconcilePoolStateFromSegmentEvent({
+            workspace,
+            metronomeCustomerId,
+            commitOrCredit: creditResult.value,
           });
-          logger.info(
-            { metronomeCustomerId, creditId, workspaceId: workspace.sId },
-            "[Metronome Webhook] credit.segment.start: seat credit activated, reconcile triggered"
-          );
         }
       }
 
