@@ -8,6 +8,8 @@ import {
   getOrCreateWorkOSOrganization,
 } from "@app/lib/api/workos/organization";
 import { removeWorkOSOrganizationDomain } from "@app/lib/api/workos/organization_primitives";
+import type { GetWorkspaceResponseBody } from "@app/lib/api/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
 import type { GetWorkspaceDomainsResponseBody } from "@app/types/api/workos/organization";
@@ -19,6 +21,25 @@ import { z } from "zod";
 const DeleteWorkspaceDomainRequestBodySchema = z.object({
   domain: z.string(),
 });
+
+const DomainAutoJoinBatchBodySchema = z.object({
+  domainUpdates: z.array(
+    z.object({
+      domain: z.string(),
+      domainAutoJoinEnabled: z.boolean(),
+    })
+  ),
+});
+
+const DomainAutoJoinSingleBodySchema = z.object({
+  domain: z.string().optional(),
+  domainAutoJoinEnabled: z.boolean(),
+});
+
+const PostDomainAutoJoinBodySchema = z.union([
+  DomainAutoJoinBatchBodySchema,
+  DomainAutoJoinSingleBodySchema,
+]);
 
 const SECURITY_PERMISSION_ERROR_MESSAGE =
   "You do not have permission to manage identity and provisioning settings.";
@@ -127,6 +148,98 @@ app.delete(
     });
 
     return ctx.body(null, 204);
+  }
+);
+
+/** @ignoreswagger */
+app.post(
+  "/",
+  validate("json", PostDomainAutoJoinBodySchema),
+  async (ctx): HandlerResult<GetWorkspaceResponseBody> => {
+    const auth = ctx.get("auth");
+
+    if (!(await auth.hasWorkspacePermission("admin", "security"))) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: SECURITY_PERMISSION_ERROR_MESSAGE,
+        },
+      });
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const body = ctx.req.valid("json");
+
+    const workspace = await WorkspaceResource.fetchByModelId(owner.id);
+    if (!workspace) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "workspace_not_found",
+          message: "The workspace you're trying to modify was not found.",
+        },
+      });
+    }
+
+    if ("domainUpdates" in body) {
+      for (const update of body.domainUpdates) {
+        const updateResult = await workspace.updateDomainAutoJoinEnabled({
+          domainAutoJoinEnabled: update.domainAutoJoinEnabled,
+          domain: update.domain,
+        });
+        if (updateResult.isErr()) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: updateResult.error.message,
+            },
+          });
+        }
+
+        void emitAuditLogEvent({
+          auth,
+          action: "workspace.domain_auto_join_updated",
+          targets: [buildAuditLogTarget("workspace", owner)],
+          context: getAuditLogContext(auth),
+          metadata: {
+            domain: update.domain,
+            enabled: String(update.domainAutoJoinEnabled),
+          },
+        });
+      }
+
+      return ctx.json({ workspace: owner });
+    }
+
+    const { domain, domainAutoJoinEnabled } = body;
+    const updateResult = await workspace.updateDomainAutoJoinEnabled({
+      domainAutoJoinEnabled,
+      domain,
+    });
+    if (updateResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: updateResult.error.message,
+        },
+      });
+    }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "workspace.domain_auto_join_updated",
+      targets: [buildAuditLogTarget("workspace", owner)],
+      context: getAuditLogContext(auth),
+      metadata: {
+        domain: domain ?? "*",
+        enabled: String(domainAutoJoinEnabled),
+      },
+    });
+
+    return ctx.json({ workspace: owner });
   }
 );
 

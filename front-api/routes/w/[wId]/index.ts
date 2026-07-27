@@ -21,10 +21,7 @@ import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import {
-  ENSURE_IS_ADMIN_ERROR_MESSAGE,
-  ensureIsAdmin,
-} from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
@@ -98,26 +95,8 @@ const WorkspaceNameUpdateBodySchema = z.object({
   name: z.string(),
 });
 
-const WorkspaceSsoEnforceUpdateBodySchema = z.object({
-  ssoEnforced: z.boolean(),
-});
-
 const WorkspaceRegionalModelsOnlyUpdateBodySchema = z.object({
   regionalModelsOnly: z.boolean(),
-});
-
-const WorkspaceAllowedDomainUpdateBodySchema = z.object({
-  domain: z.string().optional(),
-  domainAutoJoinEnabled: z.boolean(),
-});
-
-const WorkspaceBatchDomainUpdateBodySchema = z.object({
-  domainUpdates: z.array(
-    z.object({
-      domain: z.string(),
-      domainAutoJoinEnabled: z.boolean(),
-    })
-  ),
 });
 
 const WorkspaceProvidersUpdateBodySchema = z.object({
@@ -225,10 +204,7 @@ const WorkspaceDefaultAgentUpdateBodySchema = z.object({
 });
 
 const PostWorkspaceRequestBodySchema = z.union([
-  WorkspaceAllowedDomainUpdateBodySchema,
-  WorkspaceBatchDomainUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
-  WorkspaceSsoEnforceUpdateBodySchema,
   WorkspaceRegionalModelsOnlyUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
   WorkspaceWorkOSUpdateBodySchema,
@@ -347,37 +323,13 @@ app.get(
 
 app.post(
   "/",
+  ensureIsAdmin(),
   validate("json", PostWorkspaceRequestBodySchema),
   async (ctx): HandlerResult<GetWorkspaceResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
 
     const body = ctx.req.valid("json");
-
-    // Domain auto-join and SSO enforcement live on the IT & Security page, so holders of
-    // the `admin:security` permission may change them. Every other workspace setting remains
-    // admin-only. `body` is the zod-parsed output: the union strips it down to a single member's
-    // keys, so this classification matches exactly the branch the handler below will execute.
-    const isIdentitySetting =
-      "domainAutoJoinEnabled" in body ||
-      "domainUpdates" in body ||
-      "ssoEnforced" in body;
-
-    const isAuthorized = isIdentitySetting
-      ? await auth.hasWorkspacePermission("admin", "security")
-      : auth.isAdmin();
-
-    if (!isAuthorized) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: isIdentitySetting
-            ? "You do not have permission to manage identity and provisioning settings."
-            : ENSURE_IS_ADMIN_ERROR_MESSAGE,
-        },
-      });
-    }
 
     const workspace = await WorkspaceResource.fetchByModelId(owner.id);
     if (!workspace) {
@@ -413,22 +365,6 @@ app.post(
         metadata: {
           previous_name: previousName,
           new_name: newName,
-        },
-      });
-    } else if ("ssoEnforced" in body) {
-      await workspace.updateWorkspaceSettings({
-        ssoEnforced: body.ssoEnforced,
-      });
-
-      owner.ssoEnforced = body.ssoEnforced;
-
-      void emitAuditLogEvent({
-        auth,
-        action: "workspace.sso_enforcement_updated",
-        targets: [buildAuditLogTarget("workspace", owner)],
-        context: getAuditLogContext(auth),
-        metadata: {
-          enabled: String(body.ssoEnforced),
         },
       });
     } else if ("regionalModelsOnly" in body) {
@@ -1006,59 +942,6 @@ app.post(
         context: getAuditLogContext(auth),
         metadata: {
           enabled: String(body.slackPersonalAllowFooterRemoval),
-        },
-      });
-    } else if ("domainUpdates" in body) {
-      for (const update of body.domainUpdates) {
-        const updateResult = await workspace.updateDomainAutoJoinEnabled({
-          domainAutoJoinEnabled: update.domainAutoJoinEnabled,
-          domain: update.domain,
-        });
-        if (updateResult.isErr()) {
-          return apiError(ctx, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: updateResult.error.message,
-            },
-          });
-        }
-
-        void emitAuditLogEvent({
-          auth,
-          action: "workspace.domain_auto_join_updated",
-          targets: [buildAuditLogTarget("workspace", owner)],
-          context: getAuditLogContext(auth),
-          metadata: {
-            domain: update.domain,
-            enabled: String(update.domainAutoJoinEnabled),
-          },
-        });
-      }
-    } else {
-      const { domain, domainAutoJoinEnabled } = body;
-      const updateResult = await workspace.updateDomainAutoJoinEnabled({
-        domainAutoJoinEnabled,
-        domain,
-      });
-      if (updateResult.isErr()) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: updateResult.error.message,
-          },
-        });
-      }
-
-      void emitAuditLogEvent({
-        auth,
-        action: "workspace.domain_auto_join_updated",
-        targets: [buildAuditLogTarget("workspace", owner)],
-        context: getAuditLogContext(auth),
-        metadata: {
-          domain: domain ?? "*",
-          enabled: String(domainAutoJoinEnabled),
         },
       });
     }
