@@ -1551,6 +1551,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return [
         {
           workspaceId: this.workspaceId,
+          resourceType: "space",
+          resourceId: this.id,
           roles: [{ role: "admin", permissions: ["admin", "write"] }],
           groups: this.groups.map((group) => ({
             id: group.groupId,
@@ -1565,6 +1567,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return [
         {
           workspaceId: this.workspaceId,
+          resourceType: "space",
+          resourceId: this.id,
           roles: [
             { role: "admin", permissions: ["admin", "read", "write"] },
             // TODO(governance): remove once manager is available for everyone
@@ -1593,6 +1597,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return [
         {
           workspaceId: this.workspaceId,
+          resourceType: "space",
+          resourceId: this.id,
           roles: [
             { role: "admin", permissions: ["admin", "read", "write"] },
             // TODO(governance): remove once manager is available for everyone
@@ -1617,6 +1623,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return [
         {
           workspaceId: this.workspaceId,
+          resourceType: "space",
+          resourceId: this.id,
           roles: [
             { role: "admin", permissions: ["admin"] },
             { role: "manager", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
@@ -1648,6 +1656,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return [
       {
         workspaceId: this.workspaceId,
+        resourceType: "space",
+        resourceId: this.id,
         roles: [{ role: "admin", permissions: ["admin"] }],
         groups: this.groups.reduce((acc, group) => {
           if (groupFilter(group)) {
