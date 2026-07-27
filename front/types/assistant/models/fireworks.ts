@@ -201,13 +201,17 @@ export const FIREWORKS_KIMI_K3_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: true,
+  // K3 thinks on every request, so there is no `none` tier: `light` reaches
+  // Fireworks as `low`, then `medium`/`high` straight through.
   supportedReasoningEfforts: {
-    none: true,
+    none: false,
     light: true,
     medium: true,
     high: true,
   },
   defaultReasoningEffort: "light",
+  // Native thinking at `light`, so no chain-of-thought meta prompt.
+  useNativeLightReasoning: true,
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
