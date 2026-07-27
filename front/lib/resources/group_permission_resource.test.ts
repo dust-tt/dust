@@ -285,7 +285,7 @@ describe("GroupPermissionResource", () => {
       await expect(
         GroupPermissionResource.grantTypeWide(auth, {
           group: groupA,
-          grantType: "read",
+          grantType: "create",
           resourceType: "billing",
         })
       ).rejects.toThrow(/not allowed/);
