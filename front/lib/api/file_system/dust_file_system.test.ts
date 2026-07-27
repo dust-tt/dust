@@ -207,6 +207,60 @@ describe("DustFileSystem.forPod", () => {
 });
 
 // ---------------------------------------------------------------------------
+// forUser
+// ---------------------------------------------------------------------------
+
+describe("DustFileSystem.forUser", () => {
+  it("returns Ok with a read-write user mount for the authenticated user", async () => {
+    const { authenticator: auth, user } = await createResourceTest({});
+
+    const result = await DustFileSystem.forUser(auth);
+
+    assert(result.isOk());
+    const mounts = result.value.getMounts();
+    expect(mounts).toHaveLength(1);
+    expect(mounts[0].kind).toBe("user");
+    expect(mounts[0].id).toBe(user.sId);
+    expect(mounts[0].scopedPrefix).toBe(`user-${user.sId}`);
+    expect(mounts[0].sandboxMountPoint).toBeNull();
+    expect(mounts[0].legacyPrefix).toBeNull();
+    expect(mounts[0].legacySandboxMountPoint).toBeNull();
+    expect(mounts[0].permissions.canRead).toBe(true);
+    expect(mounts[0].permissions.canWrite).toBe(true);
+  });
+
+  it("returns Err(unauthorized) when there is no authenticated user", async () => {
+    const { workspace } = await createResourceTest({});
+    const noUserAuth = await Authenticator.internalBuilderForWorkspace(
+      workspace.sId
+    );
+    expect(noUserAuth.user()).toBeNull();
+
+    const result = await DustFileSystem.forUser(noUserAuth);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("unauthorized");
+    }
+  });
+
+  it("toSandboxPath rejects the user scope (never sandbox-mounted)", async () => {
+    const { authenticator: auth, user } = await createResourceTest({});
+    const result = await DustFileSystem.forUser(auth);
+    assert(result.isOk());
+
+    const sandboxPath = result.value.toSandboxPath(
+      `user-${user.sId}/memory.md`
+    );
+
+    expect(sandboxPath.isErr()).toBe(true);
+    if (sandboxPath.isErr()) {
+      expect(sandboxPath.error.code).toBe("invalid_path");
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // fromScopedPath
 // ---------------------------------------------------------------------------
 
@@ -280,6 +334,46 @@ describe("DustFileSystem.fromScopedPath", () => {
       mounts.some((m) => m.kind === "conversation" && m.id === conversation.sId)
     ).toBe(true);
   });
+
+  it("returns Ok with a user-scoped fs for the authenticated user's user- prefix", async () => {
+    const { authenticator: auth, user } = await createResourceTest({});
+
+    const result = await DustFileSystem.fromScopedPath(
+      auth,
+      `user-${user.sId}/memory.md`
+    );
+
+    assert(result.isOk());
+    const mounts = result.value.getMounts();
+    expect(mounts.some((m) => m.kind === "user" && m.id === user.sId)).toBe(
+      true
+    );
+  });
+
+  it("returns Err(unauthorized) for another user's user- prefix", async () => {
+    const { authenticator: auth, user } = await createResourceTest({});
+
+    const result = await DustFileSystem.fromScopedPath(
+      auth,
+      `user-${user.sId}-other/memory.md`
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("unauthorized");
+    }
+  });
+
+  it("returns Err(invalid_path) for a user- prefix with an empty id", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const result = await DustFileSystem.fromScopedPath(auth, "user-/memory.md");
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("invalid_path");
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -320,6 +414,25 @@ describe("DustFileSystem.forAgentLoop", () => {
     expect(forAgentLoop.value.getMounts()).toEqual(
       forConversation.value.getMounts()
     );
+  });
+
+  it("throws when scopedPaths references a user-scoped path", async () => {
+    const { authenticator: auth, user } = await createResourceTest({});
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+
+    await expect(
+      DustFileSystem.forAgentLoop(auth, {
+        conversation,
+        scopedPaths: [`user-${user.sId}/memory.md`],
+      })
+    ).rejects.toThrow(/User-scoped paths are not supported/);
   });
 
   it("adds a second conversation mount when scopedPaths references another accessible conversation", async () => {
