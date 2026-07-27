@@ -1,20 +1,45 @@
+import { ConfirmContext } from "@app/components/Confirm";
 import { SkillBuilderEnableSuggestionsSection } from "@app/components/skill_builder/SkillBuilderEnableSuggestionsSection";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderIconSection } from "@app/components/skill_builder/SkillBuilderIconSection";
 import { SkillBuilderIsDefaultSection } from "@app/components/skill_builder/SkillBuilderIsDefaultSection";
 import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuilderNameSection";
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
-import { SkillEditorsSheet } from "@app/components/skill_builder/SkillEditorsSheet";
+import { SkillEditorsSheetWithButton } from "@app/components/skill_builder/SkillEditorsSheetWithButton";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { WorkspaceType } from "@app/types/user";
 import {
+  Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Hoverable,
   Icon,
   Label,
   LinkExternal01,
   LinkWrapper,
 } from "@dust-tt/sparkle";
+import { useContext } from "react";
+import { useController } from "react-hook-form";
+
+
+const AVAILABILITY_OPTIONS = [
+  {
+    label: "Editors only",
+    values: ["editors"],
+  },
+  {
+    label: "All workspace members",
+    values: ["workspace_users", "users_and_agents"],
+  },
+];
 
 interface SkillBuilderSettingsSectionProps {
   skill?: SkillType;
@@ -22,6 +47,7 @@ interface SkillBuilderSettingsSectionProps {
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
   onAddSelfAsEditor: () => void;
+  owner: WorkspaceType;
 }
 
 export function SkillBuilderSettingsSection({
@@ -30,11 +56,52 @@ export function SkillBuilderSettingsSection({
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
+  owner,
 }: SkillBuilderSettingsSectionProps) {
+  const {
+    field: { value: availability, onChange },
+  } = useController<SkillBuilderFormData, "availability">({
+    name: "availability",
+  });
+
+  const confirm = useContext(ConfirmContext);
+
+
+
+  const { hasFeature } = useFeatureFlags();
+  const isAdminGovernanceEnabled = hasFeature("admin_governance_skill_publication");
+  const { hasPermission } = useWorkspacePermissions(owner);
+  const canUpdateAvailability = hasPermission("publish", "skill");
   const githubSkillFolderUrl = getGitHubSkillFolderUrl(skill);
 
+  const currentOption = AVAILABILITY_OPTIONS.find(
+    (option) => option.values.includes(availability)
+  );
+
+  const isAutoDiscoverableOn = availability === "users_and_agents";
+
+  const onAvailablityChange = async (option: typeof AVAILABILITY_OPTIONS[0], isAutoDiscoverableOn: boolean) => {
+    if (isAutoDiscoverableOn) {
+      const confirmed = await confirm({
+  title: "Auto discoverable mode will be off",
+  message: "Editors only skill cannot be auto-discoverable. Are you sure to change the availablity?",
+  validateLabel: "Confirm",
+  validateVariant: "warning",
+});
+ if (!confirmed) {
+  return;
+ }
+
+    }
+    if (option.values.includes("workspace_users")) {
+      onChange("workspace_users");
+    } else {
+      onChange(option.values[0])
+    }
+  }
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="space-y-1">
         <h2 className="heading-lg text-foreground">Skill settings</h2>
         {githubSkillFolderUrl && (
@@ -60,18 +127,63 @@ export function SkillBuilderSettingsSection({
         <SkillBuilderIconSection />
       </div>
       <SkillBuilderUserFacingDescriptionSection />
-      <div className="flex flex-col space-y-3">
-        <Label className="text-base font-semibold text-foreground">
-          Editors
-        </Label>
-        <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
-          <SkillEditorsSheet
-            isEditorGateVisible={isEditorGateVisible}
-            isAddingSelfAsEditor={isAddingSelfAsEditor}
-            onAddSelfAsEditor={onAddSelfAsEditor}
-          />
+      <div className="flex gap-5">
+        <div className="flex flex-col">
+          <h3 className="text-base font-semibold text-foreground mb-2">
+            Editors
+          </h3>
+          <div className="flex w-full flex-row flex-wrap items-center gap-2">
+            <SkillEditorsSheetWithButton
+              isEditorGateVisible={isEditorGateVisible}
+              isAddingSelfAsEditor={isAddingSelfAsEditor}
+              onAddSelfAsEditor={onAddSelfAsEditor}
+            />
+          </div>
         </div>
+        {isAdminGovernanceEnabled && (
+          <div>
+              <h3 className="text-base font-semibold text-foreground mb-2">
+                Availability
+              </h3>
+            <DropdownMenu>
+              <DropdownMenuTrigger>
+                <Button
+                  label={currentOption?.label}
+                  variant="outline"
+                  isSelect
+                  disabled={!canUpdateAvailability}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-60" align="start" side="right">
+                {AVAILABILITY_OPTIONS.map((option) => (
+                  <DropdownMenuItem
+                    key={option.label}
+                    label={option.label}
+                    onClick={async () => {
+                     await onAvailablityChange(option, isAutoDiscoverableOn)
+                    }}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
+      {isAdminGovernanceEnabled && canUpdateAvailability && (
+        <p className="text-muted-foreground text-sm">
+          <span className="font-semibold">Auto-discovery is {isAutoDiscoverableOn ? "on" : "off"}. </span>Agents with the Discover Skills tool {isAutoDiscoverableOn ? "can use" : "won’t find"} this skill automatically. 
+           
+          <br /><div className="mt-1">Edit in{" "}
+          <Hoverable
+            href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
+            target="_blank"
+            className="inline-flex items-center gap-1 underline"
+          >
+            Manage Skills <Icon visual={LinkExternal01} size="xs" />
+          </Hoverable></div>
+        </p>
+      )}
+
       {hasSelfImprovingSkills && (
         <div className="space-y-3">
           <Label className="text-base font-semibold text-foreground">
