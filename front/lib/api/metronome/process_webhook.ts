@@ -1342,8 +1342,8 @@ export async function processMetronomeWebhook({
       // that handler's reconcile ran before the credit existed. Metronome only
       // fires `credit.create` — not `credit.segment.start` — for a segment that
       // is already active when the credit is created, so the segment reconcile
-      // path would never re-run for it. Mirror both reconciles that
-      // `credit.segment.start` performs, split by allocation.
+      // path would never re-run for it. Mirror the same split as
+      // `credit.segment.start`, plus the pool stamp on the pool branch.
       if (isSeatAwuCredit(credit)) {
         // Per-seat (INDIVIDUAL) AWU credit → reconcile per-user credit states
         // (a new seat allocation lands each user in the right seat↔pool state).
@@ -1357,29 +1357,27 @@ export async function processMetronomeWebhook({
           { metronomeCustomerId, creditId, workspaceId: workspace.sId },
           "[Metronome Webhook] credit.create: seat credit created, user state reconcile triggered"
         );
-        break;
-      }
+      } else {
+        // Pool AWU credit (e.g. the recurring free credit) → stamp, then
+        // reconcile the workspace pool credit state (which would otherwise stay
+        // stuck, e.g. `depleted`). Stamp first: the pool balance is read with an
+        // `onlyPoolCredits` filter (see `getNetBalance`), so an unstamped credit
+        // is invisible to the reconcile.
+        const stampResult = await stampContractCreditType({
+          workspaceId: workspace.sId,
+          credit,
+          eventType: "credit.create",
+        });
+        if (stampResult.isErr()) {
+          return stampResult;
+        }
 
-      // Pool AWU credit (e.g. the recurring free credit) → stamp, then
-      // reconcile the workspace pool credit state (which would otherwise stay
-      // stuck, e.g. `depleted`). Stamp first: the pool balance is read with an
-      // `onlyPoolCredits` filter (see `getNetBalance`), so an unstamped credit
-      // is invisible to the reconcile. Non-AWU credits are left unstamped and
-      // skipped by the reconcile.
-      const stampResult = await stampContractCreditType({
-        workspaceId: workspace.sId,
-        credit,
-        eventType: "credit.create",
-      });
-      if (stampResult.isErr()) {
-        return stampResult;
+        await reconcilePoolStateFromSegmentEvent({
+          workspace,
+          metronomeCustomerId,
+          commitOrCredit: credit,
+        });
       }
-
-      await reconcilePoolStateFromSegmentEvent({
-        workspace,
-        metronomeCustomerId,
-        commitOrCredit: credit,
-      });
       break;
     }
 
