@@ -115,7 +115,11 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
 
   static async listSuggestedByUser(
     auth: Authenticator,
-    { limit = 5, sinceDaysAgo }: { limit?: number; sinceDaysAgo?: number } = {}
+    {
+      limit = 5,
+      sinceDaysAgo,
+      spaceModelId,
+    }: { limit?: number; sinceDaysAgo?: number; spaceModelId?: ModelId } = {}
   ): Promise<
     {
       resource: ActivationRecommendationResource;
@@ -141,7 +145,10 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
         {
           model: ConversationModel,
           attributes: ["sId"],
-          required: false,
+          required: spaceModelId !== undefined,
+          ...(spaceModelId !== undefined
+            ? { where: { spaceId: spaceModelId } }
+            : {}),
         },
       ],
       order: [["createdAt", "DESC"]],
