@@ -58,27 +58,7 @@ export function SpaceRestrictionMessage({
         ) : (
           <>
             Only users with access to all of the following can read and use this{" "}
-            {entityName}:{" "}
-            <strong>
-              {spaces.map((space, index) => (
-                <Fragment key={space.sId}>
-                  {index > 0 && <span className="mr-0.5">, </span>}
-                  <Hoverable
-                    variant="primary"
-                    className="text-inherit underline hover:font-medium"
-                    href={
-                      isProjectType(space)
-                        ? getPodRoute(owner.sId, space.sId)
-                        : getSpaceRoute(owner.sId, space.sId)
-                    }
-                    target="_blank"
-                  >
-                    {space.name}
-                  </Hoverable>
-                </Fragment>
-              ))}
-            </strong>
-            .
+            {entityName}: {spaceLinks}.
           </>
         )}
       </ContentMessage>
