@@ -310,13 +310,11 @@ export async function processToolResults(
               }
               await uploadFileToConversationDataSource({ auth, file });
             }
-            const path = file?.toScopedPath(auth);
             return {
               content: {
                 type: block.type,
                 resource: {
                   ...block.resource,
-                  ...(path ? { path } : {}),
                   text: toWellFormed(stripNullBytes(block.resource.text)),
                 },
               },
