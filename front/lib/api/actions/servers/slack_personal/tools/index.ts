@@ -1,16 +1,12 @@
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   type AgentLoopRunContext,
   isAgentLoopRunContext,
-  type ToolContext,
 } from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import {
@@ -364,247 +360,202 @@ function handleSlackAuthError(error: unknown) {
   return null;
 }
 
-interface SlackPersonalToolsResult {
-  searchMessagesTool: ToolDefinition;
-  semanticSearchMessagesTool: ToolDefinition;
-  commonTools: ToolDefinition[];
-}
+const handlers: ToolHandlers<typeof SLACK_PERSONAL_TOOLS_METADATA> = {
+  search_messages: async (
+    {
+      keywords,
+      usersFrom,
+      usersTo,
+      usersMentioned,
+      relativeTimeFrame,
+      channels,
+    },
+    { authInfo, runContext }
+  ) => {
+    if (keywords.length > 5) {
+      return new Err(
+        new MCPError(
+          "The search query is too broad. Please reduce the number of keywords to 5 or less."
+        )
+      );
+    }
 
-export function createSlackPersonalTools(
-  auth: Authenticator,
-  mcpServerId: string,
-  toolContext?: ToolContext
-): SlackPersonalToolsResult {
-  const allowFooterRemoval =
-    auth.workspace()?.metadata?.slackPersonalAllowFooterRemoval ?? false;
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
 
-  const handlers: ToolHandlers<typeof SLACK_PERSONAL_TOOLS_METADATA> = {
-    search_messages: async (
-      {
+    const timeFrame = parseTimeFrame(relativeTimeFrame);
+
+    try {
+      // Keyword search in slack only support AND queries which can easily return 0 hits.
+      // To avoid this, we'll simulate an OR query by searching for each keyword separately.
+      // Then we will aggregate the results.
+      const results: SlackSearchMatch[][] = await concurrentExecutor(
         keywords,
-        usersFrom,
-        usersTo,
-        usersMentioned,
-        relativeTimeFrame,
-        channels,
-      },
-      { authInfo }
-    ) => {
-      if (!toolContext?.runContext) {
-        return new Err(
-          new MCPError("Unreachable: missing agentLoopRunContext.")
-        );
-      }
+        async (keyword) => {
+          const query = buildSlackSearchQuery(keyword, {
+            timeFrame,
+            channels,
+            usersFrom,
+            usersTo,
+            usersMentioned,
+          });
 
-      if (keywords.length > 5) {
-        return new Err(
-          new MCPError(
-            "The search query is too broad. Please reduce the number of keywords to 5 or less."
-          )
-        );
-      }
+          return slackSearch(query, accessToken);
+        },
+        { concurrency: 3 }
+      );
 
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
+      // Flatten the results.
+      const rawMatches = results.flat();
 
-      const timeFrame = parseTimeFrame(relativeTimeFrame);
+      // Deduplicate matches by their permalink across keywords.
+      const deduplicatedMatches = uniqBy(rawMatches, "permalink");
 
-      try {
-        // Keyword search in slack only support AND queries which can easily return 0 hits.
-        // To avoid this, we'll simulate an OR query by searching for each keyword separately.
-        // Then we will aggregate the results.
-        const results: SlackSearchMatch[][] = await concurrentExecutor(
-          keywords,
-          async (keyword) => {
-            const query = buildSlackSearchQuery(keyword, {
-              timeFrame,
-              channels,
-              usersFrom,
-              usersTo,
-              usersMentioned,
-            });
+      // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
+      const matches = deduplicatedMatches.slice(
+        0,
+        SLACK_SEARCH_ACTION_NUM_RESULTS
+      );
 
-            return slackSearch(query, accessToken);
+      if (matches.length === 0) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `No messages found.`,
           },
-          { concurrency: 3 }
-        );
-
-        // Flatten the results.
-        const rawMatches = results.flat();
-
-        // Deduplicate matches by their permalink across keywords.
-        const deduplicatedMatches = uniqBy(rawMatches, "permalink");
-
-        // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
-        const matches = deduplicatedMatches.slice(
-          0,
-          SLACK_SEARCH_ACTION_NUM_RESULTS
-        );
-
-        if (matches.length === 0) {
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `No messages found.`,
-            },
-          ]);
-        }
-
-        const { citationsOffset } = isAgentLoopRunContext(
-          toolContext.runContext
-        )
-          ? toolContext.runContext.stepContext
-          : { citationsOffset: 0 };
-
-        const refs = getRefs().slice(
-          citationsOffset,
-          citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
-        );
-
-        const searchResults = buildSearchResults<SlackSearchMatch>(
-          matches,
-          refs,
-          {
-            permalink: (match) => match.permalink,
-            text: (match) => formatSlackMessageForDisplay(match),
-            id: (match) => match.message_ts ?? "",
-            content: (match) => match.content ?? "",
-          }
-        );
-
-        return new Ok(
-          searchResults.map((result) => ({
-            type: "resource" as const,
-            resource: result,
-          }))
-        );
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error searching messages: ${normalizeError(error)}`)
-        );
+        ]);
       }
-    },
 
-    semantic_search_messages: async (
-      {
-        query,
+      const { citationsOffset } = isAgentLoopRunContext(runContext)
+        ? runContext.stepContext
+        : { citationsOffset: 0 };
+
+      const refs = getRefs().slice(
+        citationsOffset,
+        citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+      );
+
+      const searchResults = buildSearchResults<SlackSearchMatch>(
+        matches,
+        refs,
+        {
+          permalink: (match) => match.permalink,
+          text: (match) => formatSlackMessageForDisplay(match),
+          id: (match) => match.message_ts ?? "",
+          content: (match) => match.content ?? "",
+        }
+      );
+
+      return new Ok(
+        searchResults.map((result) => ({
+          type: "resource" as const,
+          resource: result,
+        }))
+      );
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
+      }
+      return new Err(
+        new MCPError(`Error searching messages: ${normalizeError(error)}`)
+      );
+    }
+  },
+
+  semantic_search_messages: async (
+    { query, usersFrom, usersTo, usersMentioned, relativeTimeFrame, channels },
+    { authInfo, runContext }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
+
+    const timeFrame = parseTimeFrame(relativeTimeFrame);
+
+    try {
+      const searchQuery = buildSlackSearchQuery(query, {
+        timeFrame,
+        channels,
         usersFrom,
         usersTo,
         usersMentioned,
-        relativeTimeFrame,
-        channels,
-      },
-      { authInfo }
-    ) => {
-      if (!toolContext?.runContext) {
-        return new Err(
-          new MCPError("Unreachable: missing agentLoopRunContext.")
-        );
+      });
+
+      const matches = await slackSearch(searchQuery, accessToken);
+
+      if (matches.length === 0) {
+        return new Ok([{ type: "text" as const, text: `No messages found.` }]);
       }
 
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
+      const { citationsOffset } = isAgentLoopRunContext(runContext)
+        ? runContext.stepContext
+        : { citationsOffset: 0 };
 
-      const timeFrame = parseTimeFrame(relativeTimeFrame);
+      const refs = getRefs().slice(
+        citationsOffset,
+        citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+      );
 
-      try {
-        const searchQuery = buildSlackSearchQuery(query, {
-          timeFrame,
-          channels,
-          usersFrom,
-          usersTo,
-          usersMentioned,
-        });
-
-        const matches = await slackSearch(searchQuery, accessToken);
-
-        if (matches.length === 0) {
-          return new Ok([
-            { type: "text" as const, text: `No messages found.` },
-          ]);
+      const searchResults = buildSearchResults<SlackSearchMatch>(
+        matches,
+        refs,
+        {
+          permalink: (match) => match.permalink,
+          text: (match) => formatSlackMessageForDisplay(match),
+          id: (match) => match.message_ts ?? "",
+          content: (match) => match.content ?? "",
         }
+      );
 
-        const { citationsOffset } = isAgentLoopRunContext(
-          toolContext.runContext
-        )
-          ? toolContext.runContext.stepContext
-          : { citationsOffset: 0 };
-
-        const refs = getRefs().slice(
-          citationsOffset,
-          citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
-        );
-
-        const searchResults = buildSearchResults<SlackSearchMatch>(
-          matches,
-          refs,
-          {
-            permalink: (match) => match.permalink,
-            text: (match) => formatSlackMessageForDisplay(match),
-            id: (match) => match.message_ts ?? "",
-            content: (match) => match.content ?? "",
-          }
-        );
-
-        return new Ok(
-          searchResults.map((result) => ({
-            type: "resource" as const,
-            resource: result,
-          }))
-        );
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error searching messages: ${normalizeError(error)}`)
-        );
+      return new Ok(
+        searchResults.map((result) => ({
+          type: "resource" as const,
+          resource: result,
+        }))
+      );
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
       }
+      return new Err(
+        new MCPError(`Error searching messages: ${normalizeError(error)}`)
+      );
+    }
+  },
+
+  post_message: async (
+    {
+      to,
+      message,
+      threadTs,
+      fileId,
+      unfurlLinks,
+      unfurlMedia,
+      show_sent_by_footer,
     },
+    { auth, authInfo, runContext }
+  ) => {
+    let attachmentRunContext: AgentLoopRunContext | undefined;
+    if (fileId) {
+      assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+      attachmentRunContext = runContext;
+    }
 
-    post_message: async (
-      {
-        to,
-        message,
-        threadTs,
-        fileId,
-        unfurlLinks,
-        unfurlMedia,
-        show_sent_by_footer,
-      },
-      { authInfo }
-    ) => {
-      let attachmentRunContext: AgentLoopRunContext | undefined;
-      if (fileId) {
-        assert(
-          isAgentLoopRunContext(toolContext?.runContext),
-          "AgentLoopRunContext expected"
-        );
-        attachmentRunContext = toolContext.runContext;
-      }
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
 
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      if (!toolContext?.runContext) {
-        return new Err(
-          new MCPError("Unreachable: missing agentLoopRunContext.")
-        );
-      }
-
-      try {
-        return await executePostMessage(auth, toolContext, {
+    try {
+      return await executePostMessage(
+        auth,
+        { runContext },
+        {
           to,
           message,
           threadTs,
@@ -616,43 +567,41 @@ export function createSlackPersonalTools(
           unfurlMedia,
           accessToken,
           showSentByFooter: show_sent_by_footer ?? true,
-        });
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
         }
-        return new Err(
-          new MCPError(`Error posting message: ${normalizeError(error)}`)
-        );
+      );
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
       }
+      return new Err(
+        new MCPError(`Error posting message: ${normalizeError(error)}`)
+      );
+    }
+  },
+
+  schedule_message: async (
+    {
+      to,
+      message,
+      post_at,
+      threadTs,
+      unfurlLinks,
+      unfurlMedia,
+      show_sent_by_footer,
     },
+    { auth, authInfo, runContext }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
 
-    schedule_message: async (
-      {
-        to,
-        message,
-        post_at,
-        threadTs,
-        unfurlLinks,
-        unfurlMedia,
-        show_sent_by_footer,
-      },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      if (!toolContext?.runContext) {
-        return new Err(
-          new MCPError("Unreachable: missing agentLoopRunContext.")
-        );
-      }
-
-      try {
-        return await executeScheduleMessage(auth, toolContext, {
+    try {
+      return await executeScheduleMessage(
+        auth,
+        { runContext },
+        {
           to,
           message,
           post_at,
@@ -661,593 +610,554 @@ export function createSlackPersonalTools(
           unfurlMedia,
           accessToken,
           showSentByFooter: show_sent_by_footer ?? true,
-        });
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
         }
-        return new Err(
-          new MCPError(`Error scheduling message: ${normalizeError(error)}`)
-        );
+      );
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
       }
-    },
+      return new Err(
+        new MCPError(`Error scheduling message: ${normalizeError(error)}`)
+      );
+    }
+  },
 
-    search_user: async ({ query, search_all }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
+  search_user: async ({ query, search_all }, { authInfo, runContext }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
+
+    try {
+      return await executeSearchUser(query, search_all ?? false, {
+        accessToken,
+        mcpServerId: runContext.toolConfiguration.toolServerId,
+      });
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
       }
+      return new Err(
+        new MCPError(`Error searching user: ${normalizeError(error)}`)
+      );
+    }
+  },
 
-      try {
-        return await executeSearchUser(query, search_all ?? false, {
-          accessToken,
-          mcpServerId,
-        });
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error searching user: ${normalizeError(error)}`)
-        );
+  list_user_groups: async (_params, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
+
+    try {
+      return await executeListUserGroups({ accessToken });
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
       }
-    },
+      return new Err(
+        new MCPError(`Error listing user groups: ${normalizeError(error)}`)
+      );
+    }
+  },
 
-    list_user_groups: async (_params, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
+  search_channels: async ({ query, search_all }, { authInfo, runContext }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
+
+    try {
+      return await executeSearchChannels(query, search_all, {
+        accessToken,
+        mcpServerId: runContext.toolConfiguration.toolServerId,
+      });
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
       }
+      return new Err(
+        new MCPError(`Error searching channels: ${normalizeError(error)}`)
+      );
+    }
+  },
 
-      try {
-        return await executeListUserGroups({ accessToken });
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error listing user groups: ${normalizeError(error)}`)
-        );
+  list_messages: async (
+    { channel, relativeTimeFrame },
+    { authInfo, runContext }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
+
+    const slackClient = await getSlackClient(accessToken);
+    const timeFrame = parseTimeFrame(relativeTimeFrame);
+
+    // Resolve channel name to channel ID (supports public, private channels, and DMs).
+    let channelId: string | null;
+    try {
+      channelId = await resolveChannelId({
+        channelNameOrId: channel,
+        accessToken,
+      });
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
       }
-    },
+      return new Err(
+        new MCPError(`Error resolving channel: ${normalizeError(error)}`)
+      );
+    }
 
-    search_channels: async ({ query, search_all }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
+    if (!channelId) {
+      return new Err(
+        new MCPError(
+          `Unable to find channel "${channel}". Make sure the channel exists and you have access to it.`
+        )
+      );
+    }
+
+    // Calculate timestamp for timeFrame filtering.
+    const oldest = timeFrame
+      ? (timeFrameFromNow(timeFrame) / 1000).toString()
+      : undefined;
+
+    // Use conversations.history to get messages, which works for public, private channels, and DMs.
+    let response;
+    try {
+      response = await slackClient.conversations.history({
+        channel: channelId,
+        oldest,
+        limit: SLACK_THREAD_LISTING_LIMIT,
+      });
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
       }
+      return new Err(
+        new MCPError(`Error fetching messages: ${normalizeError(error)}`)
+      );
+    }
 
-      try {
-        return await executeSearchChannels(query, search_all, {
-          accessToken,
-          mcpServerId,
-        });
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error searching channels: ${normalizeError(error)}`)
-        );
+    if (!response.ok) {
+      // Trigger authentication flow for missing_scope.
+      if (response.error === "missing_scope") {
+        return new Ok(makePersonalAuthenticationError("slack_tools").content);
       }
-    },
+      return new Err(new MCPError(response.error ?? "Failed to list threads"));
+    }
 
-    list_messages: async ({ channel, relativeTimeFrame }, { authInfo }) => {
-      if (!toolContext?.runContext) {
-        return new Err(
-          new MCPError("Unreachable: missing agentLoopRunContext.")
-        );
+    const rawMessages = response.messages ?? [];
+
+    // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS messages.
+    const matches = rawMessages.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
+
+    if (matches.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `No messages found.`,
+        },
+      ]);
+    }
+
+    // Get display name for the channel.
+    const displayName = await resolveChannelDisplayName({
+      channelId,
+      accessToken,
+    });
+
+    const { citationsOffset } = isAgentLoopRunContext(runContext)
+      ? runContext.stepContext
+      : { citationsOffset: 0 };
+
+    let refs = getRefs().slice(
+      citationsOffset,
+      citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+    );
+
+    // Resolve user display names for all thread authors.
+    const threadsWithAuthors = await Promise.all(
+      matches.map(async (match) => {
+        const authorName = match.user
+          ? await resolveUserDisplayName({
+              userId: match.user,
+              accessToken,
+            })
+          : null;
+        return {
+          ts: match.ts,
+          reply_count: match.reply_count,
+          authorName: authorName ?? "Unknown",
+          // Reconstruct readable text from blocks/attachments: app/bot messages
+          // (Datadog, Zendesk, ...) often have an empty `text` and put content in
+          // `blocks[]`, which would otherwise render as empty for the agent.
+          renderedText: renderFormattedMessage(formatSlackMessageForLLM(match)),
+        };
+      })
+    );
+    const searchResults = buildSearchResults<{
+      permalink?: string;
+      renderedText: string;
+      ts?: string;
+      authorName: string;
+      reply_count?: number;
+    }>(threadsWithAuthors, refs, {
+      permalink: (match) => match.permalink,
+      text: (match) => {
+        const hasReplies = match.reply_count && match.reply_count > 0;
+        const prefix = hasReplies
+          ? `[Thread: ${match.ts}]`
+          : `[Message: ${match.ts}]`;
+        return `${prefix} From ${match.authorName} in ${displayName}: ${match.renderedText}`;
+      },
+      id: (match) => match.ts ?? "",
+      content: (match) => match.renderedText,
+    });
+
+    return new Ok(
+      searchResults.map((result) => ({
+        type: "resource" as const,
+        resource: result,
+      }))
+    );
+  },
+
+  read_thread_messages: async (
+    { channel, threadTs, limit, cursor, oldest, latest },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
+
+    return executeReadThreadMessages({
+      channel,
+      threadTs,
+      limit,
+      cursor,
+      oldest,
+      latest,
+      accessToken,
+    });
+  },
+
+  get_channel_canvases: async ({ channel_id }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
+
+    try {
+      return await executeGetChannelCanvases({
+        channel_id,
+        accessToken,
+      });
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
       }
+      return new Err(
+        new MCPError(`Error getting channel canvases: ${normalizeError(error)}`)
+      );
+    }
+  },
 
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
+  read_canvas: async (
+    { canvas_id, section_types, contains_text },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
+
+    try {
+      return await executeReadCanvas({
+        canvas_id,
+        section_types,
+        contains_text,
+        accessToken,
+      });
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
       }
+      return new Err(
+        new MCPError(`Error reading canvas: ${normalizeError(error)}`)
+      );
+    }
+  },
 
-      const slackClient = await getSlackClient(accessToken);
-      const timeFrame = parseTimeFrame(relativeTimeFrame);
+  write_canvas: async (
+    { canvas_id, operation, content, section_id, title, channel_id },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
 
-      // Resolve channel name to channel ID (supports public, private channels, and DMs).
-      let channelId: string | null;
-      try {
-        channelId = await resolveChannelId({
-          channelNameOrId: channel,
-          accessToken,
-        });
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error resolving channel: ${normalizeError(error)}`)
-        );
+    try {
+      return await executeWriteCanvas({
+        canvas_id,
+        operation,
+        content,
+        section_id,
+        title,
+        channel_id,
+        accessToken,
+      });
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
       }
+      return new Err(
+        new MCPError(`Error writing canvas: ${normalizeError(error)}`)
+      );
+    }
+  },
 
-      if (!channelId) {
-        return new Err(
-          new MCPError(
-            `Unable to find channel "${channel}". Make sure the channel exists and you have access to it.`
-          )
-        );
+  create_channel: async (
+    { name, is_private, leave_after_creation },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
+
+    try {
+      return await executeCreateChannel({
+        name,
+        is_private,
+        leave_after_creation,
+        accessToken,
+      });
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
       }
+      return new Err(
+        new MCPError(`Error creating channel: ${normalizeError(error)}`)
+      );
+    }
+  },
 
-      // Calculate timestamp for timeFrame filtering.
-      const oldest = timeFrame
-        ? (timeFrameFromNow(timeFrame) / 1000).toString()
-        : undefined;
+  invite_to_channel: async ({ channel, users }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
 
-      // Use conversations.history to get messages, which works for public, private channels, and DMs.
-      let response;
-      try {
-        response = await slackClient.conversations.history({
-          channel: channelId,
-          oldest,
-          limit: SLACK_THREAD_LISTING_LIMIT,
-        });
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error fetching messages: ${normalizeError(error)}`)
-        );
+    try {
+      return await executeInviteToChannel({ channel, users, accessToken });
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
       }
+      return new Err(
+        new MCPError(
+          `Error inviting users to channel: ${normalizeError(error)}`
+        )
+      );
+    }
+  },
 
-      if (!response.ok) {
-        // Trigger authentication flow for missing_scope.
-        if (response.error === "missing_scope") {
+  archive_channel: async ({ channel }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
+
+    try {
+      return await executeArchiveChannel({ channel, accessToken });
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
+      }
+      return new Err(
+        new MCPError(`Error archiving channel: ${normalizeError(error)}`)
+      );
+    }
+  },
+  set_user_status: async (
+    { status_text, status_emoji, status_expiration },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Ok(makePersonalAuthenticationError("slack_tools").content);
+    }
+
+    try {
+      const result = await executeSetUserStatus({
+        accessToken,
+        statusText: status_text,
+        statusEmoji: status_emoji,
+        statusExpiration: status_expiration,
+      });
+      if (result.isErr()) {
+        if (isSlackMissingScope(result.error)) {
           return new Ok(makePersonalAuthenticationError("slack_tools").content);
         }
         return new Err(
-          new MCPError(response.error ?? "Failed to list threads")
+          new MCPError(`Failed to set Slack status: ${result.error}`)
         );
       }
-
-      const rawMessages = response.messages ?? [];
-
-      // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS messages.
-      const matches = rawMessages.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
-
-      if (matches.length === 0) {
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `No messages found.`,
-          },
-        ]);
+      const displayText =
+        status_text || status_emoji
+          ? `Status set to ${[status_emoji, status_text].filter(Boolean).join(" ")}`
+          : "Status cleared";
+      return new Ok([{ type: "text" as const, text: displayText }]);
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
       }
-
-      // Get display name for the channel.
-      const displayName = await resolveChannelDisplayName({
-        channelId,
-        accessToken,
-      });
-
-      const { citationsOffset } = isAgentLoopRunContext(toolContext.runContext)
-        ? toolContext.runContext.stepContext
-        : { citationsOffset: 0 };
-
-      let refs = getRefs().slice(
-        citationsOffset,
-        citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+      return new Err(
+        new MCPError(`Error setting status: ${normalizeError(error)}`)
       );
+    }
+  },
 
-      // Resolve user display names for all thread authors.
-      const threadsWithAuthors = await Promise.all(
-        matches.map(async (match) => {
-          const authorName = match.user
-            ? await resolveUserDisplayName({
-                userId: match.user,
-                accessToken,
-              })
-            : null;
-          return {
-            ts: match.ts,
-            reply_count: match.reply_count,
-            authorName: authorName ?? "Unknown",
-            // Reconstruct readable text from blocks/attachments: app/bot messages
-            // (Datadog, Zendesk, ...) often have an empty `text` and put content in
-            // `blocks[]`, which would otherwise render as empty for the agent.
-            renderedText: renderFormattedMessage(
-              formatSlackMessageForLLM(match)
-            ),
-          };
-        })
-      );
-      const searchResults = buildSearchResults<{
-        permalink?: string;
-        renderedText: string;
-        ts?: string;
-        authorName: string;
-        reply_count?: number;
-      }>(threadsWithAuthors, refs, {
-        permalink: (match) => match.permalink,
-        text: (match) => {
-          const hasReplies = match.reply_count && match.reply_count > 0;
-          const prefix = hasReplies
-            ? `[Thread: ${match.ts}]`
-            : `[Message: ${match.ts}]`;
-          return `${prefix} From ${match.authorName} in ${displayName}: ${match.renderedText}`;
-        },
-        id: (match) => match.ts ?? "",
-        content: (match) => match.renderedText,
-      });
+  add_reaction: async ({ channel, timestamp, name }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
 
-      return new Ok(
-        searchResults.map((result) => ({
-          type: "resource" as const,
-          resource: result,
-        }))
-      );
-    },
+    const slackClient = await getSlackClient(accessToken);
 
-    read_thread_messages: async (
-      { channel, threadTs, limit, cursor, oldest, latest },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      return executeReadThreadMessages({
+    try {
+      const response = await slackClient.reactions.add({
         channel,
-        threadTs,
-        limit,
-        cursor,
-        oldest,
-        latest,
-        accessToken,
-      });
-    },
-
-    get_channel_canvases: async ({ channel_id }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      try {
-        return await executeGetChannelCanvases({
-          channel_id,
-          accessToken,
-        });
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(
-            `Error getting channel canvases: ${normalizeError(error)}`
-          )
-        );
-      }
-    },
-
-    read_canvas: async (
-      { canvas_id, section_types, contains_text },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      try {
-        return await executeReadCanvas({
-          canvas_id,
-          section_types,
-          contains_text,
-          accessToken,
-        });
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error reading canvas: ${normalizeError(error)}`)
-        );
-      }
-    },
-
-    write_canvas: async (
-      { canvas_id, operation, content, section_id, title, channel_id },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      try {
-        return await executeWriteCanvas({
-          canvas_id,
-          operation,
-          content,
-          section_id,
-          title,
-          channel_id,
-          accessToken,
-        });
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error writing canvas: ${normalizeError(error)}`)
-        );
-      }
-    },
-
-    create_channel: async (
-      { name, is_private, leave_after_creation },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      try {
-        return await executeCreateChannel({
-          name,
-          is_private,
-          leave_after_creation,
-          accessToken,
-        });
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error creating channel: ${normalizeError(error)}`)
-        );
-      }
-    },
-
-    invite_to_channel: async ({ channel, users }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      try {
-        return await executeInviteToChannel({ channel, users, accessToken });
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(
-            `Error inviting users to channel: ${normalizeError(error)}`
-          )
-        );
-      }
-    },
-
-    archive_channel: async ({ channel }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      try {
-        return await executeArchiveChannel({ channel, accessToken });
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error archiving channel: ${normalizeError(error)}`)
-        );
-      }
-    },
-    set_user_status: async (
-      { status_text, status_emoji, status_expiration },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Ok(makePersonalAuthenticationError("slack_tools").content);
-      }
-
-      try {
-        const result = await executeSetUserStatus({
-          accessToken,
-          statusText: status_text,
-          statusEmoji: status_emoji,
-          statusExpiration: status_expiration,
-        });
-        if (result.isErr()) {
-          if (isSlackMissingScope(result.error)) {
-            return new Ok(
-              makePersonalAuthenticationError("slack_tools").content
-            );
-          }
-          return new Err(
-            new MCPError(`Failed to set Slack status: ${result.error}`)
-          );
-        }
-        const displayText =
-          status_text || status_emoji
-            ? `Status set to ${[status_emoji, status_text].filter(Boolean).join(" ")}`
-            : "Status cleared";
-        return new Ok([{ type: "text" as const, text: displayText }]);
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error setting status: ${normalizeError(error)}`)
-        );
-      }
-    },
-
-    add_reaction: async ({ channel, timestamp, name }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      const slackClient = await getSlackClient(accessToken);
-
-      try {
-        const response = await slackClient.reactions.add({
-          channel,
-          timestamp,
-          name,
-        });
-
-        if (!response.ok) {
-          return new Err(
-            new MCPError(`Error adding reaction: ${response.error}`)
-          );
-        }
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Successfully added :${name}: reaction to message`,
-          },
-        ]);
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error adding reaction: ${normalizeError(error)}`)
-        );
-      }
-    },
-
-    remove_reaction: async ({ channel, timestamp, name }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      const slackClient = await getSlackClient(accessToken);
-
-      try {
-        const response = await slackClient.reactions.remove({
-          channel,
-          timestamp,
-          name,
-        });
-
-        if (!response.ok) {
-          return new Err(
-            new MCPError(`Error removing reaction: ${response.error}`)
-          );
-        }
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Successfully removed :${name}: reaction from message`,
-          },
-        ]);
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error removing reaction: ${normalizeError(error)}`)
-        );
-      }
-    },
-
-    get_reactions: async ({ channel, timestamp, full }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return new Err(new MCPError("Access token not found"));
-      }
-
-      const slackClient = await getSlackClient(accessToken);
-
-      try {
-        const response = await slackClient.reactions.get({
-          channel,
-          timestamp,
-          full,
-        });
-
-        if (!response.ok) {
-          return new Err(
-            new MCPError(`Error getting reactions: ${response.error}`)
-          );
-        }
-
-        const reactions = response.message?.reactions ?? [];
-        if (reactions.length === 0) {
-          return new Ok([
-            { type: "text" as const, text: "No reactions on this message." },
-          ]);
-        }
-
-        const lines = reactions.map((r) => {
-          const count = r.count ?? 0;
-          const users = r.users?.map((u) => `<@${u}>`).join(", ") ?? "";
-          return users
-            ? `:${r.name}: ×${count} — ${users}`
-            : `:${r.name}: ×${count}`;
-        });
-
-        return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
-      } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error getting reactions: ${normalizeError(error)}`)
-        );
-      }
-    },
-  };
-
-  const rawTools = buildTools(SLACK_PERSONAL_TOOLS_METADATA, handlers);
-
-  // When footer removal is not allowed, strip show_sent_by_footer from the schema so
-  // the LLM never sees the parameter — the handler already enforces true server-side.
-  const tools = allowFooterRemoval
-    ? rawTools
-    : rawTools.map((tool) => {
-        if (tool.name === "post_message" || tool.name === "schedule_message") {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { show_sent_by_footer: _stripped, ...schemaWithoutFooter } =
-            tool.schema;
-          return { ...tool, schema: schemaWithoutFooter };
-        }
-        return tool;
+        timestamp,
+        name,
       });
 
-  const searchMessagesTool = tools.find((t) => t.name === "search_messages")!;
-  const semanticSearchMessagesTool = tools.find(
-    (t) => t.name === "semantic_search_messages"
-  )!;
-  const commonTools = tools.filter(
-    (t) => t.name !== "search_messages" && t.name !== "semantic_search_messages"
-  );
+      if (!response.ok) {
+        return new Err(
+          new MCPError(`Error adding reaction: ${response.error}`)
+        );
+      }
 
-  return {
-    searchMessagesTool,
-    semanticSearchMessagesTool,
-    commonTools,
-  };
-}
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Successfully added :${name}: reaction to message`,
+        },
+      ]);
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
+      }
+      return new Err(
+        new MCPError(`Error adding reaction: ${normalizeError(error)}`)
+      );
+    }
+  },
+
+  remove_reaction: async ({ channel, timestamp, name }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
+
+    const slackClient = await getSlackClient(accessToken);
+
+    try {
+      const response = await slackClient.reactions.remove({
+        channel,
+        timestamp,
+        name,
+      });
+
+      if (!response.ok) {
+        return new Err(
+          new MCPError(`Error removing reaction: ${response.error}`)
+        );
+      }
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Successfully removed :${name}: reaction from message`,
+        },
+      ]);
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
+      }
+      return new Err(
+        new MCPError(`Error removing reaction: ${normalizeError(error)}`)
+      );
+    }
+  },
+
+  get_reactions: async ({ channel, timestamp, full }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Access token not found"));
+    }
+
+    const slackClient = await getSlackClient(accessToken);
+
+    try {
+      const response = await slackClient.reactions.get({
+        channel,
+        timestamp,
+        full,
+      });
+
+      if (!response.ok) {
+        return new Err(
+          new MCPError(`Error getting reactions: ${response.error}`)
+        );
+      }
+
+      const reactions = response.message?.reactions ?? [];
+      if (reactions.length === 0) {
+        return new Ok([
+          { type: "text" as const, text: "No reactions on this message." },
+        ]);
+      }
+
+      const lines = reactions.map((r) => {
+        const count = r.count ?? 0;
+        const users = r.users?.map((u) => `<@${u}>`).join(", ") ?? "";
+        return users
+          ? `:${r.name}: ×${count} — ${users}`
+          : `:${r.name}: ×${count}`;
+      });
+
+      return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
+    } catch (error) {
+      const authError = handleSlackAuthError(error);
+      if (authError) {
+        return authError;
+      }
+      return new Err(
+        new MCPError(`Error getting reactions: ${normalizeError(error)}`)
+      );
+    }
+  },
+};
+
+export const TOOLS = buildTools(SLACK_PERSONAL_TOOLS_METADATA, handlers);

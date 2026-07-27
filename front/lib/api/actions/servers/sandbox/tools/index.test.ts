@@ -1,8 +1,11 @@
+import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
+import createServer from "@app/lib/api/actions/servers/sandbox";
 import { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -121,17 +124,30 @@ vi.mock("@app/logger/logger", () => {
 import {
   addEgressDomainTool,
   buildDescribeToolsetOutput,
-  createSandboxTools,
   runSandboxBashTool,
 } from "./index";
 
-describe("createSandboxTools", () => {
+async function getToolNames(auth: Authenticator): Promise<string[]> {
+  const server = await createServer(auth);
+  const client = new Client({ name: "sandbox-test", version: "1.0.0" });
+  const [clientTransport, serverTransport] =
+    InMemoryWithAuthTransport.createLinkedPair();
+
+  await server.connect(serverTransport);
+  await client.connect(clientTransport);
+  const { tools } = await client.listTools();
+  await client.close();
+
+  return tools.map((tool) => tool.name);
+}
+
+describe("sandbox server", () => {
   it("omits add_egress_domain by default", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
-    const tools = await createSandboxTools(auth);
+    const toolNames = await getToolNames(auth);
 
-    expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
+    expect(toolNames).not.toContain("add_egress_domain");
   });
 
   it("includes add_egress_domain when Computer and metadata are enabled", async () => {
@@ -144,9 +160,9 @@ describe("createSandboxTools", () => {
       workspace.sId
     );
 
-    const tools = await createSandboxTools(auth);
+    const toolNames = await getToolNames(auth);
 
-    expect(tools.map((tool) => tool.name)).toContain("add_egress_domain");
+    expect(toolNames).toContain("add_egress_domain");
   });
 
   it("omits add_egress_domain when Computer is disabled", async () => {
@@ -160,9 +176,9 @@ describe("createSandboxTools", () => {
     );
     await FeatureFlagFactory.basic(auth, "disable_computer_feature");
 
-    const tools = await createSandboxTools(auth);
+    const toolNames = await getToolNames(auth);
 
-    expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
+    expect(toolNames).not.toContain("add_egress_domain");
   });
 
   it("omits add_egress_domain when metadata is off", async () => {
@@ -172,9 +188,9 @@ describe("createSandboxTools", () => {
       workspace.sId
     );
 
-    const tools = await createSandboxTools(auth);
+    const toolNames = await getToolNames(auth);
 
-    expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
+    expect(toolNames).not.toContain("add_egress_domain");
   });
 });
 

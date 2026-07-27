@@ -1,13 +1,11 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { BlockedAwaitingInputOutputResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
-  ToolDefinition,
   ToolHandlerExtra,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
-import type { ToolContext } from "@app/lib/actions/types";
 import {
   isAgentLoopRunContext,
   isSandboxResumeState,
@@ -60,7 +58,7 @@ import { z } from "zod";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
 const DEFAULT_EXEC_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24h
-const ADD_EGRESS_DOMAIN_TOOL_NAME = "add_egress_domain" as const;
+export const ADD_EGRESS_DOMAIN_TOOL_NAME = "add_egress_domain" as const;
 const REDACTION_MARKER_PREFIX = "«redacted:";
 const REDACTION_MARKER_SUFFIX = "»";
 const REDACTION_MIN_LENGTH = 16;
@@ -217,46 +215,31 @@ async function redactSandboxEnvVarsFromOutput(
   return new Ok(redactedOutput);
 }
 
-function isSandboxAgentEgressRequestsAllowed(auth: Authenticator): boolean {
+export function isSandboxAgentEgressRequestsAllowed(
+  auth: Authenticator
+): boolean {
   return (
     auth.getNonNullableWorkspace().metadata?.sandboxAllowAgentEgressRequests ===
     true
   );
 }
 
-export async function createSandboxTools(
-  auth: Authenticator,
-  _toolContext?: ToolContext
-): Promise<ToolDefinition[]> {
-  const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
-    bash: runSandboxBashTool,
-    describe_toolset: async ({ format }, { auth, runContext }) => {
-      const providerId = isAgentLoopRunContext(runContext)
-        ? runContext.modelInfo.endpoint.modelConfig.providerId
-        : null;
-      if (!providerId) {
-        return new Err(new MCPError("Missing model provider ID"));
-      }
+const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
+  bash: runSandboxBashTool,
+  describe_toolset: async ({ format }, { auth, runContext }) => {
+    const providerId = isAgentLoopRunContext(runContext)
+      ? runContext.modelInfo.endpoint.modelConfig.providerId
+      : null;
+    if (!providerId) {
+      return new Err(new MCPError("Missing model provider ID"));
+    }
 
-      return buildDescribeToolsetOutput(auth, providerId, format ?? "yaml");
-    },
-    [ADD_EGRESS_DOMAIN_TOOL_NAME]: addEgressDomainTool,
-  };
+    return buildDescribeToolsetOutput(auth, providerId, format ?? "yaml");
+  },
+  [ADD_EGRESS_DOMAIN_TOOL_NAME]: addEgressDomainTool,
+};
 
-  const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
-
-  // The add_egress_domain tool requires Computer access and the
-  // per-workspace setting that admins toggle on top of it.
-  const flags = await getFeatureFlags(auth);
-  if (
-    isComputerFeatureEnabled(flags) &&
-    isSandboxAgentEgressRequestsAllowed(auth)
-  ) {
-    return tools;
-  }
-
-  return tools.filter((tool) => tool.name !== ADD_EGRESS_DOMAIN_TOOL_NAME);
-}
+export const TOOLS = buildTools(SANDBOX_TOOLS_METADATA, handlers);
 
 export async function buildDescribeToolsetOutput(
   auth: Authenticator,
@@ -488,7 +471,7 @@ export async function addEgressDomainTool(
   { auth, runContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
   assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
-  // Defense-in-depth: createSandboxTools already filters this tool out when
+  // Defense-in-depth: createServer already filters this tool out when
   // the workspace setting is off, so this metadata-only check is enough to
   // reject any caller that bypasses tool-list filtering.
   if (!isSandboxAgentEgressRequestsAllowed(auth)) {

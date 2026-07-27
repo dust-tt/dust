@@ -6,11 +6,11 @@ import logger from "@app/logger/logger";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { SLACK_TOOL_LOG_NAME } from "./metadata";
-import type { SlackAIStatus } from "./tools";
 import {
-  createSlackPersonalTools,
   getSlackAIEnablementStatus,
   getSlackConnectionForMCPServer,
+  type SlackAIStatus,
+  TOOLS,
 } from "./tools";
 
 const localLogger = logger.child({ module: "mcp_slack_personal" });
@@ -37,8 +37,29 @@ async function createServer(
     "Slack MCP server initialized"
   );
 
-  const { searchMessagesTool, semanticSearchMessagesTool, commonTools } =
-    createSlackPersonalTools(auth, mcpServerId, toolContext);
+  const allowFooterRemoval =
+    auth.workspace()?.metadata?.slackPersonalAllowFooterRemoval ?? false;
+  // When footer removal is not allowed, strip show_sent_by_footer from the schema so
+  // the LLM never sees the parameter — the handler already enforces true server-side.
+  const tools = allowFooterRemoval
+    ? TOOLS
+    : TOOLS.map((tool) => {
+        if (tool.name === "post_message" || tool.name === "schedule_message") {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { show_sent_by_footer: _stripped, ...schemaWithoutFooter } =
+            tool.schema;
+          return { ...tool, schema: schemaWithoutFooter };
+        }
+        return tool;
+      });
+
+  const searchMessagesTool = tools.find((t) => t.name === "search_messages")!;
+  const semanticSearchMessagesTool = tools.find(
+    (t) => t.name === "semantic_search_messages"
+  )!;
+  const commonTools = tools.filter(
+    (t) => t.name !== "search_messages" && t.name !== "semantic_search_messages"
+  );
 
   // Register search tool based on Slack AI status.
   // If we're not connected to Slack, we arbitrarily include the keyword search tool,
