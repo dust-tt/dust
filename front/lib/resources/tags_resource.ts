@@ -293,21 +293,17 @@ export class TagResource extends BaseResource<TagModel> {
       return new Ok(undefined);
     }
 
-    try {
-      await TagAgentModel.bulkCreate(
-        agentConfigurations.flatMap((agentConfiguration) =>
-          tags.map((tag) => ({
-            workspaceId: auth.getNonNullableWorkspace().id,
-            tagId: tag.id,
-            agentConfigurationId: agentConfiguration.id,
-          }))
-        ),
-        { ignoreDuplicates: true }
-      );
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
+    await TagAgentModel.bulkCreate(
+      agentConfigurations.flatMap((agentConfiguration) =>
+        tags.map((tag) => ({
+          workspaceId: auth.getNonNullableWorkspace().id,
+          tagId: tag.id,
+          agentConfigurationId: agentConfiguration.id,
+        }))
+      ),
+      { ignoreDuplicates: true }
+    );
+    return new Ok(undefined);
   }
 
   async removeFromAgent(
@@ -347,20 +343,16 @@ export class TagResource extends BaseResource<TagModel> {
       return new Ok(undefined);
     }
 
-    try {
-      await TagAgentModel.destroy({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          tagId: tags.map((tag) => tag.id),
-          agentConfigurationId: agentConfigurations.map(
-            (agentConfiguration) => agentConfiguration.id
-          ),
-        },
-      });
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
+    await TagAgentModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        tagId: tags.map((tag) => tag.id),
+        agentConfigurationId: agentConfigurations.map(
+          (agentConfiguration) => agentConfiguration.id
+        ),
+      },
+    });
+    return new Ok(undefined);
   }
 
   async updateTag({ name, kind }: { name: string; kind: TagKind }) {
