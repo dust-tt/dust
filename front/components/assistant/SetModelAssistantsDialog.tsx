@@ -11,7 +11,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   CpuChip01,
-  cn,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -147,18 +146,10 @@ export function SetModelAssistantsDialog({
                     customItem={
                       <Label
                         htmlFor={itemId}
-                        className={cn(
-                          "flex min-w-0 grow items-center gap-2",
-                          model.isSelectable
-                            ? "cursor-pointer"
-                            : "cursor-not-allowed opacity-70"
-                        )}
+                        className="flex min-w-0 grow cursor-pointer items-center gap-2"
                       >
                         <Icon
-                          visual={getModelMakerLogo(
-                            getModelMaker(model),
-                            isDark
-                          )}
+                          visual={getModelMakerLogo(getModelMaker(model), isDark)}
                           size="md"
                           className="flex-shrink-0"
                         />
