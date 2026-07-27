@@ -35,10 +35,11 @@ export async function selectPreferredEndpointForWorkspace<
   filter: Where<EndpointConfig>
 ): Promise<T | null> {
   const plan = auth.getNonNullablePlan();
+  const featureFlags = await getFeatureFlags(auth);
 
   const endpoints = getEndpoints(
     {
-      featureFlags: await getFeatureFlags(auth),
+      featureFlags,
       isEnterprise: isEnterpriseOrDust(plan),
       isCreditPriced: isCreditPricedPlanPrefix(plan.code),
     },
