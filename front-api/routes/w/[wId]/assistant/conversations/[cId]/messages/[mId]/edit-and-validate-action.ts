@@ -16,7 +16,6 @@ const EditAndValidateActionSchema = z.object({
   actionId: z.string(),
   approvalState: z.enum(["approved", "always_approved", "rejected"]),
   editedArguments: z.record(z.string(), z.unknown()),
-  resumeAncestorConversations: z.boolean().optional(),
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/edit-and-validate-action.
@@ -48,12 +47,7 @@ app.post(
     }
 
     const { cId, mId } = ctx.req.valid("param");
-    const {
-      actionId,
-      approvalState,
-      editedArguments,
-      resumeAncestorConversations,
-    } = ctx.req.valid("json");
+    const { actionId, approvalState, editedArguments } = ctx.req.valid("json");
 
     const conversation = await ConversationResource.fetchById(auth, cId);
     if (!conversation) {
@@ -71,7 +65,6 @@ app.post(
       approvalState,
       editedArguments,
       messageId: mId,
-      resumeAncestorConversations,
     });
 
     if (result.isErr()) {

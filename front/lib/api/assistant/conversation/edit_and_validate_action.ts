@@ -25,7 +25,7 @@ function getChangedEditedInputs({
 
 function getEditableArguments(
   action: AgentMCPActionResource
-): Result<string[], DustError<"action_not_editable">> {
+): Result<readonly string[], DustError<"action_not_editable">> {
   const editableArguments = isLightServerSideMCPToolConfiguration(
     action.toolConfiguration
   )
@@ -49,13 +49,11 @@ export async function editAndValidateAction(
     approvalState,
     editedArguments,
     messageId,
-    resumeAncestorConversations = false,
   }: {
     actionId: string;
     approvalState: ActionApprovalStateType;
     editedArguments: Record<string, unknown>;
     messageId: string;
-    resumeAncestorConversations?: boolean;
   }
 ): Promise<
   Result<
@@ -90,7 +88,6 @@ export async function editAndValidateAction(
       actionId,
       approvalState,
       messageId,
-      resumeAncestorConversations,
     });
     if (validateActionResult.isErr()) {
       return new Err(
@@ -132,7 +129,6 @@ export async function editAndValidateAction(
     actionId,
     approvalState,
     messageId,
-    resumeAncestorConversations,
   });
   if (validateActionResult.isErr()) {
     return new Err(
