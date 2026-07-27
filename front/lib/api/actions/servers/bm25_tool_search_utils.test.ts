@@ -59,6 +59,7 @@ import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/m
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
+import { USER_MEMORY_SERVER } from "@app/lib/api/actions/servers/user_memory/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
 import { WAKEUPS_SERVER } from "@app/lib/api/actions/servers/wakeups/metadata";
@@ -200,6 +201,7 @@ const SERVER_SOURCES: Array<{
     name: "data_sources_file_system",
     tools: DATA_SOURCES_FILE_SYSTEM_SERVER.tools,
   },
+  { name: "user_memory", tools: USER_MEMORY_SERVER.tools },
 ];
 
 export const SERVERS: ServerEntry[] = SERVER_SOURCES.map(({ name, tools }) => ({
