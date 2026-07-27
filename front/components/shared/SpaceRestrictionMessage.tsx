@@ -28,7 +28,7 @@ export function SpaceRestrictionMessage({
         title={`Who can use this ${entityName}?`}
         icon={Users01}
       >
-        Only users with access to all of the following can use this {entityName}
+        Only users with access to all of the following can read and use this {entityName}
         :{" "}
         <strong>
           {spaces.map((space, index) => (

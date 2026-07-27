@@ -86,8 +86,7 @@ export function SpaceSelectionSheet({
         <SheetHeader>
           <SheetTitle>Visibility control and available data</SheetTitle>
           <SheetDescription>
-            Select a space or pod to make this skill private to members of the
-            space or pod.
+            Add a space or pod to restrict usage to its members and make all its data available to this agent.
           </SheetDescription>
           <SearchInput
             name="space"
