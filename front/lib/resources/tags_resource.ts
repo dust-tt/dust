@@ -277,30 +277,37 @@ export class TagResource extends BaseResource<TagModel> {
     auth: Authenticator,
     tags: TagResource[],
     agentConfigurations: LightAgentConfigurationType[]
-  ) {
+  ): Promise<Result<undefined, Error>> {
     if (
       !auth.isAdmin() &&
       agentConfigurations.some(
         (agentConfiguration) => !agentConfiguration.canEdit
       )
     ) {
-      throw new Error("You are not allowed to add tags to this agent");
+      return new Err(
+        new Error("You are not allowed to add tags to this agent")
+      );
     }
 
     if (tags.length === 0 || agentConfigurations.length === 0) {
-      return;
+      return new Ok(undefined);
     }
 
-    await TagAgentModel.bulkCreate(
-      agentConfigurations.flatMap((agentConfiguration) =>
-        tags.map((tag) => ({
-          workspaceId: auth.getNonNullableWorkspace().id,
-          tagId: tag.id,
-          agentConfigurationId: agentConfiguration.id,
-        }))
-      ),
-      { ignoreDuplicates: true }
-    );
+    try {
+      await TagAgentModel.bulkCreate(
+        agentConfigurations.flatMap((agentConfiguration) =>
+          tags.map((tag) => ({
+            workspaceId: auth.getNonNullableWorkspace().id,
+            tagId: tag.id,
+            agentConfigurationId: agentConfiguration.id,
+          }))
+        ),
+        { ignoreDuplicates: true }
+      );
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
   }
 
   async removeFromAgent(
@@ -324,29 +331,36 @@ export class TagResource extends BaseResource<TagModel> {
     auth: Authenticator,
     tags: TagResource[],
     agentConfigurations: LightAgentConfigurationType[]
-  ) {
+  ): Promise<Result<undefined, Error>> {
     if (
       !auth.isAdmin() &&
       agentConfigurations.some(
         (agentConfiguration) => !agentConfiguration.canEdit
       )
     ) {
-      throw new Error("You are not allowed to remove tags from this agent");
+      return new Err(
+        new Error("You are not allowed to remove tags from this agent")
+      );
     }
 
     if (tags.length === 0 || agentConfigurations.length === 0) {
-      return;
+      return new Ok(undefined);
     }
 
-    await TagAgentModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        tagId: tags.map((tag) => tag.id),
-        agentConfigurationId: agentConfigurations.map(
-          (agentConfiguration) => agentConfiguration.id
-        ),
-      },
-    });
+    try {
+      await TagAgentModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          tagId: tags.map((tag) => tag.id),
+          agentConfigurationId: agentConfigurations.map(
+            (agentConfiguration) => agentConfiguration.id
+          ),
+        },
+      });
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
   }
 
   async updateTag({ name, kind }: { name: string; kind: TagKind }) {
