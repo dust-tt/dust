@@ -183,18 +183,20 @@ export const FIREWORKS_KIMI_K2P6_MODEL_CONFIG: ModelConfigurationType = {
 // calling, image input) and https://platform.kimi.ai/docs/guide/kimi-k3-quickstart
 // (JSON-schema structured output, thinking always enabled).
 // US-only, like every other Fireworks-served model.
+// Dust caps usable context at 256k of the model's 1040k, leaving a 192k prompt
+// budget once the 64k generation reserve is taken out.
 export const FIREWORKS_KIMI_K3_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "moonshot",
   modelId: FIREWORKS_KIMI_K3_MODEL_ID,
   displayName: "Kimi K3 (Fireworks)",
-  contextSize: 1_040_000,
+  contextSize: 256_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "Moonshot AI's flagship 2.8T Mixture-of-Experts model for complex coding and long-horizon agentic work, with 1M context and vision support (served via Fireworks).",
-  shortDescription: "Kimi K3 with 1M context and vision support.",
+    "Moonshot AI's flagship 2.8T Mixture-of-Experts model for complex coding and long-horizon agentic work, with 256k context and vision support (served via Fireworks).",
+  shortDescription: "Kimi K3 with 256k context and vision support.",
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 64_000,
