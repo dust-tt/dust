@@ -1,6 +1,5 @@
-import type { ToolContext } from "@app/lib/actions/types";
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { decrypt } from "@app/types/shared/utils/encryption";
 import ValTown from "@valtown/sdk";
@@ -18,11 +17,11 @@ export function isValTownError(error: unknown): error is ValTownError {
   );
 }
 
-export async function getValTownClient(
-  auth: Authenticator,
-  toolContext?: ToolContext
-): Promise<ValTown | null> {
-  const toolConfig = toolContext?.runContext?.toolConfiguration;
+export async function getValTownClient({
+  auth,
+  runContext,
+}: ToolHandlerExtra): Promise<ValTown | null> {
+  const toolConfig = runContext.toolConfiguration;
   if (
     !toolConfig ||
     !isLightServerSideMCPToolConfiguration(toolConfig) ||

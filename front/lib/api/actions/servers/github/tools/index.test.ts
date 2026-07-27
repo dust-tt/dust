@@ -1,5 +1,5 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createGithubTools } from "@app/lib/api/actions/servers/github/tools";
+import { TOOLS } from "@app/lib/api/actions/servers/github/tools";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -99,9 +99,7 @@ describe("GitHub pull request tools", () => {
     graphqlMock.mockResolvedValueOnce(response);
 
     const { authenticator } = await createResourceTest({ role: "admin" });
-    const tool = createGithubTools(authenticator).find(
-      ({ name }) => name === toolName
-    );
+    const tool = TOOLS.find(({ name }) => name === toolName);
     if (!tool) {
       throw new Error(`Tool not found: ${toolName}`);
     }

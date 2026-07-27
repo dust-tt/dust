@@ -1,8 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { GITHUB_TOOLS_METADATA } from "@app/lib/api/actions/servers/github/metadata";
 import type { Authenticator } from "@app/lib/auth";
@@ -111,48 +108,47 @@ const createOctokit = async (
   });
 };
 
-export function createGithubTools(auth: Authenticator): ToolDefinition[] {
-  const handlers: ToolHandlers<typeof GITHUB_TOOLS_METADATA> = {
-    create_issue: async (
-      { owner, repo, title, body, assignees, labels },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+const handlers: ToolHandlers<typeof GITHUB_TOOLS_METADATA> = {
+  create_issue: async (
+    { owner, repo, title, body, assignees, labels },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
 
-      try {
-        const { data: issue } = await octokit.request(
-          "POST /repos/{owner}/{repo}/issues",
-          {
-            owner,
-            repo,
-            title,
-            body,
-            assignees,
-            labels,
-          }
-        );
+    try {
+      const { data: issue } = await octokit.request(
+        "POST /repos/{owner}/{repo}/issues",
+        {
+          owner,
+          repo,
+          title,
+          body,
+          assignees,
+          labels,
+        }
+      );
 
-        return new Ok([
-          { type: "text" as const, text: `Issue created: #${issue.number}` },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error creating GitHub issue: ${normalizeError(e).message}`
-          )
-        );
-      }
-    },
+      return new Ok([
+        { type: "text" as const, text: `Issue created: #${issue.number}` },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error creating GitHub issue: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
 
-    get_pull_request: async ({ owner, repo, pullNumber }, { authInfo }) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+  get_pull_request: async ({ owner, repo, pullNumber }, { auth, authInfo }) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
 
-      try {
-        const query = `
+    try {
+      const query = `
           query($owner: String!, $repo: String!, $pullNumber: Int!) {
             repository(owner: $owner, name: $repo) {
               pullRequest(number: $pullNumber) {
@@ -203,317 +199,313 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const pull = (await octokit.graphql(query, {
-          owner,
-          repo,
-          pullNumber,
-        })) as {
-          repository: {
-            pullRequest: {
-              title: string;
-              body: string;
-              createdAt: string;
-              mergedAt: string | null;
-              commits: {
-                nodes: {
-                  commit: {
-                    oid: string;
-                    message: string;
-                    author: {
-                      user: {
-                        login: string;
-                      };
+      const pull = (await octokit.graphql(query, {
+        owner,
+        repo,
+        pullNumber,
+      })) as {
+        repository: {
+          pullRequest: {
+            title: string;
+            body: string;
+            createdAt: string;
+            mergedAt: string | null;
+            commits: {
+              nodes: {
+                commit: {
+                  oid: string;
+                  message: string;
+                  author: {
+                    user: {
+                      login: string;
                     };
                   };
-                }[];
-              };
-              comments: {
-                nodes: {
-                  author: {
-                    login: string;
-                  };
-                  body: string;
-                  createdAt: string;
-                }[];
-              };
-              reviews: {
-                nodes: {
-                  author: {
-                    login: string;
-                  };
-                  body: string;
-                  state: string;
-                  createdAt: string;
-                  comments: {
-                    nodes: {
-                      body: string;
-                      path: string;
-                      line: number;
-                    }[];
-                  };
-                }[];
-              };
+                };
+              }[];
+            };
+            comments: {
+              nodes: {
+                author: {
+                  login: string;
+                };
+                body: string;
+                createdAt: string;
+              }[];
+            };
+            reviews: {
+              nodes: {
+                author: {
+                  login: string;
+                };
+                body: string;
+                state: string;
+                createdAt: string;
+                comments: {
+                  nodes: {
+                    body: string;
+                    path: string;
+                    line: number;
+                  }[];
+                };
+              }[];
             };
           };
         };
+      };
 
-        const pullTitle = pull.repository.pullRequest.title;
-        const pullBody = pull.repository.pullRequest.body;
-        const pullCreatedAt = pull.repository.pullRequest.createdAt;
-        const pullMergedAt = pull.repository.pullRequest.mergedAt;
-        const pullCommits = pull.repository.pullRequest.commits.nodes.map(
-          (n) => {
+      const pullTitle = pull.repository.pullRequest.title;
+      const pullBody = pull.repository.pullRequest.body;
+      const pullCreatedAt = pull.repository.pullRequest.createdAt;
+      const pullMergedAt = pull.repository.pullRequest.mergedAt;
+      const pullCommits = pull.repository.pullRequest.commits.nodes.map((n) => {
+        return {
+          sha: n.commit.oid,
+          message: n.commit.message,
+          author: n.commit.author.user?.login || "unknown",
+        };
+      });
+      const pullComments = pull.repository.pullRequest.comments.nodes.map(
+        (n) => {
+          return {
+            createdAt: new Date(n.createdAt).getTime(),
+            author: n.author?.login || "unknown",
+            body: n.body,
+          };
+        }
+      );
+      const pullReviews = pull.repository.pullRequest.reviews.nodes.map((n) => {
+        return {
+          createdAt: new Date(n.createdAt).getTime(),
+          author: n.author?.login || "unknown",
+          body: n.body,
+          state: n.state,
+          comments: n.comments.nodes.map((c) => {
             return {
-              sha: n.commit.oid,
-              message: n.commit.message,
-              author: n.commit.author.user?.login || "unknown",
+              body: c.body,
+              path: c.path,
+              line: c.line,
             };
+          }),
+        };
+      });
+
+      const diffWithPositions = (diff: string) => {
+        const lines = diff.split("\n");
+
+        let currentFile = null;
+        let position = 0;
+        let globalMaxPosition = 0;
+
+        for (const line of lines) {
+          if (line.startsWith("diff --git")) {
+            currentFile = null;
+            position = 0;
+            continue;
           }
-        );
-        const pullComments = pull.repository.pullRequest.comments.nodes.map(
-          (n) => {
-            return {
-              createdAt: new Date(n.createdAt).getTime(),
-              author: n.author?.login || "unknown",
-              body: n.body,
-            };
+
+          if (line.startsWith("@@")) {
+            position = 0;
+            continue;
           }
-        );
-        const pullReviews = pull.repository.pullRequest.reviews.nodes.map(
-          (n) => {
-            return {
-              createdAt: new Date(n.createdAt).getTime(),
-              author: n.author?.login || "unknown",
-              body: n.body,
-              state: n.state,
-              comments: n.comments.nodes.map((c) => {
-                return {
-                  body: c.body,
-                  path: c.path,
-                  line: c.line,
-                };
-              }),
-            };
+
+          if (currentFile !== null) {
+            position++;
+            globalMaxPosition = Math.max(position, globalMaxPosition);
+          } else if (line.startsWith("+++")) {
+            currentFile = line.substring(4).trim();
           }
-        );
+        }
 
-        const diffWithPositions = (diff: string) => {
-          const lines = diff.split("\n");
+        const result = [];
+        currentFile = null;
+        position = 0;
+        const digits = globalMaxPosition.toString().length;
 
-          let currentFile = null;
-          let position = 0;
-          let globalMaxPosition = 0;
+        for (const line of lines) {
+          if (line.startsWith("diff --git")) {
+            currentFile = null;
+            position = 0;
+            result.push(line);
+            continue;
+          }
 
-          for (const line of lines) {
-            if (line.startsWith("diff --git")) {
-              currentFile = null;
-              position = 0;
-              continue;
-            }
-
+          if (currentFile !== null) {
+            const paddedPosition = position.toString().padStart(digits, " ");
             if (line.startsWith("@@")) {
-              position = 0;
-              continue;
+              result.push(line);
+            } else {
+              result.push(`[${paddedPosition}] ${line}`);
             }
-
-            if (currentFile !== null) {
-              position++;
-              globalMaxPosition = Math.max(position, globalMaxPosition);
-            } else if (line.startsWith("+++")) {
+            position++;
+          } else {
+            result.push(line);
+            if (line.startsWith("+++")) {
               currentFile = line.substring(4).trim();
             }
           }
+        }
 
-          const result = [];
-          currentFile = null;
-          position = 0;
-          const digits = globalMaxPosition.toString().length;
+        return result.join("\n");
+      };
 
-          for (const line of lines) {
-            if (line.startsWith("diff --git")) {
-              currentFile = null;
-              position = 0;
-              result.push(line);
-              continue;
-            }
-
-            if (currentFile !== null) {
-              const paddedPosition = position.toString().padStart(digits, " ");
-              if (line.startsWith("@@")) {
-                result.push(line);
-              } else {
-                result.push(`[${paddedPosition}] ${line}`);
-              }
-              position++;
-            } else {
-              result.push(line);
-              if (line.startsWith("+++")) {
-                currentFile = line.substring(4).trim();
-              }
-            }
-          }
-
-          return result.join("\n");
-        };
-
-        const diff = await octokit.request(
-          "GET /repos/{owner}/{repo}/pulls/{pull_number}",
-          {
-            owner,
-            repo,
-            pull_number: pullNumber,
-            headers: {
-              Accept: "application/vnd.github.v3.diff",
-            },
-          }
-        );
-        // @ts-expect-error - data is a string when mediatType.format is `diff` (wrongly typed as
-        // their defauilt response type)
-        const pullDiff = diffWithPositions(diff.data as string);
-
-        const createdAtLine = `CREATED_AT: ${new Date(pullCreatedAt).toISOString()}\n\n`;
-        const mergedAtLine =
-          pullMergedAt != null
-            ? `MERGED_AT: ${new Date(pullMergedAt).toISOString()}\n\n`
-            : `MERGED_AT: (not merged)\n\n`;
-
-        const content =
-          `TITLE: ${pullTitle}\n\n` +
-          createdAtLine +
-          mergedAtLine +
-          `BODY:\n` +
-          `${pullBody}\n\n` +
-          `COMMITS:\n` +
-          `${(pullCommits || [])
-            .map((c) => `${c.sha} ${c.author}: ${c.message}`)
-            .join("\n")}\n\n` +
-          `DIFF (lines are prepended by diff file positions):\n` +
-          `${pullDiff}\n\n` +
-          `COMMENTS:\n` +
-          `${(pullComments || [])
-            .map((c) => {
-              return `${c.author} [${new Date(c.createdAt).toISOString()}]:\n${c.body}`;
-            })
-            .join("\n")}\n\n` +
-          `REVIEWS:\n` +
-          `${(pullReviews || [])
-            .map(
-              (r) =>
-                `${r.author} [${new Date(r.createdAt).toISOString()}]:\n(${r.state})\n${r.body}\n${(
-                  r.comments || []
-                )
-                  .map((c) => ` - ${c.path}:${c.line}:\n${c.body}`)
-                  .join("\n")}`
-            )
-            .join("\n")}`;
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Retrieved pull request #${pullNumber}`,
+      const diff = await octokit.request(
+        "GET /repos/{owner}/{repo}/pulls/{pull_number}",
+        {
+          owner,
+          repo,
+          pull_number: pullNumber,
+          headers: {
+            Accept: "application/vnd.github.v3.diff",
           },
-          { type: "text" as const, text: JSON.stringify(content, null, 2) },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error retrieving GitHub pull request: ${normalizeError(e).message}`
+        }
+      );
+      // @ts-expect-error - data is a string when mediatType.format is `diff` (wrongly typed as
+      // their defauilt response type)
+      const pullDiff = diffWithPositions(diff.data as string);
+
+      const createdAtLine = `CREATED_AT: ${new Date(pullCreatedAt).toISOString()}\n\n`;
+      const mergedAtLine =
+        pullMergedAt != null
+          ? `MERGED_AT: ${new Date(pullMergedAt).toISOString()}\n\n`
+          : `MERGED_AT: (not merged)\n\n`;
+
+      const content =
+        `TITLE: ${pullTitle}\n\n` +
+        createdAtLine +
+        mergedAtLine +
+        `BODY:\n` +
+        `${pullBody}\n\n` +
+        `COMMITS:\n` +
+        `${(pullCommits || [])
+          .map((c) => `${c.sha} ${c.author}: ${c.message}`)
+          .join("\n")}\n\n` +
+        `DIFF (lines are prepended by diff file positions):\n` +
+        `${pullDiff}\n\n` +
+        `COMMENTS:\n` +
+        `${(pullComments || [])
+          .map((c) => {
+            return `${c.author} [${new Date(c.createdAt).toISOString()}]:\n${c.body}`;
+          })
+          .join("\n")}\n\n` +
+        `REVIEWS:\n` +
+        `${(pullReviews || [])
+          .map(
+            (r) =>
+              `${r.author} [${new Date(r.createdAt).toISOString()}]:\n(${r.state})\n${r.body}\n${(
+                r.comments || []
+              )
+                .map((c) => ` - ${c.path}:${c.line}:\n${c.body}`)
+                .join("\n")}`
           )
-        );
-      }
+          .join("\n")}`;
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Retrieved pull request #${pullNumber}`,
+        },
+        { type: "text" as const, text: JSON.stringify(content, null, 2) },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error retrieving GitHub pull request: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
+
+  update_issue: async (
+    {
+      owner,
+      repo,
+      issueNumber,
+      title,
+      body,
+      state,
+      stateReason,
+      assignees,
+      labels,
+      milestone,
     },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
 
-    update_issue: async (
-      {
-        owner,
-        repo,
-        issueNumber,
-        title,
-        body,
-        state,
-        stateReason,
-        assignees,
-        labels,
-        milestone,
-      },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+    try {
+      const { data: issue } = await octokit.request(
+        "PATCH /repos/{owner}/{repo}/issues/{issue_number}",
+        {
+          owner,
+          repo,
+          issue_number: issueNumber,
+          title,
+          body,
+          state,
+          state_reason: stateReason,
+          assignees,
+          labels,
+          milestone,
+        }
+      );
 
-      try {
-        const { data: issue } = await octokit.request(
-          "PATCH /repos/{owner}/{repo}/issues/{issue_number}",
-          {
-            owner,
-            repo,
-            issue_number: issueNumber,
-            title,
-            body,
-            state,
-            state_reason: stateReason,
-            assignees,
-            labels,
-            milestone,
-          }
-        );
+      return new Ok([
+        { type: "text" as const, text: `Issue #${issue.number} updated` },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error updating GitHub issue: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
 
-        return new Ok([
-          { type: "text" as const, text: `Issue #${issue.number} updated` },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error updating GitHub issue: ${normalizeError(e).message}`
-          )
-        );
-      }
-    },
+  create_pull_request_review: async (
+    { owner, repo, pullNumber, body, event, comments = [] },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
 
-    create_pull_request_review: async (
-      { owner, repo, pullNumber, body, event, comments = [] },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+    try {
+      const { data: review } = await octokit.request(
+        "POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+        {
+          owner,
+          repo,
+          pull_number: pullNumber,
+          body,
+          event,
+          comments,
+        }
+      );
 
-      try {
-        const { data: review } = await octokit.request(
-          "POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
-          {
-            owner,
-            repo,
-            pull_number: pullNumber,
-            body,
-            event,
-            comments,
-          }
-        );
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Review created with ID ${review.id}`,
+        },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error reviewing GitHub pull request: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
 
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Review created with ID ${review.id}`,
-          },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error reviewing GitHub pull request: ${normalizeError(e).message}`
-          )
-        );
-      }
-    },
+  list_organization_projects: async ({ owner }, { auth, authInfo }) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
 
-    list_organization_projects: async ({ owner }, { authInfo }) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
-
-      try {
-        const projectsQuery = `
+    try {
+      const projectsQuery = `
         query($owner: String!) {
           organization(login: $owner) {
             projectsV2(first: 100) {
@@ -540,87 +532,87 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           }
         }`;
 
-        const results = (await octokit.graphql(projectsQuery, {
-          owner,
-        })) as {
-          organization: {
-            projectsV2: {
-              nodes: {
-                id: string;
-                title: string;
-                shortDescription: string | null;
-                url: string;
-                closed: boolean;
-                fields: {
-                  nodes: {
+      const results = (await octokit.graphql(projectsQuery, {
+        owner,
+      })) as {
+        organization: {
+          projectsV2: {
+            nodes: {
+              id: string;
+              title: string;
+              shortDescription: string | null;
+              url: string;
+              closed: boolean;
+              fields: {
+                nodes: {
+                  id: string;
+                  name: string;
+                  options: {
                     id: string;
                     name: string;
-                    options: {
-                      id: string;
-                      name: string;
-                    }[];
                   }[];
-                };
-              }[];
-            };
+                }[];
+              };
+            }[];
           };
         };
+      };
 
-        const projects = results.organization.projectsV2.nodes
-          .filter((project: any) => !project.closed)
-          .map((project) => ({
-            ...project,
-            fields: {
-              nodes: project.fields.nodes.filter((n) => n.id),
-            },
-          }));
-
-        let content = "";
-        projects.forEach((project) => {
-          content +=
-            `project='${project.title}' node_id=${project.id} ` +
-            `description='${project.shortDescription}'\n`;
-          project.fields.nodes.forEach((field) => {
-            content += `  field='${field.name}' node_id=${field.id}\n`;
-            field.options.forEach((o) => {
-              content += `    option='${o.name}' node_id=${o.id}\n`;
-            });
-          });
-          content += "\n";
-        });
-
-        if (!content) {
-          return new Ok([
-            { type: "text" as const, text: "No open projects found" },
-          ]);
-        }
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Retrieved ${projects.length} open projects`,
+      const projects = results.organization.projectsV2.nodes
+        .filter((project: any) => !project.closed)
+        .map((project) => ({
+          ...project,
+          fields: {
+            nodes: project.fields.nodes.filter((n) => n.id),
           },
-          { type: "text" as const, text: JSON.stringify(content, null, 2) },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error retrieving GitHub repository projects: ${normalizeError(e).message}`
-          )
-        );
-      }
-    },
+        }));
 
-    add_issue_to_project: async (
-      { owner, repo, issueNumber, projectId, field },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
+      let content = "";
+      projects.forEach((project) => {
+        content +=
+          `project='${project.title}' node_id=${project.id} ` +
+          `description='${project.shortDescription}'\n`;
+        project.fields.nodes.forEach((field) => {
+          content += `  field='${field.name}' node_id=${field.id}\n`;
+          field.options.forEach((o) => {
+            content += `    option='${o.name}' node_id=${o.id}\n`;
+          });
+        });
+        content += "\n";
       });
 
-      try {
-        const issueQuery = `
+      if (!content) {
+        return new Ok([
+          { type: "text" as const, text: "No open projects found" },
+        ]);
+      }
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Retrieved ${projects.length} open projects`,
+        },
+        { type: "text" as const, text: JSON.stringify(content, null, 2) },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error retrieving GitHub repository projects: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
+
+  add_issue_to_project: async (
+    { owner, repo, issueNumber, projectId, field },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
+
+    try {
+      const issueQuery = `
         query($owner: String!, $repo: String!, $issueNumber: Int!) {
           repository(owner: $owner, name: $repo) {
             issue(number: $issueNumber) {
@@ -629,19 +621,19 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           }
         }`;
 
-        const issue = (await octokit.graphql(issueQuery, {
-          owner,
-          repo,
-          issueNumber,
-        })) as {
-          repository: {
-            issue: {
-              id: string;
-            };
+      const issue = (await octokit.graphql(issueQuery, {
+        owner,
+        repo,
+        issueNumber,
+      })) as {
+        repository: {
+          issue: {
+            id: string;
           };
         };
+      };
 
-        const addToProjectMutation = `
+      const addToProjectMutation = `
           mutation($projectId: ID!, $contentId: ID!) {
             addProjectV2ItemById(input: {
               projectId: $projectId
@@ -653,19 +645,19 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const item = (await octokit.graphql(addToProjectMutation, {
-          projectId,
-          contentId: issue.repository.issue.id,
-        })) as {
-          addProjectV2ItemById: {
-            item: {
-              id: string;
-            };
+      const item = (await octokit.graphql(addToProjectMutation, {
+        projectId,
+        contentId: issue.repository.issue.id,
+      })) as {
+        addProjectV2ItemById: {
+          item: {
+            id: string;
           };
         };
+      };
 
-        if (field) {
-          const updateFieldMutation = `
+      if (field) {
+        const updateFieldMutation = `
           mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String) {
             updateProjectV2ItemFieldValue(input: {
               projectId: $projectId,
@@ -681,73 +673,73 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-          await octokit.graphql(updateFieldMutation, {
-            projectId,
-            itemId: item.addProjectV2ItemById.item.id,
-            fieldId: field.fieldId,
-            optionId: field.optionId,
-          });
+        await octokit.graphql(updateFieldMutation, {
+          projectId,
+          itemId: item.addProjectV2ItemById.item.id,
+          fieldId: field.fieldId,
+          optionId: field.optionId,
+        });
+      }
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Issue #${issueNumber} added to project`,
+        },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error adding GitHub issue to project: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
+
+  comment_on_issue: async (
+    { owner, repo, issueNumber, body },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
+
+    try {
+      const { data: comment } = await octokit.request(
+        "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
+        {
+          owner,
+          repo,
+          issue_number: issueNumber,
+          body,
         }
+      );
 
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Issue #${issueNumber} added to project`,
-          },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error adding GitHub issue to project: ${normalizeError(e).message}`
-          )
-        );
-      }
-    },
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Comment added to issue #${issueNumber} with ID ${comment.id}`,
+        },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error commenting on GitHub issue: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
 
-    comment_on_issue: async (
-      { owner, repo, issueNumber, body },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+  list_discussion_categories: async (
+    { owner, repo, perPage = 25, after, before },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
 
-      try {
-        const { data: comment } = await octokit.request(
-          "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
-          {
-            owner,
-            repo,
-            issue_number: issueNumber,
-            body,
-          }
-        );
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Comment added to issue #${issueNumber} with ID ${comment.id}`,
-          },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error commenting on GitHub issue: ${normalizeError(e).message}`
-          )
-        );
-      }
-    },
-
-    list_discussion_categories: async (
-      { owner, repo, perPage = 25, after, before },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
-
-      try {
-        const query = `
+    try {
+      const query = `
           query($owner: String!, $repo: String!, $first: Int!, $after: String, $before: String) {
             repository(owner: $owner, name: $repo) {
               discussionCategories(first: $first, after: $after, before: $before) {
@@ -770,92 +762,91 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const categoriesResult = (await octokit.graphql(query, {
-          owner,
-          repo,
-          first: perPage,
-          after,
-          before,
-        })) as {
-          repository: {
-            discussionCategories: {
-              totalCount: number;
-              pageInfo: {
-                hasNextPage: boolean;
-                endCursor: string | null;
-                startCursor: string | null;
-                hasPreviousPage: boolean;
-              };
-              nodes: {
-                id: string;
-                name: string;
-                slug: string;
-                description: string | null;
-                emoji: string;
-                isAnswerable: boolean;
-              }[];
+      const categoriesResult = (await octokit.graphql(query, {
+        owner,
+        repo,
+        first: perPage,
+        after,
+        before,
+      })) as {
+        repository: {
+          discussionCategories: {
+            totalCount: number;
+            pageInfo: {
+              hasNextPage: boolean;
+              endCursor: string | null;
+              startCursor: string | null;
+              hasPreviousPage: boolean;
             };
+            nodes: {
+              id: string;
+              name: string;
+              slug: string;
+              description: string | null;
+              emoji: string;
+              isAnswerable: boolean;
+            }[];
           };
         };
+      };
 
-        const categories =
-          categoriesResult.repository.discussionCategories.nodes;
+      const categories = categoriesResult.repository.discussionCategories.nodes;
 
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Retrieved ${categories.length} GitHub discussion categories`,
-          },
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                totalCount:
-                  categoriesResult.repository.discussionCategories.totalCount,
-                categories,
-                pageInfo:
-                  categoriesResult.repository.discussionCategories.pageInfo,
-              },
-              null,
-              2
-            ),
-          },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error listing GitHub discussion categories: ${normalizeError(e).message}`
-          )
-        );
-      }
-    },
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Retrieved ${categories.length} GitHub discussion categories`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              totalCount:
+                categoriesResult.repository.discussionCategories.totalCount,
+              categories,
+              pageInfo:
+                categoriesResult.repository.discussionCategories.pageInfo,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error listing GitHub discussion categories: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
 
-    create_discussion: async (
-      { owner, repo, categoryId, title, body },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+  create_discussion: async (
+    { owner, repo, categoryId, title, body },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
 
-      try {
-        const repositoryQuery = `
+    try {
+      const repositoryQuery = `
           query($owner: String!, $repo: String!) {
             repository(owner: $owner, name: $repo) {
               id
             }
           }`;
 
-        const repositoryResult = (await octokit.graphql(repositoryQuery, {
-          owner,
-          repo,
-        })) as {
-          repository: {
-            id: string;
-          };
+      const repositoryResult = (await octokit.graphql(repositoryQuery, {
+        owner,
+        repo,
+      })) as {
+        repository: {
+          id: string;
         };
+      };
 
-        const createDiscussionMutation = `
+      const createDiscussionMutation = `
           mutation($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
             createDiscussion(input: {
               repositoryId: $repositoryId,
@@ -872,56 +863,56 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const discussionResult = (await octokit.graphql(
-          createDiscussionMutation,
-          {
-            repositoryId: repositoryResult.repository.id,
-            categoryId,
-            title,
-            body,
-          }
-        )) as {
-          createDiscussion: {
-            discussion: {
-              id: string;
-              number: number;
-              title: string;
-              url: string;
-            };
+      const discussionResult = (await octokit.graphql(
+        createDiscussionMutation,
+        {
+          repositoryId: repositoryResult.repository.id,
+          categoryId,
+          title,
+          body,
+        }
+      )) as {
+        createDiscussion: {
+          discussion: {
+            id: string;
+            number: number;
+            title: string;
+            url: string;
           };
         };
+      };
 
-        const discussion = discussionResult.createDiscussion.discussion;
+      const discussion = discussionResult.createDiscussion.discussion;
 
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Discussion created: #${discussion.number}`,
-          },
-          {
-            type: "text" as const,
-            text: JSON.stringify(discussion, null, 2),
-          },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error creating GitHub discussion: ${normalizeError(e).message}`
-          )
-        );
-      }
-    },
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Discussion created: #${discussion.number}`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(discussion, null, 2),
+        },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error creating GitHub discussion: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
 
-    comment_on_discussion: async (
-      { owner, repo, discussionNumber, body, replyToId },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+  comment_on_discussion: async (
+    { owner, repo, discussionNumber, body, replyToId },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
 
-      try {
-        const discussionQuery = `
+    try {
+      const discussionQuery = `
           query($owner: String!, $repo: String!, $discussionNumber: Int!) {
             repository(owner: $owner, name: $repo) {
               discussion(number: $discussionNumber) {
@@ -930,28 +921,28 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const discussionResult = (await octokit.graphql(discussionQuery, {
-          owner,
-          repo,
-          discussionNumber,
-        })) as {
-          repository: {
-            discussion: {
-              id: string;
-            } | null;
-          };
+      const discussionResult = (await octokit.graphql(discussionQuery, {
+        owner,
+        repo,
+        discussionNumber,
+      })) as {
+        repository: {
+          discussion: {
+            id: string;
+          } | null;
         };
+      };
 
-        const discussion = discussionResult.repository.discussion;
-        if (!discussion) {
-          return new Err(
-            new MCPError(
-              `Discussion #${discussionNumber} not found in ${owner}/${repo}`
-            )
-          );
-        }
+      const discussion = discussionResult.repository.discussion;
+      if (!discussion) {
+        return new Err(
+          new MCPError(
+            `Discussion #${discussionNumber} not found in ${owner}/${repo}`
+          )
+        );
+      }
 
-        const addCommentMutation = `
+      const addCommentMutation = `
           mutation($discussionId: ID!, $body: String!, $replyToId: ID) {
             addDiscussionComment(input: {
               discussionId: $discussionId,
@@ -965,47 +956,50 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const commentResult = (await octokit.graphql(addCommentMutation, {
-          discussionId: discussion.id,
-          body,
-          replyToId,
-        })) as {
-          addDiscussionComment: {
-            comment: {
-              id: string;
-              url: string;
-            };
+      const commentResult = (await octokit.graphql(addCommentMutation, {
+        discussionId: discussion.id,
+        body,
+        replyToId,
+      })) as {
+        addDiscussionComment: {
+          comment: {
+            id: string;
+            url: string;
           };
         };
+      };
 
-        const comment = commentResult.addDiscussionComment.comment;
+      const comment = commentResult.addDiscussionComment.comment;
 
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Comment added to discussion #${discussionNumber} with ID ${comment.id}`,
-          },
-          {
-            type: "text" as const,
-            text: JSON.stringify(comment, null, 2),
-          },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error commenting on GitHub discussion: ${normalizeError(e).message}`
-          )
-        );
-      }
-    },
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Comment added to discussion #${discussionNumber} with ID ${comment.id}`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(comment, null, 2),
+        },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error commenting on GitHub discussion: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
 
-    get_discussion: async ({ owner, repo, discussionNumber }, { authInfo }) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+  get_discussion: async (
+    { owner, repo, discussionNumber },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
 
-      try {
-        const query = `
+    try {
+      const query = `
           query($owner: String!, $repo: String!, $discussionNumber: Int!) {
             repository(owner: $owner, name: $repo) {
               discussion(number: $discussionNumber) {
@@ -1036,93 +1030,93 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const discussionResult = (await octokit.graphql(query, {
-          owner,
-          repo,
-          discussionNumber,
-        })) as {
-          repository: {
-            discussion: {
-              id: string;
-              number: number;
-              title: string;
-              body: string;
-              bodyText: string;
-              url: string;
-              createdAt: string;
-              updatedAt: string;
-              isAnswered: boolean;
-              author: {
-                login: string;
-              } | null;
-              category: {
-                id: string;
-                name: string;
-                slug: string;
-                description: string | null;
-                emoji: string;
-                isAnswerable: boolean;
-              };
-              comments: {
-                totalCount: number;
-              };
+      const discussionResult = (await octokit.graphql(query, {
+        owner,
+        repo,
+        discussionNumber,
+      })) as {
+        repository: {
+          discussion: {
+            id: string;
+            number: number;
+            title: string;
+            body: string;
+            bodyText: string;
+            url: string;
+            createdAt: string;
+            updatedAt: string;
+            isAnswered: boolean;
+            author: {
+              login: string;
             } | null;
-          };
+            category: {
+              id: string;
+              name: string;
+              slug: string;
+              description: string | null;
+              emoji: string;
+              isAnswerable: boolean;
+            };
+            comments: {
+              totalCount: number;
+            };
+          } | null;
         };
+      };
 
-        const discussion = discussionResult.repository.discussion;
-        if (!discussion) {
-          return new Err(
-            new MCPError(
-              `Discussion #${discussionNumber} not found in ${owner}/${repo}`
-            )
-          );
-        }
-
-        const formattedDiscussion = {
-          id: discussion.id,
-          number: discussion.number,
-          title: discussion.title,
-          body: discussion.body,
-          bodyText: discussion.bodyText,
-          url: discussion.url,
-          createdAt: discussion.createdAt,
-          updatedAt: discussion.updatedAt,
-          isAnswered: discussion.isAnswered,
-          author: discussion.author?.login || "unknown",
-          category: discussion.category,
-          commentCount: discussion.comments.totalCount,
-        };
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Retrieved discussion #${discussionNumber}`,
-          },
-          {
-            type: "text" as const,
-            text: JSON.stringify(formattedDiscussion, null, 2),
-          },
-        ]);
-      } catch (e) {
+      const discussion = discussionResult.repository.discussion;
+      if (!discussion) {
         return new Err(
           new MCPError(
-            `Error retrieving GitHub discussion: ${normalizeError(e).message}`
+            `Discussion #${discussionNumber} not found in ${owner}/${repo}`
           )
         );
       }
-    },
 
-    get_discussion_comments: async (
-      { owner, repo, discussionNumber, perPage = 50, after, before },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+      const formattedDiscussion = {
+        id: discussion.id,
+        number: discussion.number,
+        title: discussion.title,
+        body: discussion.body,
+        bodyText: discussion.bodyText,
+        url: discussion.url,
+        createdAt: discussion.createdAt,
+        updatedAt: discussion.updatedAt,
+        isAnswered: discussion.isAnswered,
+        author: discussion.author?.login || "unknown",
+        category: discussion.category,
+        commentCount: discussion.comments.totalCount,
+      };
 
-      try {
-        const query = `
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Retrieved discussion #${discussionNumber}`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(formattedDiscussion, null, 2),
+        },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error retrieving GitHub discussion: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
+
+  get_discussion_comments: async (
+    { owner, repo, discussionNumber, perPage = 50, after, before },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
+
+    try {
+      const query = `
           query($owner: String!, $repo: String!, $discussionNumber: Int!, $first: Int!, $after: String, $before: String) {
             repository(owner: $owner, name: $repo) {
               discussion(number: $discussionNumber) {
@@ -1164,130 +1158,130 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const discussionResult = (await octokit.graphql(query, {
-          owner,
-          repo,
-          discussionNumber,
-          first: perPage,
-          after,
-          before,
-        })) as {
-          repository: {
-            discussion: {
-              comments: {
-                totalCount: number;
-                pageInfo: {
-                  hasNextPage: boolean;
-                  endCursor: string | null;
-                  startCursor: string | null;
-                  hasPreviousPage: boolean;
-                };
-                nodes: {
-                  id: string;
-                  body: string;
-                  bodyText: string;
-                  isAnswer: boolean;
-                  createdAt: string;
-                  updatedAt: string;
-                  author: {
-                    login: string;
-                  } | null;
-                  replies: {
-                    totalCount: number;
-                    nodes: {
-                      id: string;
-                      body: string;
-                      bodyText: string;
-                      isAnswer: boolean;
-                      createdAt: string;
-                      updatedAt: string;
-                      author: {
-                        login: string;
-                      } | null;
-                    }[];
-                  };
-                }[];
+      const discussionResult = (await octokit.graphql(query, {
+        owner,
+        repo,
+        discussionNumber,
+        first: perPage,
+        after,
+        before,
+      })) as {
+        repository: {
+          discussion: {
+            comments: {
+              totalCount: number;
+              pageInfo: {
+                hasNextPage: boolean;
+                endCursor: string | null;
+                startCursor: string | null;
+                hasPreviousPage: boolean;
               };
-            } | null;
-          };
+              nodes: {
+                id: string;
+                body: string;
+                bodyText: string;
+                isAnswer: boolean;
+                createdAt: string;
+                updatedAt: string;
+                author: {
+                  login: string;
+                } | null;
+                replies: {
+                  totalCount: number;
+                  nodes: {
+                    id: string;
+                    body: string;
+                    bodyText: string;
+                    isAnswer: boolean;
+                    createdAt: string;
+                    updatedAt: string;
+                    author: {
+                      login: string;
+                    } | null;
+                  }[];
+                };
+              }[];
+            };
+          } | null;
         };
+      };
 
-        const discussion = discussionResult.repository.discussion;
-        if (!discussion) {
-          return new Err(
-            new MCPError(
-              `Discussion #${discussionNumber} not found in ${owner}/${repo}`
-            )
-          );
-        }
-
-        const comments = discussion.comments.nodes.map((comment) => ({
-          id: comment.id,
-          author: comment.author?.login || "unknown",
-          body: comment.body,
-          bodyText: comment.bodyText,
-          isAnswer: comment.isAnswer,
-          createdAt: comment.createdAt,
-          updatedAt: comment.updatedAt,
-          replyCount: comment.replies.totalCount,
-          replies: comment.replies.nodes.map((reply) => ({
-            id: reply.id,
-            author: reply.author?.login || "unknown",
-            body: reply.body,
-            bodyText: reply.bodyText,
-            isAnswer: reply.isAnswer,
-            createdAt: reply.createdAt,
-            updatedAt: reply.updatedAt,
-          })),
-        }));
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Retrieved ${comments.length} comments from discussion #${discussionNumber}`,
-          },
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                totalCount: discussion.comments.totalCount,
-                comments,
-                pageInfo: discussion.comments.pageInfo,
-              },
-              null,
-              2
-            ),
-          },
-        ]);
-      } catch (e) {
+      const discussion = discussionResult.repository.discussion;
+      if (!discussion) {
         return new Err(
           new MCPError(
-            `Error retrieving GitHub discussion comments: ${normalizeError(e).message}`
+            `Discussion #${discussionNumber} not found in ${owner}/${repo}`
           )
         );
       }
+
+      const comments = discussion.comments.nodes.map((comment) => ({
+        id: comment.id,
+        author: comment.author?.login || "unknown",
+        body: comment.body,
+        bodyText: comment.bodyText,
+        isAnswer: comment.isAnswer,
+        createdAt: comment.createdAt,
+        updatedAt: comment.updatedAt,
+        replyCount: comment.replies.totalCount,
+        replies: comment.replies.nodes.map((reply) => ({
+          id: reply.id,
+          author: reply.author?.login || "unknown",
+          body: reply.body,
+          bodyText: reply.bodyText,
+          isAnswer: reply.isAnswer,
+          createdAt: reply.createdAt,
+          updatedAt: reply.updatedAt,
+        })),
+      }));
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Retrieved ${comments.length} comments from discussion #${discussionNumber}`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              totalCount: discussion.comments.totalCount,
+              comments,
+              pageInfo: discussion.comments.pageInfo,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error retrieving GitHub discussion comments: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
+
+  list_discussions: async (
+    {
+      owner,
+      repo,
+      categoryId,
+      answered,
+      sort = "UPDATED_AT",
+      direction = "DESC",
+      perPage = 50,
+      after,
+      before,
     },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
 
-    list_discussions: async (
-      {
-        owner,
-        repo,
-        categoryId,
-        answered,
-        sort = "UPDATED_AT",
-        direction = "DESC",
-        perPage = 50,
-        after,
-        before,
-      },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
-
-      try {
-        const query = `
+    try {
+      const query = `
           query($owner: String!, $repo: String!, $first: Int!, $orderBy: DiscussionOrder, $categoryId: ID, $answered: Boolean, $after: String, $before: String) {
             repository(owner: $owner, name: $repo) {
               discussions(first: $first, orderBy: $orderBy, categoryId: $categoryId, answered: $answered, after: $after, before: $before) {
@@ -1326,106 +1320,106 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const discussionsResult = (await octokit.graphql(query, {
-          owner,
-          repo,
-          first: perPage,
-          orderBy: {
-            field: sort,
-            direction,
-          },
-          categoryId,
-          answered,
-          after,
-          before,
-        })) as {
-          repository: {
-            discussions: {
-              totalCount: number;
-              pageInfo: {
-                hasNextPage: boolean;
-                endCursor: string | null;
-                startCursor: string | null;
-                hasPreviousPage: boolean;
-              };
-              nodes: {
-                id: string;
-                number: number;
-                title: string;
-                bodyText: string;
-                url: string;
-                createdAt: string;
-                updatedAt: string;
-                isAnswered: boolean;
-                author: {
-                  login: string;
-                } | null;
-                category: {
-                  id: string;
-                  name: string;
-                  slug: string;
-                  description: string | null;
-                  emoji: string;
-                  isAnswerable: boolean;
-                };
-                comments: {
-                  totalCount: number;
-                };
-              }[];
+      const discussionsResult = (await octokit.graphql(query, {
+        owner,
+        repo,
+        first: perPage,
+        orderBy: {
+          field: sort,
+          direction,
+        },
+        categoryId,
+        answered,
+        after,
+        before,
+      })) as {
+        repository: {
+          discussions: {
+            totalCount: number;
+            pageInfo: {
+              hasNextPage: boolean;
+              endCursor: string | null;
+              startCursor: string | null;
+              hasPreviousPage: boolean;
             };
+            nodes: {
+              id: string;
+              number: number;
+              title: string;
+              bodyText: string;
+              url: string;
+              createdAt: string;
+              updatedAt: string;
+              isAnswered: boolean;
+              author: {
+                login: string;
+              } | null;
+              category: {
+                id: string;
+                name: string;
+                slug: string;
+                description: string | null;
+                emoji: string;
+                isAnswerable: boolean;
+              };
+              comments: {
+                totalCount: number;
+              };
+            }[];
           };
         };
+      };
 
-        const discussions = discussionsResult.repository.discussions.nodes.map(
-          (discussion) => ({
-            id: discussion.id,
-            number: discussion.number,
-            title: discussion.title,
-            bodyText: discussion.bodyText,
-            url: discussion.url,
-            createdAt: discussion.createdAt,
-            updatedAt: discussion.updatedAt,
-            isAnswered: discussion.isAnswered,
-            author: discussion.author?.login || "unknown",
-            category: discussion.category,
-            commentCount: discussion.comments.totalCount,
-          })
-        );
+      const discussions = discussionsResult.repository.discussions.nodes.map(
+        (discussion) => ({
+          id: discussion.id,
+          number: discussion.number,
+          title: discussion.title,
+          bodyText: discussion.bodyText,
+          url: discussion.url,
+          createdAt: discussion.createdAt,
+          updatedAt: discussion.updatedAt,
+          isAnswered: discussion.isAnswered,
+          author: discussion.author?.login || "unknown",
+          category: discussion.category,
+          commentCount: discussion.comments.totalCount,
+        })
+      );
 
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Retrieved ${discussions.length} discussions`,
-          },
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                totalCount: discussionsResult.repository.discussions.totalCount,
-                discussions,
-                pageInfo: discussionsResult.repository.discussions.pageInfo,
-              },
-              null,
-              2
-            ),
-          },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error listing GitHub discussions: ${normalizeError(e).message}`
-          )
-        );
-      }
-    },
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Retrieved ${discussions.length} discussions`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              totalCount: discussionsResult.repository.discussions.totalCount,
+              discussions,
+              pageInfo: discussionsResult.repository.discussions.pageInfo,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error listing GitHub discussions: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
 
-    get_issue: async ({ owner, repo, issueNumber }, { authInfo }) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+  get_issue: async ({ owner, repo, issueNumber }, { auth, authInfo }) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
 
-      try {
-        const query = `
+    try {
+      const query = `
           query($owner: String!, $repo: String!, $issueNumber: Int!) {
             repository(owner: $owner, name: $repo) {
               issue(number: $issueNumber) {
@@ -1461,147 +1455,142 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const issue = (await octokit.graphql(query, {
-          owner,
-          repo,
-          issueNumber,
-        })) as {
-          repository: {
-            issue: {
-              title: string;
-              body: string;
-              state: string;
-              createdAt: string;
-              updatedAt: string;
-              author: {
+      const issue = (await octokit.graphql(query, {
+        owner,
+        repo,
+        issueNumber,
+      })) as {
+        repository: {
+          issue: {
+            title: string;
+            body: string;
+            state: string;
+            createdAt: string;
+            updatedAt: string;
+            author: {
+              login: string;
+            };
+            labels: {
+              nodes: {
+                name: string;
+                color: string;
+              }[];
+            };
+            assignees: {
+              nodes: {
                 login: string;
-              };
-              labels: {
-                nodes: {
-                  name: string;
-                  color: string;
-                }[];
-              };
-              assignees: {
-                nodes: {
+              }[];
+            };
+            comments: {
+              nodes: {
+                author: {
                   login: string;
-                }[];
-              };
-              comments: {
-                nodes: {
-                  author: {
-                    login: string;
-                  };
-                  body: string;
-                  createdAt: string;
-                }[];
-              };
+                };
+                body: string;
+                createdAt: string;
+              }[];
             };
           };
         };
-
-        const issueData = issue.repository.issue;
-        const formattedIssue = {
-          title: issueData.title,
-          body: issueData.body,
-          state: issueData.state,
-          createdAt: issueData.createdAt,
-          updatedAt: issueData.updatedAt,
-          author: issueData.author.login,
-          labels: issueData.labels.nodes.map((label) => ({
-            name: label.name,
-            color: label.color,
-          })),
-          assignees: issueData.assignees.nodes.map(
-            (assignee) => assignee.login
-          ),
-          comments: issueData.comments.nodes.map((comment) => ({
-            author: comment.author.login,
-            body: comment.body,
-            createdAt: comment.createdAt,
-          })),
-        };
-
-        return new Ok([
-          { type: "text" as const, text: `Retrieved issue #${issueNumber}` },
-          {
-            type: "text" as const,
-            text: JSON.stringify(formattedIssue, null, 2),
-          },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error retrieving GitHub issue: ${normalizeError(e).message}`
-          )
-        );
-      }
-    },
-
-    get_issue_custom_fields: async (
-      { owner, repo, issueNumber, projectId },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
-
-      // Helper function to format field values
-      const formatFieldValues = (
-        fieldValues: Array<{
-          field?: {
-            name: string;
-            id: string;
-          };
-          text?: string;
-          name?: string;
-          number?: number;
-          date?: string;
-          title?: string;
-          startDate?: string;
-          duration?: number;
-        }>
-      ) => {
-        return fieldValues.map((fieldValue) => {
-          if (!fieldValue.field) {
-            return null;
-          }
-          const fieldName = fieldValue.field.name;
-          let value: string | number | null = null;
-          let valueType = "unknown";
-
-          if ("text" in fieldValue && fieldValue.text !== undefined) {
-            value = fieldValue.text;
-            valueType = "text";
-          } else if ("name" in fieldValue && fieldValue.name !== undefined) {
-            value = fieldValue.name;
-            valueType = "singleSelect";
-          } else if (
-            "number" in fieldValue &&
-            fieldValue.number !== undefined
-          ) {
-            value = fieldValue.number;
-            valueType = "number";
-          } else if ("date" in fieldValue && fieldValue.date !== undefined) {
-            value = fieldValue.date;
-            valueType = "date";
-          } else if ("title" in fieldValue && fieldValue.title !== undefined) {
-            value = fieldValue.title;
-            valueType = "iteration";
-          }
-
-          return {
-            fieldId: fieldValue.field.id,
-            fieldName,
-            value,
-            valueType,
-          };
-        });
       };
 
-      try {
-        // First, get the issue ID and project items
-        const issueQuery = `
+      const issueData = issue.repository.issue;
+      const formattedIssue = {
+        title: issueData.title,
+        body: issueData.body,
+        state: issueData.state,
+        createdAt: issueData.createdAt,
+        updatedAt: issueData.updatedAt,
+        author: issueData.author.login,
+        labels: issueData.labels.nodes.map((label) => ({
+          name: label.name,
+          color: label.color,
+        })),
+        assignees: issueData.assignees.nodes.map((assignee) => assignee.login),
+        comments: issueData.comments.nodes.map((comment) => ({
+          author: comment.author.login,
+          body: comment.body,
+          createdAt: comment.createdAt,
+        })),
+      };
+
+      return new Ok([
+        { type: "text" as const, text: `Retrieved issue #${issueNumber}` },
+        {
+          type: "text" as const,
+          text: JSON.stringify(formattedIssue, null, 2),
+        },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error retrieving GitHub issue: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
+
+  get_issue_custom_fields: async (
+    { owner, repo, issueNumber, projectId },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
+
+    // Helper function to format field values
+    const formatFieldValues = (
+      fieldValues: Array<{
+        field?: {
+          name: string;
+          id: string;
+        };
+        text?: string;
+        name?: string;
+        number?: number;
+        date?: string;
+        title?: string;
+        startDate?: string;
+        duration?: number;
+      }>
+    ) => {
+      return fieldValues.map((fieldValue) => {
+        if (!fieldValue.field) {
+          return null;
+        }
+        const fieldName = fieldValue.field.name;
+        let value: string | number | null = null;
+        let valueType = "unknown";
+
+        if ("text" in fieldValue && fieldValue.text !== undefined) {
+          value = fieldValue.text;
+          valueType = "text";
+        } else if ("name" in fieldValue && fieldValue.name !== undefined) {
+          value = fieldValue.name;
+          valueType = "singleSelect";
+        } else if ("number" in fieldValue && fieldValue.number !== undefined) {
+          value = fieldValue.number;
+          valueType = "number";
+        } else if ("date" in fieldValue && fieldValue.date !== undefined) {
+          value = fieldValue.date;
+          valueType = "date";
+        } else if ("title" in fieldValue && fieldValue.title !== undefined) {
+          value = fieldValue.title;
+          valueType = "iteration";
+        }
+
+        return {
+          fieldId: fieldValue.field.id,
+          fieldName,
+          value,
+          valueType,
+        };
+      });
+    };
+
+    try {
+      // First, get the issue ID and project items
+      const issueQuery = `
           query($owner: String!, $repo: String!, $issueNumber: Int!) {
             repository(owner: $owner, name: $repo) {
               issue(number: $issueNumber) {
@@ -1672,63 +1661,63 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const issueResult = (await octokit.graphql(issueQuery, {
-          owner,
-          repo,
-          issueNumber,
-        })) as {
-          repository: {
-            issue: {
-              id: string;
-              number: number;
-              title: string;
-              projectItems: {
-                nodes: Array<{
+      const issueResult = (await octokit.graphql(issueQuery, {
+        owner,
+        repo,
+        issueNumber,
+      })) as {
+        repository: {
+          issue: {
+            id: string;
+            number: number;
+            title: string;
+            projectItems: {
+              nodes: Array<{
+                id: string;
+                project: {
                   id: string;
-                  project: {
-                    id: string;
-                    title: string;
-                  };
-                  fieldValues: {
-                    nodes: Array<{
-                      field: {
-                        name: string;
-                        id: string;
-                      };
-                      text?: string;
-                      name?: string;
-                      number?: number;
-                      date?: string;
-                      title?: string;
-                      startDate?: string;
-                      duration?: number;
-                    }>;
-                  };
-                }>;
-              };
-            } | null;
-          };
+                  title: string;
+                };
+                fieldValues: {
+                  nodes: Array<{
+                    field: {
+                      name: string;
+                      id: string;
+                    };
+                    text?: string;
+                    name?: string;
+                    number?: number;
+                    date?: string;
+                    title?: string;
+                    startDate?: string;
+                    duration?: number;
+                  }>;
+                };
+              }>;
+            };
+          } | null;
         };
+      };
 
-        if (!issueResult.repository.issue) {
-          return new Err(
-            new MCPError(`Issue #${issueNumber} not found in ${owner}/${repo}`)
-          );
-        }
+      if (!issueResult.repository.issue) {
+        return new Err(
+          new MCPError(`Issue #${issueNumber} not found in ${owner}/${repo}`)
+        );
+      }
 
-        const issue = issueResult.repository.issue;
-        const projectItems = issue.projectItems.nodes;
+      const issue = issueResult.repository.issue;
+      const projectItems = issue.projectItems.nodes;
 
-        // If projectId is specified, filter to that project only
-        let filteredProjectItems = projectItems;
-        if (projectId) {
-          filteredProjectItems = projectItems.filter(
-            (item) => item.project.id === projectId
-          );
+      // If projectId is specified, filter to that project only
+      let filteredProjectItems = projectItems;
+      if (projectId) {
+        filteredProjectItems = projectItems.filter(
+          (item) => item.project.id === projectId
+        );
 
-          if (filteredProjectItems.length === 0) {
-            // Try to get project title for better error message
-            const projectQuery = `
+        if (filteredProjectItems.length === 0) {
+          // Try to get project title for better error message
+          const projectQuery = `
               query($projectId: ID!) {
                 node(id: $projectId) {
                   ... on ProjectV2 {
@@ -1737,98 +1726,95 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                 }
               }`;
 
-            try {
-              const projectResult = (await octokit.graphql(projectQuery, {
-                projectId,
-              })) as {
-                node: {
-                  title: string;
-                } | null;
-              };
+          try {
+            const projectResult = (await octokit.graphql(projectQuery, {
+              projectId,
+            })) as {
+              node: {
+                title: string;
+              } | null;
+            };
 
-              const projectTitle =
-                projectResult.node?.title ?? `Project ${projectId}`;
-              return new Ok([
-                {
-                  type: "text" as const,
-                  text: `Issue #${issueNumber} is not in project "${projectTitle}"`,
-                },
-                {
-                  type: "text" as const,
-                  text: JSON.stringify({ customFields: [] }, null, 2),
-                },
-              ]);
-            } catch {
-              return new Err(
-                new MCPError(
-                  `Issue #${issueNumber} is not in the specified project, or project not found`
-                )
-              );
-            }
+            const projectTitle =
+              projectResult.node?.title ?? `Project ${projectId}`;
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Issue #${issueNumber} is not in project "${projectTitle}"`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify({ customFields: [] }, null, 2),
+              },
+            ]);
+          } catch {
+            return new Err(
+              new MCPError(
+                `Issue #${issueNumber} is not in the specified project, or project not found`
+              )
+            );
           }
         }
+      }
 
-        // Format results grouped by project
-        const projectsWithFields = filteredProjectItems.map((item) => {
-          return {
-            projectId: item.project.id,
-            projectTitle: item.project.title,
-            customFields: removeNulls(
-              formatFieldValues(item.fieldValues.nodes)
-            ),
-          };
-        });
+      // Format results grouped by project
+      const projectsWithFields = filteredProjectItems.map((item) => {
+        return {
+          projectId: item.project.id,
+          projectTitle: item.project.title,
+          customFields: removeNulls(formatFieldValues(item.fieldValues.nodes)),
+        };
+      });
 
-        if (
-          projectsWithFields.filter((p) => p.customFields.length > 0).length ===
-          0
-        ) {
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Issue #${issueNumber} is not in any projects with custom fields`,
-            },
-            {
-              type: "text" as const,
-              text: JSON.stringify({ projects: [] }, null, 2),
-            },
-          ]);
-        }
-
-        const resultMessage =
-          projectId && projectsWithFields.length > 0
-            ? `Retrieved custom fields for issue #${issueNumber} in project "${projectsWithFields[0].projectTitle}"`
-            : `Retrieved custom fields for issue #${issueNumber} across ${projectsWithFields.length} project(s)`;
-
+      if (
+        projectsWithFields.filter((p) => p.customFields.length > 0).length === 0
+      ) {
         return new Ok([
           {
             type: "text" as const,
-            text: resultMessage,
+            text: `Issue #${issueNumber} is not in any projects with custom fields`,
           },
           {
             type: "text" as const,
-            text: JSON.stringify(
-              {
-                issueNumber,
-                projects: projectsWithFields,
-              },
-              null,
-              2
-            ),
+            text: JSON.stringify({ projects: [] }, null, 2),
           },
         ]);
-      } catch (e) {
-        const error = normalizeError(e);
-        // Handle case where projectItems field might not be available
-        if (
-          error.message.includes("projectItems") ||
-          error.message.includes("Cannot query field")
-        ) {
-          // Fallback: if projectItems is not available, try the project-specific query
-          if (projectId) {
-            try {
-              // Get issue ID first
-              const issueQuery = `
+      }
+
+      const resultMessage =
+        projectId && projectsWithFields.length > 0
+          ? `Retrieved custom fields for issue #${issueNumber} in project "${projectsWithFields[0].projectTitle}"`
+          : `Retrieved custom fields for issue #${issueNumber} across ${projectsWithFields.length} project(s)`;
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: resultMessage,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              issueNumber,
+              projects: projectsWithFields,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (e) {
+      const error = normalizeError(e);
+      // Handle case where projectItems field might not be available
+      if (
+        error.message.includes("projectItems") ||
+        error.message.includes("Cannot query field")
+      ) {
+        // Fallback: if projectItems is not available, try the project-specific query
+        if (projectId) {
+          try {
+            // Get issue ID first
+            const issueQuery = `
                 query($owner: String!, $repo: String!, $issueNumber: Int!) {
                   repository(owner: $owner, name: $repo) {
                     issue(number: $issueNumber) {
@@ -1839,32 +1825,32 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                   }
                 }`;
 
-              const issueResult = (await octokit.graphql(issueQuery, {
-                owner,
-                repo,
-                issueNumber,
-              })) as {
-                repository: {
-                  issue: {
-                    id: string;
-                    number: number;
-                    title: string;
-                  } | null;
-                };
+            const issueResult = (await octokit.graphql(issueQuery, {
+              owner,
+              repo,
+              issueNumber,
+            })) as {
+              repository: {
+                issue: {
+                  id: string;
+                  number: number;
+                  title: string;
+                } | null;
               };
+            };
 
-              if (!issueResult.repository.issue) {
-                return new Err(
-                  new MCPError(
-                    `Issue #${issueNumber} not found in ${owner}/${repo}`
-                  )
-                );
-              }
+            if (!issueResult.repository.issue) {
+              return new Err(
+                new MCPError(
+                  `Issue #${issueNumber} not found in ${owner}/${repo}`
+                )
+              );
+            }
 
-              const issueId = issueResult.repository.issue.id;
+            const issueId = issueResult.repository.issue.id;
 
-              // Query the specific project
-              const projectQuery = `
+            // Query the specific project
+            const projectQuery = `
                 query($projectId: ID!) {
                   node(id: $projectId) {
                     ... on ProjectV2 {
@@ -1935,127 +1921,127 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                   }
                 }`;
 
-              const projectResult = (await octokit.graphql(projectQuery, {
-                projectId,
-              })) as {
-                node: {
-                  title: string;
-                  items: {
-                    nodes: Array<{
+            const projectResult = (await octokit.graphql(projectQuery, {
+              projectId,
+            })) as {
+              node: {
+                title: string;
+                items: {
+                  nodes: Array<{
+                    id: string;
+                    content: {
                       id: string;
-                      content: {
-                        id: string;
-                        number: number;
-                      } | null;
-                      fieldValues: {
-                        nodes: Array<{
-                          field: {
-                            name: string;
-                            id: string;
-                          };
-                          text?: string;
-                          name?: string;
-                          number?: number;
-                          date?: string;
-                          title?: string;
-                          startDate?: string;
-                          duration?: number;
-                        }>;
-                      };
-                    }>;
-                  };
-                } | null;
-              };
+                      number: number;
+                    } | null;
+                    fieldValues: {
+                      nodes: Array<{
+                        field: {
+                          name: string;
+                          id: string;
+                        };
+                        text?: string;
+                        name?: string;
+                        number?: number;
+                        date?: string;
+                        title?: string;
+                        startDate?: string;
+                        duration?: number;
+                      }>;
+                    };
+                  }>;
+                };
+              } | null;
+            };
 
-              if (!projectResult.node) {
-                return new Err(
-                  new MCPError(`Project with ID ${projectId} not found`)
-                );
-              }
-
-              const projectItem = projectResult.node.items.nodes.find(
-                (item) => item.content?.id === issueId
+            if (!projectResult.node) {
+              return new Err(
+                new MCPError(`Project with ID ${projectId} not found`)
               );
+            }
 
-              if (!projectItem) {
-                return new Ok([
-                  {
-                    type: "text" as const,
-                    text: `Issue #${issueNumber} is not in project "${projectResult.node.title}"`,
-                  },
-                  {
-                    type: "text" as const,
-                    text: JSON.stringify({ customFields: [] }, null, 2),
-                  },
-                ]);
-              }
+            const projectItem = projectResult.node.items.nodes.find(
+              (item) => item.content?.id === issueId
+            );
 
-              const customFields = removeNulls(
-                formatFieldValues(projectItem.fieldValues.nodes)
-              );
-
+            if (!projectItem) {
               return new Ok([
                 {
                   type: "text" as const,
-                  text: `Retrieved custom fields for issue #${issueNumber} in project "${projectResult.node.title}"`,
+                  text: `Issue #${issueNumber} is not in project "${projectResult.node.title}"`,
                 },
                 {
                   type: "text" as const,
-                  text: JSON.stringify(
-                    {
-                      projectTitle: projectResult.node.title,
-                      issueNumber,
-                      customFields,
-                    },
-                    null,
-                    2
-                  ),
+                  text: JSON.stringify({ customFields: [] }, null, 2),
                 },
               ]);
-            } catch (fallbackError) {
-              return new Err(
-                new MCPError(
-                  `Error retrieving GitHub issue custom fields: ${normalizeError(fallbackError).message}. Note: Querying all projects requires the projectItems field which may not be available on all GitHub plans.`
-                )
-              );
             }
-          } else {
+
+            const customFields = removeNulls(
+              formatFieldValues(projectItem.fieldValues.nodes)
+            );
+
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Retrieved custom fields for issue #${issueNumber} in project "${projectResult.node.title}"`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    projectTitle: projectResult.node.title,
+                    issueNumber,
+                    customFields,
+                  },
+                  null,
+                  2
+                ),
+              },
+            ]);
+          } catch (fallbackError) {
             return new Err(
               new MCPError(
-                `Error retrieving GitHub issue custom fields: ${error.message}. Note: Querying all projects requires the projectItems field which may not be available on all GitHub plans. Please specify a projectId.`
+                `Error retrieving GitHub issue custom fields: ${normalizeError(fallbackError).message}. Note: Querying all projects requires the projectItems field which may not be available on all GitHub plans.`
               )
             );
           }
+        } else {
+          return new Err(
+            new MCPError(
+              `Error retrieving GitHub issue custom fields: ${error.message}. Note: Querying all projects requires the projectItems field which may not be available on all GitHub plans. Please specify a projectId.`
+            )
+          );
         }
-
-        return new Err(
-          new MCPError(
-            `Error retrieving GitHub issue custom fields: ${error.message}`
-          )
-        );
       }
+
+      return new Err(
+        new MCPError(
+          `Error retrieving GitHub issue custom fields: ${error.message}`
+        )
+      );
+    }
+  },
+
+  list_issues: async (
+    {
+      owner,
+      repo,
+      state = "OPEN",
+      labels,
+      sort = "CREATED_AT",
+      direction = "DESC",
+      perPage = 50,
+      after,
+      before,
     },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
 
-    list_issues: async (
-      {
-        owner,
-        repo,
-        state = "OPEN",
-        labels,
-        sort = "CREATED_AT",
-        direction = "DESC",
-        perPage = 50,
-        after,
-        before,
-      },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
-
-      try {
-        const query = `
+    try {
+      const query = `
           query($owner: String!, $repo: String!, $first: Int!, $orderBy: IssueOrder, $states: [IssueState!], $labels: [String!], $after: String, $before: String) {
             repository(owner: $owner, name: $repo) {
               issues(first: $first, orderBy: $orderBy, states: $states, labels: $labels, after: $after, before: $before) {
@@ -2093,106 +2079,106 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const issues = (await octokit.graphql(query, {
-          owner,
-          repo,
-          first: perPage,
-          after: after,
-          before: before,
-          orderBy: {
-            field: sort,
-            direction: direction,
-          },
-          states: state === "ALL" ? undefined : [state],
-          labels: labels,
-        })) as {
-          repository: {
-            issues: {
-              pageInfo: {
-                hasNextPage: boolean;
-                endCursor: string | null;
-                startCursor: string | null;
-                hasPreviousPage: boolean;
-              };
-              nodes: {
-                number: number;
-                title: string;
-                state: string;
-                createdAt: string;
-                updatedAt: string;
-                author: {
-                  login: string;
-                };
-                labels: {
-                  nodes: {
-                    name: string;
-                    color: string;
-                  }[];
-                };
-                assignees: {
-                  nodes: {
-                    login: string;
-                  }[];
-                };
-                comments: {
-                  totalCount: number;
-                };
-              }[];
+      const issues = (await octokit.graphql(query, {
+        owner,
+        repo,
+        first: perPage,
+        after: after,
+        before: before,
+        orderBy: {
+          field: sort,
+          direction: direction,
+        },
+        states: state === "ALL" ? undefined : [state],
+        labels: labels,
+      })) as {
+        repository: {
+          issues: {
+            pageInfo: {
+              hasNextPage: boolean;
+              endCursor: string | null;
+              startCursor: string | null;
+              hasPreviousPage: boolean;
             };
+            nodes: {
+              number: number;
+              title: string;
+              state: string;
+              createdAt: string;
+              updatedAt: string;
+              author: {
+                login: string;
+              };
+              labels: {
+                nodes: {
+                  name: string;
+                  color: string;
+                }[];
+              };
+              assignees: {
+                nodes: {
+                  login: string;
+                }[];
+              };
+              comments: {
+                totalCount: number;
+              };
+            }[];
           };
         };
+      };
 
-        const formattedIssues = issues.repository.issues.nodes.map((issue) => ({
-          number: issue.number,
-          title: issue.title,
-          state: issue.state,
-          createdAt: issue.createdAt,
-          updatedAt: issue.updatedAt,
-          author: issue.author.login,
-          labels: issue.labels.nodes.map((label) => ({
-            name: label.name,
-            color: label.color,
-          })),
-          assignees: issue.assignees.nodes.map((a) => a.login),
-          commentCount: issue.comments.totalCount,
-        }));
+      const formattedIssues = issues.repository.issues.nodes.map((issue) => ({
+        number: issue.number,
+        title: issue.title,
+        state: issue.state,
+        createdAt: issue.createdAt,
+        updatedAt: issue.updatedAt,
+        author: issue.author.login,
+        labels: issue.labels.nodes.map((label) => ({
+          name: label.name,
+          color: label.color,
+        })),
+        assignees: issue.assignees.nodes.map((a) => a.login),
+        commentCount: issue.comments.totalCount,
+      }));
 
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Retrieved ${formattedIssues.length} issues`,
-          },
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                issues: formattedIssues,
-                pageInfo: issues.repository.issues.pageInfo,
-              },
-              null,
-              2
-            ),
-          },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error listing GitHub issues: ${normalizeError(e).message}`
-          )
-        );
-      }
-    },
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Retrieved ${formattedIssues.length} issues`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              issues: formattedIssues,
+              pageInfo: issues.repository.issues.pageInfo,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error listing GitHub issues: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
 
-    search_advanced: async (
-      { query, first = 30, after, before },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+  search_advanced: async (
+    { query, first = 30, after, before },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
 
-      try {
-        const searchQuery = `
+    try {
+      const searchQuery = `
           query($searchQuery: String!, $first: Int!, $after: String, $before: String, $includeReviewRequests: Boolean!) {
             search(query: $searchQuery, type: ISSUE_ADVANCED, first: $first, after: $after, before: $before) {
               issueCount
@@ -2294,210 +2280,210 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const results = await graphqlWithReviewerFallback<{
-          search: {
-            issueCount: number;
-            pageInfo: {
-              hasNextPage: boolean;
-              endCursor: string | null;
-              startCursor: string | null;
-              hasPreviousPage: boolean;
-            };
-            nodes: Array<
-              | {
-                  __typename: "Issue";
-                  number: number;
-                  title: string;
-                  body: string;
-                  state: string;
-                  createdAt: string;
-                  updatedAt: string;
-                  closedAt: string | null;
-                  url: string;
-                  repository: {
-                    owner: {
-                      login: string;
-                    };
-                    name: string;
-                  };
-                  author: {
+      const results = await graphqlWithReviewerFallback<{
+        search: {
+          issueCount: number;
+          pageInfo: {
+            hasNextPage: boolean;
+            endCursor: string | null;
+            startCursor: string | null;
+            hasPreviousPage: boolean;
+          };
+          nodes: Array<
+            | {
+                __typename: "Issue";
+                number: number;
+                title: string;
+                body: string;
+                state: string;
+                createdAt: string;
+                updatedAt: string;
+                closedAt: string | null;
+                url: string;
+                repository: {
+                  owner: {
                     login: string;
                   };
-                  labels: {
-                    nodes: Array<{
-                      name: string;
-                      color: string;
-                    }>;
-                  };
-                  assignees: {
-                    nodes: Array<{
-                      login: string;
-                    }>;
-                  };
-                  comments: {
-                    totalCount: number;
-                  };
-                }
-              | {
-                  __typename: "PullRequest";
-                  number: number;
-                  title: string;
-                  body: string;
-                  state: string;
-                  createdAt: string;
-                  updatedAt: string;
-                  mergedAt: string | null;
-                  closedAt: string | null;
-                  url: string;
-                  repository: {
-                    owner: {
-                      login: string;
-                    };
+                  name: string;
+                };
+                author: {
+                  login: string;
+                };
+                labels: {
+                  nodes: Array<{
                     name: string;
-                  };
-                  author: {
+                    color: string;
+                  }>;
+                };
+                assignees: {
+                  nodes: Array<{
+                    login: string;
+                  }>;
+                };
+                comments: {
+                  totalCount: number;
+                };
+              }
+            | {
+                __typename: "PullRequest";
+                number: number;
+                title: string;
+                body: string;
+                state: string;
+                createdAt: string;
+                updatedAt: string;
+                mergedAt: string | null;
+                closedAt: string | null;
+                url: string;
+                repository: {
+                  owner: {
                     login: string;
                   };
-                  baseRefName: string;
-                  headRefName: string;
-                  additions: number;
-                  deletions: number;
-                  changedFiles: number;
-                  labels: {
-                    nodes: Array<{
-                      name: string;
-                      color: string;
-                    }>;
-                  };
-                  assignees: {
-                    nodes: Array<{
-                      login: string;
-                    }>;
-                  };
-                  reviewRequests?: {
-                    nodes: Array<{
-                      requestedReviewer: {
-                        login?: string;
-                        slug?: string;
-                      } | null;
-                    }>;
-                  } | null;
-                  comments: {
-                    totalCount: number;
-                  };
-                  reviews: {
-                    totalCount: number;
-                  };
-                }
-            >;
-          };
-        }>(octokit, searchQuery, {
-          searchQuery: query,
-          first,
-          after,
-          before,
-        });
-
-        const formattedResults = results.search.nodes.map((node) => {
-          const base = {
-            number: node.number,
-            title: node.title,
-            body: node.body,
-            state: node.state,
-            createdAt: node.createdAt,
-            updatedAt: node.updatedAt,
-            closedAt: node.closedAt,
-            url: node.url,
-            repository: `${node.repository.owner.login}/${node.repository.name}`,
-            author: node.author.login,
-            labels: node.labels.nodes.map((label) => ({
-              name: label.name,
-              color: label.color,
-            })),
-            assignees: node.assignees.nodes.map((a) => a.login),
-            commentCount: node.comments.totalCount,
-          };
-
-          if (node.__typename === "PullRequest") {
-            return {
-              ...base,
-              type: "pull_request" as const,
-              mergedAt: node.mergedAt,
-              baseRefName: node.baseRefName,
-              headRefName: node.headRefName,
-              additions: node.additions,
-              deletions: node.deletions,
-              changedFiles: node.changedFiles,
-              reviewRequests: node.reviewRequests
-                ? removeNulls(
-                    node.reviewRequests.nodes.map((request) =>
-                      getReviewerIdentifier(request.requestedReviewer)
-                    )
-                  )
-                : [],
-              reviewCount: node.reviews.totalCount,
-            };
-          } else {
-            return {
-              ...base,
-              type: "issue" as const,
-            };
-          }
-        });
-
-        const issues = formattedResults.filter((r) => r.type === "issue");
-        const pullRequests = formattedResults.filter(
-          (r) => r.type === "pull_request"
-        );
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Found ${results.search.issueCount} total results (${issues.length} issues, ${pullRequests.length} pull requests), retrieved ${formattedResults.length} results`,
-          },
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                totalCount: results.search.issueCount,
-                issues,
-                pullRequests,
-                results: formattedResults,
-                pageInfo: results.search.pageInfo,
-              },
-              null,
-              2
-            ),
-          },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error searching GitHub issues and pull requests: ${normalizeError(e).message}`
-          )
-        );
-      }
-    },
-
-    list_pull_requests: async (
-      {
-        owner,
-        repo,
-        state = "OPEN",
-        sort = "CREATED_AT",
-        direction = "DESC",
-        perPage = 30,
+                  name: string;
+                };
+                author: {
+                  login: string;
+                };
+                baseRefName: string;
+                headRefName: string;
+                additions: number;
+                deletions: number;
+                changedFiles: number;
+                labels: {
+                  nodes: Array<{
+                    name: string;
+                    color: string;
+                  }>;
+                };
+                assignees: {
+                  nodes: Array<{
+                    login: string;
+                  }>;
+                };
+                reviewRequests?: {
+                  nodes: Array<{
+                    requestedReviewer: {
+                      login?: string;
+                      slug?: string;
+                    } | null;
+                  }>;
+                } | null;
+                comments: {
+                  totalCount: number;
+                };
+                reviews: {
+                  totalCount: number;
+                };
+              }
+          >;
+        };
+      }>(octokit, searchQuery, {
+        searchQuery: query,
+        first,
         after,
         before,
-      },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
       });
 
-      try {
-        const query = `
+      const formattedResults = results.search.nodes.map((node) => {
+        const base = {
+          number: node.number,
+          title: node.title,
+          body: node.body,
+          state: node.state,
+          createdAt: node.createdAt,
+          updatedAt: node.updatedAt,
+          closedAt: node.closedAt,
+          url: node.url,
+          repository: `${node.repository.owner.login}/${node.repository.name}`,
+          author: node.author.login,
+          labels: node.labels.nodes.map((label) => ({
+            name: label.name,
+            color: label.color,
+          })),
+          assignees: node.assignees.nodes.map((a) => a.login),
+          commentCount: node.comments.totalCount,
+        };
+
+        if (node.__typename === "PullRequest") {
+          return {
+            ...base,
+            type: "pull_request" as const,
+            mergedAt: node.mergedAt,
+            baseRefName: node.baseRefName,
+            headRefName: node.headRefName,
+            additions: node.additions,
+            deletions: node.deletions,
+            changedFiles: node.changedFiles,
+            reviewRequests: node.reviewRequests
+              ? removeNulls(
+                  node.reviewRequests.nodes.map((request) =>
+                    getReviewerIdentifier(request.requestedReviewer)
+                  )
+                )
+              : [],
+            reviewCount: node.reviews.totalCount,
+          };
+        } else {
+          return {
+            ...base,
+            type: "issue" as const,
+          };
+        }
+      });
+
+      const issues = formattedResults.filter((r) => r.type === "issue");
+      const pullRequests = formattedResults.filter(
+        (r) => r.type === "pull_request"
+      );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Found ${results.search.issueCount} total results (${issues.length} issues, ${pullRequests.length} pull requests), retrieved ${formattedResults.length} results`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              totalCount: results.search.issueCount,
+              issues,
+              pullRequests,
+              results: formattedResults,
+              pageInfo: results.search.pageInfo,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error searching GitHub issues and pull requests: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
+
+  list_pull_requests: async (
+    {
+      owner,
+      repo,
+      state = "OPEN",
+      sort = "CREATED_AT",
+      direction = "DESC",
+      perPage = 30,
+      after,
+      before,
+    },
+    { auth, authInfo }
+  ) => {
+    const octokit = await createOctokit(auth, {
+      accessToken: authInfo?.token,
+    });
+
+    try {
+      const query = `
           query($owner: String!, $repo: String!, $first: Int!, $orderBy: IssueOrder, $states: [PullRequestState!], $after: String, $before: String, $includeReviewRequests: Boolean!) {
             repository(owner: $owner, name: $repo) {
               pullRequests(first: $first, orderBy: $orderBy, states: $states, after: $after, before: $before) {
@@ -2555,140 +2541,139 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        let graphqlStates;
-        if (state === "ALL") {
-          graphqlStates = undefined;
-        } else if (state === "OPEN") {
-          graphqlStates = ["OPEN"];
-        } else if (state === "CLOSED") {
-          graphqlStates = ["CLOSED"];
-        } else if (state === "MERGED") {
-          graphqlStates = ["MERGED"];
-        }
-
-        const pullRequests = await graphqlWithReviewerFallback<{
-          repository: {
-            pullRequests: {
-              pageInfo: {
-                hasNextPage: boolean;
-                endCursor: string | null;
-                startCursor: string | null;
-                hasPreviousPage: boolean;
-              };
-              nodes: {
-                number: number;
-                title: string;
-                state: string;
-                createdAt: string;
-                updatedAt: string;
-                mergedAt: string | null;
-                closedAt: string | null;
-                author: {
-                  login: string;
-                };
-                baseRefName: string;
-                headRefName: string;
-                additions: number;
-                deletions: number;
-                changedFiles: number;
-                labels: {
-                  nodes: {
-                    name: string;
-                    color: string;
-                  }[];
-                };
-                assignees: {
-                  nodes: {
-                    login: string;
-                  }[];
-                };
-                reviewRequests?: {
-                  nodes: {
-                    requestedReviewer: {
-                      login?: string;
-                      slug?: string;
-                    } | null;
-                  }[];
-                } | null;
-                comments: {
-                  totalCount: number;
-                };
-                reviews: {
-                  totalCount: number;
-                };
-              }[];
-            };
-          };
-        }>(octokit, query, {
-          owner,
-          repo,
-          before,
-          after,
-          first: perPage,
-          orderBy: {
-            field: sort,
-            direction: direction,
-          },
-          states: graphqlStates,
-        });
-
-        const formattedPullRequests =
-          pullRequests.repository.pullRequests.nodes.map((pr) => ({
-            number: pr.number,
-            title: pr.title,
-            state: pr.state,
-            createdAt: pr.createdAt,
-            updatedAt: pr.updatedAt,
-            mergedAt: pr.mergedAt,
-            closedAt: pr.closedAt,
-            author: pr.author.login,
-            baseRefName: pr.baseRefName,
-            headRefName: pr.headRefName,
-            additions: pr.additions,
-            deletions: pr.deletions,
-            changedFiles: pr.changedFiles,
-            labels: pr.labels.nodes.map((label) => ({
-              name: label.name,
-              color: label.color,
-            })),
-            assignees: pr.assignees.nodes.map((assignee) => assignee.login),
-            reviewRequests: pr.reviewRequests
-              ? removeNulls(
-                  pr.reviewRequests.nodes.map((request) =>
-                    getReviewerIdentifier(request.requestedReviewer)
-                  )
-                )
-              : [],
-            commentCount: pr.comments.totalCount,
-            reviewCount: pr.reviews.totalCount,
-          }));
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Retrieved ${formattedPullRequests.length} pull requests`,
-          },
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                pullRequests: formattedPullRequests,
-                pageInfo: pullRequests.repository.pullRequests.pageInfo,
-              },
-              null,
-              2
-            ),
-          },
-        ]);
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Error listing GitHub pull requests: ${normalizeError(e).message}`
-          )
-        );
+      let graphqlStates;
+      if (state === "ALL") {
+        graphqlStates = undefined;
+      } else if (state === "OPEN") {
+        graphqlStates = ["OPEN"];
+      } else if (state === "CLOSED") {
+        graphqlStates = ["CLOSED"];
+      } else if (state === "MERGED") {
+        graphqlStates = ["MERGED"];
       }
-    },
-  };
 
-  return buildTools(GITHUB_TOOLS_METADATA, handlers);
-}
+      const pullRequests = await graphqlWithReviewerFallback<{
+        repository: {
+          pullRequests: {
+            pageInfo: {
+              hasNextPage: boolean;
+              endCursor: string | null;
+              startCursor: string | null;
+              hasPreviousPage: boolean;
+            };
+            nodes: {
+              number: number;
+              title: string;
+              state: string;
+              createdAt: string;
+              updatedAt: string;
+              mergedAt: string | null;
+              closedAt: string | null;
+              author: {
+                login: string;
+              };
+              baseRefName: string;
+              headRefName: string;
+              additions: number;
+              deletions: number;
+              changedFiles: number;
+              labels: {
+                nodes: {
+                  name: string;
+                  color: string;
+                }[];
+              };
+              assignees: {
+                nodes: {
+                  login: string;
+                }[];
+              };
+              reviewRequests?: {
+                nodes: {
+                  requestedReviewer: {
+                    login?: string;
+                    slug?: string;
+                  } | null;
+                }[];
+              } | null;
+              comments: {
+                totalCount: number;
+              };
+              reviews: {
+                totalCount: number;
+              };
+            }[];
+          };
+        };
+      }>(octokit, query, {
+        owner,
+        repo,
+        before,
+        after,
+        first: perPage,
+        orderBy: {
+          field: sort,
+          direction: direction,
+        },
+        states: graphqlStates,
+      });
+
+      const formattedPullRequests =
+        pullRequests.repository.pullRequests.nodes.map((pr) => ({
+          number: pr.number,
+          title: pr.title,
+          state: pr.state,
+          createdAt: pr.createdAt,
+          updatedAt: pr.updatedAt,
+          mergedAt: pr.mergedAt,
+          closedAt: pr.closedAt,
+          author: pr.author.login,
+          baseRefName: pr.baseRefName,
+          headRefName: pr.headRefName,
+          additions: pr.additions,
+          deletions: pr.deletions,
+          changedFiles: pr.changedFiles,
+          labels: pr.labels.nodes.map((label) => ({
+            name: label.name,
+            color: label.color,
+          })),
+          assignees: pr.assignees.nodes.map((assignee) => assignee.login),
+          reviewRequests: pr.reviewRequests
+            ? removeNulls(
+                pr.reviewRequests.nodes.map((request) =>
+                  getReviewerIdentifier(request.requestedReviewer)
+                )
+              )
+            : [],
+          commentCount: pr.comments.totalCount,
+          reviewCount: pr.reviews.totalCount,
+        }));
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Retrieved ${formattedPullRequests.length} pull requests`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              pullRequests: formattedPullRequests,
+              pageInfo: pullRequests.repository.pullRequests.pageInfo,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (e) {
+      return new Err(
+        new MCPError(
+          `Error listing GitHub pull requests: ${normalizeError(e).message}`
+        )
+      );
+    }
+  },
+};
+
+export const TOOLS = buildTools(GITHUB_TOOLS_METADATA, handlers);

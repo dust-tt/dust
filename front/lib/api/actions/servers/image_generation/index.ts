@@ -2,7 +2,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ToolContext } from "@app/lib/actions/types";
 import { IMAGE_GENERATION_SERVER_NAME } from "@app/lib/api/actions/servers/image_generation/metadata";
-import { createImageGenerationTools } from "@app/lib/api/actions/servers/image_generation/tools";
+import { TOOLS } from "@app/lib/api/actions/servers/image_generation/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -12,8 +12,7 @@ function createServer(
 ): McpServer {
   const server = makeInternalMCPServer(IMAGE_GENERATION_SERVER_NAME);
 
-  const tools = createImageGenerationTools(auth, toolContext);
-  for (const tool of tools) {
+  for (const tool of TOOLS) {
     registerTool(auth, toolContext, server, tool, {
       monitoringName: IMAGE_GENERATION_SERVER_NAME,
     });
