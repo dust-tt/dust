@@ -1,7 +1,7 @@
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ToolContext } from "@app/lib/actions/types";
-import { createStatuspageTools } from "@app/lib/api/actions/servers/statuspage/tools";
+import { TOOLS } from "@app/lib/api/actions/servers/statuspage/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -11,8 +11,7 @@ function createServer(
 ): McpServer {
   const server = makeInternalMCPServer("statuspage");
 
-  const tools = createStatuspageTools(auth, toolContext);
-  for (const tool of tools) {
+  for (const tool of TOOLS) {
     registerTool(auth, toolContext, server, tool, {
       monitoringName: "statuspage",
     });

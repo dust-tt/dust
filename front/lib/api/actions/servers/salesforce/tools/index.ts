@@ -1,8 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { jsonToMarkdown } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
@@ -19,7 +16,6 @@ import {
   withAuth,
 } from "@app/lib/api/actions/servers/salesforce/helpers";
 import { SALESFORCE_TOOLS_METADATA } from "@app/lib/api/actions/servers/salesforce/metadata";
-import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
 import type { DescribeSObjectResult } from "jsforce";
 
@@ -37,357 +33,348 @@ interface DescribeFieldResult {
   picklistValues?: Array<{ active: boolean; value: string }> | null;
 }
 
-export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
-  const handlers: ToolHandlers<typeof SALESFORCE_TOOLS_METADATA> = {
-    execute_read_query: async ({ query }, extra) => {
-      return withAuth(extra, async (conn) => {
-        try {
-          const result = await conn.query(query);
+const handlers: ToolHandlers<typeof SALESFORCE_TOOLS_METADATA> = {
+  execute_read_query: async ({ query }, extra) => {
+    return withAuth(extra, async (conn) => {
+      try {
+        const result = await conn.query(query);
 
-          const formattedRecords = jsonToMarkdown(result.records);
+        const formattedRecords = jsonToMarkdown(result.records);
 
-          const summaryParts = [
-            `Query returned ${result.totalSize ?? result.records.length} record(s).`,
-          ];
+        const summaryParts = [
+          `Query returned ${result.totalSize ?? result.records.length} record(s).`,
+        ];
 
-          if (!result.done) {
-            summaryParts.push(
-              "More records are available. Refine the query or paginate to retrieve remaining records."
-            );
-          }
-
-          const summary = summaryParts.join(" ");
-
-          return new Ok([
-            { type: "text" as const, text: summary },
-            { type: "text" as const, text: formattedRecords },
-          ]);
-        } catch (error) {
-          return logAndReturnError({
-            error,
-            params: { query },
-            message: "Error executing Salesforce query",
-          });
+        if (!result.done) {
+          summaryParts.push(
+            "More records are available. Refine the query or paginate to retrieve remaining records."
+          );
         }
-      });
-    },
 
-    list_objects: async ({ filter }, extra) => {
-      return withAuth(extra, async (conn) => {
-        try {
-          const result = await conn.describeGlobal();
+        const summary = summaryParts.join(" ");
 
-          const objects = result.sobjects
-            .filter((object) => {
-              if (filter === "all") {
-                return true;
-              }
-              return object.custom === (filter === "custom");
-            })
-            .map((object) => `${object.name} (display_name="${object.label}")`)
-            .join("\n");
+        return new Ok([
+          { type: "text" as const, text: summary },
+          { type: "text" as const, text: formattedRecords },
+        ]);
+      } catch (error) {
+        return logAndReturnError({
+          error,
+          params: { query },
+          message: "Error executing Salesforce query",
+        });
+      }
+    });
+  },
 
-          return new Ok([
-            { type: "text", text: "Operation completed successfully" },
-            { type: "text", text: objects },
-          ]);
-        } catch (error) {
-          return logAndReturnError({
-            error,
-            params: { filter },
-            message: "Error listing Salesforce objects",
-          });
+  list_objects: async ({ filter }, extra) => {
+    return withAuth(extra, async (conn) => {
+      try {
+        const result = await conn.describeGlobal();
+
+        const objects = result.sobjects
+          .filter((object) => {
+            if (filter === "all") {
+              return true;
+            }
+            return object.custom === (filter === "custom");
+          })
+          .map((object) => `${object.name} (display_name="${object.label}")`)
+          .join("\n");
+
+        return new Ok([
+          { type: "text", text: "Operation completed successfully" },
+          { type: "text", text: objects },
+        ]);
+      } catch (error) {
+        return logAndReturnError({
+          error,
+          params: { filter },
+          message: "Error listing Salesforce objects",
+        });
+      }
+    });
+  },
+
+  describe_object: async ({ objectName }, extra) => {
+    return withAuth(extra, async (conn) => {
+      try {
+        const result: DescribeSObjectResult = await conn.describe(objectName);
+
+        let summary = `Object: ${result.name}\n`;
+        summary += `Label: ${result.label}\n`;
+        summary += `Plural Label: ${result.labelPlural}\n`;
+        if (result.keyPrefix) {
+          summary += `Key Prefix: ${result.keyPrefix}\n`;
         }
-      });
-    },
+        summary += `Queryable: ${result.queryable}\n`;
+        summary += `Createable: ${result.createable}\n`;
+        summary += `Updateable: ${result.updateable}\n`;
+        summary += `Deletable: ${result.deletable}\n`;
+        summary += `Feed Enabled: ${result.feedEnabled}\n\n`;
 
-    describe_object: async ({ objectName }, extra) => {
-      return withAuth(extra, async (conn) => {
-        try {
-          const result: DescribeSObjectResult = await conn.describe(objectName);
+        summary += "Fields:\n";
+        const standardFields = result.fields.filter((f) => !f.custom);
+        const customFields = result.fields.filter((f) => f.custom);
 
-          let summary = `Object: ${result.name}\n`;
-          summary += `Label: ${result.label}\n`;
-          summary += `Plural Label: ${result.labelPlural}\n`;
-          if (result.keyPrefix) {
-            summary += `Key Prefix: ${result.keyPrefix}\n`;
-          }
-          summary += `Queryable: ${result.queryable}\n`;
-          summary += `Createable: ${result.createable}\n`;
-          summary += `Updateable: ${result.updateable}\n`;
-          summary += `Deletable: ${result.deletable}\n`;
-          summary += `Feed Enabled: ${result.feedEnabled}\n\n`;
-
-          summary += "Fields:\n";
-          const standardFields = result.fields.filter((f) => !f.custom);
-          const customFields = result.fields.filter((f) => f.custom);
-
-          const formatField = (field: DescribeFieldResult) => {
-            let fieldStr = `- ${field.name} (Label: "${field.label}", Type: ${field.type}`;
-            if (
-              field.type === "reference" &&
-              field.referenceTo &&
-              field.referenceTo.length > 0
-            ) {
-              fieldStr += ` -> References: ${field.referenceTo.join(", ")}`;
-              if (field.relationshipName) {
-                fieldStr += ` (Use '${field.relationshipName}' for parent fields)`;
-              }
-            }
-            if (
-              field.type === "picklist" &&
-              field.picklistValues &&
-              field.picklistValues.length > 0
-            ) {
-              const activePicklistValues = field.picklistValues.filter(
-                (pv) => pv.active
-              );
-              const values = activePicklistValues
-                .map((pv) => pv.value)
-                .slice(0, 5);
-              if (values.length > 0) {
-                fieldStr += ` (Values: ${values.join(", ")}${activePicklistValues.length > 5 ? ", ..." : ""})`;
-              }
-            }
-            fieldStr += `, Nillable: ${field.nillable}, Createable: ${field.createable}, Updateable: ${field.updateable})`;
-            return fieldStr;
-          };
-
-          if (standardFields.length > 0) {
-            summary += "\nStandard Fields:\n";
-            standardFields.forEach((field) => {
-              summary += `${formatField(field)}\n`;
-            });
-          }
-
-          if (customFields.length > 0) {
-            summary += "\nCustom Fields (names end with '__c'):\n";
-            customFields.forEach((field) => {
-              summary += `${formatField(field)}\n`;
-            });
-          }
-
-          summary +=
-            "\nChild Relationships (for Parent-to-Child SOQL queries):\n";
+        const formatField = (field: DescribeFieldResult) => {
+          let fieldStr = `- ${field.name} (Label: "${field.label}", Type: ${field.type}`;
           if (
-            result.childRelationships &&
-            result.childRelationships.length > 0
+            field.type === "reference" &&
+            field.referenceTo &&
+            field.referenceTo.length > 0
           ) {
-            result.childRelationships.forEach((rel) => {
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              summary += `- RelationshipName: ${rel.relationshipName || "(N/A - check API docs)"}`;
-              summary += `, ChildObject: ${rel.childSObject}`;
-              summary += `, Field on Child: ${rel.field}\n`;
-            });
-          } else {
-            summary += "No child relationships found.\n";
+            fieldStr += ` -> References: ${field.referenceTo.join(", ")}`;
+            if (field.relationshipName) {
+              fieldStr += ` (Use '${field.relationshipName}' for parent fields)`;
+            }
           }
+          if (
+            field.type === "picklist" &&
+            field.picklistValues &&
+            field.picklistValues.length > 0
+          ) {
+            const activePicklistValues = field.picklistValues.filter(
+              (pv) => pv.active
+            );
+            const values = activePicklistValues
+              .map((pv) => pv.value)
+              .slice(0, 5);
+            if (values.length > 0) {
+              fieldStr += ` (Values: ${values.join(", ")}${activePicklistValues.length > 5 ? ", ..." : ""})`;
+            }
+          }
+          fieldStr += `, Nillable: ${field.nillable}, Createable: ${field.createable}, Updateable: ${field.updateable})`;
+          return fieldStr;
+        };
 
-          summary +=
-            "\nNote: For custom relationships in SOQL, names often end with '__r' (e.g., MyCustomChildren__r). Use the 'RelationshipName' listed above.\n";
-
-          return new Ok([
-            {
-              type: "text",
-              text: "Object described successfully. Summary provided.",
-            },
-            { type: "text", text: summary },
-          ]);
-        } catch (error) {
-          return logAndReturnError({
-            error,
-            params: { objectName },
-            message: "Error describing Salesforce object",
+        if (standardFields.length > 0) {
+          summary += "\nStandard Fields:\n";
+          standardFields.forEach((field) => {
+            summary += `${formatField(field)}\n`;
           });
         }
-      });
-    },
 
-    create_object: async ({ objectName, records, allOrNone }, extra) => {
-      return withAuth(extra, async (conn) => {
-        try {
-          const result = await conn.sobject(objectName).create(records, {
-            allOrNone,
-          });
-
-          const results = Array.isArray(result) ? result : [result];
-          const successCount = results.filter((r) => r.success).length;
-          const failureCount = results.length - successCount;
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Create completed: ${successCount} successful, ${failureCount} failed`,
-            },
-            { type: "text" as const, text: JSON.stringify(result, null, 2) },
-          ]);
-        } catch (error) {
-          return logAndReturnError({
-            error,
-            params: { objectName, recordCount: records.length, allOrNone },
-            message: "Error creating Salesforce records",
+        if (customFields.length > 0) {
+          summary += "\nCustom Fields (names end with '__c'):\n";
+          customFields.forEach((field) => {
+            summary += `${formatField(field)}\n`;
           });
         }
-      });
-    },
 
-    update_object: async ({ objectName, records, allOrNone }, extra) => {
-      return withAuth(extra, async (conn) => {
-        try {
-          const result = await conn.sobject(objectName).update(records, {
-            allOrNone,
+        summary +=
+          "\nChild Relationships (for Parent-to-Child SOQL queries):\n";
+        if (result.childRelationships && result.childRelationships.length > 0) {
+          result.childRelationships.forEach((rel) => {
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            summary += `- RelationshipName: ${rel.relationshipName || "(N/A - check API docs)"}`;
+            summary += `, ChildObject: ${rel.childSObject}`;
+            summary += `, Field on Child: ${rel.field}\n`;
           });
-
-          const results = Array.isArray(result) ? result : [result];
-          const successCount = results.filter((r) => r.success).length;
-          const failureCount = results.length - successCount;
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Update completed: ${successCount} successful, ${failureCount} failed`,
-            },
-            { type: "text" as const, text: JSON.stringify(result, null, 2) },
-          ]);
-        } catch (error) {
-          return logAndReturnError({
-            error,
-            params: { objectName, recordCount: records.length, allOrNone },
-            message: "Error updating Salesforce records",
-          });
-        }
-      });
-    },
-
-    list_attachments: async ({ recordId }, extra) => {
-      return withAuth(extra, async (conn) => {
-        const attachmentsResult = await getAllSalesforceAttachments(
-          conn,
-          recordId
-        );
-
-        if (attachmentsResult.isErr()) {
-          return new Err(new MCPError(attachmentsResult.error));
+        } else {
+          summary += "No child relationships found.\n";
         }
 
-        const attachments = attachmentsResult.value;
-        const attachmentSummary = attachments.map((att) => ({
-          id: att.id,
-          filename: att.filename,
-          mimeType: att.mimeType,
-          size: att.size,
-          created: att.created,
-          author: att.author,
-        }));
+        summary +=
+          "\nNote: For custom relationships in SOQL, names often end with '__r' (e.g., MyCustomChildren__r). Use the 'RelationshipName' listed above.\n";
 
         return new Ok([
           {
-            type: "text" as const,
-            text: `Found ${attachments.length} attachment(s) for record ${recordId}`,
+            type: "text",
+            text: "Object described successfully. Summary provided.",
           },
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                attachments: attachmentSummary,
-              },
-              null,
-              2
-            ),
-          },
+          { type: "text", text: summary },
         ]);
-      });
-    },
+      } catch (error) {
+        return logAndReturnError({
+          error,
+          params: { objectName },
+          message: "Error describing Salesforce object",
+        });
+      }
+    });
+  },
 
-    read_attachment: async ({ recordId, attachmentId }, extra) => {
-      return withAuth(extra, async (conn) => {
-        const attachmentsResult = await getAllSalesforceAttachments(
-          conn,
-          recordId
-        );
-
-        if (attachmentsResult.isErr()) {
-          return new Err(
-            new MCPError(
-              `Failed to get attachments: ${attachmentsResult.error}`
-            )
-          );
-        }
-
-        const attachments = attachmentsResult.value;
-        const targetAttachment = attachments.find(
-          (att) => att.id === attachmentId
-        );
-
-        if (!targetAttachment) {
-          return new Err(
-            new MCPError(
-              `Attachment with ID ${attachmentId} not found on record ${recordId}.`
-            )
-          );
-        }
-
-        const { mimeType, filename, size } = targetAttachment;
-        const safeFilename = filename || `attachment-${attachmentId}`;
-
-        // 50MB — matches the platform limit for data files (types/files.ts MAX_FILE_SIZES["data"]).
-        const MAX_ATTACHMENT_SIZE_BYTES = 50 * 1024 * 1024;
-        if (size !== undefined && size > MAX_ATTACHMENT_SIZE_BYTES) {
-          return new Err(
-            new MCPError(
-              `Attachment is too large to download (${(size / (1024 * 1024)).toFixed(1)}MB). Maximum supported size is 50MB.`
-            )
-          );
-        }
-
-        // Download once upfront; reuse buffer for both text extraction and binary blob.
-        // Avoids a double network call to Salesforce (mirrors Microsoft Drive pattern).
-        const downloadResult = await downloadSalesforceContent(
-          conn,
-          attachmentId
-        );
-        if (downloadResult.isErr()) {
-          return new Err(
-            new MCPError(
-              `Failed to download attachment: ${downloadResult.error}`
-            )
-          );
-        }
-        const buffer = downloadResult.value;
-
-        const result = await processAttachment({
-          mimeType,
-          filename: safeFilename,
-          extractText: async () => extractTextFromBuffer(buffer, mimeType),
-          downloadContent: async () => new Ok(buffer),
+  create_object: async ({ objectName, records, allOrNone }, extra) => {
+    return withAuth(extra, async (conn) => {
+      try {
+        const result = await conn.sobject(objectName).create(records, {
+          allOrNone,
         });
 
-        if (result.isErr()) {
-          return new Err(result.error);
-        }
+        const results = Array.isArray(result) ? result : [result];
+        const successCount = results.filter((r) => r.success).length;
+        const failureCount = results.length - successCount;
 
-        // Always include a raw binary resource block so the user receives a
-        // downloadable file, even when text extraction succeeded (PDFs).
-        if (result.value.some((c) => c.type === "resource")) {
-          return new Ok(result.value);
-        }
-
-        const sanitized = sanitizeFilename(safeFilename);
         return new Ok([
-          ...result.value,
           {
-            type: "resource" as const,
-            resource: {
-              blob: buffer.toString("base64"),
-              _meta: { text: `Attachment: ${sanitized}` },
-              mimeType,
-              uri: sanitized,
-            },
+            type: "text" as const,
+            text: `Create completed: ${successCount} successful, ${failureCount} failed`,
           },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
         ]);
-      });
-    },
-  };
+      } catch (error) {
+        return logAndReturnError({
+          error,
+          params: { objectName, recordCount: records.length, allOrNone },
+          message: "Error creating Salesforce records",
+        });
+      }
+    });
+  },
 
-  return buildTools(SALESFORCE_TOOLS_METADATA, handlers);
-}
+  update_object: async ({ objectName, records, allOrNone }, extra) => {
+    return withAuth(extra, async (conn) => {
+      try {
+        const result = await conn.sobject(objectName).update(records, {
+          allOrNone,
+        });
+
+        const results = Array.isArray(result) ? result : [result];
+        const successCount = results.filter((r) => r.success).length;
+        const failureCount = results.length - successCount;
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Update completed: ${successCount} successful, ${failureCount} failed`,
+          },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
+      } catch (error) {
+        return logAndReturnError({
+          error,
+          params: { objectName, recordCount: records.length, allOrNone },
+          message: "Error updating Salesforce records",
+        });
+      }
+    });
+  },
+
+  list_attachments: async ({ recordId }, extra) => {
+    return withAuth(extra, async (conn) => {
+      const attachmentsResult = await getAllSalesforceAttachments(
+        conn,
+        recordId
+      );
+
+      if (attachmentsResult.isErr()) {
+        return new Err(new MCPError(attachmentsResult.error));
+      }
+
+      const attachments = attachmentsResult.value;
+      const attachmentSummary = attachments.map((att) => ({
+        id: att.id,
+        filename: att.filename,
+        mimeType: att.mimeType,
+        size: att.size,
+        created: att.created,
+        author: att.author,
+      }));
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Found ${attachments.length} attachment(s) for record ${recordId}`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              attachments: attachmentSummary,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    });
+  },
+
+  read_attachment: async ({ recordId, attachmentId }, extra) => {
+    return withAuth(extra, async (conn) => {
+      const attachmentsResult = await getAllSalesforceAttachments(
+        conn,
+        recordId
+      );
+
+      if (attachmentsResult.isErr()) {
+        return new Err(
+          new MCPError(`Failed to get attachments: ${attachmentsResult.error}`)
+        );
+      }
+
+      const attachments = attachmentsResult.value;
+      const targetAttachment = attachments.find(
+        (att) => att.id === attachmentId
+      );
+
+      if (!targetAttachment) {
+        return new Err(
+          new MCPError(
+            `Attachment with ID ${attachmentId} not found on record ${recordId}.`
+          )
+        );
+      }
+
+      const { mimeType, filename, size } = targetAttachment;
+      const safeFilename = filename || `attachment-${attachmentId}`;
+
+      // 50MB — matches the platform limit for data files (types/files.ts MAX_FILE_SIZES["data"]).
+      const MAX_ATTACHMENT_SIZE_BYTES = 50 * 1024 * 1024;
+      if (size !== undefined && size > MAX_ATTACHMENT_SIZE_BYTES) {
+        return new Err(
+          new MCPError(
+            `Attachment is too large to download (${(size / (1024 * 1024)).toFixed(1)}MB). Maximum supported size is 50MB.`
+          )
+        );
+      }
+
+      // Download once upfront; reuse buffer for both text extraction and binary blob.
+      // Avoids a double network call to Salesforce (mirrors Microsoft Drive pattern).
+      const downloadResult = await downloadSalesforceContent(
+        conn,
+        attachmentId
+      );
+      if (downloadResult.isErr()) {
+        return new Err(
+          new MCPError(`Failed to download attachment: ${downloadResult.error}`)
+        );
+      }
+      const buffer = downloadResult.value;
+
+      const result = await processAttachment({
+        mimeType,
+        filename: safeFilename,
+        extractText: async () => extractTextFromBuffer(buffer, mimeType),
+        downloadContent: async () => new Ok(buffer),
+      });
+
+      if (result.isErr()) {
+        return new Err(result.error);
+      }
+
+      // Always include a raw binary resource block so the user receives a
+      // downloadable file, even when text extraction succeeded (PDFs).
+      if (result.value.some((c) => c.type === "resource")) {
+        return new Ok(result.value);
+      }
+
+      const sanitized = sanitizeFilename(safeFilename);
+      return new Ok([
+        ...result.value,
+        {
+          type: "resource" as const,
+          resource: {
+            blob: buffer.toString("base64"),
+            _meta: { text: `Attachment: ${sanitized}` },
+            mimeType,
+            uri: sanitized,
+          },
+        },
+      ]);
+    });
+  },
+};
+
+export const TOOLS = buildTools(SALESFORCE_TOOLS_METADATA, handlers);
