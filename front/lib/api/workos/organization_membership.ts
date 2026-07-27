@@ -19,7 +19,7 @@ async function findWorkOSOrganizationsForUserIdUncached(userId: string) {
   const orgs = await concurrentExecutor(
     response.data
       .filter((membership) =>
-        ["admin", "builder", "user"].includes(membership.role.slug)
+        ["admin", "manager", "builder", "user"].includes(membership.role.slug)
       )
       .map((membership) => membership.organizationId),
     async (orgId) => getWorkOS().organizations.getOrganization(orgId),
