@@ -17,7 +17,10 @@ import type {
 import { PatchSubscriptionRequestBody } from "@app/types/api/subscription";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import {
+  ensureHasWorkspacePermission,
+  ensureIsManager,
+} from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -66,19 +69,13 @@ app.get(
 app.post(
   "/",
   validate("json", PostSubscriptionRequestBody),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<PostSubscriptionResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!(await auth.hasWorkspacePermission("admin", "billing"))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message:
-            "You need billing access to manage billing settings, invoices, and payment methods.",
-        },
-      });
-    }
 
     const body = ctx.req.valid("json");
 
@@ -119,19 +116,13 @@ app.post(
 app.patch(
   "/",
   validate("json", PatchSubscriptionRequestBody),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<PatchSubscriptionResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!(await auth.hasWorkspacePermission("admin", "billing"))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message:
-            "You need billing access to manage billing settings, invoices, and payment methods.",
-        },
-      });
-    }
 
     const subscription = auth.subscription();
     if (!subscription) {

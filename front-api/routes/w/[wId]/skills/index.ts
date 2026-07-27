@@ -24,6 +24,7 @@ import {
   type SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -275,18 +276,14 @@ app.get(
 app.post(
   "/",
   validate("json", PostSkillRequestBodySchema),
+  ensureHasWorkspacePermission(
+    "create",
+    "skill",
+    "Creating skills is restricted.",
+    "app_auth_error"
+  ),
   async (ctx): HandlerResult<PostSkillResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!(await auth.hasWorkspacePermission("create", "skill"))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message: "Creating skills is restricted.",
-        },
-      });
-    }
 
     const user = auth.getNonNullableUser();
 

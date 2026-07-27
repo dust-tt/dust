@@ -15,6 +15,7 @@ import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
@@ -166,18 +167,13 @@ app.delete("/", async (ctx) => {
 app.post(
   "/",
   validate("json", PostSsoEnforcementBodySchema),
+  ensureHasWorkspacePermission(
+    "admin",
+    "security",
+    SECURITY_PERMISSION_ERROR_MESSAGE
+  ),
   async (ctx): HandlerResult<GetWorkspaceResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!(await auth.hasWorkspacePermission("admin", "security"))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: SECURITY_PERMISSION_ERROR_MESSAGE,
-        },
-      });
-    }
 
     const owner = auth.getNonNullableWorkspace();
     const { ssoEnforced } = ctx.req.valid("json");

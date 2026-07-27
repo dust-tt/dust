@@ -6,6 +6,7 @@ import {
   type WorkspaceMigrationStatus,
 } from "@app/lib/api/billing/migration_lifecycle";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
@@ -38,40 +39,31 @@ function lifecycleErrorToApi(ctx: Context, err: MigrationLifecycleError) {
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get("/", async (ctx): HandlerResult<WorkspaceMigrationStatus> => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
+  async (ctx): HandlerResult<WorkspaceMigrationStatus> => {
+    const auth = ctx.get("auth");
 
-  if (!(await auth.hasWorkspacePermission("admin", "billing"))) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "You need billing access to manage billing settings, invoices, and payment methods.",
-      },
-    });
+    return ctx.json(await getWorkspaceMigrationStatus(auth));
   }
-
-  return ctx.json(await getWorkspaceMigrationStatus(auth));
-});
+);
 
 /** @ignoreswagger */
 app.patch(
   "/",
   validate("json", PatchMigrationRequestBody),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<PatchMigrationResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!(await auth.hasWorkspacePermission("admin", "billing"))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message:
-            "You need billing access to manage billing settings, invoices, and payment methods.",
-        },
-      });
-    }
 
     const { action } = ctx.req.valid("json");
 
