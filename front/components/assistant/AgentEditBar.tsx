@@ -149,7 +149,6 @@ export const AgentEditBar = ({
           owner={owner}
           agentConfigurations={selectedAgents}
           disabled={selectedAgents.length === 0 || isLoading}
-          mutateAgentConfigurations={mutateAgentConfigurations}
         />
         <UnpublishAssistantsDialog
           owner={owner}

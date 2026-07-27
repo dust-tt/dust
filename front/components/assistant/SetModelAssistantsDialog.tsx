@@ -1,6 +1,9 @@
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useBatchUpdateAgentModel } from "@app/lib/swr/assistants";
+import {
+  useAgentConfigurations,
+  useBatchUpdateAgentModel,
+} from "@app/lib/swr/assistants";
 import { useModels } from "@app/lib/swr/models";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
@@ -34,14 +37,12 @@ interface SetModelAssistantsDialogProps {
   agentConfigurations: LightAgentConfigurationType[];
   disabled: boolean;
   owner: LightWorkspaceType;
-  mutateAgentConfigurations: () => Promise<unknown>;
 }
 
 export function SetModelAssistantsDialog({
   agentConfigurations,
   disabled,
   owner,
-  mutateAgentConfigurations,
 }: SetModelAssistantsDialogProps) {
   const { isDark } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
@@ -52,6 +53,13 @@ export function SetModelAssistantsDialog({
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { models, isModelsLoading } = useModels({ owner, disabled: !isOpen });
+
+  const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "list", // Anything would work
+      disabled: true, // We only use the hook to mutate the cache
+    });
 
   const batchUpdateAgentModel = useBatchUpdateAgentModel({ owner });
 
@@ -196,7 +204,7 @@ export function SetModelAssistantsDialog({
                 agentConfigurations.map((a) => a.sId),
                 { modelId: selectedModel.modelId }
               );
-              await mutateAgentConfigurations();
+              void mutateAgentConfigurations();
               setIsSaving(false);
               if (success) {
                 setIsOpen(false);
