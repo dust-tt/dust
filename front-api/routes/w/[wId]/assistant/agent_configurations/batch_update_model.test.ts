@@ -1,4 +1,7 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  archiveAgentConfiguration,
+  getAgentConfiguration,
+} from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -81,6 +84,45 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
     expect(updated?.instructions).toBe(agent.instructions);
     expect(updated?.scope).toBe(agent.scope);
     expect(updated?.tags.map((t) => t.sId)).toEqual([tag.sId]);
+  });
+
+  it("updates what it can and reports the rest as skipped", async () => {
+    const { workspace, auth, agent } = await setupTest("admin");
+    const target = await findTargetModel(auth);
+
+    // An archived agent cannot be re-saved: a new version would make it active again.
+    const archivedAgent = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      {
+        name: "Archived Test Agent",
+        model: { ...INITIAL_MODEL },
+      }
+    );
+    await archiveAgentConfiguration(auth, archivedAgent.sId);
+
+    const res = await postBatchUpdateModel(workspace, {
+      agentIds: [agent.sId, archivedAgent.sId],
+      modelId: target.modelId,
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.updatedAgentIds).toEqual([agent.sId]);
+    expect(body.skippedAgentIds).toEqual([archivedAgent.sId]);
+
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(updated?.model.modelId).toBe(target.modelId);
+
+    const skipped = await getAgentConfiguration(auth, {
+      agentId: archivedAgent.sId,
+      variant: "light",
+    });
+    expect(skipped?.model.modelId).toBe(INITIAL_MODEL.modelId);
+    expect(skipped?.status).toBe("archived");
+    expect(skipped?.version).toBe(archivedAgent.version);
   });
 
   it("rejects a model that is not available in the workspace", async () => {
