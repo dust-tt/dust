@@ -7,6 +7,8 @@ import { DustGoogleAiStudioGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioBatch 
 import { DustMistralMistralMedium35EuropeMistralBatch } from "@app/lib/llms/batch/endpoints/mistral_mistral_medium_3_5_eu_mistral";
 import { DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesBatch } from "@app/lib/llms/batch/endpoints/openai_gpt_five_dot_five_eu_openai_responses";
 import { DustOpenAIGptFiveDotFiveGlobalOpenAIResponsesBatch } from "@app/lib/llms/batch/endpoints/openai_gpt_five_dot_five_global_openai_responses";
+import { DustOpenAIGptFiveDotSixLunaEuropeOpenAIResponsesBatch } from "@app/lib/llms/batch/endpoints/openai_gpt_five_dot_six_luna_eu_openai_responses";
+import { DustOpenAIGptFiveDotSixLunaGlobalOpenAIResponsesBatch } from "@app/lib/llms/batch/endpoints/openai_gpt_five_dot_six_luna_global_openai_responses";
 import { isEndpointAvailable } from "@app/lib/llms/batch/utils/is_endpoint_available";
 import type {
   EndpointConfig,
@@ -30,6 +32,10 @@ export const DUST_BATCH_ENDPOINTS = {
     DustOpenAIGptFiveDotFiveGlobalOpenAIResponsesBatch,
   [DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesBatch.id]:
     DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesBatch,
+  [DustOpenAIGptFiveDotSixLunaGlobalOpenAIResponsesBatch.id]:
+    DustOpenAIGptFiveDotSixLunaGlobalOpenAIResponsesBatch,
+  [DustOpenAIGptFiveDotSixLunaEuropeOpenAIResponsesBatch.id]:
+    DustOpenAIGptFiveDotSixLunaEuropeOpenAIResponsesBatch,
   [DustMistralMistralMedium35EuropeMistralBatch.id]:
     DustMistralMistralMedium35EuropeMistralBatch,
 } as const satisfies Record<BatchEndpointId, DustBatchEndpointConstructor>;
