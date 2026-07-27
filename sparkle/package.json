@@ -21,6 +21,9 @@
       "ignore": ""
     }
   },
+  "nodemonConfig": {
+    "signal": "SIGQUIT"
+  },
   "main": "dist/cjs/index.js",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
