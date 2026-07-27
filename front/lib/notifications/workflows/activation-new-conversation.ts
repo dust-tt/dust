@@ -9,8 +9,8 @@ import {
 import { hasUnreadSucceededAgentReply } from "@app/lib/notifications/conversation_fetch";
 import { renderEmail } from "@app/lib/notifications/email-templates/activation-new-conversation";
 import {
+  getActivationRecommendation,
   getConversationDetails,
-  getEmailSummary,
 } from "@app/lib/notifications/helpers";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -30,8 +30,6 @@ import { z } from "zod";
 // to the target user as a dedicated, standalone email. It has no digest step, so a
 // conversation sent this way is never also bundled into the unread digest for the same activity.
 
-// For the email UI itself, right now it reuses and says something basic, will be fleshed out later.
-
 const activationNewConversationPayloadSchema = z.object({
   workspaceId: z.string(),
   conversationId: z.string(),
@@ -44,7 +42,8 @@ export type activationNewConversationPayloadType = z.infer<
 const activationNewConversationDetailsSchema = z.object({
   subject: z.string(),
   workspaceName: z.string(),
-  // Short, human summary of what's inside; null when none could be generated.
+  podName: z.string(),
+  purpose: z.string().nullable(),
   summary: z.string().nullable(),
 });
 
@@ -98,11 +97,13 @@ const getActivationNewConversationDetails = async ({
     return {
       subject: "A new conversation",
       workspaceName: "your workspace",
+      podName: "your pod",
+      purpose: null,
       summary: null,
     };
   }
 
-  const summary = await getEmailSummary({
+  const { purpose, summary } = await getActivationRecommendation({
     details: detailsResult.value,
     subscriberId: subscriberId ?? "",
     payload,
@@ -111,6 +112,8 @@ const getActivationNewConversationDetails = async ({
   return {
     subject: detailsResult.value.subject,
     workspaceName: detailsResult.value.workspaceName,
+    podName: detailsResult.value.projectName ?? "your pod",
+    purpose,
     summary,
   };
 };
@@ -160,11 +163,11 @@ export const activationNewConversationWorkflow = workflow(
             id: payload.workspaceId,
             name: details.workspaceName,
           },
-          title: details.subject,
+          podName: details.podName,
+          purpose: details.purpose,
           summary: details.summary,
-          previewImageUrl: undefined,
           action: {
-            label: "Open conversation",
+            label: details.subject,
             url:
               config.getAppUrl() +
               getConversationRoute(payload.workspaceId, payload.conversationId),
@@ -172,7 +175,7 @@ export const activationNewConversationWorkflow = workflow(
         });
 
         return {
-          subject: details.subject,
+          subject: `[Dust] ${details.subject}`,
           body,
         };
       },
