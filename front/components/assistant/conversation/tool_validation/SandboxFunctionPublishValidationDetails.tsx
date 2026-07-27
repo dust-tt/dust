@@ -12,7 +12,7 @@ export function SandboxFunctionPublishValidationDetails({
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm text-muted-foreground">
-        Do you want to publish this function to this Pod?
+        The agent wants to publish this function to this Pod.
       </p>
 
       <dl className="divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background">
