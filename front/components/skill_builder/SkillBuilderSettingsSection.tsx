@@ -66,10 +66,10 @@ export function SkillBuilderSettingsSection({
   const confirm = useContext(ConfirmContext);
 
   const { hasFeature } = useFeatureFlags();
-  const isAdminGovernanceEnabled = hasFeature(
+  const isSkillPublicationEnabled = hasFeature(
     "admin_governance_skill_publication"
   );
-  const { hasPermission } = useWorkspacePermissions(owner);
+  const { hasPermission } = useWorkspacePermissions();
   const canUpdateAvailability = hasPermission("publish", "skill");
   const githubSkillFolderUrl = getGitHubSkillFolderUrl(skill);
 
@@ -142,7 +142,7 @@ export function SkillBuilderSettingsSection({
             />
           </div>
         </div>
-        {isAdminGovernanceEnabled && (
+        {isSkillPublicationEnabled && (
           <div>
             <h3 className="text-base font-semibold text-foreground mb-2">
               Availability
@@ -156,7 +156,7 @@ export function SkillBuilderSettingsSection({
                   disabled={!canUpdateAvailability}
                 />
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-60" align="start" side="right">
+              <DropdownMenuContent className="w-60" align="start">
                 {AVAILABILITY_OPTIONS.map((option) => (
                   <DropdownMenuItem
                     key={option.label}
@@ -171,16 +171,18 @@ export function SkillBuilderSettingsSection({
           </div>
         )}
       </div>
-      {isAdminGovernanceEnabled && canUpdateAvailability && (
-        <p className="text-muted-foreground text-sm">
-          <span className="font-semibold">
-            Auto-discovery is {isAutoDiscoverableOn ? "on" : "off"}.{" "}
-          </span>
-          Agents with the Discover Skills tool{" "}
-          {isAutoDiscoverableOn ? "can use" : "won’t find"} this skill
-          automatically.
-          <br />
-          <div className="mt-1">
+      {isSkillPublicationEnabled && canUpdateAvailability && (
+        <div className="text-muted-foreground text-sm">
+          <p className="mb-1">
+            <span className="font-semibold">
+              Auto-discovery is {isAutoDiscoverableOn ? "on" : "off"}.{" "}
+            </span>
+            Agents with the Discover Skills tool{" "}
+            {isAutoDiscoverableOn ? "can use" : "won’t find"} this skill
+            automatically.
+            <br />
+          </p>
+          <p>
             Edit in{" "}
             <Hoverable
               href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
@@ -189,8 +191,8 @@ export function SkillBuilderSettingsSection({
             >
               Manage Skills <Icon visual={LinkExternal01} size="xs" />
             </Hoverable>
-          </div>
-        </p>
+          </p>
+        </div>
       )}
 
       {hasSelfImprovingSkills && (
@@ -203,7 +205,7 @@ export function SkillBuilderSettingsSection({
           />
         </div>
       )}
-      {skill && (
+      {skill && !isSkillPublicationEnabled && (
         <>
           <Collapsible defaultOpen>
             <CollapsibleTrigger variant="secondary">
