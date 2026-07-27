@@ -112,7 +112,7 @@ export type ToolFileAuthRequiredEvent =
 export interface AgentLoopMCPApproveExecutionEvent
   extends AgentLoopToolExecution {
   type: "tool_approve_execution";
-  editableArguments?: string[];
+  editableArguments?: readonly string[];
 }
 
 export interface SandboxFunctionMCPApproveExecutionEvent
