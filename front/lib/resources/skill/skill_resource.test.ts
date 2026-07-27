@@ -1422,25 +1422,30 @@ describe("SkillResource", () => {
 
     it("archives multiple skills sharing the same name without a unique constraint violation", async () => {
       // The (workspaceId, name, status) unique constraint means only one
-      // archived skill can keep a given name. Archiving a third same-named
-      // skill must not collide with a previously renamed archived skill.
-      const firstSkill = await SkillFactory.create(testContext.authenticator, {
-        name: "Duplicate Name Skill",
-      });
-      await firstSkill.archive(testContext.authenticator);
+      // archived skill can keep a given name. Archiving a same-named skill
+      // renames the previously archived one with a minute-granularity
+      // timestamp; a third archive on the same day (but a different minute)
+      // must not collide with the earlier rename target. We fake the clock so
+      // each archive lands on a distinct minute of the same day.
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        const archiveSameNameSkillAt = async (isoTime: string) => {
+          vi.setSystemTime(new Date(isoTime));
+          const skill = await SkillFactory.create(testContext.authenticator, {
+            name: "Duplicate Name Skill",
+          });
+          return skill.archive(testContext.authenticator);
+        };
 
-      const secondSkill = await SkillFactory.create(testContext.authenticator, {
-        name: "Duplicate Name Skill",
-      });
-      await secondSkill.archive(testContext.authenticator);
-
-      const thirdSkill = await SkillFactory.create(testContext.authenticator, {
-        name: "Duplicate Name Skill",
-      });
-      const { affectedCount } = await thirdSkill.archive(
-        testContext.authenticator
-      );
-      expect(affectedCount).toBe(1);
+        await archiveSameNameSkillAt("2026-07-26T12:00:00Z");
+        await archiveSameNameSkillAt("2026-07-26T12:01:00Z");
+        const { affectedCount } = await archiveSameNameSkillAt(
+          "2026-07-26T12:02:00Z"
+        );
+        expect(affectedCount).toBe(1);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("removes the skill's space requirements from agents when archiving and adds them back when restoring", async () => {
