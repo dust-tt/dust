@@ -2,7 +2,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ToolContext } from "@app/lib/actions/types";
 import { POD_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/pod_manager/metadata";
-import { createProjectManagerTools } from "@app/lib/api/actions/servers/pod_manager/tools";
+import { TOOLS } from "@app/lib/api/actions/servers/pod_manager/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -22,8 +22,7 @@ function createServer(
 ): McpServer {
   const server = makeInternalMCPServer(POD_MANAGER_SERVER_NAME);
 
-  const tools = createProjectManagerTools(auth, toolContext);
-  for (const tool of tools) {
+  for (const tool of TOOLS) {
     registerTool(auth, toolContext, server, tool, {
       monitoringName: POD_MANAGER_SERVER_NAME,
     });

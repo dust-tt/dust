@@ -1,8 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
@@ -202,333 +199,334 @@ function formatTaskListingLine(row: ProjectTaskResource): string {
   return lines.join("\n");
 }
 
-export function createProjectTasksTools(
-  auth: Authenticator,
-  toolContext?: ToolContext
-): ToolDefinition[] {
-  const owner = auth.getNonNullableWorkspace();
-  const handlers: ToolHandlers<typeof POD_TASKS_TOOLS_METADATA> = {
-    list_tasks: async ({
-      assigneeFilter = "mine",
-      statusFilter = "all",
-      daysAgo = 7,
-      dustPod,
-    }) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getPod(auth, {
-          toolContext,
-          dustPod,
+const handlers: ToolHandlers<typeof POD_TASKS_TOOLS_METADATA> = {
+  list_tasks: async (
+    { assigneeFilter = "mine", statusFilter = "all", daysAgo = 7, dustPod },
+    { auth, runContext }
+  ) => {
+    const toolContext: ToolContext = { runContext };
+    return withErrorHandling(async () => {
+      const contextRes = await getPod(auth, {
+        toolContext,
+        dustPod,
+      });
+      if (contextRes.isErr()) {
+        return contextRes;
+      }
+      const { pod } = contextRes.value;
+
+      let rows: ProjectTaskResource[] = [];
+
+      if (assigneeFilter === "mine") {
+        rows = await ProjectTaskResource.fetchLatestBySpace(auth, {
+          spaceId: pod.id,
         });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-        const { pod } = contextRes.value;
+      } else if (assigneeFilter === "all") {
+        rows = await ProjectTaskResource.fetchBySpace(auth, {
+          spaceId: pod.id,
+          timeScope: "all",
+        });
+      }
 
-        let rows: ProjectTaskResource[] = [];
+      const cutoff = new Date(Date.now() - daysAgo * MS_PER_DAY);
 
-        if (assigneeFilter === "mine") {
-          rows = await ProjectTaskResource.fetchLatestBySpace(auth, {
-            spaceId: pod.id,
-          });
-        } else if (assigneeFilter === "all") {
-          rows = await ProjectTaskResource.fetchBySpace(auth, {
-            spaceId: pod.id,
-            timeScope: "all",
-          });
-        }
+      if (statusFilter === "open") {
+        rows = rows.filter((t) => t.status !== "done");
+      } else if (statusFilter === "done") {
+        rows = rows.filter(
+          (t) => t.status === "done" && t.doneAt !== null && t.doneAt >= cutoff
+        );
+      } else {
+        // "all": keep open items as-is; limit done items by daysAgo.
+        rows = rows.filter(
+          (t) =>
+            t.status !== "done" || (t.doneAt !== null && t.doneAt >= cutoff)
+        );
+      }
 
-        const cutoff = new Date(Date.now() - daysAgo * MS_PER_DAY);
+      if (rows.length === 0) {
+        return new Ok([{ type: "text" as const, text: "No tasks found." }]);
+      }
 
-        if (statusFilter === "open") {
-          rows = rows.filter((t) => t.status !== "done");
-        } else if (statusFilter === "done") {
-          rows = rows.filter(
-            (t) =>
-              t.status === "done" && t.doneAt !== null && t.doneAt >= cutoff
-          );
-        } else {
-          // "all": keep open items as-is; limit done items by daysAgo.
-          rows = rows.filter(
-            (t) =>
-              t.status !== "done" || (t.doneAt !== null && t.doneAt >= cutoff)
-          );
-        }
-
-        if (rows.length === 0) {
-          return new Ok([{ type: "text" as const, text: "No tasks found." }]);
-        }
-
-        if (statusFilter === "done") {
-          rows.sort(
-            (a, b) => (b.doneAt?.getTime() ?? 0) - (a.doneAt?.getTime() ?? 0)
-          );
-          const lines: string[] = [
-            `Found ${rows.length} completed task(s) in the last ${daysAgo} day(s):\n`,
-          ];
-          for (const row of rows) {
-            lines.push(formatTaskListingLine(row));
-          }
-          return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
-        }
-        const assigneeLabel = assigneeFilter === "mine" ? "you" : "everyone";
-        const label =
-          statusFilter === "open"
-            ? `Found ${rows.length} open task(s) for ${assigneeLabel}:\n`
-            : `Found ${rows.length} task(s) for ${assigneeLabel}:\n`;
-
-        const lines: string[] = [label];
+      if (statusFilter === "done") {
+        rows.sort(
+          (a, b) => (b.doneAt?.getTime() ?? 0) - (a.doneAt?.getTime() ?? 0)
+        );
+        const lines: string[] = [
+          `Found ${rows.length} completed task(s) in the last ${daysAgo} day(s):\n`,
+        ];
         for (const row of rows) {
           lines.push(formatTaskListingLine(row));
         }
-
         return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
-      }, "Failed to list tasks");
-    },
+      }
+      const assigneeLabel = assigneeFilter === "mine" ? "you" : "everyone";
+      const label =
+        statusFilter === "open"
+          ? `Found ${rows.length} open task(s) for ${assigneeLabel}:\n`
+          : `Found ${rows.length} task(s) for ${assigneeLabel}:\n`;
 
-    [CREATE_TASKS_TOOL_NAME]: async ({ creatorType, tasks, dustPod }) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getPod(auth, {
-          toolContext,
-          dustPod,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
+      const lines: string[] = [label];
+      for (const row of rows) {
+        lines.push(formatTaskListingLine(row));
+      }
+
+      return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
+    }, "Failed to list tasks");
+  },
+
+  [CREATE_TASKS_TOOL_NAME]: async (
+    { creatorType, tasks, dustPod },
+    { auth, runContext }
+  ) => {
+    const owner = auth.getNonNullableWorkspace();
+    const toolContext: ToolContext = { runContext };
+    return withErrorHandling(async () => {
+      const contextRes = await getPod(auth, {
+        toolContext,
+        dustPod,
+      });
+      if (contextRes.isErr()) {
+        return contextRes;
+      }
+      const { pod } = contextRes.value;
+
+      const assignmentPool =
+        await pod.fetchDistinctActiveManualGroupMembers(auth);
+      const soleAssigneeModelId =
+        assignmentPool.length === 1 ? assignmentPool[0]!.id : null;
+
+      const currentUser = auth.getNonNullableUser();
+      const agentConfigurationId = isAgentLoopRunContext(
+        toolContext?.runContext
+      )
+        ? toolContext.runContext.agentConfiguration.sId
+        : null;
+
+      if (creatorType === "agent" && !agentConfigurationId) {
+        return new Err(
+          new MCPError(
+            "Agent creator type specified, but no agent configuration ID found in the context.",
+            { tracked: false }
+          )
+        );
+      }
+
+      const created: string[] = [];
+      const errors: string[] = [];
+      for (const item of tasks) {
+        let newUserId: ModelId | null = null;
+        if (typeof item.userId === "string") {
+          const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+            item.userId,
+            owner.sId
+          );
+          if (!contextRes.value.pod.isMember(userAuth)) {
+            errors.push(
+              `Could not create task ${item.text} for user ${item.userId} because they are not a member of the Pod.`
+            );
+            continue;
+          }
+          newUserId = userAuth.getNonNullableUser().id;
+        } else if (
+          soleAssigneeModelId !== null &&
+          (item.userId === undefined || item.userId === null)
+        ) {
+          newUserId = soleAssigneeModelId;
         }
-        const { pod } = contextRes.value;
 
-        const assignmentPool =
-          await pod.fetchDistinctActiveManualGroupMembers(auth);
-        const soleAssigneeModelId =
-          assignmentPool.length === 1 ? assignmentPool[0]!.id : null;
+        const row = await ProjectTaskResource.makeNew(auth, {
+          spaceId: pod.id,
+          userId: newUserId,
+          createdByType: creatorType,
+          createdByAgentConfigurationId:
+            creatorType === "agent" ? agentConfigurationId : null,
+          createdByUserId: creatorType === "user" ? currentUser.id : null,
+          text: item.text,
+          status: item.doneRationale ? "done" : "todo",
+          doneAt: item.doneRationale ? new Date() : null,
+          actorRationale: item.doneRationale ?? null,
+          agentInstructions: null,
+        });
 
-        const currentUser = auth.getNonNullableUser();
-        const agentConfigurationId = isAgentLoopRunContext(
+        // Record the conversation where the task was created as a source so
+        // it surfaces in the kickoff prompt when the task is started.
+        const sourceConversation = isAgentLoopRunContext(
           toolContext?.runContext
         )
-          ? toolContext.runContext.agentConfiguration.sId
+          ? toolContext?.runContext?.conversation
           : null;
-
-        if (creatorType === "agent" && !agentConfigurationId) {
-          return new Err(
-            new MCPError(
-              "Agent creator type specified, but no agent configuration ID found in the context.",
-              { tracked: false }
-            )
-          );
+        if (sourceConversation) {
+          await row.upsertSource(auth, {
+            itemId: sourceConversation.sId,
+            source: {
+              sourceType: "project_conversation",
+              sourceId: sourceConversation.sId,
+              sourceTitle: sourceConversation.title ?? "Source conversation",
+              sourceUrl: `${config.getAppUrl()}${getConversationRoute(owner.sId, sourceConversation.sId)}`,
+            },
+          });
         }
 
-        const created: string[] = [];
-        const errors: string[] = [];
-        for (const item of tasks) {
-          let newUserId: ModelId | null = null;
-          if (typeof item.userId === "string") {
-            const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-              item.userId,
-              owner.sId
-            );
-            if (!contextRes.value.pod.isMember(userAuth)) {
-              errors.push(
-                `Could not create task ${item.text} for user ${item.userId} because they are not a member of the Pod.`
-              );
-              continue;
-            }
-            newUserId = userAuth.getNonNullableUser().id;
-          } else if (
-            soleAssigneeModelId !== null &&
-            (item.userId === undefined || item.userId === null)
-          ) {
-            newUserId = soleAssigneeModelId;
-          }
-
-          const row = await ProjectTaskResource.makeNew(auth, {
-            spaceId: pod.id,
-            userId: newUserId,
-            createdByType: creatorType,
-            createdByAgentConfigurationId:
-              creatorType === "agent" ? agentConfigurationId : null,
-            createdByUserId: creatorType === "user" ? currentUser.id : null,
-            text: item.text,
-            status: item.doneRationale ? "done" : "todo",
-            doneAt: item.doneRationale ? new Date() : null,
-            actorRationale: item.doneRationale ?? null,
-            agentInstructions: null,
-          });
-
-          // Record the conversation where the task was created as a source so
-          // it surfaces in the kickoff prompt when the task is started.
-          const sourceConversation = isAgentLoopRunContext(
-            toolContext?.runContext
-          )
-            ? toolContext?.runContext?.conversation
-            : null;
-          if (sourceConversation) {
+        if (item.sources) {
+          for (const sourceInput of item.sources) {
+            const source = inferProjectTaskSourceFromUrl({
+              url: sourceInput.url,
+              title: sourceInput.title,
+            });
             await row.upsertSource(auth, {
-              itemId: sourceConversation.sId,
-              source: {
-                sourceType: "project_conversation",
-                sourceId: sourceConversation.sId,
-                sourceTitle: sourceConversation.title ?? "Source conversation",
-                sourceUrl: `${config.getAppUrl()}${getConversationRoute(owner.sId, sourceConversation.sId)}`,
-              },
+              itemId: sourceInput.url,
+              source,
             });
           }
-
-          if (item.sources) {
-            for (const sourceInput of item.sources) {
-              const source = inferProjectTaskSourceFromUrl({
-                url: sourceInput.url,
-                title: sourceInput.title,
-              });
-              await row.upsertSource(auth, {
-                itemId: sourceInput.url,
-                source,
-              });
-            }
-          }
-
-          created.push(formatTaskListingLine(row));
         }
 
-        return new Ok([
-          {
-            type: "text" as const,
-            text: [
-              `Created ${created.length} task(s):\n${created.join("\n")}`,
-              ...errors.map((error) => `- ${error}`),
-            ].join("\n"),
-          },
-        ]);
-      }, "Failed to create tasks");
-    },
+        created.push(formatTaskListingLine(row));
+      }
 
-    [UPDATE_TASKS_TOOL_NAME]: async ({ tasks, dustPod }) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getPod(auth, {
-          toolContext,
-          dustPod,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-        const { pod } = contextRes.value;
+      return new Ok([
+        {
+          type: "text" as const,
+          text: [
+            `Created ${created.length} task(s):\n${created.join("\n")}`,
+            ...errors.map((error) => `- ${error}`),
+          ].join("\n"),
+        },
+      ]);
+    }, "Failed to create tasks");
+  },
 
-        const agentConfigurationId = isAgentLoopRunContext(
-          toolContext?.runContext
-        )
-          ? toolContext.runContext.agentConfiguration.sId
-          : null;
+  [UPDATE_TASKS_TOOL_NAME]: async (
+    { tasks, dustPod },
+    { auth, runContext }
+  ) => {
+    const toolContext: ToolContext = { runContext };
+    return withErrorHandling(async () => {
+      const contextRes = await getPod(auth, {
+        toolContext,
+        dustPod,
+      });
+      if (contextRes.isErr()) {
+        return contextRes;
+      }
+      const { pod } = contextRes.value;
 
-        const updated: string[] = [];
-        const errors: string[] = [];
+      const agentConfigurationId = isAgentLoopRunContext(
+        toolContext?.runContext
+      )
+        ? toolContext.runContext.agentConfiguration.sId
+        : null;
 
-        for (const item of tasks) {
-          const row = await ProjectTaskResource.fetchBySId(auth, item.taskId);
+      const updated: string[] = [];
+      const errors: string[] = [];
 
-          if (!row) {
-            errors.push(`Task not found: ${item.taskId}`);
-            continue;
-          }
+      for (const item of tasks) {
+        const row = await ProjectTaskResource.fetchBySId(auth, item.taskId);
 
-          const payloadRes = await buildTaskUpdatePayload(
-            auth,
-            pod,
-            row,
-            item,
-            agentConfigurationId
-          );
-          if (payloadRes.isErr()) {
-            errors.push(payloadRes.error.message);
-            continue;
-          }
-
-          const { taskUpdates } = payloadRes.value;
-
-          if (Object.keys(taskUpdates).length === 0) {
-            updated.push(formatTaskListingLine(row));
-            continue;
-          }
-
-          const updatedRow = await row.updateWithVersion(auth, taskUpdates);
-          updated.push(formatTaskListingLine(updatedRow));
+        if (!row) {
+          errors.push(`Task not found: ${item.taskId}`);
+          continue;
         }
 
-        return new Ok([
-          {
-            type: "text" as const,
-            text: [
-              `Updated ${updated.length} task(s):`,
-              ...updated.map((line) => line),
-              ...errors.map((error) => `- ${error}`),
-            ].join("\n"),
-          },
-        ]);
-      }, "Failed to update tasks");
-    },
-
-    [START_TASK_AGENT_TOOL_NAME]: async ({
-      taskId,
-      agentName,
-      customMessage,
-      dustPod,
-    }) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getPod(auth, {
-          toolContext,
-          dustPod,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
+        const payloadRes = await buildTaskUpdatePayload(
+          auth,
+          pod,
+          row,
+          item,
+          agentConfigurationId
+        );
+        if (payloadRes.isErr()) {
+          errors.push(payloadRes.error.message);
+          continue;
         }
 
-        const { pod } = contextRes.value;
-        let agentConfigurationId: string | undefined;
-        if (agentName) {
-          const matchedAgentId = await resolveAgentConfigurationIdByName(
-            auth,
-            agentName
-          );
-          if (!matchedAgentId) {
-            return new Err(
-              new MCPError(`No agent found matching name: "${agentName}"`, {
-                tracked: false,
-              })
-            );
-          }
-          agentConfigurationId = matchedAgentId;
+        const { taskUpdates } = payloadRes.value;
+
+        if (Object.keys(taskUpdates).length === 0) {
+          updated.push(formatTaskListingLine(row));
+          continue;
         }
 
-        const startRes = await startAgentForProjectTask(auth, {
-          space: pod,
-          taskId,
-          agentConfigurationId,
-          customMessage,
-        });
+        const updatedRow = await row.updateWithVersion(auth, taskUpdates);
+        updated.push(formatTaskListingLine(updatedRow));
+      }
 
-        if (startRes.isErr()) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: [
+            `Updated ${updated.length} task(s):`,
+            ...updated.map((line) => line),
+            ...errors.map((error) => `- ${error}`),
+          ].join("\n"),
+        },
+      ]);
+    }, "Failed to update tasks");
+  },
+
+  [START_TASK_AGENT_TOOL_NAME]: async (
+    { taskId, agentName, customMessage, dustPod },
+    { auth, runContext }
+  ) => {
+    const owner = auth.getNonNullableWorkspace();
+    const toolContext: ToolContext = { runContext };
+    return withErrorHandling(async () => {
+      const contextRes = await getPod(auth, {
+        toolContext,
+        dustPod,
+      });
+      if (contextRes.isErr()) {
+        return contextRes;
+      }
+
+      const { pod } = contextRes.value;
+      let agentConfigurationId: string | undefined;
+      if (agentName) {
+        const matchedAgentId = await resolveAgentConfigurationIdByName(
+          auth,
+          agentName
+        );
+        if (!matchedAgentId) {
           return new Err(
-            new MCPError(startRes.error.message, {
+            new MCPError(`No agent found matching name: "${agentName}"`, {
               tracked: false,
             })
           );
         }
+        agentConfigurationId = matchedAgentId;
+      }
 
-        const conversationUrl = `${config.getAppUrl()}${getConversationRoute(
-          owner.sId,
-          startRes.value.conversationId
-        )}`;
+      const startRes = await startAgentForProjectTask(auth, {
+        space: pod,
+        taskId,
+        agentConfigurationId,
+        customMessage,
+      });
 
-        return new Ok([
-          {
-            type: "text" as const,
-            text:
-              startRes.value.action === "created"
-                ? `Started task work for ${taskId} by creating a new conversation: ${startRes.value.conversationId}. Conversation URL: ${conversationUrl}`
-                : `Started task work for ${taskId} by appending a new message to existing conversation: ${startRes.value.conversationId}. Conversation URL: ${conversationUrl}`,
-          },
-        ]);
-      }, "Failed to start task work");
-    },
-  };
+      if (startRes.isErr()) {
+        return new Err(
+          new MCPError(startRes.error.message, {
+            tracked: false,
+          })
+        );
+      }
 
-  return buildTools(POD_TASKS_TOOLS_METADATA, handlers);
-}
+      const conversationUrl = `${config.getAppUrl()}${getConversationRoute(
+        owner.sId,
+        startRes.value.conversationId
+      )}`;
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text:
+            startRes.value.action === "created"
+              ? `Started task work for ${taskId} by creating a new conversation: ${startRes.value.conversationId}. Conversation URL: ${conversationUrl}`
+              : `Started task work for ${taskId} by appending a new message to existing conversation: ${startRes.value.conversationId}. Conversation URL: ${conversationUrl}`,
+        },
+      ]);
+    }, "Failed to start task work");
+  },
+};
+
+export const TOOLS = buildTools(POD_TASKS_TOOLS_METADATA, handlers);

@@ -3,10 +3,9 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
-  type ToolContext,
+  type ToolRunContext,
 } from "@app/lib/actions/types";
 import { WAKEUPS_TOOLS_METADATA } from "@app/lib/api/actions/servers/wakeups/metadata";
-import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { isUserMessageType } from "@app/types/assistant/conversation";
@@ -92,12 +91,12 @@ function parseWhen(when: string):
   return null;
 }
 
-function getUserTimezone(toolContext?: ToolContext): string | null {
-  if (!isAgentLoopRunContext(toolContext?.runContext)) {
+function getUserTimezone(runContext: ToolRunContext): string | null {
+  if (!isAgentLoopRunContext(runContext)) {
     return null;
   }
 
-  const content = toolContext?.runContext?.conversation?.content;
+  const content = runContext.conversation.content;
   if (!content) {
     return null;
   }
@@ -125,212 +124,190 @@ function renderWakeUp(wakeUp: WakeUpType): string {
   );
 }
 
-export function createWakeupsTools(
-  auth: Authenticator,
-  toolContext?: ToolContext
-) {
-  const handlers: ToolHandlers<typeof WAKEUPS_TOOLS_METADATA> = {
-    schedule_wakeup: async ({ when, reason, timezone }) => {
-      assert(
-        isAgentLoopRunContext(toolContext?.runContext),
-        "AgentLoopRunContext expected"
+const handlers: ToolHandlers<typeof WAKEUPS_TOOLS_METADATA> = {
+  schedule_wakeup: async ({ when, reason, timezone }, { auth, runContext }) => {
+    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+    const { conversation: runConversation, agentConfiguration } = runContext;
+
+    const parsed = parseWhen(when);
+    if (!parsed) {
+      return new Err(
+        new MCPError(
+          `Unable to parse \`when\`="${when}". Expected a relative duration ` +
+            '("in 2h"), an ISO 8601 timestamp ("2026-04-16T16:00:00Z"), or a 5-field cron ' +
+            'expression ("0 9 * * MON-FRI").'
+        )
       );
+    }
 
-      const { conversation: runConversation, agentConfiguration } =
-        toolContext.runContext;
-
-      const parsed = parseWhen(when);
-      if (!parsed) {
+    if (parsed.kind === "one_shot") {
+      const delayMs = parsed.fireAt.getTime() - Date.now();
+      if (delayMs <= 0) {
         return new Err(
           new MCPError(
-            `Unable to parse \`when\`="${when}". Expected a relative duration ` +
-              '("in 2h"), an ISO 8601 timestamp ("2026-04-16T16:00:00Z"), or a 5-field cron ' +
-              'expression ("0 9 * * MON-FRI").'
+            `Cannot schedule a wake-up in the past (${parsed.fireAt.toISOString()}).`
           )
         );
       }
-
-      if (parsed.kind === "one_shot") {
-        const delayMs = parsed.fireAt.getTime() - Date.now();
-        if (delayMs <= 0) {
-          return new Err(
-            new MCPError(
-              `Cannot schedule a wake-up in the past (${parsed.fireAt.toISOString()}).`
-            )
-          );
-        }
-        if (delayMs > MAX_ONE_SHOT_DELAY_MS) {
-          return new Err(
-            new MCPError(
-              `One-shot wake-ups cannot be scheduled more than ${MAX_ONE_SHOT_DELAY_MS / (24 * 60 * 60 * 1000)} days in the future.`
-            )
-          );
-        }
-      }
-
-      let cronTimezone: string | null = null;
-      if (parsed.kind === "cron") {
-        cronTimezone = timezone ?? getUserTimezone(toolContext);
-        if (!cronTimezone) {
-          return new Err(
-            new MCPError(
-              "Cron wake-ups require a `timezone` (IANA name, e.g. 'Europe/Paris'). " +
-                "None was provided and no timezone could be inferred from the conversation."
-            )
-          );
-        }
-      }
-
-      const conversation = await ConversationResource.fetchById(
-        auth,
-        runConversation.sId
-      );
-      if (!conversation) {
-        return new Err(
-          new MCPError("Current conversation could not be loaded.")
-        );
-      }
-
-      const conversationWakeUps = await WakeUpResource.listByConversation(
-        auth,
-        runConversation
-      );
-      const activeInConversation = conversationWakeUps.filter((w) =>
-        isActiveWakeUp(w.toJSON())
-      );
-      if (activeInConversation.length >= MAX_ACTIVE_WAKEUPS_PER_CONVERSATION) {
+      if (delayMs > MAX_ONE_SHOT_DELAY_MS) {
         return new Err(
           new MCPError(
-            `This conversation already has ${activeInConversation.length} active wake-up(s); ` +
-              `the limit is ${MAX_ACTIVE_WAKEUPS_PER_CONVERSATION}. Cancel the existing wake-up ` +
-              "before scheduling a new one."
+            `One-shot wake-ups cannot be scheduled more than ${MAX_ONE_SHOT_DELAY_MS / (24 * 60 * 60 * 1000)} days in the future.`
           )
         );
       }
+    }
 
-      const blob =
-        parsed.kind === "one_shot"
-          ? {
-              scheduleType: "one_shot" as const,
-              fireAt: parsed.fireAt,
-              cronExpression: null,
-              cronTimezone: null,
-              reason,
-            }
-          : {
-              scheduleType: "cron" as const,
-              fireAt: null,
-              cronExpression: parsed.cron,
-              // parsed.kind === "cron" means we resolved cronTimezone above.
-              cronTimezone: cronTimezone as string,
-              reason,
-            };
-
-      const result = await WakeUpResource.makeNew(
-        auth,
-        blob,
-        conversation.toJSON(),
-        agentConfiguration
-      );
-      if (result.isErr()) {
+    let cronTimezone: string | null = null;
+    if (parsed.kind === "cron") {
+      cronTimezone = timezone ?? getUserTimezone(runContext);
+      if (!cronTimezone) {
         return new Err(
-          new MCPError(`Failed to schedule wake-up: ${result.error.message}`)
+          new MCPError(
+            "Cron wake-ups require a `timezone` (IANA name, e.g. 'Europe/Paris'). " +
+              "None was provided and no timezone could be inferred from the conversation."
+          )
         );
       }
+    }
 
-      const wakeUp = result.value.toJSON();
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      runConversation.sId
+    );
+    if (!conversation) {
+      return new Err(new MCPError("Current conversation could not be loaded."));
+    }
+
+    const conversationWakeUps = await WakeUpResource.listByConversation(
+      auth,
+      runConversation
+    );
+    const activeInConversation = conversationWakeUps.filter((w) =>
+      isActiveWakeUp(w.toJSON())
+    );
+    if (activeInConversation.length >= MAX_ACTIVE_WAKEUPS_PER_CONVERSATION) {
+      return new Err(
+        new MCPError(
+          `This conversation already has ${activeInConversation.length} active wake-up(s); ` +
+            `the limit is ${MAX_ACTIVE_WAKEUPS_PER_CONVERSATION}. Cancel the existing wake-up ` +
+            "before scheduling a new one."
+        )
+      );
+    }
+
+    const blob =
+      parsed.kind === "one_shot"
+        ? {
+            scheduleType: "one_shot" as const,
+            fireAt: parsed.fireAt,
+            cronExpression: null,
+            cronTimezone: null,
+            reason,
+          }
+        : {
+            scheduleType: "cron" as const,
+            fireAt: null,
+            cronExpression: parsed.cron,
+            // parsed.kind === "cron" means we resolved cronTimezone above.
+            cronTimezone: cronTimezone as string,
+            reason,
+          };
+
+    const result = await WakeUpResource.makeNew(
+      auth,
+      blob,
+      conversation.toJSON(),
+      agentConfiguration
+    );
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(`Failed to schedule wake-up: ${result.error.message}`)
+      );
+    }
+
+    const wakeUp = result.value.toJSON();
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Scheduled wake-up ${wakeUp.sId}.\n\n` +
+          `Schedule: ${renderScheduleConfig(wakeUp)}\n` +
+          `Reason: ${wakeUp.reason}`,
+      },
+    ]);
+  },
+
+  list_wakeups: async (_params, { auth, runContext }) => {
+    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+    const { conversation } = runContext;
+
+    const wakeUps = await WakeUpResource.listByConversation(auth, conversation);
+
+    if (wakeUps.length === 0) {
       return new Ok([
         {
           type: "text" as const,
-          text:
-            `Scheduled wake-up ${wakeUp.sId}.\n\n` +
-            `Schedule: ${renderScheduleConfig(wakeUp)}\n` +
-            `Reason: ${wakeUp.reason}`,
+          text: "No wake-ups in this conversation.",
         },
       ]);
-    },
+    }
 
-    list_wakeups: async () => {
-      assert(
-        isAgentLoopRunContext(toolContext?.runContext),
-        "AgentLoopRunContext expected"
+    const rendered = wakeUps.map((w) => renderWakeUp(w.toJSON())).join("\n\n");
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Wake-ups in this conversation:\n\n${rendered}`,
+      },
+    ]);
+  },
+
+  cancel_wakeup: async ({ wakeUpId }, { auth, runContext }) => {
+    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+    const { conversation } = runContext;
+
+    const wakeUp = await WakeUpResource.fetchById(auth, wakeUpId);
+    if (!wakeUp) {
+      return new Err(new MCPError(`Wake-up ${wakeUpId} not found.`));
+    }
+
+    if (wakeUp.conversationId !== conversation.id) {
+      return new Err(
+        new MCPError(
+          `Wake-up ${wakeUpId} does not belong to the current conversation.`
+        )
       );
+    }
 
-      const { conversation } = toolContext.runContext;
-
-      const wakeUps = await WakeUpResource.listByConversation(
-        auth,
-        conversation
+    const previousStatus = wakeUp.status;
+    const cancelResult = await wakeUp.cancel(auth);
+    if (cancelResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to cancel wake-up ${wakeUpId}: ${cancelResult.error.message}`
+        )
       );
+    }
 
-      if (wakeUps.length === 0) {
-        return new Ok([
-          {
-            type: "text" as const,
-            text: "No wake-ups in this conversation.",
-          },
-        ]);
-      }
-
-      const rendered = wakeUps
-        .map((w) => renderWakeUp(w.toJSON()))
-        .join("\n\n");
+    if (previousStatus !== "scheduled") {
       return new Ok([
         {
           type: "text" as const,
-          text: `Wake-ups in this conversation:\n\n${rendered}`,
+          text: `Wake-up ${wakeUpId} was already ${previousStatus}; nothing to do.`,
         },
       ]);
-    },
+    }
 
-    cancel_wakeup: async ({ wakeUpId }) => {
-      assert(
-        isAgentLoopRunContext(toolContext?.runContext),
-        "AgentLoopRunContext expected"
-      );
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Cancelled wake-up ${wakeUpId}.`,
+      },
+    ]);
+  },
+};
 
-      const { conversation } = toolContext.runContext;
-
-      const wakeUp = await WakeUpResource.fetchById(auth, wakeUpId);
-      if (!wakeUp) {
-        return new Err(new MCPError(`Wake-up ${wakeUpId} not found.`));
-      }
-
-      if (wakeUp.conversationId !== conversation.id) {
-        return new Err(
-          new MCPError(
-            `Wake-up ${wakeUpId} does not belong to the current conversation.`
-          )
-        );
-      }
-
-      const previousStatus = wakeUp.status;
-      const cancelResult = await wakeUp.cancel(auth);
-      if (cancelResult.isErr()) {
-        return new Err(
-          new MCPError(
-            `Failed to cancel wake-up ${wakeUpId}: ${cancelResult.error.message}`
-          )
-        );
-      }
-
-      if (previousStatus !== "scheduled") {
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Wake-up ${wakeUpId} was already ${previousStatus}; nothing to do.`,
-          },
-        ]);
-      }
-
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `Cancelled wake-up ${wakeUpId}.`,
-        },
-      ]);
-    },
-  };
-
-  return buildTools(WAKEUPS_TOOLS_METADATA, handlers);
-}
+export const TOOLS = buildTools(WAKEUPS_TOOLS_METADATA, handlers);

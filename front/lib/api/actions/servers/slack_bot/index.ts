@@ -1,19 +1,18 @@
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ToolContext } from "@app/lib/actions/types";
-import { createSlackBotTools } from "@app/lib/api/actions/servers/slack_bot/tools";
+import { TOOLS } from "@app/lib/api/actions/servers/slack_bot/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 async function createServer(
   auth: Authenticator,
-  mcpServerId: string,
+  _mcpServerId: string,
   toolContext?: ToolContext
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("slack_bot");
 
-  const tools = createSlackBotTools(auth, mcpServerId, toolContext);
-  for (const tool of tools) {
+  for (const tool of TOOLS) {
     registerTool(auth, toolContext, server, tool, {
       monitoringName: "slack_bot",
     });
