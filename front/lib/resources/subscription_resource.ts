@@ -170,6 +170,14 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return !!this.metronomeContractId && !this.stripeSubscriptionId;
   }
 
+  // True once a cancellation is scheduled (immediate `endDate` or a deferred
+  // `requestCancelAt`), whether or not that date has passed yet. Mirrors
+  // `isSubscriptionCancellationScheduled` in `types/plan.ts` (the front-end
+  // serialized-type equivalent).
+  get isCancellationScheduled(): boolean {
+    return this.endDate !== null || this.requestCancelAt !== null;
+  }
+
   /**
    * Terminal status to use when `swapMetronomeContract` ends this subscription
    * (the in-place swap path, with no pre-staged pending row). `activatePending`

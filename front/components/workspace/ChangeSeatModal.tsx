@@ -25,6 +25,7 @@ import {
   isPaidSeatType,
   type MembershipSeatType,
 } from "@app/types/memberships";
+import { isSubscriptionCancellationScheduled } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -85,6 +86,12 @@ export function ChangeSeatModal({
   const { subscription } = useAuth();
   const router = useAppRouter();
   const useCheckoutPath = isFreePlan(subscription.plan.code);
+  // A cancelled subscription already has its end date scheduled with
+  // Metronome; scheduling a seat change on top of it can land past that end
+  // date and get rejected. Block seat changes until the subscription is
+  // reactivated or has fully ended.
+  const isSubscriptionCancelled =
+    isSubscriptionCancellationScheduled(subscription);
   // Keep the last non-null member so the dialog can render its content through
   // the exit animation after the parent has cleared `member`.
   const lastMemberRef = useRef<MemberUsageType | null>(null);
@@ -337,10 +344,17 @@ export function ChangeSeatModal({
               );
             })}
 
-            {isDeferredChange && (
-              <p className="mt-1 text-xs text-info-600">
-                The change will take effect at the next credit refresh.
+            {isSubscriptionCancelled ? (
+              <p className="mt-1 text-xs text-warning-600">
+                Your subscription is scheduled to end and seats can&apos;t be
+                changed until it&apos;s reactivated.
               </p>
+            ) : (
+              isDeferredChange && (
+                <p className="mt-1 text-xs text-info-600">
+                  The change will take effect at the next credit refresh.
+                </p>
+              )
             )}
             {isCancellingScheduledChange && (
               <p className="mt-1 text-xs text-info-600">
@@ -366,6 +380,7 @@ export function ChangeSeatModal({
               ? !selectedSeat || !toCheckoutParams(selectedSeat)
               : isSaving ||
                 !selectedSeat ||
+                isSubscriptionCancelled ||
                 (selectedSeat === currentSeatType &&
                   !isCancellingScheduledChange),
             onClick: handleValidate,

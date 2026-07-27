@@ -12,7 +12,10 @@ import { useAppRouter } from "@app/lib/platform";
 import { useMetronomeInvoice } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { SubscriptionType } from "@app/types/plan";
-import { isSubscriptionMetronomeBilled } from "@app/types/plan";
+import {
+  isSubscriptionCancellationScheduled,
+  isSubscriptionMetronomeBilled,
+} from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useState } from "react";
@@ -108,7 +111,7 @@ export function SubscriptionProvider({
     (isBusinessPlanPrefix(subscription.plan.code) ||
       isCreditPricedFreePlan(subscription.plan.code));
   const isCancellationScheduled =
-    subscription.endDate !== null || subscription.requestCancelAt !== null;
+    isSubscriptionCancellationScheduled(subscription);
   const subscriptionEndsAtMs =
     subscription.endDate ??
     (isCancellationScheduled ? (invoice?.currentPeriodEndMs ?? null) : null);

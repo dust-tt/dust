@@ -89,6 +89,15 @@ app.post(
               message: "Failed to sync seat change with Metronome.",
             },
           });
+        case "subscription_cancellation_scheduled":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "This workspace's subscription has a cancellation scheduled; seats cannot be changed until it's reactivated or has fully ended.",
+            },
+          });
         default:
           assertNever(updateRes.error.type);
       }
