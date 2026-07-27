@@ -196,16 +196,13 @@ export async function getSimilarAgents(
   }
 
   // Retrieve agents visible to the user in the workspace (same set as the
-  // "manage agents" list), excluding built-in Dust agents (global scope) and
-  // agents without a description to compare against.
+  // "manage agents" list), excluding agents without a description to compare against.
   const allAgents = await getAgentConfigurationsForView({
     auth,
     agentsGetView: "list",
     variant: "light",
   });
-  const agents = allAgents.filter(
-    (a) => a.scope !== "global" && a.description.trim().length > 0
-  );
+  const agents = allAgents.filter((a) => a.description.trim().length > 0);
 
   if (agents.length === 0) {
     return new Ok({ similar_agents: [] });
