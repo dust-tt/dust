@@ -1585,8 +1585,10 @@ export function isInternalMCPToolName<N extends InternalMCPServerNameType>(
   serverName: N,
   toolName: string
 ): toolName is InternalMCPToolNameType<N> {
-  return INTERNAL_MCP_SERVERS[serverName].metadata.tools.some(
-    (tool) => tool.name === toolName
+  return (
+    INTERNAL_MCP_SERVERS[serverName]?.metadata?.tools?.some(
+      (tool) => tool.name === toolName
+    ) ?? false
   );
 }
 
