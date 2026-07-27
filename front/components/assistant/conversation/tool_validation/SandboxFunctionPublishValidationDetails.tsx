@@ -2,7 +2,6 @@ interface SandboxFunctionPublishValidationDetailsProps {
   input: {
     slug: string;
     description: string;
-    path: string;
   };
 }
 
@@ -15,32 +14,19 @@ export function SandboxFunctionPublishValidationDetails({
         The agent wants to publish this function to this Pod.
       </p>
 
-      <dl className="divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background">
-        <div className="flex flex-col gap-1 px-3 py-2.5">
-          <dt className="text-xs font-medium text-muted-foreground">
+      <div className="overflow-hidden rounded-xl border border-separator bg-background">
+        <div className="flex flex-col gap-1.5 px-3 py-3">
+          <div className="text-xs font-medium text-muted-foreground">
             Function
-          </dt>
-          <dd className="wrap-break-word text-sm font-medium text-foreground">
+          </div>
+          <div className="wrap-break-word text-sm font-medium text-foreground">
             {input.slug}
-          </dd>
-        </div>
-        <div className="flex flex-col gap-1 px-3 py-2.5">
-          <dt className="text-xs font-medium text-muted-foreground">
-            Description
-          </dt>
-          <dd className="whitespace-pre-wrap wrap-break-word text-sm text-foreground">
+          </div>
+          <p className="whitespace-pre-wrap wrap-break-word text-sm leading-5 text-muted-foreground">
             {input.description}
-          </dd>
+          </p>
         </div>
-        <div className="flex flex-col gap-1 px-3 py-2.5">
-          <dt className="text-xs font-medium text-muted-foreground">
-            Source file
-          </dt>
-          <dd className="break-all font-mono text-xs text-foreground">
-            {input.path}
-          </dd>
-        </div>
-      </dl>
+      </div>
     </div>
   );
 }
