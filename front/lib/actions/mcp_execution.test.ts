@@ -14,6 +14,7 @@ import {
 import type {
   BrowseResultResourceType,
   DataSourceNodeContentType,
+  ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolContext } from "@app/lib/actions/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
@@ -25,6 +26,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -272,6 +274,47 @@ describe("getAugmentedInputs", () => {
 });
 
 describe("processToolResults", () => {
+  it("adds the scoped path to a generated file", async () => {
+    const { auth, podSpace, toolContext } = await setupSandboxFunctionTest();
+
+    fileStorageMock.reset();
+    const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
+      contentType: "image/png",
+      fileName: "screenshot.png",
+      fileSize: 100,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: podSpace.sId },
+    });
+    const generatedFile: ToolGeneratedFileType = {
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+      uri: file.getPublicUrl(auth),
+      fileId: file.sId,
+      title: file.fileName,
+      contentType: file.contentType,
+      snippet: file.snippet,
+      text: `Attachment: ${file.fileName}`,
+    };
+
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [
+        {
+          type: "resource",
+          resource: generatedFile,
+        },
+      ],
+    });
+
+    expect(outputItems[0]?.content).toMatchObject({
+      type: "resource",
+      resource: {
+        path: `pod-${podSpace.sId}/screenshot.png`,
+      },
+    });
+  });
+
   it("should store snippet in DB when text exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES", async () => {
     const { auth, toolContext } = await setupTest();
 
