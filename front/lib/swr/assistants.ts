@@ -879,11 +879,9 @@ export function useBatchUpdateAgentModel({
       const parsed = BatchUpdateAgentModelResponseBodySchema.safeParse(json);
       if (!parsed.success) {
         sendNotification({
-          type: "info",
-          title: "Model update outcome unknown",
-          description:
-            "The update was submitted but the server response could not be read. " +
-            "The list has been refreshed with the current state.",
+          type: "error",
+          title: "Error updating model",
+          description: "An unknown error occurred.",
         });
         return true;
       }
