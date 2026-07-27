@@ -85,7 +85,7 @@ export function SkillBuilderSettingsSection({
   ) => {
     if (isAutoDiscoverableOn) {
       const confirmed = await confirm({
-        title: "Auto discoverable mode will be off",
+        title: "Auto-discovery will be off",
         message:
           "Editors only skill cannot be auto-discoverable. Are you sure to change the availablity?",
         validateLabel: "Confirm",
