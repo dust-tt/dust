@@ -69,7 +69,7 @@ export const ROLE_REGISTRY: Record<
   billing: {
     admin: { verbs: ["admin"], levels: ["type"] },
   },
-  identity: {
+  security: {
     admin: { verbs: ["admin"], levels: ["type"] },
   },
   models_tier: {
@@ -194,7 +194,7 @@ export function workspacePermissionsFromGrants(
     skill: new Set(),
     frame: new Set(),
     billing: new Set(),
-    identity: new Set(),
+    security: new Set(),
     models_tier: new Set(),
     dust_app: new Set(),
   };
