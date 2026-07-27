@@ -1336,25 +1336,69 @@ export async function processMetronomeWebhook({
     }
 
     case "credit.create": {
+      const { customer_id: metronomeCustomerId, credit_id: creditId } = event;
       logger.info(
         {
-          customerId: event.customer_id,
+          customerId: metronomeCustomerId,
           contractId: event.contract_id,
-          creditId: event.credit_id,
+          creditId,
           workspaceId: workspace.sId,
         },
         "[Metronome Webhook] credit.create: handler entered"
       );
+
+      // Stamp `DUST_CONTRACT_CREDIT_TYPE=pool` first: the pool balance is read
+      // with an `onlyPoolCredits` filter (see `getNetBalance`), so an unstamped
+      // credit is invisible to the reconcile below and the pool would stay
+      // stuck. Stamp, then reconcile against the now-visible credit.
       const stampResult = await stampContractCreditType({
         workspaceId: workspace.sId,
-        customerId: event.customer_id,
+        customerId: metronomeCustomerId,
         contractId: event.contract_id ?? null,
-        creditId: event.credit_id,
+        creditId,
         creditCustomFields: event.credit_custom_fields,
         eventType: "credit.create",
       });
       if (stampResult.isErr()) {
         return stampResult;
+      }
+
+      // Reconcile the workspace pool credit state against the live AWU
+      // balance now that this credit exists and is stamped. A recurring free
+      // AWU credit granted at contract-switch time (see `stepContractEdits`)
+      // is added to the already-active contract *after* `contract.start`
+      // fired, so that handler's reconcile ran before the credit existed and
+      // left the pool stuck (e.g. `depleted`). Metronome only fires
+      // `credit.create` — not `credit.segment.start` — for a segment that is
+      // already active when the credit is created, so the segment reconcile
+      // path would never re-run for it.
+      //
+      // Skip per-seat (INDIVIDUAL) credits: they never count toward the pool
+      // balance (only "pool"-stamped credits do), so reconciling for them
+      // would be a wasted no-op `getNetBalance` on every seat created at
+      // onboarding. Per-period renewals of seat credits are still covered by
+      // the `credit.segment.start` handler.
+      const creditResult = await getMetronomeCredit({
+        metronomeCustomerId,
+        creditId,
+      });
+      if (creditResult.isErr()) {
+        return new Err(
+          new ProcessMetronomeWebhookError(
+            "processing_failed",
+            `Error fetching credit: ${creditResult.error.message}`
+          )
+        );
+      }
+      if (
+        creditResult.value &&
+        creditResult.value.subscription_config?.allocation !== "INDIVIDUAL"
+      ) {
+        await reconcilePoolStateFromSegmentEvent({
+          workspace,
+          metronomeCustomerId,
+          commitOrCredit: creditResult.value,
+        });
       }
       break;
     }
