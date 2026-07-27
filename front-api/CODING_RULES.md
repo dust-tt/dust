@@ -7,14 +7,12 @@ internals via the `@app/*` path map.
 
 This file documents rules and patterns specific to `front-api`.
 
-`front-api` is the Hono service that serves all HTTP traffic. It took over
-every route from `front` (then Next.js) via a strangler migration that is now
-complete: `front` no longer depends on `next` and holds no route handlers.
-`front-api/server.ts` boots `honoApp` from `front-api/app.ts` on
-`@hono/node-server`; there is no fallback to another framework.
+`front-api` is the Hono service that serves all HTTP traffic. `server.ts`
+boots `honoApp` from `app.ts` on `@hono/node-server`, and `routes/` holds
+every handler.
 
-`front` is now a library workspace (`lib`, `types`, `logger`, `components`)
-plus the Temporal workers and the migrations. The dependency is one-way:
+`front` is a library workspace (`lib`, `types`, `logger`, `components`) plus
+the Temporal workers and the migrations. The dependency is one-way:
 `front-api` reaches into `front` via `@app/*`, never the reverse.
 
 ## ROUTING
