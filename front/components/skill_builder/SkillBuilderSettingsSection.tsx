@@ -9,7 +9,10 @@ import { SkillEditorsSheetWithButton } from "@app/components/skill_builder/Skill
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillAvailability,
+  SkillType,
+} from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -29,7 +32,7 @@ import {
 import { useContext } from "react";
 import { useController } from "react-hook-form";
 
-const AVAILABILITY_OPTIONS = [
+const AVAILABILITY_OPTIONS: { label: string; values: SkillAvailability[] }[] = [
   {
     label: "Editors only",
     values: ["editors"],
@@ -79,15 +82,22 @@ export function SkillBuilderSettingsSection({
 
   const isAutoDiscoverableOn = availability === "users_and_agents";
 
-  const onAvailablityChange = async (
-    option: (typeof AVAILABILITY_OPTIONS)[0],
-    isAutoDiscoverableOn: boolean
+  const onAvailabilityChange = async (
+    option: (typeof AVAILABILITY_OPTIONS)[0]
   ) => {
+    const isWorkspaceMembersOption = option.values.includes("workspace_users");
+    // we don't allow to turn off discoverable from here
+    if (isWorkspaceMembersOption && isAutoDiscoverableOn) {
+      return;
+    }
+
+    // Switching an auto-discoverable skill to "Editors only" turns off
+    // auto-discovery, so confirm first.
     if (isAutoDiscoverableOn) {
       const confirmed = await confirm({
         title: "Auto-discovery will be off",
         message:
-          "Editors only skill cannot be auto-discoverable. Are you sure to change the availablity?",
+          "An editors-only skill cannot be auto-discoverable. Are you sure you want to change the availability?",
         validateLabel: "Confirm",
         validateVariant: "warning",
       });
@@ -95,11 +105,8 @@ export function SkillBuilderSettingsSection({
         return;
       }
     }
-    if (option.values.includes("workspace_users")) {
-      onChange("workspace_users");
-    } else {
-      onChange(option.values[0]);
-    }
+
+    onChange(isWorkspaceMembersOption ? "workspace_users" : option.values[0]);
   };
 
   return (
@@ -162,7 +169,7 @@ export function SkillBuilderSettingsSection({
                     key={option.label}
                     label={option.label}
                     onClick={async () => {
-                      await onAvailablityChange(option, isAutoDiscoverableOn);
+                      await onAvailabilityChange(option);
                     }}
                   />
                 ))}
