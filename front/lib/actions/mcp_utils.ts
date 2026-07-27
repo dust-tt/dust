@@ -117,10 +117,7 @@ export function rewriteContentForModel(
       isInProjectContext: content.resource.isInProjectContext ?? false,
       hideFromUser: false, // Model do not care.
     });
-    const xml = renderAttachmentXml({
-      attachment,
-      path: content.resource.path,
-    });
+    const xml = renderAttachmentXml({ attachment });
     let text = content.resource.text;
     if (text) {
       text += `\n`;

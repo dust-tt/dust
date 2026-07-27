@@ -304,18 +304,15 @@ export function renderAttachmentXml({
   attachment,
   content = null,
   hideFlagsAndVersion = false,
-  path,
 }: {
   attachment: ConversationAttachmentType;
   content?: string | null;
   hideFlagsAndVersion?: boolean;
-  path?: string;
 }): string {
   const params = [
     `id="${conversationAttachmentId(attachment)}"`,
     `type="${attachment.contentType}"`,
     `title="${attachment.title}"`,
-    ...(path ? [`path="${path}"`] : []),
     ...(hideFlagsAndVersion
       ? []
       : [
