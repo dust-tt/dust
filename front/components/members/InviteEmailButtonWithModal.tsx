@@ -6,6 +6,7 @@ import {
   formatPriceCents,
   getAvailableFrequencies,
   groupSeatTypesByFrequency,
+  includedSeatsOpen,
   SeatCard,
   sortSeatTypes,
 } from "@app/components/workspace/SeatCard";
@@ -75,10 +76,6 @@ const useGetEmailsListAndError = (
     };
   }, [inviteEmails]);
 };
-
-function includedSeatsOpen(info: SeatTypeInfo): number {
-  return Math.max(0, info.minSeats - info.assignedCount);
-}
 
 function isSeatAtCapacity(
   seatType: MembershipSeatType,

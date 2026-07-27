@@ -2,6 +2,7 @@ import { BillingPeriodSwitch } from "@app/components/pages/onboarding/Subscripti
 import {
   formatPriceCents,
   getAvailableFrequencies,
+  getInvoiceImpactMessage,
   groupSeatTypesByFrequency,
   SEAT_TYPE_ICONS,
   SeatCard,
@@ -16,7 +17,6 @@ import type {
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { formatCurrencyAmountCents } from "@app/lib/metronome/amounts";
 import type { BulkSeatChangePreviewBody } from "@app/lib/swr/memberships";
 import type { MembershipSeatType, PaidSeatType } from "@app/types/memberships";
 import { isMembershipSeatType, isPaidSeatType } from "@app/types/memberships";
@@ -130,6 +130,10 @@ interface SeatMoveSectionProps {
   title: string;
   moves: BulkSeatChangePreviewBody["moves"];
   deltaMonthlyCents: number;
+  // Whether this section's moves take effect at the next credit refresh
+  // rather than right away — a deferred change is never a partial-period
+  // charge, so it skips proration entirely.
+  isDeferred: boolean;
   preview: BulkSeatChangePreviewBody;
   seatPlans: SeatPlanResponseBody;
 }
@@ -141,11 +145,22 @@ function SeatMoveSection({
   title,
   moves,
   deltaMonthlyCents,
+  isDeferred,
   preview,
   seatPlans,
 }: SeatMoveSectionProps) {
   const { targetSeatType, targetSeatName } = preview;
+  const targetSeatInfo = seatPlans[targetSeatType];
   const targetLabel = seatMoveLabel(targetSeatType, targetSeatName, seatPlans);
+  const moveCount = moves.reduce((sum, move) => sum + move.count, 0);
+  // Conservative: if any member in this section is coming off an annual
+  // seat, that seat's already-paid commitment isn't refunded, so treat the
+  // whole section as having no recurring old charge to net against rather
+  // than silently mixing annual (sunk) and non-annual (recurring) origins
+  // into one delta.
+  const hasAnnualOrigin = moves.some(
+    (move) => seatPlans[move.fromSeatType]?.billingFrequency === "annual"
+  );
   return (
     <div className="flex flex-col gap-2">
       <p className="text-sm font-semibold text-foreground">{title}</p>
@@ -183,24 +198,16 @@ function SeatMoveSection({
           </Fragment>
         ))}
       </div>
-      {deltaMonthlyCents !== 0 ? (
-        <p className="text-sm text-muted-foreground">
-          This will {deltaMonthlyCents > 0 ? "add" : "remove"} an estimated{" "}
-          <span className="font-semibold text-foreground">
-            {formatCurrencyAmountCents({
-              amountCents: Math.abs(deltaMonthlyCents),
-              currency: preview.currency,
-            })}
-          </span>{" "}
-          {deltaMonthlyCents > 0 ? "to" : "from"} your monthly invoice.
-        </p>
-      ) : (
-        // Every move in the section is absorbed by committed (already paid)
-        // seats.
-        <p className="text-sm text-muted-foreground">
-          This will not change your invoice.
-        </p>
-      )}
+      <p className="text-sm text-muted-foreground">
+        {getInvoiceImpactMessage({
+          deltaCents: deltaMonthlyCents,
+          currency: preview.currency,
+          targetSeatInfo: targetSeatInfo ?? null,
+          moveCount,
+          isDeferred,
+          hasAnnualOrigin,
+        })}
+      </p>
     </div>
   );
 }
@@ -423,6 +430,7 @@ function BulkChangeSeatModalPreviewDialogContent({
           title="Immediate changes"
           moves={immediateMoves}
           deltaMonthlyCents={preview.immediateDeltaMonthlyCents}
+          isDeferred={false}
           preview={preview}
           seatPlans={seatPlans}
         />
@@ -436,6 +444,7 @@ function BulkChangeSeatModalPreviewDialogContent({
           }
           moves={deferredMoves}
           deltaMonthlyCents={preview.deferredDeltaMonthlyCents}
+          isDeferred={true}
           preview={preview}
           seatPlans={seatPlans}
         />

@@ -7,10 +7,12 @@ import type {
   SeatPlanResponseBody,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
+import { formatCurrencyAmountCents } from "@app/lib/metronome/amounts";
 import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
 import type { SupportedCurrency } from "@app/types/currency";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   AlertCircle,
   Card,
@@ -94,6 +96,15 @@ export function getAvailableFrequencies(
   return SEAT_BILLING_FREQUENCIES.filter((f) => byFrequency[f].length > 0);
 }
 
+// Shared across price formatting and invoice-impact messaging so both stay
+// consistent when a new cadence is added.
+export const BILLING_FREQUENCY_SUFFIX: Record<SeatBillingFrequency, string> = {
+  weekly: "/wk",
+  monthly: "/mo",
+  quarterly: "/qtr",
+  annual: "/yr",
+};
+
 export function formatPriceCents(
   cents: number,
   currency: SupportedCurrency,
@@ -101,17 +112,19 @@ export function formatPriceCents(
 ): string {
   const symbol = CURRENCY_SYMBOLS[currency];
   const amount = (cents / 100).toFixed(2).replace(/\.00$/, "");
-  const suffixByFrequency: Record<SeatBillingFrequency, string> = {
-    weekly: "/wk",
-    monthly: "/mo",
-    quarterly: "/qtr",
-    annual: "/yr",
-  };
   // EUR is the only currency we render with a trailing symbol (e.g. "30€");
   // USD and GBP are prefix currencies ("$30", "£30").
   return currency === "eur"
-    ? `${amount}${symbol}${suffixByFrequency[billingFrequency]}`
-    : `${symbol}${amount}${suffixByFrequency[billingFrequency]}`;
+    ? `${amount}${symbol}${BILLING_FREQUENCY_SUFFIX[billingFrequency]}`
+    : `${symbol}${amount}${BILLING_FREQUENCY_SUFFIX[billingFrequency]}`;
+}
+
+// Seats already committed in the plan's billing floor (`minSeats`) that aren't
+// currently assigned to a member — i.e. free to consume without an extra
+// charge. Assigning past this count starts (or bumps the price of) a new
+// billed seat.
+export function includedSeatsOpen(info: SeatTypeInfo): number {
+  return Math.max(0, info.minSeats - info.assignedCount);
 }
 
 export function formatAwuCredits(info: SeatTypeInfo): string {
@@ -125,6 +138,217 @@ export function formatAwuCredits(info: SeatTypeInfo): string {
   return `${info.awuCredits.toLocaleString("en-US")} credits ${
     periodLabel[info.awuCreditsPeriod]
   }`;
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// Preview endpoints return a monthly-equivalent figure for every cadence
+// (e.g. annual price / 12), treating it as a steady-state run rate. Seats
+// don't actually bill that way at any cadence: every seat subscription is
+// created with `is_prorated: true` (`setup_common.ts`), so a change mid-term
+// is billed as a prorated true-up for the rest of the CURRENT billing
+// period, not the full period price. This inverts the monthly-equivalent
+// normalization back to the seat's actual per-period price.
+const PERIOD_PRICE_MULTIPLIER: Record<SeatBillingFrequency, number> = {
+  weekly: 12 / 52,
+  monthly: 1,
+  quarterly: 3,
+  annual: 12,
+};
+
+// Human label for "your current X" in invoice-impact copy.
+const BILLING_PERIOD_LABEL: Record<SeatBillingFrequency, string> = {
+  weekly: "weekly term",
+  monthly: "monthly billing period",
+  quarterly: "quarterly term",
+  annual: "annual term",
+};
+
+// Prorates a full-period amount for the days remaining in the current
+// billing period, as of right now.
+export function prorateAmountForCurrentPeriod({
+  amountCents,
+  currentBillingPeriod,
+}: {
+  amountCents: number;
+  currentBillingPeriod: { startsAt: string; endsAt: string };
+}): { amountCents: number; daysRemaining: number } | null {
+  const startMs = new Date(currentBillingPeriod.startsAt).getTime();
+  const endMs = new Date(currentBillingPeriod.endsAt).getTime();
+  const totalDays = (endMs - startMs) / MS_PER_DAY;
+  if (!(totalDays > 0)) {
+    return null;
+  }
+  const daysRemaining = Math.min(
+    totalDays,
+    Math.max(0, (endMs - Date.now()) / MS_PER_DAY)
+  );
+  return {
+    amountCents: Math.round(amountCents * (daysRemaining / totalDays)),
+    daysRemaining: Math.round(daysRemaining),
+  };
+}
+
+// Renders the "this will add/remove $X" line shown under a seat picker or a
+// seat-move summary, correctly scaled for the seat's billing cadence.
+export function getInvoiceImpactMessage({
+  deltaCents,
+  currency,
+  targetSeatInfo,
+  moveCount,
+  isDeferred,
+  hasAnnualOrigin,
+}: {
+  // Steady-state monthly-equivalent delta between the old and new seat,
+  // floor-aware (from the backend preview). Only meaningful for a deferred
+  // move away from a non-annual seat: at that point the old subscription
+  // simply stops and the new one starts fresh, so "your recurring bill
+  // changes by $X going forward" is a valid, non-prorated comparison.
+  deltaCents: number;
+  currency: SupportedCurrency;
+  // The target seat's own info (price, cadence, current billing period,
+  // committed floor). Null when the seat plan hasn't loaded yet.
+  targetSeatInfo: SeatTypeInfo | null;
+  // How many members are moving onto this seat type in this move — used
+  // only to check whether the workspace's already-committed (paid, unused)
+  // seats absorb the whole move.
+  moveCount: number;
+  // Whether this change takes effect at the next credit refresh rather than
+  // right away.
+  isDeferred: boolean;
+  // Whether (any of) the member(s) moving away are on an annual seat today.
+  // An annual seat is an already-paid, non-refundable commitment — there is
+  // no recurring old charge to net against once it's dropped, so a deferred
+  // move off of one is never framed as a delta/removal, only as the new
+  // seat's own charge starting fresh.
+  hasAnnualOrigin: boolean;
+}): React.ReactNode {
+  if (!targetSeatInfo) {
+    return null;
+  }
+  const { billingFrequency, priceCents, currentBillingPeriod } = targetSeatInfo;
+  const periodSuffix = BILLING_FREQUENCY_SUFFIX[billingFrequency];
+  const periodLabel = BILLING_PERIOD_LABEL[billingFrequency];
+
+  // A deferred move onto an annual seat commits to a fresh annual term,
+  // billed as a lump sum at the next credit refresh. This is never framed
+  // as removing money — the member pays that lump sum outright, on top of
+  // whatever they already paid for their current (shorter) period. Compare
+  // against one month-equivalent of the new price (what a normal month
+  // would have cost) so the number reflects the actual extra cash going out
+  // now, not a steady-state comparison against the old seat that could look
+  // tiny, or even net negative, while a large one-time charge is coming.
+  if (isDeferred && billingFrequency === "annual") {
+    const extraCents = Math.round((priceCents * 11) / 12);
+    return (
+      <>
+        This will add an estimated{" "}
+        <span className="font-semibold text-foreground">
+          {formatCurrencyAmountCents({ amountCents: extraCents, currency })}
+        </span>{" "}
+        to your next invoice — you&apos;ll be billed{" "}
+        <span className="font-semibold text-foreground">
+          {formatCurrencyAmountCents({ amountCents: priceCents, currency })}
+        </span>{" "}
+        upfront for the year starting next annual term.
+      </>
+    );
+  }
+
+  // A deferred change takes effect at the start of a fresh billing period —
+  // ordinarily the old subscription just stops and the new one starts
+  // clean, so the steady-state delta (already floor-aware from the
+  // backend) describes the change accurately, with nothing to prorate.
+  if (isDeferred) {
+    // ...unless the member is coming off an annual seat: that commitment
+    // was already paid in full and isn't refunded, so there's no recurring
+    // old charge to net against — only the new seat's own full price
+    // applies, unconditionally, starting the next period.
+    if (hasAnnualOrigin) {
+      if (priceCents === 0) {
+        return "This will not change your invoice.";
+      }
+      return (
+        <>
+          This will add an estimated{" "}
+          <span className="font-semibold text-foreground">
+            {formatCurrencyAmountCents({ amountCents: priceCents, currency })}
+            {periodSuffix}
+          </span>{" "}
+          to your invoice starting next {periodLabel}.
+        </>
+      );
+    }
+
+    if (deltaCents === 0) {
+      return "This will not change your invoice.";
+    }
+    const verb = deltaCents > 0 ? "add" : "remove";
+    const deltaPeriodCents =
+      Math.abs(deltaCents) * PERIOD_PRICE_MULTIPLIER[billingFrequency];
+    return (
+      <>
+        This will {verb} an estimated{" "}
+        <span className="font-semibold text-foreground">
+          {formatCurrencyAmountCents({
+            amountCents: deltaPeriodCents,
+            currency,
+          })}
+          {periodSuffix}
+        </span>{" "}
+        {deltaCents > 0 ? "to" : "from"} your invoice starting next{" "}
+        {periodLabel}.
+      </>
+    );
+  }
+
+  // Immediate change: a paid seat is never refunded/credited when removed,
+  // so there's no "old seat" side to net against — the only real invoice
+  // event is being charged for the new seat, prorated for the days left in
+  // ITS OWN current period, unless the workspace's already-committed
+  // (already-paid, unused) seats absorb the whole move.
+  const chargeableCount = Math.max(
+    0,
+    moveCount - includedSeatsOpen(targetSeatInfo)
+  );
+  if (chargeableCount === 0) {
+    return "This will not change your invoice.";
+  }
+  const fullPrice = (
+    <>
+      {formatCurrencyAmountCents({ amountCents: priceCents, currency })}
+      {periodSuffix}
+    </>
+  );
+  const proration = currentBillingPeriod
+    ? prorateAmountForCurrentPeriod({
+        amountCents: priceCents,
+        currentBillingPeriod,
+      })
+    : null;
+  if (proration) {
+    return (
+      <>
+        This will add an estimated{" "}
+        <span className="font-semibold text-foreground">
+          {formatCurrencyAmountCents({
+            amountCents: proration.amountCents,
+            currency,
+          })}
+        </span>
+        , prorated for the {proration.daysRemaining} day
+        {pluralize(proration.daysRemaining)} left in your current {periodLabel}{" "}
+        (full price: {fullPrice}).
+      </>
+    );
+  }
+  return (
+    <>
+      This will add up to{" "}
+      <span className="font-semibold text-foreground">{fullPrice}</span>,
+      prorated for the remainder of your current {periodLabel}.
+    </>
+  );
 }
 
 // The Metronome product names append SEAT_PRODUCT_YEARLY_SUFFIX to the
