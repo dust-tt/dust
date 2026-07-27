@@ -11,10 +11,7 @@ import type {
 } from "@app/types/api/dust_app_secrets";
 import { encrypt } from "@app/types/shared/utils/encryption";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import {
-  ensureIsAdmin,
-  ensureIsBuilder,
-} from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -30,34 +27,42 @@ const PostDustAppSecretBodySchema = z.object({
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  ensureIsBuilder(),
-  async (ctx): HandlerResult<GetDustAppSecretsResponseBody> => {
-    const auth = ctx.get("auth");
-    const owner = auth.getNonNullableWorkspace();
+app.get("/", async (ctx): HandlerResult<GetDustAppSecretsResponseBody> => {
+  const auth = ctx.get("auth");
 
-    const remaining = await rateLimiter({
-      key: `workspace:${owner.id}:dust_app_secrets`,
-      maxPerTimeframe: 60,
-      timeframeSeconds: 60,
-      logger,
+  // Dust app secrets are part of Dust app administration.
+  if (!(await auth.hasWorkspacePermission("admin", "dust_app"))) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "You do not have permission to manage Dust app secrets.",
+      },
     });
-
-    if (remaining < 0) {
-      return apiError(ctx, {
-        status_code: 429,
-        api_error: {
-          type: "rate_limit_error",
-          message: "You have reached the rate limit for this workspace.",
-        },
-      });
-    }
-
-    const secrets = await getDustAppSecrets(auth);
-    return ctx.json({ secrets });
   }
-);
+
+  const owner = auth.getNonNullableWorkspace();
+
+  const remaining = await rateLimiter({
+    key: `workspace:${owner.id}:dust_app_secrets`,
+    maxPerTimeframe: 60,
+    timeframeSeconds: 60,
+    logger,
+  });
+
+  if (remaining < 0) {
+    return apiError(ctx, {
+      status_code: 429,
+      api_error: {
+        type: "rate_limit_error",
+        message: "You have reached the rate limit for this workspace.",
+      },
+    });
+  }
+
+  const secrets = await getDustAppSecrets(auth);
+  return ctx.json({ secrets });
+});
 
 app.post(
   "/",
