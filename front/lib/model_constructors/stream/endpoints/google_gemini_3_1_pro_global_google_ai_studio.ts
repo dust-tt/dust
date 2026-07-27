@@ -1,9 +1,9 @@
-import { WithGoogleAiStudioGeminiThreeDotOneProConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_1_pro";
+import { WithGoogleGeminiThreeDotOneProConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_1_pro";
 import { GoogleAiStudioStream } from "@app/lib/model_constructors/stream/clients/google_ai_studio";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
-export class GoogleAiStudioGeminiThreeDotOneProGlobalGoogleAiStudioStream extends WithGoogleAiStudioGeminiThreeDotOneProConfig(
+export class GoogleGeminiThreeDotOneProGlobalGoogleAiStudioStream extends WithGoogleGeminiThreeDotOneProConfig(
   GoogleAiStudioStream
 ) {
   //TODO(new-llm): implement progressive token billing
@@ -20,4 +20,4 @@ export class GoogleAiStudioGeminiThreeDotOneProGlobalGoogleAiStudioStream extend
   static readonly id = this.buildId();
 }
 
-GoogleAiStudioGeminiThreeDotOneProGlobalGoogleAiStudioStream satisfies StreamEndpointConstructor;
+GoogleGeminiThreeDotOneProGlobalGoogleAiStudioStream satisfies StreamEndpointConstructor;

@@ -1,14 +1,14 @@
 // @vitest-environment node
 
-import { GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_5_flash_global_google_ai_studio";
+import { GoogleGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_5_flash_global_google_ai_studio";
 import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/cases";
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-export const GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioStreamSetup: StreamSetup =
+export const GoogleGeminiThreeDotFiveFlashGlobalGoogleAiStudioStreamSetup: StreamSetup =
   {
     createInstance: () =>
-      new GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream({
+      new GoogleGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream({
         GOOGLE_AI_STUDIO_API_KEY:
           process.env.DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY ?? "",
       }),
@@ -71,6 +71,6 @@ export const GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioStreamSetu
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/google_gemini_3_5_flash_global_google_ai_studio.test.ts
 runStreamEndpointTests(
-  GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream,
-  GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioStreamSetup
+  GoogleGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream,
+  GoogleGeminiThreeDotFiveFlashGlobalGoogleAiStudioStreamSetup
 );

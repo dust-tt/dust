@@ -1,9 +1,9 @@
 import { GoogleAiStudioBatch } from "@app/lib/model_constructors/batch/clients/google_ai_studio";
 import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch/configuration";
-import { WithGoogleAiStudioGeminiThreeDotOneFlashLiteConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_1_flash_lite";
+import { WithGoogleGeminiThreeDotOneFlashLiteConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_1_flash_lite";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
-export class GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioBatch extends WithGoogleAiStudioGeminiThreeDotOneFlashLiteConfig(
+export class GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioBatch extends WithGoogleGeminiThreeDotOneFlashLiteConfig(
   GoogleAiStudioBatch
 ) {
   // Batch pricing is half the standard Gemini rate.
@@ -17,4 +17,4 @@ export class GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioBatch e
   static readonly id = this.buildId();
 }
 
-GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioBatch satisfies BatchEndpointConstructor;
+GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioBatch satisfies BatchEndpointConstructor;

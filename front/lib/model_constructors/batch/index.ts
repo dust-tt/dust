@@ -1,9 +1,9 @@
 import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch/configuration";
 import { AnthropicClaudeSonnetFourDotSixGlobalAnthropicBatch } from "@app/lib/model_constructors/batch/endpoints/anthropic_claude_sonnet_four_dot_six_global_anthropic";
-import { GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioBatch } from "@app/lib/model_constructors/batch/endpoints/google_gemini_3_1_flash_lite_global_google_ai_studio";
-import { GoogleAiStudioGeminiThreeDotOneProGlobalGoogleAiStudioBatch } from "@app/lib/model_constructors/batch/endpoints/google_gemini_3_1_pro_global_google_ai_studio";
-import { GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioBatch } from "@app/lib/model_constructors/batch/endpoints/google_gemini_3_5_flash_global_google_ai_studio";
-import { GoogleAiStudioGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioBatch } from "@app/lib/model_constructors/batch/endpoints/google_gemini_3_5_flash_lite_global_google_ai_studio";
+import { GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioBatch } from "@app/lib/model_constructors/batch/endpoints/google_gemini_3_1_flash_lite_global_google_ai_studio";
+import { GoogleGeminiThreeDotOneProGlobalGoogleAiStudioBatch } from "@app/lib/model_constructors/batch/endpoints/google_gemini_3_1_pro_global_google_ai_studio";
+import { GoogleGeminiThreeDotFiveFlashGlobalGoogleAiStudioBatch } from "@app/lib/model_constructors/batch/endpoints/google_gemini_3_5_flash_global_google_ai_studio";
+import { GoogleGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioBatch } from "@app/lib/model_constructors/batch/endpoints/google_gemini_3_5_flash_lite_global_google_ai_studio";
 import { MistralMistralMedium35EuropeMistralBatch } from "@app/lib/model_constructors/batch/endpoints/mistral_mistral_medium_3_5_eu_mistral";
 import { OpenAIGptFiveDotFiveEuropeOpenAIResponsesBatch } from "@app/lib/model_constructors/batch/endpoints/openai_gpt_five_dot_five_eu_openai_responses";
 import { OpenAIGptFiveDotFiveGlobalOpenAIResponsesBatch } from "@app/lib/model_constructors/batch/endpoints/openai_gpt_five_dot_five_global_openai_responses";
@@ -13,14 +13,14 @@ import { OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesBatch } from "@app/lib/mode
 export const BATCH_ENDPOINTS = {
   [AnthropicClaudeSonnetFourDotSixGlobalAnthropicBatch.id]:
     AnthropicClaudeSonnetFourDotSixGlobalAnthropicBatch,
-  [GoogleAiStudioGeminiThreeDotOneProGlobalGoogleAiStudioBatch.id]:
-    GoogleAiStudioGeminiThreeDotOneProGlobalGoogleAiStudioBatch,
-  [GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioBatch.id]:
-    GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioBatch,
-  [GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioBatch.id]:
-    GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioBatch,
-  [GoogleAiStudioGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioBatch.id]:
-    GoogleAiStudioGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioBatch,
+  [GoogleGeminiThreeDotOneProGlobalGoogleAiStudioBatch.id]:
+    GoogleGeminiThreeDotOneProGlobalGoogleAiStudioBatch,
+  [GoogleGeminiThreeDotFiveFlashGlobalGoogleAiStudioBatch.id]:
+    GoogleGeminiThreeDotFiveFlashGlobalGoogleAiStudioBatch,
+  [GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioBatch.id]:
+    GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioBatch,
+  [GoogleGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioBatch.id]:
+    GoogleGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioBatch,
   [OpenAIGptFiveDotFiveGlobalOpenAIResponsesBatch.id]:
     OpenAIGptFiveDotFiveGlobalOpenAIResponsesBatch,
   [OpenAIGptFiveDotFiveEuropeOpenAIResponsesBatch.id]:

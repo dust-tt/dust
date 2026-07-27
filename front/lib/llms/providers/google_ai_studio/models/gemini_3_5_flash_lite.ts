@@ -1,11 +1,11 @@
 import { GEMINI_3_5_FLASH_LITE_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 
-export function WithDustGoogleAiStudioGeminiThreeDotFiveFlashLiteConfig<
+export function WithDustGoogleGeminiThreeDotFiveFlashLiteConfig<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  abstract class DustGoogleAiStudioGemini35FlashLite extends Base {
+  abstract class DustGoogleGemini35FlashLite extends Base {
     static readonly displayName = "Gemini 3.5 Flash Lite";
     static readonly description =
       "Google's latest lightweight large context model (1m context).";
@@ -18,5 +18,5 @@ export function WithDustGoogleAiStudioGeminiThreeDotFiveFlashLiteConfig<
     static readonly modelConfig = GEMINI_3_5_FLASH_LITE_MODEL_CONFIG;
   }
 
-  return DustGoogleAiStudioGemini35FlashLite;
+  return DustGoogleGemini35FlashLite;
 }

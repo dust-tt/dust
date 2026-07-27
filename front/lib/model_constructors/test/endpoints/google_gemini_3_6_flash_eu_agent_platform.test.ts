@@ -1,14 +1,14 @@
 // @vitest-environment node
 
-import { GoogleAiStudioGeminiThreeDotSixFlashEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_6_flash_eu_agent_platform";
+import { GoogleGeminiThreeDotSixFlashEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_6_flash_eu_agent_platform";
 import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/cases";
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-export const GoogleAiStudioGeminiThreeDotSixFlashEuropeAgentPlatformStreamSetup: StreamSetup =
+export const GoogleGeminiThreeDotSixFlashEuropeAgentPlatformStreamSetup: StreamSetup =
   {
     createInstance: () =>
-      new GoogleAiStudioGeminiThreeDotSixFlashEuropeAgentPlatformStream({
+      new GoogleGeminiThreeDotSixFlashEuropeAgentPlatformStream({
         AGENT_PLATFORM_PROJECT_ID: process.env.VERTEX_AI_PROJECT_ID ?? "",
       }),
     // `null` runs the case with its default checkers; a checker array overrides
@@ -70,6 +70,6 @@ export const GoogleAiStudioGeminiThreeDotSixFlashEuropeAgentPlatformStreamSetup:
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/google_gemini_3_6_flash_eu_agent_platform.test.ts
 runStreamEndpointTests(
-  GoogleAiStudioGeminiThreeDotSixFlashEuropeAgentPlatformStream,
-  GoogleAiStudioGeminiThreeDotSixFlashEuropeAgentPlatformStreamSetup
+  GoogleGeminiThreeDotSixFlashEuropeAgentPlatformStream,
+  GoogleGeminiThreeDotSixFlashEuropeAgentPlatformStreamSetup
 );

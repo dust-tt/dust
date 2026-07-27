@@ -1,11 +1,11 @@
-import { WithGoogleAiStudioGeminiThreeDotSixFlashConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_6_flash";
+import { WithGoogleGeminiThreeDotSixFlashConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_6_flash";
 import { GoogleAgentPlatformStream } from "@app/lib/model_constructors/stream/clients/google_agent_platform";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { EUROPE } from "@app/lib/model_constructors/types/regions";
 
 // Not registered in STREAM_ENDPOINTS: this model is not available on the EU
 // agent-platform endpoint. Kept defined for when EU support lands.
-export class GoogleAiStudioGeminiThreeDotSixFlashEuropeAgentPlatformStream extends WithGoogleAiStudioGeminiThreeDotSixFlashConfig(
+export class GoogleGeminiThreeDotSixFlashEuropeAgentPlatformStream extends WithGoogleGeminiThreeDotSixFlashConfig(
   GoogleAgentPlatformStream
 ) {
   // Agent platform bills 10% more in multi-region.
@@ -25,4 +25,4 @@ export class GoogleAiStudioGeminiThreeDotSixFlashEuropeAgentPlatformStream exten
   static readonly id = this.buildId();
 }
 
-GoogleAiStudioGeminiThreeDotSixFlashEuropeAgentPlatformStream satisfies StreamEndpointConstructor;
+GoogleGeminiThreeDotSixFlashEuropeAgentPlatformStream satisfies StreamEndpointConstructor;

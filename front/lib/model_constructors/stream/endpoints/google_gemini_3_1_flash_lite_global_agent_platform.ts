@@ -1,9 +1,9 @@
-import { WithGoogleAiStudioGeminiThreeDotOneFlashLiteConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_1_flash_lite";
+import { WithGoogleGeminiThreeDotOneFlashLiteConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_1_flash_lite";
 import { GoogleAgentPlatformStream } from "@app/lib/model_constructors/stream/clients/google_agent_platform";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
-export class GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream extends WithGoogleAiStudioGeminiThreeDotOneFlashLiteConfig(
+export class GoogleGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream extends WithGoogleGeminiThreeDotOneFlashLiteConfig(
   GoogleAgentPlatformStream
 ) {
   // Global endpoint bills at base rate (non-global adds 10%).
@@ -21,4 +21,4 @@ export class GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream e
   static readonly id = this.buildId();
 }
 
-GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream satisfies StreamEndpointConstructor;
+GoogleGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream satisfies StreamEndpointConstructor;

@@ -15,16 +15,16 @@ import { AnthropicClaudeSonnetFiveGlobalAnthropicStream } from "@app/lib/model_c
 import { AnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_four_dot_six_eu_agent_platform";
 import { AnthropicClaudeSonnetFourDotSixGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_four_dot_six_global_anthropic";
 import { DeepSeekDeepSeekV4ProGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/deepseek_deepseek_v4_pro_global_fireworks";
-import { GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_1_flash_lite_global_agent_platform";
-import { GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_1_flash_lite_global_google_ai_studio";
-import { GoogleAiStudioGeminiThreeDotOneProGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_1_pro_global_agent_platform";
-import { GoogleAiStudioGeminiThreeDotOneProGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_1_pro_global_google_ai_studio";
-import { GoogleAiStudioGeminiThreeDotFiveFlashGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_5_flash_global_agent_platform";
-import { GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_5_flash_global_google_ai_studio";
-import { GoogleAiStudioGeminiThreeDotFiveFlashLiteGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_5_flash_lite_global_agent_platform";
-import { GoogleAiStudioGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_5_flash_lite_global_google_ai_studio";
-import { GoogleAiStudioGeminiThreeDotSixFlashGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_6_flash_global_agent_platform";
-import { GoogleAiStudioGeminiThreeDotSixFlashGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_6_flash_global_google_ai_studio";
+import { GoogleGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_1_flash_lite_global_agent_platform";
+import { GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_1_flash_lite_global_google_ai_studio";
+import { GoogleGeminiThreeDotOneProGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_1_pro_global_agent_platform";
+import { GoogleGeminiThreeDotOneProGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_1_pro_global_google_ai_studio";
+import { GoogleGeminiThreeDotFiveFlashGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_5_flash_global_agent_platform";
+import { GoogleGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_5_flash_global_google_ai_studio";
+import { GoogleGeminiThreeDotFiveFlashLiteGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_5_flash_lite_global_agent_platform";
+import { GoogleGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_5_flash_lite_global_google_ai_studio";
+import { GoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_6_flash_global_agent_platform";
+import { GoogleGeminiThreeDotSixFlashGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_6_flash_global_google_ai_studio";
 import { MistralCodestralEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_codestral_eu_mistral";
 import { MistralMistralLargeEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { MistralMistralMedium35EuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
@@ -74,16 +74,16 @@ export const STREAM_ENDPOINTS = {
     AnthropicClaudeSonnetFiveEuropeAgentPlatformStream,
   [AnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream.id]:
     AnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream,
-  [GoogleAiStudioGeminiThreeDotFiveFlashGlobalAgentPlatformStream.id]:
-    GoogleAiStudioGeminiThreeDotFiveFlashGlobalAgentPlatformStream,
-  [GoogleAiStudioGeminiThreeDotSixFlashGlobalAgentPlatformStream.id]:
-    GoogleAiStudioGeminiThreeDotSixFlashGlobalAgentPlatformStream,
-  [GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream.id]:
-    GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream,
-  [GoogleAiStudioGeminiThreeDotFiveFlashLiteGlobalAgentPlatformStream.id]:
-    GoogleAiStudioGeminiThreeDotFiveFlashLiteGlobalAgentPlatformStream,
-  [GoogleAiStudioGeminiThreeDotOneProGlobalAgentPlatformStream.id]:
-    GoogleAiStudioGeminiThreeDotOneProGlobalAgentPlatformStream,
+  [GoogleGeminiThreeDotFiveFlashGlobalAgentPlatformStream.id]:
+    GoogleGeminiThreeDotFiveFlashGlobalAgentPlatformStream,
+  [GoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream.id]:
+    GoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream,
+  [GoogleGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream.id]:
+    GoogleGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream,
+  [GoogleGeminiThreeDotFiveFlashLiteGlobalAgentPlatformStream.id]:
+    GoogleGeminiThreeDotFiveFlashLiteGlobalAgentPlatformStream,
+  [GoogleGeminiThreeDotOneProGlobalAgentPlatformStream.id]:
+    GoogleGeminiThreeDotOneProGlobalAgentPlatformStream,
   [AnthropicClaudeFableFiveGlobalAnthropicStream.id]:
     AnthropicClaudeFableFiveGlobalAnthropicStream,
   [AnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream.id]:
@@ -108,16 +108,16 @@ export const STREAM_ENDPOINTS = {
     MoonshotAiKimiK2Dot5GlobalFireworksStream,
   [MoonshotAiKimiK2Dot6GlobalFireworksStream.id]:
     MoonshotAiKimiK2Dot6GlobalFireworksStream,
-  [GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream.id]:
-    GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream,
-  [GoogleAiStudioGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioStream.id]:
-    GoogleAiStudioGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioStream,
-  [GoogleAiStudioGeminiThreeDotOneProGlobalGoogleAiStudioStream.id]:
-    GoogleAiStudioGeminiThreeDotOneProGlobalGoogleAiStudioStream,
-  [GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream.id]:
-    GoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream,
-  [GoogleAiStudioGeminiThreeDotSixFlashGlobalGoogleAiStudioStream.id]:
-    GoogleAiStudioGeminiThreeDotSixFlashGlobalGoogleAiStudioStream,
+  [GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream.id]:
+    GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream,
+  [GoogleGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioStream.id]:
+    GoogleGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioStream,
+  [GoogleGeminiThreeDotOneProGlobalGoogleAiStudioStream.id]:
+    GoogleGeminiThreeDotOneProGlobalGoogleAiStudioStream,
+  [GoogleGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream.id]:
+    GoogleGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream,
+  [GoogleGeminiThreeDotSixFlashGlobalGoogleAiStudioStream.id]:
+    GoogleGeminiThreeDotSixFlashGlobalGoogleAiStudioStream,
   [MistralCodestralEuropeMistralStream.id]: MistralCodestralEuropeMistralStream,
   [MistralMistralLargeEuropeMistralStream.id]:
     MistralMistralLargeEuropeMistralStream,

@@ -1,9 +1,9 @@
-import { WithGoogleAiStudioGeminiThreeDotSixFlashConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_6_flash";
+import { WithGoogleGeminiThreeDotSixFlashConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_6_flash";
 import { GoogleAgentPlatformStream } from "@app/lib/model_constructors/stream/clients/google_agent_platform";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
-export class GoogleAiStudioGeminiThreeDotSixFlashGlobalAgentPlatformStream extends WithGoogleAiStudioGeminiThreeDotSixFlashConfig(
+export class GoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream extends WithGoogleGeminiThreeDotSixFlashConfig(
   GoogleAgentPlatformStream
 ) {
   // Global endpoint bills at base rate (non-global adds 10%).
@@ -23,4 +23,4 @@ export class GoogleAiStudioGeminiThreeDotSixFlashGlobalAgentPlatformStream exten
   static readonly id = this.buildId();
 }
 
-GoogleAiStudioGeminiThreeDotSixFlashGlobalAgentPlatformStream satisfies StreamEndpointConstructor;
+GoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream satisfies StreamEndpointConstructor;
