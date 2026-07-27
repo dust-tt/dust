@@ -1,11 +1,11 @@
 import { GEMINI_3_1_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 
-export function WithDustGoogleAiStudioGeminiThreeDotOneProConfig<
+export function WithDustGoogleGeminiThreeDotOneProConfig<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  abstract class DustGoogleAiStudioGeminiThreeDotOnePro extends Base {
+  abstract class DustGoogleGeminiThreeDotOnePro extends Base {
     static readonly displayName = "Gemini 3.1 Pro (Preview)";
     static readonly description =
       "Google's latest powerful model with enhanced reasoning (1m context).";
@@ -18,5 +18,5 @@ export function WithDustGoogleAiStudioGeminiThreeDotOneProConfig<
     static readonly modelConfig = GEMINI_3_1_PRO_MODEL_CONFIG;
   }
 
-  return DustGoogleAiStudioGeminiThreeDotOnePro;
+  return DustGoogleGeminiThreeDotOnePro;
 }

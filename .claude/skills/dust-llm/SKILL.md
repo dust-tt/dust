@@ -28,9 +28,9 @@ A model reaches production through three stacked layers. Add the new model to ea
 
 Endpoints are named and filed as:
 `{provider}_{model}_{region}_{provider_api}.ts`
-e.g. `google_ai_studio_gemini_3_6_flash_global_agent_platform.ts`. The class name is the
+e.g. `google_gemini_3_6_flash_global_agent_platform.ts`. The class name is the
 PascalCase of the same, with numbers spelled out:
-`GoogleAiStudioGeminiThreeDotSixFlashGlobalAgentPlatformStream`.
+`GoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream`.
 
 > The **fastest, most reliable way to add a model is to copy the most recent model in the
 > same family** across all layers and rename. Grep every reference to that model and mirror

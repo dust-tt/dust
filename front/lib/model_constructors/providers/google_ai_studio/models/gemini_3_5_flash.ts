@@ -22,12 +22,12 @@ export const configSchema = googleAiStudioConfigSchema.extend({
 });
 
 // Mixin carrying shared config; runtime base differs per surface.
-export function WithGoogleAiStudioGeminiThreeDotFiveFlashConfig<
+export function WithGoogleGeminiThreeDotFiveFlashConfig<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  abstract class GoogleAiStudioGeminiThreeDotFiveFlash extends Base {
+  abstract class GoogleGeminiThreeDotFiveFlash extends Base {
     static readonly model = GEMINI_3_5_FLASH;
 
     static readonly configSchema = configSchema;
@@ -36,5 +36,5 @@ export function WithGoogleAiStudioGeminiThreeDotFiveFlashConfig<
     static readonly maxOutputTokens = GEMINI_3_MAX_OUTPUT_TOKENS;
   }
 
-  return GoogleAiStudioGeminiThreeDotFiveFlash;
+  return GoogleGeminiThreeDotFiveFlash;
 }
