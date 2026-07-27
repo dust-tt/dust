@@ -2,7 +2,6 @@ import { ToolValidationDetails } from "@app/components/assistant/conversation/To
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
-import { validateToolInputs } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   EDIT_INFORMATION_TOOL_NAME,
   POD_MANAGER_SERVER_NAME,
@@ -39,6 +38,7 @@ import { useMemo, useState } from "react";
 
 type ToolOverride = {
   title?: (inputs: Record<string, unknown>) => string;
+  approveLabel?: string;
   alwaysAllowLabel?: (inputs: Record<string, unknown>) => string;
   detailsExpanded?: boolean;
 };
@@ -67,14 +67,8 @@ const MCP_TOOL_OVERRIDES: Partial<
   },
   [SANDBOX_FUNCTIONS_SERVER_NAME]: {
     publish: {
-      title: (inputs) => {
-        if (
-          !validateToolInputs(SANDBOX_FUNCTIONS_SERVER_NAME, "publish", inputs)
-        ) {
-          return "Allow agent to publish a Pod function?";
-        }
-        return `Allow agent to publish ${inputs.slug}?`;
-      },
+      title: () => "Publish this function?",
+      approveLabel: "Publish",
       alwaysAllowLabel: () => "Always allow agent to publish Pod functions",
     },
   },
@@ -329,7 +323,7 @@ export function ToolValidationCard({
                 onClick={() => void handleValidation("rejected")}
               />
               <Button
-                label="Allow"
+                label={toolOverride?.approveLabel ?? "Allow"}
                 variant="highlight"
                 size="xs"
                 icon={Check}

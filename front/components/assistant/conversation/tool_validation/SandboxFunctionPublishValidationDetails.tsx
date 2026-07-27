@@ -1,5 +1,6 @@
 interface SandboxFunctionPublishValidationDetailsProps {
   input: {
+    slug: string;
     description: string;
   };
 }
@@ -8,8 +9,13 @@ export function SandboxFunctionPublishValidationDetails({
   input,
 }: SandboxFunctionPublishValidationDetailsProps) {
   return (
-    <p className="whitespace-pre-wrap wrap-break-word pt-2 text-sm leading-5 text-muted-foreground">
-      {input.description}
-    </p>
+    <div className="flex flex-col gap-1 pt-2">
+      <p className="wrap-break-word text-sm font-medium leading-5 text-foreground">
+        {input.slug}
+      </p>
+      <p className="whitespace-pre-wrap wrap-break-word text-sm leading-5 text-muted-foreground">
+        {input.description}
+      </p>
+    </div>
   );
 }
