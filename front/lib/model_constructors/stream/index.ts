@@ -31,6 +31,7 @@ import { MistralMistralMedium35EuropeMistralStream } from "@app/lib/model_constr
 import { MistralMistralSmallEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_small_eu_mistral";
 import { MoonshotAiKimiK2Dot5GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k2_dot_five_global_fireworks";
 import { MoonshotAiKimiK2Dot6GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k2_dot_six_global_fireworks";
+import { MoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
 import { NoopNoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
 import { OpenAIGptFiveDotFiveEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_five_eu_openai_responses";
 import { OpenAIGptFiveDotFiveGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_five_global_openai_responses";
@@ -108,6 +109,8 @@ export const STREAM_ENDPOINTS = {
     MoonshotAiKimiK2Dot5GlobalFireworksStream,
   [MoonshotAiKimiK2Dot6GlobalFireworksStream.id]:
     MoonshotAiKimiK2Dot6GlobalFireworksStream,
+  [MoonshotAiKimiK3GlobalFireworksStream.id]:
+    MoonshotAiKimiK3GlobalFireworksStream,
   [GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream.id]:
     GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream,
   [GoogleGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioStream.id]:

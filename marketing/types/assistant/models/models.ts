@@ -174,6 +174,11 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "fireworks",
   },
   {
+    modelId: "accounts/fireworks/models/kimi-k3",
+    displayName: "Kimi K3 (Fireworks)",
+    providerId: "fireworks",
+  },
+  {
     modelId: "accounts/fireworks/models/glm-5p2",
     displayName: "GLM-5.2 (Fireworks)",
     providerId: "fireworks",

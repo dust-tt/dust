@@ -396,6 +396,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 4.0,
     cache_read_input_tokens: 0.16,
   },
+  // https://fireworks.ai/models/fireworks/kimi-k3
+  "accounts/fireworks/models/kimi-k3": {
+    input: 3.0,
+    output: 15.0,
+    cache_read_input_tokens: 0.3,
+  },
   // https://app.fireworks.ai/models/fireworks/minimax-m2p5
   "accounts/fireworks/models/minimax-m2p5": {
     input: 0.3,
