@@ -1420,6 +1420,34 @@ describe("SkillResource", () => {
       );
     });
 
+    it("archives multiple skills sharing the same name without a unique constraint violation", async () => {
+      // The (workspaceId, name, status) unique constraint means only one
+      // archived skill can keep a given name. Archiving a same-named skill
+      // renames the previously archived one with a timestamped suffix; a third
+      // archive on the same day must not collide with the earlier rename
+      // target. We fake the clock so each archive lands on a distinct time of
+      // the same day.
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        const archiveSameNameSkillAt = async (isoTime: string) => {
+          vi.setSystemTime(new Date(isoTime));
+          const skill = await SkillFactory.create(testContext.authenticator, {
+            name: "Duplicate Name Skill",
+          });
+          return skill.archive(testContext.authenticator);
+        };
+
+        await archiveSameNameSkillAt("2026-07-26T12:00:00Z");
+        await archiveSameNameSkillAt("2026-07-26T12:01:00Z");
+        const { affectedCount } = await archiveSameNameSkillAt(
+          "2026-07-26T12:02:00Z"
+        );
+        expect(affectedCount).toBe(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("removes the skill's space requirements from agents when archiving and adds them back when restoring", async () => {
       const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
       await GroupSpaceFactory.associate(

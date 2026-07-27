@@ -2713,7 +2713,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       if (existingArchivedSkill) {
         const timestamp = formatTimestampToFriendlyDate(
           existingArchivedSkill.updatedAt.getTime(),
-          "compactWithDay"
+          "long"
         );
         await existingArchivedSkill.update(
           { name: `${existingArchivedSkill.name} (archived on ${timestamp})` },
