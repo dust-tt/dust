@@ -254,7 +254,9 @@ export async function getOutputFromLLMStream(
     prompt,
     llm,
     updateResourceAndPublishEvent,
-  }: GetOutputRequestParams & { llm: LLM }
+  }: GetOutputRequestParams & {
+    llm: Pick<LLM, "getResponseFormat" | "getTraceId" | "stream">;
+  }
 ): Promise<GetOutputResponse> {
   const start = Date.now();
   let timeToFirstEvent: number | undefined = undefined;
@@ -595,6 +597,17 @@ export async function getOutputFromLLMStream(
         "Structured output JSON parsing failed: response from LLM may be invalid."
       );
     }
+  }
+
+  if (contents.length === 0 && actions.length === 0) {
+    return new Err({
+      type: "shouldRetryMessage",
+      content: {
+        type: "unknown_error",
+        message: "The model returned an empty response.",
+        isRetryable: true,
+      },
+    });
   }
 
   return new Ok({
