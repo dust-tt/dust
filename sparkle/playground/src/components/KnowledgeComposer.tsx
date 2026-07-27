@@ -56,8 +56,6 @@ export function KnowledgeComposer() {
   const [dismissedTriggerIndex, setDismissedTriggerIndex] = useState<
     number | null
   >(null);
-  const [pickedDuringInlineSession, setPickedDuringInlineSession] =
-    useState(false);
 
   // Only meaningful for the inline "/" flow — the button-triggered picker
   // always goes straight to knowledge (see `activePanel` below).
@@ -238,36 +236,39 @@ export function KnowledgeComposer() {
     }
   }, [mode, isPickerOpen, activeItemId]);
 
+  // Escape / click-outside with nothing picked: just dismiss, leaving
+  // whatever was typed in place.
   const closeInlinePicker = () => {
-    if (pickedDuringInlineSession && selectionStart !== null) {
-      const start = slashTrigger.triggerIndex;
-      const end = selectionStart;
-      const nextValue = value.slice(0, start) + value.slice(end);
-      setValue(nextValue);
-      requestAnimationFrame(() => {
-        textareaRef.current?.setSelectionRange(start, start);
-        textareaRef.current?.focus();
-      });
-      setSelectionStart(start);
-    } else {
-      setDismissedTriggerIndex(slashTrigger.triggerIndex);
-    }
-    setPickedDuringInlineSession(false);
+    setDismissedTriggerIndex(slashTrigger.triggerIndex);
     setBrowseStack([]);
     setSlashStep("menu");
   };
 
   // Shared by every attach path (knowledge, skills, upload) — adds the chip
-  // and keeps the session open for another pick, exactly like today's
-  // knowledge-file flow.
+  // and closes the picker, same as picking a single result anywhere else.
   const attachItem = (item: KnowledgeItem) => {
     setAttachedItems((prev) => [...prev, item]);
     if (mode === "inline") {
-      setPickedDuringInlineSession(true);
-      textareaRef.current?.focus();
+      // Removes the "/" trigger itself (not just the typed query), which is
+      // what actually closes the picker — there's no active trigger left
+      // for useSlashTrigger to find.
+      if (selectionStart !== null) {
+        const start = slashTrigger.triggerIndex;
+        const end = selectionStart;
+        const nextValue = value.slice(0, start) + value.slice(end);
+        setValue(nextValue);
+        requestAnimationFrame(() => {
+          textareaRef.current?.setSelectionRange(start, start);
+          textareaRef.current?.focus();
+        });
+        setSelectionStart(start);
+      }
+      setBrowseStack([]);
+      setSlashStep("menu");
     } else {
+      setIsButtonPickerOpen(false);
       setButtonQuery("");
-      searchInputRef.current?.focus();
+      setBrowseStack([]);
     }
   };
 
@@ -342,9 +343,6 @@ export function KnowledgeComposer() {
       usageCount: 0,
       source: "company",
     });
-    if (mode === "inline") {
-      closeInlinePicker();
-    }
   };
 
   const handleOpenNode = (node: KnowledgeTreeNode) => {
@@ -406,16 +404,16 @@ export function KnowledgeComposer() {
           break;
         }
         // Knowledge, in browse or search results alike: a file attaches
-        // either way, a folder attaches on plain Enter but browses into it
-        // on Shift+Enter, and a space only ever browses (there's no
-        // "attach a whole space" concept here).
+        // either way, a folder browses into it on plain Enter but attaches
+        // it whole on Shift+Enter, and a space only ever browses (there's
+        // no "attach a whole space" concept here).
         const node = item as KnowledgeTreeNode;
         if (node.kind === "file") {
           handleSelectItemById(node.id);
-        } else if (e.shiftKey || node.kind === "space") {
-          handleOpenNode(node);
-        } else {
+        } else if (e.shiftKey && node.kind !== "space") {
           handleSelectItemById(node.id);
+        } else {
+          handleOpenNode(node);
         }
         break;
       }

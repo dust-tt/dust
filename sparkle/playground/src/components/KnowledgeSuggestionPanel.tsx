@@ -7,7 +7,10 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import type { KnowledgeTreeGroup, KnowledgeTreeNode } from "../data/knowledgeItems";
+import type {
+  KnowledgeTreeGroup,
+  KnowledgeTreeNode,
+} from "../data/knowledgeItems";
 import {
   KnowledgeBreadcrumbBar,
   KnowledgeBrowseRow,
@@ -82,7 +85,10 @@ export function KnowledgeSuggestionPanel({
           className="border-b border-border"
           onMouseDown={(e) => e.preventDefault()}
         >
-          <KnowledgeBreadcrumbBar stack={browseStack} onNavigate={onBreadcrumbNavigate} />
+          <KnowledgeBreadcrumbBar
+            stack={browseStack}
+            onNavigate={onBreadcrumbNavigate}
+          />
         </div>
       )}
       <ScrollArea
@@ -116,9 +122,7 @@ export function KnowledgeSuggestionPanel({
               {isFiltering ? (
                 <>
                   No knowledge found for{" "}
-                  <span className="font-medium text-foreground">
-                    “{query}”
-                  </span>
+                  <span className="font-medium text-foreground">“{query}”</span>
                 </>
               ) : (
                 "No knowledge available here"
@@ -161,7 +165,7 @@ export function KnowledgeSuggestionPanel({
         )}
       </ScrollArea>
       <div
-        className="flex items-center gap-3 border-t border-border px-2.5 py-1.5 text-xs text-muted-foreground"
+        className="flex items-center gap-3 whitespace-nowrap border-t border-border px-2.5 py-1.5 text-xs text-muted-foreground"
         onMouseDown={(e) => e.preventDefault()}
       >
         <span className="flex items-center gap-1">
@@ -171,7 +175,7 @@ export function KnowledgeSuggestionPanel({
           <Kbd>↵</Kbd> Select
         </span>
         <span className="flex items-center gap-1">
-          <Kbd>⇧↵</Kbd> Browse
+          <Kbd>⇧↵</Kbd> Attach
         </span>
         <span className="flex items-center gap-1">
           <Kbd>Esc</Kbd> Close
