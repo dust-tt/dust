@@ -57,26 +57,28 @@ export async function selectPreferredStreamEndpointForWorkspace(
   auth: Authenticator,
   filter: Where<EndpointConfig>
 ) {
-  const endpoint =
+  const streamEndpoint =
     await selectPreferredEndpointForWorkspace<DustStreamEndpointConstructor>(
       auth,
       getStreamEndpoints,
       filter
     );
-  return endpoint;
+
+  return streamEndpoint;
 }
 
 export async function selectPreferredBatchEndpointForWorkspace(
   auth: Authenticator,
   filter: Where<EndpointConfig>
 ) {
-  const endpoint =
+  const batchEndpoint =
     await selectPreferredEndpointForWorkspace<DustBatchEndpointConstructor>(
       auth,
       getBatchEndpoints,
       filter
     );
-  return endpoint;
+
+  return batchEndpoint;
 }
 
 // Resolves a legacy model id to its preferred stream endpoint for the
@@ -93,6 +95,7 @@ export async function getStreamEndpointFromLegacyModelId(
   const endpoint = await selectPreferredStreamEndpointForWorkspace(auth, {
     model: { eq: model },
   });
+
   return endpoint;
 }
 
@@ -110,5 +113,6 @@ export async function getBatchEndpointFromLegacyModelId(
   const endpoint = await selectPreferredBatchEndpointForWorkspace(auth, {
     model: { eq: model },
   });
+
   return endpoint;
 }
