@@ -151,7 +151,7 @@ export async function fullSyncWorkflow({
       );
     } while (nextPageLink);
 
-    await markNodeAsSeen(connectorId, nodeId);
+    await markNodeAsSeen(connectorId, nodeId, startSyncTs);
 
     if (workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof fullSyncWorkflow>({

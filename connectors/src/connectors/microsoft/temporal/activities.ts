@@ -598,7 +598,11 @@ async function isParentAlreadyInNodes({
   return false;
 }
 
-export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
+export async function markNodeAsSeen(
+  connectorId: ModelId,
+  internalId: string,
+  startSyncTs?: number
+) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -623,7 +627,15 @@ export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
     return;
   }
 
-  // Newly discovered folders have no lastSeenTs until their first traversal completes.
+  // In-flight activities scheduled before startSyncTs was added omit it.
+  if (
+    startSyncTs !== undefined &&
+    node.lastSeenTs &&
+    node.lastSeenTs.getTime() > startSyncTs
+  ) {
+    return;
+  }
+
   await node.update({ lastSeenTs: new Date() });
 }
 
