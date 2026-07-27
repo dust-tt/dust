@@ -5,7 +5,7 @@ export const ZENDESK_TOOLS_METADATA = [
   {
     name: "get_ticket",
     description:
-      "Look up and retrieve a Zendesk support ticket by its ID. Returns subject, description, status, priority, assignee, and other metadata. Optionally include ticket metrics, the full conversation of comments, and file attachments.",
+      "Look up and retrieve a Zendesk support ticket by its ID. Returns subject, description, status, priority, assignee, and other metadata. Includes file attachments by default, and can optionally include ticket metrics and the full conversation of comments.",
     schema: {
       ticketId: z
         .number()
@@ -27,7 +27,10 @@ export const ZENDESK_TOOLS_METADATA = [
       includeAttachments: z
         .boolean()
         .optional()
-        .describe("Include file attachments from ticket comments."),
+        .default(true)
+        .describe(
+          "Include file attachments from ticket comments. Defaults to true."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
