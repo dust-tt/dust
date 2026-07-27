@@ -299,7 +299,8 @@ export class TagResource extends BaseResource<TagModel> {
           tagId: tag.id,
           agentConfigurationId: agentConfiguration.id,
         }))
-      )
+      ),
+      { ignoreDuplicates: true }
     );
   }
 

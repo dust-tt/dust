@@ -17,7 +17,7 @@ function batchUpdateTags(workspace: { sId: string }, body: unknown) {
 }
 
 describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", () => {
-  it("adds and removes tags for multiple agents", async () => {
+  it("adds and removes tags while ignoring duplicate additions", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -32,6 +32,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
     const tagToRemove = await TagFactory.create(workspace, {
       name: "to-remove",
     });
+    await tagToAdd.addToAgent(auth, firstAgent);
     await tagToRemove.addToAgent(auth, firstAgent);
     await tagToRemove.addToAgent(auth, secondAgent);
 
