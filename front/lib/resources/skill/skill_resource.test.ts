@@ -1420,6 +1420,29 @@ describe("SkillResource", () => {
       );
     });
 
+    it("archives multiple skills sharing the same name without a unique constraint violation", async () => {
+      // The (workspaceId, name, status) unique constraint means only one
+      // archived skill can keep a given name. Archiving a third same-named
+      // skill must not collide with a previously renamed archived skill.
+      const firstSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Duplicate Name Skill",
+      });
+      await firstSkill.archive(testContext.authenticator);
+
+      const secondSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Duplicate Name Skill",
+      });
+      await secondSkill.archive(testContext.authenticator);
+
+      const thirdSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Duplicate Name Skill",
+      });
+      const { affectedCount } = await thirdSkill.archive(
+        testContext.authenticator
+      );
+      expect(affectedCount).toBe(1);
+    });
+
     it("removes the skill's space requirements from agents when archiving and adds them back when restoring", async () => {
       const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
       await GroupSpaceFactory.associate(

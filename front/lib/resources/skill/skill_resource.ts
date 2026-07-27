@@ -64,7 +64,6 @@ import {
   serializeSkillTag,
   serializeUnavailableSkillTag,
 } from "@app/lib/skills/format";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
@@ -2711,12 +2710,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
 
       if (existingArchivedSkill) {
-        const timestamp = formatTimestampToFriendlyDate(
-          existingArchivedSkill.updatedAt.getTime(),
-          "compactWithDay"
-        );
+        // Suffix with the skill's sId to guarantee a unique name: multiple
+        // skills sharing the same name can be archived (e.g. same day), and a
+        // date-based suffix is not unique enough to satisfy the
+        // (workspaceId, name, status) unique constraint.
+        const existingArchivedSkillId = SkillResource.modelIdToSId({
+          id: existingArchivedSkill.id,
+          workspaceId: existingArchivedSkill.workspaceId,
+        });
         await existingArchivedSkill.update(
-          { name: `${existingArchivedSkill.name} (archived on ${timestamp})` },
+          {
+            name: `${existingArchivedSkill.name} (archived ${existingArchivedSkillId})`,
+          },
           { transaction }
         );
       }
