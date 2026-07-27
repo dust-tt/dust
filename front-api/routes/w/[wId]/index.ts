@@ -21,7 +21,10 @@ import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import {
+  ENSURE_IS_ADMIN_ERROR_MESSAGE,
+  ensureIsAdmin,
+} from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
@@ -344,13 +347,37 @@ app.get(
 
 app.post(
   "/",
-  ensureIsAdmin(),
   validate("json", PostWorkspaceRequestBodySchema),
   async (ctx): HandlerResult<GetWorkspaceResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
 
     const body = ctx.req.valid("json");
+
+    // Domain auto-join and SSO enforcement live on the IT & Security page, so holders of
+    // the `admin:security` permission may change them. Every other workspace setting remains
+    // admin-only. `body` is the zod-parsed output: the union strips it down to a single member's
+    // keys, so this classification matches exactly the branch the handler below will execute.
+    const isIdentitySetting =
+      "domainAutoJoinEnabled" in body ||
+      "domainUpdates" in body ||
+      "ssoEnforced" in body;
+
+    const isAuthorized = isIdentitySetting
+      ? await auth.hasWorkspacePermission("admin", "security")
+      : auth.isAdmin();
+
+    if (!isAuthorized) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: isIdentitySetting
+            ? "You do not have permission to manage identity and provisioning settings."
+            : ENSURE_IS_ADMIN_ERROR_MESSAGE,
+        },
+      });
+    }
 
     const workspace = await WorkspaceResource.fetchByModelId(owner.id);
     if (!workspace) {

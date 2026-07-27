@@ -9,19 +9,7 @@ export function WithDustClaudeSonnetFourDotSixConfig<
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  // Spread the legacy model config onto the class statics (see
-  // `DustStreamEndpointConfiguration`). `Object.assign` returns
-  // `class & ModelConfigurationType`, so the fields are visible to the type
-  // checker without an unsafe cast.
-  abstract class DustClaudeSonnetFourDotSixConfig extends Base {}
-  const WithConfig = Object.assign(
-    DustClaudeSonnetFourDotSixConfig,
-    CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG
-  );
-
-  // Declared last so these own statics shadow (take precedence over) the spread
-  // config values.
-  abstract class DustClaudeSonnetFourDotSix extends WithConfig {
+  abstract class DustClaudeSonnetFourDotSix extends Base {
     static readonly displayName = "Claude Sonnet 4.6";
     static readonly description =
       "Anthropic's Claude Sonnet 4.6 model, balancing power and efficiency with enhanced reasoning capabilities (250k context).";
@@ -37,6 +25,12 @@ export function WithDustClaudeSonnetFourDotSixConfig<
       disableReasoningWhenForcingTool,
       dropTemperatureWhenReasoning,
     ];
+
+    // Nest the legacy model config under a single `modelConfig` static (see
+    // `DustStreamEndpointConfiguration`) so consumers can retrieve the full
+    // `ModelConfigurationType` off the endpoint without spreading its fields
+    // onto the class statics.
+    static readonly modelConfig = CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
   }
 
   return DustClaudeSonnetFourDotSix;

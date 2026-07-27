@@ -60,7 +60,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
       "invite:frame": adminsOnly("invite", "frame"),
       "publish:frame": adminsOnly("publish", "frame"),
       "admin:billing": adminsOnly("admin", "billing"),
-      "admin:identity": adminsOnly("admin", "identity"),
+      "admin:security": adminsOnly("admin", "security"),
     });
   });
 

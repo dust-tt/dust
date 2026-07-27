@@ -123,6 +123,7 @@ const RadioGroupCustomItem = React.forwardRef<
       <div
         className={cn(
           "flex w-full flex-col",
+          props.disabled && "opacity-70 [&_label]:cursor-not-allowed",
           className,
           `items-${iconPosition}`
         )}

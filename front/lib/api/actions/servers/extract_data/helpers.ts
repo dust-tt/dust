@@ -83,12 +83,12 @@ export async function getCoreDataSourceSearchCriterias(
 export async function getPromptForProcessDustApp({
   auth,
   agentConfiguration,
-  model,
+  modelInfo,
   conversation,
 }: {
   auth: Authenticator;
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
-  model: AgentLoopExecutionData["model"];
+  modelInfo: AgentLoopExecutionData["modelInfo"];
   conversation: AgentLoopExecutionData["conversation"];
 }) {
   // Grab user message.
@@ -109,7 +109,7 @@ export async function getPromptForProcessDustApp({
       agentConfiguration,
       fallbackPrompt:
         "Process the retrieved data to extract structured information based on the provided schema.",
-      model,
+      modelInfo,
       hasAvailableActions: false,
       systemSkills: [],
       conversation,

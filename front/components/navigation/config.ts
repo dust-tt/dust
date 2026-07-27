@@ -266,10 +266,11 @@ export const subNavigationAdmin = ({
   const nav: SidebarNavigation[] = [];
 
   const canAdminBilling = hasPermission("admin", "billing");
+  const canAdminSecurity = hasPermission("admin", "security");
 
   // Admins and managers see the admin sidebar; builders and members do
   // not. Each item is then individually enabled/disabled based on permission.
-  if (!isManager(owner) && !canAdminBilling) {
+  if (!isManager(owner) && !canAdminBilling && !canAdminSecurity) {
     return nav;
   }
 
@@ -300,7 +301,7 @@ export const subNavigationAdmin = ({
         icon: Fingerprint04,
         href: `/w/${owner.sId}/identity-and-provisioning`,
         current: isCurrent("identity_and_provisioning"),
-        disabled: !hasAdminRole,
+        disabled: !canAdminSecurity,
       },
       ...(isAdminGovernanceEnabled
         ? [

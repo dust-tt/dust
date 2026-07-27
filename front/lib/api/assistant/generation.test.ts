@@ -8,16 +8,17 @@ import {
   systemPromptToText,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type {
   AgentConfigurationType,
   AgentConfigurationWithoutModelType,
 } from "@app/types/assistant/agent";
+import type { StreamModelInfo } from "@app/types/assistant/agent_run";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   ConversationType,
@@ -38,10 +39,15 @@ function withoutModel(
 function agentLoopModel(
   config: AgentConfigurationType,
   modelConfig: ModelConfigurationType
-) {
+): StreamModelInfo {
+  const { temperature, reasoningEffort, responseFormat, metaData } =
+    config.model;
   return {
-    ...config.model,
-    ...modelConfig,
+    endpoint: getTestStreamEndpoint(modelConfig.modelId),
+    temperature,
+    reasoningEffort,
+    responseFormat,
+    metaData,
   };
 }
 
@@ -137,19 +143,15 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     });
     userMessage2 = um2;
 
-    // Get a real model config.
-    const modelConfigs = getSupportedModelConfigs();
-    const gpt4Config = modelConfigs.find(
-      (m) => m.providerId === "openai" && m.modelId === "gpt-4-turbo"
-    );
-    modelConfig = gpt4Config ?? modelConfigs[0];
+    // Use a model that has a stream endpoint.
+    modelConfig = getTestStreamEndpoint("gpt-5").modelConfig;
   });
 
   it("should generate identical system prompts for the same inputs", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -162,21 +164,18 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(prompt1).toEqual(prompt2);
   });
 
-  it("should generate identical system prompts when only the model ID changes", () => {
-    const model = agentLoopModel(agentConfig1, modelConfig);
-    const alternativeModel = getSupportedModelConfigs().find(
-      (candidate) =>
-        candidate.providerId === model.providerId &&
-        candidate.modelId !== model.modelId
+  it("should generate identical system prompts when only the model changes", () => {
+    // Two models whose configs inject no model-specific prompt text: the model
+    // identity must not leak into the system prompt.
+    const modelInfo = agentLoopModel(
+      agentConfig1,
+      getTestStreamEndpoint("claude-opus-4-8").modelConfig
     );
-    if (!alternativeModel) {
-      throw new Error("Expected another model from the same provider.");
-    }
 
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
-      model,
+      modelInfo,
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -186,7 +185,10 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const prompt1 = constructPromptMultiActions(authenticator1, params);
     const prompt2 = constructPromptMultiActions(authenticator1, {
       ...params,
-      model: { ...model, modelId: alternativeModel.modelId },
+      modelInfo: {
+        ...modelInfo,
+        endpoint: getTestStreamEndpoint("claude-sonnet-5"),
+      },
     });
 
     expect(prompt1).toEqual(prompt2);
@@ -197,7 +199,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const baseParams = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -240,7 +242,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const params1 = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -251,7 +253,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const params2 = {
       userMessage: userMessage2,
       agentConfiguration: withoutModel(agentConfig2),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -277,7 +279,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -304,7 +306,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(deepDiveConfig),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -335,7 +337,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const baseParams = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(deepDiveConfig),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
     };
@@ -396,7 +398,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(sidekickConfig),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -435,7 +437,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -470,7 +472,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -495,21 +497,17 @@ describe("constructPromptMultiActions - system prompt stability", () => {
   });
 
   it("should inject the formatting prompt by default and drop it when disabled", () => {
-    // Pick a model that actually carries a formatting prompt (OpenAI models do).
-    const modelWithFormatting = getSupportedModelConfigs().find(
-      (m) => m.formattingMetaPrompt
-    );
-    const formattingMetaPrompt = modelWithFormatting?.formattingMetaPrompt;
-    if (!modelWithFormatting || !formattingMetaPrompt) {
-      throw new Error(
-        "expected at least one model to carry a formatting prompt"
-      );
+    // Use a model that actually carries a formatting prompt (OpenAI models do).
+    const modelWithFormatting = getTestStreamEndpoint("gpt-5").modelConfig;
+    const { formattingMetaPrompt } = modelWithFormatting;
+    if (!formattingMetaPrompt) {
+      throw new Error("expected the model to carry a formatting prompt");
     }
 
     const baseParams = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
-      model: agentLoopModel(agentConfig1, modelWithFormatting),
+      modelInfo: agentLoopModel(agentConfig1, modelWithFormatting),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -542,7 +540,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(deepDiveConfig),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -585,7 +583,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -619,7 +617,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -644,7 +642,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -668,7 +666,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -700,7 +698,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
-      model: agentLoopModel(agentConfig1, modelConfig),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [discoverSkills],
       enabledSkills: [],

@@ -9,9 +9,9 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import { getStreamEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -95,8 +95,11 @@ app.post(
       });
     }
 
-    const model = getSupportedModelConfig(agentConfiguration.model);
-    if (!model) {
+    const endpoint = await getStreamEndpointFromLegacyModelId(
+      auth,
+      agentConfiguration.model.modelId
+    );
+    if (!endpoint) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -105,6 +108,15 @@ app.post(
         },
       });
     }
+    const modelInfo = {
+      endpoint,
+      temperature: agentConfiguration.model.temperature,
+      reasoningEffort: agentConfiguration.model.reasoningEffort,
+      responseFormat: endpoint.modelConfig.supportsResponseFormat
+        ? agentConfiguration.model.responseFormat
+        : undefined,
+    };
+    const model = endpoint.modelConfig;
 
     const lastUserMessage = conversation.content
       .map((tuple) => tuple[0])
@@ -211,10 +223,7 @@ app.post(
       userMessage,
       agentConfiguration,
       fallbackPrompt,
-      model: {
-        ...agentConfiguration.model,
-        ...model,
-      },
+      modelInfo,
       hasAvailableActions: availableActions.length > 0,
       conversation,
       serverToolsAndInstructions,

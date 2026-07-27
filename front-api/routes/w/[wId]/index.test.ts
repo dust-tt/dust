@@ -2,6 +2,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
@@ -235,5 +236,83 @@ describe("POST /api/w/:wId (workspace analytics opt-out)", () => {
       expect(response.status).toBe(403);
       expect((await response.json()).error.type).toBe("workspace_auth_error");
     }
+  });
+});
+
+describe("POST /api/w/:wId (identity settings permission)", () => {
+  it("lets a member with the admin:security permission enforce SSO", async () => {
+    const { workspace, user } = await setup("user");
+
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "admin",
+      resourceType: "security",
+    });
+
+    const response = await post(workspace, { ssoEnforced: true });
+
+    expect(response.status).toBe(200);
+
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.ssoEnforced).toBe(true);
+  });
+
+  it("returns 403 for a member without the admin:security permission", async () => {
+    const { workspace } = await setup("user");
+
+    const response = await post(workspace, { ssoEnforced: true });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message:
+          "You do not have permission to manage identity and provisioning settings.",
+      },
+    });
+  });
+
+  it("still blocks non-security settings for a member with only the admin:security permission", async () => {
+    const { workspace, user } = await setup("user");
+
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "admin",
+      resourceType: "security",
+    });
+
+    const response = await post(workspace, {
+      reinforcementCapAwuCredits: 5_000,
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
+      },
+    });
+  });
+
+  it("does not let an admin:security holder escalate to an admin-only setting via a mixed body", async () => {
+    const { workspace, user } = await setup("user");
+
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "admin",
+      resourceType: "security",
+    });
+
+    // Craft a body mixing an identity setting (`ssoEnforced`) with an admin-only
+    // setting (`regionalModelsOnly`). The zod union strips the request down to a
+    // single member, so the admin-only field never reaches the handler and cannot
+    // be applied by a non-admin.
+    const response = await post(workspace, {
+      ssoEnforced: true,
+      regionalModelsOnly: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.ssoEnforced).toBe(true);
+    expect(updated?.regionalModelsOnly).toBe(false);
   });
 });

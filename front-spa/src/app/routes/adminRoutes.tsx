@@ -116,10 +116,6 @@ export const adminRoutes: RouteObject[] = [
     // Admin-only areas.
     element: <RequireRoleLayout requiredRole="admin" />,
     children: [
-      {
-        path: "identity-and-provisioning",
-        element: <WorkspaceIdentityProvisioningPage />,
-      },
       { path: "model-providers", element: <ModelProvidersPage /> },
       { path: "workspace", element: <WorkspaceSettingsPage /> },
       { path: "branding", element: <WorkspaceBrandingPage /> },
@@ -152,6 +148,15 @@ export const adminRoutes: RouteObject[] = [
     children: [
       { path: "subscription", element: <SubscriptionPage /> },
       { path: "billing", element: <BillingPage /> },
+    ],
+  },
+  {
+    element: <RequirePermissionLayout verb="admin" resourceType="security" />,
+    children: [
+      {
+        path: "identity-and-provisioning",
+        element: <WorkspaceIdentityProvisioningPage />,
+      },
     ],
   },
 ];

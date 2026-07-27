@@ -31,7 +31,6 @@ export const GRANT_TYPES = [
   "create",
   "publish",
   "invite",
-  "read",
   "use",
   "*",
 ] as const;
@@ -44,8 +43,7 @@ export const GROUP_PERMISSION_RESOURCE_TYPES = [
   "skill",
   "frame",
   "billing",
-  "identity",
-  "audit_log",
+  "security",
   "models_tier",
   "dust_app",
   "*",
@@ -128,8 +126,7 @@ export function emptyWorkspacePermissions(): WorkspacePermissions {
     skill: [],
     frame: [],
     billing: [],
-    identity: [],
-    audit_log: [],
+    security: [],
     models_tier: [],
     dust_app: [],
   };
@@ -165,6 +162,6 @@ export const GOVERNANCE_CAPABILITIES = {
   ],
   billingAndSecurity: [
     { grantType: "admin", resourceType: "billing" },
-    { grantType: "admin", resourceType: "identity" },
+    { grantType: "admin", resourceType: "security" },
   ],
 } satisfies Record<string, CapabilitySpec[]>;
