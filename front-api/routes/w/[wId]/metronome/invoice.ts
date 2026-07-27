@@ -16,7 +16,6 @@ import type { BillingPeriod } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
@@ -107,88 +106,102 @@ function mergeLineItems(
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  ensureIsAdmin(),
-  async (ctx): HandlerResult<GetMetronomeInvoiceResponseBody> => {
-    const auth = ctx.get("auth");
+app.get("/", async (ctx): HandlerResult<GetMetronomeInvoiceResponseBody> => {
+  const auth = ctx.get("auth");
 
-    const subscription = auth.subscription();
-    const owner = auth.workspace();
-    if (!subscription || !owner) {
-      return ctx.json({ invoice: null });
-    }
-
-    const { metronomeContractId } = subscription;
-    const { metronomeCustomerId } = owner;
-    if (!metronomeContractId || !metronomeCustomerId) {
-      return ctx.json({ invoice: null });
-    }
-
-    const invoiceResult = await findCurrentInvoice(
-      metronomeCustomerId,
-      metronomeContractId
-    );
-    if (invoiceResult.isErr()) {
-      return apiError(ctx, {
-        status_code: 502,
-        api_error: {
-          type: "internal_server_error",
-          message: `Failed to fetch Metronome draft invoices: ${invoiceResult.error.message}`,
-        },
-      });
-    }
-
-    const invoice = invoiceResult.value;
-
-    if (!invoice || !invoice.start_timestamp || !invoice.end_timestamp) {
-      return ctx.json({ invoice: null });
-    }
-
-    const currency = creditTypeIdToCurrency(invoice.credit_type.id);
-    if (!currency) {
-      return ctx.json({ invoice: null });
-    }
-
-    const seatProductId = getProductWorkspaceSeatId();
-
-    let seatUnitPriceCents: number | null = null;
-
-    for (const item of invoice.line_items) {
-      const productId = item.product_id;
-      if (!productId || typeof item.unit_price !== "number") {
-        continue;
-      }
-      if (productId === seatProductId) {
-        seatUnitPriceCents = amountCents(item.unit_price, currency);
-      }
-    }
-
-    const currentPeriodStartMs = new Date(invoice.start_timestamp).getTime();
-    const currentPeriodEndMs = new Date(invoice.end_timestamp).getTime();
-
-    const summary: MetronomeInvoiceSummary = {
-      currency,
-      billingPeriod: inferBillingPeriod(
-        currentPeriodStartMs,
-        currentPeriodEndMs
-      ),
-      currentPeriodStartMs,
-      currentPeriodEndMs,
-      estimatedAmountCents: amountCents(invoice.total, currency),
-      seatUnitPriceCents,
-    };
-
-    return ctx.json({ invoice: summary });
+  if (!(await auth.hasWorkspacePermission("admin", "billing"))) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "You need billing access to manage billing settings, invoices, and payment methods.",
+      },
+    });
   }
-);
+
+  const subscription = auth.subscription();
+  const owner = auth.workspace();
+  if (!subscription || !owner) {
+    return ctx.json({ invoice: null });
+  }
+
+  const { metronomeContractId } = subscription;
+  const { metronomeCustomerId } = owner;
+  if (!metronomeContractId || !metronomeCustomerId) {
+    return ctx.json({ invoice: null });
+  }
+
+  const invoiceResult = await findCurrentInvoice(
+    metronomeCustomerId,
+    metronomeContractId
+  );
+  if (invoiceResult.isErr()) {
+    return apiError(ctx, {
+      status_code: 502,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to fetch Metronome draft invoices: ${invoiceResult.error.message}`,
+      },
+    });
+  }
+
+  const invoice = invoiceResult.value;
+
+  if (!invoice || !invoice.start_timestamp || !invoice.end_timestamp) {
+    return ctx.json({ invoice: null });
+  }
+
+  const currency = creditTypeIdToCurrency(invoice.credit_type.id);
+  if (!currency) {
+    return ctx.json({ invoice: null });
+  }
+
+  const seatProductId = getProductWorkspaceSeatId();
+
+  let seatUnitPriceCents: number | null = null;
+
+  for (const item of invoice.line_items) {
+    const productId = item.product_id;
+    if (!productId || typeof item.unit_price !== "number") {
+      continue;
+    }
+    if (productId === seatProductId) {
+      seatUnitPriceCents = amountCents(item.unit_price, currency);
+    }
+  }
+
+  const currentPeriodStartMs = new Date(invoice.start_timestamp).getTime();
+  const currentPeriodEndMs = new Date(invoice.end_timestamp).getTime();
+
+  const summary: MetronomeInvoiceSummary = {
+    currency,
+    billingPeriod: inferBillingPeriod(currentPeriodStartMs, currentPeriodEndMs),
+    currentPeriodStartMs,
+    currentPeriodEndMs,
+    estimatedAmountCents: amountCents(invoice.total, currency),
+    seatUnitPriceCents,
+  };
+
+  return ctx.json({ invoice: summary });
+});
 
 /** @ignoreswagger */
 app.get(
   "/lines",
-  ensureIsAdmin(),
   async (ctx): HandlerResult<GetMetronomeInvoiceLinesResponseBody> => {
     const auth = ctx.get("auth");
+
+    if (!(await auth.hasWorkspacePermission("admin", "billing"))) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "You need billing access to manage billing settings, invoices, and payment methods.",
+        },
+      });
+    }
 
     const subscription = auth.subscription();
     const owner = auth.workspace();
