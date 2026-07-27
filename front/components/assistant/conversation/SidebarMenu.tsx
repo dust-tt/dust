@@ -10,9 +10,10 @@ import { renderPodsList } from "@app/components/assistant/conversation/sidebar/P
 import { PodsBrowsePopover } from "@app/components/assistant/conversation/sidebar/PodsBrowsePopover";
 import { SidebarSearch } from "@app/components/assistant/conversation/sidebar/SidebarSearch";
 import {
-  filterTriggeredConversations,
+  filterReadTriggeredConversations,
   getGroupConversationsByDate,
   getGroupConversationsByUnreadAndActionRequired,
+  groupUnreadConversations,
 } from "@app/components/assistant/conversation/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
@@ -59,7 +60,8 @@ import {
   type ConversationListItemType,
   getConversationDisplayTitle,
 } from "@app/types/assistant/conversation";
-import type { PodType, SpaceType } from "@app/types/space";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { PodListItemType, PodType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowRight,
@@ -680,18 +682,30 @@ export function AgentSidebarMenu({
     }
   }, [setSidebarOpen, router, activeConversationId, setShouldFocusInput]);
 
+  const { allConversations, spaces } = useMemo(() => {
+    return {
+      allConversations: [
+        ...conversations,
+        ...summary.map(({ unreadConversations }) => unreadConversations).flat(),
+      ],
+      spaces: summary.map(({ space }) => space).flat(),
+    };
+  }, [conversations, summary]);
+
   const hasTriggeredConversations = useMemo(
     () =>
-      conversations.some((c: ConversationListItemType) => c.triggerId !== null),
-    [conversations]
+      allConversations.some(
+        (c: ConversationListItemType) => c.triggerId !== null
+      ),
+    [allConversations]
   );
 
   const filteredConversations = useMemo(() => {
-    return filterTriggeredConversations(
-      conversations,
+    return filterReadTriggeredConversations(
+      allConversations,
       hideTriggeredConversations
     );
-  }, [conversations, hideTriggeredConversations]);
+  }, [allConversations, hideTriggeredConversations]);
 
   const isSearchActive = titleFilter.trim().length > 0;
 
@@ -833,6 +847,7 @@ export function AgentSidebarMenu({
     return (
       <NavigationListWithInbox
         conversations={filteredConversations}
+        pods={spaces}
         titleFilter={sidebarTitleFilter}
         isMultiSelect={isMultiSelect}
         selectedConversations={selectedConversations}
@@ -1210,6 +1225,7 @@ export function AgentSidebarMenu({
 interface UnreadConversationsSectionProps {
   label: string;
   conversations: ConversationListItemType[];
+  pods: PodListItemType[];
   isMultiSelect: boolean;
   isMarkingAllAsRead: boolean;
   onMarkAllAsRead: (conversationIds: string[]) => void;
@@ -1237,6 +1253,7 @@ const GRID_STYLE = { display: "grid" } as const;
 function UnreadConversationsSection({
   label,
   conversations,
+  pods,
   isMultiSelect,
   isMarkingAllAsRead,
   titleFilter,
@@ -1246,6 +1263,16 @@ function UnreadConversationsSection({
   activeConversationId,
   owner,
 }: UnreadConversationsSectionProps) {
+  const conversationGroups = useMemo(
+    () => groupUnreadConversations(conversations, pods),
+    [conversations, pods]
+  );
+
+  const podById = useMemo(
+    () => new Map(pods.map((pod) => [pod.sId, pod])),
+    [pods]
+  );
+
   const totalCount = conversations.length;
 
   const shouldShowMarkAllAsReadButton =
@@ -1261,7 +1288,7 @@ function UnreadConversationsSection({
           <Button
             size="xmini"
             variant="ghost-secondary"
-            label="Mark as read"
+            label="Mark all as read"
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
             hasLighterFont
@@ -1272,28 +1299,84 @@ function UnreadConversationsSection({
       actionOnHover={false}
     >
       <AnimatePresence initial={false}>
-        {conversations.map((conversation) => (
-          <motion.div
-            key={conversation.sId}
-            style={GRID_STYLE}
-            animate={GRID_ANIMATE}
-            exit={GRID_EXIT}
-            transition={{ ease: "easeOut", duration: 0.1 }}
-          >
-            <div className="overflow-hidden">
-              <ConversationListItem
-                key={conversation.sId}
-                conversation={conversation}
-                isMultiSelect={isMultiSelect}
-                selectedConversations={selectedConversations}
-                toggleConversationSelection={toggleConversationSelection}
-                activeConversationId={activeConversationId}
-                owner={owner}
-                showStatusDot={false}
-              />
-            </div>
-          </motion.div>
-        ))}
+        {conversationGroups.flatMap((group) => {
+          switch (group.type) {
+            case "non_pod":
+              return group.conversations.map((conversation) => (
+                <motion.div
+                  key={conversation.sId}
+                  style={GRID_STYLE}
+                  animate={GRID_ANIMATE}
+                  exit={GRID_EXIT}
+                  transition={{ ease: "easeOut", duration: 0.1 }}
+                >
+                  <div className="overflow-hidden">
+                    <ConversationListItem
+                      conversation={conversation}
+                      isMultiSelect={isMultiSelect}
+                      selectedConversations={selectedConversations}
+                      toggleConversationSelection={toggleConversationSelection}
+                      activeConversationId={activeConversationId}
+                      owner={owner}
+                      showStatusDot={false}
+                    />
+                  </div>
+                </motion.div>
+              ));
+            case "pod": {
+              const pod = podById.get(group.spaceId);
+              return [
+                <NavigationListLabel
+                  key={`pod-label-${group.spaceId}`}
+                  className="bg-background"
+                  label={group.podName}
+                  icon={pod ? getSpaceIcon(pod) : undefined}
+                  isSticky
+                  action={
+                    shouldShowMarkAllAsReadButton ? (
+                      <Button
+                        size="xmini"
+                        variant="ghost-secondary"
+                        label="Mark as read"
+                        onClick={() =>
+                          onMarkAllAsRead(group.conversations.map((c) => c.sId))
+                        }
+                        isLoading={isMarkingAllAsRead}
+                        hasLighterFont
+                        className="hover:bg-hover active:bg-selected"
+                      />
+                    ) : null
+                  }
+                />,
+                ...group.conversations.map((conversation) => (
+                  <motion.div
+                    key={conversation.sId}
+                    style={GRID_STYLE}
+                    animate={GRID_ANIMATE}
+                    exit={GRID_EXIT}
+                    transition={{ ease: "easeOut", duration: 0.1 }}
+                  >
+                    <div className="overflow-hidden">
+                      <ConversationListItem
+                        conversation={conversation}
+                        isMultiSelect={isMultiSelect}
+                        selectedConversations={selectedConversations}
+                        toggleConversationSelection={
+                          toggleConversationSelection
+                        }
+                        activeConversationId={activeConversationId}
+                        owner={owner}
+                        showStatusDot={false}
+                      />
+                    </div>
+                  </motion.div>
+                )),
+              ];
+            }
+            default:
+              assertNever(group);
+          }
+        })}
       </AnimatePresence>
     </NavigationListCollapsibleSection>
   );
@@ -1482,6 +1565,7 @@ const ConversationListItem = memo(
 
 interface NavigationListWithInboxProps {
   conversations: ConversationListItemType[];
+  pods: PodListItemType[];
   titleFilter: string;
   isMultiSelect: boolean;
   selectedConversations: ConversationListItemType[];
@@ -1503,6 +1587,7 @@ interface NavigationListWithInboxProps {
 
 function NavigationListWithInbox({
   conversations,
+  pods,
   titleFilter,
   isMultiSelect,
   selectedConversations,
@@ -1530,6 +1615,7 @@ function NavigationListWithInbox({
     readConversations,
     inboxConversations,
     skillSuggestionConversations,
+    triggeredConversations,
   } = useMemo(() => {
     return getGroupConversationsByUnreadAndActionRequired(
       conversations,
@@ -1583,6 +1669,31 @@ function NavigationListWithInbox({
     >
       <div className="flex flex-col gap-4">
         <AnimatePresence initial={false}>
+          {triggeredConversations.length > 0 && (
+            <motion.div
+              key="triggered"
+              style={GRID_STYLE}
+              animate={GRID_ANIMATE}
+              exit={GRID_EXIT}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <div className="overflow-hidden">
+                <UnreadConversationsSection
+                  label="Auto"
+                  conversations={triggeredConversations}
+                  pods={pods}
+                  isMultiSelect={isMultiSelect}
+                  isMarkingAllAsRead={isMarkingAllAsRead}
+                  titleFilter={titleFilter}
+                  onMarkAllAsRead={markAllAsRead}
+                  selectedConversations={selectedConversations}
+                  toggleConversationSelection={toggleConversationSelection}
+                  activeConversationId={activeConversationId}
+                  owner={owner}
+                />
+              </div>
+            </motion.div>
+          )}
           {skillSuggestionConversations.length > 0 && (
             <motion.div
               key="skill-suggestions"
@@ -1595,6 +1706,7 @@ function NavigationListWithInbox({
                 <UnreadConversationsSection
                   label="Skill suggestions"
                   conversations={skillSuggestionConversations}
+                  pods={pods}
                   isMultiSelect={isMultiSelect}
                   isMarkingAllAsRead={isMarkingAllAsRead}
                   titleFilter={titleFilter}
@@ -1619,6 +1731,7 @@ function NavigationListWithInbox({
                 <UnreadConversationsSection
                   label="Inbox"
                   conversations={inboxConversations}
+                  pods={pods}
                   isMultiSelect={isMultiSelect}
                   isMarkingAllAsRead={isMarkingAllAsRead}
                   titleFilter={titleFilter}
