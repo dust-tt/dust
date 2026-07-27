@@ -1,6 +1,12 @@
+// @vitest-environment node
+
+import { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing";
 import { DustMoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/llms/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
 import { MoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
-import { FIREWORKS_KIMI_K3_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
+import {
+  FIREWORKS_KIMI_K3_MODEL_CONFIG,
+  FIREWORKS_KIMI_K3_MODEL_ID,
+} from "@app/types/assistant/models/fireworks";
 import { describe, expect, it } from "vitest";
 
 // Real Fireworks/Moonshot spec, see the config mixin for sources.
@@ -29,6 +35,28 @@ describe("Kimi K3 model configuration", () => {
     expect(DustMoonshotAiKimiK3GlobalFireworksStream.maxOutputTokens).toBe(
       EXPECTED_MAX_OUTPUT_TOKENS
     );
+  });
+
+  it("uses Fireworks Priority with its matching token prices", () => {
+    const endpoint = new MoonshotAiKimiK3GlobalFireworksStream({
+      FIREWORKS_API_KEY: "test",
+    });
+    const payload = endpoint.buildRequestPayload(
+      { conversation: { system: [], messages: [] } },
+      MoonshotAiKimiK3GlobalFireworksStream.configSchema.parse({})
+    );
+
+    expect(payload.service_tier).toBe("priority");
+    expect(MoonshotAiKimiK3GlobalFireworksStream.tokenPricing).toEqual({
+      cacheHit: 0.375,
+      standardInput: 3.75,
+      standardOutput: 18.75,
+    });
+    expect(MODEL_PRICING[FIREWORKS_KIMI_K3_MODEL_ID]).toEqual({
+      input: 3.75,
+      output: 18.75,
+      cache_read_input_tokens: 0.375,
+    });
   });
 
   it("exposes no `none` tier and reaches Fireworks natively at `light`", () => {
