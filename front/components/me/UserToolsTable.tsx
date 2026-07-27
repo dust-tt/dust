@@ -9,8 +9,9 @@ import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_conn
 import {
   useCreatePersonalConnection,
   useDeleteMCPServerConnection,
-  useManualMCPServerViewsFromSpaces,
   useMCPServerConnections,
+  useMCPServerViews,
+  useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useDeleteToolApproval, useUserApprovals } from "@app/lib/swr/user";
@@ -59,8 +60,18 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
     workspaceId: owner.sId,
     kinds: ["global", "regular"],
   });
+  const globalSpace = spaces.find((space) => space.kind === "global");
   const { serverViews, isLoading: isMCPServerViewsLoading } =
-    useManualMCPServerViewsFromSpaces(owner, spaces);
+    useMCPServerViewsFromSpaces(owner, spaces);
+  const {
+    serverViews: hiddenServerViews,
+    isMCPServerViewsLoading: isHiddenMCPServerViewsLoading,
+  } = useMCPServerViews({
+    owner,
+    space: globalSpace,
+    availability: "auto_hidden_builder",
+    disabled: !globalSpace,
+  });
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
     connectionType: "personal",
@@ -132,10 +143,6 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
 
   // Prepare data for the actions table
   const actionsTableData = useMemo(() => {
-    if (!serverViews) {
-      return [];
-    }
-
     const connectionsByServerId = keyBy(
       connections,
       (c) => c.internalMCPServerId ?? `${c.remoteMCPServerId}`
@@ -149,7 +156,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
       serverView.oAuthUseCase === "personal_actions" &&
       !!serverView.server.authorization;
 
-    return serverViews
+    return [...serverViews, ...hiddenServerViews]
       .filter((serverView) => {
         // Include servers that have approvals, connections, or that the user
         // could connect to (personal-auth tools available in the workspace).
@@ -177,7 +184,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         visual: getAvatar(serverView.server),
         onClick: () => {},
       }));
-  }, [serverViews, connections, approvals, searchQuery]);
+  }, [serverViews, hiddenServerViews, connections, approvals, searchQuery]);
 
   // Define columns for the actions table
   const actionColumns = useMemo<ColumnDef<UserTableRow>[]>(
@@ -298,7 +305,10 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         />
       </div>
 
-      {isMCPServerViewsLoading || isConnectionsLoading || isApprovalsLoading ? (
+      {isMCPServerViewsLoading ||
+      isHiddenMCPServerViewsLoading ||
+      isConnectionsLoading ||
+      isApprovalsLoading ? (
         <div className="flex justify-center p-6">
           <Spinner />
         </div>
