@@ -8,7 +8,7 @@ export const ICON_BUTTON_VARIANTS = BUTTON_VARIANTS;
 export type IconButtonVariantType = (typeof ICON_BUTTON_VARIANTS)[number];
 
 const iconButtonVariants = cva(
-  "transition-all ease-out duration-300 cursor-pointer hover:scale-110",
+  "transition-[color,transform] duration-200 ease-out cursor-pointer hover:scale-110 motion-reduce:transition-none",
   {
     variants: {
       variant: {

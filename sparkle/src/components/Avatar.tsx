@@ -38,7 +38,7 @@ const avatarVariants = cva(
       variant: {
         default: "",
         clickable:
-          "cursor-pointer hover:filter group-hover:filter group-hover:brightness-110 hover:brightness-110 group-active:brightness-90 active:brightness-90 transition duration-200 ease-out",
+          "cursor-pointer hover:filter group-hover:filter group-hover:brightness-110 hover:brightness-110 group-active:brightness-90 active:brightness-90 transition-[filter] duration-200 ease-out",
         disabled: "opacity-50",
       },
       rounded: {

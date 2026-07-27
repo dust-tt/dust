@@ -8,7 +8,9 @@ import { Tooltip } from "./Tooltip";
 
 export const checkboxStyles = cva(
   cn(
-    "h-4 w-4 rounded-md relative shrink-0 peer border transition duration-100 ease-out motion-reduce:transition-none",
+    // `scale` is v4's standalone property (active:scale-95), so it is named
+    // explicitly — `transform` alone would not transition the press.
+    "touch-hitbox h-4 w-4 rounded-md relative shrink-0 peer border transition-[color,background-color,border-color,scale] duration-100 ease-out motion-reduce:transition-none",
     "active:scale-95",
     "border-border-dark bg-background",
     "text-foreground",

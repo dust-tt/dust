@@ -134,6 +134,9 @@ const NavigationListItem = React.forwardRef<
               "text-muted-foreground font-medium",
               "box-border flex items-center w-full gap-1.5 cursor-pointer select-none",
               "items-center outline-hidden rounded-lg text-sm p-2 transition-colors duration-150 motion-reduce:transition-none",
+              // Focus lands on the LinkWrapper anchor; the ring renders on
+              // this inner div via the ancestor-matching `in-*` variant.
+              "in-focus-visible:ring-2 in-focus-visible:ring-ring in-focus-visible:ring-offset-0",
               "data-[disabled]:pointer-events-none",
               "hover:bg-hover hover:text-primary",
               selected && "bg-selected text-primary",
@@ -291,7 +294,7 @@ const NavigationListCompactLabel = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "flex px-2 py-1 pl-3 text-[10px] font-semibold text-faint pt-3 uppercase whitespace-nowrap overflow-hidden text-ellipsis",
+      "flex px-2 py-1 pl-3 text-[10px] font-semibold text-faint pt-3 uppercase tracking-wider whitespace-nowrap overflow-hidden text-ellipsis",
       isSticky && "sticky top-0 z-10 bg-muted-background border-border",
       className
     )}

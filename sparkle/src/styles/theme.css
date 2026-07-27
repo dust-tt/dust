@@ -105,6 +105,8 @@
   --ease-enter: cubic-bezier(0.215, 0.61, 0.355, 1);
   --ease-emphasized: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-move: cubic-bezier(0.455, 0.03, 0.515, 0.955);
+  /* iOS-style drawer/sheet curve: fast start, long settle. */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-in-quad: cubic-bezier(0.55, 0.085, 0.68, 0.53);
   --ease-in-cubic: cubic-bezier(0.55, 0.055, 0.675, 0.19);
   --ease-in-quart: cubic-bezier(0.895, 0.03, 0.685, 0.22);

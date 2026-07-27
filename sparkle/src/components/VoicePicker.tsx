@@ -238,7 +238,7 @@ export function VoicePicker({
     <div className="flex items-center">
       <div
         className={cn(
-          "duration-600 flex items-center justify-end gap-2 overflow-hidden transition-all ease-in-out",
+          "flex items-center justify-end gap-2 overflow-hidden",
           compact ? "px-1" : "px-2",
           isRecording ? "opacity-100" : "hidden"
         )}
@@ -295,7 +295,7 @@ function VoiceLevelDisplay({
       {heights.map((height, index) => (
         <div
           key={index}
-          className="min-h-1 w-0.5 rounded-full bg-muted-foreground transition-all duration-150 ease-out"
+          className="min-h-1 w-0.5 rounded-full bg-muted-foreground transition-[height] duration-150 ease-out"
           style={{ height: `${height}%` }}
         />
       ))}

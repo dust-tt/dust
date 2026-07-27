@@ -147,7 +147,8 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
         className={cn(
           chipVariants({ size, color }),
           className,
-          onClick && "cursor-pointer"
+          onClick &&
+            "cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0"
         )}
         aria-label={label}
         ref={ref}

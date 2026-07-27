@@ -26,9 +26,10 @@ export type CardSizeType = (typeof CARD_SIZES)[number];
 
 const interactiveClasses = cn(
   "cursor-pointer",
-  "transition duration-200",
+  "transition-colors duration-200",
   "hover:bg-primary-100",
   "active:bg-primary-150",
+  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0",
   "disabled:text-primary-muted",
   "disabled:border-border",
   "disabled:pointer-events-none"
@@ -167,6 +168,20 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
         style={cardStyle}
         onClick={onClick}
         role={isInteractive ? "button" : undefined}
+        tabIndex={isInteractive ? 0 : undefined}
+        onKeyDown={
+          isInteractive
+            ? (e) => {
+                if (
+                  (e.key === "Enter" || e.key === " ") &&
+                  e.target === e.currentTarget
+                ) {
+                  e.preventDefault();
+                  e.currentTarget.click();
+                }
+              }
+            : undefined
+        }
         aria-pressed={
           isInteractive && hasSelectionProp ? isSelected : undefined
         }

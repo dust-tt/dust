@@ -293,14 +293,7 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
   return (
     <>
       <style>{mermaidStyles}</style>
-      <div
-        ref={graphRef}
-        className={cn(
-          "mermaid",
-          "w-full",
-          "rounded-2xl transition-all duration-200"
-        )}
-      />
+      <div ref={graphRef} className={cn("mermaid", "w-full", "rounded-2xl")} />
     </>
   );
 };

@@ -50,6 +50,8 @@ const PopoverContent = React.forwardRef<
         align={align}
         sideOffset={sideOffset}
         className={cn(
+          "origin-[var(--radix-popover-content-transform-origin)]",
+          "duration-200 ease-enter data-[state=closed]:duration-150 motion-reduce:animate-none",
           "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
           "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
           "data-[side=bottom]:slide-in-from-top-2",
@@ -165,7 +167,7 @@ function AnchoredPopover({
   return (
     <PopoverRoot open={open} modal={false}>
       <PopoverAnchor
-        className="fixed transition-all duration-300 ease-in-out"
+        className="fixed transition-[top,left,width,height] duration-200 ease-out motion-reduce:transition-none"
         style={{
           top: position.top,
           left: position.left,

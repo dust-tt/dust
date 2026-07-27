@@ -16,7 +16,7 @@ const IconSwatch: React.FC<IconSwatchProps> = ({
   <button
     onClick={onClick}
     className={cn(
-      "flex h-8 w-8 items-center justify-center rounded-lg border border-border transition duration-300",
+      "flex h-8 w-8 items-center justify-center rounded-lg border border-border transition-colors duration-200 ease-out",
       isSelected
         ? "bg-highlight-50"
         : "bg-muted-background hover:border-highlight-100 hover:bg-highlight-50"

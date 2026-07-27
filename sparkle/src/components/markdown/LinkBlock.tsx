@@ -38,10 +38,12 @@ export const LinkBlock = memo(
         rel={rel}
         onClick={onClick}
         className={cn(
-          "break-all font-semibold transition-all duration-200 ease-in-out hover:underline",
-          "text-highlight",
-          "hover:text-highlight-400",
-          "active:text-highlight-dark",
+          "break-all font-semibold transition-colors duration-150 ease-out hover:underline underline-offset-2",
+          // highlight-500 sits at 3.2:1 on white — below AA for body links.
+          // 700 clears 4.5:1; dark mode keeps 500 (5.8:1 on the dark bg).
+          "text-highlight-700 dark:text-highlight-500",
+          "hover:text-highlight-600 dark:hover:text-highlight-400",
+          "active:text-highlight-800 dark:active:text-highlight-600",
           className
         )}
       >

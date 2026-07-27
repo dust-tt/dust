@@ -130,7 +130,7 @@ function renderPageNumber(
     <button
       key={pageNumber}
       className={cn(
-        "font-medium transition-colors duration-200",
+        "font-medium tabular-nums transition-colors duration-200",
         currentPage === pageNumber ? "text-foreground" : "text-primary-400",
         size === "xs" ? "text-xs" : "text-sm"
       )}
@@ -151,7 +151,7 @@ function renderEllipses(size: "sm" | "xs") {
         size === "xs" ? "text-xs" : "text-sm"
       )}
     >
-      ...
+      …
     </span>
   );
 }

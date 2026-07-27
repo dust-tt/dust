@@ -7,7 +7,34 @@ import { useSheetContainer } from "@sparkle/hooks/useSheetContainer";
 import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 
-const TooltipProvider = TooltipPrimitive.Provider;
+// Tracks whether a sparkle TooltipProvider is mounted above. Tooltips under a
+// shared provider skip their per-instance provider, so Radix's
+// skipDelayDuration can work across sibling tooltips (first hover waits,
+// moving to an adjacent trigger opens instantly).
+const TooltipProviderContext = React.createContext(false);
+
+type TooltipProviderProps = React.ComponentPropsWithoutRef<
+  typeof TooltipPrimitive.Provider
+>;
+
+function TooltipProvider({
+  delayDuration = 300,
+  skipDelayDuration = 300,
+  children,
+  ...props
+}: TooltipProviderProps) {
+  return (
+    <TooltipPrimitive.Provider
+      delayDuration={delayDuration}
+      skipDelayDuration={skipDelayDuration}
+      {...props}
+    >
+      <TooltipProviderContext.Provider value={true}>
+        {children}
+      </TooltipProviderContext.Provider>
+    </TooltipPrimitive.Provider>
+  );
+}
 
 const TooltipRoot = TooltipPrimitive.Root;
 const TooltipPortal = TooltipPrimitive.Portal;
@@ -86,9 +113,10 @@ const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
       ...props
     }: TooltipProps,
     ref
-  ) => (
-    <TooltipProvider delayDuration={delayDuration} skipDelayDuration={0}>
-      <TooltipRoot disableHoverableContent>
+  ) => {
+    const hasProvider = React.useContext(TooltipProviderContext);
+    const tooltip = (
+      <TooltipRoot disableHoverableContent delayDuration={delayDuration}>
         <TooltipTrigger asChild={tooltipTriggerAsChild}>
           {trigger}
         </TooltipTrigger>
@@ -104,8 +132,17 @@ const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
           </div>
         </TooltipContent>
       </TooltipRoot>
-    </TooltipProvider>
-  )
+    );
+
+    // Under a shared provider the per-instance provider is skipped so
+    // skip-delay spans sibling tooltips; standalone tooltips still get
+    // skip-delay on their own trigger via the wrapper defaults.
+    return hasProvider ? (
+      tooltip
+    ) : (
+      <TooltipProvider delayDuration={delayDuration}>{tooltip}</TooltipProvider>
+    );
+  }
 );
 Tooltip.displayName = "Tooltip";
 

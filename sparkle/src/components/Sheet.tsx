@@ -27,6 +27,7 @@ const SheetOverlay = React.forwardRef<
       "bg-muted-foreground/75 dark:bg-muted-background/75",
       "data-[state=open]:animate-in data-[state=closed]:animate-out",
       "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "motion-reduce:animate-none",
       className
     )}
     {...props}
@@ -55,7 +56,7 @@ const sheetVariants = cva(
   cn(
     "fixed z-50 overflow-hidden flex flex-col h-full w-full",
     "bg-modal-background",
-    "transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500"
+    "data-[state=open]:animate-in data-[state=closed]:animate-out ease-drawer data-[state=open]:duration-modal-enter data-[state=closed]:duration-modal-exit motion-reduce:animate-none"
   ),
   {
     variants: {
@@ -246,7 +247,7 @@ const SheetContainer = ({
       noScroll={noScroll}
       className={cn(
         "min-h-0 w-full flex-1 overflow-hidden",
-        "border-t border-border/60 transition-all duration-300"
+        "border-t border-border/60"
       )}
     >
       <div
@@ -334,7 +335,7 @@ const SheetTitle = React.forwardRef<
     {icon && <Icon visual={icon} size="lg" className="text-foreground" />}
     <SheetPrimitive.Title
       ref={ref}
-      className={cn("heading-lg", className)}
+      className={cn("heading-lg text-balance", className)}
       {...props}
     />
   </>
@@ -347,7 +348,7 @@ const SheetDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Description
     ref={ref}
-    className={cn("text-sm", "text-muted-foreground", className)}
+    className={cn("text-sm text-pretty", "text-muted-foreground", className)}
     {...props}
   />
 ));

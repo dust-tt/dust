@@ -48,7 +48,6 @@ export function RainbowEffect({
 
   const rainbowClassBlur = cn(
     "absolute bottom-[14%] left-1/2 z-0 -translate-x-1/2 animate-rainbow bg-rainbow-gradient bg-[length:200%]",
-    "transition-all",
     selectedSize.height,
     selectedSize.width,
     selectedSize.blur

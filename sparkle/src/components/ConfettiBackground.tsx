@@ -1,3 +1,4 @@
+import { useReducedMotion } from "framer-motion";
 import React, { useEffect, useRef, useState } from "react";
 import Confetti from "react-confetti";
 
@@ -54,6 +55,7 @@ const ConfettiBackground: React.FC<ConfettiBackgroundProps> = ({
   const [referentWidth, setReferentWidth] = useState(0);
   const [referentHeight, setReferentHeight] = useState(0);
   const resizeObserver = useRef<ResizeObserver | null>(null);
+  const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (referentSize && referentSize.current) {
@@ -77,6 +79,11 @@ const ConfettiBackground: React.FC<ConfettiBackgroundProps> = ({
       }
     };
   }, [referentSize]);
+
+  // Purely decorative full-motion canvas: render nothing under reduced motion.
+  if (shouldReduceMotion) {
+    return null;
+  }
 
   const confettiProps = {
     ...baseConfettiProps,

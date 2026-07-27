@@ -40,7 +40,7 @@ function InlineExpandButton({
       {label}{" "}
       <button
         onClick={onClick}
-        className="cursor-pointer font-medium text-highlight hover:underline"
+        className="cursor-pointer font-medium text-highlight hover:underline underline-offset-2"
       >
         {buttonText}
       </button>
@@ -189,7 +189,7 @@ function JsonValue({
           {!isExpanded && "…"}{" "}
           <button
             onClick={() => handleToggleExpanded(longStringPath)}
-            className="cursor-pointer font-medium text-highlight hover:underline"
+            className="cursor-pointer font-medium text-highlight hover:underline underline-offset-2"
           >
             {isExpanded
               ? "collapse"

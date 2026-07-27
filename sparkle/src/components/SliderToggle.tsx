@@ -9,9 +9,10 @@ type SliderToggleProps = {
 };
 
 const baseClasses = cn(
-  "relative shrink-0 h-5 w-8 rounded-full cursor-pointer flex items-center",
+  "touch-hitbox relative shrink-0 h-5 w-8 rounded-full cursor-pointer flex items-center",
   // Track color and knob slide share timing so they animate as one unit.
   "transition-colors duration-200 ease-in-out motion-reduce:transition-none",
+  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0",
   "shadow-[inset_0px_-3px_3px_0px_rgba(255,255,255,0.25),inset_0px_0.5px_2px_0px_rgba(0,0,0,0.14)]"
 );
 
@@ -47,13 +48,13 @@ export function SliderToggle({
     disabled ? stateClasses.disabled : ""
   );
 
-  const SliderToggleContent = (
-    <div
-      onClick={(e) => {
-        if (!disabled) {
-          onClick?.(e); // Run passed onClick event
-        }
-      }}
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={selected}
+      disabled={disabled}
+      onClick={onClick}
       className={cn(
         "group/slider",
         className,
@@ -84,8 +85,6 @@ export function SliderToggle({
               : "group-hover/slider:w-[18px] group-active/slider:w-4")
         )}
       />
-    </div>
+    </button>
   );
-
-  return SliderToggleContent;
 }

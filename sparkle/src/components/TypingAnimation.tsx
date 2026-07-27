@@ -1,3 +1,4 @@
+import { useReducedMotion } from "framer-motion";
 import React, { useEffect, useRef, useState } from "react";
 
 interface TypingAnimationProps {
@@ -19,8 +20,20 @@ export function TypingAnimation({
   const [i, setI] = useState<number>(Math.min(1, text.length));
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const shouldReduceMotion = useReducedMotion();
+
+  // Under reduced motion the full text renders immediately; completion still
+  // fires so callers waiting on it are not stuck.
+  useEffect(() => {
+    if (shouldReduceMotion) {
+      onCompleteRef.current?.();
+    }
+  }, [shouldReduceMotion]);
 
   useEffect(() => {
+    if (shouldReduceMotion) {
+      return;
+    }
     const typingEffect = setInterval(() => {
       if (i < text.length) {
         setDisplayedText(text.substring(0, i + 1));
@@ -34,7 +47,11 @@ export function TypingAnimation({
     return () => {
       clearInterval(typingEffect);
     };
-  }, [duration, i, text]);
+  }, [duration, i, text, shouldReduceMotion]);
 
-  return <span className="notranslate">{displayedText}</span>;
+  return (
+    <span className="notranslate">
+      {shouldReduceMotion ? text : displayedText}
+    </span>
+  );
 }

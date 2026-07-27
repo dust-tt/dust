@@ -270,6 +270,10 @@ export const Easing: Story = {
               description: "= out-quint — modals, drawers.",
             },
             {
+              name: "ease-drawer",
+              description: "iOS drawer curve — sheets, side panels.",
+            },
+            {
               name: "ease-move",
               description: "= in-out-quad — tab indicators, reorder.",
             },
@@ -300,6 +304,34 @@ export const Easing: Story = {
             },
           ]}
         />
+      </Section>
+      <Section
+        title="Reduced motion"
+        description={
+          <p className="text-sm text-primary-600">
+            Motion must degrade gracefully under prefers-reduced-motion. Three
+            tiers, applied everywhere in sparkle. Opacity-only loading
+            indicators (pulse, opacity-pulse, Spinner) are exempt on purpose —
+            they convey state, not decoration.
+          </p>
+        }
+      >
+        <ul className="list-disc pl-5 text-sm text-primary-600">
+          <li>
+            Perpetual decorative keyframes (shiny-text, rainbow, ring-pulse,
+            breathing, move-square) — stopped centrally in sparkle-theme.css;
+            nothing to do per component.
+          </li>
+          <li>
+            Enter/exit animations — add motion-reduce:animate-none next to the
+            animate-in/animate-out classes.
+          </li>
+          <li>
+            Transitions that move or resize things — add
+            motion-reduce:transition-none; color-only transitions may keep it
+            for consistency.
+          </li>
+        </ul>
       </Section>
     </div>
   ),
@@ -443,6 +475,13 @@ export const EnterExitPairing: Story = {
         label="Modals & drawers"
         description="Larger surfaces, longer + stronger: ease-emphasized with duration-modal-enter (300ms) in, duration-modal-exit (240ms) out."
         easingClass="ease-emphasized"
+        enterDurationClass="duration-modal-enter"
+        exitDurationClass="duration-modal-exit"
+      />
+      <EnterExitDemo
+        label="Sheets & side panels"
+        description="Full-height drawers slide on the iOS curve: ease-drawer with duration-modal-enter (300ms) in, duration-modal-exit (240ms) out."
+        easingClass="ease-drawer"
         enterDurationClass="duration-modal-enter"
         exitDurationClass="duration-modal-exit"
       />

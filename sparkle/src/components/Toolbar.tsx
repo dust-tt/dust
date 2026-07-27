@@ -24,7 +24,7 @@ const toolbarRootVariants = cva("inline-flex items-center", {
   variants: {
     variant: {
       overlay:
-        "absolute left-0 top-0 z-10 justify-start gap-3 overflow-hidden rounded-xl bg-primary-50 py-1 pl-3 duration-700 ease-in-out",
+        "absolute left-0 top-0 z-10 justify-start gap-3 overflow-hidden rounded-xl bg-primary-50 py-1 pl-3",
       inline:
         "gap-1 border-b border-t border-border bg-background p-1 sm:rounded-2xl sm:border sm:border-border/50 sm:shadow-md",
     },
