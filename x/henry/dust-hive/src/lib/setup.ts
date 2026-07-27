@@ -69,9 +69,9 @@ async function symlinkCargoTarget(srcDir: string, destDir: string): Promise<void
   }
 }
 
-// Find all files matching filename in the repo (excluding node_modules and other large dirs)
+// Find all local agent config files in the repo (excluding node_modules and other large dirs)
 // Uses -prune to skip entire directory trees rather than filtering after traversal
-async function findAgentsFiles(srcDir: string, filename: string): Promise<string[]> {
+async function findAgentsFiles(srcDir: string): Promise<string[]> {
   const proc = Bun.spawn(
     [
       "find",
@@ -101,8 +101,13 @@ async function findAgentsFiles(srcDir: string, filename: string): Promise<string
       ")",
       "-prune",
       "-o",
+      "(",
       "-name",
-      filename,
+      "AGENTS.local.md",
+      "-o",
+      "-name",
+      "AGENTS.override.md",
+      ")",
       "-type",
       "f",
       "-print",
@@ -128,16 +133,13 @@ async function findAgentsFiles(srcDir: string, filename: string): Promise<string
 // Copy user config files (AGENTS.local.md, AGENTS.override.md files, .claude/) from main repo to worktree
 async function copyUserConfigFiles(srcDir: string, destDir: string): Promise<void> {
   // Find and copy all AGENTS.local.md and AGENTS.override.md files, preserving directory structure
-  const filenames = ["AGENTS.local.md", "AGENTS.override.md"];
-  for (const filename of filenames) {
-    const agentsFiles = await findAgentsFiles(srcDir, filename);
-    for (const srcPath of agentsFiles) {
-      // Get relative path from srcDir
-      const relativePath = srcPath.slice(srcDir.length + 1);
-      const destPath = `${destDir}/${relativePath}`;
-      await Bun.spawn(["cp", srcPath, destPath]).exited;
-      logger.success(`Copied ${relativePath}`);
-    }
+  const agentsFiles = await findAgentsFiles(srcDir);
+  for (const srcPath of agentsFiles) {
+    // Get relative path from srcDir
+    const relativePath = srcPath.slice(srcDir.length + 1);
+    const destPath = `${destDir}/${relativePath}`;
+    await Bun.spawn(["cp", srcPath, destPath]).exited;
+    logger.success(`Copied ${relativePath}`);
   }
 
   // Copy directories recursively, merging with existing content
