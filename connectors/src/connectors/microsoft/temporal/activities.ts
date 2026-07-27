@@ -627,7 +627,7 @@ export async function markNodeAsSeen(
     return;
   }
 
-  // In-flight activities scheduled before startSyncTs was added omit it.
+  // No need to mark nodes updated more recently than this sync.
   if (
     startSyncTs !== undefined &&
     node.lastSeenTs &&
