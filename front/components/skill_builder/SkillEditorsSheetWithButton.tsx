@@ -7,17 +7,17 @@ import { Button, Users01 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useController } from "react-hook-form";
 
-interface SkillEditorsSheetProps {
+interface SkillEditorsSheetWithButtonProps {
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
   onAddSelfAsEditor: () => void;
 }
 
-export function SkillEditorsSheet({
+export function SkillEditorsSheetWithButton({
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
-}: SkillEditorsSheetProps) {
+}: SkillEditorsSheetWithButtonProps) {
   const { owner } = useSkillBuilderContext();
   const { hasFeature } = useFeatureFlags();
   const [isOpen, setIsOpen] = useState(false);
@@ -38,13 +38,16 @@ export function SkillEditorsSheet({
     );
   }
 
+  const buttonLabel =
+    editors.length <= 1 ? "Add editors" : `${editors.length} editors`;
+
   return (
     <>
       <Button
         variant="outline"
         size="sm"
         icon={Users01}
-        label="Editors"
+        label={buttonLabel}
         disabled={isReadOnly}
         onClick={() => setIsOpen(true)}
         type="button"

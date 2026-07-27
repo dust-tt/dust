@@ -40,6 +40,7 @@ import {
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { WorkspaceType } from "@app/types/user";
 import {
   BarFooter,
   BarHeader,
@@ -305,6 +306,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
             onAddSelfAsEditor={() => {
               void handleAddSelfAsEditor();
             }}
+            owner={owner}
           />
         </div>
       </ScrollArea>
@@ -372,19 +374,23 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   );
 }
 
+interface SkillBuilderSettingsOrComparisonFooterProps {
+  skill?: SkillType;
+  hasSelfImprovingSkills: boolean;
+  isEditorGateVisible: boolean;
+  isAddingSelfAsEditor: boolean;
+  onAddSelfAsEditor: () => void;
+  owner: WorkspaceType;
+}
+
 function SkillBuilderSettingsOrComparisonFooter({
   skill,
   hasSelfImprovingSkills,
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
-}: {
-  skill?: SkillType;
-  hasSelfImprovingSkills: boolean;
-  isEditorGateVisible: boolean;
-  isAddingSelfAsEditor: boolean;
-  onAddSelfAsEditor: () => void;
-}) {
+  owner,
+}: SkillBuilderSettingsOrComparisonFooterProps) {
   const { compareVersion } = useSkillVersionComparisonContext();
 
   if (compareVersion) {
@@ -398,6 +404,7 @@ function SkillBuilderSettingsOrComparisonFooter({
       isEditorGateVisible={isEditorGateVisible}
       isAddingSelfAsEditor={isAddingSelfAsEditor}
       onAddSelfAsEditor={onAddSelfAsEditor}
+      owner={owner}
     />
   );
 }

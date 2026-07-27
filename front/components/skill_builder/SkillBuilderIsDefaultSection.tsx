@@ -1,4 +1,5 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import {
   ContentMessage,
@@ -18,6 +19,10 @@ import { useFormContext, useFormState } from "react-hook-form";
 const MIN_DISCOVERABLE_DESCRIPTION_LENGTH = 150;
 
 export function SkillBuilderIsDefaultSection() {
+  const { hasFeature } = useFeatureFlags();
+  const isSkillPublicationEnabled = hasFeature(
+    "admin_governance_skill_publication"
+  );
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
   const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
   const availability = watch("availability");
@@ -83,7 +88,7 @@ export function SkillBuilderIsDefaultSection() {
                   discoverable.
                 </li>
               </ul>
-              {isDescriptionTooShort && (
+              {isDescriptionTooShort && !isSkillPublicationEnabled && (
                 <ContentMessage
                   variant="golden"
                   title="Agents may not understand when to use this skill"
