@@ -40,7 +40,7 @@ import {
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, HeaderContext } from "@tanstack/react-table";
 import type { ComponentType, ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -74,11 +74,13 @@ const getTableColumns = ({
   owner,
   tags,
   isBatchEdit,
+  setSelection,
   mutateAgentConfigurations,
 }: {
   owner: WorkspaceType;
   tags: TagType[];
   isBatchEdit: boolean;
+  setSelection: (selection: string[]) => void;
   mutateAgentConfigurations: () => Promise<any>;
 }) => {
   /**
@@ -99,7 +101,44 @@ const getTableColumns = ({
     ...(isBatchEdit
       ? [
           {
-            header: "",
+            header: (info: HeaderContext<RowData, boolean>) => {
+              // Only the agents of the current page that can be batch edited.
+              const selectableRows = info.table
+                .getRowModel()
+                .rows.filter((row) => row.original.canArchive);
+              const selectedCount = selectableRows.filter(
+                (row) => row.original.isSelected
+              ).length;
+              const areAllSelected =
+                selectableRows.length > 0 &&
+                selectedCount === selectableRows.length;
+
+              return (
+                <Checkbox
+                  checked={
+                    areAllSelected
+                      ? true
+                      : selectedCount > 0
+                        ? "partial"
+                        : false
+                  }
+                  disabled={selectableRows.length === 0}
+                  tooltip={
+                    areAllSelected ? "Clear selection" : "Select all on page"
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onCheckedChange={(checked) => {
+                    setSelection(
+                      checked
+                        ? selectableRows.map((row) => row.original.sId)
+                        : []
+                    );
+                  }}
+                />
+              );
+            },
             accessorKey: "select",
             cell: (info: CellContext<RowData, boolean>) => (
               <DataTable.CellContent
@@ -113,9 +152,8 @@ const getTableColumns = ({
             ),
             meta: {
               className: "w-10",
-              tooltip: "Select",
             },
-            sortable: false,
+            enableSorting: false,
           },
         ]
       : []),
@@ -561,6 +599,7 @@ export function AssistantsTable({
               owner,
               tags: sortedTags,
               isBatchEdit,
+              setSelection,
               mutateAgentConfigurations,
             })}
             pagination={pagination}
