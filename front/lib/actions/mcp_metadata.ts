@@ -809,7 +809,7 @@ async function connectToRemoteMCPServer(
 type DustToolMeta = {
   stake?: MCPToolStakeLevelType;
   displayLabels?: ToolDisplayLabels;
-  editableArguments?: string[];
+  editableArguments?: readonly string[];
   argumentsRequiringApproval?: string[];
   timeoutMs?: number;
   eager?: boolean;

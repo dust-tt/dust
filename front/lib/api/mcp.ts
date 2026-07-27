@@ -76,7 +76,7 @@ export type MCPToolType = {
   // being deferred behind tool search. Absent for remote/client-side tools, which
   // therefore default to deferred.
   eager?: boolean;
-  editableArguments?: string[];
+  editableArguments?: readonly string[];
 };
 
 export type MCPServerType = {

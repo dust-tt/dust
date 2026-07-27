@@ -76,7 +76,7 @@ export type ServerSideMCPToolType = Omit<
   // When true, the tool is loaded upfront in the cached tools prefix instead of
   // being deferred behind tool search.
   eager?: boolean;
-  editableArguments?: string[];
+  editableArguments?: readonly string[];
 };
 
 export type ClientSideMCPToolType = Omit<
