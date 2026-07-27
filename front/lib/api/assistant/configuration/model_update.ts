@@ -1,6 +1,6 @@
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
-import { getAgentConfigurationYAMLContext } from "@app/lib/api/assistant/configuration/yaml_export";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -127,7 +127,7 @@ async function upgradeAgentConfigurationModel(
 ): Promise<Result<void, Error>> {
   // Resolves the current configuration along with its editors and skills, and rejects agents
   // that cannot be re-saved as-is (archived, global).
-  const contextResult = await getAgentConfigurationYAMLContext(auth, agentId, {
+  const contextResult = await getAgentConfigurationContext(auth, agentId, {
     requireEditorGroup: true,
   });
   if (contextResult.isErr()) {
