@@ -2,11 +2,13 @@ import { fireworksConfigSchema } from "@app/lib/model_constructors/providers/fir
 import { KIMI_K3 } from "@app/lib/model_constructors/types/models";
 import { z } from "zod";
 
-// https://fireworks.ai/models/fireworks/kimi-k3 (1040k context, verified
-// 2026-07-27). Moonshot documents a 131k default / 1M max completion budget;
-// we cap output at 64k like the other 1M-context Fireworks models.
+// Real model spec, verified 2026-07-27 against
+// https://fireworks.ai/models/fireworks/kimi-k3 (1040k context) and
+// https://platform.kimi.ai/docs/guide/kimi-k3-quickstart (max_completion_tokens
+// defaults to 131k). The Dust product caps (256k context, 64k output) are
+// applied in the llms layer.
 const CONTEXT_SIZE = 1_040_000;
-const MAX_OUTPUT_TOKENS = 64_000;
+const MAX_OUTPUT_TOKENS = 131_072;
 const DEFAULT_REASONING_EFFORT = "medium";
 
 // Same Fireworks reasoning contract as Kimi K2.6: none/low drop
@@ -33,8 +35,10 @@ export function WithMoonshotAiKimiK3Config<
 
     static readonly configSchema = configSchema;
 
-    static readonly contextSize = CONTEXT_SIZE;
-    static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
+    // Typed as `number` (not the literal) so the Dust layer can cap it.
+    static readonly contextSize: number = CONTEXT_SIZE;
+    // Typed as `number` (not the literal) so the Dust layer can cap it.
+    static readonly maxOutputTokens: number = MAX_OUTPUT_TOKENS;
   }
 
   return MoonshotAiKimiK3;
