@@ -289,12 +289,16 @@ export function getDelimitersConfiguration({
   if (DEEPSEEK_MODELS.includes(endpoint.modelConfig.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
   }
-  if (reasoningEffort ?? endpoint.modelConfig.defaultReasoningEffort) {
+
+  if (
+    (reasoningEffort ?? endpoint.modelConfig.defaultReasoningEffort) !== "light"
+  ) {
     return {
       delimiters: [],
       incompleteDelimiterPatterns: [],
     };
   }
+
   return {
     delimiters: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.delimiters,
     incompleteDelimiterPatterns:
