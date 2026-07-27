@@ -1,10 +1,11 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import Custom404 from "@app/components/pages/Custom404";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { useApp } from "@app/lib/swr/apps";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { APP_NAME_REGEXP } from "@app/types/app";
@@ -17,7 +18,8 @@ export function AppSettingsPage() {
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const owner = useWorkspace();
-  const { isBuilder } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
+  const canAdministrateApps = hasPermission("admin", "dust_app");
 
   const { spaceInfo: space, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -135,12 +137,12 @@ export function AppSettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appName]);
 
-  // Redirect non-builders
+  // Redirect users without app administration permission.
   useEffect(() => {
-    if (!isBuilder && app && space) {
+    if (!canAdministrateApps && app && space) {
       void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${app.sId}`);
     }
-  }, [isBuilder, app, space, router, owner.sId]);
+  }, [canAdministrateApps, app, space, router, owner.sId]);
 
   const isLoading = isSpaceInfoLoading || isAppLoading;
 

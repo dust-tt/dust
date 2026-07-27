@@ -335,6 +335,7 @@ describe("listBlockedActionsForConversation", () => {
 
   it("returns zero and leaves the action unchanged when the expected status does not match", async () => {
     const agentMessage = await AgentMessageModel.create({
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       agentConfigurationId: "test-agent",
       agentConfigurationVersion: 0,

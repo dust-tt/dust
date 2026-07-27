@@ -227,6 +227,7 @@ export async function validateUserMention(
     approvalState: "approved" | "rejected";
   }
 ): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err({
@@ -299,8 +300,8 @@ export async function validateUserMention(
     });
   }
   if (isApproval) {
-    const auditMessage = conversation.spaceId
-      ? "User approved a mention and added user to project"
+    const auditMessage = isPodConversation(conversation)
+      ? "User approved a mention and added user to Pod"
       : "User approved a mention";
     auditLog(
       {
@@ -494,6 +495,7 @@ export async function dismissMention(
     id: string;
   }
 ): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err({

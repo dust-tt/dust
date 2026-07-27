@@ -14,41 +14,6 @@ export type ImageModelIdType = string;
 
 export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
   {
-    modelId: "gpt-3.5-turbo",
-    displayName: "GPT 3.5 turbo",
-    providerId: "openai",
-  },
-  {
-    modelId: "gpt-4-turbo",
-    displayName: "GPT 4 turbo",
-    providerId: "openai",
-  },
-  {
-    modelId: "gpt-4o",
-    displayName: "GPT 4o",
-    providerId: "openai",
-  },
-  {
-    modelId: "gpt-4o-2024-08-06",
-    displayName: "GPT 4o",
-    providerId: "openai",
-  },
-  {
-    modelId: "gpt-4o-mini",
-    displayName: "GPT 4o-mini",
-    providerId: "openai",
-  },
-  {
-    modelId: "gpt-4.1-2025-04-14",
-    displayName: "GPT 4.1",
-    providerId: "openai",
-  },
-  {
-    modelId: "gpt-4.1-mini-2025-04-14",
-    displayName: "GPT 4.1 mini",
-    providerId: "openai",
-  },
-  {
     modelId: "gpt-5.1",
     displayName: "GPT 5.1",
     providerId: "openai",
@@ -109,51 +74,6 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "openai",
   },
   {
-    modelId: "o1",
-    displayName: "o1",
-    providerId: "openai",
-  },
-  {
-    modelId: "o1-mini",
-    displayName: "o1-mini",
-    providerId: "openai",
-  },
-  {
-    modelId: "o3",
-    displayName: "o3",
-    providerId: "openai",
-  },
-  {
-    modelId: "o3-mini",
-    displayName: "o3-mini",
-    providerId: "openai",
-  },
-  {
-    modelId: "o4-mini",
-    displayName: "o4-mini",
-    providerId: "openai",
-  },
-  {
-    modelId: "claude-4-opus-20250514",
-    displayName: "Claude 4 Opus",
-    providerId: "anthropic",
-  },
-  {
-    modelId: "claude-4-sonnet-20250514",
-    displayName: "Claude 4 Sonnet",
-    providerId: "anthropic",
-  },
-  {
-    modelId: "claude-sonnet-4-5-20250929",
-    displayName: "Claude 4.5 Sonnet",
-    providerId: "anthropic",
-  },
-  {
-    modelId: "claude-opus-4-5-20251101",
-    displayName: "Claude 4.5 Opus",
-    providerId: "anthropic",
-  },
-  {
     modelId: "claude-opus-4-6",
     displayName: "Claude Opus 4.6",
     providerId: "anthropic",
@@ -166,6 +86,11 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
   {
     modelId: "claude-opus-4-8",
     displayName: "Claude Opus 4.8",
+    providerId: "anthropic",
+  },
+  {
+    modelId: "claude-opus-5",
+    displayName: "Claude Opus 5",
     providerId: "anthropic",
   },
   {
@@ -184,36 +109,6 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "anthropic",
   },
   {
-    modelId: "claude-3-opus-20240229",
-    displayName: "Claude 3 Opus",
-    providerId: "anthropic",
-  },
-  {
-    modelId: "claude-3-5-sonnet-20240620",
-    displayName: "Claude 3.5 Sonnet",
-    providerId: "anthropic",
-  },
-  {
-    modelId: "claude-3-5-sonnet-20241022",
-    displayName: "Claude 3.5 Sonnet",
-    providerId: "anthropic",
-  },
-  {
-    modelId: "claude-3-7-sonnet-20250219",
-    displayName: "Claude 3.7 Sonnet",
-    providerId: "anthropic",
-  },
-  {
-    modelId: "claude-3-haiku-20240307",
-    displayName: "Claude 3 Haiku",
-    providerId: "anthropic",
-  },
-  {
-    modelId: "claude-3-5-haiku-20241022",
-    displayName: "Claude 3.5 Haiku",
-    providerId: "anthropic",
-  },
-  {
     modelId: "claude-haiku-4-5-20251001",
     displayName: "Claude 4.5 Haiku",
     providerId: "anthropic",
@@ -221,11 +116,6 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
   {
     modelId: "mistral-large-latest",
     displayName: "Mistral Large",
-    providerId: "mistral",
-  },
-  {
-    modelId: "mistral-medium",
-    displayName: "Mistral Medium",
     providerId: "mistral",
   },
   {
@@ -244,33 +134,8 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "mistral",
   },
   {
-    modelId: "gemini-2.5-flash",
-    displayName: "Gemini 2.5 Flash",
-    providerId: "google_ai_studio",
-  },
-  {
-    modelId: "gemini-2.5-flash-lite",
-    displayName: "Gemini 2.5 Flash Lite",
-    providerId: "google_ai_studio",
-  },
-  {
-    modelId: "gemini-2.5-pro",
-    displayName: "Gemini 2.5 Pro",
-    providerId: "google_ai_studio",
-  },
-  {
-    modelId: "gemini-3-pro-preview",
-    displayName: "Gemini 3 Pro",
-    providerId: "google_ai_studio",
-  },
-  {
     modelId: "gemini-3.1-flash-lite",
     displayName: "Gemini 3.1 Flash Lite",
-    providerId: "google_ai_studio",
-  },
-  {
-    modelId: "gemini-3.1-flash-lite-preview",
-    displayName: "Gemini 3.1 Flash Lite (Preview)",
     providerId: "google_ai_studio",
   },
   {
@@ -279,33 +144,13 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "google_ai_studio",
   },
   {
-    modelId: "gemini-3-flash-preview",
-    displayName: "Gemini 3 Flash (Preview)",
-    providerId: "google_ai_studio",
-  },
-  {
     modelId: "gemini-3.5-flash",
     displayName: "Gemini 3.5 Flash",
     providerId: "google_ai_studio",
   },
   {
-    modelId: "deepseek-chat",
-    displayName: "DeepSeek",
-    providerId: "deepseek",
-  },
-  {
-    modelId: "accounts/fireworks/models/deepseek-v3p2",
-    displayName: "DeepSeek V3.2 (Fireworks)",
-    providerId: "fireworks",
-  },
-  {
     modelId: "accounts/fireworks/models/deepseek-v4-pro",
     displayName: "DeepSeek V4 Pro (Fireworks)",
-    providerId: "fireworks",
-  },
-  {
-    modelId: "accounts/fireworks/models/kimi-k2-instruct-0905",
-    displayName: "Kimi K2 Instruct (Fireworks)",
     providerId: "fireworks",
   },
   {
@@ -319,53 +164,13 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "fireworks",
   },
   {
-    modelId: "accounts/fireworks/models/minimax-m2p5",
-    displayName: "MiniMax M2.5 (Fireworks)",
-    providerId: "fireworks",
-  },
-  {
-    modelId: "accounts/fireworks/models/glm-5",
-    displayName: "GLM-5 (Fireworks)",
-    providerId: "fireworks",
-  },
-  {
     modelId: "accounts/fireworks/models/glm-5p2",
     displayName: "GLM-5.2 (Fireworks)",
     providerId: "fireworks",
   },
   {
-    modelId: "grok-3-latest",
-    displayName: "Grok 3",
-    providerId: "xai",
-  },
-  {
-    modelId: "grok-3-mini-latest",
-    displayName: "Grok 3 Mini",
-    providerId: "xai",
-  },
-  {
     modelId: "grok-4.5",
     displayName: "Grok 4.5",
-    providerId: "xai",
-  },
-  {
-    modelId: "grok-4-latest",
-    displayName: "Grok 4",
-    providerId: "xai",
-  },
-  {
-    modelId: "grok-4-fast-non-reasoning-latest",
-    displayName: "Grok 4 Fast (Non-Reasoning)",
-    providerId: "xai",
-  },
-  {
-    modelId: "grok-4-1-fast-reasoning-latest",
-    displayName: "Grok 4.1 Fast",
-    providerId: "xai",
-  },
-  {
-    modelId: "grok-4-1-fast-non-reasoning-latest",
-    displayName: "Grok 4.1 Fast (Non-Reasoning)",
     providerId: "xai",
   },
   {

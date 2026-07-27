@@ -77,13 +77,24 @@ SandboxModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
+        // Keep through the sandbox reaper rollback window: the pre-patch stale
+        // query does not exclude kill-requested rows and cannot use the new
+        // partial reaper index.
         fields: ["status", "lastActivityAt"],
         name: "sandboxes_status_last_activity_idx",
       },
       {
-        fields: ["killRequestedAt"],
-        name: "sandboxes_kill_requested_at_idx",
-        where: { killRequestedAt: { [Op.ne]: null } },
+        fields: ["killRequestedAt", "id"],
+        name: "sandboxes_reaper_kill_requested_idx",
+        where: {
+          killRequestedAt: { [Op.ne]: null },
+          status: { [Op.ne]: "deleted" },
+        },
+      },
+      {
+        fields: ["status", "lastActivityAt", "id"],
+        name: "sandboxes_reaper_stale_idx",
+        where: { killRequestedAt: { [Op.is]: null } },
       },
       {
         fields: ["baseImage", "version"],

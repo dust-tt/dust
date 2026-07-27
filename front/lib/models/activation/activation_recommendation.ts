@@ -5,7 +5,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
 // "suggested": shown to the user, no action taken yet
 // "executed": user ran the recommended action immediately (one-off)
@@ -27,6 +27,7 @@ export class ActivationRecommendationModel extends WorkspaceAwareModel<Activatio
 
   // The conversation in which the recommendation was (originally) made
   declare conversationId: ForeignKey<ConversationModel["id"]> | null;
+  declare conversation?: NonAttribute<ConversationModel>;
   // FK to the skill created as a result of this recommendation (set when status = "skill_created")
   declare createdSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   // FK to the trigger created as a result of this recommendation (set when status = "trigger_created")

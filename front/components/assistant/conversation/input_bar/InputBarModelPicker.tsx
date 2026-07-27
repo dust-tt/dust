@@ -9,14 +9,17 @@ import {
   buildModelSelection,
   buildTierSelection,
   getInitialEffort,
+  getModelEffortTier,
   getModelTier,
   getModelWithReasoningEffortLabel,
+  isPremiumModel,
   isSameSelection,
+  isTierLocked,
   resolveShownSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { useModels } from "@app/lib/swr/models";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -29,6 +32,7 @@ import type {
   ModelSelectionType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   BarFull,
@@ -73,6 +77,8 @@ export function InputBarModelPicker({
 }: InputBarModelPickerProps) {
   const { hasFeature } = useFeatureFlags();
   const hasModelsPicker = hasFeature("models_picker");
+  const { subscription } = useAuth();
+  const lockPremiumEfforts = !isCreditPricedPlan(subscription.plan);
   const { stickyModelOverride, setStickyModelOverride } =
     useContext(InputBarContext);
   const { isDark } = useTheme();
@@ -185,6 +191,9 @@ export function InputBarModelPicker({
     Date.now() - lastModelInteractionAtMsRef.current < 300;
 
   const onSelectTier = (tierId: ModelTierId) => {
+    if (isTierLocked(tierId, { lockPremiumEfforts })) {
+      return;
+    }
     commit({
       display: { kind: "tier", tierId },
       toSend: buildTierSelection(tierId),
@@ -192,8 +201,11 @@ export function InputBarModelPicker({
   };
 
   const onSelectModel = (model: ModelConfigurationType) => {
+    if (isPremiumModel(model, { lockPremiumEfforts })) {
+      return;
+    }
     lastModelInteractionAtMsRef.current = Date.now();
-    const effort = getInitialEffort(model);
+    const effort = getInitialEffort(model, { lockPremiumEfforts });
     commit({
       display: { kind: "model", model, effort },
       toSend: buildModelSelection(model, effort),
@@ -206,6 +218,12 @@ export function InputBarModelPicker({
     }
     lastModelInteractionAtMsRef.current = Date.now();
     const { model } = shown.display;
+    if (
+      lockPremiumEfforts &&
+      getModelEffortTier(model.modelId, effort) === "premium"
+    ) {
+      return;
+    }
     commit({
       display: { kind: "model", model, effort },
       toSend: buildModelSelection(model, effort),
@@ -265,6 +283,7 @@ export function InputBarModelPicker({
         shown={shown}
         agentDefault={agentDefault}
         canRevert={canRevert}
+        lockPremiumEfforts={lockPremiumEfforts}
         makerGroups={makerGroups}
         allModels={allModels}
         search={search}

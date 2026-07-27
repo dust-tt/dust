@@ -1038,7 +1038,7 @@ describe("createAgentMessages", () => {
       ];
 
       const { agentMessages, richMentions } = await createAgentMessages(auth, {
-        conversation: spaceConversation,
+        conversation: spaceConversation.toJSON(),
         metadata: {
           type: "create",
           mentions,
@@ -1184,7 +1184,7 @@ describe("createAgentMessages", () => {
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
-          conversation: spaceConversation,
+          conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
             mentions,
@@ -1316,7 +1316,7 @@ describe("createAgentMessages", () => {
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
-          conversation: spaceConversation,
+          conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
             mentions,
@@ -1439,7 +1439,7 @@ describe("createAgentMessages", () => {
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
-          conversation: spaceConversation,
+          conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
             mentions,
@@ -1588,7 +1588,7 @@ describe("createAgentMessages", () => {
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
-          conversation: spaceConversation,
+          conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
             mentions,
@@ -1751,6 +1751,7 @@ describe("createUserMessage", () => {
     const originMessage = await withTransaction(async (transaction) => {
       const originAgentMessage = await AgentMessageModel.create(
         {
+          conversationId: conversation.id,
           workspaceId: workspace.id,
           skipToolsValidation: false,
           agentConfigurationId: "not-a-real-agent",
@@ -1929,6 +1930,7 @@ describe("createUserMessage", () => {
     const originMessage = await withTransaction(async (transaction) => {
       const originAgentMessage = await AgentMessageModel.create(
         {
+          conversationId: conversation.id,
           workspaceId: workspace.id,
           skipToolsValidation: false,
           agentConfigurationId: "not-a-real-agent",

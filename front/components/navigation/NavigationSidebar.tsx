@@ -10,9 +10,10 @@ import { UserMenu } from "@app/components/UserMenu";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
+import { isAdmin, isManager } from "@app/types/user";
 import {
   CollapseButton,
   cn,
@@ -61,13 +62,30 @@ export const NavigationSidebar = React.forwardRef<
   }, [router.isReady, router.pathname]);
 
   const { hasFeature } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions();
+
+  // Resolves the Admin tab's landing page (or null to hide it) from the member's role/permissions.
+  // Managers land on People; members who only hold the billing permission land on Billing.
+  const adminSectionHref = isManager(owner)
+    ? `/w/${owner.sId}/members`
+    : hasPermission("admin", "billing")
+      ? `/w/${owner.sId}/billing`
+      : null;
+
+  const showAdminSection = adminSectionHref !== null;
 
   const { spaceMenuButtonRef } = useWelcomeTourGuide();
 
   // TODO(2024-06-19 flav): Fix issue with AppLayout changing between pagesg
   const navs = useMemo(
-    () => getTopNavigationTabs(owner, spaceMenuButtonRef),
-    [owner, spaceMenuButtonRef]
+    () =>
+      getTopNavigationTabs(
+        owner,
+        spaceMenuButtonRef,
+        showAdminSection,
+        adminSectionHref
+      ),
+    [owner, spaceMenuButtonRef, showAdminSection, adminSectionHref]
   );
 
   const currentTab = useMemo(

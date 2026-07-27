@@ -199,6 +199,7 @@ export async function failCompactionMessage(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const targetConversationRes = await getConversation(
     auth,
     conversationId,
@@ -293,6 +294,7 @@ export async function runCompaction(
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const targetConversationRes = await getConversation(
     auth,
     conversationId,
@@ -328,6 +330,7 @@ export async function runCompaction(
     sourceConversation &&
     sourceConversation.conversationId !== conversationId
   ) {
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
     const sourceConversationRes = await getConversation(
       auth,
       sourceConversation.conversationId,

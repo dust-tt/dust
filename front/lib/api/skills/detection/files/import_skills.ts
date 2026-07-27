@@ -8,6 +8,7 @@ import {
 import type { ZipDetectedSkill } from "@app/lib/api/skills/detection/zip/types";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -16,7 +17,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { SkillSourceType } from "@app/types/assistant/skill_configuration";
-import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
+import { getDefaultSkillAvailability } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -77,6 +78,8 @@ export async function importSkillsFromFiles(
   }
 
   const allSkills: ZipDetectedSkill[] = [];
+
+  const featureFlags = await getFeatureFlags(auth);
 
   // Readers are keyed by skill to avoid re-opening the same zip for each
   // attachment. Each zip buffer produces one reader shared across its skills.
@@ -249,7 +252,7 @@ export async function importSkillsFromFiles(
           icon,
           source,
           sourceMetadata: { filePath: skill.skillMdPath },
-          availability: DEFAULT_SKILL_AVAILABILITY,
+          availability: getDefaultSkillAvailability(featureFlags),
         },
         {
           mcpServerViews: suggestedMCPServerViews,

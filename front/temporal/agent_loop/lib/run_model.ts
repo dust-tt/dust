@@ -37,12 +37,6 @@ import {
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { getStreamLLM } from "@app/lib/api/llm";
-import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
-import {
-  parseAnthropicToolSearchBlock,
-  TOOL_SEARCH_SERVER_TOOL_NAMES,
-} from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
-import { OPENAI_PROVIDER_ID } from "@app/lib/api/llm/clients/openai/types";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -59,6 +53,10 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
+import {
+  parseAnthropicToolSearchBlock,
+  TOOL_SEARCH_SERVER_TOOL_NAMES,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -94,7 +92,11 @@ import {
   isTextContent,
   type ModelConversationTypeMultiActions,
 } from "@app/types/assistant/generation";
-import { isByokProviderId } from "@app/types/assistant/models/providers";
+import {
+  ANTHROPIC_PROVIDER_ID,
+  isByokProviderId,
+  OPENAI_PROVIDER_ID,
+} from "@app/types/assistant/models/providers";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -189,7 +191,7 @@ function getReplayedToolNames(
           }
           if (
             content.type === "provider_passthrough" &&
-            content.value.provider === ANTHROPIC_PROVIDER_ID
+            content.value.provider === "anthropic"
           ) {
             // OpenAI keeps loaded definitions in the replayed tool_search_output
             // item. Anthropic requires referenced tools in the current request.
@@ -465,6 +467,7 @@ export async function runModel(
         model,
         reasoningEffort: model.reasoningEffort,
         featureFlags,
+        agentScope: agentConfiguration.scope,
       }
     );
     if (accessError) {

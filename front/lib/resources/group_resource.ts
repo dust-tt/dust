@@ -1376,16 +1376,21 @@ export class GroupResource extends BaseResource<GroupModel> {
   ): Promise<Map<ModelId, number>> {
     const owner = auth.getNonNullableWorkspace();
     const counts = new Map<ModelId, number>();
+    if (groups.length === 0) {
+      return counts;
+    }
 
     const globalGroup = groups.find((g) => g.isGlobal());
     const regularGroups = groups.filter((g) => !g.isGlobal());
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({ workspace: owner });
+    const activeUserIds = new Set(
+      workspaceMemberships.map((membership) => membership.userId)
+    );
 
     // Global group count comes from workspace active memberships.
     if (globalGroup) {
-      const { total } = await MembershipResource.getActiveMemberships({
-        workspace: owner,
-      });
-      counts.set(globalGroup.id, total);
+      counts.set(globalGroup.id, workspaceMemberships.length);
     }
 
     // All regular group counts in one query, reusing the existing method.
@@ -1393,7 +1398,10 @@ export class GroupResource extends BaseResource<GroupModel> {
       const membershipsByGroup =
         await GroupResource.getActiveMembershipsForGroups(auth, regularGroups);
       for (const [groupId, userIds] of Object.entries(membershipsByGroup)) {
-        counts.set(Number(groupId), userIds.length);
+        counts.set(
+          Number(groupId),
+          userIds.filter((userId) => activeUserIds.has(userId)).length
+        );
       }
     }
 
@@ -2438,6 +2446,10 @@ export class GroupResource extends BaseResource<GroupModel> {
           ],
           roles: [
             { role: "admin", permissions: ["read", "admin"] },
+            {
+              role: "manager",
+              permissions: ["read"],
+            },
             {
               role: "user",
               permissions: ["read"],

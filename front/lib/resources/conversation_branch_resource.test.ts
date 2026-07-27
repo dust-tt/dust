@@ -53,6 +53,7 @@ describe("ConversationBranchResource permissions", () => {
 
     const ownerBaseUserMessage = await UserMessageModel.create({
       userId: ownerUser.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Base message for branch",
       userContextUsername: "testuser",
@@ -77,6 +78,7 @@ describe("ConversationBranchResource permissions", () => {
 
     const otherBaseUserMessage = await UserMessageModel.create({
       userId: otherUser.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Base message for other branch",
       userContextUsername: "testuser",

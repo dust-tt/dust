@@ -2,7 +2,10 @@ import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
-import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
+import {
+  DEFAULT_MCP_ACTION_DESCRIPTION,
+  type MCPToolStakeLevelType,
+} from "@app/lib/actions/constants";
 import {
   autoInternalMCPServerNameToSId,
   getMcpServerViewDisplayName,
@@ -17,12 +20,19 @@ import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerById,
   getAvailabilityOfInternalMCPServerByName,
+  getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
   isAutoInternalMCPServerName,
   isValidInternalMCPServerId,
+  matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
-import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
+import type {
+  MCPServerLightType,
+  MCPServerType,
+  MCPServerViewLightType,
+  MCPServerViewType,
+} from "@app/lib/api/mcp";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
@@ -43,6 +53,7 @@ import type {
   ResourceFindOptions,
 } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { mcpToolsRequireConfiguration } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import { tracer } from "@app/logger/tracer";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
@@ -1255,6 +1266,24 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   }
 
   /**
+   * Server-side counterpart of `isJITMCPServerView`: true when the view's tools can be enabled
+   * directly in a conversation. Cheap — remote servers carry the precomputed
+   * `cachedToolsRequireConfiguration` flag, internal tools live in memory — so no heavy
+   * attribute is needed at fetch time.
+   */
+  isJITAttachable(): boolean {
+    if (matchesInternalMCPServerName(this.mcpServerId, "agent_memory")) {
+      return false;
+    }
+    if (this.serverType === "remote") {
+      return !this.getRemoteMCPServerResource().cachedToolsRequireConfiguration;
+    }
+    return !mcpToolsRequireConfiguration(
+      this.getInternalMCPServerResource().toJSON().tools
+    );
+  }
+
+  /**
    * The server's authorization config with the view's admin-configured scope restriction
    * applied. For remote servers this only needs the `authorization` heavy attribute.
    */
@@ -1666,6 +1695,38 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     ];
   }
 
+  get getToolPermissions(): {
+    toolName: string;
+    permission: MCPToolStakeLevelType;
+    enabled: boolean;
+  }[] {
+    if (this.serverType === "internal" && this.internalMCPServerId) {
+      const nameResult = getInternalMCPServerNameAndWorkspaceId(
+        this.internalMCPServerId
+      );
+      if (nameResult.isOk()) {
+        const tools =
+          INTERNAL_MCP_SERVERS[nameResult.value.name].metadata.tools;
+        const overrides = new Map(
+          this.allToolsMetadata.map((m) => [m.toolName, m])
+        );
+        return tools.map((tool) => {
+          const override = overrides.get(tool.name);
+          return {
+            toolName: tool.name,
+            permission: override?.permission ?? tool.stake,
+            enabled: override?.enabled ?? true,
+          };
+        });
+      }
+    }
+    return this.allToolsMetadata.map((t) => ({
+      toolName: t.toolName,
+      permission: t.permission,
+      enabled: t.enabled,
+    }));
+  }
+
   // Serialization.
   toJSON(): MCPServerViewType {
     const server =
@@ -1701,6 +1762,46 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         permission: t.permission,
         enabled: t.enabled,
       })),
+    };
+  }
+
+  /**
+   * Light serialization for list surfaces (conversation capabilities picker, slash menu) that
+   * only render names, descriptions and icons. Remote tools are not included at all (surfaces
+   * needing them fetch the full server on demand), so no heavy attribute is required at fetch
+   * time.
+   */
+  toJSONLight(): MCPServerViewLightType {
+    let server: MCPServerLightType;
+    if (this.serverType === "remote") {
+      const remoteServer = this.getRemoteMCPServerResource();
+      server = {
+        sId: remoteServer.sId,
+        name: remoteServer.cachedName,
+        description:
+          remoteServer.cachedDescription ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+        icon: remoteServer.icon,
+        tools: [],
+      };
+    } else {
+      const internalServer = this.getInternalMCPServerResource().toJSON();
+      server = {
+        sId: internalServer.sId,
+        name: internalServer.name,
+        description: internalServer.description,
+        icon: internalServer.icon,
+        tools: internalServer.tools.map(({ name, description }) => ({
+          name,
+          description,
+        })),
+      };
+    }
+
+    return {
+      sId: this.sId,
+      name: this.name,
+      description: this.description,
+      server,
     };
   }
 }

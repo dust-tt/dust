@@ -69,6 +69,7 @@ app.post(
     } = ctx.req.valid("json");
 
     const [conversationRes, agentConfiguration] = await Promise.all([
+      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
       getConversation(auth, cId, true),
       getAgentConfiguration(auth, { agentId, variant: "full" }),
     ]);

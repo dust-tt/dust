@@ -49,7 +49,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   dust_agent_gpt_5_6_luna_default: {
     description:
       "Use GPT 5.6 Luna (high reasoning) as the default model for the @dust agent",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   dust_agent_sonnet_5_default: {
     description: "Use Claude Sonnet 5 as the default model for the @dust agent",
@@ -293,10 +293,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   admin_governance_skill_publication: {
     description:
       "Admin Governance: govern skill publication. Shows the skill state (availability) dropdown in the UI, defaults new skills to unpublished (editors-only), and allows unpublishing a skill.",
-    stage: "dust_only",
-  },
-  use_new_llm_router: {
-    description: "Use the new LLM router for model selection and routing",
     stage: "dust_only",
   },
   pod_default_agent: {

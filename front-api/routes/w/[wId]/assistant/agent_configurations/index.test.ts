@@ -22,7 +22,7 @@ let testAgents: LightAgentConfigurationType[];
 
 const TEST_MODEL = {
   providerId: "openai",
-  modelId: "gpt-4-turbo",
+  modelId: "gpt-5-mini",
   temperature: 0.7,
 };
 

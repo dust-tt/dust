@@ -1,9 +1,8 @@
 import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { isSupportedModel } from "@app/types/assistant/assistant";
 import type { CompactionMessageType } from "@app/types/assistant/conversation";
-import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -96,9 +95,18 @@ app.post(
     const auth = ctx.get("auth");
     const { cId: conversationId } = ctx.req.valid("param");
 
-    const conversationRes = await getConversation(auth, conversationId);
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversationResource) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "conversation_not_found",
+          message: "Conversation not found",
+        },
+      });
     }
 
     const { model } = ctx.req.valid("json");
@@ -123,7 +131,7 @@ app.post(
     }
 
     const result = await compactConversation(auth, {
-      conversation: conversationRes.value,
+      conversation: conversationResource.toJSON(),
       model,
     });
     if (result.isErr()) {

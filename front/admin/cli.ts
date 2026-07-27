@@ -486,6 +486,7 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       const verbose = args.verbose === "true";
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
       const conversationRes = await getConversation(auth, args.cId as string);
 
       if (conversationRes.isErr()) {

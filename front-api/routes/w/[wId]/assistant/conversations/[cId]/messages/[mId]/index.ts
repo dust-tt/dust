@@ -2,7 +2,6 @@ import {
   softDeleteAgentMessage,
   softDeleteUserMessageAndReplies,
 } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type {
@@ -191,8 +190,8 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId, mId } = ctx.req.valid("param");
 
-  const conversation = await ConversationResource.fetchById(auth, cId);
-  if (!conversation) {
+  const conversationResource = await ConversationResource.fetchById(auth, cId);
+  if (!conversationResource) {
     return apiError(ctx, {
       status_code: 404,
       api_error: {
@@ -202,7 +201,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const messageRes = await conversation.getMessageById(auth, mId);
+  const messageRes = await conversationResource.getMessageById(auth, mId);
   if (messageRes.isErr()) {
     return apiError(ctx, {
       status_code: 404,
@@ -214,8 +213,6 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const message = messageRes.value;
-  const branchId = message.getBranchId() ?? null;
-
   if (!message.userMessage && !message.agentMessage) {
     return apiError(ctx, {
       status_code: 404,
@@ -226,28 +223,15 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const conversationRes = await getConversation(
-    auth,
-    conversation.sId,
-    false,
-    branchId
-  );
-
-  if (conversationRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Unable to get the conversation.",
-      },
-    });
-  }
-
-  const fullConversation = conversationRes.value;
+  const branchId = message.getBranchId() ?? null;
+  const conversation = {
+    ...conversationResource.toJSON(),
+    branchId,
+  };
 
   const renderRes = await batchRenderMessages(
     auth,
-    conversation,
+    conversationResource,
     [message],
     "full"
   );
@@ -266,7 +250,8 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   if (isUserMessageType(renderedMessage)) {
     const deleteResult = await softDeleteUserMessageAndReplies(auth, {
       message: renderedMessage,
-      conversation: fullConversation,
+      conversationResource,
+      branchId,
     });
     if (deleteResult.isErr()) {
       return apiError(ctx, {
@@ -280,7 +265,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   } else if (isAgentMessageType(renderedMessage)) {
     const deleteResult = await softDeleteAgentMessage(auth, {
       message: renderedMessage,
-      conversation: fullConversation,
+      conversation,
     });
     if (deleteResult.isErr()) {
       return apiError(ctx, {

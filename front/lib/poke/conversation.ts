@@ -20,6 +20,7 @@ export async function getPokeConversation(
   includeDeleted?: boolean
 ): Promise<Result<PokeConversationType, ConversationError>> {
   const owner = auth.getNonNullableWorkspace();
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const conversation = await getConversation(
     auth,
     conversationId,

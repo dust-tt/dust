@@ -245,7 +245,8 @@ export function useSkillInstructionsEditor({
       return;
     }
 
-    if (isToolSlashCommand(item)) {
+    // Skill-builder slash items are built from full views (useSkillBuilderSlashCommandCapabilities).
+    if (isToolSlashCommand<MCPServerViewType>(item)) {
       editorInstance
         .chain()
         .focus()

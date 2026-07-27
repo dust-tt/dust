@@ -7,7 +7,9 @@ import type {
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import {
   isTierDisplayed,
+  isTierLocked,
   MODEL_TIERS,
+  PREMIUM_MODEL_LOCKED_TOOLTIP,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import type {
   ModelConfigurationType,
@@ -21,6 +23,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  Icon,
+  Lock01,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
@@ -39,6 +43,7 @@ interface ModelPickerContentProps {
   shown: Selection;
   agentDefault: Selection;
   canRevert: boolean;
+  lockPremiumEfforts: boolean;
   makerGroups: MakerGroup[];
   allModels: ModelConfigurationType[];
   search: string;
@@ -60,6 +65,7 @@ export function ModelPickerContent({
   shown,
   agentDefault,
   canRevert,
+  lockPremiumEfforts,
   makerGroups,
   allModels,
   search,
@@ -79,6 +85,26 @@ export function ModelPickerContent({
       {MODEL_TIERS.map((tier) => {
         const isSelected = isTierDisplayed(tier.id, shown.display);
         const isDefault = isTierDisplayed(tier.id, agentDefault.display);
+        const locked = isTierLocked(tier.id, { lockPremiumEfforts });
+        if (locked) {
+          return (
+            <DropdownMenuItem
+              key={tier.id}
+              icon={TIER_ICON[tier.id]}
+              label={tier.name}
+              disabled
+              tooltip={PREMIUM_MODEL_LOCKED_TOOLTIP}
+              endComponent={
+                <Icon
+                  visual={Lock01}
+                  size="sm"
+                  className="text-muted-foreground"
+                />
+              }
+              onSelect={(e) => e.preventDefault()}
+            />
+          );
+        }
         return (
           <DropdownMenuItem
             key={tier.id}
@@ -111,6 +137,7 @@ export function ModelPickerContent({
         shown={shown}
         agentDefault={agentDefault}
         canRevert={canRevert}
+        lockPremiumEfforts={lockPremiumEfforts}
         search={search}
         onSearchChange={onSearchChange}
         isWidthConstrained={isWidthConstrained}

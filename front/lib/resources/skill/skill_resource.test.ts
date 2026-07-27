@@ -1276,25 +1276,36 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("updateAvailability", () => {
-    it("updates the availability for a caller with the publish permission", async () => {
+  describe("updateAvailabilities", () => {
+    it("updates the availability in bulk for a caller with the publish permission", async () => {
       // Admins hold every workspace-level capability, including publish on skills.
-      const skillResource = await SkillFactory.create(
-        testContext.authenticator,
-        { name: "Publishable Skill" }
-      );
+      const firstSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "First Publishable Skill",
+      });
+      const secondSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Second Publishable Skill",
+      });
 
-      await skillResource.updateAvailability(
+      await SkillResource.updateAvailabilities(
         testContext.authenticator,
+        [firstSkill, secondSkill],
         "editors"
       );
 
-      const updatedSkill = await SkillResource.fetchById(
-        testContext.authenticator,
-        skillResource.sId
-      );
-      expect(updatedSkill?.availability).toBe("editors");
-      expect(updatedSkill?.editedBy).toBe(skillResource.editedBy);
+      for (const skill of [firstSkill, secondSkill]) {
+        const updatedSkill = await SkillResource.fetchById(
+          testContext.authenticator,
+          skill.sId
+        );
+        expect(updatedSkill?.availability).toBe("editors");
+        // The availability change counts as an edit by the acting user.
+        expect(updatedSkill?.editedBy).toBe(testContext.user.id);
+        // A version of the previous state was snapshotted.
+        const versions =
+          (await updatedSkill?.listVersions(testContext.authenticator)) ?? [];
+        expect(versions.length).toBe(1);
+        expect(versions[0]?.availability).toBe("workspace_users");
+      }
     });
 
     it("rejects a caller without the publish permission, even an editor", async () => {
@@ -1314,10 +1325,12 @@ describe("SkillResource", () => {
       });
 
       await expect(
-        skillResource.updateAvailability(builderAuth, "users_and_agents")
-      ).rejects.toThrow(
-        "User is not authorized to update this skill's availability"
-      );
+        SkillResource.updateAvailabilities(
+          builderAuth,
+          [skillResource],
+          "users_and_agents"
+        )
+      ).rejects.toThrow("User is not authorized to update skill availability");
     });
 
     it("requires the publish permission to change availability through updateSkill when governance is on", async () => {

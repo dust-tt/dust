@@ -2,8 +2,13 @@ import {
   isFullUserType,
   type SearchMemberWithWorkspaceType,
 } from "@app/components/members/MemberSelectionTable";
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import {
+  displayRole,
+  normalizeDisplayRole,
+  ROLES_DATA,
+} from "@app/components/members/Roles";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import assert from "@app/lib/utils/assert";
 import type { MembershipOriginType } from "@app/types/memberships";
 import type { RoleType, UserType } from "@app/types/user";
@@ -35,6 +40,29 @@ type RowData = {
 };
 
 type Info = CellContext<RowData, string>;
+
+function RoleCell({ role }: { role: RoleType }) {
+  const { hasFeature } = useFeatureFlags();
+  // `builder` is deprecated under admin governance: display it as a regular
+  // member.
+  const displayedRole = normalizeDisplayRole(
+    role,
+    hasFeature("admin_governance")
+  );
+
+  return (
+    <DataTable.CellContent>
+      <Chip
+        label={capitalize(displayRole(displayedRole))}
+        color={
+          displayedRole !== "none"
+            ? ROLES_DATA[displayedRole]["color"]
+            : undefined
+        }
+      />
+    </DataTable.CellContent>
+  );
+}
 
 function getTableRows({
   allUsers,
@@ -100,18 +128,7 @@ const memberColumns = [
     id: "role" as const,
     header: "Role",
     accessorFn: (row: RowData) => row.role,
-    cell: (info: Info) => (
-      <DataTable.CellContent>
-        <Chip
-          label={capitalize(displayRole(info.row.original.role))}
-          color={
-            info.row.original.role !== "none"
-              ? ROLES_DATA[info.row.original.role]["color"]
-              : undefined
-          }
-        />
-      </DataTable.CellContent>
-    ),
+    cell: (info: Info) => <RoleCell role={info.row.original.role} />,
     meta: {
       className: "w-32",
     },

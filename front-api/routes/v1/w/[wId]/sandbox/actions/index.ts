@@ -130,6 +130,7 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
   );
 
   // Fetch conversation-jitted servers.
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const conversationResult = await getConversation(auth, cId);
   if (conversationResult.isErr()) {
     return apiError(ctx, {

@@ -39,7 +39,7 @@ export const CreateDropdown = ({
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
-  const { hasPermission } = useWorkspacePermissions(owner);
+  const { hasPermission } = useWorkspacePermissions();
 
   const canCreateSkill = hasPermission("create", "skill");
 

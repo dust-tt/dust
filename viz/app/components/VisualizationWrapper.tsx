@@ -5,6 +5,11 @@ import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
 import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
+import {
+  PodFunctionHooksProvider,
+  usePodFunction,
+  usePodFunctionMutation,
+} from "@viz/app/lib/pod-function-hooks";
 import { transformEditableText } from "@viz/app/lib/transformEditableText";
 import type {
   VisualizationAPI,
@@ -407,6 +412,28 @@ export function VisualizationWrapper({
     [ref, downloadFile, identifier]
   );
 
+  // A rejected promise nothing catches never reaches the ErrorBoundary, which only sees throws
+  // during render. Frame code is async throughout (a `callFunction` awaited without a `catch`, a
+  // failed fetch), so without this the Frame shows a spinner forever and reports nothing.
+  //
+  // This surfaces the error even once the Frame has rendered, which does replace a Frame that was
+  // partly working with the parent's error card. That is the intent: a Frame with an uncaught
+  // rejection is broken, and the card feeds the error back to the model on retry. The event is
+  // deliberately not `preventDefault()`ed so the rejection still reaches the browser console.
+  useEffect(() => {
+    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const { reason } = event;
+      setErrorMessage(
+        reason instanceof Error ? reason : new Error(String(reason))
+      );
+    };
+
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+
+    return () =>
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+  }, []);
+
   useEffect(() => {
     const loadCode = async () => {
       try {
@@ -446,6 +473,8 @@ export function VisualizationWrapper({
             captureScreenshot: handleScreenshotDownload,
             triggerUserFileDownload: memoizedDownloadFile,
             useFile: (fileId: string) => useFile(fileId, api.data),
+            usePodFunction,
+            usePodFunctionMutation,
           },
         };
 
@@ -621,7 +650,9 @@ export function VisualizationWrapper({
         </div>
       )}
       <VizContext.Provider value={vizContextValue}>
-        {isEditable ? <EditableFrame>{runner}</EditableFrame> : runner}
+        <PodFunctionHooksProvider dataAPI={api.data}>
+          {isEditable ? <EditableFrame>{runner}</EditableFrame> : runner}
+        </PodFunctionHooksProvider>
       </VizContext.Provider>
     </div>
   );

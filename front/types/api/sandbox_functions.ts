@@ -3,6 +3,7 @@ import type {
   SandboxFunctionToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
+import type { APIErrorType } from "@app/types/error";
 
 export const SANDBOX_FUNCTION_INVOCATION_STATUSES = [
   "created",
@@ -42,16 +43,21 @@ export const SANDBOX_FUNCTION_RUNNER_ERROR_CODES = [
   "invalid_output",
 ] as const;
 
-export const SANDBOX_FUNCTION_CALL_ERROR_CODES = [
-  ...SANDBOX_FUNCTION_RUNNER_ERROR_CODES,
-  "function_not_found",
-  "invocation_failed",
-  "transport_error",
-  "not_supported",
-] as const;
+// Codes minted by front, for failures that happen outside the runner and therefore have no
+// upstream classification to forward.
+type SandboxFunctionFrontErrorCode =
+  | "invocation_failed"
+  | "transport_error"
+  | "not_supported";
 
+// A call error code is never re-derived along the way: it is the runner's code, the `type` of the
+// API error that failed the call, or one of the front codes above when nothing upstream classified
+// the failure. Keeping the original code means a Frame error points at where it came from instead
+// of at the layer that relabelled it.
 export type SandboxFunctionCallErrorCode =
-  (typeof SANDBOX_FUNCTION_CALL_ERROR_CODES)[number];
+  | (typeof SANDBOX_FUNCTION_RUNNER_ERROR_CODES)[number]
+  | SandboxFunctionFrontErrorCode
+  | APIErrorType;
 
 export type SandboxFunctionCallError = {
   code: SandboxFunctionCallErrorCode;

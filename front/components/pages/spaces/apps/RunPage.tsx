@@ -7,6 +7,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { cleanSpecificationFromCore } from "@app/lib/specification";
 import { useApp, useRunWithSpec } from "@app/lib/swr/apps";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { Button, CheckCircle, Clock, Spinner } from "@dust-tt/sparkle";
 import { useContext, useState } from "react";
 
@@ -15,7 +16,9 @@ export function RunPage() {
   const aId = useRequiredPathParam("aId");
   const runId = useRequiredPathParam("runId");
   const owner = useWorkspace();
-  const { isAdmin, isBuilder } = useAuth();
+  const { isAdmin } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
+  const canAdministrateApps = hasPermission("admin", "dust_app");
 
   const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
@@ -40,7 +43,7 @@ export function RunPage() {
   }
 
   const restore = async () => {
-    if (!isBuilder || !app || !run || !spec) {
+    if (!canAdministrateApps || !app || !run || !spec) {
       return;
     }
 
@@ -157,7 +160,7 @@ export function RunPage() {
           app={app}
           isAdmin={isAdmin}
           readOnly={true}
-          showOutputs={isBuilder}
+          showOutputs={canAdministrateApps}
           spec={spec}
           run={run}
           runRequested={false}

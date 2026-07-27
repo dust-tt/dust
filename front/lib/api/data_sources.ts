@@ -267,7 +267,7 @@ export async function hardDeleteDataSource(
   auth: Authenticator,
   dataSource: DataSourceResource
 ) {
-  assert(auth.isBuilder(), "Only builders can delete data sources.");
+  assert(auth.isAdmin(), "Only admins can delete data sources.");
 
   // Delete all files in the data source's bucket.
   //

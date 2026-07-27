@@ -1530,6 +1530,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(new MCPError("Authentication required"));
     }
 
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
     const conversationRes = await getConversation(auth, conversationId);
     if (conversationRes.isErr()) {
       return new Err(

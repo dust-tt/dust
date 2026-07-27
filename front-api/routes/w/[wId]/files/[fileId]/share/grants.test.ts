@@ -1,14 +1,38 @@
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { frameContentType } from "@app/types/files";
+import type { WorkspaceSharingPolicy } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
 function url(workspace: { sId: string }, fileId: string) {
   return `/api/w/${workspace.sId}/files/${fileId}/share/grants`;
+}
+
+async function grantInviteToEveryone(workspace: { sId: string }) {
+  const adminAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
+  await GroupPermissionResource.setForEverybody(adminAuth, {
+    grantType: "invite",
+    resourceType: "frame",
+  });
+}
+
+async function setSharingPolicy(
+  workspace: { sId: string },
+  sharingPolicy: WorkspaceSharingPolicy
+) {
+  const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+  if (!workspaceResource) {
+    throw new Error(`Workspace ${workspace.sId} not found.`);
+  }
+  await workspaceResource.updateWorkspaceSettings({ sharingPolicy });
 }
 
 function getGrants(workspace: { sId: string }, fileId: string) {
@@ -80,6 +104,7 @@ describe("sharing grants endpoint", () => {
       method: "POST",
       role: "user",
     });
+    await grantInviteToEveryone(workspace);
 
     const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
@@ -107,6 +132,7 @@ describe("sharing grants endpoint", () => {
       method: "POST",
       role: "user",
     });
+    await grantInviteToEveryone(workspace);
 
     const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
@@ -133,6 +159,7 @@ describe("sharing grants endpoint", () => {
       method: "POST",
       role: "user",
     });
+    await grantInviteToEveryone(workspace);
 
     const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
@@ -163,6 +190,7 @@ describe("sharing grants endpoint", () => {
       method: "POST",
       role: "user",
     });
+    await grantInviteToEveryone(workspace);
 
     const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
@@ -185,6 +213,7 @@ describe("sharing grants endpoint", () => {
       method: "POST",
       role: "user",
     });
+    await grantInviteToEveryone(workspace);
 
     const file = await FileFactory.create(auth, user, {
       contentType: frameContentType,
@@ -215,10 +244,32 @@ describe("sharing grants endpoint", () => {
         role: "user",
       });
 
-      await WorkspaceModel.update(
-        { sharingPolicy: "workspace_only" },
-        { where: { sId: workspace.sId } }
-      );
+      await setSharingPolicy(workspace, "workspace_only");
+
+      const file = await FileFactory.create(auth, user, {
+        contentType: frameContentType,
+        fileName: "test-frame.tsx",
+        fileSize: 1024,
+        status: "ready",
+        useCase: "conversation",
+      });
+
+      const response = await postGrants(workspace, file.sId, {
+        emails: ["external@example.com"],
+      });
+
+      expect(response.status).toBe(403);
+    });
+
+    it("blocks an admin from inviting an external email (policy overrides admin)", async () => {
+      // The workspace policy is checked before the permission/admin bypass, so even an admin
+      // cannot invite externally when external sharing is disabled at the workspace level.
+      const { auth, user, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "admin",
+      });
+
+      await setSharingPolicy(workspace, "workspace_only");
 
       const file = await FileFactory.create(auth, user, {
         contentType: frameContentType,
@@ -241,10 +292,7 @@ describe("sharing grants endpoint", () => {
         role: "user",
       });
 
-      await WorkspaceModel.update(
-        { sharingPolicy: "workspace_only" },
-        { where: { sId: workspace.sId } }
-      );
+      await setSharingPolicy(workspace, "workspace_only");
 
       const member = await UserFactory.basic();
       await MembershipFactory.associate(workspace, member, { role: "user" });
@@ -285,10 +333,7 @@ describe("sharing grants endpoint", () => {
       await file.addSharingGrants(auth, { emails: ["external@example.com"] });
 
       // Now restrict to workspace_only.
-      await WorkspaceModel.update(
-        { sharingPolicy: "workspace_only" },
-        { where: { sId: workspace.sId } }
-      );
+      await setSharingPolicy(workspace, "workspace_only");
 
       const response = await getGrants(workspace, file.sId);
 
@@ -318,10 +363,7 @@ describe("sharing grants endpoint", () => {
 
       await file.addSharingGrants(auth, { emails: [member.email] });
 
-      await WorkspaceModel.update(
-        { sharingPolicy: "workspace_only" },
-        { where: { sId: workspace.sId } }
-      );
+      await setSharingPolicy(workspace, "workspace_only");
 
       const response = await getGrants(workspace, file.sId);
 
@@ -337,10 +379,7 @@ describe("sharing grants endpoint", () => {
         role: "user",
       });
 
-      await WorkspaceModel.update(
-        { sharingPolicy: "workspace_only" },
-        { where: { sId: workspace.sId } }
-      );
+      await setSharingPolicy(workspace, "workspace_only");
 
       const member = await UserFactory.basic();
       await MembershipFactory.associate(workspace, member, { role: "user" });
@@ -358,6 +397,161 @@ describe("sharing grants endpoint", () => {
       });
 
       expect(response.status).toBe(403);
+    });
+  });
+
+  describe("invite permission (external sharing allowed by policy)", () => {
+    it("blocks inviting an external email without the invite permission", async () => {
+      const { auth, user, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+
+      const file = await FileFactory.create(auth, user, {
+        contentType: frameContentType,
+        fileName: "test-frame.tsx",
+        fileSize: 1024,
+        status: "ready",
+        useCase: "conversation",
+      });
+
+      const response = await postGrants(workspace, file.sId, {
+        emails: ["external@example.com"],
+      });
+
+      expect(response.status).toBe(403);
+    });
+
+    it("blocks inviting an external email when the policy allows external sharing but the caller lacks the invite permission", async () => {
+      const { auth, user, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+
+      // The workspace policy explicitly allows external sharing...
+      await setSharingPolicy(workspace, "workspace_and_emails");
+
+      // ...but the caller was never granted the "invite" frame permission.
+      const file = await FileFactory.create(auth, user, {
+        contentType: frameContentType,
+        fileName: "test-frame.tsx",
+        fileSize: 1024,
+        status: "ready",
+        useCase: "conversation",
+      });
+
+      const response = await postGrants(workspace, file.sId, {
+        emails: ["external@example.com"],
+      });
+
+      expect(response.status).toBe(403);
+    });
+
+    it("allows inviting a workspace member without the invite permission", async () => {
+      const { auth, user, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+
+      const file = await FileFactory.create(auth, user, {
+        contentType: frameContentType,
+        fileName: "test-frame.tsx",
+        fileSize: 1024,
+        status: "ready",
+        useCase: "conversation",
+      });
+
+      const response = await postGrants(workspace, file.sId, {
+        emails: [member.email],
+      });
+
+      expect(response.status).toBe(200);
+      const { grants } = await response.json();
+      expect(grants).toHaveLength(1);
+      expect(grants[0].email).toBe(member.email.toLowerCase());
+    });
+
+    it("allows inviting an external email with the invite permission", async () => {
+      const { auth, user, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+      await grantInviteToEveryone(workspace);
+
+      const file = await FileFactory.create(auth, user, {
+        contentType: frameContentType,
+        fileName: "test-frame.tsx",
+        fileSize: 1024,
+        status: "ready",
+        useCase: "conversation",
+      });
+
+      const response = await postGrants(workspace, file.sId, {
+        emails: ["external@example.com"],
+      });
+
+      expect(response.status).toBe(200);
+      const { grants } = await response.json();
+      expect(grants).toHaveLength(1);
+      expect(grants[0].email).toBe("external@example.com");
+    });
+
+    it("allows an admin to invite an external email without an explicit invite grant", async () => {
+      // Admins hold every governance capability by default, so they can invite externally
+      // whenever the workspace policy allows it — no seeded "invite" grant required.
+      const { auth, user, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, user, {
+        contentType: frameContentType,
+        fileName: "test-frame.tsx",
+        fileSize: 1024,
+        status: "ready",
+        useCase: "conversation",
+      });
+
+      const response = await postGrants(workspace, file.sId, {
+        emails: ["external@example.com"],
+      });
+
+      expect(response.status).toBe(200);
+      const { grants } = await response.json();
+      expect(grants).toHaveLength(1);
+      expect(grants[0].email).toBe("external@example.com");
+    });
+
+    it("does not mark existing external grants as blockedByPolicy for a viewer lacking the invite permission", async () => {
+      // blockedByPolicy tracks the workspace policy, not the viewer's permission: a user who
+      // can't create external invites can still see existing ones as active while the policy
+      // continues to allow external sharing.
+      const { auth, user, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+
+      const file = await FileFactory.create(auth, user, {
+        contentType: frameContentType,
+        fileName: "test-frame.tsx",
+        fileSize: 1024,
+        status: "ready",
+        useCase: "conversation",
+      });
+
+      // Seed an external grant directly (bypasses the endpoint's permission check).
+      await file.addSharingGrants(auth, { emails: ["external@example.com"] });
+
+      const response = await getGrants(workspace, file.sId);
+
+      expect(response.status).toBe(200);
+      const { grants } = await response.json();
+      expect(grants).toHaveLength(1);
+      expect(grants[0].email).toBe("external@example.com");
+      expect(grants[0].blockedByPolicy).toBeFalsy();
     });
   });
 

@@ -114,6 +114,7 @@
   "workspace.open_projects_updated": 1,
   "workspace.private_conversation_urls_updated": 1,
   "workspace.programmatic_usage_limit_updated": 1,
+  "workspace.published_agents_restricted_models_updated": 1,
   "workspace.regional_models_only_updated": 1,
   "workspace.reinforcement_cap_updated": 1,
   "workspace.self_improvement_cap_per_skill_updated": 1,

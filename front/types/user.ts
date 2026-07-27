@@ -86,6 +86,15 @@ export function isWorkspaceAnalyticsEnabled(
   return owner.metadata?.disableWorkspaceAnalytics !== true;
 }
 
+// When enabled, members can run published agents even if the agent's model
+// requires a tier above their own access. Disabled by default: such runs are
+// blocked. Admins can opt in via the workspace settings.
+export function areRestrictedModelsAllowedForPublishedAgents(
+  owner: LightWorkspaceType
+): boolean {
+  return owner.metadata?.allowRestrictedModelsForPublishedAgents === true;
+}
+
 /**
  * The default agent that should be pre-selected for new conversations.
  * A pod-level default agent takes precedence over the workspace-level default agent.

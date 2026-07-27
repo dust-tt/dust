@@ -10,6 +10,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -127,6 +128,15 @@ export async function moveConversationToProject(
     await conversationResource.updateSpaceId(auth, project, t);
     // See front/lib/api/assistant/conversation/mentions.ts updateConversationRequirements for more details
     await conversationResource.updateRequirements(auth, [project.id], t);
+
+    // The requirements above drop every Space the conversation used to require, including the ones
+    // that were selected from the input bar. Their selections must go with them: they no longer
+    // have any ACL backing, and moving the conversation out of the project later rebuilds
+    // requirements from agents and content fragments only, which would make them live again.
+    await ConversationSelectedSpaceResource.removeAllForConversation(auth, {
+      conversation: conversationResource,
+      transaction: t,
+    });
 
     // For participants who had already read the conversation (unread = false),
     // mark them as read using markAsReadForAuthUser to preserve their read status.

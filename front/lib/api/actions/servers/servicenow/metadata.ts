@@ -1,6 +1,32 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
 
+const WRITABLE_INCIDENT_FIELDS_SCHEMA = {
+  description: z
+    .string()
+    .optional()
+    .describe("Full description of the incident."),
+  urgency: z
+    .string()
+    .optional()
+    .describe("Urgency, e.g. '1 - High', '2 - Medium', '3 - Low'."),
+  impact: z
+    .string()
+    .optional()
+    .describe("Impact, e.g. '1 - High', '2 - Medium', '3 - Low'."),
+  priority: z
+    .string()
+    .optional()
+    .describe(
+      "Priority, e.g. '1 - Critical', '2 - High', '3 - Moderate', '4 - Low', '5 - Planning'."
+    ),
+  category: z.string().optional().describe("Incident category."),
+  assignmentGroup: z
+    .string()
+    .optional()
+    .describe("Name of the assignment group to assign the incident to."),
+};
+
 export const SERVICENOW_TOOLS_METADATA = [
   {
     name: "list_incidents",
@@ -22,6 +48,90 @@ export const SERVICENOW_TOOLS_METADATA = [
     displayLabels: {
       running: "Listing ServiceNow incidents",
       done: "List ServiceNow incidents",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
+    name: "get_incident",
+    description:
+      "Get a single ServiceNow incident (ticket) by its number, e.g. 'INC0010001'.",
+    schema: {
+      incidentNumber: z
+        .string()
+        .describe("The ServiceNow incident number, e.g. 'INC0010001'."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving ServiceNow incident",
+      done: "Retrieve ServiceNow incident",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
+    name: "create_incident",
+    description:
+      "Create (open) a new ServiceNow incident (ticket) in the connected instance.",
+    schema: {
+      shortDescription: z.string().describe("Short summary of the incident."),
+      ...WRITABLE_INCIDENT_FIELDS_SCHEMA,
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Creating ServiceNow incident",
+      done: "Create ServiceNow incident",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
+    name: "update_incident",
+    description:
+      "Update, resolve, or close an existing ServiceNow incident (ticket) identified by its number, e.g. 'INC0010001'.",
+    schema: {
+      incidentNumber: z
+        .string()
+        .describe("The ServiceNow incident number, e.g. 'INC0010001'."),
+      shortDescription: z
+        .string()
+        .optional()
+        .describe("Replacement short summary of the incident."),
+      state: z
+        .string()
+        .optional()
+        .describe(
+          "State to move the incident to, e.g. 'In Progress', 'Resolved', 'Closed'."
+        ),
+      priority: z
+        .string()
+        .optional()
+        .describe(
+          "Priority, e.g. '1 - Critical', '2 - High', '3 - Moderate', '4 - Low', '5 - Planning'."
+        ),
+      workNotes: z
+        .string()
+        .optional()
+        .describe(
+          "Work note to add to the incident (internal, not customer-visible)."
+        ),
+      closeNotes: z
+        .string()
+        .optional()
+        .describe(
+          "Resolution notes, typically set when resolving/closing the incident."
+        ),
+      resolutionCode: z
+        .string()
+        .optional()
+        .describe(
+          "Resolution code. Required by ServiceNow to move state to 'Resolved' or 'Closed'. Valid values are configured per ServiceNow instance (e.g. 'Solution provided', 'Resolved by caller') — if unsure, call list_incidents on an already-resolved incident to see a value your instance accepts."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Updating ServiceNow incident",
+      done: "Update ServiceNow incident",
     },
     toolCostCategory: "advanced",
     freeUsage: false,

@@ -5,11 +5,11 @@ import {
 } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { wakeLock } from "@app/lib/wake_lock";
 import type {
   AgenticMessageData,
   AgentMessageType,
-  ConversationType,
   UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
@@ -150,7 +150,7 @@ export async function postUserMessageAndWaitForCompletion(
     content,
     context,
     agenticMessageData,
-    conversation,
+    conversationResource,
     mentions,
     modelSelection,
     skipToolsValidation,
@@ -158,7 +158,7 @@ export async function postUserMessageAndWaitForCompletion(
     content: string;
     context: UserMessageContext;
     agenticMessageData?: AgenticMessageData;
-    conversation: ConversationType;
+    conversationResource: ConversationResource;
     mentions: MentionType[];
     modelSelection?: ModelSelectionType;
     skipToolsValidation: boolean;
@@ -178,7 +178,7 @@ export async function postUserMessageAndWaitForCompletion(
         content,
         context,
         agenticMessageData,
-        conversation,
+        conversationResource,
         mentions,
         modelSelection,
         skipToolsValidation,
@@ -203,8 +203,8 @@ export async function postUserMessageAndWaitForCompletion(
       });
     },
     {
-      workspaceId: conversation.owner.sId,
-      conversationId: conversation.sId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      conversationId: conversationResource.sId,
       operation: "postUserMessageAndWaitForCompletion",
     }
   );

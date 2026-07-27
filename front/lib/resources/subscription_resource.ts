@@ -171,8 +171,9 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   }
 
   /**
-   * Terminal status to use when ending this subscription as part of a contract
-   * swap (`activatePending` / `swapMetronomeContract`).
+   * Terminal status to use when `swapMetronomeContract` ends this subscription
+   * (the in-place swap path, with no pre-staged pending row). `activatePending`
+   * does NOT use this — it finalizes directly to `ended` (see the note there).
    *
    * A subscription backed by a Stripe subscription converges via Stripe's
    * `customer.subscription.deleted` webhook, so it is ended as
@@ -793,6 +794,28 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return subscriptions.map((s) => s.workspaceId);
   }
 
+  static async internalListEndedBackendOnly(): Promise<SubscriptionResource[]> {
+    const subscriptions = await this.model.findAll({
+      where: {
+        status: "ended_backend_only",
+      },
+      // WORKSPACE_ISOLATION_BYPASS: Internal maintenance script that reconciles
+      // stranded subscriptions across all workspaces.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      include: [PlanModel],
+    });
+
+    return subscriptions.map(
+      (sub) =>
+        new SubscriptionResource(
+          this.model,
+          sub.get(),
+          renderPlanFromModel({ plan: sub.plan })
+        )
+    );
+  }
+
   /**
    * Internal function to subscribe to the FREE_NO_PLAN.
    * This is the only plan without a database entry: no need to create a subscription, we just end the active one if any.
@@ -1381,7 +1404,16 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           t
         );
       if (currentActive && !currentActive.isLegacyFreeNoPlan()) {
-        await currentActive.markAsEnded(currentActive.swapEndedStatus, t);
+        // Finalize directly to `ended`, even for a Stripe-backed (shadow-billed)
+        // sub. This `contract.start` and Stripe's `customer.subscription.deleted`
+        // (the scheduled `cancel_at` reaching the cutover) fire at the same
+        // instant. When the Stripe event is processed first it takes the
+        // "active + pending → skip" branch (see lib/api/stripe/webhook_handler.ts)
+        // and is ack'd without converging, so no later webhook is left to flip an
+        // `ended_backend_only` sub to `ended` — stranding it. The deleted
+        // handler's pending guard and the Metronome `contract.end` shadow guard
+        // already prevent a scrub in every ordering, so ending directly is safe.
+        await currentActive.markAsEnded("ended", t);
       }
       await this.update({ status: "active" }, t);
       const workspaceId = this.workspaceId;

@@ -380,7 +380,10 @@ function ContentNodeTreeChildren({
                 setSelectAllClicked(isSelected);
                 setSelectedNodes((prev) => {
                   const newState = { ...prev };
-                  filteredNodes.forEach((n) => {
+                  const nodesToUpdate = isSelected
+                    ? filteredNodes.filter((n) => n.preventSelection !== true)
+                    : filteredNodes;
+                  nodesToUpdate.forEach((n) => {
                     newState[n.internalId] = {
                       isSelected,
                       node: n,

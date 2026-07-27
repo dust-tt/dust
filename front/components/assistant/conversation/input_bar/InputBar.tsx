@@ -20,7 +20,7 @@ import {
   useConversationTools,
 } from "@app/hooks/conversations";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -258,7 +258,7 @@ export const InputBar = React.memo(function InputBar({
   // Tools selection
 
   const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
-    MCPServerViewType[]
+    MCPServerViewLightType[]
   >([]);
   const [selectedSpacesState, setSelectedSpacesState] =
     useState<SelectedSpacesState | null>(null);
@@ -406,7 +406,7 @@ export const InputBar = React.memo(function InputBar({
     : isWorkspaceSpacesLoading;
 
   const handleMCPServerViewSelect = useCallback(
-    (serverView: MCPServerViewType) => {
+    (serverView: MCPServerViewLightType) => {
       if (selectedMCPServerViewIds.has(serverView.sId)) {
         return;
       }
@@ -422,7 +422,7 @@ export const InputBar = React.memo(function InputBar({
   );
 
   const handleMCPServerViewDeselect = useCallback(
-    (serverView: MCPServerViewType) => {
+    (serverView: MCPServerViewLightType) => {
       if (!selectedMCPServerViewIds.has(serverView.sId)) {
         return;
       }

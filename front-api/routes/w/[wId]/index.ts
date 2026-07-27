@@ -27,6 +27,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
 import { escape } from "html-escaper";
 import { z } from "zod";
+import actionRecommendations from "./action-recommendations";
 import analytics from "./analytics";
 import assistant from "./assistant";
 import auditLogs from "./audit-logs";
@@ -207,6 +208,10 @@ const WorkspaceAnalyticsUpdateBodySchema = z.object({
   disableWorkspaceAnalytics: z.boolean(),
 });
 
+const WorkspacePublishedAgentsRestrictedModelsUpdateBodySchema = z.object({
+  allowRestrictedModelsForPublishedAgents: z.boolean(),
+});
+
 const WorkspaceSlackPersonalFooterRemovalUpdateBodySchema = z.object({
   slackPersonalAllowFooterRemoval: z.boolean(),
 });
@@ -242,6 +247,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceSelfImprovementCapPerSkillAwuCreditsUpdateBodySchema,
   WorkspaceAuditLogsUpdateBodySchema,
   WorkspaceAnalyticsUpdateBodySchema,
+  WorkspacePublishedAgentsRestrictedModelsUpdateBodySchema,
   WorkspaceDefaultAgentUpdateBodySchema,
   WorkspaceSlackPersonalFooterRemovalUpdateBodySchema,
 ]);
@@ -578,6 +584,25 @@ app.post(
         context: getAuditLogContext(auth),
         metadata: {
           enabled: String(body.allowEmailAgents),
+        },
+      });
+    } else if ("allowRestrictedModelsForPublishedAgents" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        allowRestrictedModelsForPublishedAgents:
+          body.allowRestrictedModelsForPublishedAgents,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.published_agents_restricted_models_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.allowRestrictedModelsForPublishedAgents),
         },
       });
     } else if ("allowReinforcement" in body) {
@@ -1017,6 +1042,7 @@ app.post(
 
 // Sub-apps using the catch-all default + the partial-subtree exception
 // targets declared above.
+app.route("/action-recommendations", actionRecommendations);
 app.route("/analytics", analytics);
 app.route("/model_tiers", modelTiers);
 app.route("/assistant", assistant);
@@ -1051,9 +1077,9 @@ app.route("/members", members);
 app.route("/metronome", metronome);
 app.route("/models", models);
 app.route("/oauth/:provider/setup", oauthSetup);
-app.route("/permissions", permissions);
 app.route("/pods", pods);
 app.route("/usage-status", usageStatus);
+app.route("/permissions", permissions);
 app.route("/project_tasks", projectTasks);
 app.route("/provider_credentials/:providerId", providerCredential);
 app.route("/provider_credentials", providerCredentials);

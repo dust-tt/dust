@@ -40,6 +40,9 @@ export const SANDBOX_STATIC_ROOT_CONSUMED_DIRS = [
 export const SANDBOX_ROOT_INVOKED_HELPERS = [
   "/opt/bin/dsbx",
   "/usr/local/bin/dust-install-trust-bundle",
+  "/usr/local/bin/dust-gcs-token-server.py",
+  "/usr/local/bin/dust-gcs-write-token.sh",
+  "/usr/local/bin/dust-gcs-token-firewall.sh",
   // Root invokes litestream on the pod-state pre-sleep sync (`litestream sync
   // -wait`) and cold-start restore, so it must stay root-owned/non-writable.
   "/opt/bin/litestream",

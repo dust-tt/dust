@@ -8,6 +8,7 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
+  type AgentLoopRunContext,
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
@@ -51,6 +52,7 @@ import {
   timeFrameFromNow,
 } from "@app/types/shared/utils/time_frame";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 import uniqBy from "lodash/uniqBy";
 
 const localLogger = logger.child({ module: "mcp_slack_personal" });
@@ -581,6 +583,15 @@ export function createSlackPersonalTools(
       },
       { authInfo }
     ) => {
+      let attachmentRunContext: AgentLoopRunContext | undefined;
+      if (fileId) {
+        assert(
+          isAgentLoopRunContext(toolContext?.runContext),
+          "AgentLoopRunContext expected"
+        );
+        attachmentRunContext = toolContext.runContext;
+      }
+
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
@@ -597,7 +608,10 @@ export function createSlackPersonalTools(
           to,
           message,
           threadTs,
-          fileId,
+          fileAttachment:
+            fileId && attachmentRunContext
+              ? { fileId, runContext: attachmentRunContext }
+              : undefined,
           unfurlLinks,
           unfurlMedia,
           accessToken,

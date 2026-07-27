@@ -1,5 +1,5 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import { displayRole, getRoleDescription } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
 import {
@@ -15,6 +15,7 @@ import type {
   SeatBillingFrequency,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -143,6 +144,7 @@ export function InviteEmailButtonWithModal({
 
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
+  const { hasFeature } = useFeatureFlags();
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
   const handleMembersRoleChange = useChangeMembersRoles({ owner });
 
@@ -408,7 +410,10 @@ export function InviteEmailButtonWithModal({
                 />
               </div>
               <div className="text-muted-foreground">
-                {ROLES_DATA[invitationRole]["description"]}
+                {getRoleDescription(
+                  invitationRole,
+                  hasFeature("admin_governance")
+                )}
               </div>
             </div>
             {hasSeatSelection && (

@@ -319,12 +319,10 @@ export function getCoTDelimitersConfiguration({
   agentConfiguration: LightAgentConfigurationType;
 }): DelimitersConfiguration {
   const model = getSupportedModelConfig(agentConfiguration.model);
-  assert(
-    model,
-    "Model configuration not found in getCoTDelimitersConfiguration"
-  );
 
-  if (DEEPSEEK_MODELS.includes(model.modelId)) {
+  // model config can be absent for messages produced by a
+  // since-removed model; fall back to default delimiters instead of throwing.
+  if (model && DEEPSEEK_MODELS.includes(model.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
   }
 

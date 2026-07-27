@@ -18,12 +18,14 @@ import type {
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
 import type {
+  CallFunctionRequest,
   CommandResultMap,
   EditTextFn,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types/assistant/visualization";
 import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
+import { isAPIError } from "@app/types/error";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import {
   assertNever,
@@ -91,10 +93,26 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
 };
 
 const sendErrorToIframe = (
-  request: { command: "callFunction" } & VisualizationRPCRequest,
+  request: CallFunctionRequest,
   error: SandboxFunctionCallError,
-  target: MessageEventSource
+  target: MessageEventSource,
+  {
+    conversationId,
+    workspaceId,
+  }: { conversationId: string | null; workspaceId: string }
 ) => {
+  // Once handed over, the error belongs to Frame code and only comes back if the Frame reports it
+  // itself, so log here to keep a trace of every failed call.
+  datadogLogger.info("Sandbox function call failed", {
+    code: error.code,
+    conversationId,
+    errorMessage: error.message,
+    fileId: request.identifier,
+    functionIdOrSlug: request.params.functionIdOrSlug,
+    status: error.status,
+    workspaceId,
+  });
+
   target.postMessage(
     {
       command: "answer",
@@ -284,6 +302,7 @@ function SandboxFunctionInvocation({
 
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler({
+  conversationId,
   createSandboxFunctionInvocation,
   getFileBlob,
   onEditText,
@@ -293,7 +312,9 @@ function useVisualizationDataHandler({
   visualization,
   vizIframeRef,
   waitForSandboxFunctionInvocationResult,
+  workspaceId,
 }: {
+  conversationId: string | null;
   createSandboxFunctionInvocation: (
     functionIdOrSlug: string,
     input?: unknown
@@ -309,6 +330,7 @@ function useVisualizationDataHandler({
     functionId: string;
     invocationId: string;
   }) => Promise<Result<unknown, SandboxFunctionCallError>>;
+  workspaceId: string;
 }) {
   const sendNotification = useSendNotification();
   const { code } = visualization;
@@ -372,7 +394,10 @@ function useVisualizationDataHandler({
           );
 
           if (invocationRes.isErr()) {
-            sendErrorToIframe(data, invocationRes.error, event.source);
+            sendErrorToIframe(data, invocationRes.error, event.source, {
+              conversationId,
+              workspaceId,
+            });
             break;
           }
 
@@ -382,7 +407,10 @@ function useVisualizationDataHandler({
           });
 
           if (result.isErr()) {
-            sendErrorToIframe(data, result.error, event.source);
+            sendErrorToIframe(data, result.error, event.source, {
+              conversationId,
+              workspaceId,
+            });
           } else {
             sendResponseToIframe(data, result.value, event.source);
           }
@@ -453,6 +481,7 @@ function useVisualizationDataHandler({
     return () => window.removeEventListener("message", listener);
   }, [
     code,
+    conversationId,
     createSandboxFunctionInvocation,
     downloadFileFromBlob,
     getFileBlob,
@@ -464,6 +493,7 @@ function useVisualizationDataHandler({
     vizIframeRef,
     sendNotification,
     waitForSandboxFunctionInvocationResult,
+    workspaceId,
   ]);
 }
 
@@ -676,10 +706,10 @@ export const VisualizationActionIframe = forwardRef<
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
           return new Err({
-            code:
-              "type" in error && error.type === "sandbox_function_not_found"
-                ? "function_not_found"
-                : "invocation_failed",
+            // Forward the API error type verbatim. Re-deriving a code here would collapse every
+            // failure but one into `invocation_failed` and drop the only classification the
+            // endpoint produced.
+            code: isAPIError(error) ? error.type : "invocation_failed",
             message: error.message,
             status: response.status,
           });
@@ -700,6 +730,7 @@ export const VisualizationActionIframe = forwardRef<
   );
 
   useVisualizationDataHandler({
+    conversationId,
     createSandboxFunctionInvocation,
     getFileBlob,
     onEditText,
@@ -709,6 +740,7 @@ export const VisualizationActionIframe = forwardRef<
     visualization,
     vizIframeRef,
     waitForSandboxFunctionInvocationResult,
+    workspaceId,
   });
 
   const { code, complete: codeFullyGenerated } = visualization;

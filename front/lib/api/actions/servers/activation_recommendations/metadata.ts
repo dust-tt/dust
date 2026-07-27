@@ -16,13 +16,17 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
         .string()
         .max(4096)
         .describe(
-          "Short title for the recommendation, shown in the 'Your next steps' surface (5-10 words)."
+          "Action label shown in the recommendations list (6-8 words). " +
+            "Be specific enough that the user knows exactly what they would be doing. " +
+            "Example: 'Ask about recent Slack decisions'."
         ),
       content: z
         .string()
         .max(4096)
         .describe(
-          "One-sentence description of what the recommendation involves, shown as subtitle."
+          "Brief subtitle shown under the title in the recommendations list (8-10 words). " +
+            "Explain the 'how' or 'why' in plain language. " +
+            "Example: 'Find past decisions in your Slack workspace in seconds'."
         ),
     },
     stake: "never_ask",
@@ -80,6 +84,30 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
     displayLabels: {
       running: "Fetching recommendation history",
       done: "Recommendation history fetched",
+    },
+  },
+  {
+    name: "get_tool_execution_modes",
+    description:
+      "Get the resolved execution mode for each tool available in the current run. " +
+      "Returns one of three modes for each tool: " +
+      "'auto' — runs silently without user approval; " +
+      "'requires_approval' — pauses execution until the user approves; " +
+      "'not_connected' — the user has not connected to this server yet (OAuth required).",
+    schema: {
+      executionModes: z
+        .array(z.enum(["auto", "requires_approval", "not_connected"]))
+        .optional()
+        .describe(
+          "When set, only return tools whose execution mode is one of these values. Omit to return all tools."
+        ),
+    },
+    stake: "never_ask",
+    toolCostCategory: "basic",
+    freeUsage: true,
+    displayLabels: {
+      running: "Checking tool execution modes",
+      done: "Tool execution modes ready",
     },
   },
 ] as const;

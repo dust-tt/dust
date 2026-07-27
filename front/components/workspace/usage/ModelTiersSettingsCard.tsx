@@ -1,5 +1,6 @@
 import { ModelTierPickerDropdown } from "@app/components/workspace/ModelTierPickerDropdown";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
+import { usePublishedAgentsRestrictedModelsToggle } from "@app/hooks/usePublishedAgentsRestrictedModelsToggle";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getWorkspaceModelTierOptions } from "@app/lib/client/model_tier_options";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
@@ -8,7 +9,7 @@ import {
   useWorkspaceAllowedModelTiers,
 } from "@app/lib/swr/model_tiers";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Page, SettingsList } from "@dust-tt/sparkle";
+import { Page, SettingsList, SliderToggle } from "@dust-tt/sparkle";
 
 interface ModelTiersSettingsCardProps {
   owner: LightWorkspaceType;
@@ -25,6 +26,11 @@ export function ModelTiersSettingsCard({
   } = useWorkspaceAllowedModelTiers({ owner });
   const { setWorkspaceAllowedModelTier, isWorkspaceAllowedModelTierMutating } =
     useWorkspaceAllowedModelTierMutations({ owner });
+  const {
+    isEnabled: isRestrictedModelsForPublishedAgentsEnabled,
+    isChanging: isRestrictedModelsForPublishedAgentsChanging,
+    doTogglePublishedAgentsRestrictedModels,
+  } = usePublishedAgentsRestrictedModelsToggle({ owner });
 
   const selectedValue = workspaceMaxTierName ?? DEFAULT_MAX_MODEL_TIER;
 
@@ -50,6 +56,19 @@ export function ModelTiersSettingsCard({
               readOnly={readOnly}
               isLoading={isWorkspaceAllowedModelTiersLoading}
               isMutating={isWorkspaceAllowedModelTierMutating}
+            />
+          }
+        />
+        <SettingsList.Row
+          title="Published agents"
+          description="Allow all members to run published agents even when the agent's model tier is above their own access."
+          action={
+            <SliderToggle
+              selected={isRestrictedModelsForPublishedAgentsEnabled}
+              disabled={
+                readOnly || isRestrictedModelsForPublishedAgentsChanging
+              }
+              onClick={() => void doTogglePublishedAgentsRestrictedModels()}
             />
           }
         />

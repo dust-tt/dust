@@ -16,6 +16,7 @@ import type {
 } from "@app/types/api/skills";
 import type { GetSimilarSkillsResponseBody } from "@app/types/api/skills/existing_skill_checker";
 import type {
+  SkillAvailability,
   SkillReinforcementMode,
   SkillStatus,
   SkillType,
@@ -99,14 +100,18 @@ export function useSkills({
   disabled,
   status,
   globalSpaceOnly,
-  isDefault,
+  availability,
+  bypassEditorVisibility,
   swrOptions,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
-  isDefault?: boolean;
+  availability?: SkillAvailability | SkillAvailability[];
+  // Admin-only: bypass the editor-visibility rule and also list unpublished
+  // (editors-only) skills the caller does not edit.
+  bypassEditorVisibility?: boolean;
   swrOptions?: SWRConfiguration;
 }): {
   skills: SkillWithoutInstructionsAndToolsType[];
@@ -123,8 +128,16 @@ export function useSkills({
   if (globalSpaceOnly) {
     queryParams.set("globalSpaceOnly", "true");
   }
-  if (isDefault) {
-    queryParams.set("isDefault", "true");
+  if (availability) {
+    const availabilities = Array.isArray(availability)
+      ? availability
+      : [availability];
+    for (const value of availabilities) {
+      queryParams.append("availability", value);
+    }
+  }
+  if (bypassEditorVisibility) {
+    queryParams.set("bypassEditorVisibility", "true");
   }
   const queryString = queryParams.toString();
 

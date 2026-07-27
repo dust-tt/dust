@@ -13,11 +13,17 @@ import {
   getFileFromConversationAttachment,
   sanitizeFilename,
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import {
+  type AgentLoopRunContext,
+  isAgentLoopRunContext,
+} from "@app/lib/actions/types";
 import { getAllowedLabelsForMCPServer } from "@app/lib/api/actions/servers/microsoft/utils";
 import { OUTLOOK_TOOLS_METADATA } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
@@ -25,20 +31,15 @@ const MAX_ATTACHMENT_SIZE_BYTES = 3 * 1024 * 1024; // 3MB — Graph API inline a
 
 async function fetchAttachment(
   auth: ToolHandlerExtra["auth"],
-  attachmentFilePath: string | undefined,
-  runContext: ToolHandlerExtra["runContext"]
+  attachmentFilePath: string,
+  runContext: AgentLoopRunContext
 ): Promise<
-  | Ok<{ buffer: Buffer; filename: string; contentType: string } | null>
-  | Err<MCPError>
+  Result<{ buffer: Buffer; filename: string; contentType: string }, MCPError>
 > {
-  if (!attachmentFilePath) {
-    return new Ok(null);
-  }
-
   const fileResult = await getFileFromConversationAttachment(
     auth,
     attachmentFilePath,
-    { runContext }
+    runContext
   );
 
   if (fileResult.isErr()) {
@@ -1482,20 +1483,29 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     },
     { authInfo, auth, runContext }
   ) => {
+    let attachmentRunContext: AgentLoopRunContext | undefined;
+    if (attachmentFilePath) {
+      assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+      attachmentRunContext = runContext;
+    }
+
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
     }
 
-    const attachmentResult = await fetchAttachment(
-      auth,
-      attachmentFilePath,
-      runContext
-    );
-    if (attachmentResult.isErr()) {
-      return attachmentResult;
+    let attachment = null;
+    if (attachmentFilePath && attachmentRunContext) {
+      const attachmentResult = await fetchAttachment(
+        auth,
+        attachmentFilePath,
+        attachmentRunContext
+      );
+      if (attachmentResult.isErr()) {
+        return attachmentResult;
+      }
+      attachment = attachmentResult.value;
     }
-    const attachment = attachmentResult.value;
 
     const validationError = validateMailParams({
       replyToMessageId,
@@ -1596,6 +1606,12 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     },
     { authInfo, auth, runContext }
   ) => {
+    let attachmentRunContext: AgentLoopRunContext | undefined;
+    if (attachmentFilePath) {
+      assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+      attachmentRunContext = runContext;
+    }
+
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
@@ -1611,15 +1627,18 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       return validationError;
     }
 
-    const attachmentResult = await fetchAttachment(
-      auth,
-      attachmentFilePath,
-      runContext
-    );
-    if (attachmentResult.isErr()) {
-      return attachmentResult;
+    let attachment = null;
+    if (attachmentFilePath && attachmentRunContext) {
+      const attachmentResult = await fetchAttachment(
+        auth,
+        attachmentFilePath,
+        attachmentRunContext
+      );
+      if (attachmentResult.isErr()) {
+        return attachmentResult;
+      }
+      attachment = attachmentResult.value;
     }
-    const attachment = attachmentResult.value;
 
     const basePath = getMailboxBasePath(sharedMailboxAddress);
 

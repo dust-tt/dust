@@ -1,6 +1,11 @@
 import { EditInvitationModal } from "@app/components/members/EditInvitationModal";
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import {
+  displayRole,
+  normalizeDisplayRole,
+  ROLES_DATA,
+} from "@app/components/members/Roles";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
@@ -36,6 +41,7 @@ export function InvitationsList({
   const [selectedInvite, setSelectedInvite] =
     useState<MembershipInvitationType | null>(null);
   const sendNotification = useSendNotification();
+  const { hasFeature } = useFeatureFlags();
 
   const filteredInvitations = useMemo(
     () =>
@@ -100,17 +106,25 @@ export function InvitationsList({
       id: "initialRole",
       header: "Role",
       accessorFn: (row: RowData) => row.initialRole,
-      cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent>
-          <Chip
-            size="xs"
-            color={ROLES_DATA[info.row.original.initialRole]["color"]}
-            className="capitalize"
-          >
-            {displayRole(info.row.original.initialRole)}
-          </Chip>
-        </DataTable.CellContent>
-      ),
+      cell: (info: CellContext<RowData, string>) => {
+        // `builder` is deprecated under admin governance: display it as a
+        // regular member.
+        const displayedRole = normalizeDisplayRole(
+          info.row.original.initialRole,
+          hasFeature("admin_governance")
+        );
+        return (
+          <DataTable.CellContent>
+            <Chip
+              size="xs"
+              color={ROLES_DATA[displayedRole]["color"]}
+              className="capitalize"
+            >
+              {displayRole(displayedRole)}
+            </Chip>
+          </DataTable.CellContent>
+        );
+      },
       meta: {
         className: "w-32",
       },

@@ -1,6 +1,6 @@
 import type { GetProvidersCheckResponseBody } from "@app/types/api/provider_credentials";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -23,7 +23,7 @@ const app = workspaceApp();
 app.post(
   "/",
   validate("param", ParamsSchema),
-  ensureIsBuilder(),
+  ensureIsAdmin(),
   validate("json", PostCheckBodySchema),
   async (ctx): HandlerResult<GetProvidersCheckResponseBody> => {
     const { pId } = ctx.req.valid("param");

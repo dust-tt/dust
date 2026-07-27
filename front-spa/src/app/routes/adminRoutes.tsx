@@ -1,3 +1,4 @@
+import { RequirePermissionLayout } from "@spa/app/layouts/RequirePermissionLayout";
 import { RequireRoleLayout } from "@spa/app/layouts/RequireRoleLayout";
 import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
@@ -122,8 +123,6 @@ export const adminRoutes: RouteObject[] = [
       { path: "model-providers", element: <ModelProvidersPage /> },
       { path: "workspace", element: <WorkspaceSettingsPage /> },
       { path: "branding", element: <WorkspaceBrandingPage /> },
-      { path: "subscription", element: <SubscriptionPage /> },
-      { path: "billing", element: <BillingPage /> },
       { path: "developers/api-keys", element: <APIKeysPage /> },
       {
         path: "developers/credits-usage",
@@ -145,6 +144,14 @@ export const adminRoutes: RouteObject[] = [
         path: "developers/self-improving-skills",
         element: <SelfImprovingSkillsPage />,
       },
+    ],
+  },
+  {
+    // Billing areas: accessible to admins and to members holding the billing admin permission.
+    element: <RequirePermissionLayout verb="admin" resourceType="billing" />,
+    children: [
+      { path: "subscription", element: <SubscriptionPage /> },
+      { path: "billing", element: <BillingPage /> },
     ],
   },
 ];

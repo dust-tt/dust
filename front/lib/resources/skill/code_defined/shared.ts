@@ -141,7 +141,7 @@ export async function filterSkillDefinitions<T extends SkillDefinition>(
 
     if (
       where.availability !== undefined &&
-      where.availability !== availability
+      !matchesFilter(availability, where.availability)
     ) {
       return false;
     }

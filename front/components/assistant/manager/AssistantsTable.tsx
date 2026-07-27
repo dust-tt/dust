@@ -3,8 +3,11 @@ import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetailsSheet"
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { getModelMakerLogo } from "@app/components/providers/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useAppRouter } from "@app/lib/platform";
 import { useTags } from "@app/lib/swr/tags";
 import {
@@ -19,6 +22,7 @@ import type {
   AgentUsageType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import { getModelMaker } from "@app/types/assistant/models/providers";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { TagType } from "@app/types/tag";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -37,7 +41,7 @@ import {
   Trash01,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 type RowData = {
@@ -50,6 +54,8 @@ type RowData = {
   feedbacks: { up: number; down: number } | undefined;
   lastUpdate: string | null;
   scope: AgentConfigurationScope;
+  model: string;
+  modelIcon: ComponentType | undefined;
   onClick?: () => void;
   menuItems?: MenuItem[];
   agentTags: TagType[];
@@ -79,6 +85,7 @@ const getTableColumns = ({
    * Columns order:
    * - Select (if batch edit)
    * - Name (always)
+   * - Model (hidden on mobile)
    * - Access (hidden on mobile)
    * - Editors (hidden on mobile)
    * - Tags (always)
@@ -135,7 +142,22 @@ const getTableColumns = ({
         </DataTable.CellContent>
       ),
       meta: {
-        className: "w-40 @lg:w-full",
+        className: "w-32 @lg:w-full",
+      },
+    },
+    {
+      header: "Model",
+      accessorKey: "model",
+      cell: (info: CellContext<RowData, string>) => (
+        <DataTable.CellContent
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+          icon={info.row.original.modelIcon}
+        >
+          {info.getValue() || "-"}
+        </DataTable.CellContent>
+      ),
+      meta: {
+        className: "hidden @sm:w-48 @sm:table-cell",
       },
     },
     {
@@ -188,7 +210,7 @@ const getTableColumns = ({
         );
       },
       meta: {
-        className: "hidden @sm:w-32 @sm:table-cell",
+        className: "hidden @sm:w-24 @sm:table-cell",
       },
     },
     {
@@ -220,7 +242,7 @@ const getTableColumns = ({
       ),
       isFilterable: true,
       meta: {
-        className: "w-32 xl:w-60",
+        className: "w-24 xl:w-40",
         tooltip: "Tags",
       },
     },
@@ -347,6 +369,8 @@ export function AssistantsTable({
   const { tags } = useTags({ owner });
   const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
 
+  const { isDark } = useTheme();
+
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
 
@@ -369,6 +393,8 @@ export function AssistantsTable({
           agentConfiguration.status !== "archived" &&
           agentConfiguration.scope !== "global";
 
+        const modelConfig = getSupportedModelConfig(agentConfiguration.model);
+
         return {
           sId: agentConfiguration.sId,
           name: agentConfiguration.name,
@@ -384,6 +410,10 @@ export function AssistantsTable({
           feedbacks: agentConfiguration.feedbacks,
           editors: agentConfiguration.editors ?? [],
           scope: agentConfiguration.scope,
+          model: modelConfig?.displayName ?? agentConfiguration.model.modelId,
+          modelIcon: modelConfig
+            ? getModelMakerLogo(getModelMaker(modelConfig), isDark)
+            : undefined,
           agentTags: agentConfiguration.tags,
           agentTagsAsString:
             agentConfiguration.tags.length > 0
@@ -505,6 +535,7 @@ export function AssistantsTable({
       selection,
       setSelection,
       isBatchEdit,
+      isDark,
     ]
   );
 

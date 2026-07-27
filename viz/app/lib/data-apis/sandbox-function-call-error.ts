@@ -1,21 +1,11 @@
 import { z } from "zod";
 
-export const SANDBOX_FUNCTION_CALL_ERROR_CODES = [
-  "bad_input",
-  "invalid_input",
-  "import_failed",
-  "threw",
-  "bad_return",
-  "http_error",
-  "invalid_output",
-  "function_not_found",
-  "invocation_failed",
-  "transport_error",
-  "not_supported",
-] as const;
-
+// `code` is deliberately not an enum: front forwards the runner code or the API error type that
+// caused the failure rather than mapping it onto a viz-side taxonomy, so validating against a
+// copy of that taxonomy here would only turn every code viz has not heard of yet into
+// `transport_error`.
 const SandboxFunctionCallErrorPayloadSchema = z.object({
-  code: z.enum(SANDBOX_FUNCTION_CALL_ERROR_CODES),
+  code: z.string().min(1),
   message: z.string(),
   status: z.number().optional(),
 });

@@ -11,7 +11,7 @@ export class TemplateFactory {
       handle: faker.person.firstName(),
       presetTemperature: "balanced" as const,
       presetProviderId: "anthropic" as const,
-      presetModelId: "claude-3-opus-20240229" as const,
+      presetModelId: "claude-opus-4-6" as const,
       presetActions: [],
       tags: [],
       timeFrameDuration: null,

@@ -230,6 +230,9 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
     }, transaction);
   }
 
+  // Soft-removes the selections of specific Spaces. The selected_spaces route only accepts
+  // `mode: "add"` today, so this has no production caller yet: it is the counterpart of
+  // `upsertForConversation` for the deselect path, and is covered by this resource's tests.
   static async removeForConversation(
     auth: Authenticator,
     {
@@ -258,6 +261,35 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
           spaceId: {
             [Op.in]: spaceModelIds,
           },
+        },
+        transaction,
+      }
+    );
+
+    return updatedCount;
+  }
+
+  // Removes every active selection of a conversation, whatever the Space. Unlike
+  // `removeForConversation`, this does not require the caller to enumerate (and therefore be able
+  // to read) the selected Spaces, which matters when the conversation ACL is reset independently
+  // of who is performing the operation.
+  static async removeAllForConversation(
+    auth: Authenticator,
+    {
+      conversation,
+      transaction,
+    }: {
+      conversation: { id: ModelId };
+      transaction?: Transaction;
+    }
+  ): Promise<number> {
+    const [updatedCount] = await this.model.update(
+      { removedAt: new Date() },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversation.id,
+          removedAt: null,
         },
         transaction,
       }

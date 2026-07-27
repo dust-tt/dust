@@ -144,6 +144,55 @@ describe("POST /api/w/:wId (workspace default agent)", () => {
   });
 });
 
+describe("POST /api/w/:wId (published agents restricted models)", () => {
+  it("sets allowRestrictedModelsForPublishedAgents in workspace metadata", async () => {
+    const { workspace } = await setup();
+
+    const response = await post(workspace, {
+      allowRestrictedModelsForPublishedAgents: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.metadata?.allowRestrictedModelsForPublishedAgents).toBe(
+      true
+    );
+  });
+
+  it("disables the override and preserves other metadata", async () => {
+    const { workspace } = await setup();
+
+    await post(workspace, { reinforcementCapAwuCredits: 5_000 });
+    await post(workspace, { allowRestrictedModelsForPublishedAgents: true });
+
+    const response = await post(workspace, {
+      allowRestrictedModelsForPublishedAgents: false,
+    });
+
+    expect(response.status).toBe(200);
+
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.metadata?.allowRestrictedModelsForPublishedAgents).toBe(
+      false
+    );
+    expect(updated?.metadata?.reinforcementCapAwuCredits).toBe(5_000);
+  });
+
+  it("returns 403 for non-admin users", async () => {
+    for (const role of ["builder", "user"] as const) {
+      const { workspace } = await setup(role);
+
+      const response = await post(workspace, {
+        allowRestrictedModelsForPublishedAgents: true,
+      });
+
+      expect(response.status).toBe(403);
+      expect((await response.json()).error.type).toBe("workspace_auth_error");
+    }
+  });
+});
+
 describe("POST /api/w/:wId (workspace analytics opt-out)", () => {
   it("sets disableWorkspaceAnalytics in workspace metadata", async () => {
     const { workspace } = await setup();

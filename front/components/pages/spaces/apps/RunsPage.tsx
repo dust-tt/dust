@@ -1,11 +1,12 @@
 import Custom404 from "@app/components/pages/Custom404";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   LinkWrapper,
   useRequiredPathParam,
   useSearchParam,
 } from "@app/lib/platform";
 import { useApp, useRuns } from "@app/lib/swr/apps";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type { RunRunType, RunStatus } from "@app/types/run";
 import { Button, Spinner } from "@dust-tt/sparkle";
@@ -32,9 +33,9 @@ export function RunsPage() {
   const aId = useRequiredPathParam("aId");
   const wIdTarget = useSearchParam("wIdTarget");
   const owner = useWorkspace();
-  const { isBuilder } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
 
-  const readOnly = !isBuilder;
+  const readOnly = !hasPermission("admin", "dust_app");
 
   const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,

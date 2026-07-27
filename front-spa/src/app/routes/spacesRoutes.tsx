@@ -1,3 +1,4 @@
+import { RequireFeatureFlagLayout } from "@spa/app/layouts/RequireFeatureFlagLayout";
 import { SpaceRouterLayout } from "@spa/app/layouts/SpaceRouterLayout";
 import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
@@ -41,7 +42,10 @@ export const spacesRoutes: RouteObject[] = [
         path: "categories/actions",
         element: <SpaceActionsPage />,
       },
-      { path: "categories/apps", element: <SpaceAppsListPage /> },
+      {
+        element: <RequireFeatureFlagLayout flag="legacy_dust_apps" />,
+        children: [{ path: "categories/apps", element: <SpaceAppsListPage /> }],
+      },
       {
         path: "categories/triggers",
         element: <SpaceTriggersPage />,

@@ -1,7 +1,8 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { ROLES_DATA } from "@app/components/members/Roles";
+import { getRoleDescription } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
@@ -35,6 +36,7 @@ export function EditInvitationModal({
 
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
+  const { hasFeature } = useFeatureFlags();
 
   const { roleProvisioningStatus } = useProvisioningStatus({
     workspaceId: owner.sId,
@@ -108,7 +110,10 @@ export function EditInvitationModal({
                   ) : (
                     <>
                       The role defines the rights of a member for the workspace.{" "}
-                      {ROLES_DATA[invitation.initialRole].description}
+                      {getRoleDescription(
+                        invitation.initialRole,
+                        hasFeature("admin_governance")
+                      )}
                     </>
                   )}
                 </div>
