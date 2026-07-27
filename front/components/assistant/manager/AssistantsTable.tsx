@@ -103,7 +103,7 @@ const getTableColumns = ({
                 info.table.getIsAllPageRowsSelected();
               const hasSelection = Object.values(
                 info.table.getState().rowSelection
-              ).some(Boolean);
+              ).some((isSelected) => isSelected);
 
               return (
                 <Checkbox
