@@ -176,7 +176,8 @@ export function AgentBuilderSpacesBlock({
             Visibility control and available data
           </h2>
           <p className="text-sm text-muted-foreground">
-            Select a space or pod to make this agent private to its members and add access to its data and tools.
+            Select a space or pod to make this agent private to its members and
+            add access to its data and tools.
           </p>
         </div>
         <Button

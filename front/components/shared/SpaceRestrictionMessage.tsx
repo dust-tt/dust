@@ -33,7 +33,7 @@ export function SpaceRestrictionMessage({
         <strong>
           {spaces.map((space, index) => (
             <Fragment key={space.sId}>
-              {index > 0 && <span className="mr-0.5">, {" "}</span>}
+              {index > 0 && <span className="mr-0.5">, </span>}
               <Hoverable
                 variant="primary"
                 className="text-inherit underline hover:font-medium"

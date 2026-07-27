@@ -238,7 +238,8 @@ export function SkillBuilderRequestedSpacesSection({
             Visibility control and available data
           </h3>
           <p className="text-sm text-muted-foreground">
-            Select a space or pod to make this skill private to its members and add access to its data and tools.
+            Select a space or pod to make this skill private to its members and
+            add access to its data and tools.
           </p>
         </div>
         <Button
