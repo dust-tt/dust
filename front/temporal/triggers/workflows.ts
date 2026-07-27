@@ -1,4 +1,4 @@
-import { isDevelopment } from "@app/types/shared/env";
+import { isCronScheduleConfig } from "@app/types/assistant/triggers";
 import { ActivityFailure, RetryState } from "@temporalio/common";
 import { proxyActivities, sleep } from "@temporalio/workflow";
 import type * as activities from "./activities";
@@ -7,11 +7,7 @@ import type * as activities from "./activities";
 const ON_THE_HOUR_JITTER_MS = 60 * 10 * 1000;
 
 const getJitterMs = () => {
-  if (isDevelopment()) {
-    return 0;
-  } else {
-    return Math.floor(Math.random() * ON_THE_HOUR_JITTER_MS);
-  }
+  return Math.floor(Math.random() * ON_THE_HOUR_JITTER_MS);
 };
 
 const { getTriggerActivity, runTriggeredAgentsActivity } = proxyActivities<
@@ -56,7 +52,7 @@ export async function agentTriggerWorkflow({
     // For triggers starting on the hour, we will add a little bit of jitter to the start time to avoid all conversations starting at the same time
     if (
       trigger.kind === "schedule" &&
-      trigger.configuration.type === "cron" &&
+      isCronScheduleConfig(trigger.configuration) &&
       trigger.configuration.cron.startsWith("0 ")
     ) {
       const jitterMs = getJitterMs();
