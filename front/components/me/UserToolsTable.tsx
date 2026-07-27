@@ -9,8 +9,8 @@ import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_conn
 import {
   useCreatePersonalConnection,
   useDeleteMCPServerConnection,
-  useManualMCPServerViewsFromSpaces,
   useMCPServerConnections,
+  useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useDeleteToolApproval, useUserApprovals } from "@app/lib/swr/user";
@@ -60,7 +60,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
     kinds: ["global", "regular"],
   });
   const { serverViews, isLoading: isMCPServerViewsLoading } =
-    useManualMCPServerViewsFromSpaces(owner, spaces);
+    useMCPServerViewsFromSpaces(owner, spaces);
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
     connectionType: "personal",
