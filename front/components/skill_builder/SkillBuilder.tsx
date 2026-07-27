@@ -374,6 +374,15 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   );
 }
 
+interface SkillBuilderSettingsOrComparisonFooterProps {
+  skill?: SkillType;
+  hasSelfImprovingSkills: boolean;
+  isEditorGateVisible: boolean;
+  isAddingSelfAsEditor: boolean;
+  onAddSelfAsEditor: () => void;
+  owner: WorkspaceType;
+}
+
 function SkillBuilderSettingsOrComparisonFooter({
   skill,
   hasSelfImprovingSkills,
@@ -381,14 +390,7 @@ function SkillBuilderSettingsOrComparisonFooter({
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
   owner,
-}: {
-  skill?: SkillType;
-  hasSelfImprovingSkills: boolean;
-  isEditorGateVisible: boolean;
-  isAddingSelfAsEditor: boolean;
-  onAddSelfAsEditor: () => void;
-  owner: WorkspaceType;
-}) {
+}: SkillBuilderSettingsOrComparisonFooterProps) {
   const { compareVersion } = useSkillVersionComparisonContext();
 
   if (compareVersion) {
