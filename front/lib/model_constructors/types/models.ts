@@ -22,7 +22,9 @@ export const CLAUDE_HAIKU_4_5 = "claude-haiku-4-5-20251001" as const;
 
 export const GEMINI_3_1_PRO = "gemini-3.1-pro-preview" as const;
 export const GEMINI_3_5_FLASH = "gemini-3.5-flash" as const;
+export const GEMINI_3_6_FLASH = "gemini-3.6-flash" as const;
 export const GEMINI_3_1_FLASH_LITE = "gemini-3.1-flash-lite" as const;
+export const GEMINI_3_5_FLASH_LITE = "gemini-3.5-flash-lite" as const;
 
 export const MISTRAL_LARGE = "mistral-large-latest" as const;
 export const MISTRAL_MEDIUM_3_5 = "mistral-medium-3-5" as const;
@@ -68,7 +70,9 @@ export const MODELS = [
   CLAUDE_HAIKU_4_5,
   GEMINI_3_1_PRO,
   GEMINI_3_5_FLASH,
+  GEMINI_3_6_FLASH,
   GEMINI_3_1_FLASH_LITE,
+  GEMINI_3_5_FLASH_LITE,
   MISTRAL_LARGE,
   MISTRAL_MEDIUM_3_5,
   MISTRAL_SMALL,
