@@ -985,8 +985,6 @@ describe("processMetronomeWebhook — credit.create pool reconcile", () => {
       timestamp: new Date().toISOString(),
       credit_id: CREDIT_ID,
       credit_custom_fields: null,
-      // No contract_id → stampContractCreditType stamps "pool" without a
-      // contract fetch, keeping the test focused on the reconcile.
       contract_id: null,
       contract_custom_fields: null,
       parent_recurring_credit_id: null,
@@ -1021,7 +1019,7 @@ describe("processMetronomeWebhook — credit.create pool reconcile", () => {
     ).mockResolvedValue(undefined);
   });
 
-  it("reconciles the pool when an AWU credit is created", async () => {
+  it("stamps and reconciles the pool when a pool AWU credit is created", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
     vi.mocked(getMetronomeCredit).mockResolvedValue(
       new Ok(credit(getCreditTypeAwuId()))
@@ -1033,6 +1031,12 @@ describe("processMetronomeWebhook — credit.create pool reconcile", () => {
     });
 
     expect(result.isOk()).toBe(true);
+    expect(setMetronomeContractCreditCustomFields).toHaveBeenCalledWith({
+      creditId: CREDIT_ID,
+      customFields: {
+        [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+      },
+    });
     expect(syncPoolCreditStateFromBalance).toHaveBeenCalledWith({
       workspace,
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
@@ -1042,7 +1046,7 @@ describe("processMetronomeWebhook — credit.create pool reconcile", () => {
     ).not.toHaveBeenCalled();
   });
 
-  it("does not reconcile the pool for a non-AWU credit", async () => {
+  it("does not stamp or reconcile the pool for a non-AWU credit", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
     vi.mocked(getMetronomeCredit).mockResolvedValue(
       new Ok(credit("non_awu_credit_type"))
@@ -1054,10 +1058,11 @@ describe("processMetronomeWebhook — credit.create pool reconcile", () => {
     });
 
     expect(result.isOk()).toBe(true);
+    expect(setMetronomeContractCreditCustomFields).not.toHaveBeenCalled();
     expect(syncPoolCreditStateFromBalance).not.toHaveBeenCalled();
   });
 
-  it("reconciles per-user (not pool) state for a per-seat (INDIVIDUAL) credit", async () => {
+  it("reconciles per-user (not pool) state, without stamping, for a per-seat (INDIVIDUAL) credit", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
     vi.mocked(getMetronomeCredit).mockResolvedValue(
       new Ok(credit(getCreditTypeAwuId(), { allocation: "INDIVIDUAL" }))
@@ -1069,6 +1074,7 @@ describe("processMetronomeWebhook — credit.create pool reconcile", () => {
     });
 
     expect(result.isOk()).toBe(true);
+    expect(setMetronomeContractCreditCustomFields).not.toHaveBeenCalled();
     expect(syncPoolCreditStateFromBalance).not.toHaveBeenCalled();
     expect(
       launchReconcileWorkspaceUserCreditStatesWorkflow

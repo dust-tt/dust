@@ -153,94 +153,49 @@ export class ProcessMetronomeWebhookError extends Error {
 }
 
 /**
- * Stamp `DUST_CONTRACT_CREDIT_TYPE` on a contract_credit. Idempotent — bails
- * out if the field is already set on the credit. Used by both `credit.create`
- * and `credit.segment.start` handlers so every newly visible credit gets
- * tagged regardless of which event Metronome fires first.
+ * Stamp `DUST_CONTRACT_CREDIT_TYPE` on an AWU contract_credit so pool balance
+ * alerts and queries count it. Idempotent — bails if already stamped. Only AWU
+ * credits are stamped; others belong to different pools and are left alone
+ * (mirrors `stampCommitCreditType`).
  *
+ *   - non-AWU credit type → not stamped (belongs to another pool)
+ *   - per-seat (INDIVIDUAL allocation) → not stamped (pool alerts don't track
+ *     per-seat balances)
  *   - excess product → "excess" (filtered out of default alerts)
- *   - per-seat (INDIVIDUAL allocation) → unstamped (workspace pool alerts
- *     don't track per-seat balances)
- *   - everything else (incl. customer-level credits) → "pool" (counted)
+ *   - everything else → "pool" (counted)
  */
 async function stampContractCreditType({
   workspaceId,
-  customerId,
-  contractId,
-  creditId,
-  creditCustomFields,
+  credit,
   eventType,
 }: {
   workspaceId: string;
-  customerId: string;
-  contractId: string | null | undefined;
-  creditId: string;
-  creditCustomFields?: Record<string, string> | null;
+  credit: Credit;
   eventType: string;
 }): Promise<Result<void, ProcessMetronomeWebhookError>> {
-  if (creditCustomFields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]) {
+  if (credit.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]) {
     return new Ok(undefined);
   }
 
-  let value:
-    | typeof CONTRACT_CREDIT_TYPE_POOL
-    | typeof CONTRACT_CREDIT_TYPE_EXCESS = CONTRACT_CREDIT_TYPE_POOL;
-
-  if (contractId) {
-    const contractResult = await getMetronomeContractById({
-      metronomeCustomerId: customerId,
-      metronomeContractId: contractId,
-    });
-    if (contractResult.isErr()) {
-      logger.error(
-        {
-          workspaceId,
-          customerId,
-          contractId,
-          creditId,
-          error: contractResult.error,
-        },
-        `[Metronome Webhook] ${eventType}: failed to fetch contract for stamping`
-      );
-      return new Err(
-        new ProcessMetronomeWebhookError(
-          "processing_failed",
-          `Error fetching contract: ${contractResult.error.message}`
-        )
-      );
-    }
-
-    const credit = contractResult.value.credits?.find((c) => c.id === creditId);
-    if (!credit) {
-      logger.info(
-        { workspaceId, customerId, contractId, creditId },
-        `[Metronome Webhook] ${eventType}: credit not found on contract, skipping stamp`
-      );
-      return new Ok(undefined);
-    }
-
-    // Re-check after the fresh fetch — Metronome may have stamped it between
-    // event emission and our processing (e.g. if both credit.create and
-    // credit.segment.start fire).
-    if (credit.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]) {
-      return new Ok(undefined);
-    }
-
-    if (credit.subscription_config?.allocation === "INDIVIDUAL") {
-      return new Ok(undefined);
-    }
-
-    // Per-user free-seat credits are stamped "free_seat" at creation (see
-    // `addPerUserCreditToCustomer`), so they hit the already-stamped early
-    // return above and are never re-stamped "pool" here.
-
-    if (credit.product.id === getProductExcessCreditsId()) {
-      value = CONTRACT_CREDIT_TYPE_EXCESS;
-    }
+  if (credit.access_schedule?.credit_type?.id !== getCreditTypeAwuId()) {
+    return new Ok(undefined);
   }
 
+  if (credit.subscription_config?.allocation === "INDIVIDUAL") {
+    return new Ok(undefined);
+  }
+
+  // Per-user free-seat credits are stamped "free_seat" at creation (see
+  // `addPerUserCreditToCustomer`), so they hit the already-stamped early
+  // return above and are never re-stamped "pool" here.
+
+  const value =
+    credit.product.id === getProductExcessCreditsId()
+      ? CONTRACT_CREDIT_TYPE_EXCESS
+      : CONTRACT_CREDIT_TYPE_POOL;
+
   const setResult = await setMetronomeContractCreditCustomFields({
-    creditId,
+    creditId: credit.id,
     customFields: {
       [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: value,
     },
@@ -254,7 +209,7 @@ async function stampContractCreditType({
     );
   }
   logger.info(
-    { workspaceId, customerId, contractId, creditId, value, eventType },
+    { workspaceId, creditId: credit.id, value, eventType },
     `[Metronome Webhook] ${eventType}: stamped DUST_CONTRACT_CREDIT_TYPE`
   );
   return new Ok(undefined);
@@ -321,9 +276,10 @@ function isSeatAwuCredit(credit: Credit): boolean {
   );
 }
 
-// Reconcile the workspace pool credit state from a commit/credit segment or
-// edit webhook event. Shared by `commit.segment.start`, `commit.edit`,
-// `credit.edit`, and `credit.segment.start`.
+// Reconcile the workspace pool credit state from a commit/credit segment,
+// create, or edit webhook event. Shared by `commit.*` and `credit.*` handlers.
+// Only AWU entities feed the pool; anything else (programmatic USD, EUR seat
+// credits, etc.) is out of scope for the pool state machine and skipped.
 async function reconcilePoolStateFromSegmentEvent({
   workspace,
   metronomeCustomerId,
@@ -335,12 +291,31 @@ async function reconcilePoolStateFromSegmentEvent({
 }): Promise<void> {
   const creditTypeId = commitOrCredit.access_schedule?.credit_type?.id;
 
-  if (creditTypeId === getCreditTypeAwuId()) {
-    await syncPoolCreditStateFromBalance({
-      workspace,
-      metronomeCustomerId,
-    });
+  if (creditTypeId !== getCreditTypeAwuId()) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        entityId: commitOrCredit.id,
+        creditTypeId,
+      },
+      "[Metronome Webhook] reconcilePoolStateFromSegmentEvent: non-AWU entity, skipping pool reconcile"
+    );
+    return;
   }
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      metronomeCustomerId,
+      entityId: commitOrCredit.id,
+    },
+    "[Metronome Webhook] reconcilePoolStateFromSegmentEvent: reconciling pool from AWU entity"
+  );
+  await syncPoolCreditStateFromBalance({
+    workspace,
+    metronomeCustomerId,
+  });
 }
 
 type SpendThresholdEvent = Extract<
@@ -1347,40 +1322,7 @@ export async function processMetronomeWebhook({
         "[Metronome Webhook] credit.create: handler entered"
       );
 
-      // Stamp `DUST_CONTRACT_CREDIT_TYPE=pool` first: the pool balance is read
-      // with an `onlyPoolCredits` filter (see `getNetBalance`), so an unstamped
-      // credit is invisible to the reconcile below and the pool would stay
-      // stuck. Stamp, then reconcile against the now-visible credit.
-      const stampResult = await stampContractCreditType({
-        workspaceId: workspace.sId,
-        customerId: metronomeCustomerId,
-        contractId: event.contract_id ?? null,
-        creditId,
-        creditCustomFields: event.credit_custom_fields,
-        eventType: "credit.create",
-      });
-      if (stampResult.isErr()) {
-        return stampResult;
-      }
-
-      // Reconcile now that this credit exists and is stamped. A credit granted
-      // at contract-switch time (see `stepContractEdits`) is added to the
-      // already-active contract *after* `contract.start` fired, so that
-      // handler's reconcile ran before the credit existed. Metronome only
-      // fires `credit.create` — not `credit.segment.start` — for a segment
-      // that is already active when the credit is created, so the segment
-      // reconcile path would never re-run for it. Mirror both reconciles that
-      // `credit.segment.start` performs, split by allocation:
-      //
-      //   - Per-seat (INDIVIDUAL) AWU credit → reconcile per-user credit
-      //     states (a new seat allocation lands each user in the right
-      //     seat↔pool state). The workspace-scoped reconcile workflow collapses
-      //     concurrent launches, so onboarding many seats triggers one run.
-      //     No pool reconcile: seat credits never count toward the pool
-      //     balance (only "pool"-stamped credits do).
-      //   - Pool AWU credit (e.g. the recurring free credit) → reconcile the
-      //     workspace pool credit state, which would otherwise stay stuck
-      //     (e.g. `depleted`).
+      // Fetch the credit once: it drives both the stamp and the reconcile.
       const creditResult = await getMetronomeCredit({
         metronomeCustomerId,
         creditId,
@@ -1393,25 +1335,58 @@ export async function processMetronomeWebhook({
           )
         );
       }
-      if (creditResult.value) {
-        if (isSeatAwuCredit(creditResult.value)) {
-          await launchReconcileWorkspaceUserCreditStatesWorkflow({
-            workspaceId: workspace.sId,
-          });
-          logger.info(
-            { metronomeCustomerId, creditId, workspaceId: workspace.sId },
-            "[Metronome Webhook] credit.create: seat credit created, user state reconcile triggered"
-          );
-        } else if (
-          creditResult.value.subscription_config?.allocation !== "INDIVIDUAL"
-        ) {
-          await reconcilePoolStateFromSegmentEvent({
-            workspace,
-            metronomeCustomerId,
-            commitOrCredit: creditResult.value,
-          });
-        }
+      const credit = creditResult.value;
+      if (!credit) {
+        logger.info(
+          { metronomeCustomerId, creditId, workspaceId: workspace.sId },
+          "[Metronome Webhook] credit.create: credit not found, skipping"
+        );
+        break;
       }
+
+      // A credit granted at contract-switch time (see `stepContractEdits`) is
+      // added to the already-active contract *after* `contract.start` fired, so
+      // that handler's reconcile ran before the credit existed. Metronome only
+      // fires `credit.create` — not `credit.segment.start` — for a segment that
+      // is already active when the credit is created, so the segment reconcile
+      // path would never re-run for it. Mirror both reconciles that
+      // `credit.segment.start` performs, split by allocation.
+      if (isSeatAwuCredit(credit)) {
+        // Per-seat (INDIVIDUAL) AWU credit → reconcile per-user credit states
+        // (a new seat allocation lands each user in the right seat↔pool state).
+        // The workspace-scoped reconcile workflow collapses concurrent
+        // launches, so onboarding many seats triggers one run. Not stamped and
+        // no pool reconcile: seat credits never count toward the pool balance.
+        await launchReconcileWorkspaceUserCreditStatesWorkflow({
+          workspaceId: workspace.sId,
+        });
+        logger.info(
+          { metronomeCustomerId, creditId, workspaceId: workspace.sId },
+          "[Metronome Webhook] credit.create: seat credit created, user state reconcile triggered"
+        );
+        break;
+      }
+
+      // Pool AWU credit (e.g. the recurring free credit) → stamp, then
+      // reconcile the workspace pool credit state (which would otherwise stay
+      // stuck, e.g. `depleted`). Stamp first: the pool balance is read with an
+      // `onlyPoolCredits` filter (see `getNetBalance`), so an unstamped credit
+      // is invisible to the reconcile. Non-AWU credits are left unstamped and
+      // skipped by the reconcile.
+      const stampResult = await stampContractCreditType({
+        workspaceId: workspace.sId,
+        credit,
+        eventType: "credit.create",
+      });
+      if (stampResult.isErr()) {
+        return stampResult;
+      }
+
+      await reconcilePoolStateFromSegmentEvent({
+        workspace,
+        metronomeCustomerId,
+        commitOrCredit: credit,
+      });
       break;
     }
 
@@ -1580,10 +1555,10 @@ export async function processMetronomeWebhook({
               "[Metronome Webhook] credit.segment.start: seat credit activated, reconcile triggered"
             );
           }
-        } else if (
-          creditResult.value.subscription_config?.allocation !== "INDIVIDUAL"
-        ) {
-          // Pool AWU credit: reconcile the workspace pool credit state.
+        } else {
+          // Pool credit: reconcile the workspace pool credit state. The helper
+          // gates on AWU (logging non-AWU skips), so non-AWU pool credits are
+          // a no-op.
           await reconcilePoolStateFromSegmentEvent({
             workspace,
             metronomeCustomerId,
