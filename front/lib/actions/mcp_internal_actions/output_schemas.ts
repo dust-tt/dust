@@ -55,6 +55,7 @@ const ToolGeneratedFileSchema = z.object({
   uri: z.string(),
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE),
   fileId: z.string(),
+  path: z.string().optional(),
   title: z.string(),
   contentType: z.enum(
     Object.keys(ALL_FILE_FORMATS) as [
