@@ -9,19 +9,21 @@ import { z } from "zod";
 // applied in the llms layer.
 const CONTEXT_SIZE = 1_040_000;
 const MAX_OUTPUT_TOKENS = 131_072;
-const DEFAULT_REASONING_EFFORT = "medium";
+const DEFAULT_REASONING_EFFORT = "low";
 
-// Same Fireworks reasoning contract as Kimi K2.6: none/low drop
-// reasoning_effort (default chain-of-thought), only medium/high reach the
-// model.
+// K3 has thinking permanently enabled, so there is no `none` tier to expose:
+// every effort reaches the model as a `reasoning_effort` value, low/medium/high
+// straight through. Dust's `light` maps to `low` via `useNativeLightReasoning`
+// on the legacy config.
 // TODO(2026-07-27 henry): Moonshot's own platform documents K3 as low/high/max
-// with thinking always on (https://platform.kimi.ai/docs/guide/kimi-k3-quickstart),
-// while Fireworks documents low/medium/high across the models it serves
-// (https://docs.fireworks.ai/guides/reasoning). We mirror the K2.6 contract
-// here; the live endpoint test must confirm it before merge.
+// (https://platform.kimi.ai/docs/guide/kimi-k3-quickstart), while Fireworks
+// documents low/medium/high across the models it serves
+// (https://docs.fireworks.ai/guides/reasoning). We follow Fireworks here since
+// Fireworks is the host; the live endpoint test must confirm `medium` before
+// merge.
 const configSchema = fireworksConfigSchema.extend({
   reasoning: z
-    .object({ effort: z.enum(["none", "low", "medium", "high"]) })
+    .object({ effort: z.enum(["low", "medium", "high"]) })
     .default({ effort: DEFAULT_REASONING_EFFORT }),
 });
 

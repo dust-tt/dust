@@ -31,6 +31,21 @@ describe("Kimi K3 model configuration", () => {
     );
   });
 
+  it("exposes no `none` tier and reaches Fireworks natively at `light`", () => {
+    // K3 always thinks, so `none` is not a reachable tier. `light` must map to
+    // Fireworks' `low` rather than dropping reasoning_effort, which is what
+    // `useNativeLightReasoning` switches on (see `mapReasoningEffort`); it also
+    // suppresses the chain-of-thought meta prompt.
+    expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.supportedReasoningEfforts).toEqual({
+      none: false,
+      light: true,
+      medium: true,
+      high: true,
+    });
+    expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.useNativeLightReasoning).toBe(true);
+    expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.defaultReasoningEffort).toBe("light");
+  });
+
   it("caps the legacy model config to match, leaving a 192k prompt budget", () => {
     expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.contextSize).toBe(
       EXPECTED_CONTEXT_SIZE

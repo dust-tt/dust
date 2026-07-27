@@ -389,7 +389,7 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     high: true,
   },
   "accounts/fireworks/models/kimi-k3": {
-    none: true,
+    none: false,
     light: true,
     medium: true,
     high: true,

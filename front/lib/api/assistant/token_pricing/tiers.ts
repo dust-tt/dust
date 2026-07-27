@@ -361,7 +361,6 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     high: "balanced",
   },
   "accounts/fireworks/models/kimi-k3": {
-    none: "balanced",
     light: "balanced",
     medium: "premium",
     high: "premium",
