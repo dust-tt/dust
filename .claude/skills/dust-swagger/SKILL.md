@@ -11,7 +11,7 @@ description: MANDATORY guideline - Always keep Swagger documentation in sync whe
 
 Automatically applies whenever you are:
 
-- Modifying files in `front/pages/api/**` or `front/app/api/**`
+- Modifying files in `front-api/routes/**`
 - Adding, removing, or renaming fields in request/response bodies (at any nesting level)
 - Changing field types or optionality in API schemas
 - Adding or removing endpoints
@@ -20,8 +20,8 @@ Automatically applies whenever you are:
 
 When modifying API schemas, check and update the following:
 
-- `pages/api/swagger_private_schemas.ts` — shared schemas for the private API
-- `pages/api/v1/w/[wId]/swagger_schemas.ts` — shared schemas for the public API
+- `front-api/routes/swagger_private_schemas.ts` — shared schemas for the private API
+- `front-api/routes/v1/w/[wId]/swagger_schemas.ts` — shared schemas for the public API
 - The `@swagger` annotation in the endpoint file itself
 
 ## Annotations
