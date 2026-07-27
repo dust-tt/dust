@@ -273,6 +273,36 @@ export class TagResource extends BaseResource<TagModel> {
     });
   }
 
+  static async addToAgents(
+    auth: Authenticator,
+    tags: TagResource[],
+    agentConfigurations: LightAgentConfigurationType[]
+  ) {
+    if (
+      !auth.isAdmin() &&
+      agentConfigurations.some(
+        (agentConfiguration) => !agentConfiguration.canEdit
+      )
+    ) {
+      throw new Error("You are not allowed to add tags to this agent");
+    }
+
+    if (tags.length === 0 || agentConfigurations.length === 0) {
+      return;
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    await TagAgentModel.bulkCreate(
+      agentConfigurations.flatMap((agentConfiguration) =>
+        tags.map((tag) => ({
+          workspaceId,
+          tagId: tag.id,
+          agentConfigurationId: agentConfiguration.id,
+        }))
+      )
+    );
+  }
+
   async removeFromAgent(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType
@@ -286,6 +316,35 @@ export class TagResource extends BaseResource<TagModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         tagId: this.id,
         agentConfigurationId: agentConfiguration.id,
+      },
+    });
+  }
+
+  static async removeFromAgents(
+    auth: Authenticator,
+    tags: TagResource[],
+    agentConfigurations: LightAgentConfigurationType[]
+  ) {
+    if (
+      !auth.isAdmin() &&
+      agentConfigurations.some(
+        (agentConfiguration) => !agentConfiguration.canEdit
+      )
+    ) {
+      throw new Error("You are not allowed to remove tags from this agent");
+    }
+
+    if (tags.length === 0 || agentConfigurations.length === 0) {
+      return;
+    }
+
+    await TagAgentModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        tagId: tags.map((tag) => tag.id),
+        agentConfigurationId: agentConfigurations.map(
+          (agentConfiguration) => agentConfiguration.id
+        ),
       },
     });
   }

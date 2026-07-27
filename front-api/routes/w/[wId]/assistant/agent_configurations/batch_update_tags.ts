@@ -1,6 +1,5 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -43,28 +42,16 @@ app.post(
       });
     }
 
-    await concurrentExecutor(
+    const agents = await getAgentConfigurations(auth, {
       agentIds,
-      async (agentId) => {
-        const agent = await getAgentConfiguration(auth, {
-          agentId,
-          variant: "light",
-        });
-        if (!agent) {
-          return;
-        }
-        if (!agent.canEdit && !auth.isAdmin()) {
-          return;
-        }
-        for (const tag of tagsToAdd) {
-          await tag.addToAgent(auth, agent);
-        }
-        for (const tag of tagsToRemove) {
-          await tag.removeFromAgent(auth, agent);
-        }
-      },
-      { concurrency: 10 }
+      variant: "light",
+    });
+    const editableAgents = agents.filter(
+      (agent) => agent.canEdit || auth.isAdmin()
     );
+
+    await TagResource.addToAgents(auth, tagsToAdd, editableAgents);
+    await TagResource.removeFromAgents(auth, tagsToRemove, editableAgents);
 
     return ctx.json({ success: true });
   }
