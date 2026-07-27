@@ -238,7 +238,8 @@ export function SkillBuilderRequestedSpacesSection({
             Visibility control and available data
           </h3>
           <p className="text-sm text-muted-foreground">
-            Add a space or pod to restrict usage to its members and make all its data available to this skill.
+            Add a space or pod to restrict usage to its members and make its
+            data available to this skill.
           </p>
         </div>
         <Button
