@@ -291,11 +291,10 @@ export class TagResource extends BaseResource<TagModel> {
       return;
     }
 
-    const workspaceId = auth.getNonNullableWorkspace().id;
     await TagAgentModel.bulkCreate(
       agentConfigurations.flatMap((agentConfiguration) =>
         tags.map((tag) => ({
-          workspaceId,
+          workspaceId: auth.getNonNullableWorkspace().id,
           tagId: tag.id,
           agentConfigurationId: agentConfiguration.id,
         }))
