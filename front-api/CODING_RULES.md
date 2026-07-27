@@ -1,16 +1,21 @@
 # [front-api] Coding Rules
 
-Shared rules (GEN1-GEN13, SEC1-SEC2, ERR1-ERR2) in the root `CODING_RULES.md`
-apply automatically. TypeScript rules in `front/CODING_RULES.md` also apply,
+Shared rules (GEN, SEC and ERR) in the root `CODING_RULES.md` apply
+automatically. TypeScript rules in `front/CODING_RULES.md` also apply,
 since `front-api` shares the same TS environment and reaches into `front`
 internals via the `@app/*` path map.
 
 This file documents rules and patterns specific to `front-api`.
 
-`front-api` is the Hono-based service that incrementally takes over routes
-from `front` (Next.js). The strangler dispatch lives in
-`front-api/server.ts`: it checks `isHonoRoute` from `front-api/app.ts`;
-matched requests go to Hono, the rest fall through to Next.
+`front-api` is the Hono service that serves all HTTP traffic. It took over
+every route from `front` (then Next.js) via a strangler migration that is now
+complete: `front` no longer depends on `next` and holds no route handlers.
+`front-api/server.ts` boots `honoApp` from `front-api/app.ts` on
+`@hono/node-server`; there is no fallback to another framework.
+
+`front` is now a library workspace (`lib`, `types`, `logger`, `components`)
+plus the Temporal workers and the migrations. The dependency is one-way:
+`front-api` reaches into `front` via `@app/*`, never the reverse.
 
 ## ROUTING
 
@@ -41,14 +46,15 @@ front-api/routes/
     w/
       [wId]/
         index.ts                                   # applies publicApiAuth
-        spaces.ts
+        spaces/
+          index.ts                                 # /api/v1/w/:wId/spaces
 ```
 
-**One file per Next path, one route per file at `/`.** A leaf at
-`pages/api/<path>.ts` is migrated to `front-api/routes/<path>.ts` whose
-handlers register under `"/"` (the parent mount owns the path segment).
-GET/POST/PATCH/DELETE on the **same URL** stay together in one file; only
-different URLs split into different files.
+**One file per URL, one route per file at `/`.** A leaf lives at
+`front-api/routes/<path>.ts` and registers its handlers under `"/"` (the
+parent mount owns the path segment). GET/POST/PATCH/DELETE on the **same
+URL** stay together in one file; only different URLs split into different
+files.
 
 Each leaf exports `export default app`:
 
@@ -83,12 +89,17 @@ one is a literal while the other is a param — e.g. `/tables/search` must be
 mounted before `/tables/:tableId`, otherwise the param route swallows
 "search" as an id. Hono's router scans in registration order.
 
-### [API3] Dispatch is automatic — no manual route list
+### [API3] Mounting is the single source of truth — no separate route list
 
-Whether a request goes to Hono or falls through to Next is determined at
-startup by walking `honoApp.routes` (the flattened route table populated by
-every `.get`/`.post`/`.route` call). Registering a Hono route is the single
-source of truth — there is no separate `HONO_ROUTES` list to maintain.
+A route is reachable only because a parent mounted it, up to the top-level
+mounts in `front-api/app.ts`. There is no route manifest to keep in sync:
+adding a file and mounting it is the whole registration step.
+
+Root-level mount order in `app.ts` follows the same literal-before-param rule
+as [API2], and the exceptions are commented there — e.g. `/w/:wId/join` is
+mounted before `/w/:wId` so it does not inherit `workspaceAuth`, and the
+`/:preStopSecret` sub-app is mounted last so its dynamic first segment does
+not shadow the literal-prefixed routes above it.
 
 ## MIDDLEWARE
 
@@ -138,7 +149,7 @@ where the skill fetch and `canWrite` check are identical for all children).
 
 ### [API6] Validate request input with `validate(target, schema)`
 
-`front-api/middleware/validator.ts` wraps `@hono/zod-validator` so failures
+`front-api/middlewares/validator.ts` wraps `@hono/zod-validator` so failures
 produce our standard `{ error: { type, message } }` shape. Use it for any
 target (`json`, `query`, `param`, `header`, `cookie`, `form`):
 
@@ -161,11 +172,10 @@ the wrapper exists to eliminate.
 ### [API7] Always emit error responses through `apiError(c, ...)`
 
 All error responses must go through `apiError(c, err, error?)` from
-`@front-api/middleware/utils`. It is the Hono counterpart of
-`apiError(req, res, ...)` in `front/logger/withlogging.ts` and produces the
-same `{ error: { type, message } }` body plus the same logging, dd-trace
-span tags, and statsd `api_errors.count` increment. Calling `c.json({ error:
-... }, status)` directly skips that observability and is not allowed.
+`@front-api/middlewares/utils`. It produces the standard
+`{ error: { type, message } }` body plus the logging, dd-trace span tags, and
+statsd `api_errors.count` increment. Calling `c.json({ error: ... }, status)`
+directly skips that observability and is not allowed.
 
 ```ts
 // BAD — bypasses logging / tracing / statsd
@@ -220,22 +230,16 @@ Relative imports (`./sibling`, `../parent`) are still fine for files
 adjacent in the tree, but anything reaching across more than one segment
 should use the alias.
 
-## DEPENDENCIES
+## SESSIONS
 
-### [API9] Avoid Next types in front-api code
+### [API9] Read the request through Hono's `Context`
 
-`NextApiRequest` / `NextApiResponse` should not appear in new code. New
-middleware reads what it needs from Hono's `Context` directly
-(`c.req.header(...)`, `c.req.param(...)`, `c.req.raw.headers`).
+Middleware and handlers read what they need from Hono's `Context` directly
+(`c.req.header(...)`, `c.req.param(...)`, `c.req.raw.headers`) — never
+through a framework-specific request/response pair.
 
 For cookie-based session resolution, call
 `getWorkOSSessionWithSetCookies(workOSSessionCookie)` from
-`@app/lib/api/workos/user`. It returns `{ session, setCookies }` — emit
-each `setCookies` value with
-`c.header("Set-Cookie", cookie, { append: true })`. The Next-flavored
-`getSession(req, res)` / `getWorkOSSession(req, res)` helpers remain the
-entry point for Next code paths and must not be called from Hono
-middleware.
-
-The strangler entry in `server.ts` keeps `import next from "next"` — that
-disappears when Next is fully retired.
+`@app/lib/api/workos/user`. It returns `{ session, setCookies }` — emit each
+`setCookies` value with `c.header("Set-Cookie", cookie, { append: true })`,
+as `front-api/middlewares/session_resolution.ts` does.
