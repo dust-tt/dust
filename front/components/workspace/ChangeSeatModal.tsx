@@ -2,7 +2,9 @@ import { BillingPeriodSwitch } from "@app/components/pages/onboarding/Subscripti
 import {
   formatPriceCents,
   getAvailableFrequencies,
+  getInvoiceImpactMessage,
   groupSeatTypesByFrequency,
+  includedSeatsOpen,
   SeatCard,
   sortSeatTypes,
 } from "@app/components/workspace/SeatCard";
@@ -19,14 +21,20 @@ import type {
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
-import { useUpdateMemberSeatType } from "@app/lib/swr/memberships";
+import type { BulkSeatChangePreviewBody } from "@app/lib/swr/memberships";
+import {
+  useBulkSeatChangePreview,
+  useUpdateMemberSeatType,
+} from "@app/lib/swr/memberships";
 import {
   isMembershipSeatType,
   isPaidSeatType,
   type MembershipSeatType,
+  toBaseSeatType,
 } from "@app/types/memberships";
 import { isSubscriptionCancellationScheduled } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -119,6 +127,12 @@ export function ChangeSeatModal({
   const { doUpdateSeatType } = useUpdateMemberSeatType({
     workspaceId: owner.sId,
   });
+  const { doFetchSeatChangePreview } = useBulkSeatChangePreview({
+    workspaceId: owner.sId,
+  });
+  const [invoicePreview, setInvoicePreview] =
+    useState<BulkSeatChangePreviewBody | null>(null);
+  const [isInvoicePreviewLoading, setIsInvoicePreviewLoading] = useState(false);
   const initializedMemberIdRef = useRef<string | null>(null);
 
   const seatTypesByFrequency = groupSeatTypesByFrequency(seatTypes, seatPlans);
@@ -178,6 +192,52 @@ export function ChangeSeatModal({
     isOpen,
   ]);
 
+  // Fetch the accurate invoice impact of the selected change from the same
+  // preview endpoint the bulk seat-change modal uses (proration, committed
+  // seat absorption and next-billing-period timing all live server-side —
+  // recomputing them from `seatPlans` alone risks staleness and drift from
+  // the real billing logic).
+  useEffect(() => {
+    if (
+      !isOpen ||
+      !displayedMemberId ||
+      !selectedSeat ||
+      useCheckoutPath ||
+      isSubscriptionCancelled ||
+      selectedSeat === currentSeatType ||
+      !isPaidSeatType(selectedSeat)
+    ) {
+      setInvoicePreview(null);
+      setIsInvoicePreviewLoading(false);
+      return;
+    }
+
+    let isStale = false;
+    setIsInvoicePreviewLoading(true);
+    void doFetchSeatChangePreview({
+      selection: { mode: "ids", userIds: [displayedMemberId] },
+      seatType: selectedSeat,
+    }).then((result) => {
+      if (isStale) {
+        return;
+      }
+      setInvoicePreview(result);
+      setIsInvoicePreviewLoading(false);
+    });
+
+    return () => {
+      isStale = true;
+    };
+  }, [
+    isOpen,
+    displayedMemberId,
+    selectedSeat,
+    useCheckoutPath,
+    isSubscriptionCancelled,
+    currentSeatType,
+    doFetchSeatChangePreview,
+  ]);
+
   function getBadge(
     seatType: MembershipSeatType,
     info: SeatTypeInfo
@@ -189,20 +249,32 @@ export function ChangeSeatModal({
         </span>
       );
     }
+    const price =
+      info.billingFrequency === "annual" ? (
+        <>
+          {formatPriceCents(info.priceCents / 12, info.currency, "monthly")} ·
+          billed annually
+        </>
+      ) : (
+        formatPriceCents(info.priceCents, info.currency, info.billingFrequency)
+      );
+    // Workspace seats draw from the shared credit pool rather than the
+    // plan's per-seat committed count, so the included-seats framing below
+    // doesn't apply to them.
+    if (toBaseSeatType(seatType) === "workspace") {
+      return (
+        <span className="text-xs text-foreground">
+          {price} · User can spend credits from the workspace pool.
+        </span>
+      );
+    }
+    const openCount = includedSeatsOpen(info);
     return (
       <span className="text-xs text-foreground">
-        {info.billingFrequency === "annual" ? (
-          <>
-            {formatPriceCents(info.priceCents / 12, info.currency, "monthly")} ·
-            billed annually
-          </>
-        ) : (
-          formatPriceCents(
-            info.priceCents,
-            info.currency,
-            info.billingFrequency
-          )
-        )}
+        {price} ·{" "}
+        {openCount > 0
+          ? `${openCount} included seat${pluralize(openCount)} open`
+          : "No included seats left — this will add a new billed seat"}
       </span>
     );
   }
@@ -283,6 +355,19 @@ export function ChangeSeatModal({
 
   const displayedFirstName =
     displayedMember?.name?.trim().split(/\s+/)[0] ?? null;
+
+  // A single member's move is classified as either immediate or deferred by
+  // the backend, never both — summing is equivalent to picking whichever one
+  // is non-zero.
+  const invoiceDeltaCents =
+    (invoicePreview?.immediateDeltaMonthlyCents ?? 0) +
+    (invoicePreview?.deferredDeltaMonthlyCents ?? 0);
+
+  const selectedSeatInfo = selectedSeat ? seatPlans[selectedSeat] : null;
+  // Trust the backend's own classification of this specific move (which
+  // bucket its delta landed in) over recomputing it client-side.
+  const isInvoiceDeltaDeferred =
+    (invoicePreview?.deferredDeltaMonthlyCents ?? 0) !== 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -365,6 +450,27 @@ export function ChangeSeatModal({
                 will be cancelled.
               </p>
             )}
+            {!isSubscriptionCancelled &&
+              selectedSeat &&
+              selectedSeat !== currentSeatType &&
+              (isInvoicePreviewLoading ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Estimating invoice impact…
+                </p>
+              ) : (
+                invoicePreview && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {getInvoiceImpactMessage({
+                      deltaCents: invoiceDeltaCents,
+                      currency: invoicePreview.currency,
+                      targetSeatInfo: selectedSeatInfo ?? null,
+                      moveCount: 1,
+                      isDeferred: isInvoiceDeltaDeferred,
+                      hasAnnualOrigin: currentFrequency === "annual",
+                    })}
+                  </p>
+                )
+              ))}
           </div>
         </DialogContainer>
         <DialogFooter

@@ -46,6 +46,10 @@ export interface SeatTypeInfo {
   maxSeats: number | null;
   // Number of workspace members currently assigned to this seat type.
   assignedCount: number;
+  // Current billing period of this seat type's Metronome subscription (ISO
+  // dates). Used to prorate annual seat changes for the remainder of the
+  // term; null when the subscription has no active period right now.
+  currentBillingPeriod: { startsAt: string; endsAt: string } | null;
 }
 
 // Dynamic seat-type → info map. The list of seat types is driven by the
@@ -146,6 +150,10 @@ export async function getSeatPlan(
     MembershipSeatType,
     SeatBillingFrequency
   >();
+  const currentBillingPeriodBySeatType = new Map<
+    MembershipSeatType,
+    { startsAt: string; endsAt: string } | null
+  >();
   const seatSubscriptions = getSeatSubscriptionsFromContract(
     contract,
     productSeatTypes
@@ -154,6 +162,16 @@ export async function getSeatPlan(
     billingFrequencyBySeatType.set(
       seatType,
       getSeatBillingFrequency(sub.subscription_rate.billing_frequency)
+    );
+    const currentPeriod = sub.billing_periods.current;
+    currentBillingPeriodBySeatType.set(
+      seatType,
+      currentPeriod
+        ? {
+            startsAt: currentPeriod.starting_at,
+            endsAt: currentPeriod.ending_before,
+          }
+        : null
     );
   }
 
@@ -227,6 +245,8 @@ export async function getSeatPlan(
       minSeats: limit?.minSeats ?? 0,
       maxSeats: limit?.maxSeats ?? null,
       assignedCount: seatCounts[seatType] ?? 0,
+      currentBillingPeriod:
+        currentBillingPeriodBySeatType.get(seatType) ?? null,
     };
   }
   return new Ok(response);
