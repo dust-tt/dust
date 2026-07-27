@@ -5,23 +5,17 @@ export function WithDustGoogleAiStudioGeminiThreeDotSixFlashConfig<
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  // Spread the legacy model config onto the class statics (see
-  // `DustStreamEndpointConfiguration`). `Object.assign` returns
-  // `class & ModelConfigurationType`, so the fields are visible to the type
-  // checker without an unsafe cast.
-  abstract class DustGoogleAiStudioGeminiThreeDotSixFlashConfig extends Base {}
-  const WithConfig = Object.assign(
-    DustGoogleAiStudioGeminiThreeDotSixFlashConfig,
-    GEMINI_3_6_FLASH_MODEL_CONFIG
-  );
-
-  // Declared last so these own statics shadow (take precedence over) the spread
-  // config values.
-  abstract class DustGoogleAiStudioGeminiThreeDotSixFlash extends WithConfig {
+  abstract class DustGoogleAiStudioGeminiThreeDotSixFlash extends Base {
     static readonly displayName = "Gemini 3.6 Flash";
     static readonly description =
       "Google's latest fast large context model (1m context).";
     static readonly byok = true;
+
+    // Nest the legacy model config under a single `modelConfig` static (see
+    // `DustStreamEndpointConfiguration`) so consumers can retrieve the full
+    // `ModelConfigurationType` off the endpoint without spreading its fields
+    // onto the class statics.
+    static readonly modelConfig = GEMINI_3_6_FLASH_MODEL_CONFIG;
   }
 
   return DustGoogleAiStudioGeminiThreeDotSixFlash;
