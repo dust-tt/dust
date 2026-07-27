@@ -385,7 +385,7 @@ export const POD_MANAGER_TOOLS_METADATA = [
     name: "create_conversation",
     description:
       "Create or start a new Pod conversation and post a user message. " +
-      "Default for Pod work: pass an agentName so a Pod agent handles " +
+      "By default, pass an agentName so a Pod agent handles " +
       "the task inside the new conversation. Do NOT do the work yourself. " +
       "Omit agentName only when posting a simple message that requires " +
       "no intellectual work (e.g. a status update, a comment, a note) " +
