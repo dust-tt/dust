@@ -72,6 +72,6 @@ export function getRoleProvisioningGroupsLabel(
   isAdminGovernanceEnabled: boolean
 ): string {
   return isAdminGovernanceEnabled
-    ? "dust-admins, dust-managers and dust-builders groups"
+    ? "dust-admins and dust-managers groups"
     : "dust-admins and dust-builders groups";
 }
