@@ -12,15 +12,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Eye,
-  EyeOff,
-  SearchMd,
   XClose,
 } from "@dust-tt/sparkle";
 
 export type BatchAvailabilityAction = {
   label: string;
-  icon: React.ComponentType;
   availability: SkillAvailability;
   getDialogTitle: (count: number) => string;
   dialogDescription: string;
@@ -31,7 +27,6 @@ export type BatchAvailabilityAction = {
 const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
   {
     label: "Editor only",
-    icon: EyeOff,
     availability: "editors",
     getDialogTitle: (count) =>
       `Make ${count} skill${pluralize(count)} editor only`,
@@ -42,7 +37,6 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
   },
   {
     label: "Workspace members",
-    icon: Eye,
     availability: "workspace_users",
     getDialogTitle: (count) =>
       `Make ${count} skill${pluralize(count)} available to workspace members`,
@@ -53,7 +47,6 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
   },
   {
     label: "Auto-discoverable",
-    icon: SearchMd,
     availability: "users_and_agents",
     getDialogTitle: (count) =>
       `Make ${count} skill${pluralize(count)} auto-discoverable`,
@@ -102,7 +95,6 @@ export function SkillsBatchEditBar({
             <DropdownMenuItem
               key={action.availability}
               label={action.label}
-              icon={action.icon}
               onClick={() => onSelectAction(action)}
             />
           ))}
