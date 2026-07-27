@@ -109,7 +109,6 @@ const NavigationListItem = React.forwardRef<
 
     const shouldShowStatusDot = status !== "idle";
     const counterValue = count && count > 0 ? count : undefined;
-    const shouldHideStatusIndicators = Boolean(moreMenu && selected);
 
     return (
       <div
@@ -181,7 +180,7 @@ const NavigationListItem = React.forwardRef<
                 {suffix}
               </div>
             )}
-            {counterValue !== undefined && !shouldHideStatusIndicators && (
+            {counterValue !== undefined && (
               <Counter
                 value={counterValue}
                 size="xs"
@@ -193,7 +192,7 @@ const NavigationListItem = React.forwardRef<
                 )}
               />
             )}
-            {shouldShowStatusDot && !shouldHideStatusIndicators && (
+            {shouldShowStatusDot && (
               <div
                 className={cn(
                   "heading-xs flex flex-shrink-0 items-center justify-center rounded-full",
@@ -249,6 +248,7 @@ NavigationListItemAction.displayName = "NavigationListItemAction";
 interface NavigationListLabelProps
   extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
+  icon?: React.ComponentType;
   action?: React.ReactNode;
   isSticky?: boolean;
 }
@@ -256,7 +256,7 @@ interface NavigationListLabelProps
 const NavigationListLabel = React.forwardRef<
   HTMLDivElement,
   NavigationListLabelProps
->(({ className, label, isSticky, action, ...props }, ref) => (
+>(({ className, label, icon, isSticky, action, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
@@ -270,6 +270,7 @@ const NavigationListLabel = React.forwardRef<
     {...props}
   >
     <div className="flex items-center gap-1 overflow-hidden text-ellipsis">
+      {icon && <Icon visual={icon} size="xs" />}
       <span className="overflow-hidden text-ellipsis">{label}</span>
     </div>
     {action}
