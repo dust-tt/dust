@@ -292,15 +292,6 @@ async function reconcilePoolStateFromSegmentEvent({
   const creditTypeId = commitOrCredit.access_schedule?.credit_type?.id;
 
   if (creditTypeId !== getCreditTypeAwuId()) {
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        metronomeCustomerId,
-        entityId: commitOrCredit.id,
-        creditTypeId,
-      },
-      "[Metronome Webhook] reconcilePoolStateFromSegmentEvent: non-AWU entity, skipping pool reconcile"
-    );
     return;
   }
 
@@ -1336,11 +1327,13 @@ export async function processMetronomeWebhook({
         );
       }
       const credit = creditResult.value;
-      if (!credit) {
-        logger.info(
-          { metronomeCustomerId, creditId, workspaceId: workspace.sId },
-          "[Metronome Webhook] credit.create: credit not found, skipping"
-        );
+
+      // Non-AWU credits (programmatic USD, EUR seat credits, etc.) feed neither
+      // the pool nor per-user seat states — opt out.
+      if (
+        !credit ||
+        credit.access_schedule?.credit_type?.id !== getCreditTypeAwuId()
+      ) {
         break;
       }
 
@@ -1536,35 +1529,42 @@ export async function processMetronomeWebhook({
           )
         );
       }
-      if (creditResult.value) {
-        if (isSeatAwuCredit(creditResult.value)) {
-          // Per-seat (INDIVIDUAL) AWU credit: seat credits never count toward
-          // the pool balance, so a pool reconcile would be a wasted no-op.
-          // A new seat segment starting means a seat type was activated (e.g.
-          // a planned Pro→Max downgrade takes effect), so re-sync the seat
-          // count to reassign the per-user allocation and land each user's
-          // credit state in the right seat↔pool state. (credit.edit — an
-          // amount change — does not shift seat assignments, so it is left
-          // alone.)
-          if (event.type === "credit.segment.start") {
-            await launchReconcileWorkspaceUserCreditStatesWorkflow({
-              workspaceId: workspace.sId,
-            });
-            logger.info(
-              { metronomeCustomerId, creditId, workspaceId: workspace.sId },
-              "[Metronome Webhook] credit.segment.start: seat credit activated, reconcile triggered"
-            );
-          }
-        } else {
-          // Pool credit: reconcile the workspace pool credit state. The helper
-          // gates on AWU (logging non-AWU skips), so non-AWU pool credits are
-          // a no-op.
-          await reconcilePoolStateFromSegmentEvent({
-            workspace,
+      const credit = creditResult.value;
+
+      // Non-AWU credits (programmatic USD, EUR seat credits, etc.) feed neither
+      // the pool nor per-user seat states — opt out.
+      if (
+        !credit ||
+        credit.access_schedule?.credit_type?.id !== getCreditTypeAwuId()
+      ) {
+        break;
+      }
+
+      if (isSeatAwuCredit(credit)) {
+        // Per-seat (INDIVIDUAL) AWU credit: a seat segment starting (a seat
+        // type activated, e.g. a planned Pro→Max downgrade) or an amount edit
+        // both shift per-user balances, so reconcile per-user credit states.
+        // The reconcile is workspace-scoped and idempotent. No pool reconcile:
+        // seat credits never count toward the pool balance.
+        await launchReconcileWorkspaceUserCreditStatesWorkflow({
+          workspaceId: workspace.sId,
+        });
+        logger.info(
+          {
             metronomeCustomerId,
-            commitOrCredit: creditResult.value,
-          });
-        }
+            creditId,
+            workspaceId: workspace.sId,
+            eventType: event.type,
+          },
+          "[Metronome Webhook] seat credit event: user state reconcile triggered"
+        );
+      } else {
+        // Pool AWU credit: reconcile the workspace pool credit state.
+        await reconcilePoolStateFromSegmentEvent({
+          workspace,
+          metronomeCustomerId,
+          commitOrCredit: credit,
+        });
       }
 
       // The free monthly/yearly credit grant is now driven by the Stripe
