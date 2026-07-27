@@ -31,7 +31,9 @@ export interface KnowledgeItem {
 // More spaces than a real workspace's "recently used" would ever surface —
 // deliberately enough content that browsing into a space/folder feels like a
 // real knowledge base, not a 4-item demo.
-const SPACE_IDS_FOR_KNOWLEDGE = mockSpaces.slice(0, 30).map((space) => space.id);
+const SPACE_IDS_FOR_KNOWLEDGE = mockSpaces
+  .slice(0, 30)
+  .map((space) => space.id);
 
 function buildKnowledgeTree(): KnowledgeNode[] {
   const nodes: KnowledgeNode[] = [];
@@ -166,8 +168,15 @@ export interface KnowledgeTreeGroup {
 
 export interface FilteredTreeGroupsResult {
   groups: KnowledgeTreeGroup[];
+  // The true total, even when `groups` was truncated to MAX_SEARCH_RESULTS
+  // — the panel needs it to show "N more, refine your search".
   matchCount: number;
 }
+
+// A broad query against a large workspace could otherwise render hundreds
+// of DOM rows into a fixed-height scroll area — cap what's rendered, but
+// keep reporting the real `matchCount` so the UI can say how much was cut.
+const MAX_SEARCH_RESULTS = 100;
 
 function addToGroup(
   pathLabels: string[],
@@ -239,7 +248,19 @@ export function getFilteredTreeGroups({
   }
 
   const matchCount = groups.reduce((sum, group) => sum + group.files.length, 0);
-  return { groups, matchCount };
+
+  let remaining = MAX_SEARCH_RESULTS;
+  const truncatedGroups: KnowledgeTreeGroup[] = [];
+  for (const group of groups) {
+    if (remaining <= 0) {
+      break;
+    }
+    const files = group.files.slice(0, remaining);
+    remaining -= files.length;
+    truncatedGroups.push({ ...group, files });
+  }
+
+  return { groups: truncatedGroups, matchCount };
 }
 
 export function formatRelativeTime(date: Date): string {

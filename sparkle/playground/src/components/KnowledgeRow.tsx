@@ -1,4 +1,4 @@
-import { ChevronRight, Plus, cn, Icon } from "@dust-tt/sparkle";
+import { Button, ChevronRight, Plus, cn, Icon } from "@dust-tt/sparkle";
 import React from "react";
 
 import { splitByMatch } from "../data/knowledgeItems";
@@ -11,6 +11,10 @@ const INDENT_PX = 16;
 // The dedicated "attach this folder without opening it" control — a folder
 // row's main click always browses in, so attaching the whole folder needs
 // its own target. Always visible (not hover-only), so it works on touch.
+// Not a tab stop: Shift+Enter already reaches this through the listbox's
+// virtual-focus model (aria-activedescendant), and a real focusable button
+// nested inside those rows would hijack Tab into a per-row walk instead of
+// leaving the field.
 function AttachFolderButton({
   onAttach,
   label,
@@ -19,9 +23,12 @@ function AttachFolderButton({
   label: string;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
+      size="xs"
+      icon={Plus}
       aria-label={`Attach ${label}`}
+      tabIndex={-1}
       onMouseDown={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -30,10 +37,8 @@ function AttachFolderButton({
         e.stopPropagation();
         onAttach();
       }}
-      className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors duration-100 hover:bg-primary-100 hover:text-foreground"
-    >
-      <Icon visual={Plus} size="xs" />
-    </button>
+      className="relative before:absolute before:-inset-2"
+    />
   );
 }
 
@@ -88,8 +93,8 @@ export function KnowledgeFileRow({
           : undefined
       }
       className={cn(
-        "flex cursor-pointer items-center gap-2 rounded-lg transition-[background-color,transform] duration-100 ease-out motion-safe:active:scale-[0.98] data-[active]:bg-hover",
-        isGrouped ? "min-h-8 pr-2" : "min-h-10 px-2"
+        "flex cursor-pointer items-center gap-2 rounded-lg transition-colors duration-100 ease-out data-[active]:bg-hover",
+        isGrouped ? "min-h-9 pr-2" : "min-h-10 px-2"
       )}
     >
       <Icon visual={treeNode.icon} size="xs" className="shrink-0" />
@@ -173,7 +178,7 @@ export function KnowledgeBrowseRow({
       onMouseEnter={() => onHover(node.id)}
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => (isContainer ? onOpen(node) : onSelect(node))}
-      className="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg px-2 transition-[background-color,transform] duration-100 ease-out motion-safe:active:scale-[0.98] data-[active]:bg-hover"
+      className="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg px-2 transition-colors duration-100 ease-out data-[active]:bg-hover"
     >
       <Icon visual={node.icon} size="xs" className="shrink-0" />
       <div className="flex min-w-0 grow flex-col">
@@ -215,12 +220,12 @@ export function KnowledgeBreadcrumbBar({
   onNavigate,
 }: KnowledgeBreadcrumbBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-1 px-2 py-1 text-xs text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-1 px-2 py-2 text-xs text-muted-foreground">
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => onNavigate(0)}
-        className="rounded px-1 py-0.5 hover:bg-hover hover:text-foreground"
+        className="relative rounded px-1 py-1 before:absolute before:inset-x-0 before:-inset-y-2 hover:bg-hover hover:text-foreground"
       >
         All spaces
       </button>
@@ -233,7 +238,7 @@ export function KnowledgeBreadcrumbBar({
             onClick={() => onNavigate(index + 1)}
             disabled={index === stack.length - 1}
             className={cn(
-              "rounded px-1 py-0.5",
+              "relative rounded px-1 py-1 before:absolute before:inset-x-0 before:-inset-y-2",
               index === stack.length - 1
                 ? "text-foreground"
                 : "hover:bg-hover hover:text-foreground"

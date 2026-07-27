@@ -65,6 +65,7 @@ export function KnowledgeSuggestionPanel({
   onBreadcrumbNavigate,
 }: KnowledgeSuggestionPanelProps) {
   const isEmpty = isFiltering ? matchCount === 0 : browseChildren.length === 0;
+  const shownCount = groups.reduce((sum, group) => sum + group.files.length, 0);
 
   return (
     <div className="flex w-80 flex-col">
@@ -148,6 +149,12 @@ export function KnowledgeSuggestionPanel({
                 ))}
               </div>
             ))}
+            {shownCount < matchCount && (
+              <p className="px-2 py-1.5 text-xs text-muted-foreground">
+                Showing {shownCount} of {matchCount} — refine your search to see
+                more.
+              </p>
+            )}
           </div>
         ) : (
           <div className="flex flex-col gap-0.5">
