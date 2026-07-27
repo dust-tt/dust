@@ -4,11 +4,11 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { Ok } from "@app/types/shared/result";
 import { assert, describe, expect, it, vi } from "vitest";
 
@@ -35,13 +35,11 @@ describe("getOutputFromLLMStream", () => {
     assert(userMessage?.type === "user_message");
     assert(agentMessage?.type === "agent_message");
     const { model: agentModel, ...agentConfiguration } = agent;
-    const modelConfig = getSupportedModelConfig(agentModel);
-    assert(modelConfig);
-    const model = { ...agentModel, ...modelConfig };
+    const endpoint = getTestStreamEndpoint(agentModel.modelId);
     const contentParser = new AgentMessageContentParser(
       agentConfiguration,
       agentMessage.sId,
-      getDelimitersConfiguration({ model })
+      getDelimitersConfiguration({ endpoint, ...agentModel })
     );
     const metadata = {
       clientId: "google_ai_studio",
@@ -78,7 +76,7 @@ describe("getOutputFromLLMStream", () => {
       step: 1,
       agentConfiguration,
       agentMessage,
-      model,
+      model: endpoint.modelConfig,
       activityTimeoutDeadlineMs: Date.now() + 10_000,
       publishAgentError: vi.fn(async () => {}),
       prompt: [],
