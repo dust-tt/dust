@@ -60,7 +60,7 @@ const GOVERNANCE_SETTING_METADATA: Partial<
       "Control who can manage billing settings, invoices, and payment methods.",
     isGroupsOnly: true,
   },
-  "admin:identity": {
+  "admin:security": {
     label: "Security access",
     description:
       "Control who can manage user access, identities, and provisioning.",
