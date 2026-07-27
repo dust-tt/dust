@@ -20,6 +20,28 @@ export function SpaceRestrictionMessage({
     return null;
   }
 
+  const spaceLinks = (
+    <strong>
+      {spaces.map((space, index) => (
+        <Fragment key={space.sId}>
+          {index > 0 && <span className="mr-0.5">, </span>}
+          <Hoverable
+            variant="primary"
+            className="text-inherit underline hover:font-medium"
+            href={
+              isProjectType(space)
+                ? getPodRoute(owner.sId, space.sId)
+                : getSpaceRoute(owner.sId, space.sId)
+            }
+            target="_blank"
+          >
+            {space.name}
+          </Hoverable>
+        </Fragment>
+      ))}
+    </strong>
+  );
+
   return (
     <div className="mb-4 w-full">
       <ContentMessage
@@ -28,28 +50,37 @@ export function SpaceRestrictionMessage({
         title={`Who can use this ${entityName}?`}
         icon={Users01}
       >
-        Only users with access to all of the following can read and use this {entityName}
-        :{" "}
-        <strong>
-          {spaces.map((space, index) => (
-            <Fragment key={space.sId}>
-              {index > 0 && <span className="mr-0.5">, </span>}
-              <Hoverable
-                variant="primary"
-                className="text-inherit underline hover:font-medium"
-                href={
-                  isProjectType(space)
-                    ? getPodRoute(owner.sId, space.sId)
-                    : getSpaceRoute(owner.sId, space.sId)
-                }
-                target="_blank"
-              >
-                {space.name}
-              </Hoverable>
-            </Fragment>
-          ))}
-        </strong>
-        .
+        {spaces.length === 1 ? (
+          <>
+            Only users with access to {spaceLinks} can read and use this{" "}
+            {entityName}.
+          </>
+        ) : (
+          <>
+            Only users with access to all of the following can read and use this{" "}
+            {entityName}:{" "}
+            <strong>
+              {spaces.map((space, index) => (
+                <Fragment key={space.sId}>
+                  {index > 0 && <span className="mr-0.5">, </span>}
+                  <Hoverable
+                    variant="primary"
+                    className="text-inherit underline hover:font-medium"
+                    href={
+                      isProjectType(space)
+                        ? getPodRoute(owner.sId, space.sId)
+                        : getSpaceRoute(owner.sId, space.sId)
+                    }
+                    target="_blank"
+                  >
+                    {space.name}
+                  </Hoverable>
+                </Fragment>
+              ))}
+            </strong>
+            .
+          </>
+        )}
       </ContentMessage>
     </div>
   );
