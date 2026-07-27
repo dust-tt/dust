@@ -724,7 +724,8 @@ export async function updateMembershipSeatAndTrack({
         | "metronome_error"
         | "free_seat_not_allowed"
         | "paid_seat_not_allowed_on_free_plan"
-        | "seat_limit_reached";
+        | "seat_limit_reached"
+        | "subscription_cancellation_scheduled";
     }
   >
 > {
@@ -761,10 +762,21 @@ export async function updateMembershipSeatAndTrack({
     }
   }
 
-  if (isPaidSeatType(newSeatType) && newSeatType !== previousSeatType) {
+  if (newSeatType !== previousSeatType) {
     const subscription =
       await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
-    if (subscription && isFreePlan(subscription.getPlan().code)) {
+    // A cancellation already schedules the Metronome contract's end date;
+    // scheduling a seat change on top of it can land past that end date and
+    // get rejected by Metronome. Reject here instead of letting a scheduled
+    // Metronome sync (or, for bulk changes, an async Temporal activity) fail
+    // silently later with no visible error to the user.
+    if (subscription.isCancellationScheduled) {
+      return new Err({ type: "subscription_cancellation_scheduled" });
+    }
+    if (
+      isPaidSeatType(newSeatType) &&
+      isFreePlan(subscription.getPlan().code)
+    ) {
       return new Err({ type: "paid_seat_not_allowed_on_free_plan" });
     }
   }

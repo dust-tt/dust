@@ -15,10 +15,12 @@ import type {
   SeatPlanResponseBody,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { formatCurrencyAmountCents } from "@app/lib/metronome/amounts";
 import type { BulkSeatChangePreviewBody } from "@app/lib/swr/memberships";
 import type { MembershipSeatType, PaidSeatType } from "@app/types/memberships";
 import { isMembershipSeatType, isPaidSeatType } from "@app/types/memberships";
+import { isSubscriptionCancellationScheduled } from "@app/types/plan";
 import {
   ArrowRight,
   Avatar,
@@ -467,6 +469,13 @@ function BulkChangeSeatForm({
   onFetchPreview,
   onValidate,
 }: BulkChangeSeatFormProps) {
+  const { subscription } = useAuth();
+  // A cancelled subscription already has its end date scheduled with
+  // Metronome; scheduling a seat change on top of it can land past that end
+  // date and get rejected. Block seat changes until the subscription is
+  // reactivated or has fully ended.
+  const isSubscriptionCancelled =
+    isSubscriptionCancellationScheduled(subscription);
   const [selectedSeat, setSelectedSeat] = useState<PaidSeatType | null>(null);
   const [preview, setPreview] = useState<BulkSeatChangePreviewBody | null>(
     null
@@ -518,6 +527,12 @@ function BulkChangeSeatForm({
         step={step}
       />
       <DialogContainer>
+        {isSubscriptionCancelled && (
+          <p className="mb-3 text-xs text-warning-600">
+            Your subscription is scheduled to end and seats can&apos;t be
+            changed until it&apos;s reactivated.
+          </p>
+        )}
         {step === "pick" ? (
           <BulkChangeSeatModalPickSeatDialogContent
             seatPlans={seatPlans}
@@ -547,7 +562,9 @@ function BulkChangeSeatForm({
           <Button
             label="Review"
             variant="primary"
-            disabled={!selectedSeat || isLoadingPreview}
+            disabled={
+              !selectedSeat || isLoadingPreview || isSubscriptionCancelled
+            }
             isLoading={isLoadingPreview}
             onClick={handleNext}
           />
@@ -555,7 +572,7 @@ function BulkChangeSeatForm({
           <Button
             label="Validate"
             variant="primary"
-            disabled={isSaving}
+            disabled={isSaving || isSubscriptionCancelled}
             isLoading={isSaving}
             onClick={handleValidate}
           />

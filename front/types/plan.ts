@@ -133,6 +133,14 @@ export function isSubscriptionMetronomeBilled(
   );
 }
 
+// True once the subscription has a cancellation scheduled (immediate `endDate`
+// or a deferred `requestCancelAt`), whether or not that date has passed yet.
+export function isSubscriptionCancellationScheduled(
+  subscription: SubscriptionType
+): boolean {
+  return subscription.endDate !== null || subscription.requestCancelAt !== null;
+}
+
 /**
  * Returns true if the workspace is on a credit-priced plan.
  *
