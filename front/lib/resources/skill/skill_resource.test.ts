@@ -1423,10 +1423,10 @@ describe("SkillResource", () => {
     it("archives multiple skills sharing the same name without a unique constraint violation", async () => {
       // The (workspaceId, name, status) unique constraint means only one
       // archived skill can keep a given name. Archiving a same-named skill
-      // renames the previously archived one with a minute-granularity
-      // timestamp; a third archive on the same day (but a different minute)
-      // must not collide with the earlier rename target. We fake the clock so
-      // each archive lands on a distinct minute of the same day.
+      // renames the previously archived one with a timestamped suffix; a third
+      // archive on the same day must not collide with the earlier rename
+      // target. We fake the clock so each archive lands on a distinct time of
+      // the same day.
       vi.useFakeTimers({ toFake: ["Date"] });
       try {
         const archiveSameNameSkillAt = async (isoTime: string) => {

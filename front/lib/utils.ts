@@ -87,18 +87,12 @@ export function getWeekBoundaries(date: Date): {
  * long: September 23, 2025 at 3:37:32 PM
  * short: September 23, 2025
  * compactWithDay: Sep 23, 2025
- * compactWithMinute: Sep 23, 2025, 3:37 PM
  * compact: Sep, 2025
  *
  */
 export function formatTimestampToFriendlyDate(
   timestamp: number,
-  version:
-    | "long"
-    | "short"
-    | "compact"
-    | "compactWithDay"
-    | "compactWithMinute" = "long"
+  version: "long" | "short" | "compact" | "compactWithDay" = "long"
 ): string {
   const date = new Date(timestamp);
 
@@ -132,14 +126,6 @@ export function formatTimestampToFriendlyDate(
         year: "numeric",
         month: "short",
         day: "numeric",
-      });
-    case "compactWithMinute":
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
       });
   }
 }

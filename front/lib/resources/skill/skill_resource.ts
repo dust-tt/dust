@@ -2711,12 +2711,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
 
       if (existingArchivedSkill) {
-        // Use minute granularity so that archiving the same-named skill more
-        // than once on the same day does not produce a colliding rename target
-        // that would violate the (workspaceId, name, status) unique constraint.
         const timestamp = formatTimestampToFriendlyDate(
           existingArchivedSkill.updatedAt.getTime(),
-          "compactWithMinute"
+          "long"
         );
         await existingArchivedSkill.update(
           { name: `${existingArchivedSkill.name} (archived on ${timestamp})` },
