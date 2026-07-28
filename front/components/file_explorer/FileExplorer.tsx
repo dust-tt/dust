@@ -207,15 +207,18 @@ export function FileExplorer({
   const handleBreadcrumbNavigate = (index: number) => {
     if (index < 0) {
       setCurrentFolderPath("");
+      setActiveFilter("all");
       return;
     }
 
     const segments = getFolderBreadcrumbSegments(currentFolderPath);
     setCurrentFolderPath(segments[index]?.path ?? "");
+    setActiveFilter("all");
   };
 
   const handleFolderNavigate = (node: FileSystemTreeNode) => {
     setCurrentFolderPath(node.path);
+    setActiveFilter("all");
   };
 
   const fileDragEnabled = Boolean(onMoveFile && totalFolderCount > 0);

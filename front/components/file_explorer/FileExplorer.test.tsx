@@ -15,15 +15,17 @@ function makeFile({
   contentType,
   fileName,
   lastModifiedMs,
+  path = fileName,
 }: {
   contentType: string;
   fileName: string;
   lastModifiedMs: number;
+  path?: string;
 }): FileSystemFileEntry {
   return {
     isDirectory: false,
     fileName,
-    path: `conversation-c1/${fileName}`,
+    path: `conversation-c1/${path}`,
     contentType,
     fileId: `file-${fileName}`,
     sizeBytes: 100,
@@ -126,5 +128,36 @@ describe("FileExplorer file opening", () => {
     expect(
       await screen.findByRole("dialog", { name: "second.txt" })
     ).toBeInTheDocument();
+  });
+});
+
+describe("FileExplorer navigation", () => {
+  it("resets the type filter when opening a folder", () => {
+    const nestedFile = makeFile({
+      contentType: "text/plain",
+      fileName: "nested.txt",
+      lastModifiedMs: 1,
+      path: "folder/nested.txt",
+    });
+    const rootFile = makeFile({
+      contentType: "text/plain",
+      fileName: "root.txt",
+      lastModifiedMs: 1,
+    });
+
+    render(
+      <FileExplorer
+        defaultViewMode="list"
+        files={[nestedFile, rootFile]}
+        getFileUrl={(path) => `/files/${path}`}
+        isLoading={false}
+        onFileDownload={vi.fn().mockResolvedValue(undefined)}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Folders" }));
+    fireEvent.click(screen.getByText("folder"));
+
+    expect(screen.getByText("nested.txt")).toBeInTheDocument();
   });
 });
