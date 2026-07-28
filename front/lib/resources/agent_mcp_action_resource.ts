@@ -39,7 +39,7 @@ import {
 import {
   batchFetchContentsFromGcs,
   batchWriteContentsToGcs,
-  deleteContentsFromGcs,
+  deleteActionOutputsFromGcs,
   warmGcsContentCache,
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -1072,38 +1072,42 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   /**
    * Destroys output items by action IDs, cleaning up GCS files first.
-   * GCS deletion failures are logged but do not block DB cleanup — orphaned
-   * GCS files can be cleaned up later and don't cause data issues.
+   * Paths under the canonical action prefix are removed with one prefix delete
+   * per action that has GCS content. Any leftover paths (e.g. legacy layouts)
+   * are deleted individually. Failures are logged but do not block DB cleanup —
+   * orphaned GCS files can be cleaned up later and don't cause data issues.
    */
   static async destroyOutputItemsByActionIds(
     auth: Authenticator,
     actionIds: ModelId[]
   ): Promise<void> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    if (actionIds.length === 0) {
+      return;
+    }
 
-    // Fetch items with GCS paths (only need id + contentGcsPath — no TOAST hit).
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Fetch items with GCS paths (only need contentGcsPath — no TOAST hit).
     const gcsItems = await AgentMCPActionOutputItemModel.findAll({
       attributes: ["id", "contentGcsPath"],
       where: {
-        workspaceId,
+        workspaceId: workspace.id,
         agentMCPActionId: { [Op.in]: actionIds },
         contentGcsPath: { [Op.ne]: null },
       },
     });
 
-    // TODO(2026-02-25 PERF): Remove this post-migration.
-    // Delete GCS files. Failures are logged inside deleteContentsFromGcs but do not block DB
-    // cleanup.
-    if (gcsItems.length > 0) {
-      await deleteContentsFromGcs(
-        removeNulls(gcsItems.map((item) => item.contentGcsPath))
-      );
+    const gcsPaths = removeNulls(gcsItems.map((item) => item.contentGcsPath));
+
+    if (gcsPaths.length > 0) {
+      // Results intentionally unused — failures must not block DB cleanup.
+      await deleteActionOutputsFromGcs(auth, actionIds, gcsPaths);
     }
 
     // Delete all output items from DB.
     await AgentMCPActionOutputItemModel.destroy({
       where: {
-        workspaceId,
+        workspaceId: workspace.id,
         agentMCPActionId: { [Op.in]: actionIds },
       },
     });
