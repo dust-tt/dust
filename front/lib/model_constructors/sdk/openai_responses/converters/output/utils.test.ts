@@ -1,10 +1,13 @@
+import { createAsyncGenerator } from "@app/lib/api/llm/utils";
 import * as converters from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
 import {
   outputItemToEvents,
+  rawOutputToEvents,
   usageToTokenUsageEvent,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
 import type {
   ResponseOutputItem,
+  ResponseStreamEvent,
   ResponseUsage,
 } from "openai/resources/responses/responses";
 import { describe, expect, it } from "vitest";
@@ -104,6 +107,95 @@ describe("usageToTokenUsageEvent", () => {
         reasoning: 50,
       },
       metadata,
+    });
+  });
+});
+
+describe("rawOutputToEvents", () => {
+  it("preserves interleaved reasoning and function-call item order", async () => {
+    const rawEvents: ResponseStreamEvent[] = [
+      {
+        type: "response.output_item.done",
+        output_index: 0,
+        sequence_number: 0,
+        item: {
+          type: "reasoning",
+          id: "rs_1",
+          summary: [{ type: "summary_text", text: "first thought" }],
+          status: "completed",
+        },
+      },
+      {
+        type: "response.output_item.done",
+        output_index: 1,
+        sequence_number: 1,
+        item: {
+          type: "function_call",
+          id: "fc_1",
+          call_id: "call_1",
+          name: "first_tool",
+          arguments: "{}",
+          status: "completed",
+        },
+      },
+      {
+        type: "response.output_item.done",
+        output_index: 2,
+        sequence_number: 2,
+        item: {
+          type: "reasoning",
+          id: "rs_2",
+          summary: [{ type: "summary_text", text: "second thought" }],
+          status: "completed",
+        },
+      },
+      {
+        type: "response.output_item.done",
+        output_index: 3,
+        sequence_number: 3,
+        item: {
+          type: "function_call",
+          id: "fc_2",
+          call_id: "call_2",
+          name: "second_tool",
+          arguments: "{}",
+          status: "completed",
+        },
+      },
+    ];
+    const events = [];
+    for await (const event of rawOutputToEvents(
+      createAsyncGenerator(rawEvents),
+      metadata,
+      converters
+    )) {
+      events.push(event);
+    }
+
+    expect(events.at(-1)).toMatchObject({
+      type: "success",
+      content: {
+        aggregated: [
+          {
+            type: "reasoning",
+            content: { value: "first thought" },
+            metadata: { content: { id: "rs_1" } },
+          },
+          {
+            type: "tool_call",
+            content: { id: "call_1", name: "first_tool" },
+          },
+          {
+            type: "reasoning",
+            content: { value: "second thought" },
+            metadata: { content: { id: "rs_2" } },
+          },
+          {
+            type: "tool_call",
+            content: { id: "call_2", name: "second_tool" },
+          },
+        ],
+      },
     });
   });
 });
