@@ -140,19 +140,20 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     for (const view of restrictedViews) {
       expect(view.isRestrictedToSkills).toBe(true);
     }
-    expect(
+    const directConfigurationCount =
       await AgentMCPServerConfigurationModel.count({
         where: { id: directConfiguration.id },
-      })
-    ).toBe(0);
-    expect(
+      });
+    expect(directConfigurationCount).toBe(0);
+
+    const skillConfigurationCount =
       await SkillMCPServerConfigurationModel.count({
         where: {
           skillConfigurationId: skill.id,
           mcpServerViewId: globalView.id,
         },
-      })
-    ).toBe(1);
+      });
+    expect(skillConfigurationCount).toBe(1);
   });
 
   it("should update name and description for all views of the same MCP server when admin", async () => {

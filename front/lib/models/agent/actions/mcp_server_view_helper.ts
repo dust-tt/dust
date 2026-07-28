@@ -61,7 +61,7 @@ export async function destroyAgentMCPServerConfigurationsForViews(
     transaction?: Transaction;
   }
 ) {
-  const agentConfigurationIds = (
+  const agentMCPServerConfigurations =
     await AgentMCPServerConfigurationModel.findAll({
       attributes: ["id"],
       where: {
@@ -69,8 +69,10 @@ export async function destroyAgentMCPServerConfigurationsForViews(
         mcpServerViewId: mcpServerViewIds,
       },
       transaction,
-    })
-  ).map((view: AgentMCPServerConfigurationModel) => view.id);
+    });
+  const agentConfigurationIds = agentMCPServerConfigurations.map(
+    (view: AgentMCPServerConfigurationModel) => view.id
+  );
 
   await AgentDataSourceConfigurationModel.destroy({
     where: {
