@@ -30,6 +30,10 @@ import type {
   UserMessageOrigin,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import type {
+  ModelResolutionMethodType,
+  ResolvedRequestedModel,
+} from "@app/types/assistant/models/types";
 import type { SupportedContentFragmentType } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
@@ -366,6 +370,8 @@ export class ConversationFactory {
     agentConfigurationVersion = 0,
     parentId = null,
     version = 0,
+    resolvedModel = null,
+    modelResolutionMethod = null,
   }: {
     workspace: WorkspaceType;
     conversationId: ModelId;
@@ -374,6 +380,8 @@ export class ConversationFactory {
     agentConfigurationVersion?: number;
     parentId?: ModelId | null;
     version?: number;
+    resolvedModel?: ResolvedRequestedModel | null;
+    modelResolutionMethod?: ModelResolutionMethodType | null;
   }): Promise<MessageModel> {
     const agentMessageRow = await AgentMessageModel.create({
       status: "created",
@@ -382,6 +390,10 @@ export class ConversationFactory {
       conversationId,
       workspaceId: workspace.id,
       skipToolsValidation: false,
+      resolvedProviderId: resolvedModel?.providerId ?? null,
+      resolvedModelId: resolvedModel?.modelId ?? null,
+      resolvedReasoningEffort: resolvedModel?.reasoningEffort ?? null,
+      modelResolutionMethod,
     });
 
     return MessageModel.create({

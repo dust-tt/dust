@@ -1,3 +1,4 @@
+import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import {
   AgentMessageFeedbackModel,
@@ -12,7 +13,6 @@ import type {
   AgentMessageAnalyticsFeedback,
 } from "@app/types/assistant/analytics";
 import { Op } from "sequelize";
-
 import type { SeedContext } from "./types";
 
 /**
@@ -116,11 +116,21 @@ export async function seedAnalytics(
       created_at: f.createdAt.toISOString(),
     }));
 
+    const resolvedModel = resolvedModelFromAgentMessageRow(agentMessage);
+
     // Build analytics document with zero values for tokens/tools (seeded data has none).
     const document: AgentMessageAnalyticsData = {
       agent_id: agentMessage.agentConfigurationId,
       agent_version: agentMessage.agentConfigurationVersion.toString(),
       agent_tag_ids: [],
+      model: resolvedModel
+        ? {
+            provider_id: resolvedModel.providerId,
+            model_id: resolvedModel.modelId,
+            reasoning_effort: resolvedModel.reasoningEffort,
+            resolution_method: agentMessage.modelResolutionMethod,
+          }
+        : null,
       ancestor_message_ids: [],
       conversation_id: conversationId,
       space_id: null,
