@@ -312,17 +312,16 @@ describe("blocked actions resolution", () => {
       return { agentMessage, step1Action, step3Action };
     }
 
-    it("force-denies blocked actions spanning several steps (unstick)", async () => {
-      // Anomalous multi-step blocked state: force finalization (as the unstick-conversation plugin
-      // does) must deny them all instead of throwing.
+    it("denies blocked actions spanning several steps", async () => {
+      // Terminal cleanup does not resume the loop from a step, so it can safely deny every action
+      // in an anomalous multi-step state.
       const { agentMessage, step1Action, step3Action } =
         await setupMultiStepBlockedMessage();
 
       await updateAgentMessageWithFinalStatus(auth, {
         conversation,
         agentMessage,
-        status: "failed",
-        dangerouslyBypassSameStepCheck: true,
+        status: "cancelled",
       });
 
       const reloadedStep1 = await AgentMCPActionResource.fetchById(
@@ -336,18 +335,6 @@ describe("blocked actions resolution", () => {
       expect(reloadedStep1?.status).toBe("denied");
       expect(reloadedStep3?.status).toBe("denied");
       expect(await getActionRequired()).toBe(false);
-    });
-
-    it("throws on multi-step blocked actions by default (invariant enforced)", async () => {
-      const { agentMessage } = await setupMultiStepBlockedMessage();
-
-      await expect(
-        updateAgentMessageWithFinalStatus(auth, {
-          conversation,
-          agentMessage,
-          status: "failed",
-        })
-      ).rejects.toThrow("All blocked actions must be from the same step");
     });
 
     it("commits the deny with the terminal status update", async () => {

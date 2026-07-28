@@ -321,6 +321,25 @@ describe("createSandboxChildAction", () => {
     expect(vi.mocked(launchSandboxChildToolWorkflow)).toHaveBeenCalledTimes(1);
   });
 
+  it("rejects child calls after the parent action finished", async () => {
+    const parent = await AgentMCPActionResource.fetchById(auth, parentActionId);
+    if (!parent) {
+      throw new Error("Expected the parent action to exist.");
+    }
+    await parent.updateStatus("succeeded");
+
+    const result = await callChildTool();
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected the child call to fail.");
+    }
+    expect(result.error.message).toBe(
+      "Parent sandbox action is no longer running."
+    );
+    expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
+  });
+
   it("keys approvals on the space-disambiguated name when same-named servers are attached", async () => {
     await setToolPermission("medium");
 

@@ -5,16 +5,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@app/temporal/agent_loop/client", () => ({
   launchAgentLoopWorkflow: vi.fn().mockResolvedValue(new Ok(undefined)),
 }));
+vi.mock("@app/lib/resources/conversation_sandbox_adapter", () => ({
+  ConversationSandboxAdapter: {
+    pauseSandboxForApproval: vi.fn().mockResolvedValue(new Ok(undefined)),
+  },
+}));
 
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { resolveSandboxChildBlock } from "@app/lib/api/sandbox/sandbox_child_block";
+import {
+  pauseSandboxBashForBlockedChild,
+  resolveSandboxChildBlock,
+} from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -101,18 +110,20 @@ describe("resolveSandboxChildBlock", () => {
   async function createAction({
     name,
     status,
+    step = 3,
     resumeState = null,
     sandboxChildActionInfo,
   }: {
     name: string;
     status: ToolExecutionStatus;
+    step?: number;
     resumeState?: { execId: string } | null;
     sandboxChildActionInfo?: { parentActionId: string };
   }) {
     const stepContent = await AgentStepContentModel.create({
       workspaceId: workspace.id,
       agentMessageId,
-      step: 3,
+      step,
       index: stepContentIndex++,
       version: 0,
       type: "function_call",
@@ -195,6 +206,48 @@ describe("resolveSandboxChildBlock", () => {
     );
     const parent = await AgentMCPActionResource.fetchById(auth, parentId);
     expect(parent!.status).toBe("ready_allowed_explicitly");
+  });
+
+  it("denies a late blocked child without re-blocking a finished parent", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "succeeded",
+      step: 1,
+    });
+    const { sId: childId } = await createAction({
+      name: "child_tool",
+      status: "blocked_validation_required",
+      step: 1,
+      sandboxChildActionInfo: { parentActionId: parentId },
+    });
+    const { sId: currentActionId } = await createAction({
+      name: "current_tool",
+      status: "blocked_validation_required",
+      step: 3,
+    });
+    const child = await AgentMCPActionResource.fetchById(auth, childId);
+    if (!child) {
+      throw new Error("Expected the child action to exist.");
+    }
+
+    await pauseSandboxBashForBlockedChild(auth, child, conversation);
+
+    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
+    const deniedChild = await AgentMCPActionResource.fetchById(auth, childId);
+    expect(parent?.status).toBe("succeeded");
+    expect(deniedChild?.status).toBe("denied");
+    await expect(
+      AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
+        agentMessageId,
+      })
+    ).resolves.toEqual([
+      expect.objectContaining({
+        sId: currentActionId,
+      }),
+    ]);
+    expect(
+      vi.mocked(ConversationSandboxAdapter.pauseSandboxForApproval)
+    ).not.toHaveBeenCalled();
   });
 
   it("skips relaunch when the parent is not in blocked_child_action_input_required", async () => {

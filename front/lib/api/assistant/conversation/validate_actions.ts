@@ -108,6 +108,36 @@ export async function validateAction(
     );
   }
 
+  // Scoped by agentMessageId and blocked statuses, using the
+  // (workspaceId, agentMessageId, status) index.
+  const messageBlockedActions =
+    await AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
+      agentMessageId: action.agentMessageId,
+      skipSameStepCheck: true,
+    });
+  const blockedSteps = new Set(
+    messageBlockedActions.map((blockedAction) => blockedAction.stepContent.step)
+  );
+  if (blockedSteps.size > 1) {
+    logger.warn(
+      {
+        actionId,
+        blockedSteps: [...blockedSteps],
+        conversationId,
+        messageId,
+        workspaceId: owner.sId,
+      },
+      "Refusing to resume actions blocked across multiple steps"
+    );
+    return new Err(
+      new DustError(
+        "action_not_blocked",
+        "This generation cannot resume because its pending actions belong to different steps. " +
+          "Cancel it and retry."
+      )
+    );
+  }
+
   const [updatedCount] = await action.updateStatusFromExpected(auth, {
     status: getMCPApprovalStateFromUserApprovalState(approvalState),
     expectedStatus: "blocked_validation_required",

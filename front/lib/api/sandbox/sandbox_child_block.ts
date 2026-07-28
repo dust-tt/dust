@@ -56,7 +56,35 @@ export async function pauseSandboxBashForBlockedChild(
   // so when the child resolves, resolveSandboxChildBlock observes the
   // parent as blocked, relaunches in resume mode, and the running bash
   // reconnects via execId. DB-first is the self-converging shape.
-  await parentAction.updateStatus("blocked_child_action_input_required");
+  const [updatedCount] = await parentAction.updateStatusFromExpected(auth, {
+    status: "blocked_child_action_input_required",
+    expectedStatus: "running",
+  });
+  if (updatedCount === 0) {
+    const freshParent = await AgentMCPActionResource.fetchById(
+      auth,
+      info.parentActionId
+    );
+    if (freshParent?.status === "blocked_child_action_input_required") {
+      return;
+    }
+
+    await action.updateStatusFromExpected(auth, {
+      status: "denied",
+      expectedStatus: action.status,
+    });
+    logger.warn(
+      {
+        actionId: action.sId,
+        parentActionId: info.parentActionId,
+        parentStatus: freshParent?.status,
+        conversationId: conversation.sId,
+        workspaceId,
+      },
+      "Sandbox child blocked after its parent stopped"
+    );
+    return;
+  }
 
   const pauseResult = await ConversationSandboxAdapter.pauseSandboxForApproval(
     auth,

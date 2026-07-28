@@ -815,6 +815,7 @@ describe("validateAction", () => {
     permission = "low",
     argumentsRequiringApproval,
     augmentedInputs = {},
+    step = 1,
   }: {
     agentMessageId: number;
     status?: ToolExecutionStatus;
@@ -823,6 +824,7 @@ describe("validateAction", () => {
     permission?: MCPToolStakeLevelType;
     argumentsRequiringApproval?: string[];
     augmentedInputs?: Record<string, unknown>;
+    step?: number;
   }) {
     const functionCallId = generateRandomModelSId();
     const currentIndex = stepContentIndex++;
@@ -831,7 +833,7 @@ describe("validateAction", () => {
     const stepContent = await AgentStepContentModel.create({
       workspaceId: workspace.id,
       agentMessageId,
-      step: 1,
+      step,
       index: currentIndex,
       version: 0,
       type: "function_call",
@@ -1384,6 +1386,44 @@ describe("validateAction", () => {
       if (result.isErr()) {
         expect(result.error.code).toBe("action_not_blocked");
       }
+    });
+
+    it("returns an error when blocked actions span multiple steps", async () => {
+      const { agentMessageMessage, agentMessageRow } =
+        await createAgentMessageWithNullUserParent();
+      const { action, actionId } = await createBlockedAction({
+        agentMessageId: agentMessageRow.id,
+        step: 1,
+      });
+      await createBlockedAction({
+        agentMessageId: agentMessageRow.id,
+        step: 3,
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      if (!conversationResource) {
+        throw new Error("Expected the conversation to exist.");
+      }
+
+      const result = await validateAction(auth, conversationResource, {
+        actionId,
+        approvalState: "approved",
+        messageId: agentMessageMessage.sId,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("action_not_blocked");
+        expect(result.error.message).toContain(
+          "pending actions belong to different steps"
+        );
+      }
+      await action.reload();
+      expect(action.status).toBe("blocked_validation_required");
+      expect(vi.mocked(launchAgentLoopWorkflow)).not.toHaveBeenCalled();
     });
 
     it.each([

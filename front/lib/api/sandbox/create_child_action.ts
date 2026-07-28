@@ -86,14 +86,6 @@ export async function createSandboxChildAction(
     return new Err(new Error("Conversation not found."));
   }
 
-  const parentAction = await AgentMCPActionResource.fetchById(
-    auth,
-    parentActionId
-  );
-  if (!parentAction) {
-    return new Err(new Error("Parent action not found."));
-  }
-
   const agentMessageRes = await conversationResource.getMessageById(
     auth,
     agentMessageId
@@ -228,6 +220,22 @@ export async function createSandboxChildAction(
   // execution start.
   const persistedStatus =
     status === "ready_allowed_implicitly" ? "running" : status;
+
+  // Fetch the parent immediately before creating the child: a background sandbox call can reach
+  // this endpoint after its parent bash has already completed and the agent has moved on.
+  const parentAction = await AgentMCPActionResource.fetchById(
+    auth,
+    parentActionId
+  );
+  if (!parentAction) {
+    return new Err(new Error("Parent action not found."));
+  }
+  if (
+    parentAction.status !== "running" &&
+    parentAction.status !== "blocked_child_action_input_required"
+  ) {
+    return new Err(new Error("Parent sandbox action is no longer running."));
+  }
 
   const action = await createMCPAction(auth, {
     actionConfiguration: fullToolConfiguration,
