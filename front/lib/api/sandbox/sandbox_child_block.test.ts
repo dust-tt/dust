@@ -33,6 +33,7 @@ import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import {
@@ -130,7 +131,7 @@ describe("resolveSandboxChildBlock", () => {
     name: string;
     status: ToolExecutionStatus;
     step?: number;
-    resumeState?: { execId: string } | null;
+    resumeState?: { execId: string; runId?: string } | null;
     sandboxChildActionInfo?: { parentActionId: string; execId?: string };
   }) {
     const stepContent = await AgentStepContentModel.create({
@@ -529,6 +530,50 @@ describe("resolveSandboxChildBlock", () => {
     expect(child?.status).toBe("denied");
   });
 
+  it("does not let an old workflow finish a newer parent reservation", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "ready_allowed_explicitly",
+      resumeState: { execId: "0123456789abcdef" },
+    });
+    const staleParent = await AgentMCPActionResource.fetchById(auth, parentId);
+    if (!staleParent) {
+      throw new Error("Expected the parent action to exist.");
+    }
+    const reservedParent = await reserveSandboxParentRun(
+      auth,
+      staleParent,
+      conversation,
+      "new-workflow-run"
+    );
+    if (!reservedParent) {
+      throw new Error("Expected the parent action to be reserved.");
+    }
+
+    const completed = await finishSandboxBash(auth, {
+      action: staleParent,
+      conversation,
+      executionDurationMs: 10,
+      messageId: AGENT_LOOP_ARGS.agentMessageId,
+      status: "succeeded",
+    });
+    const competingReservation = await reserveSandboxParentRun(
+      auth,
+      staleParent,
+      conversation,
+      "old-workflow-run"
+    );
+    const freshParent = await AgentMCPActionResource.fetchById(auth, parentId);
+
+    expect(completed).toBe(false);
+    expect(competingReservation).toBeNull();
+    expect(freshParent?.status).toBe("running");
+    expect(freshParent?.stepContext.resumeState).toEqual({
+      execId: "0123456789abcdef",
+      runId: "new-workflow-run",
+    });
+  });
+
   it("does not start a child whose parent already finished", async () => {
     const { sId: parentId } = await createAction({
       name: "bash",
@@ -662,7 +707,7 @@ describe("resolveSandboxChildBlock", () => {
     expect(parent?.status).toBe("running");
   });
 
-  it("reserves a ready parent and child together", async () => {
+  it("reserves a ready parent and child with separate ownership", async () => {
     const { sId: parentId } = await createAction({
       name: "bash",
       status: "ready_allowed_explicitly",
@@ -682,9 +727,23 @@ describe("resolveSandboxChildBlock", () => {
       isRetry: false,
     });
 
-    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
+    const readyParent = await AgentMCPActionResource.fetchById(auth, parentId);
+    if (!readyParent) {
+      throw new Error("Expected the parent action to exist.");
+    }
+    const parent = await reserveSandboxParentRun(
+      auth,
+      readyParent,
+      conversation,
+      "workflow-run"
+    );
+
     expect(reserved?.status).toBe("running");
     expect(parent?.status).toBe("running");
+    expect(parent?.stepContext.resumeState).toEqual({
+      execId: "0123456789abcdef",
+      runId: "workflow-run",
+    });
   });
 
   it("denies a resumed parent when cancellation wins", async () => {
@@ -703,7 +762,12 @@ describe("resolveSandboxChildBlock", () => {
       throw new Error("Expected the parent action to exist.");
     }
 
-    const reserved = await reserveSandboxParentRun(auth, parent, conversation);
+    const reserved = await reserveSandboxParentRun(
+      auth,
+      parent,
+      conversation,
+      "workflow-run"
+    );
 
     const deniedParent = await AgentMCPActionResource.fetchById(auth, parentId);
     expect(reserved).toBeNull();
@@ -804,7 +868,7 @@ describe("resolveSandboxChildBlock", () => {
     await resolveChild(childId, parentId);
 
     const freshParent = await AgentMCPActionResource.fetchById(auth, parentId);
-    expect(freshParent?.status).toBe("blocked_child_action_input_required");
+    expect(freshParent?.status).toBe("running");
     expect(vi.mocked(launchAgentLoopWorkflow)).not.toHaveBeenCalled();
     expect(vi.mocked(launchSandboxChildToolWorkflow)).toHaveBeenCalledWith(
       auth,
@@ -814,6 +878,45 @@ describe("resolveSandboxChildBlock", () => {
         waitForCompletion: true,
       })
     );
+  });
+
+  it("runs every approved pre-deploy sibling and clears action required", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "blocked_child_action_input_required",
+    });
+    const { sId: childAId } = await createAction({
+      name: "child_a",
+      status: "ready_allowed_explicitly",
+      sandboxChildActionInfo: { parentActionId: parentId },
+    });
+    const { sId: childBId } = await createAction({
+      name: "child_b",
+      status: "ready_allowed_explicitly",
+      sandboxChildActionInfo: { parentActionId: parentId },
+    });
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+    await ConversationResource.markAsActionRequired(auth, { conversation });
+
+    await resolveChild(childBId, parentId);
+
+    const launchedActionIds = vi
+      .mocked(launchSandboxChildToolWorkflow)
+      .mock.calls.map(([, { action }]) => action.sId);
+    expect(launchedActionIds).toEqual(
+      expect.arrayContaining([childAId, childBId])
+    );
+    expect(launchedActionIds).toHaveLength(2);
+    const { actionRequired } =
+      await ConversationResource.getActionRequiredAndLastReadAtForUser(
+        auth,
+        conversation.id
+      );
+    expect(actionRequired).toBe(false);
   });
 
   it("does not resurrect a cancelled action from a late pause result", async () => {
@@ -838,6 +941,32 @@ describe("resolveSandboxChildBlock", () => {
     expect(persisted).toBe(false);
     expect(freshAction?.status).toBe("denied");
     expect(freshAction?.stepContext.resumeState).toBeNull();
+  });
+
+  it("keeps the workflow owner while persisting another pause", async () => {
+    const { sId: actionId } = await createAction({
+      name: "bash",
+      status: "running",
+      resumeState: {
+        execId: "0123456789abcdef",
+        runId: "workflow-run",
+      },
+    });
+    const action = await AgentMCPActionResource.fetchById(auth, actionId);
+    if (!action) {
+      throw new Error("Expected the action to exist.");
+    }
+
+    const persisted = await persistActionPause(auth, action, conversation, {
+      execId: "0123456789abcdef",
+    });
+    const freshAction = await AgentMCPActionResource.fetchById(auth, actionId);
+
+    expect(persisted).toBe(true);
+    expect(freshAction?.stepContext.resumeState).toEqual({
+      execId: "0123456789abcdef",
+      runId: "workflow-run",
+    });
   });
 
   it("does not defer relaunch because of an unrelated parent's blocked child", async () => {

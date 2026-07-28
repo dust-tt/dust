@@ -8,6 +8,7 @@ import {
   isSandboxResumeState,
 } from "@app/lib/actions/types";
 import {
+  clearActionRequiredIfNoBlockedActions,
   clearBlockedActionEffects,
   releaseSandboxIfUnused,
 } from "@app/lib/api/assistant/conversation/blocked_actions";
@@ -186,10 +187,9 @@ export async function pauseReservedSandboxBash(
             return false;
           }
 
-          const execId = isSandboxResumeState(
-            parentAction.stepContext.resumeState
-          )
-            ? parentAction.stepContext.resumeState.execId
+          const currentResumeState = parentAction.stepContext.resumeState;
+          const execId = isSandboxResumeState(currentResumeState)
+            ? currentResumeState.execId
             : info.execId;
           if (!execId) {
             return false;
@@ -198,7 +198,13 @@ export async function pauseReservedSandboxBash(
           await parentAction.updateStepContext(
             {
               ...parentAction.stepContext,
-              resumeState: { execId },
+              resumeState: {
+                execId,
+                ...(isSandboxResumeState(currentResumeState) &&
+                currentResumeState.runId
+                  ? { runId: currentResumeState.runId }
+                  : {}),
+              },
             },
             transaction
           );
@@ -262,10 +268,17 @@ export async function persistActionPause(
       }
     }
 
+    const currentResumeState = freshAction.stepContext.resumeState;
+    const nextResumeState =
+      isSandboxResumeState(resumeState) &&
+      isSandboxResumeState(currentResumeState) &&
+      currentResumeState.runId
+        ? { ...resumeState, runId: currentResumeState.runId }
+        : resumeState;
     await freshAction.updateStepContext(
       {
         ...freshAction.stepContext,
-        resumeState,
+        resumeState: nextResumeState,
       },
       transaction
     );
@@ -352,23 +365,10 @@ export async function reserveSandboxChildRun(
       if (updatedParentCount === 0) {
         return null;
       }
-    } else if (
-      parentAction.status === "ready_allowed_explicitly" ||
-      parentAction.status === "ready_allowed_implicitly"
-    ) {
-      const [updatedParentCount] = await parentAction.updateStatusFromExpected(
-        auth,
-        {
-          status: "running",
-          expectedStatus: parentAction.status,
-          transaction,
-        }
-      );
-      if (updatedParentCount === 0) {
-        return null;
-      }
     }
 
+    // A ready parent is reserved by its own activity. Reserving it from a sibling activity would
+    // not provide an execution identity that distinguishes the new run from an orphaned old one.
     const [updatedCount] = await freshAction.updateStatusFromExpected(auth, {
       status: "running",
       expectedStatus: freshAction.status,
@@ -383,13 +383,14 @@ export async function reserveSandboxChildRun(
 }
 
 /**
- * Reserves a resumed sandbox parent at the tool-activity boundary. A child may have already
- * reserved the parent in the same batch, in which case the running parent is returned directly.
+ * Reserves a resumed sandbox parent at the tool-activity boundary. The Temporal workflow run ID
+ * identifies the owner across activity retries and rejects orphaned activities from older runs.
  */
 export async function reserveSandboxParentRun(
   auth: Authenticator,
   action: AgentMCPActionResource,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType,
+  runId: string
 ): Promise<AgentMCPActionResource | null> {
   return withTransaction(async (transaction) => {
     await getConversationRankVersionLock(auth, conversation, transaction);
@@ -403,7 +404,10 @@ export async function reserveSandboxParentRun(
       return null;
     }
     if (freshAction.status === "running") {
-      return freshAction;
+      const resumeState = freshAction.stepContext.resumeState;
+      return isSandboxResumeState(resumeState) && resumeState.runId === runId
+        ? freshAction
+        : null;
     }
     if (
       freshAction.status !== "ready_allowed_explicitly" &&
@@ -420,6 +424,17 @@ export async function reserveSandboxParentRun(
       return null;
     }
 
+    const resumeState = freshAction.stepContext.resumeState;
+    if (!isSandboxResumeState(resumeState)) {
+      return null;
+    }
+    await freshAction.updateStepContext(
+      {
+        ...freshAction.stepContext,
+        resumeState: { ...resumeState, runId },
+      },
+      transaction
+    );
     const [updatedCount] = await freshAction.updateStatusFromExpected(auth, {
       status: "running",
       expectedStatus: freshAction.status,
@@ -470,6 +485,18 @@ export async function finishSandboxBash(
       return { completed: false, deniedChildren: [] };
     }
 
+    const expectedResumeState = action.stepContext.resumeState;
+    const currentResumeState = parentAction.stepContext.resumeState;
+    const expectedRunId = isSandboxResumeState(expectedResumeState)
+      ? expectedResumeState.runId
+      : undefined;
+    const currentRunId = isSandboxResumeState(currentResumeState)
+      ? currentResumeState.runId
+      : undefined;
+    if (expectedRunId !== currentRunId) {
+      return { completed: false, deniedChildren: [] };
+    }
+
     const deniedChildren =
       await AgentMCPActionResource.denyPendingSandboxChildren(auth, {
         parentAction,
@@ -515,7 +542,7 @@ async function reserveParentRelaunch(
   }
 ): Promise<{
   parentAction: AgentMCPActionResource | null;
-  needsLegacyRun: boolean;
+  legacyActions: AgentMCPActionResource[] | null;
 }> {
   return withTransaction(async (transaction) => {
     await getConversationRankVersionLock(auth, conversation, transaction);
@@ -527,7 +554,7 @@ async function reserveParentRelaunch(
       transaction
     );
     if (!parent || parent.status !== "blocked_child_action_input_required") {
-      return { parentAction: null, needsLegacyRun: false };
+      return { parentAction: null, legacyActions: null };
     }
 
     // Only the last blocked sibling resumes the parent. Keeping this read and the parent
@@ -538,12 +565,25 @@ async function reserveParentRelaunch(
         transaction,
       })
     ) {
-      return { parentAction: null, needsLegacyRun: false };
+      return { parentAction: null, legacyActions: null };
     }
 
     if (!isSandboxResumeState(parent.stepContext.resumeState)) {
       if (!execId) {
-        return { parentAction: null, needsLegacyRun: true };
+        const legacyActions =
+          await AgentMCPActionResource.listReadySandboxChildren(auth, {
+            parentAction: parent,
+            transaction,
+          });
+        const [updatedCount] = await parent.updateStatusFromExpected(auth, {
+          status: "running",
+          expectedStatus: "blocked_child_action_input_required",
+          transaction,
+        });
+        return {
+          parentAction: null,
+          legacyActions: updatedCount === 1 ? legacyActions : null,
+        };
       }
       await parent.updateStepContext(
         {
@@ -561,7 +601,7 @@ async function reserveParentRelaunch(
     });
     return {
       parentAction: updatedCount === 1 ? parent : null,
-      needsLegacyRun: false,
+      legacyActions: null,
     };
   });
 }
@@ -614,28 +654,33 @@ export async function resolveSandboxChildBlock(
     conversation,
     sandboxChildActionInfo,
   });
-  if (reservation.needsLegacyRun) {
-    const launchResult = await launchSandboxChildToolWorkflow(auth, {
-      action,
-      agentLoopArgs: {
-        ...agentLoopArgs,
-        initialStartTime: Date.now(),
-      },
-      step: action.stepContent.step,
-      waitForCompletion: true,
-    });
-    if (launchResult.isErr()) {
-      logger.error(
-        {
-          err: launchResult.error,
-          actionId: action.sId,
-          parentActionId,
-          conversationId: agentLoopArgs.conversationId,
-          workspaceId,
+  if (reservation.legacyActions) {
+    for (const legacyAction of reservation.legacyActions) {
+      const launchResult = await launchSandboxChildToolWorkflow(auth, {
+        action: legacyAction,
+        agentLoopArgs: {
+          ...agentLoopArgs,
+          initialStartTime: Date.now(),
         },
-        "Failed to run pre-deploy sandbox child after resolution"
-      );
+        step: legacyAction.stepContent.step,
+        waitForCompletion: true,
+      });
+      if (launchResult.isErr()) {
+        logger.error(
+          {
+            err: launchResult.error,
+            actionId: legacyAction.sId,
+            parentActionId,
+            conversationId: agentLoopArgs.conversationId,
+            workspaceId,
+          },
+          "Failed to run pre-deploy sandbox child after resolution"
+        );
+      }
     }
+    await clearActionRequiredIfNoBlockedActions(auth, {
+      conversationId: agentLoopArgs.conversationId,
+    });
     return;
   }
 

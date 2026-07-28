@@ -398,6 +398,37 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     );
   }
 
+  static async listReadySandboxChildren(
+    auth: Authenticator,
+    {
+      parentAction,
+      transaction,
+    }: {
+      parentAction: AgentMCPActionResource;
+      transaction: Transaction;
+    }
+  ): Promise<AgentMCPActionResource[]> {
+    // The message/status index narrows this to runnable actions before the JSON parent filter.
+    const readyActions = await this.baseFetch(
+      auth,
+      {
+        where: {
+          agentMessageId: parentAction.agentMessageId,
+          status: {
+            [Op.in]: ["ready_allowed_explicitly", "ready_allowed_implicitly"],
+          },
+        },
+      },
+      transaction
+    );
+
+    return readyActions.filter(
+      (action) =>
+        action.stepContext.sandboxChildActionInfo?.parentActionId ===
+        parentAction.sId
+    );
+  }
+
   static async listBlockedActionsForConversation(
     auth: Authenticator,
     conversation: ConversationResource

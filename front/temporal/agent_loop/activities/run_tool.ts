@@ -197,7 +197,8 @@ export async function runToolActivity(
     actionToRun = await reserveSandboxParentRun(
       auth,
       action,
-      originalConversation
+      originalConversation,
+      Context.current().info.workflowExecution.runId
     );
   }
   if (!actionToRun) {
