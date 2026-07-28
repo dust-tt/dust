@@ -306,13 +306,15 @@ function TriSpinnerLottie({
 
 // ─── Shared color scheme ──────────────────────────────────────────────────────
 
+// Hex snapshots of the stone ramp (tokens.css) — SVG stroke attributes and the
+// Lottie recoloring path need literal colors, so these must be kept in sync.
 const SCHEME = {
-  // mono on a light background: border-dark track (#DFE0E2) + primary-muted arc (#7B818D)
-  monoOnLight: { trackColor: "#DFE0E2", arcColor: "#7B818D", trackOpacity: 1 },
-  // mono on a dark background: border-dark-night track (#364153) + primary-muted arc (#7B818D)
-  monoOnDark: { trackColor: "#364153", arcColor: "#7B818D", trackOpacity: 1 },
-  // forced dark arc regardless of theme (for 'dark' variant)
-  dark: { trackColor: "#E7E5E4", arcColor: "#020617", trackOpacity: 1 },
+  // mono on a light background: border-dark track (stone-150) + primary-muted arc (stone-500)
+  monoOnLight: { trackColor: "#EEEEEC", arcColor: "#79716B", trackOpacity: 1 },
+  // mono on a dark background: dark border-dark track (stone-700) + primary-muted arc (stone-500)
+  monoOnDark: { trackColor: "#44403B", arcColor: "#79716B", trackOpacity: 1 },
+  // forced dark arc regardless of theme (for 'dark' variant): stone-200 track + stone-950 arc
+  dark: { trackColor: "#E7E5E4", arcColor: "#0C0A09", trackOpacity: 1 },
   // forced white arc for dark/colored backgrounds (for 'light' variant)
   light: { trackColor: "#FFFFFF", arcColor: "#FFFFFF", trackOpacity: 0.25 },
 } as const;
