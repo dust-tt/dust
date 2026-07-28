@@ -1141,6 +1141,27 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return new Ok(affectedCount);
   }
 
+  public async updateIsRestrictedToSkills(
+    auth: Authenticator,
+    isRestrictedToSkills: boolean
+  ): Promise<Result<number, DustError<"unauthorized">>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Not allowed to update skill-only availability."
+        )
+      );
+    }
+
+    const [affectedCount] = await this.update({
+      isRestrictedToSkills,
+      editedAt: new Date(),
+      editedByUserId: auth.getNonNullableUser().id,
+    });
+    return new Ok(affectedCount);
+  }
+
   // Deletion.
 
   protected async softDelete(
