@@ -42,7 +42,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -1610,9 +1610,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     {
       poolCapOverrideAwuCredits,
       overrideLimitTimeframe,
+      poolCapOverrideExpiresAt,
     }: {
       poolCapOverrideAwuCredits: number | null;
       overrideLimitTimeframe?: SpendLimitOverrideTimeframeType | null;
+      // When the override should auto-revert to unlimited. `undefined`/`null`
+      // means it never expires.
+      poolCapOverrideExpiresAt?: Date | null;
     },
     transaction?: Transaction
   ): Promise<void> {
@@ -1620,8 +1624,68 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       {
         poolCapOverrideAwuCredits,
         overrideLimitTimeframe: overrideLimitTimeframe ?? null,
+        poolCapOverrideExpiresAt: poolCapOverrideExpiresAt ?? null,
       },
       transaction
+    );
+  }
+
+  /**
+   * Workspaces (sorted by id ascending) that have at least one active
+   * membership whose pool cap override has expired. Global, cross-workspace
+   * lookup for the expiration sweep — mirrors
+   * `WebhookRequestResource.getWorkspacesWithTooManyRequests`: raw SQL to find
+   * affected workspaces, then per-workspace scoped work from the caller.
+   */
+  static async getWorkspacesWithExpiredPoolCapOverride(
+    now: Date
+  ): Promise<WorkspaceResource[]> {
+    // biome-ignore lint/plugin/noRawSql: cross-workspace lookup, see WORKSPACE_ISOLATION_BYPASS below
+    const rows = await frontSequelize.query<{ workspaceId: ModelId }>(
+      `
+      SELECT DISTINCT "workspaceId"
+      FROM public.memberships
+      WHERE "poolCapOverrideExpiresAt" IS NOT NULL
+        AND "poolCapOverrideExpiresAt" <= :now
+        AND "poolCapOverrideAwuCredits" IS NOT NULL
+        AND "endAt" IS NULL
+      ORDER BY "workspaceId" ASC;
+    `,
+      {
+        type: QueryTypes.SELECT,
+        replacements: { now: now.toISOString() },
+      }
+    );
+
+    const workspaces = await WorkspaceResource.fetchByModelIds(
+      rows.map((row) => row.workspaceId)
+    );
+    return workspaces.sort((a, b) => a.id - b.id);
+  }
+
+  /**
+   * Active memberships within `workspace` whose pool cap override has
+   * expired as of `now`. Scoped counterpart to
+   * `getWorkspacesWithExpiredPoolCapOverride`, called once per affected
+   * workspace by the expiration sweep.
+   */
+  static async listActiveWithExpiredPoolCapOverride({
+    workspace,
+    now,
+  }: {
+    workspace: LightWorkspaceType;
+    now: Date;
+  }): Promise<MembershipResource[]> {
+    const rows = await MembershipModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        endAt: null,
+        poolCapOverrideAwuCredits: { [Op.ne]: null },
+        poolCapOverrideExpiresAt: { [Op.lte]: now },
+      },
+    });
+    return rows.map(
+      (row) => new MembershipResource(MembershipModel, row.get())
     );
   }
 
@@ -1672,11 +1736,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           seatType: newSeatType,
           firstUsedAt: this.firstUsedAt,
           creditState: initialCreditStateForSeatType(newSeatType),
-          // The pool cap override (and its timeframe) survives the seat
-          // change: it's the pool-only portion, independent of the seat
+          // The pool cap override (and its timeframe/expiry) survives the
+          // seat change: it's the pool-only portion, independent of the seat
           // allowance.
           poolCapOverrideAwuCredits: this.poolCapOverrideAwuCredits,
           overrideLimitTimeframe: this.overrideLimitTimeframe,
+          poolCapOverrideExpiresAt: this.poolCapOverrideExpiresAt,
         },
         { transaction }
       );

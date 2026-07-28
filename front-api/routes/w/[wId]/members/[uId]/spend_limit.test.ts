@@ -117,6 +117,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         kind: "limited",
         awuCredits: 1500,
         timeframe: null,
+        expiresAt: null,
       });
     });
 
@@ -157,6 +158,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         kind: "limited",
         awuCredits: 500,
         timeframe: "week",
+        expiresAt: null,
       });
     });
 
@@ -322,6 +324,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         kind: "limited",
         awuCredits: 2500,
         timeframe: null,
+        expiresAt: null,
       });
     });
   });
@@ -416,6 +419,96 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
           workspace,
         });
       expect(updatedMembership?.poolCapOverrideAwuCredits).toBe(1500);
+    });
+
+    it("persists and returns expiresAt when provided", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "admin",
+        workspace,
+      });
+
+      const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+      const response = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind: "limited",
+            awuCredits: 1500,
+            expiresAt,
+          }),
+        }
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        limit: { kind: "limited", awuCredits: 1500, expiresAt },
+      });
+
+      const getResponse = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId)
+      );
+      expect(await getResponse.json()).toEqual({
+        kind: "limited",
+        awuCredits: 1500,
+        timeframe: null,
+        expiresAt,
+      });
+
+      const updatedMembership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: targetUser,
+          workspace,
+        });
+      expect(updatedMembership?.poolCapOverrideExpiresAt).toEqual(
+        new Date(expiresAt)
+      );
+    });
+
+    it("clears expiresAt when reverting to unlimited", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const targetUser = await UserFactory.basic();
+      const membership = await MembershipFactory.associate(
+        workspace,
+        targetUser,
+        { role: "user" }
+      );
+      await membership.updatePoolCapOverride({
+        poolCapOverrideAwuCredits: 1200,
+        poolCapOverrideExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
+
+      await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "admin",
+        workspace,
+      });
+
+      const response = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: "unlimited" }),
+        }
+      );
+
+      expect(response.status).toBe(200);
+      const updatedMembership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: targetUser,
+          workspace,
+        });
+      expect(updatedMembership?.poolCapOverrideAwuCredits).toBeNull();
+      expect(updatedMembership?.poolCapOverrideExpiresAt).toBeNull();
     });
   });
 });

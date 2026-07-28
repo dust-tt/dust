@@ -53,6 +53,7 @@ export const AUDIT_ACTIONS = [
   "membership.upgrade_request_created",
   "membership.upgrade_request_resolved",
   "membership.seat_auto_upgraded",
+  "membership.pool_cap_override_expired",
   // Domains & SSO.
   "domain.verified",
   "domain.verification_failed",

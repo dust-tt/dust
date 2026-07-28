@@ -33,6 +33,12 @@ export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   // monthly/pool-lifetime window. Meaningless when the override itself is
   // NULL.
   declare overrideLimitTimeframe: SpendLimitOverrideTimeframeType | null;
+  // When set, the pool cap override (and its timeframe) is reverted to
+  // unlimited once this timestamp passes — see the sweep workflow in
+  // `@app/temporal/spend_limit_expiration`. NULL means the override never
+  // expires (today's behavior). Meaningless when the override itself is
+  // NULL.
+  declare poolCapOverrideExpiresAt: Date | null;
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare user: NonAttribute<UserModel>;
@@ -90,6 +96,11 @@ MembershipModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    poolCapOverrideExpiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "membership",
@@ -109,6 +120,13 @@ MembershipModel.init(
       {
         fields: ["workspaceId", "firstUsedAt"],
         where: { firstUsedAt: { [Op.ne]: null } },
+        concurrently: true,
+      },
+      // Lets the expiration sweep find expiring overrides without scanning
+      // every membership row.
+      {
+        fields: ["poolCapOverrideExpiresAt"],
+        where: { poolCapOverrideExpiresAt: { [Op.ne]: null } },
         concurrently: true,
       },
     ],

@@ -1215,6 +1215,10 @@ export function UsagePage() {
         }}
         member={editSpendLimitMember}
         owner={owner}
+        requestedDurationDays={
+          upgradeRequests.find((r) => r.sId === pendingApproveRequestId)
+            ?.requestedDurationDays ?? null
+        }
         onSavingChange={handleUsagePendingChange}
         onSaved={handleApproveOnModalSaved}
       />

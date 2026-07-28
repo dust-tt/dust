@@ -9,6 +9,9 @@ export type UserSpendLimit =
       // implicit monthly/pool-lifetime window. Omitted/null preserves
       // today's behavior.
       timeframe?: SpendLimitOverrideTimeframeType | null;
+      // Epoch ms at which the override auto-reverts to unlimited. Omitted/null
+      // means it never expires.
+      expiresAt?: number | null;
     };
 
 export type GetUserSpendLimitResponse = UserSpendLimit;

@@ -1,6 +1,7 @@
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
+  emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { reconcileUser } from "@app/lib/api/metronome/reconcile_credit_state";
 import { getUserForWorkspace } from "@app/lib/api/user";
@@ -14,6 +15,7 @@ import {
 } from "@app/lib/metronome/alerts/spend_limits";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -21,6 +23,7 @@ import type {
   SetUserSpendLimitResponse,
   UserSpendLimit,
 } from "@app/types/api/users/spend_limit";
+import type { SpendLimitOverrideTimeframeType } from "@app/types/credits";
 import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -78,6 +81,53 @@ async function resolveUserSeatAllowance(
   return seatAllowance;
 }
 
+/**
+ * Clear the Metronome per-user cap/warning alerts for a user reverted to the
+ * unlimited (seat-default) spend limit. Shared by the admin-driven "use
+ * workspace default" path and the automated expiration sweep.
+ */
+async function clearMetronomeSpendLimitAlerts({
+  metronomeCustomerId,
+  workspaceId,
+  userId,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+  userId: string;
+}): Promise<Result<void, UserSpendLimitError>> {
+  const clearResult = await clearMetronomePerUserCapAlert({
+    metronomeCustomerId,
+    workspaceId,
+    userId,
+  });
+  if (clearResult.isErr()) {
+    logger.error(
+      {
+        workspaceId,
+        metronomeCustomerId,
+        userId,
+        err: clearResult.error,
+      },
+      "[Metronome PerUserCap] set(unlimited): failed to clear per-user cap alert"
+    );
+    return new Err(
+      new UserSpendLimitError("metronome_error", clearResult.error.message)
+    );
+  }
+  const clearWarningResult = await clearMetronomePerUserWarningAlert({
+    metronomeCustomerId,
+    workspaceId,
+    userId,
+  });
+  if (clearWarningResult.isErr()) {
+    logger.warn(
+      { workspaceId, userId, err: clearWarningResult.error },
+      "[Metronome PerUserCap] Failed to clear warning alert; continuing"
+    );
+  }
+  return new Ok(undefined);
+}
+
 export async function getUserSpendLimit(
   auth: Authenticator,
   { userId }: { userId: string }
@@ -117,6 +167,7 @@ export async function getUserSpendLimit(
     kind: "limited",
     awuCredits: membership.poolCapOverrideAwuCredits,
     timeframe: membership.overrideLimitTimeframe,
+    expiresAt: membership.poolCapOverrideExpiresAt?.getTime() ?? null,
   });
 }
 
@@ -202,43 +253,21 @@ export async function setUserSpendLimit(
     poolCapOverrideAwuCredits:
       limit.kind === "limited" ? limit.awuCredits : null,
     overrideLimitTimeframe: limit.kind === "limited" ? limit.timeframe : null,
+    poolCapOverrideExpiresAt:
+      limit.kind === "limited" && limit.expiresAt
+        ? new Date(limit.expiresAt)
+        : null,
   });
 
   switch (limit.kind) {
     case "unlimited": {
-      const clearResult = await clearMetronomePerUserCapAlert({
+      const clearResult = await clearMetronomeSpendLimitAlerts({
         metronomeCustomerId: workspace.metronomeCustomerId,
         workspaceId: workspace.sId,
         userId: user.sId,
       });
       if (clearResult.isErr()) {
-        logger.error(
-          {
-            workspaceId: workspace.sId,
-            metronomeCustomerId: workspace.metronomeCustomerId,
-            userId: user.sId,
-            err: clearResult.error,
-          },
-          "[Metronome PerUserCap] set(unlimited): failed to clear per-user cap alert"
-        );
-        return new Err(
-          new UserSpendLimitError("metronome_error", clearResult.error.message)
-        );
-      }
-      const clearWarningResult = await clearMetronomePerUserWarningAlert({
-        metronomeCustomerId: workspace.metronomeCustomerId,
-        workspaceId: workspace.sId,
-        userId: user.sId,
-      });
-      if (clearWarningResult.isErr()) {
-        logger.warn(
-          {
-            workspaceId: workspace.sId,
-            userId: user.sId,
-            err: clearWarningResult.error,
-          },
-          "[Metronome PerUserCap] Failed to clear warning alert; continuing"
-        );
+        return new Err(clearResult.error);
       }
       break;
     }
@@ -327,8 +356,127 @@ export async function setUserSpendLimit(
         limit.kind === "limited" ? String(limit.awuCredits) : "unlimited",
       timeframe:
         limit.kind === "limited" && limit.timeframe ? limit.timeframe : "",
+      expires_at:
+        limit.kind === "limited" && limit.expiresAt
+          ? new Date(limit.expiresAt).toISOString()
+          : "",
     },
   });
 
   return new Ok({ limit });
+}
+
+/**
+ * Revert an expired pool cap override back to the seat-type default. Called
+ * by the expiration sweep (`@app/temporal/spend_limit_expiration`) — never by
+ * an admin action, hence the system-actored, dedicated audit event rather
+ * than reusing `setUserSpendLimit`'s `member.spend_limit_updated`. A no-op
+ * (idempotent `Ok`) if the override was already cleared or never expires,
+ * e.g. an admin manually reverted it before the sweep ran.
+ */
+export async function expireUserSpendLimitOverride(
+  auth: Authenticator,
+  { userId }: { userId: string }
+): Promise<
+  Result<
+    {
+      reverted: boolean;
+      previousAwuCredits: number | null;
+      previousTimeframe: SpendLimitOverrideTimeframeType | null;
+    },
+    UserSpendLimitError
+  >
+> {
+  const workspace = auth.getNonNullableWorkspace();
+  if (!workspace.metronomeCustomerId) {
+    return new Err(
+      new UserSpendLimitError(
+        "workspace_not_metronome_billed",
+        "Workspace is not on Metronome billing."
+      )
+    );
+  }
+
+  // `getUserForWorkspace` requires `auth.user()`, which the system-actored
+  // `Authenticator` the expiration sweep runs as does not have. Fetch
+  // directly instead — the caller already scoped `userId` to this workspace.
+  const user = await UserResource.fetchById(userId);
+  if (!user) {
+    return new Err(
+      new UserSpendLimitError(
+        "user_not_found",
+        "Could not find the user in this workspace."
+      )
+    );
+  }
+
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  if (!membership || membership.poolCapOverrideAwuCredits === null) {
+    return new Ok({
+      reverted: false,
+      previousAwuCredits: null,
+      previousTimeframe: null,
+    });
+  }
+
+  const previousAwuCredits = membership.poolCapOverrideAwuCredits;
+  const previousTimeframe = membership.overrideLimitTimeframe;
+
+  await membership.updatePoolCapOverride({
+    poolCapOverrideAwuCredits: null,
+    overrideLimitTimeframe: null,
+    poolCapOverrideExpiresAt: null,
+  });
+
+  const clearResult = await clearMetronomeSpendLimitAlerts({
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    workspaceId: workspace.sId,
+    userId: user.sId,
+  });
+  if (clearResult.isErr()) {
+    return new Err(clearResult.error);
+  }
+
+  const metronomeContractId = auth.subscription()?.metronomeContractId ?? null;
+  if (metronomeContractId) {
+    const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+    if (workspaceResource) {
+      void reconcileUser({
+        auth,
+        workspace: workspaceResource,
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        userId: user.sId,
+        execute: true,
+      }).catch((err) => {
+        logger.warn(
+          { workspaceId: workspace.sId, userId: user.sId, err },
+          "[Metronome PerUserCap] reconcileUser after spend-limit expiration failed; webhook will reconcile"
+        );
+      });
+    }
+  }
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "membership.pool_cap_override_expired",
+    actor: { type: "system", id: "spend-limit-expiration", name: "Dust" },
+    targets: [
+      buildAuditLogTarget("workspace", workspace),
+      buildAuditLogTarget("user", {
+        sId: user.sId,
+        name: user.fullName() ?? "unknown",
+      }),
+    ],
+    context: { location: "internal" },
+    metadata: {
+      previous_awu_credits: String(previousAwuCredits),
+      previous_timeframe: previousTimeframe ?? "",
+    },
+  });
+
+  return new Ok({ reverted: true, previousAwuCredits, previousTimeframe });
 }

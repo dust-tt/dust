@@ -27,6 +27,7 @@ import { useEffect, useRef, useState } from "react";
 
 const MIN_AWU_CREDITS = 0;
 const MAX_AWU_CREDITS = 1_000_000;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 type SpendLimitKind = "default" | "override";
 
@@ -34,11 +35,30 @@ function isSpendLimitKind(value: string): value is SpendLimitKind {
   return value === "default" || value === "override";
 }
 
+// `<input type="date">` values are calendar dates ("YYYY-MM-DD") with no
+// timezone; treating them as UTC midnight in both directions keeps the
+// round-trip stable regardless of the admin's local timezone.
+function epochMsToDateInputValue(epochMs: number): string {
+  return new Date(epochMs).toISOString().slice(0, 10);
+}
+
+function dateInputValueToEpochMs(value: string): number | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 interface EditSpendLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
   member: MemberUsageType | null;
   owner: WorkspaceType;
+  // How many days the linked upgrade request asked for, if the modal was
+  // opened to resolve one. Pre-fills the expiry date; the admin can still
+  // change it. Null when opened from the members table directly.
+  requestedDurationDays?: number | null;
   onSavingChange?: (memberId: string, isSaving: boolean) => void;
   // Fired once the spend limit has been persisted successfully (not on cancel
   // or a load error). Used to resolve a linked upgrade request as approved.
@@ -50,6 +70,7 @@ export function EditSpendLimitModal({
   onClose,
   member,
   owner,
+  requestedDurationDays,
   onSavingChange,
   onSaved,
 }: EditSpendLimitModalProps) {
@@ -79,6 +100,7 @@ export function EditSpendLimitModal({
   const [creditsInput, setCreditsInput] = useState<string>("");
   const [timeframe, setTimeframe] =
     useState<SpendLimitOverrideTimeframeType | null>(null);
+  const [expiresAtInput, setExpiresAtInput] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(
     null
@@ -98,17 +120,29 @@ export function EditSpendLimitModal({
         setKind("override");
         setCreditsInput(String(spendLimit.awuCredits));
         setTimeframe(spendLimit.timeframe ?? null);
+        setExpiresAtInput(
+          spendLimit.expiresAt
+            ? epochMsToDateInputValue(spendLimit.expiresAt)
+            : ""
+        );
         break;
       case "unlimited":
         setKind("default");
         setCreditsInput("");
         setTimeframe(null);
+        setExpiresAtInput(
+          requestedDurationDays
+            ? epochMsToDateInputValue(
+                Date.now() + requestedDurationDays * ONE_DAY_MS
+              )
+            : ""
+        );
         break;
       default:
         assertNeverAndIgnore(spendLimit);
     }
     setValidationMessage(null);
-  }, [isOpen, spendLimit]);
+  }, [isOpen, spendLimit, requestedDurationDays]);
 
   function handleSelectKind(next: SpendLimitKind) {
     setKind(next);
@@ -171,6 +205,7 @@ export function EditSpendLimitModal({
             kind: "limited",
             awuCredits: result.awuCredits,
             timeframe,
+            expiresAt: dateInputValueToEpochMs(expiresAtInput),
           };
           break;
         default:
@@ -316,6 +351,24 @@ export function EditSpendLimitModal({
                       label="Per rolling month"
                     />
                   </RadioGroup>
+                  <div className="flex flex-col gap-1.5 pt-2">
+                    <label
+                      htmlFor="spend-limit-expires-at"
+                      className="text-sm font-medium"
+                    >
+                      Expires (optional)
+                    </label>
+                    <Input
+                      id="spend-limit-expires-at"
+                      type="date"
+                      value={expiresAtInput}
+                      onChange={(e) => setExpiresAtInput(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      On this date, the limit automatically reverts to the
+                      workspace default. Leave blank for a permanent override.
+                    </p>
+                  </div>
                 </div>
               )}
             </RadioGroup>

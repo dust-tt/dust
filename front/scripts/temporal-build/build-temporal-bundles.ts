@@ -76,6 +76,8 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "temporal/remote_tools");
     case "scrub_workspace_queue":
       return path.join(baseDir, "temporal/scrub_workspace");
+    case "spend_limit_expiration":
+      return path.join(baseDir, "temporal/spend_limit_expiration");
     case "update_workspace_usage":
       return path.join(baseDir, "temporal/usage_queue");
     case "upsert_queue":

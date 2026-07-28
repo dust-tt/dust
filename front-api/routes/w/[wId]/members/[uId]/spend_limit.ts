@@ -29,6 +29,7 @@ const UpdateUserSpendLimitBodySchema = z.discriminatedUnion("kind", [
       .min(MIN_USER_SPEND_LIMIT_AWU_CREDITS)
       .max(MAX_USER_SPEND_LIMIT_AWU_CREDITS),
     timeframe: z.enum(SPEND_LIMIT_OVERRIDE_TIMEFRAMES).nullable().optional(),
+    expiresAt: z.number().int().positive().nullable().optional(),
   }),
 ]);
 
