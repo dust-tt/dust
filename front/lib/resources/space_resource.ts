@@ -3,6 +3,7 @@ import { DustError } from "@app/lib/error";
 import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
@@ -23,6 +24,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import type { GrantType } from "@app/types/group_permissions";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
@@ -99,6 +101,18 @@ class SpaceGroupReference {
   }
 }
 
+// Collapse a space group's verb set into the space grant type that carries exactly those verbs
+// (see ROLE_REGISTRY.space: reader=[read], member=[read, write], admin=[read, write, admin]).
+function spaceGrantTypeForVerbs(verbs: GroupGrant["permissions"]): GrantType {
+  if (verbs.includes("admin")) {
+    return "admin";
+  }
+  if (verbs.includes("write")) {
+    return "member";
+  }
+  return "reader";
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SpaceResource extends BaseResource<SpaceModel> {
   static model: ModelStaticSoftDeletable<SpaceModel> = SpaceModel;
@@ -145,7 +159,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   static async makeNew(
     blob: CreationAttributes<SpaceModel>,
     groups: { members: GroupResource[]; editors?: GroupResource[] },
-    transaction?: Transaction
+    transaction?: Transaction,
+    auth?: Authenticator
   ) {
     return withTransaction(async (t: Transaction) => {
       const space = await SpaceModel.create(blob, { transaction: t });
@@ -187,11 +202,19 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         }
       }
 
-      return new this(
+      const spaceResource = new this(
         SpaceModel,
         space.get(),
         groupSpaces.map(SpaceGroupReference.fromGroupSpaceModel)
       );
+
+      // Write group_permissions directly from the created associations. Requires an admin `auth`;
+      // callers that create through paths without one (e.g. some tests) can seed grants separately.
+      if (auth) {
+        await spaceResource.writeGroupPermissions(auth, { transaction: t });
+      }
+
+      return spaceResource;
     }, transaction);
   }
 
@@ -249,6 +272,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         { members: [globalGroup] },
         transaction
       ));
+
+    // Write group_permissions for the default spaces (covers both freshly created and pre-existing).
+    await systemSpace.writeGroupPermissions(auth, { transaction });
+    await globalSpace.writeGroupPermissions(auth, { transaction });
+    await conversationsSpace.writeGroupPermissions(auth, { transaction });
 
     return {
       systemSpace,
@@ -747,6 +775,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       transaction,
     });
 
+    await GroupPermissionResource.deleteAllForResource(auth, {
+      resourceType: "space",
+      resourceId: this.id,
+      transaction,
+    });
+
     // Groups and spaces are currently tied together in a 1-1 way, even though the model allow a n-n relation between them.
     // When deleting a space, we delete the dangling groups as it won't be available in the UI anymore.
     // This should be changed when we separate the management of groups and spaces
@@ -1167,6 +1201,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           }
         }
       }
+
+      // Write the updated group associations into group_permissions (#9478).
+      await this.writeGroupPermissions(auth, { transaction: t });
 
       return new Ok(undefined);
     });
@@ -1759,16 +1796,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * @returns Array of AccessControlList objects based on space type
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
+    const groups = this.spaceGroupGrants();
+
     // System space.
     if (this.isSystem()) {
       return [
         {
           workspaceId: this.workspaceId,
           roles: [{ role: "admin", permissions: ["admin", "write"] }],
-          groups: this.groups.map((group) => ({
-            id: group.groupId,
-            permissions: ["read", "write"],
-          })),
+          groups,
         },
       ];
     }
@@ -1784,18 +1820,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             { role: "builder", permissions: ["read", "write"] },
             { role: "manager", permissions: ["read", "write"] },
           ],
-          groups: this.groups.map((group) => ({
-            id: group.groupId,
-            permissions: ["read"],
-          })),
+          groups,
         },
       ];
     }
-
-    const groupFilter =
-      this.managementMode === "manual"
-        ? (group: SpaceGroupReference) => !group.isProvisioned()
-        : () => true;
 
     // Open space.
     // Currently only using global group for simplicity.
@@ -1813,15 +1841,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             { role: "manager", permissions: ["read", "write"] },
             { role: "user", permissions: ["read"] },
           ],
-          groups: this.groups.reduce((acc, group) => {
-            if (groupFilter(group)) {
-              acc.push({
-                id: group.groupId,
-                permissions: ["read"],
-              });
-            }
-            return acc;
-          }, [] as GroupGrant[]),
+          groups,
         },
       ];
     }
@@ -1835,23 +1855,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             { role: "manager", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
             { role: "user", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
           ],
-          groups: this.groups.reduce((acc, group) => {
-            if (groupFilter(group)) {
-              if (group.groupSpaceKind === "project_editor") {
-                acc.push({
-                  id: group.groupId,
-                  permissions: ["admin", "read", "write"],
-                });
-              } else {
-                // Members get read permissions in restricted projects (the unrestricted case is handled by the roles above)
-                acc.push({
-                  id: group.groupId,
-                  permissions: ["read", "write"],
-                });
-              }
-            }
-            return acc;
-          }, [] as GroupGrant[]),
+          groups,
         },
       ];
     }
@@ -1861,17 +1865,134 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       {
         workspaceId: this.workspaceId,
         roles: [{ role: "admin", permissions: ["admin"] }],
-        groups: this.groups.reduce((acc, group) => {
-          if (groupFilter(group)) {
-            acc.push({
-              id: group.groupId,
-              permissions: ["read", "write"],
-            });
-          }
-          return acc;
-        }, [] as GroupGrant[]),
+        groups,
       },
     ];
+  }
+
+  // The group grants this space confers, derived from its `group_vaults` associations. This is the
+  // single source the `group_permissions` table is written from (see `writeGroupPermissions`); the
+  // role grants live in `getAccessControlLists`. Verbs per space kind mirror the legacy inline-group
+  // rules exactly.
+  private spaceGroupGrants(): GroupGrant[] {
+    // System space.
+    if (this.isSystem()) {
+      return this.groups.map((group) => ({
+        id: group.groupId,
+        permissions: ["read", "write"],
+      }));
+    }
+
+    // Global Workspace space and Conversations space.
+    if (this.isGlobal() || this.isConversations()) {
+      return this.groups.map((group) => ({
+        id: group.groupId,
+        permissions: ["read"],
+      }));
+    }
+
+    const groupFilter =
+      this.managementMode === "manual"
+        ? (group: SpaceGroupReference) => !group.isProvisioned()
+        : () => true;
+
+    // Open space.
+    if (this.isRegularAndOpen()) {
+      return this.groups.reduce((acc, group) => {
+        if (groupFilter(group)) {
+          acc.push({ id: group.groupId, permissions: ["read"] });
+        }
+        return acc;
+      }, [] as GroupGrant[]);
+    }
+
+    if (this.isProject()) {
+      return this.groups.reduce((acc, group) => {
+        if (groupFilter(group)) {
+          acc.push({
+            id: group.groupId,
+            // Project editors get admin; members get read+write (the unrestricted read case is
+            // handled by the role grants in `getAccessControlLists`).
+            permissions:
+              group.groupSpaceKind === "project_editor"
+                ? ["admin", "read", "write"]
+                : ["read", "write"],
+          });
+        }
+        return acc;
+      }, [] as GroupGrant[]);
+    }
+
+    // Restricted regular space.
+    return this.groups.reduce((acc, group) => {
+      if (groupFilter(group)) {
+        acc.push({ id: group.groupId, permissions: ["read", "write"] });
+      }
+      return acc;
+    }, [] as GroupGrant[]);
+  }
+
+  // Writes this space's `group_permissions` rows directly from its `group_vaults` associations
+  // (see `spaceGroupGrants`). The space mutation paths call this to keep the table in sync as the
+  // source of truth. Idempotent — it clears the space's instance grants then re-inserts the desired
+  // set in one transaction. Re-reads the space fresh because callers mutate group associations
+  // in-transaction, leaving `this.groups` / `isOpen()` stale.
+  async writeGroupPermissions(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const [fresh] = await SpaceResource.fetchByIds(auth, [this.sId], {
+      transaction,
+    });
+    assert(fresh, "Space not found while writing group permissions.");
+
+    const desiredGrants = fresh.spaceGroupGrants();
+
+    // Clear this space's instance grants, then re-insert the desired set. `resourceId` is the space
+    // id (> 0), so the type-wide governance rows (-1) are never touched.
+    await GroupPermissionResource.deleteAllForResource(auth, {
+      resourceType: "space",
+      resourceId: this.id,
+      transaction,
+    });
+
+    if (desiredGrants.length === 0) {
+      return;
+    }
+
+    const groups = await GroupResource.fetchByModelIds(
+      auth,
+      desiredGrants.map((grant) => grant.id),
+      { transaction }
+    );
+    const groupByModelId = new Map(groups.map((group) => [group.id, group]));
+
+    const grants = removeNulls(
+      desiredGrants.map((grant) => {
+        const group = groupByModelId.get(grant.id);
+        if (!group) {
+          return null;
+        }
+        return {
+          group,
+          grantType: spaceGrantTypeForVerbs(grant.permissions),
+          resourceType: "space" as const,
+          resourceId: this.id,
+        };
+      })
+    );
+
+    await GroupPermissionResource.grantMany(auth, { grants, transaction });
+  }
+
+  // Backfill entry (#9478): (re-)derive this space's `group_permissions` from its `group_vaults`
+  // associations. Delegates to `writeGroupPermissions` — the same logic the mutation paths use — so
+  // the one-off backfill and the ongoing writes can never disagree. Idempotent; safe to re-run.
+  async reconcileGroupPermissions(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    return this.writeGroupPermissions(auth, { transaction });
   }
 
   async canAddMember(auth: Authenticator, userId: string): Promise<boolean> {

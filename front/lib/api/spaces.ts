@@ -599,7 +599,8 @@ export async function createSpaceAndGroup(
         workspaceId: owner.id,
       },
       { members: [membersGroup], editors: editorGroups },
-      t
+      t,
+      auth
     );
 
     if (!isRestricted) {
@@ -702,6 +703,11 @@ export async function createSpaceAndGroup(
         t
       );
     }
+
+    // Write group_permissions once all group associations are in place (#9478). `makeNew` already
+    // wrote the initial member/editor groups; this captures any added afterwards (global viewer,
+    // group-mode selections).
+    await space.writeGroupPermissions(auth, { transaction: t });
 
     return new Ok(space);
   });
