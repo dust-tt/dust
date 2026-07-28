@@ -32,7 +32,7 @@ const ActivationNewConversationEmailTemplate = ({
   return (
     <EmailLayout workspace={workspace}>
       <p style={{ fontSize: "15px", color: "#111418", margin: "0 0 4px 0" }}>
-        Hi {name},
+        Hi {name}!
       </p>
       <p
         style={{
@@ -43,8 +43,8 @@ const ActivationNewConversationEmailTemplate = ({
         }}
       >
         {purpose
-          ? `We put something together to help ${purpose}. Take a look:`
-          : `We put something together for you in ${podName}. Take a look:`}
+          ? `We put something together to ${purpose}. Take a look:`
+          : `We put something together for you. Take a look:`}
       </p>
 
       {/* Text hyperlink into the activation conversation */}

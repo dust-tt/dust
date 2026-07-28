@@ -38,6 +38,7 @@ import { isRichUserMention } from "@app/types/assistant/mentions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import {
   decodeHtmlEntities,
   stripMarkdown,
@@ -503,7 +504,7 @@ const generateUnreadMessagesSummary = async ({
 
   // Extract summary from function call result.
   const summary = res.value.conversation_summary;
-  if (typeof summary === "string" && summary.length > 0) {
+  if (isString(summary) && summary.length > 0) {
     return new Ok(stripMarkdown(summary));
   }
 
