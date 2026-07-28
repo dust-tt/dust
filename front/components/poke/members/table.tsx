@@ -1,8 +1,10 @@
 import type { MemberDisplayType } from "@app/components/poke/members/columns";
 import { makeColumnsForMembers } from "@app/components/poke/members/columns";
+import { MembersBulkActions } from "@app/components/poke/members/MembersBulkActions";
+import type { BatchMemberUpdate } from "@app/components/poke/members/useBatchUpdateMembers";
+import { useBatchUpdateMembers } from "@app/components/poke/members/useBatchUpdateMembers";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeWorkspaceMember } from "@app/lib/api/poke/memberships";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import {
   isMembershipSeatType,
@@ -11,7 +13,7 @@ import {
   MEMBERSHIP_SEAT_TYPES,
   type MembershipSeatType,
 } from "@app/types/memberships";
-import type { RoleType, WorkspaceType } from "@app/types/user";
+import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 
 function prepareMembersForDisplay(
   members: PokeWorkspaceMember[]
@@ -50,33 +52,43 @@ export function MembersDataTable({
   readonly,
 }: MembersDataTableProps) {
   const router = useAppRouter();
+  const { runBatchUpdate } = useBatchUpdateMembers({ owner });
+
+  // Per-row mutations run the same "batch-update-members" plugin as the bulk
+  // toolbar, just with a single email.
+  const applyToMember = async (
+    m: MemberDisplayType,
+    update: BatchMemberUpdate,
+    context: string
+  ) => {
+    const res = await runBatchUpdate(update, [m.email]);
+    if (res.isErr()) {
+      window.alert(`An error occurred while ${context}: ${res.error}`);
+      return;
+    }
+    const failure = res.value.find(
+      (r) => r.status === "failed" || r.status === "user_not_found"
+    );
+    if (failure) {
+      window.alert(
+        `An error occurred while ${context}: ${failure.error ?? failure.status}`
+      );
+      return;
+    }
+    router.reload();
+  };
 
   const onRevokeMember = async (m: MemberDisplayType) => {
     if (!window.confirm(`Are you sure you want to revoke ${m.email}?`)) {
       return;
     }
-
-    try {
-      const r = await clientFetch(`/api/poke/workspaces/${owner.sId}/revoke`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: m.sId,
-        }),
-      });
-      if (!r.ok) {
-        throw new Error("Failed to revoke user.");
-      }
-      router.reload();
-    } catch (e) {
-      console.error(e);
-      window.alert("An error occurred while revoking the user.");
-    }
+    await applyToMember(m, { action: "revoke" }, "revoking the user");
   };
 
-  const onUpdateMemberRole = async (m: MemberDisplayType, role: RoleType) => {
+  const onUpdateMemberRole = async (
+    m: MemberDisplayType,
+    role: ActiveRoleType
+  ) => {
     if (
       !window.confirm(
         `Are you sure you want to update role of ${m.email} to ${role}?`
@@ -84,26 +96,11 @@ export function MembersDataTable({
     ) {
       return;
     }
-
-    try {
-      const r = await clientFetch(`/api/poke/workspaces/${owner.sId}/roles`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: m.sId,
-          role,
-        }),
-      });
-      if (!r.ok) {
-        throw new Error("Failed to update user role.");
-      }
-      router.reload();
-    } catch (e) {
-      console.error(e);
-      window.alert(`An error occurred while updating the user role: ${e}`);
-    }
+    await applyToMember(
+      m,
+      { action: "update_role", role },
+      "updating the user role"
+    );
   };
 
   const onUpdateMemberSeatType = async (
@@ -117,29 +114,11 @@ export function MembersDataTable({
     ) {
       return;
     }
-
-    try {
-      const r = await clientFetch(
-        `/api/poke/workspaces/${owner.sId}/seat_type`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId: m.sId,
-            seatType,
-          }),
-        }
-      );
-      if (!r.ok) {
-        const body = await r.json().catch(() => ({}));
-        throw new Error(body?.error?.message ?? "Failed to update seat type.");
-      }
-      router.reload();
-    } catch (e) {
-      window.alert(`An error occurred while updating the seat type: ${e}`);
-    }
+    await applyToMember(
+      m,
+      { action: "update_seat", seatType },
+      "updating the seat type"
+    );
   };
 
   return (
@@ -159,6 +138,20 @@ export function MembersDataTable({
             readonly,
           })}
           data={prepareMembersForDisplay(members)}
+          enableRowSelection={!readonly}
+          getRowId={(row) => row.sId}
+          renderBulkActions={
+            readonly
+              ? undefined
+              : ({ selectedRows, resetSelection }) => (
+                  <MembersBulkActions
+                    availableSeatTypes={availableSeatTypes}
+                    members={selectedRows}
+                    onDone={resetSelection}
+                    owner={owner}
+                  />
+                )
+          }
           facets={[
             {
               columnId: "origin",
