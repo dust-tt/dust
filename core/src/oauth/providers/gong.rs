@@ -14,7 +14,10 @@ use async_trait::async_trait;
 use base64::{engine::general_purpose, Engine as _};
 use lazy_static::lazy_static;
 use std::env;
+use url::Url;
 use urlencoding;
+
+const DEFAULT_GONG_API_BASE_URL: &str = "https://api.gong.io";
 
 lazy_static! {
     static ref OAUTH_GONG_CLIENT_ID: String = env::var("OAUTH_GONG_CLIENT_ID").unwrap();
@@ -37,6 +40,39 @@ impl GongConnectionProvider {
     pub fn new() -> Self {
         GongConnectionProvider {}
     }
+}
+
+fn api_base_url_metadata(
+    raw_json: &serde_json::Value,
+) -> Result<serde_json::Map<String, serde_json::Value>> {
+    let raw_api_base_url = raw_json["api_base_url_for_customer"]
+        .as_str()
+        .unwrap_or(DEFAULT_GONG_API_BASE_URL);
+
+    let api_base_url = Url::parse(raw_api_base_url)
+        .map_err(|_| anyhow!("Invalid `api_base_url_for_customer` in response from Gong"))?;
+    let hostname = api_base_url
+        .host_str()
+        .ok_or_else(|| anyhow!("Invalid `api_base_url_for_customer` in response from Gong"))?;
+
+    if api_base_url.scheme() != "https"
+        || !(hostname == "api.gong.io" || hostname.ends_with(".api.gong.io"))
+        || api_base_url.port().is_some()
+        || !api_base_url.username().is_empty()
+        || api_base_url.password().is_some()
+        || api_base_url.path() != "/"
+        || api_base_url.query().is_some()
+        || api_base_url.fragment().is_some()
+    {
+        return Err(anyhow!(
+            "Invalid `api_base_url_for_customer` in response from Gong"
+        ));
+    }
+
+    Ok(serde_json::Map::from_iter([(
+        "api_base_url_for_customer".to_string(),
+        serde_json::Value::String(api_base_url.origin().ascii_serialization()),
+    )]))
 }
 
 #[async_trait]
@@ -90,6 +126,8 @@ impl Provider for GongConnectionProvider {
             None => Err(anyhow!("Missing `refresh_token` in response from Gong"))?,
         };
 
+        let extra_metadata = api_base_url_metadata(&raw_json)?;
+
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
@@ -99,7 +137,7 @@ impl Provider for GongConnectionProvider {
             ),
             refresh_token: Some(refresh_token.to_string()),
             raw_json,
-            extra_metadata: None,
+            extra_metadata: Some(extra_metadata),
         })
     }
 
@@ -172,5 +210,44 @@ impl Provider for GongConnectionProvider {
         };
 
         Ok(raw_json)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{api_base_url_metadata, DEFAULT_GONG_API_BASE_URL};
+    use serde_json::json;
+
+    #[test]
+    fn extracts_api_base_url_as_connection_metadata() {
+        let metadata = api_base_url_metadata(&json!({
+            "api_base_url_for_customer": "https://eu-2086.api.gong.io/"
+        }))
+        .expect("Gong API base URL should be extracted");
+
+        assert_eq!(
+            metadata.get("api_base_url_for_customer"),
+            Some(&json!("https://eu-2086.api.gong.io"))
+        );
+    }
+
+    #[test]
+    fn falls_back_to_the_default_api_base_url() {
+        let metadata =
+            api_base_url_metadata(&json!({})).expect("Default Gong API base URL should be used");
+
+        assert_eq!(
+            metadata.get("api_base_url_for_customer"),
+            Some(&json!(DEFAULT_GONG_API_BASE_URL))
+        );
+    }
+
+    #[test]
+    fn rejects_api_base_urls_outside_gong() {
+        let result = api_base_url_metadata(&json!({
+            "api_base_url_for_customer": "https://example.com"
+        }));
+
+        assert!(result.is_err());
     }
 }
