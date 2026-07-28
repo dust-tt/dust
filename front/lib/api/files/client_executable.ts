@@ -68,12 +68,14 @@ export async function createClientExecutableFile(
     fileName,
     mimeType,
     createdByAgentConfigurationId,
+    hideFromUser,
   }: {
     content: string;
     conversationId: string;
     mimeType: InteractiveContentFileContentType;
     fileName: string;
     createdByAgentConfigurationId?: string;
+    hideFromUser?: boolean;
   }
 ): Promise<
   Result<
@@ -129,6 +131,7 @@ export async function createClientExecutableFile(
       useCaseMetadata: {
         conversationId,
         lastEditedByAgentConfigurationId: createdByAgentConfigurationId,
+        hideFromUser,
       },
     });
 

@@ -84,7 +84,6 @@ ALWAYS check the sources below to get an understanding of the workspace and user
 1. Call \`list_recommendations\` to see what has already been shown. This will allow you to avoid recommendations already executed/declined. It will generally give signal on user reactions to past recommendations.
 2. If a Pod ID is present, call \`list_conversations\` with \`includeMessages=false\` to scan recent Pod conversations. The conversation titles will help indicate what the user is currently working on. Avoid calling with \`includeMessages=true\` unless there is a specific reason to do so as this will bloat the context window.
 3. Query available knowledge bases to get an understanding of the user's work.
-4. If you did not find information about the user's work, use \`/Exa People And Company\` look up the user by name + company to source the public profile facts.
 
 # Stage 2 - Set-up the Pod
 
@@ -133,7 +132,7 @@ It should likely include the following content:
 - \`HOW_IT_WORKS\` and its header are FIXED copy — do not reword. Everything else is yours to rewrite.
 - The actual OUTPUT of the pre-built top candidate is built in Stage 4 as its OWN separate result Frame file, then COMPOSED INTO this pinned Frame. Always create the pinned frame first and then add the results after.
 - The \'WHY_CHOSEN\' section should be populated with the real leading evidence to why this recommendation was made. You should either include delightful graphs to show the data that powered this recommendation OR a very short description of the data.
-- Exactly one candidate is \`prebuilt\` (the top one). Its result is a SEPARATE Frame file you built in Stage 4: wire it through the result import at the top, and point \`PREVIEW_IMAGE\` at a real image of it. If nothing is pre-built, remove the import, \`ResultSheet\`, and the "Open result" bar rather than leave a dangling fileId.
+- Exactly one candidate is \`prebuilt\` (the top one). Its result is a SEPARATE Frame file you built in Stage 4 with \`hidden: true\` (it is embedded into this pinned Frame, never opened on its own — that is what lets the pinned Frame win auto-open): wire it through the result import at the top, and point \`PREVIEW_IMAGE\` at a real image of it. If nothing is pre-built, remove the import, \`ResultSheet\`, and the "Open result" bar rather than leave a dangling fileId.
 - \`KEPT\` accumulates across sessions — empty on the first render.
 
 # Stage 3 — Recommend
@@ -203,7 +202,7 @@ Do this work by passing context to the \`Go Deep\` tool, NOT in the main convers
 
 Rules for the build:
 - Use only tools that run \`auto\` (no user approval). Enable any skills or tool sets the build needs first (\`get_enabled_skills_and_tools\` only reports currently-enabled tools), then call \`get_tool_execution_modes\` to confirm which run \`auto\` vs \`requires_approval\`.
-- Produce the result as completely as \`auto\` tools allow: read the real data and generate the content. ALWAYS in this order: (1) write the pinned pod Frame FIRST — populate \`WHY_CHOSEN\` (and \`SKILL_RUNS\` if a signal uses the usage chart) and \`CANDIDATES\` (top one \`prebuilt\`); (2) THEN build the top candidate's result as its OWN Frame file (the finished artifact — the brief, the deck, the checklist), note its fileId, generate a preview image and point \`PREVIEW_IMAGE\` at it, and update the pinned Frame's import to point to the result. This ordering ensures the pinned Frame is the one that auto-opens in the side panel.
+- Produce the result as completely as \`auto\` tools allow: read the real data and generate the content. (1) Build the top candidate's result as its OWN Frame file (the finished artifact — the brief, the deck, the checklist) and create it with \`hidden: true\` — it is embedded into the pinned Frame (imported by its file id, rendered inside \`ResultSheet\`), never opened on its own. Note its fileId and generate a preview image. (2) THEN write the pinned pod Frame (visible, NOT hidden): populate \`WHY_CHOSEN\` (and \`SKILL_RUNS\` if a signal uses the usage chart), \`CANDIDATES\` (top one \`prebuilt\`), point \`PREVIEW_IMAGE\` at the result's preview image, and set the result import. Because the result Frame is hidden, the pinned Frame is the one that auto-opens in the side panel.
 - Defer ONLY the steps that require approval — external mutations (create a Jira issue, post to Slack, update a CRM) or connecting a new source. Build everything up to that gate, then note the single blocking step remaining for Stage 6.
 
 The output of this stage is the result Frame built and imported into the pinned pod Frame (openable via "Open result"), plus the pinned Frame populated with evidence and the ranked candidates. Feel free to be creative with the content of the result. It needs to be simple but also informative to the point where the user can see the power of the use case.
@@ -420,7 +419,6 @@ export const activationSkill = {
     { name: "files" },
     { name: "activation_recommendations" },
     { name: "pod_manager" },
-    { name: "exa_people_and_company" },
   ],
   files: [
     {

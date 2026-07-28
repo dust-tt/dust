@@ -91,6 +91,14 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = [
             "'Interactive data visualization', 'Executable analysis script', " +
             "'Dynamic dashboard')"
         ),
+      hidden: z
+        .boolean()
+        .optional()
+        .describe(
+          "When true, the Frame is not surfaced to the user or auto-opened in the side " +
+            "panel. Use only for a Frame that is embedded into another Frame (imported by " +
+            "its file id and rendered inside it) rather than opened on its own. Defaults to false."
+        ),
     },
     enableAlerting: true,
     stake: "never_ask",

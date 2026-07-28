@@ -46,6 +46,24 @@ export function useAutoOpenSidePanel({
   // Track which message sId last triggered file-panel auto-open to open only once per message.
   const autoOpenedFilesForRef = React.useRef<string | null>(null);
 
+  // Files the agent marked hidden never auto-open — the same rule the file
+  // explorer already applies to regular files (see regularGeneratedFiles).
+  // A frame embedded into another frame (e.g. a result frame imported into the
+  // pinned pod frame) marks itself hidden so only the surface frame opens.
+  // Keyed by fileId so the streaming-progress path — whose output does not
+  // carry the hidden flag — can honor it through the completed file record.
+  const hiddenInteractiveFileIds = React.useMemo(
+    () =>
+      new Set(
+        removeNulls(
+          agentMessage.generatedFiles.map((file) =>
+            file.hidden && file.fileId ? file.fileId : null
+          )
+        )
+      ),
+    [agentMessage.generatedFiles]
+  );
+
   const interactiveFilesFromProgress = React.useMemo(
     () =>
       removeNulls(
@@ -58,14 +76,14 @@ export function useAutoOpenSidePanel({
             return null;
           }
         )
-      ),
-    [agentMessage.streaming.actionProgress]
+      ).filter((output) => !hiddenInteractiveFileIds.has(output.fileId)),
+    [agentMessage.streaming.actionProgress, hiddenInteractiveFileIds]
   );
 
   const completedInteractiveFiles = React.useMemo(
     () =>
-      agentMessage.generatedFiles.filter((file) =>
-        isInteractiveContentType(file.contentType)
+      agentMessage.generatedFiles.filter(
+        (file) => !file.hidden && isInteractiveContentType(file.contentType)
       ),
     [agentMessage.generatedFiles]
   );
