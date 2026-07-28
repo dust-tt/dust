@@ -226,6 +226,7 @@ export class RunResource extends BaseResource<RunModel> {
       runModelId: usage.runId,
       runKey: runKeyByModelId.get(usage.runId) ?? null,
       completionTokens: usage.completionTokens,
+      reasoningTokens: usage.reasoningTokens,
       modelId: usage.modelId as ModelIdType,
       promptTokens: usage.promptTokens,
       providerId: usage.providerId as ModelProviderIdType,
@@ -353,6 +354,7 @@ export class RunResource extends BaseResource<RunModel> {
           modelId,
           promptTokens,
           completionTokens,
+          reasoningTokens,
           cachedTokens,
           cacheCreationTokens,
           costMicroUsd,
@@ -364,6 +366,7 @@ export class RunResource extends BaseResource<RunModel> {
           modelId,
           promptTokens,
           completionTokens,
+          reasoningTokens,
           cachedTokens,
           cacheCreationTokens: cacheCreationTokens ?? null,
           costMicroUsd,
@@ -408,6 +411,13 @@ export class RunResource extends BaseResource<RunModel> {
           tags
         );
       }
+      if (usage.reasoningTokens) {
+        getStatsDClient().increment(
+          "run_usage.reasoning_tokens",
+          usage.reasoningTokens,
+          tags
+        );
+      }
     }
   }
 
@@ -445,6 +455,7 @@ export class RunResource extends BaseResource<RunModel> {
         cacheCreationTokens: usage.cacheCreationTokens,
         cachedTokens: usage.cachedTokens ?? null,
         completionTokens: usage.totalOutputTokens,
+        reasoningTokens: usage.reasoningTokens ?? null,
         modelId: modelConfig.modelId,
         promptTokens: usage.inputTokens,
         providerId: modelConfig.providerId,
@@ -474,6 +485,8 @@ function addCreatedAtClause(where: WhereOptions<RunModel>) {
 
 export interface RunUsageType {
   completionTokens: number;
+  // Provider-reported reasoning subset of completionTokens.
+  reasoningTokens: number | null;
   modelId: ModelIdType;
   promptTokens: number;
   providerId: ModelProviderIdType;

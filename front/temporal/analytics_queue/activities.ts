@@ -336,7 +336,7 @@ function aggregateTokenUsage(
       return {
         prompt: acc.prompt + usage.promptTokens,
         completion: acc.completion + usage.completionTokens,
-        reasoning: acc.reasoning, // No reasoning tokens in RunUsageType yet.
+        reasoning: acc.reasoning + (usage.reasoningTokens ?? 0),
         cached: acc.cached + (usage.cachedTokens ?? 0),
         cost_micro_usd: acc.cost_micro_usd + usage.costMicroUsd,
       };
