@@ -8,7 +8,10 @@ import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessageAnalyticsCost } from "@app/types/assistant/analytics";
+import type {
+  AgentMessageAnalyticsCost,
+  AgentMessageAnalyticsModel,
+} from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -34,6 +37,8 @@ interface AgentMessageDocument extends ElasticsearchBaseDocument {
   skills_used?: { skill_name: string }[];
   // Optional: docs indexed before the cost fields shipped don't carry it.
   cost?: AgentMessageAnalyticsCost;
+  // Optional: docs indexed before the model fields shipped don't carry it.
+  model?: AgentMessageAnalyticsModel | null;
 }
 
 export interface MessageExportRow {
@@ -50,6 +55,9 @@ export interface MessageExportRow {
   source: string;
   toolsUsed: string;
   skillsUsed: string;
+  modelId: string;
+  modelProviderId: string;
+  modelResolutionMethod: string;
   credits: number;
 }
 
@@ -67,6 +75,9 @@ export const MESSAGE_EXPORT_HEADERS: (keyof MessageExportRow)[] = [
   "source",
   "toolsUsed",
   "skillsUsed",
+  "modelId",
+  "modelProviderId",
+  "modelResolutionMethod",
   "credits",
 ];
 
@@ -191,6 +202,9 @@ export async function fetchMessageExportRows({
       skillsUsed: joinDistinctSorted(
         (doc.skills_used ?? []).map((s) => s.skill_name)
       ),
+      modelId: doc.model?.model_id ?? "",
+      modelProviderId: doc.model?.provider_id ?? "",
+      modelResolutionMethod: doc.model?.resolution_method ?? "",
       credits: Math.round(doc.cost?.full_awu ?? 0),
     };
   });
