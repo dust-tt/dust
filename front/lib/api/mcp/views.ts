@@ -27,10 +27,16 @@ export const PatchMCPServerViewBodySchema = z
     })
   );
 
+/**
+ * @swaggerschema PrivatePatchMCPServerViewBody (swagger_private_schemas.ts)
+ */
 export type PatchMCPServerViewBody = z.infer<
   typeof PatchMCPServerViewBodySchema
 >;
 
+/**
+ * @swaggerschema PrivatePatchMCPServerViewResponseBody (swagger_private_schemas.ts)
+ */
 export type PatchMCPServerViewResponseBody = {
   success: true;
   serverView: MCPServerViewType;
