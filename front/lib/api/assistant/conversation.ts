@@ -31,6 +31,7 @@ import {
 import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
+  getFairUseAwuCreditsCount,
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS,
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
@@ -111,7 +112,6 @@ import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
-  getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
@@ -2967,13 +2967,13 @@ async function isMessagesLimitReached(
 
   const user = auth.user();
   if (user && maxAwuCredits !== -1) {
-    const result = await getRateLimiterCount({
+    const result = await getFairUseAwuCreditsCount({
       key: makeFairUseAwuCreditsRateLimitKeyForUser(
         owner,
         user.toJSON(),
         maxAwuCreditsTimeframe
       ),
-      timeframeSeconds: getTimeframeSecondsFromLiteral(maxAwuCreditsTimeframe),
+      timeframe: maxAwuCreditsTimeframe,
     });
 
     if (result.isOk() && result.value >= maxAwuCredits) {

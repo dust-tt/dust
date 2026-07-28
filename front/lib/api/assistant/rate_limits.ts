@@ -2,7 +2,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
+  addFixedWindowCount,
+  addRateLimiterCount,
+  computeCalendarWindowBounds,
   expireRateLimiterKey,
+  getFixedWindowCount,
   getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
@@ -10,6 +14,9 @@ import type {
   MaxAwuCreditsTimeframeType,
   MaxMessagesTimeframeType,
 } from "@app/types/plan";
+import { isRollingAwuCreditsTimeframeType } from "@app/types/rate_limiter";
+import type { LoggerInterface } from "@app/types/shared/logger";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
@@ -78,6 +85,75 @@ export const makeKeyCapRateLimitKey = (keyId: number) => {
   return `api_key:${keyId}:cap_rate_limit`;
 };
 
+// Read the current fair-use AWU count for `key`, dispatching to the rolling
+// limiter for rolling timeframes and the fixed-window counter (calendar) for
+// fixed ones.
+export async function getFairUseAwuCreditsCount({
+  key,
+  timeframe,
+}: {
+  key: string;
+  timeframe: MaxAwuCreditsTimeframeType;
+}): Promise<Result<number, Error>> {
+  if (isRollingAwuCreditsTimeframeType(timeframe)) {
+    return getRateLimiterCount({
+      key,
+      timeframeSeconds: getTimeframeSecondsFromLiteral(timeframe),
+    });
+  }
+  return getFixedWindowCount({
+    key,
+    bounds: computeCalendarWindowBounds(timeframe, new Date()),
+  });
+}
+
+// Record `incrementBy` against the fair-use AWU counter for `key`, dispatching
+// on the timeframe the same way as `getFairUseAwuCreditsCount`.
+export async function recordFairUseAwuCredits({
+  key,
+  timeframe,
+  incrementBy,
+  logger,
+}: {
+  key: string;
+  timeframe: MaxAwuCreditsTimeframeType;
+  incrementBy: number;
+  logger: LoggerInterface;
+}): Promise<void> {
+  if (isRollingAwuCreditsTimeframeType(timeframe)) {
+    await addRateLimiterCount({
+      key,
+      timeframeSeconds: getTimeframeSecondsFromLiteral(timeframe),
+      incrementBy,
+      logger,
+    });
+    return;
+  }
+  await addFixedWindowCount({
+    key,
+    bounds: computeCalendarWindowBounds(timeframe, new Date()),
+    incrementBy,
+    logger,
+  });
+}
+
+// Expire the current fair-use AWU window for `key`. Fixed (calendar) windows
+// carry the window-boundary label suffix on the live Redis key, so expire that
+// rather than the base key.
+async function expireFairUseAwuCreditsWindow({
+  key,
+  timeframe,
+}: {
+  key: string;
+  timeframe: MaxAwuCreditsTimeframeType;
+}): Promise<Result<boolean, Error>> {
+  if (isRollingAwuCreditsTimeframeType(timeframe)) {
+    return expireRateLimiterKey({ key });
+  }
+  const bounds = computeCalendarWindowBounds(timeframe, new Date());
+  return expireRateLimiterKey({ key: `${key}:${bounds.label}` });
+}
+
 export async function resetMessageRateLimitForWorkspace(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
@@ -110,12 +186,13 @@ export async function resetFairUseAwuCreditsRateLimitForUser({
     return new Err(new Error("The workspace plan has no AWU fair-use limit."));
   }
 
-  const resetResult = await expireRateLimiterKey({
+  const resetResult = await expireFairUseAwuCreditsWindow({
     key: makeFairUseAwuCreditsRateLimitKeyForUser(
       workspace,
       user,
       maxAwuCreditsTimeframe
     ),
+    timeframe: maxAwuCreditsTimeframe,
   });
   if (resetResult.isErr()) {
     return resetResult;
