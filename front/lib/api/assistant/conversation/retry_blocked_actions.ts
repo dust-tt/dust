@@ -3,10 +3,18 @@ import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { MessageModel } from "@app/lib/models/agent/conversation";
+// TODO(2026-07-31 QOS): move these message fetches behind a resource method instead of using
+// models directly in lib/api.
+import {
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationWithoutContentType,
+  UserMessageOrigin,
+} from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -22,6 +30,7 @@ async function findUserMessageForRetry(
       lastStep: number;
       userMessageId: string;
       userMessageVersion: number;
+      userMessageOrigin: UserMessageOrigin;
     },
     Error
   >
@@ -50,10 +59,23 @@ async function findUserMessageForRetry(
       workspaceId: auth.getNonNullableWorkspace().id,
     },
     attributes: ["sId", "version"],
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        attributes: ["userContextOrigin"],
+        required: false,
+      },
+    ],
   });
 
   if (!parentMessage) {
     return new Err(new Error("User message not found"));
+  }
+
+  // The parent of an agent message is always a user message: a missing row is corrupt data.
+  if (!parentMessage.userMessage) {
+    return new Err(new Error("User message context not found"));
   }
 
   const blockedActions =
@@ -96,6 +118,7 @@ async function findUserMessageForRetry(
     lastStep: blockedActions[blockedActions.length - 1].stepContent.step,
     userMessageId: parentMessage.sId,
     userMessageVersion: parentMessage.version,
+    userMessageOrigin: parentMessage.userMessage.userContextOrigin,
   });
 }
 
@@ -130,6 +153,7 @@ export async function retryBlockedActions(
     lastStep,
     userMessageId,
     userMessageVersion,
+    userMessageOrigin,
   } = getUserMessageIdRes.value;
 
   return launchAgentLoopWorkflow({
@@ -141,6 +165,7 @@ export async function retryBlockedActions(
       conversationTitle,
       userMessageId,
       userMessageVersion,
+      userMessageOrigin,
     },
     startStep: lastStep,
     waitForCompletion,

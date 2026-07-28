@@ -161,7 +161,10 @@ export const getPredicateForRank = (
 
 export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
   return (
-    origin && (origin === "triggered" || origin === "triggered_programmatic")
+    origin &&
+    (origin === "triggered" ||
+      origin === "triggered_programmatic" ||
+      origin === "triggered_webhook")
   );
 };
 

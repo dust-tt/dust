@@ -80,6 +80,7 @@ export const shouldSendNotificationForAgentAnswer = (
     case "teams":
     case "transcript":
     case "triggered_programmatic":
+    case "triggered_webhook":
     case "triggered":
     case "zapier":
     case "zendesk":

@@ -79,6 +79,7 @@ export function getQueueForUserMessageOrigin(
     case "wakeup":
       return "schedules";
     case "triggered_programmatic":
+    case "triggered_webhook":
     case "reinforcement":
     case "system_activation":
     case "transcript":

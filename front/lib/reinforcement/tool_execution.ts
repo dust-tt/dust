@@ -11,7 +11,10 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationWithoutContentType,
+  UserMessageOrigin,
+} from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 
 /**
@@ -27,6 +30,7 @@ export interface ReinforcedToolActionInfo {
     conversationTitle: string | null;
     userMessageId: string;
     userMessageVersion: number;
+    userMessageOrigin: UserMessageOrigin;
     initialStartTime: number;
   };
   actionIds: ModelId[];
@@ -186,6 +190,7 @@ export async function prepareReinforcedToolActions(
       conversationTitle: null,
       userMessageId: userMessageId,
       userMessageVersion: 0,
+      userMessageOrigin: "reinforcement",
       initialStartTime: Date.now(),
     },
     actionIds,
