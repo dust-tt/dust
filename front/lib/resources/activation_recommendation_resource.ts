@@ -103,6 +103,32 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     return new this(this.model, rec.get());
   }
 
+  // Fetches the recommendation records surfaced in a given conversation.
+  // Used to feed the actual recommendation card content into downstream
+  // generation (e.g. the activation email summary), rather than relying only
+  // on the rendered conversation messages.
+  static async fetchByConversationSId(
+    auth: Authenticator,
+    conversationSId: string
+  ): Promise<ActivationRecommendationResource[]> {
+    const recs = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: [
+        {
+          model: ConversationModel,
+          attributes: [],
+          required: true,
+          where: { sId: conversationSId },
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    return recs.map((rec) => new this(this.model, rec.get()));
+  }
+
   static async fetchByUser(
     auth: Authenticator,
     { limit = 100 }: { limit?: number } = {}
