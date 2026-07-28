@@ -106,7 +106,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       expect(body.request.requester.sId).toBe(user.sId);
     });
 
-    it("stores the reason when provided", async () => {
+    it("stores the reason and requested duration when provided", async () => {
       const workspace = await creditPricedWorkspace();
       await createPrivateApiMockRequest({
         method: "POST",
@@ -121,6 +121,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             reason: "Running a large one-off backfill this week.",
+            requestedDurationDays: 7,
           }),
         }
       );
@@ -130,6 +131,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       expect(request.reason).toBe(
         "Running a large one-off backfill this week."
       );
+      expect(request.requestedDurationDays).toBe(7);
     });
 
     it("rejects a reason shorter than the minimum length", async () => {
@@ -145,7 +147,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reason: "short" }),
+          body: JSON.stringify({ reason: "short", requestedDurationDays: 1 }),
         }
       );
 

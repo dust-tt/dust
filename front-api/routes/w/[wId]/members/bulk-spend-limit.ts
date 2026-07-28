@@ -7,6 +7,7 @@ import {
   MIN_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/lib/api/users/spend_limit";
 import { runBulkSetUserSpendLimitWorkflow } from "@app/temporal/bulk_spend_limit/client";
+import { SPEND_LIMIT_OVERRIDE_TIMEFRAMES } from "@app/types/credits";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -22,6 +23,7 @@ const LimitSchema = z.discriminatedUnion("kind", [
       .int()
       .min(MIN_USER_SPEND_LIMIT_AWU_CREDITS)
       .max(MAX_USER_SPEND_LIMIT_AWU_CREDITS),
+    timeframe: z.enum(SPEND_LIMIT_OVERRIDE_TIMEFRAMES).nullable().optional(),
   }),
 ]);
 

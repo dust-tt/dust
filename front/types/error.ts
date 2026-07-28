@@ -74,6 +74,7 @@ const API_ERROR_TYPES = [
   "plan_message_limit_exceeded",
   "credits_exhausted",
   "user_cap_reached",
+  "per_user_spend_limit_exceeded",
   "no_seat",
   "model_disabled",
   "global_agent_error",

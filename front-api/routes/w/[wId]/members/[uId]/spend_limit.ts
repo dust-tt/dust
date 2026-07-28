@@ -10,6 +10,7 @@ import type {
   GetUserSpendLimitResponseBody,
   PutUserSpendLimitResponseBody,
 } from "@app/types/api/users/spend_limit";
+import { SPEND_LIMIT_OVERRIDE_TIMEFRAMES } from "@app/types/credits";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -27,6 +28,7 @@ const UpdateUserSpendLimitBodySchema = z.discriminatedUnion("kind", [
       .int()
       .min(MIN_USER_SPEND_LIMIT_AWU_CREDITS)
       .max(MAX_USER_SPEND_LIMIT_AWU_CREDITS),
+    timeframe: z.enum(SPEND_LIMIT_OVERRIDE_TIMEFRAMES).nullable().optional(),
   }),
 ]);
 

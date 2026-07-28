@@ -83,6 +83,30 @@ export const CREDIT_EXPIRATION_DAYS = 365;
 export const MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS = 0;
 export const MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS = 1_000_000;
 
+// Rolling window over which a per-user spend limit override
+// (`Membership.poolCapOverrideAwuCredits`) is enforced. `null` on the
+// membership means the cap applies over the implicit monthly/pool-lifetime
+// window, as it always has.
+export const SPEND_LIMIT_OVERRIDE_TIMEFRAMES = [
+  "day",
+  "week",
+  "month",
+] as const;
+
+export type SpendLimitOverrideTimeframeType =
+  (typeof SPEND_LIMIT_OVERRIDE_TIMEFRAMES)[number];
+
+export function isSpendLimitOverrideTimeframeType(
+  value: unknown
+): value is SpendLimitOverrideTimeframeType {
+  return (
+    typeof value === "string" &&
+    SPEND_LIMIT_OVERRIDE_TIMEFRAMES.includes(
+      value as SpendLimitOverrideTimeframeType
+    )
+  );
+}
+
 export type CreditDisplayData = {
   sId: string;
   type: CreditType;

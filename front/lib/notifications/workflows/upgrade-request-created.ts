@@ -16,6 +16,7 @@ const UpgradeRequestCreatedPayloadSchema = z.object({
   requesterName: z.string(),
   requesterEmail: z.string().nullable(),
   reason: z.string().nullable(),
+  requestedDurationDays: z.number().nullable(),
 });
 
 type UpgradeRequestCreatedPayloadType = z.infer<
@@ -36,7 +37,14 @@ function formatRequester(payload: UpgradeRequestCreatedPayloadType): string {
 function formatRequestDetails(
   payload: UpgradeRequestCreatedPayloadType
 ): string {
-  return payload.reason ? ` (reason: ${payload.reason})` : "";
+  const parts: string[] = [];
+  if (payload.reason) {
+    parts.push(`reason: ${payload.reason}`);
+  }
+  if (payload.requestedDurationDays) {
+    parts.push(`needed for ~${payload.requestedDurationDays} day(s)`);
+  }
+  return parts.length > 0 ? ` (${parts.join(", ")})` : "";
 }
 
 export const upgradeRequestCreatedWorkflow = workflow(
@@ -135,6 +143,7 @@ export function notifyUpgradeRequested({
   requesterName,
   requesterEmail,
   reason,
+  requestedDurationDays,
 }: {
   users: Array<{
     sId: string;
@@ -148,6 +157,7 @@ export function notifyUpgradeRequested({
   requesterName: string;
   requesterEmail: string | null;
   reason: string | null;
+  requestedDurationDays: number | null;
 }): void {
   if (users.length === 0) {
     return;
@@ -159,6 +169,7 @@ export function notifyUpgradeRequested({
     requesterName,
     requesterEmail,
     reason,
+    requestedDurationDays,
   };
 
   void getNovuClient()

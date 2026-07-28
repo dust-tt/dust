@@ -1,3 +1,6 @@
+import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
+import type { SpendLimitOverrideTimeframeType } from "@app/types/credits";
+import { isSpendLimitOverrideTimeframeType } from "@app/types/credits";
 import {
   Dialog,
   DialogContainer,
@@ -20,9 +23,7 @@ function isSpendLimitKind(value: string): value is SpendLimitKind {
   return value === "default" || value === "override";
 }
 
-type SpendLimit =
-  | { kind: "unlimited" }
-  | { kind: "limited"; awuCredits: number };
+type SpendLimit = UserSpendLimit;
 
 interface BulkEditSpendLimitModalProps {
   isOpen: boolean;
@@ -65,6 +66,8 @@ function BulkEditSpendLimitForm({
 }: BulkEditSpendLimitFormProps) {
   const [kind, setKind] = useState<SpendLimitKind>("override");
   const [creditsInput, setCreditsInput] = useState<string>("");
+  const [timeframe, setTimeframe] =
+    useState<SpendLimitOverrideTimeframeType | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(
     null
@@ -92,7 +95,7 @@ function BulkEditSpendLimitForm({
       );
       return null;
     }
-    return { kind: "limited", awuCredits: parsed };
+    return { kind: "limited", awuCredits: parsed, timeframe };
   }
 
   async function handleValidate() {
@@ -171,9 +174,37 @@ function BulkEditSpendLimitForm({
                   className="pr-28 text-right"
                 />
                 <span className="copy-sm pointer-events-none absolute right-3 top-0 flex h-9 items-center text-muted-foreground dark:text-muted-foreground-night">
-                  credits/month
+                  credits
                 </span>
               </div>
+              <RadioGroup
+                value={timeframe ?? "billing_cycle"}
+                onValueChange={(v) =>
+                  setTimeframe(isSpendLimitOverrideTimeframeType(v) ? v : null)
+                }
+                className="flex flex-row gap-4 pt-1"
+              >
+                <RadioGroupItem
+                  value="billing_cycle"
+                  id="bulk-spend-limit-timeframe-billing-cycle"
+                  label="Per billing cycle"
+                />
+                <RadioGroupItem
+                  value="day"
+                  id="bulk-spend-limit-timeframe-day"
+                  label="Per day"
+                />
+                <RadioGroupItem
+                  value="week"
+                  id="bulk-spend-limit-timeframe-week"
+                  label="Per week"
+                />
+                <RadioGroupItem
+                  value="month"
+                  id="bulk-spend-limit-timeframe-month"
+                  label="Per rolling month"
+                />
+              </RadioGroup>
             </div>
           )}
         </RadioGroup>

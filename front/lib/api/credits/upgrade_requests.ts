@@ -81,6 +81,7 @@ async function notifyManagersAndAdminsOfUpgradeRequest(
       requesterName: requester.fullName() ?? requester.name,
       requesterEmail: requester.email ?? null,
       reason: request.reason,
+      requestedDurationDays: request.requestedDurationDays,
     });
   } catch (err) {
     logger.error(
@@ -97,8 +98,13 @@ export async function createUpgradeRequest(
   auth: Authenticator,
   {
     reason,
+    requestedDurationDays,
     auditContext,
-  }: { reason: string | null; auditContext?: AuditLogContext }
+  }: {
+    reason: string | null;
+    requestedDurationDays: number | null;
+    auditContext?: AuditLogContext;
+  }
 ): Promise<Result<MembershipUpgradeRequestType, UpgradeRequestError>> {
   const subscription = auth.getNonNullableSubscriptionResource();
   if (
@@ -147,6 +153,7 @@ export async function createUpgradeRequest(
   const result = await MembershipUpgradeRequestResource.createPending(auth, {
     user,
     reason,
+    requestedDurationDays,
   });
   if (result.isErr()) {
     return new Err(
@@ -169,6 +176,7 @@ export async function createUpgradeRequest(
     metadata: {
       request_sid: request.sId,
       reason: request.reason ?? "",
+      requested_duration_days: String(request.requestedDurationDays ?? ""),
     },
   });
 

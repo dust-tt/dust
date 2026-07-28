@@ -25,6 +25,9 @@ export class MembershipUpgradeRequestModel extends WorkspaceAwareModel<Membershi
   // (enforced in application code, not at the DB level, so existing rows
   // are unaffected).
   declare reason: string | null;
+  // How long the member expects to need it, in days. Informational only —
+  // surfaced to the admin for context, not auto-enforced.
+  declare requestedDurationDays: number | null;
 
   // The member who requested the upgrade.
   declare userId: ForeignKey<UserModel["id"]>;
@@ -59,6 +62,11 @@ MembershipUpgradeRequestModel.init(
     },
     reason: {
       type: DataTypes.STRING(1000),
+      allowNull: true,
+      defaultValue: null,
+    },
+    requestedDurationDays: {
+      type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null,
     },

@@ -1676,6 +1676,81 @@ describe("postUserMessage", () => {
     rateLimiterSpy.mockRestore();
   });
 
+  it("should reject messages once the per-user override rate limit is reached", async () => {
+    const overrideWorkspace = await WorkspaceFactory.creditPriced();
+    const overrideUser = await UserFactory.basic();
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(overrideWorkspace.sId)
+    );
+    const overrideMembership = await MembershipFactory.associate(
+      overrideWorkspace,
+      overrideUser,
+      { role: "user" }
+    );
+    await overrideMembership.updatePoolCapOverride({
+      poolCapOverrideAwuCredits: 100,
+      overrideLimitTimeframe: "day",
+    });
+    const overrideAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      overrideUser.sId,
+      overrideWorkspace.sId
+    );
+
+    const overrideAgent = await AgentConfigurationFactory.createTestAgent(
+      overrideAuth,
+      {
+        name: "Override Test Agent",
+        description: "Override Test Agent Description",
+      }
+    );
+    const overrideConversation = await ConversationFactory.create(
+      overrideAuth,
+      {
+        agentConfigurationId: overrideAgent.sId,
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+      }
+    );
+    const fetchedOverrideConversation = await getConversation(
+      overrideAuth,
+      overrideConversation.sId
+    );
+    if (fetchedOverrideConversation.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+
+    const getRateLimiterCountSpy = vi
+      .spyOn(rateLimiterModule, "getRateLimiterCount")
+      .mockResolvedValue(new Ok(100));
+
+    const overrideUserJson = overrideUser.toJSON();
+    const result = await postUserMessage(overrideAuth, {
+      conversationResource: await fetchConversationResource(
+        overrideAuth,
+        overrideConversation.sId
+      ),
+      content: "Hello",
+      mentions: [],
+      context: {
+        username: overrideUserJson.username,
+        timezone: "UTC",
+        fullName: overrideUserJson.fullName,
+        email: overrideUserJson.email,
+        profilePictureUrl: overrideUserJson.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(403);
+      expect(result.error.api_error.type).toBe("per_user_spend_limit_exceeded");
+    }
+
+    getRateLimiterCountSpy.mockRestore();
+  });
+
   it("should reject mentions of a retired global agent", async () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();

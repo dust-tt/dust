@@ -15,12 +15,16 @@ import {
   DialogHeader,
   DialogTitle,
   Hoverable,
+  RadioGroup,
+  RadioGroupItem,
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useController, useForm } from "react-hook-form";
 import { z } from "zod";
+
+const DURATION_PRESETS_DAYS = [1, 7, 30] as const;
 
 const requestUpgradeFormSchema = z.object({
   reason: z
@@ -31,9 +35,46 @@ const requestUpgradeFormSchema = z.object({
       "Tell your admin why you need this."
     )
     .max(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS),
+  requestedDurationDays: z.number().int().min(1),
 });
 
 type RequestUpgradeFormValues = z.infer<typeof requestUpgradeFormSchema>;
+
+function durationLabel(days: number): string {
+  switch (days) {
+    case 1:
+      return "A day";
+    case 7:
+      return "A week";
+    case 30:
+      return "A month";
+    default:
+      return `${days} days`;
+  }
+}
+
+function DurationField() {
+  const { field } = useController<RequestUpgradeFormValues>({
+    name: "requestedDurationDays",
+  });
+
+  return (
+    <RadioGroup
+      value={String(field.value)}
+      onValueChange={(v) => field.onChange(Number(v))}
+      className="flex flex-row gap-4"
+    >
+      {DURATION_PRESETS_DAYS.map((days) => (
+        <RadioGroupItem
+          key={days}
+          value={String(days)}
+          id={`upgrade-request-duration-${days}`}
+          label={durationLabel(days)}
+        />
+      ))}
+    </RadioGroup>
+  );
+}
 
 type UsageUpgradeButtonVariant = "link" | "button";
 
@@ -63,7 +104,7 @@ export function UsageUpgradeButton({
 
   const form = useForm<RequestUpgradeFormValues>({
     resolver: zodResolver(requestUpgradeFormSchema),
-    defaultValues: { reason: "" },
+    defaultValues: { reason: "", requestedDurationDays: 7 },
   });
 
   const alreadyRequested = hasPendingUpgradeRequest || requested;
@@ -183,6 +224,12 @@ export function UsageUpgradeButton({
                     );
                   }}
                 </BaseFormFieldSection>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">
+                    How long do you need it?
+                  </label>
+                  <DurationField />
+                </div>
               </div>
             </DialogContainer>
             <DialogFooter

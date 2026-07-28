@@ -2,6 +2,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { SpendLimitOverrideTimeframeType } from "@app/types/credits";
 import type {
   MembershipOriginType,
   MembershipRoleType,
@@ -27,6 +28,11 @@ export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   // `spend_threshold_reached` alert (threshold = override + seat allowance)
   // is derived from this value and remains the enforcement mechanism.
   declare poolCapOverrideAwuCredits: number | null;
+  // Rolling window `poolCapOverrideAwuCredits` is enforced over. NULL (the
+  // default) preserves today's behavior: the cap applies over the implicit
+  // monthly/pool-lifetime window. Meaningless when the override itself is
+  // NULL.
+  declare overrideLimitTimeframe: SpendLimitOverrideTimeframeType | null;
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare user: NonAttribute<UserModel>;
@@ -76,6 +82,11 @@ MembershipModel.init(
     },
     poolCapOverrideAwuCredits: {
       type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    overrideLimitTimeframe: {
+      type: DataTypes.STRING(8),
       allowNull: true,
       defaultValue: null,
     },

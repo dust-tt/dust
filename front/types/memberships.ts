@@ -302,6 +302,8 @@ export type MembershipUpgradeRequestStatus =
 
 export const MIN_UPGRADE_REQUEST_REASON_LENGTH_CHARS = 10;
 export const MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS = 1000;
+export const MIN_UPGRADE_REQUEST_DURATION_DAYS = 1;
+export const MAX_UPGRADE_REQUEST_DURATION_DAYS = 365;
 
 export interface MembershipUpgradeRequestType {
   sId: string;
@@ -311,6 +313,8 @@ export interface MembershipUpgradeRequestType {
   // Why the member needs the raised limit. Null only for requests created
   // before this field existed.
   reason: string | null;
+  // How long the member expects to need it, in days. Informational only.
+  requestedDurationDays: number | null;
   requester: {
     sId: string;
     name: string;

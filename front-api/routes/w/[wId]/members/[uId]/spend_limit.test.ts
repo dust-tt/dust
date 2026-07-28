@@ -116,6 +116,47 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       expect(await getResponse.json()).toEqual({
         kind: "limited",
         awuCredits: 1500,
+        timeframe: null,
+      });
+    });
+
+    it("persists and returns the override timeframe when provided", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "manager",
+        workspace,
+      });
+
+      const putResponse = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind: "limited",
+            awuCredits: 500,
+            timeframe: "week",
+          }),
+        }
+      );
+      expect(putResponse.status).toBe(200);
+      expect(await putResponse.json()).toEqual({
+        limit: { kind: "limited", awuCredits: 500, timeframe: "week" },
+      });
+
+      const getResponse = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId)
+      );
+      expect(await getResponse.json()).toEqual({
+        kind: "limited",
+        awuCredits: 500,
+        timeframe: "week",
       });
     });
 
@@ -262,7 +303,9 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         targetUser,
         { role: "user" }
       );
-      await membership.updatePoolCapOverride(2500);
+      await membership.updatePoolCapOverride({
+        poolCapOverrideAwuCredits: 2500,
+      });
 
       await createPrivateApiMockRequest({
         method: "GET",
@@ -278,6 +321,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       expect(await response.json()).toEqual({
         kind: "limited",
         awuCredits: 2500,
+        timeframe: null,
       });
     });
   });
@@ -291,7 +335,9 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         targetUser,
         { role: "user" }
       );
-      await membership.updatePoolCapOverride(1200);
+      await membership.updatePoolCapOverride({
+        poolCapOverrideAwuCredits: 1200,
+      });
 
       await createPrivateApiMockRequest({
         method: "PUT",

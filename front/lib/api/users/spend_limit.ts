@@ -116,6 +116,7 @@ export async function getUserSpendLimit(
   return new Ok({
     kind: "limited",
     awuCredits: membership.poolCapOverrideAwuCredits,
+    timeframe: membership.overrideLimitTimeframe,
   });
 }
 
@@ -197,9 +198,11 @@ export async function setUserSpendLimit(
   // Persist the admin's intent first: the membership is the source of truth,
   // the Metronome alerts below are derived enforcement (a failed sync can be
   // retried and re-derives from this value).
-  await membership.updatePoolCapOverride(
-    limit.kind === "limited" ? limit.awuCredits : null
-  );
+  await membership.updatePoolCapOverride({
+    poolCapOverrideAwuCredits:
+      limit.kind === "limited" ? limit.awuCredits : null,
+    overrideLimitTimeframe: limit.kind === "limited" ? limit.timeframe : null,
+  });
 
   switch (limit.kind) {
     case "unlimited": {
@@ -322,6 +325,8 @@ export async function setUserSpendLimit(
       kind: limit.kind,
       awu_credits:
         limit.kind === "limited" ? String(limit.awuCredits) : "unlimited",
+      timeframe:
+        limit.kind === "limited" && limit.timeframe ? limit.timeframe : "",
     },
   });
 

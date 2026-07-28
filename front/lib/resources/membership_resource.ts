@@ -18,6 +18,7 @@ import {
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
+import type { SpendLimitOverrideTimeframeType } from "@app/types/credits";
 import {
   initialCreditStateForSeatType,
   isMembershipSeatType,
@@ -1598,12 +1599,30 @@ export class MembershipResource extends BaseResource<MembershipModel> {
    * excluded) of an active membership in place. `null` clears the override,
    * letting the seat-type default apply. Callers are responsible for syncing
    * the derived Metronome alerts.
+   *
+   * `overrideLimitTimeframe` additionally enforces the cap over a rolling
+   * day/week/month window (see `makeUserOverrideAwuCreditsRateLimitKeyForUser`),
+   * on top of the implicit monthly/pool-lifetime window the override always
+   * applies over. Meaningless — and ignored by the enforcement check — when
+   * `poolCapOverrideAwuCredits` is null.
    */
   async updatePoolCapOverride(
-    poolCapOverrideAwuCredits: number | null,
+    {
+      poolCapOverrideAwuCredits,
+      overrideLimitTimeframe,
+    }: {
+      poolCapOverrideAwuCredits: number | null;
+      overrideLimitTimeframe?: SpendLimitOverrideTimeframeType | null;
+    },
     transaction?: Transaction
   ): Promise<void> {
-    await this.update({ poolCapOverrideAwuCredits }, transaction);
+    await this.update(
+      {
+        poolCapOverrideAwuCredits,
+        overrideLimitTimeframe: overrideLimitTimeframe ?? null,
+      },
+      transaction
+    );
   }
 
   /**
@@ -1653,9 +1672,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           seatType: newSeatType,
           firstUsedAt: this.firstUsedAt,
           creditState: initialCreditStateForSeatType(newSeatType),
-          // The pool cap override survives the seat change: it's the
-          // pool-only portion, independent of the seat allowance.
+          // The pool cap override (and its timeframe) survives the seat
+          // change: it's the pool-only portion, independent of the seat
+          // allowance.
           poolCapOverrideAwuCredits: this.poolCapOverrideAwuCredits,
+          overrideLimitTimeframe: this.overrideLimitTimeframe,
         },
         { transaction }
       );

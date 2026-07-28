@@ -10,6 +10,7 @@
   ],
   "metadata": {
     "request_sid": "string",
-    "reason": "string"
+    "reason": "string",
+    "requested_duration_days": "string"
   }
 }

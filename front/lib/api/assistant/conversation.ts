@@ -42,6 +42,7 @@ import {
   makeMessageRateLimitKeyForWorkspaceActor,
   makeMessageRateLimitKeyForWorkspaceActorPerHour,
   makeProgrammaticUsageRateLimitKeyForWorkspace,
+  makeUserOverrideAwuCreditsRateLimitKeyForUser,
 } from "@app/lib/api/assistant/rate_limits";
 import {
   publishAgentMessagesEvents,
@@ -2438,6 +2439,7 @@ interface MessageLimit {
     | "rate_limit_error"
     | "plan_message_limit_exceeded"
     | "credits_exhausted"
+    | "per_user_spend_limit_exceeded"
     | null;
   message?: string;
 }
@@ -2458,6 +2460,8 @@ function getMessageLimitErrorMessage({
       return "The message limit for this plan has been exceeded.";
     case "credits_exhausted":
       return "Your workspace has run out of credits. Please purchase more credits to continue.";
+    case "per_user_spend_limit_exceeded":
+      return "You have reached your temporary usage limit. Contact your admin to raise it.";
     case "rate_limit_error":
       return "Rate limit exceeded. Please retry later.";
   }
@@ -2542,6 +2546,57 @@ async function checkMessagesLimit(
             message: "Your workspace has run out of credits.",
           },
         });
+      }
+
+      // Rolling-window counterpart to the Metronome-billing-period-based
+      // `user_cap_reached` check above: an admin can additionally cap this
+      // user's spend over a day/week/month window independent of the
+      // billing period. Only active when that override is configured.
+      if (user) {
+        const membership =
+          await MembershipResource.getActiveMembershipOfUserInWorkspace({
+            user,
+            workspace: owner,
+          });
+        if (
+          membership?.overrideLimitTimeframe &&
+          membership.poolCapOverrideAwuCredits !== null
+        ) {
+          const result = await getRateLimiterCount({
+            key: makeUserOverrideAwuCreditsRateLimitKeyForUser(
+              owner,
+              user.toJSON(),
+              membership.overrideLimitTimeframe
+            ),
+            timeframeSeconds: getTimeframeSecondsFromLiteral(
+              membership.overrideLimitTimeframe
+            ),
+          });
+          if (
+            result.isOk() &&
+            result.value >= membership.poolCapOverrideAwuCredits
+          ) {
+            return new Err({
+              status_code: 403,
+              api_error: {
+                type: "per_user_spend_limit_exceeded",
+                message: getMessageLimitErrorMessage({
+                  limitType: "per_user_spend_limit_exceeded",
+                }),
+              },
+            });
+          }
+          if (result.isErr()) {
+            logger.error(
+              {
+                workspaceId: owner.sId,
+                userId: user.sId,
+                error: result.error,
+              },
+              "Failed to read per-user spend-limit override rate limit."
+            );
+          }
+        }
       }
 
       // Pre-emptive concurrency limit based on pool credit state. Prevents

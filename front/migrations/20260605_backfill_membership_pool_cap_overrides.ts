@@ -123,7 +123,10 @@ makeScript(
               : "Would backfill pool cap override."
           );
           if (execute) {
-            await membership.updatePoolCapOverride(poolCapOverrideAwuCredits);
+            await membership.updatePoolCapOverride({
+              poolCapOverrideAwuCredits,
+              overrideLimitTimeframe: null,
+            });
           }
           updated++;
         }

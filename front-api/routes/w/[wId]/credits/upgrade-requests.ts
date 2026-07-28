@@ -12,7 +12,9 @@ import type {
 } from "@app/types/api/credits/upgrade_requests";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import {
+  MAX_UPGRADE_REQUEST_DURATION_DAYS,
   MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS,
+  MIN_UPGRADE_REQUEST_DURATION_DAYS,
   MIN_UPGRADE_REQUEST_REASON_LENGTH_CHARS,
 } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -30,16 +32,22 @@ const ResolveBodySchema = z.object({
   status: z.union([z.literal("approved"), z.literal("denied")]),
 });
 
-// TODO(BACK12): make `reason` required once the client update that always
-// sends it (front's upgrade-request modal) has rolled out to all users.
-// Optional for now so the existing client, which posts an empty body, keeps
-// working until then.
+// TODO(BACK12): make `reason`/`requestedDurationDays` required once the
+// client update that always sends them (front's upgrade-request modal) has
+// rolled out to all users. Optional for now so the existing client, which
+// posts an empty body, keeps working until then.
 const CreateUpgradeRequestBodySchema = z.object({
   reason: z
     .string()
     .trim()
     .min(MIN_UPGRADE_REQUEST_REASON_LENGTH_CHARS)
     .max(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS)
+    .optional(),
+  requestedDurationDays: z
+    .number()
+    .int()
+    .min(MIN_UPGRADE_REQUEST_DURATION_DAYS)
+    .max(MAX_UPGRADE_REQUEST_DURATION_DAYS)
     .optional(),
 });
 
@@ -101,9 +109,10 @@ app.post(
   validate("json", CreateUpgradeRequestBodySchema),
   async (ctx): HandlerResult<PostUpgradeRequestResponseBody> => {
     const auth = ctx.get("auth");
-    const { reason } = ctx.req.valid("json");
+    const { reason, requestedDurationDays } = ctx.req.valid("json");
     const result = await createUpgradeRequest(auth, {
       reason: reason ?? null,
+      requestedDurationDays: requestedDurationDays ?? null,
       auditContext: getAuditLogContext(auth),
     });
     if (result.isErr()) {

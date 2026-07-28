@@ -81,15 +81,19 @@ const requestedColumn: ColumnDef<RowData, string> = {
   id: "requested" as const,
   header: "",
   accessorFn: (row) => row.createdAt.toString(),
-  cell: (info: Info) => (
-    <DataTable.CellContent>
-      <span className="text-sm text-muted-foreground">
-        {timeAgoFrom(info.row.original.createdAt, { useLongFormat: true })} ago
-      </span>
-    </DataTable.CellContent>
-  ),
+  cell: (info: Info) => {
+    const { createdAt, requestedDurationDays } = info.row.original.request;
+    return (
+      <DataTable.CellContent>
+        <span className="text-sm text-muted-foreground">
+          {timeAgoFrom(createdAt, { useLongFormat: true })} ago
+          {requestedDurationDays ? ` · needs ~${requestedDurationDays}d` : ""}
+        </span>
+      </DataTable.CellContent>
+    );
+  },
   meta: {
-    className: "w-32",
+    className: "w-40",
   },
 };
 

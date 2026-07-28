@@ -6,6 +6,7 @@ import {
   getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
+import type { SpendLimitOverrideTimeframeType } from "@app/types/credits";
 import type {
   MaxAwuCreditsTimeframeType,
   MaxMessagesTimeframeType,
@@ -66,6 +67,19 @@ export const makeFairUseAwuCreditsRateLimitKeyForUser = (
   maxAwuCreditsTimeframe: MaxAwuCreditsTimeframeType
 ) => {
   return `workspace:${owner.id}:user:${user.id}:fair_use_awu_credit_count:${maxAwuCreditsTimeframe}`;
+};
+
+// Rolling-window counterpart to `Membership.poolCapOverrideAwuCredits` +
+// `overrideLimitTimeframe`: tracks a user's AWU consumption over the
+// admin-configured window, independent of the Metronome-billing-period-based
+// `user_cap_reached` alert that already enforces the cap over the implicit
+// monthly window.
+export const makeUserOverrideAwuCreditsRateLimitKeyForUser = (
+  owner: LightWorkspaceType,
+  user: UserType,
+  overrideLimitTimeframe: SpendLimitOverrideTimeframeType
+) => {
+  return `workspace:${owner.id}:user:${user.id}:override_awu_credit_count:${overrideLimitTimeframe}`;
 };
 
 export const makeProgrammaticUsageRateLimitKeyForWorkspace = (

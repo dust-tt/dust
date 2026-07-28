@@ -29,11 +29,17 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
   const { mutate } = useSWRWithDefaults(usageStatusUrl(workspaceId), null);
 
   const doRequestUpgrade = useCallback(
-    async ({ reason }: { reason: string }): Promise<boolean> => {
+    async ({
+      reason,
+      requestedDurationDays,
+    }: {
+      reason: string;
+      requestedDurationDays: number;
+    }): Promise<boolean> => {
       const res = await clientFetch(upgradeRequestsUrl(workspaceId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ reason, requestedDurationDays }),
       });
 
       if (!res.ok) {

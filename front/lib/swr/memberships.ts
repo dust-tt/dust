@@ -12,7 +12,9 @@ import type {
 import type {
   GetUserSpendLimitResponseBody,
   PutUserSpendLimitResponseBody,
+  UserSpendLimit,
 } from "@app/types/api/users/spend_limit";
+import { SPEND_LIMIT_OVERRIDE_TIMEFRAMES } from "@app/types/credits";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
@@ -33,6 +35,7 @@ const SpendLimitResponseSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("limited"),
     awuCredits: z.number(),
+    timeframe: z.enum(SPEND_LIMIT_OVERRIDE_TIMEFRAMES).nullable().optional(),
   }),
 ]);
 
@@ -261,7 +264,7 @@ export function useBulkSetUserSpendLimit({
       limit,
     }: {
       selection: BulkMemberSelectionBody;
-      limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number };
+      limit: UserSpendLimit;
     }): Promise<{ workflowId: string; memberCount: number } | null> => {
       const res = await clientFetch(bulkSpendLimitUrl(workspaceId), {
         method: "POST",
@@ -285,7 +288,7 @@ export function useBulkSetUserSpendLimit({
         title: "Spend limit updated",
         description:
           limit.kind === "limited"
-            ? `Applied a ${limit.awuCredits.toLocaleString("en-US")} credit limit to ${body.memberCount.toLocaleString("en-US")} members.`
+            ? `Applied a ${limit.awuCredits.toLocaleString("en-US")} credit${limit.timeframe ? `/${limit.timeframe}` : ""} limit to ${body.memberCount.toLocaleString("en-US")} members.`
             : `Removed the spend limit for ${body.memberCount.toLocaleString("en-US")} members.`,
       });
 
@@ -651,7 +654,7 @@ export function useUpdateUserSpendLimit({
     }: {
       memberId: string;
       memberName: string;
-      limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number };
+      limit: UserSpendLimit;
     }): Promise<PutUserSpendLimitResponseBody | null> => {
       const res = await clientFetch(spendLimitUrl(workspaceId, memberId), {
         method: "PUT",
@@ -676,7 +679,9 @@ export function useUpdateUserSpendLimit({
           description = `${memberName}'s spend limit has been removed.`;
           break;
         case "limited":
-          description = `${memberName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits.`;
+          description = limit.timeframe
+            ? `${memberName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits/${limit.timeframe}.`
+            : `${memberName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits.`;
           break;
         default:
           assertNeverAndIgnore(limit);

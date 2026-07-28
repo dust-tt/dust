@@ -2,7 +2,10 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
-import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
+import {
+  makeFairUseAwuCreditsRateLimitKeyForUser,
+  makeUserOverrideAwuCreditsRateLimitKeyForUser,
+} from "@app/lib/api/assistant/rate_limits";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { ToolCostCategory } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,6 +17,7 @@ import {
 } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import {
@@ -289,6 +293,28 @@ export async function computeAndStoreAgentMessageCredits(
       incrementBy: costCredits,
       logger,
     });
+  }
+
+  if (user && costCredits !== null && costCredits > 0) {
+    const membership =
+      await MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user,
+        workspace: auth.getNonNullableWorkspace(),
+      });
+    if (membership?.overrideLimitTimeframe) {
+      await addRateLimiterCount({
+        key: makeUserOverrideAwuCreditsRateLimitKeyForUser(
+          auth.getNonNullableWorkspace(),
+          user.toJSON(),
+          membership.overrideLimitTimeframe
+        ),
+        timeframeSeconds: getTimeframeSecondsFromLiteral(
+          membership.overrideLimitTimeframe
+        ),
+        incrementBy: costCredits,
+        logger,
+      });
+    }
   }
 
   return costCredits;

@@ -3,6 +3,9 @@ import {
   useUpdateUserSpendLimit,
   useUserSpendLimit,
 } from "@app/lib/swr/memberships";
+import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
+import type { SpendLimitOverrideTimeframeType } from "@app/types/credits";
+import { isSpendLimitOverrideTimeframeType } from "@app/types/credits";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -74,6 +77,8 @@ export function EditSpendLimitModal({
 
   const [kind, setKind] = useState<SpendLimitKind>("override");
   const [creditsInput, setCreditsInput] = useState<string>("");
+  const [timeframe, setTimeframe] =
+    useState<SpendLimitOverrideTimeframeType | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(
     null
@@ -92,10 +97,12 @@ export function EditSpendLimitModal({
       case "limited":
         setKind("override");
         setCreditsInput(String(spendLimit.awuCredits));
+        setTimeframe(spendLimit.timeframe ?? null);
         break;
       case "unlimited":
         setKind("default");
         setCreditsInput("");
+        setTimeframe(null);
         break;
       default:
         assertNeverAndIgnore(spendLimit);
@@ -154,15 +161,17 @@ export function EditSpendLimitModal({
     setIsSaving(true);
     onSavingChange?.(displayedMember.sId, true);
     try {
-      let limit:
-        | { kind: "unlimited" }
-        | { kind: "limited"; awuCredits: number };
+      let limit: UserSpendLimit;
       switch (kind) {
         case "default":
           limit = { kind: "unlimited" };
           break;
         case "override":
-          limit = { kind: "limited", awuCredits: result.awuCredits };
+          limit = {
+            kind: "limited",
+            awuCredits: result.awuCredits,
+            timeframe,
+          };
           break;
         default:
           assertNeverAndIgnore(kind);
@@ -207,9 +216,9 @@ export function EditSpendLimitModal({
                 Edit spend limit for {displayedMember?.name}
               </DialogTitle>
               <p className="text-sm text-muted-foreground">
-                Maximum pool credits this member can consume during a billing
-                cycle. This limit is added on top of the seat&apos;s built-in
-                allowance.
+                Maximum pool credits this member can consume, on top of the
+                seat&apos;s built-in allowance. Optionally enforced over a
+                shorter rolling window than the billing cycle.
               </p>
             </div>
           </div>
@@ -274,9 +283,39 @@ export function EditSpendLimitModal({
                       className="pr-28 text-right"
                     />
                     <span className="copy-sm pointer-events-none absolute right-3 top-0 flex h-9 items-center text-muted-foreground">
-                      credits/month
+                      credits
                     </span>
                   </div>
+                  <RadioGroup
+                    value={timeframe ?? "billing_cycle"}
+                    onValueChange={(v) =>
+                      setTimeframe(
+                        isSpendLimitOverrideTimeframeType(v) ? v : null
+                      )
+                    }
+                    className="flex flex-row gap-4 pt-1"
+                  >
+                    <RadioGroupItem
+                      value="billing_cycle"
+                      id="spend-limit-timeframe-billing-cycle"
+                      label="Per billing cycle"
+                    />
+                    <RadioGroupItem
+                      value="day"
+                      id="spend-limit-timeframe-day"
+                      label="Per day"
+                    />
+                    <RadioGroupItem
+                      value="week"
+                      id="spend-limit-timeframe-week"
+                      label="Per week"
+                    />
+                    <RadioGroupItem
+                      value="month"
+                      id="spend-limit-timeframe-month"
+                      label="Per rolling month"
+                    />
+                  </RadioGroup>
                 </div>
               )}
             </RadioGroup>
