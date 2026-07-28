@@ -4,7 +4,6 @@ import { DustError } from "@app/lib/error";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { destroyAgentMCPServerConfigurationsForViews } from "@app/lib/models/agent/actions/mcp_server_view_helper";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -108,29 +107,25 @@ export async function updateIsRestrictedToSkillsForMCPServerViews(
     );
   }
 
-  await withTransaction(async (transaction) => {
-    await MCPServerViewModel.update(
-      {
-        isRestrictedToSkills,
-        editedAt: new Date(),
-        editedByUserId: auth.getNonNullableUser().id,
+  await MCPServerViewModel.update(
+    {
+      isRestrictedToSkills,
+      editedAt: new Date(),
+      editedByUserId: auth.getNonNullableUser().id,
+    },
+    {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: { [Op.in]: views.map((view) => view.id) },
       },
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          id: { [Op.in]: views.map((view) => view.id) },
-        },
-        transaction,
-      }
-    );
-
-    if (isRestrictedToSkills) {
-      await destroyAgentMCPServerConfigurationsForViews(auth, {
-        mcpServerViewIds: views.map((view) => view.id),
-        transaction,
-      });
     }
-  });
+  );
+
+  if (isRestrictedToSkills) {
+    await destroyAgentMCPServerConfigurationsForViews(auth, {
+      mcpServerViewIds: views.map((view) => view.id),
+    });
+  }
 
   return new Ok(undefined);
 }
