@@ -1,8 +1,3 @@
-import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -444,7 +439,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     { name, memberIds }: { name: string; memberIds: string[] }
   ): Promise<
     Result<
-      GroupResource,
+      { group: GroupResource; addedUsers: UserType[] },
       DustError<
         | "unauthorized"
         | "name_conflict"
@@ -497,9 +492,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       return new Err(addResult.error);
     }
 
-    group.emitMemberAuditLogs(auth, "group.member_added", memberUsers);
-
-    return new Ok(group);
+    return new Ok({ group, addedUsers: memberUsers });
   }
 
   static async findAgentIdsForGroups(
@@ -2226,7 +2219,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     { name, memberIds }: { name?: string; memberIds?: string[] }
   ): Promise<
     Result<
-      undefined,
+      { addedUsers: UserType[]; removedUsers: UserType[] },
       DustError<
         | "unauthorized"
         | "name_conflict"
@@ -2285,38 +2278,10 @@ export class GroupResource extends BaseResource<GroupModel> {
         return new Err(setResult.error);
       }
 
-      const { addedUsers, removedUsers } = setResult.value;
-      this.emitMemberAuditLogs(auth, "group.member_added", addedUsers);
-      this.emitMemberAuditLogs(auth, "group.member_removed", removedUsers);
+      return new Ok(setResult.value);
     }
 
-    return new Ok(undefined);
-  }
-
-  private emitMemberAuditLogs(
-    auth: Authenticator,
-    action: "group.member_added" | "group.member_removed",
-    users: UserType[]
-  ): void {
-    for (const user of users) {
-      void emitAuditLogEvent({
-        auth,
-        action,
-        targets: [
-          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-          buildAuditLogTarget("group", this),
-          buildAuditLogTarget("user", {
-            sId: user.sId,
-            name: user.fullName,
-          }),
-        ],
-        context: getAuditLogContext(auth),
-        metadata: {
-          group_name: this.name,
-          user_email: user.email,
-        },
-      });
-    }
+    return new Ok({ addedUsers: [], removedUsers: [] });
   }
 
   async deleteRegularManualGroup(

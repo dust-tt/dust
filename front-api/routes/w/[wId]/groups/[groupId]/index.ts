@@ -1,3 +1,4 @@
+import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type {
   DeleteGroupResponseBody,
@@ -190,6 +191,8 @@ app.patch(
           assertNever(updateRes.error.code);
       }
     }
+
+    emitGroupMemberAuditLogs(auth, group, updateRes.value);
 
     const members = await group.getActiveMembers(auth);
 

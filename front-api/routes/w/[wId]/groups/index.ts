@@ -1,3 +1,4 @@
+import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import {
   CreateGroupBodySchema,
@@ -112,9 +113,11 @@ app.post(
           assertNever(groupRes.error.code);
       }
     }
-    const group = await groupRes.value.toJSONWithMemberCount(auth);
+    const { group, addedUsers } = groupRes.value;
 
-    return ctx.json({ group });
+    emitGroupMemberAuditLogs(auth, group, { addedUsers, removedUsers: [] });
+
+    return ctx.json({ group: await group.toJSONWithMemberCount(auth) });
   }
 );
 
