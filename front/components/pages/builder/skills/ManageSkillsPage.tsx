@@ -2,6 +2,11 @@ import { AgentSidebarMenu } from "@app/components/assistant/conversation/Sidebar
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
+import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
+import {
+  BatchAvailabilityDialog,
+  SkillsBatchEditBar,
+} from "@app/components/skills/SkillsBatchEdit";
 import { SkillsTable } from "@app/components/skills/SkillsTable";
 import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
 import {
@@ -16,10 +21,17 @@ import {
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
 import { isDustProvidedSkill, SKILL_ICON } from "@app/lib/skill";
-import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import {
+  useSkillsWithRelations,
+  useUpdateSkillsAvailability,
+} from "@app/lib/swr/skill_configurations";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillAvailability,
+  SkillWithoutInstructionsAndToolsWithRelationsType,
+} from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
   Button,
@@ -28,6 +40,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   FolderOpen,
+  ListSelect,
   Page,
   Plus,
   SearchInput,
@@ -36,6 +49,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import type { RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const SKILL_MANAGER_TABS = [
@@ -84,10 +98,8 @@ function sortSkillsByName(
 export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
   const { hasFeature } = useFeatureFlags();
-  const hasSkillPublicationGovernance = hasFeature(
-    "admin_governance_skill_publication"
-  );
   const [selectedSkill, setSelectedSkill] =
     useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
@@ -95,6 +107,15 @@ export function ManageSkillsPage() {
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
   const [skillSearch, setSkillSearch] = useState("");
   const [skillIdParam, setSkillIdParam] = useHashParam("skillId");
+  const [isBatchEditing, setIsBatchEditing] = useState(false);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [pendingBatchAction, setPendingBatchAction] =
+    useState<BatchAvailabilityAction | null>(null);
+
+  const hasSkillPublicationGovernance = hasFeature(
+    "admin_governance_skill_publication"
+  );
+  const doUpdateAvailability = useUpdateSkillsAvailability({ owner });
 
   const isSearchActive = !isEmptyString(skillSearch);
 
@@ -211,6 +232,44 @@ export function ManageSkillsPage() {
     [setSkillIdParam]
   );
 
+  const [isBatchUpdating, setIsBatchUpdating] = useState(false);
+
+  const selectedSkillIds = useMemo(
+    () =>
+      Object.entries(rowSelection)
+        .filter(([, selected]) => selected)
+        .map(([sId]) => sId),
+    [rowSelection]
+  );
+
+  const closeBatchEdition = () => {
+    setIsBatchEditing(false);
+    setRowSelection({});
+  };
+
+  const handleBatchAvailability = async (availability: SkillAvailability) => {
+    if (selectedSkillIds.length === 0 || isBatchUpdating) {
+      return;
+    }
+    setIsBatchUpdating(true);
+    try {
+      const success = await doUpdateAvailability(
+        selectedSkillIds,
+        availability
+      );
+      if (success) {
+        setRowSelection({});
+      }
+    } finally {
+      setIsBatchUpdating(false);
+    }
+  };
+
+  const isBatchEditionAvailable =
+    hasSkillPublicationGovernance &&
+    hasPermission("publish", "skill") &&
+    activeTab !== "archived";
+
   const knownSkillsById = useMemo(
     () =>
       new Map(
@@ -290,6 +349,18 @@ export function ManageSkillsPage() {
           owner={owner}
         />
       )}
+      {pendingBatchAction && (
+        <BatchAvailabilityDialog
+          action={pendingBatchAction}
+          selectedCount={selectedSkillIds.length}
+          isUpdating={isBatchUpdating}
+          onConfirm={async () => {
+            await handleBatchAvailability(pendingBatchAction.availability);
+            setPendingBatchAction(null);
+          }}
+          onCancel={() => setPendingBatchAction(null)}
+        />
+      )}
       <div className="flex w-full flex-col gap-8 pb-4">
         <Page.Header
           title="Manage Skills"
@@ -308,6 +379,14 @@ export function ManageSkillsPage() {
                 setSkillSearch(s);
               }}
             />
+            {isBatchEditionAvailable && !isBatchEditing && (
+              <Button
+                variant="outline"
+                label="Batch edit"
+                icon={ListSelect}
+                onClick={() => setIsBatchEditing(true)}
+              />
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button label="Create skill" icon={Plus} isSelect />
@@ -326,6 +405,14 @@ export function ManageSkillsPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+          {isBatchEditionAvailable && isBatchEditing && (
+            <SkillsBatchEditBar
+              selectedCount={selectedSkillIds.length}
+              isUpdating={isBatchUpdating}
+              onClose={closeBatchEdition}
+              onSelectAction={setPendingBatchAction}
+            />
+          )}
           <div className="flex flex-col pt-3">
             <Tabs value={activeTab}>
               <TabsList>
@@ -367,6 +454,9 @@ export function ManageSkillsPage() {
                   onAgentClick={setAgentId}
                   onUsedBySkillClick={handleUsedBySkillSelect}
                   showAvailability={hasSkillPublicationGovernance}
+                  {...(isBatchEditionAvailable && isBatchEditing
+                    ? { rowSelection, setRowSelection }
+                    : {})}
                 />
               </>
             )}
