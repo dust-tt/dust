@@ -8,21 +8,17 @@ import type {
 } from "@app/types/api/invitation";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { isString } from "@app/types/shared/utils/general";
 import type { ActiveRoleType, RoleType, WorkspaceType } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
 import { mutate } from "swr";
 
 export const MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY = 300;
 
-// Revalidates every cached invitations list for the workspace, regardless of the
-// query params (e.g. `?includeExpired=true`). A plain `mutate(url)` only matches the
-// exact key and would miss lists fetched with query params.
+// Matches the invitations list regardless of query params (e.g. `?includeExpired=true`).
 export async function mutateWorkspaceInvitations(owner: WorkspaceType) {
   const invitationsPath = `/api/w/${owner.sId}/invitations`;
-  await mutate(
-    (key) =>
-      typeof key === "string" && key.split("?")[0] === invitationsPath
-  );
+  await mutate((key) => isString(key) && key.split("?")[0] === invitationsPath);
 }
 
 export async function updateInvitation({
