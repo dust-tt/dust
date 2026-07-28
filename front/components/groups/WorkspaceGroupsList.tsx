@@ -5,6 +5,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import { useAppRouter } from "@app/lib/platform";
 import { useDeleteGroup, useGroups } from "@app/lib/swr/groups";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   type GroupKind,
   isRegularManualGroupKind,
@@ -146,6 +147,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
 
   const confirm = useContext(ConfirmContext);
   const { doDeleteGroup } = useDeleteGroup({ owner });
+  const { hasPermission } = useWorkspacePermissions();
 
   const openCreateDialog = () => {
     setEditedGroupId(null);
@@ -191,7 +193,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {isScimAllowed && (
+      {isScimAllowed && hasPermission("admin", "security") && (
         <LinkedSectionNotice
           description="User provisioning is configured in"
           linkLabel="IT & Security → User provisioning"
