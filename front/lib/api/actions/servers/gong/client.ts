@@ -11,10 +11,11 @@ import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { z } from "zod";
 
-const GONG_API_BASE_URL = "https://api.gong.io/v2";
+const DEFAULT_GONG_API_BASE_URL = "https://api.gong.io";
 
 export class GongApiError extends Error {
   public readonly isInvalidInput: boolean;
@@ -43,11 +44,25 @@ export function getGongClient(
     );
   }
 
-  return new Ok(new GongClient(accessToken));
+  const rawApiBaseUrl = authInfo.extra?.api_base_url_for_customer;
+  // Temporary fallback to avoid breaking existing Gong integrations created
+  // before the customer-specific base URL was persisted.
+  const apiBaseUrl = isString(rawApiBaseUrl)
+    ? rawApiBaseUrl
+    : DEFAULT_GONG_API_BASE_URL;
+
+  return new Ok(new GongClient(accessToken, apiBaseUrl));
 }
 
 export class GongClient {
-  constructor(private accessToken: string) {}
+  private readonly baseUrl: string;
+
+  constructor(
+    private readonly accessToken: string,
+    baseUrlForCustomer: string
+  ) {
+    this.baseUrl = `${baseUrlForCustomer}/v2`;
+  }
 
   private async request<T extends z.Schema>(
     endpoint: string,
@@ -58,7 +73,7 @@ export class GongClient {
       queryParams?: Record<string, string>;
     } = { method: "GET" }
   ): Promise<Result<z.infer<T>, Error>> {
-    let url = `${GONG_API_BASE_URL}${endpoint}`;
+    let url = `${this.baseUrl}${endpoint}`;
 
     if (options.queryParams) {
       const params = new URLSearchParams(options.queryParams);
