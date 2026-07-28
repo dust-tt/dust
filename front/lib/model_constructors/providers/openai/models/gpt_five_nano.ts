@@ -18,12 +18,21 @@ const GPT_5_NANO_REASONING_EFFORTS = [
   "high",
 ] as const;
 
+// Characterized against the live API (2026-07-27) by running the endpoint suite
+// with the widest `inputConfigSchema`. Accepted efforts: minimal/low/medium/high;
+// 'none', 'xhigh' and the universal 'maximal' are rejected with a 400. Because
+// there is no "none" effort ("`'none' is not supported`"), reasoning is always
+// on and there is no thinking-off branch.
+//
+// `temperature` accepts exactly one value: `1` (the API default). Every other
+// value is rejected with "Unsupported parameter: 'temperature' is not supported
+// with this model" — so the field is `z.literal(1)`, defaulted so callers can
+// omit it, rather than `z.undefined()`.
 const configSchema = inputConfigSchema.extend({
   reasoning: z
     .object({ effort: z.enum(GPT_5_NANO_REASONING_EFFORTS) })
     .default({ effort: DEFAULT_REASONING_EFFORT }),
-  // The Responses API rejects an explicit temperature while reasoning is on.
-  temperature: z.undefined(),
+  temperature: z.literal(1).optional().default(1),
 });
 
 // Mixin carrying shared config; runtime base differs per surface.
