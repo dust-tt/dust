@@ -1,5 +1,6 @@
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { tokenCountForTexts } from "@app/lib/tokenization";
+import logger from "@app/logger/logger";
 import type {
   Content,
   FunctionMessageTypeModel,
@@ -39,6 +40,14 @@ vi.mock("@app/lib/api/provider_credentials", () => ({
 
 vi.mock("@app/lib/tokenization", () => ({
   tokenCountForTexts: vi.fn(),
+}));
+
+vi.mock("@app/logger/logger", () => ({
+  default: {
+    error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+  },
 }));
 
 function createConversation() {
@@ -89,19 +98,23 @@ function functionMessage(
   };
 }
 
-function image(url: string): Content {
-  return { type: "image_url", image_url: { url } };
+function image(url: string, filePath?: string): Content {
+  return {
+    type: "image_url",
+    image_url: { url, ...(filePath ? { filePath } : {}) },
+  };
 }
 
 function functionImageMessage(
   name: string,
-  url: string
+  url: string,
+  filePath?: string
 ): ModelMessageTypeMultiActions {
   return {
     role: "function",
     name,
     function_call_id: `${name}_call`,
-    content: [image(url)],
+    content: [image(url, filePath)],
   };
 }
 
@@ -233,7 +246,7 @@ describe("renderConversationForModel", () => {
     expect(res.value.prunedContext).toBe(false);
   });
 
-  it("drops oldest tool images before counting Anthropic context", async () => {
+  it("replaces oldest tool image previews before counting Anthropic context", async () => {
     const userUpload = image("user-upload");
     vi.mocked(renderAllMessages).mockResolvedValue([
       {
@@ -242,7 +255,11 @@ describe("renderConversationForModel", () => {
         content: [{ type: "text", text: "u1" }, userUpload],
       },
       ...Array.from({ length: ANTHROPIC_IMAGE_COUNT_LIMIT }, (_, index) =>
-        functionImageMessage(`tool_${index}`, `tool-${index}`)
+        functionImageMessage(
+          `tool_${index}`,
+          `tool-${index}`,
+          `conversation/tool-${index}.png`
+        )
       ),
     ]);
     mockTokenCounter({ byContains: { u1: 10 } });
@@ -269,6 +286,18 @@ describe("renderConversationForModel", () => {
     expect(images).toHaveLength(ANTHROPIC_IMAGE_COUNT_LIMIT);
     expect(images).toContain(userUpload);
     expect(images).not.toContainEqual(image("tool-0"));
+    const oldestToolResult = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "tool_0"
+    );
+    expect(oldestToolResult.content).toEqual([
+      {
+        type: "text",
+        text: expect.stringMatching(
+          /no longer displayed.*files__cat.*conversation\/tool-0\.png/
+        ),
+      },
+    ]);
     expect(res.value.tokensUsed).toBe(
       TOKENS_MARGIN +
         10 +
@@ -276,6 +305,41 @@ describe("renderConversationForModel", () => {
         10 +
         ANTHROPIC_IMAGE_COUNT_LIMIT * 5 +
         ANTHROPIC_IMAGE_COUNT_LIMIT * IMAGE_CONTENT_TOKEN_COUNT
+    );
+  });
+
+  it("warns when Anthropic has 20 unprunable images", async () => {
+    vi.mocked(renderAllMessages).mockResolvedValue([
+      {
+        role: "user",
+        name: "user",
+        content: Array.from(
+          { length: ANTHROPIC_IMAGE_COUNT_LIMIT },
+          (_, index) => image(`user-${index}`)
+        ),
+      },
+    ]);
+    mockTokenCounter({ byContains: {} });
+
+    const res = await renderConversationForModel(auth, {
+      conversation: createConversation(),
+      model: { ...model, providerId: "anthropic" },
+      prompt: "PROMPT",
+      enabledSkills: [],
+      tools: "TOOLS",
+      allowedTokenCount: 100_000,
+    });
+
+    expect(res.isOk()).toBe(true);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: "w_1",
+        conversationId: "conv_1",
+        imageCountLimit: ANTHROPIC_IMAGE_COUNT_LIMIT,
+        nonToolImageCount: ANTHROPIC_IMAGE_COUNT_LIMIT,
+        totalImageCount: ANTHROPIC_IMAGE_COUNT_LIMIT,
+      }),
+      expect.stringContaining("cannot be pruned")
     );
   });
 

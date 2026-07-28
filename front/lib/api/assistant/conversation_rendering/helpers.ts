@@ -198,9 +198,15 @@ async function renderActionForMultiActionsModel(
           : await getDustFileSystemDownloadUrl(auth, path);
 
         if (urlRes.isOk()) {
+          const displayFilePath = item.resource.uri.startsWith("dust://files/")
+            ? item.resource.uri.slice("dust://files/".length)
+            : undefined;
           contentArray.push({
             type: "image_url",
-            image_url: { url: urlRes.value },
+            image_url: {
+              url: urlRes.value,
+              ...(displayFilePath ? { filePath: displayFilePath } : {}),
+            },
           });
         } else {
           contentArray.push({

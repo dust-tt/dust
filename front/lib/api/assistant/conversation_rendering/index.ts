@@ -82,30 +82,62 @@ function pruneConversationToBudget(
   return state.fit();
 }
 
-function discardOldestToolResultImages(
-  messages: ModelMessageTypeMultiActions[]
+function replaceOldestToolResultImages(
+  messages: ModelMessageTypeMultiActions[],
+  logContext: {
+    workspaceId: string;
+    conversationId: string;
+    modelId: string;
+  }
 ): ModelMessageTypeMultiActions[] {
-  const imageCount = messages.reduce(
-    (count, message) =>
-      count +
-      ("content" in message && Array.isArray(message.content)
-        ? message.content.filter(isImageContent).length
-        : 0),
-    0
+  const imageCounts = messages.reduce(
+    (counts, message) => {
+      const count =
+        "content" in message && Array.isArray(message.content)
+          ? message.content.filter(isImageContent).length
+          : 0;
+      return {
+        total: counts.total + count,
+        nonTool: counts.nonTool + (message.role === "function" ? 0 : count),
+      };
+    },
+    { total: 0, nonTool: 0 }
   );
-  let toDiscard = imageCount - ANTHROPIC_IMAGE_COUNT_LIMIT;
+  if (imageCounts.nonTool >= ANTHROPIC_IMAGE_COUNT_LIMIT) {
+    logger.warn(
+      {
+        ...logContext,
+        imageCountLimit: ANTHROPIC_IMAGE_COUNT_LIMIT,
+        nonToolImageCount: imageCounts.nonTool,
+        totalImageCount: imageCounts.total,
+      },
+      "Anthropic conversation contains images that cannot be pruned."
+    );
+  }
 
-  return toDiscard > 0
+  let toReplace = imageCounts.total - ANTHROPIC_IMAGE_COUNT_LIMIT;
+
+  return toReplace > 0
     ? messages.map((message) =>
         message.role === "function" && Array.isArray(message.content)
           ? {
               ...message,
-              content: message.content.filter((content) => {
-                if (isImageContent(content) && toDiscard > 0) {
-                  toDiscard -= 1;
-                  return false;
+              content: message.content.flatMap((content) => {
+                if (isImageContent(content) && toReplace > 0) {
+                  toReplace -= 1;
+                  const filePath = content.image_url.filePath;
+                  return [
+                    {
+                      type: "text" as const,
+                      text:
+                        `[This image preview is no longer displayed because the conversation exceeds the ${ANTHROPIC_IMAGE_COUNT_LIMIT}-image limit.` +
+                        (filePath
+                          ? ` Use \`files__cat\` with path \`${filePath}\` to display it again.]`
+                          : " Re-run the tool to display it again.]"),
+                    },
+                  ];
                 }
-                return true;
+                return [content];
               }),
             }
           : message
@@ -170,7 +202,14 @@ export async function renderConversationForModel(
   });
   const messages =
     model.providerId === ANTHROPIC_PROVIDER_ID
-      ? discardOldestToolResultImages([...leadingMessages, ...renderedMessages])
+      ? replaceOldestToolResultImages(
+          [...leadingMessages, ...renderedMessages],
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            modelId: model.modelId,
+          }
+        )
       : [...leadingMessages, ...renderedMessages];
   const renderAllMessagesMs = Date.now() - stepStart;
   stepStart = Date.now();

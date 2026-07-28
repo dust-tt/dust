@@ -21,6 +21,7 @@ export interface ImageContent {
   type: "image_url";
   image_url: {
     url: string;
+    filePath?: string;
   };
 }
 

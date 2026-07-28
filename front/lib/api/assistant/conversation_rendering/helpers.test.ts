@@ -369,7 +369,10 @@ describe("vision image rendering in getSteps", () => {
       expect(result.content).toEqual([
         {
           type: "image_url",
-          image_url: { url: "https://signed-url.test" },
+          image_url: {
+            url: "https://signed-url.test",
+            filePath: "conversation/photo.png",
+          },
         },
       ]);
     }
