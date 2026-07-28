@@ -252,6 +252,9 @@ export type ModelStaticWorkspaceAware<M extends WorkspaceAwareModel> =
 export type ModelStaticSoftDeletable<
   M extends SoftDeletableWorkspaceAwareModel,
 > = ModelStatic<M> & {
+  destroy(
+    options: WithHardDelete<DestroyOptions<Attributes<M>>>
+  ): Promise<number>;
   findAll(
     options: WithIncludeDeleted<
       WorkspaceTenantIsolationSecurityBypassOptions<Attributes<M>>
