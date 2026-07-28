@@ -284,6 +284,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       name: systemView.name,
       description: systemView.description,
       oauthScope: systemView.oauthScope,
+      isRestrictedToSkills: systemView.isRestrictedToSkills,
     };
 
     if (space.kind === "global") {
