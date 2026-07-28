@@ -124,7 +124,7 @@ export abstract class ResourceWithSpace<
         .map((b) => {
           const space = spaces.find((space) => space.id === b.vaultId);
           if (!space) {
-            throw new Error("Unreachable: space not found.");
+            return null;
           }
 
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -160,6 +160,8 @@ export abstract class ResourceWithSpace<
             includedResults
           );
         })
+        // Drop blobs whose space could not be resolved (skipped above).
+        .filter((cls): cls is T => cls !== null)
         // Filter out resources that the user cannot fetch.
         .filter((cls) => cls.canFetch(auth))
     );
