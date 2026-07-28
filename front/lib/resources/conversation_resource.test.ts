@@ -379,38 +379,27 @@ describe("ConversationResource", () => {
       });
 
       const childConversationWithoutContent =
-        await ConversationResource.fetchConversationWithoutContent(
-          auth,
-          childConversation.sId
-        );
-      expect(childConversationWithoutContent.isOk()).toBe(true);
-
-      if (childConversationWithoutContent.isOk()) {
-        expect(
-          childConversationWithoutContent.value.forkingData
-        ).toBeUndefined();
-      }
+        await ConversationResource.fetchById(auth, childConversation.sId);
+      expect(childConversationWithoutContent).not.toBeNull();
+      expect(
+        childConversationWithoutContent!.toJSON().forkingData
+      ).toBeUndefined();
 
       const childConversationWithForkingData =
-        await ConversationResource.fetchConversationWithoutContent(
-          auth,
-          childConversation.sId,
-          { includeForkingData: true }
-        );
-      expect(childConversationWithForkingData.isOk()).toBe(true);
-
-      if (childConversationWithForkingData.isOk()) {
-        expect(childConversationWithForkingData.value.forkingData).toEqual({
-          forkedFrom: {
-            parentConversationId: parentConversation.sId,
-            parentConversationTitle,
-            sourceMessageId: sourceMessage.sId,
-            branchedAt: branchedAt.getTime(),
-            user: auth.getNonNullableUser().toJSON(),
-            fileCopyStatus: "pending",
-          },
+        await ConversationResource.fetchById(auth, childConversation.sId, {
+          includeForkingData: true,
         });
-      }
+      expect(childConversationWithForkingData).not.toBeNull();
+      expect(childConversationWithForkingData!.toJSON().forkingData).toEqual({
+        forkedFrom: {
+          parentConversationId: parentConversation.sId,
+          parentConversationTitle,
+          sourceMessageId: sourceMessage.sId,
+          branchedAt: branchedAt.getTime(),
+          user: auth.getNonNullableUser().toJSON(),
+          fileCopyStatus: "pending",
+        },
+      });
     });
 
     it("should expose forkedFrom title even when the parent conversation is unreadable", async () => {
@@ -5862,7 +5851,7 @@ describe("markAsActionRequired", () => {
     expect(participantAfter.actionRequired).toBe(true);
   });
 
-  it("should update actionRequired even when it's already true", async () => {
+  it("should no-op when actionRequired is already true", async () => {
     const { ConversationParticipantModel } = await import(
       "@app/lib/models/agent/conversation"
     );
@@ -5899,8 +5888,8 @@ describe("markAsActionRequired", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      // Should still update 1 row (even though value is already true)
-      expect(result.value[0]).toBe(1);
+      // Already at target value: skip the write to avoid a no-op row lock.
+      expect(result.value[0]).toBe(0);
     }
 
     // Verify actionRequired remains true

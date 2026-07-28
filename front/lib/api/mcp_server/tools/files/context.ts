@@ -33,12 +33,11 @@ export async function getDustFileSystemForScope(
   scope: FilesScope
 ): Promise<Result<DustFileSystem, string>> {
   if (scope.type === "conversation") {
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        scope.conversation_id
-      );
-    if (conversationRes.isErr()) {
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      scope.conversation_id
+    );
+    if (!conversation) {
       return new Err(
         `Conversation not found or not accessible: ${scope.conversation_id}`
       );
@@ -46,7 +45,7 @@ export async function getDustFileSystemForScope(
 
     const fsResult = await DustFileSystem.forConversation(
       auth,
-      conversationRes.value
+      conversation.toJSON()
     );
     if (fsResult.isErr()) {
       return new Err(fsResult.error.message);

@@ -22,12 +22,10 @@ app.get(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
-    const cRes = await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      cId,
-      { includeDeleted: true }
-    );
-    if (cRes.isErr()) {
+    const conversation = await ConversationResource.fetchById(auth, cId, {
+      includeDeleted: true,
+    });
+    if (!conversation) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -39,7 +37,7 @@ app.get(
 
     const conversationDataSource = await DataSourceResource.fetchByConversation(
       auth,
-      cRes.value
+      conversation
     );
 
     return ctx.json({

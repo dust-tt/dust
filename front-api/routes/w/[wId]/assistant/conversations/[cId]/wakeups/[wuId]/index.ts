@@ -1,5 +1,6 @@
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import { ConversationError } from "@app/types/assistant/conversation";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -72,14 +73,13 @@ app.delete(
     const auth = ctx.get("auth");
     const { cId, wuId } = ctx.req.valid("param");
 
-    // The fetchConversationWithoutContent method checks for conversation
-    // accessibility (inside the resource through `baseFetchWithAuthorization`).
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(auth, cId);
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const conversation = await ConversationResource.fetchById(auth, cId);
+    if (!conversation) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
+      );
     }
-    const conversation = conversationRes.value;
 
     const wakeUp = await WakeUpResource.fetchById(auth, wuId);
     if (!wakeUp || wakeUp.conversationId !== conversation.id) {

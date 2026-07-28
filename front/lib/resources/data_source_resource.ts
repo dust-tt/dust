@@ -4,6 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -273,7 +274,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
 
   static async fetchByConversation(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType,
+    conversation: ConversationWithoutContentType | ConversationResource,
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource | null> {
     const [dataSource] = await this.baseFetch(auth, options, {

@@ -2508,11 +2508,11 @@ async function maybeDeleteCoreArtifactsForIndexedFile(
     if (!conversationId) {
       return;
     }
-    const cRes = await ConversationResource.fetchConversationWithoutContent(
+    const conversation = await ConversationResource.fetchById(
       auth,
       conversationId
     );
-    if (cRes.isErr()) {
+    if (!conversation) {
       logger.warn(
         {
           workspaceId: auth.workspace()?.sId,
@@ -2525,7 +2525,7 @@ async function maybeDeleteCoreArtifactsForIndexedFile(
     }
     const dataSource = await DataSourceResource.fetchByConversation(
       auth,
-      cRes.value
+      conversation
     );
     if (!dataSource) {
       logger.warn(

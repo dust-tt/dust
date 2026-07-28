@@ -30,6 +30,7 @@ import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -1622,7 +1623,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       effectiveSpaceIds,
       transaction,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       agentConfiguration?: AgentConfigurationWithoutModelType;
       agentLoopData?: AgentLoopExecutionData;
       effectiveSpaceIds?: string[];
