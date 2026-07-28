@@ -61,6 +61,7 @@ export const ROLE_REGISTRY: Record<
     editor: { verbs: ["read", "write"], levels: ["instance"] },
     create: { verbs: ["create"], levels: ["type"] },
     publish: { verbs: ["publish"], levels: ["type"] },
+    make_discoverable: { verbs: ["make_discoverable"], levels: ["type"] },
   },
   frame: {
     invite: { verbs: ["invite"], levels: ["type"] },

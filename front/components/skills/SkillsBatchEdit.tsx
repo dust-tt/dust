@@ -51,7 +51,7 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     getDialogTitle: (count) =>
       `Make ${count} skill${pluralize(count)} auto-discoverable`,
     dialogDescription:
-      "Auto-discoverable skills are available to workspace members and can be automatically activated by agents with Discover Skills tools enabled.",
+      "Auto-discoverable skills are available to workspace members and can be automatically activated by agents with Discover Skills tool enabled.",
     confirmLabel: "Make auto-discoverable",
     confirmVariant: "primary",
   },
@@ -60,6 +60,8 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
 interface SkillsBatchEditBarProps {
   selectedCount: number;
   isUpdating: boolean;
+  canMakeSkillAutoDiscoverable: boolean;
+  selectionHasAutoDiscoverableSkill: boolean;
   onClose: () => void;
   onSelectAction: (action: BatchAvailabilityAction) => void;
 }
@@ -67,6 +69,8 @@ interface SkillsBatchEditBarProps {
 export function SkillsBatchEditBar({
   selectedCount,
   isUpdating,
+  canMakeSkillAutoDiscoverable,
+  selectionHasAutoDiscoverableSkill,
   onClose,
   onSelectAction,
 }: SkillsBatchEditBarProps) {
@@ -91,13 +95,25 @@ export function SkillsBatchEditBar({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          {BATCH_AVAILABILITY_ACTIONS.map((action) => (
-            <DropdownMenuItem
-              key={action.availability}
-              label={action.label}
-              onClick={() => onSelectAction(action)}
-            />
-          ))}
+          {BATCH_AVAILABILITY_ACTIONS.map((action) => {
+            // The make-discoverable permission gates both turning skills
+            // auto-discoverable and changing an already auto-discoverable skill's
+            // availability, so downgrade actions are locked when the selection
+            // contains an auto-discoverable skill.
+            const isMakingDiscoverable =
+              action.availability === "users_and_agents";
+            const disabled =
+              !canMakeSkillAutoDiscoverable &&
+              (isMakingDiscoverable || selectionHasAutoDiscoverableSkill);
+            return (
+              <DropdownMenuItem
+                key={action.availability}
+                label={action.label}
+                onClick={() => onSelectAction(action)}
+                disabled={disabled}
+              />
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

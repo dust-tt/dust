@@ -45,6 +45,11 @@ const GOVERNANCE_SETTING_METADATA: Partial<
     label: "Publish skills",
     description: "Control who can publish skills to the whole workspace.",
   },
+  "make_discoverable:skill": {
+    label: "Make skills auto-discoverable",
+    description:
+      "Control who can make skills auto-discoverable by agents with the Discover Skills tool.",
+  },
   "invite:frame": {
     label: "Invite people by email",
     description:

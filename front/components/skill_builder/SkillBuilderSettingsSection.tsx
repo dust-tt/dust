@@ -1,4 +1,3 @@
-import { ConfirmContext } from "@app/components/Confirm";
 import { SkillBuilderEnableSuggestionsSection } from "@app/components/skill_builder/SkillBuilderEnableSuggestionsSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderIconSection } from "@app/components/skill_builder/SkillBuilderIconSection";
@@ -19,27 +18,38 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Hoverable,
   Icon,
+  InfoCircle,
   Label,
   LinkExternal01,
   LinkWrapper,
 } from "@dust-tt/sparkle";
-import { useContext } from "react";
 import { useController } from "react-hook-form";
 
-const AVAILABILITY_OPTIONS: { label: string; values: SkillAvailability[] }[] = [
+const AVAILABILITY_OPTIONS: {
+  label: string;
+  value: SkillAvailability;
+  description?: string;
+}[] = [
   {
     label: "Editors only",
-    values: ["editors"],
+    value: "editors",
   },
   {
     label: "All workspace members",
-    values: ["workspace_users", "users_and_agents"],
+    value: "workspace_users",
+  },
+  {
+    label: "Auto-discoverable",
+    value: "users_and_agents",
+    description:
+      "Available to workspace members and agents with Discover Skills tool",
   },
 ];
 
@@ -66,48 +76,29 @@ export function SkillBuilderSettingsSection({
     name: "availability",
   });
 
-  const confirm = useContext(ConfirmContext);
-
   const { hasFeature } = useFeatureFlags();
   const isSkillPublicationEnabled = hasFeature(
     "admin_governance_skill_publication"
   );
   const { hasPermission } = useWorkspacePermissions();
   const canUpdateAvailability = hasPermission("publish", "skill");
+  const canMakeSkillAutoDiscoverable = hasPermission(
+    "make_discoverable",
+    "skill"
+  );
   const githubSkillFolderUrl = getGitHubSkillFolderUrl(skill);
 
-  const currentOption = AVAILABILITY_OPTIONS.find((option) =>
-    option.values.includes(availability)
+  const currentOption = AVAILABILITY_OPTIONS.find(
+    (option) => option.value === availability
   );
 
   const isAutoDiscoverableOn = availability === "users_and_agents";
 
-  const onAvailabilityChange = async (
-    option: (typeof AVAILABILITY_OPTIONS)[0]
-  ) => {
-    const isWorkspaceMembersOption = option.values.includes("workspace_users");
-    // we don't allow to turn off discoverable from here
-    if (isWorkspaceMembersOption && isAutoDiscoverableOn) {
-      return;
-    }
-
-    // Switching an auto-discoverable skill to "Editors only" turns off
-    // auto-discovery, so confirm first.
-    if (isAutoDiscoverableOn) {
-      const confirmed = await confirm({
-        title: "Auto-discovery will be off",
-        message:
-          "An editors-only skill cannot be auto-discoverable. Are you sure you want to change the availability?",
-        validateLabel: "Confirm",
-        validateVariant: "warning",
-      });
-      if (!confirmed) {
-        return;
-      }
-    }
-
-    onChange(isWorkspaceMembersOption ? "workspace_users" : option.values[0]);
-  };
+  // The make-discoverable permission gates every transition involving the
+  // auto-discoverable state: without it, an editor can neither turn a skill
+  // auto-discoverable nor change an already auto-discoverable skill's availability.
+  const isAvailabilityLocked =
+    isAutoDiscoverableOn && !canMakeSkillAutoDiscoverable;
 
   return (
     <div className="space-y-4">
@@ -160,17 +151,22 @@ export function SkillBuilderSettingsSection({
                   label={currentOption?.label}
                   variant="outline"
                   isSelect
-                  disabled={!canUpdateAvailability}
+                  disabled={!canUpdateAvailability || isAvailabilityLocked}
                 />
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-60" align="start">
+              <DropdownMenuContent align="start">
                 {AVAILABILITY_OPTIONS.map((option) => (
                   <DropdownMenuItem
                     key={option.label}
                     label={option.label}
-                    onClick={async () => {
-                      await onAvailabilityChange(option);
+                    onClick={() => {
+                      onChange(option.value);
                     }}
+                    description={option.description}
+                    disabled={
+                      option.value === "users_and_agents" &&
+                      !canMakeSkillAutoDiscoverable
+                    }
                   />
                 ))}
               </DropdownMenuContent>
@@ -178,28 +174,23 @@ export function SkillBuilderSettingsSection({
           </div>
         )}
       </div>
-      {isSkillPublicationEnabled && canUpdateAvailability && (
-        <div className="text-muted-foreground text-sm">
-          <p className="mb-1">
-            <span className="font-semibold">
-              Auto-discovery is {isAutoDiscoverableOn ? "on" : "off"}.{" "}
-            </span>
-            Agents with the Discover Skills tool{" "}
-            {isAutoDiscoverableOn ? "can use" : "won’t find"} this skill
-            automatically.
-            <br />
-          </p>
+      {isSkillPublicationEnabled && isAutoDiscoverableOn && (
+        <ContentMessage
+          icon={InfoCircle}
+          title="Agents with the Discover Skills tool can use this skill automatically"
+        >
           <p>
-            Edit in{" "}
+            You can see other auto-discoverable skills in{" "}
             <Hoverable
               href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
               target="_blank"
               className="inline-flex items-center gap-1 underline"
             >
-              Manage Skills <Icon visual={LinkExternal01} size="xs" />
+              Manage Skills page
+              <Icon visual={LinkExternal01} size="xs" />
             </Hoverable>
           </p>
-        </div>
+        </ContentMessage>
       )}
 
       {hasSelfImprovingSkills && (

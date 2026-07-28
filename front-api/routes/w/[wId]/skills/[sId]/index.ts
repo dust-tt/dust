@@ -235,6 +235,28 @@ app.patch(
       });
     }
 
+    // The make-discoverable permission gates every transition involving the
+    // auto-discoverable state: without it, a user can neither make a skill
+    // auto-discoverable nor change an already auto-discoverable skill's availability.
+    const involvesAutoDiscoverable =
+      requestedAvailability === "users_and_agents" ||
+      skill.availability === "users_and_agents";
+    if (
+      hasSkillPublicationGovernance &&
+      availabilityChanged &&
+      involvesAutoDiscoverable &&
+      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "You don't have permission to change this skill's auto-discoverable status.",
+        },
+      });
+    }
+
     // Editing a skill remains editor-only; non-editors holding the publish permission use
     // PATCH /skills/:sId/availability to publish or unpublish without editing.
     if (!skill.canWrite(auth)) {

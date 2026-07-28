@@ -3,6 +3,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -155,6 +156,130 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
     });
 
     expect(response.status).toBe(403);
+  });
+
+  it("denies making skills auto-discoverable without the make_discoverable permission", async () => {
+    const { workspace, requestUser, requestUserAuth, skillOwnerAuth } =
+      await setupTest("builder");
+    await FeatureFlagFactory.basic(
+      requestUserAuth,
+      "admin_governance_skill_publication"
+    );
+    // The caller can publish skills, but not make them auto-discoverable.
+    await grantWorkspacePermission(workspace, requestUser, {
+      grantType: "publish",
+      resourceType: "skill",
+    });
+    const skill = await SkillFactory.create(skillOwnerAuth, {
+      availability: "editors",
+    });
+
+    const discoverableResponse = await patchSkillsAvailability(workspace, {
+      skillIds: [skill.sId],
+      availability: "users_and_agents",
+    });
+    expect(discoverableResponse.status).toBe(403);
+
+    // The publish permission alone still allows the non-discoverable availabilities.
+    const workspaceResponse = await patchSkillsAvailability(workspace, {
+      skillIds: [skill.sId],
+      availability: "workspace_users",
+    });
+    expect(workspaceResponse.status).toBe(200);
+  });
+
+  it("denies changing an auto-discoverable skill's availability without the make_discoverable permission", async () => {
+    const { workspace, requestUser, requestUserAuth, skillOwnerAuth } =
+      await setupTest("builder");
+    await FeatureFlagFactory.basic(
+      requestUserAuth,
+      "admin_governance_skill_publication"
+    );
+    // The caller can publish skills, but not make them auto-discoverable.
+    await grantWorkspacePermission(workspace, requestUser, {
+      grantType: "publish",
+      resourceType: "skill",
+    });
+    const skill = await SkillFactory.create(skillOwnerAuth, {
+      availability: "users_and_agents",
+    });
+
+    const response = await patchSkillsAvailability(workspace, {
+      skillIds: [skill.sId],
+      availability: "workspace_users",
+    });
+    expect(response.status).toBe(403);
+
+    // The skill is left untouched.
+    const unchangedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(unchangedSkill?.availability).toBe("users_and_agents");
+  });
+
+  it("allows changing an auto-discoverable skill's availability with the make_discoverable permission", async () => {
+    const { workspace, requestUser, requestUserAuth, skillOwnerAuth } =
+      await setupTest("builder");
+    await FeatureFlagFactory.basic(
+      requestUserAuth,
+      "admin_governance_skill_publication"
+    );
+    await grantWorkspacePermission(workspace, requestUser, {
+      grantType: "publish",
+      resourceType: "skill",
+    });
+    await grantWorkspacePermission(workspace, requestUser, {
+      grantType: "make_discoverable",
+      resourceType: "skill",
+    });
+    const skill = await SkillFactory.create(skillOwnerAuth, {
+      availability: "users_and_agents",
+    });
+
+    const response = await patchSkillsAvailability(workspace, {
+      skillIds: [skill.sId],
+      availability: "workspace_users",
+    });
+
+    expect(response.status).toBe(200);
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.availability).toBe("workspace_users");
+  });
+
+  it("allows making skills auto-discoverable with the make_discoverable permission", async () => {
+    const { workspace, requestUser, requestUserAuth, skillOwnerAuth } =
+      await setupTest("builder");
+    await FeatureFlagFactory.basic(
+      requestUserAuth,
+      "admin_governance_skill_publication"
+    );
+    await grantWorkspacePermission(workspace, requestUser, {
+      grantType: "publish",
+      resourceType: "skill",
+    });
+    await grantWorkspacePermission(workspace, requestUser, {
+      grantType: "make_discoverable",
+      resourceType: "skill",
+    });
+    const skill = await SkillFactory.create(skillOwnerAuth, {
+      availability: "editors",
+    });
+
+    const response = await patchSkillsAvailability(workspace, {
+      skillIds: [skill.sId],
+      availability: "users_and_agents",
+    });
+
+    expect(response.status).toBe(200);
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.availability).toBe("users_and_agents");
   });
 
   it("returns 404 when a skill is missing, without updating the others", async () => {

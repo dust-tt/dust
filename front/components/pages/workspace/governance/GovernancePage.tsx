@@ -134,7 +134,9 @@ export const GovernancePage = () => {
 
   const skillPermissions = skills.filter(
     (permission) =>
-      hasSkillPublicationFeature || permission.grantType !== "publish"
+      hasSkillPublicationFeature ||
+      (permission.grantType !== "publish" &&
+        permission.grantType !== "make_discoverable")
   );
 
   const router = useAppRouter();
