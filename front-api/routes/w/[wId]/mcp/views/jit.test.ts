@@ -119,6 +119,41 @@ describe("GET /api/w/:wId/mcp/views/jit", () => {
     }
   });
 
+  it("filters out views restricted to skills", async () => {
+    const { workspace, globalSpace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Skills-only Server",
+      url: "https://skills-only-server.example.com",
+      tools: [
+        {
+          name: "search",
+          description: "Search things",
+          inputSchema: plainInputSchema,
+        },
+      ],
+    });
+    const view = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      globalSpace
+    );
+    const updateResult = await view.updateIsRestrictedToSkills(auth, true);
+    expect(updateResult.isOk()).toBe(true);
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/mcp/views/jit?spaceIds=${globalSpace.sId}`
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    const serverViews: MCPServerViewLightType[] = body.serverViews;
+    expect(
+      serverViews.some((serverView) => serverView.server.sId === server.sId)
+    ).toBe(false);
+  });
+
   it("returns 400 without spaceIds", async () => {
     const { workspace } = await createPrivateApiMockRequest({ role: "user" });
 
