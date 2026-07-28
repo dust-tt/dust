@@ -2,6 +2,7 @@ import {
   formatConversationForLLM,
   getConversationInboxes,
 } from "@app/lib/api/actions/servers/front/helpers";
+import { TOOLS } from "@app/lib/api/actions/servers/front/tools";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(() => {
@@ -67,5 +68,94 @@ describe("formatConversationForLLM", () => {
     );
 
     expect(formatted).toContain("INBOX: Support, Escalations");
+  });
+});
+
+function getTool(name: string) {
+  const tool = TOOLS.find((candidate) => candidate.name === name);
+  if (!tool) {
+    throw new Error(`Tool ${name} not found`);
+  }
+  return tool;
+}
+
+function createTestExtra() {
+  return {
+    authInfo: { token: "front-token" },
+  } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
+}
+
+describe("search_conversations", () => {
+  it("stops loading inboxes when the token lacks permission", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            _results: [
+              { id: "cnv_1", status: "open" },
+              { id: "cnv_2", status: "open" },
+              { id: "cnv_3", status: "open" },
+            ],
+          }),
+          { status: 200 }
+        )
+      )
+      .mockResolvedValue(new Response("Forbidden", { status: 403 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getTool("search_conversations").handler(
+      { q: "support", limit: 20 },
+      createTestExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    if (result.isOk()) {
+      expect(result.value[0]).toMatchObject({
+        type: "text",
+        text: expect.stringContaining(
+          "INBOX: Unknown (Front token needs inboxes:read)"
+        ),
+      });
+    }
+  });
+
+  it("keeps conversations when one inbox lookup fails", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            _results: [
+              { id: "cnv_1", status: "open" },
+              { id: "cnv_2", status: "open" },
+            ],
+          }),
+          { status: 200 }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ _results: [{ name: "Support" }] }), {
+          status: 200,
+        })
+      )
+      .mockResolvedValueOnce(new Response("Unavailable", { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getTool("search_conversations").handler(
+      { q: "support", limit: 20 },
+      createTestExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value[0]).toMatchObject({
+        type: "text",
+        text: expect.stringContaining(
+          "INBOX: Unknown (Front inboxes could not be loaded)"
+        ),
+      });
+    }
   });
 });

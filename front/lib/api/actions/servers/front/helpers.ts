@@ -195,17 +195,20 @@ export async function getConversationInboxes(
 
 export function formatConversationForLLM(
   conversation: FrontConversation,
-  inboxes: Array<{ name: string }> | null
+  inboxes: Array<{ name: string }> | null | undefined
 ): string {
   const assigneeEmail = conversation.assignee
     ? conversation.assignee.email
     : "Unassigned";
-  const inboxNames =
-    inboxes === null
-      ? "Unknown (Front token needs inboxes:read)"
-      : inboxes.length > 0
-        ? inboxes.map(({ name }) => name).join(", ")
-        : "None";
+  let inboxNames: string;
+  if (inboxes === null) {
+    inboxNames = "Unknown (Front token needs inboxes:read)";
+  } else if (inboxes === undefined) {
+    inboxNames = "Unknown (Front inboxes could not be loaded)";
+  } else {
+    inboxNames =
+      inboxes.length > 0 ? inboxes.map(({ name }) => name).join(", ") : "None";
+  }
   const tagNames = conversation.tags?.map((t) => t.name).join(", ") ?? "None";
   const createdAt = conversation.created_at
     ? new Date(conversation.created_at * 1000).toISOString()
