@@ -14,6 +14,17 @@ import { mutate } from "swr";
 
 export const MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY = 300;
 
+// Revalidates every cached invitations list for the workspace, regardless of the
+// query params (e.g. `?includeExpired=true`). A plain `mutate(url)` only matches the
+// exact key and would miss lists fetched with query params.
+export async function mutateWorkspaceInvitations(owner: WorkspaceType) {
+  const invitationsPath = `/api/w/${owner.sId}/invitations`;
+  await mutate(
+    (key) =>
+      typeof key === "string" && key.split("?")[0] === invitationsPath
+  );
+}
+
 export async function updateInvitation({
   owner,
   invitation,
@@ -76,7 +87,7 @@ export async function updateInvitation({
     title: `${newRole ? "Role updated" : "Invitation Revoked"}`,
     description: `${successMessage} for ${invitation.inviteEmail}.`,
   });
-  await mutate(`/api/w/${owner.sId}/invitations`);
+  await mutateWorkspaceInvitations(owner);
 }
 
 export async function sendInvitations({
