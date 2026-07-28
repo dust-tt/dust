@@ -1345,6 +1345,32 @@ export type AutoInternalMCPServerNameType = AutoServerKeys<
   typeof INTERNAL_MCP_SERVERS
 >;
 
+export function validateToolInputs<
+  S extends InternalMCPServerNameType,
+  T extends InternalMCPToolNameType<S>,
+>(
+  serverName: S,
+  toolName: T,
+  inputs: Record<string, unknown>
+): inputs is z.infer<
+  z.ZodObject<
+    Extract<
+      (typeof INTERNAL_MCP_SERVERS)[S]["metadata"]["tools"][number],
+      { name: T }
+    >["schema"]
+  >
+> {
+  const toolMetadata = INTERNAL_MCP_SERVERS[serverName].metadata.tools.find(
+    (tool) => tool.name === toolName
+  );
+  // The type enforces that this exists, but we return false out of retro-compatibility over tool/server name changes.
+  if (!toolMetadata) {
+    return false;
+  }
+
+  return z.object(toolMetadata.schema).safeParse(inputs).success;
+}
+
 export function isAutoInternalMCPServerName(
   name: InternalMCPServerNameType
 ): name is AutoInternalMCPServerNameType {
