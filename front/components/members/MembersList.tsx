@@ -8,7 +8,6 @@ import {
   ROLES_DATA,
 } from "@app/components/members/Roles";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import assert from "@app/lib/utils/assert";
 import type { MembershipOriginType } from "@app/types/memberships";
 import type { RoleType, UserType } from "@app/types/user";
@@ -42,13 +41,8 @@ type RowData = {
 type Info = CellContext<RowData, string>;
 
 function RoleCell({ role }: { role: RoleType }) {
-  const { hasFeature } = useFeatureFlags();
-  // `builder` is deprecated under admin governance: display it as a regular
-  // member.
-  const displayedRole = normalizeDisplayRole(
-    role,
-    hasFeature("admin_governance")
-  );
+  // `builder` is deprecated: display it as a regular member.
+  const displayedRole = normalizeDisplayRole(role);
 
   return (
     <DataTable.CellContent>

@@ -1,4 +1,3 @@
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   useUpdateUsageNotifications,
   useUsageNotifications,
@@ -20,8 +19,6 @@ export function UsageNotificationsCard({
   workspaceId,
   readOnly,
 }: UsageNotificationsCardProps) {
-  const { hasFeature } = useFeatureFlags();
-  const isAdminGovernanceEnabled = hasFeature("admin_governance");
   const { usageNotifications, isUsageNotificationsLoading } =
     useUsageNotifications({ workspaceId });
   const { doUpdateUsageNotifications } = useUpdateUsageNotifications({
@@ -111,9 +108,7 @@ export function UsageNotificationsCard({
         />
         <SettingsList.Row
           title="Upgrade request emails"
-          description={`Email all workspace ${
-            isAdminGovernanceEnabled ? "admins and managers" : "admins"
-          } when a member requests a spend-limit upgrade.`}
+          description="Email all workspace admins and managers when a member requests a spend-limit upgrade."
           action={
             <SliderToggle
               selected={usageNotifications.upgradeRequestEmail}

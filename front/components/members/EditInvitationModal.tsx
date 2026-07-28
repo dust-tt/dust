@@ -1,11 +1,10 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   getRoleDescription,
-  getRoleProvisioningGroupsLabel,
+  ROLE_PROVISIONING_GROUPS_LABEL,
 } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
@@ -27,22 +26,17 @@ import { useContext, useEffect, useState } from "react";
 
 function getInvitationRoleMessage({
   isRoleManagedByProvisioning,
-  isAdminGovernanceEnabled,
   role,
 }: {
   isRoleManagedByProvisioning: boolean;
-  isAdminGovernanceEnabled: boolean;
   role: ActiveRoleType;
 }): string {
   if (isRoleManagedByProvisioning) {
-    return `This invitation's role is managed by your identity provider through group provisioning (${getRoleProvisioningGroupsLabel(
-      isAdminGovernanceEnabled
-    )}). Role changes must be made in your identity provider.`;
+    return `This invitation's role is managed by your identity provider through group provisioning (${ROLE_PROVISIONING_GROUPS_LABEL}). Role changes must be made in your identity provider.`;
   }
 
   return `The role defines the rights of a member for the workspace. ${getRoleDescription(
-    role,
-    isAdminGovernanceEnabled
+    role
   )}`;
 }
 
@@ -61,9 +55,6 @@ export function EditInvitationModal({
 
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
-  const { hasFeature } = useFeatureFlags();
-
-  const isAdminGovernanceEnabled = hasFeature("admin_governance");
 
   // Managers cannot revoke or resend invitations targeting the admin role
   // (matches the server-side escalation guard); only admins can.
@@ -77,15 +68,12 @@ export function EditInvitationModal({
   // Check if this invitation's role would be managed by provisioning groups
   const isRoleManagedByProvisioning =
     (roleProvisioningStatus.hasAdminGroup && selectedRole === "admin") ||
-    (isAdminGovernanceEnabled &&
-      roleProvisioningStatus.hasManagerGroup &&
-      selectedRole === "manager") ||
+    (roleProvisioningStatus.hasManagerGroup && selectedRole === "manager") ||
     (roleProvisioningStatus.hasBuilderGroup && selectedRole === "builder");
 
   const roleMessage = invitation
     ? getInvitationRoleMessage({
         isRoleManagedByProvisioning,
-        isAdminGovernanceEnabled,
         role: invitation.initialRole,
       })
     : "";

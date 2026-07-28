@@ -10,7 +10,6 @@ import {
 } from "@app/lib/resources/group_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -345,9 +344,8 @@ describe("determineUserRoleFromGroups", () => {
     expect(role).toBe("builder");
   });
 
-  it("grants 'manager' from the dust-managers group when admin governance is enabled", async () => {
+  it("grants 'manager' from the dust-managers group", async () => {
     await addUserToRoleGroup(MANAGER_GROUP_NAME);
-    await FeatureFlagFactory.basic(adminAuthenticator, "admin_governance");
 
     const role = await determineUserRoleFromGroups(workspace, user);
 
@@ -358,29 +356,18 @@ describe("determineUserRoleFromGroups", () => {
     await addUserToRoleGroup(ADMIN_GROUP_NAME);
     await addUserToRoleGroup(MANAGER_GROUP_NAME);
     await addUserToRoleGroup(BUILDER_GROUP_NAME);
-    await FeatureFlagFactory.basic(adminAuthenticator, "admin_governance");
 
     const role = await determineUserRoleFromGroups(workspace, user);
 
     expect(role).toBe("admin");
   });
 
-  it("prioritizes 'manager' over 'builder' when admin governance is enabled", async () => {
+  it("prioritizes 'manager' over 'builder'", async () => {
     await addUserToRoleGroup(MANAGER_GROUP_NAME);
     await addUserToRoleGroup(BUILDER_GROUP_NAME);
-    await FeatureFlagFactory.basic(adminAuthenticator, "admin_governance");
 
     const role = await determineUserRoleFromGroups(workspace, user);
 
     expect(role).toBe("manager");
-  });
-
-  it("falls back to 'builder' when in both dust-managers and dust-builders groups but admin governance is disabled", async () => {
-    await addUserToRoleGroup(MANAGER_GROUP_NAME);
-    await addUserToRoleGroup(BUILDER_GROUP_NAME);
-
-    const role = await determineUserRoleFromGroups(workspace, user);
-
-    expect(role).toBe("builder");
   });
 });

@@ -23,8 +23,7 @@ import {
 } from "@dust-tt/sparkle";
 
 export function MembersPage() {
-  const { featureFlags, hasFeature } = useFeatureFlags();
-  const isAdminGovernanceEnabled = hasFeature("admin_governance");
+  const { featureFlags } = useFeatureFlags();
 
   const owner = useWorkspace();
   const { subscription, user } = useAuth();
@@ -80,25 +79,18 @@ export function MembersPage() {
           icon={Users01}
           description="Manage team members and their roles."
         />
-        {isAdminGovernanceEnabled ? (
-          <Tabs
-            value={activeTab}
-            onValueChange={(value) => tab.setParam(value)}
-          >
-            <TabsList className="mb-6">
-              <TabsTrigger value="members" label="Members" />
-              <TabsTrigger value="groups" label="Groups" />
-            </TabsList>
-            <TabsContent value="members" className="flex flex-col gap-4">
-              {membersContent}
-            </TabsContent>
-            <TabsContent value="groups" className="flex flex-col gap-4">
-              <WorkspaceGroupsList owner={owner} />
-            </TabsContent>
-          </Tabs>
-        ) : (
-          membersContent
-        )}
+        <Tabs value={activeTab} onValueChange={(value) => tab.setParam(value)}>
+          <TabsList className="mb-6">
+            <TabsTrigger value="members" label="Members" />
+            <TabsTrigger value="groups" label="Groups" />
+          </TabsList>
+          <TabsContent value="members" className="flex flex-col gap-4">
+            {membersContent}
+          </TabsContent>
+          <TabsContent value="groups" className="flex flex-col gap-4">
+            <WorkspaceGroupsList owner={owner} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { AuditLogsSection } from "@app/components/workspace/AuditLogsSection";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
-import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcpToolsSection";
 import SSOConnection from "@app/components/workspace/SSOConnection";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -53,9 +52,6 @@ export default function WorkspaceAccessPanel({
     plan.isAuditLogsAllowed || hasFeature("audit_logs");
   const showAuditLogs =
     hasAuditLogsAccess && workspace.metadata?.disableAuditLogs !== true;
-  const showExtensionMcpTools =
-    !hasFeature("admin_governance") &&
-    hasFeature("browser_extension_mcp_tools");
 
   return (
     <div className="flex flex-col gap-6">
@@ -78,12 +74,6 @@ export default function WorkspaceAccessPanel({
       {scimEnabled && <UserProvisioning owner={owner} plan={plan} />}
       {showAuditLogs && <Separator />}
       {showAuditLogs && <AuditLogsSection owner={owner} />}
-      {showExtensionMcpTools && (
-        <>
-          <Separator />
-          <ExtensionMcpToolsSection owner={owner} />
-        </>
-      )}
     </div>
   );
 }

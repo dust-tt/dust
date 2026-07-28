@@ -1,11 +1,8 @@
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { usePodKnowledgePolicy } from "@app/hooks/usePodKnowledgePolicy";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  BookOpen01,
   Button,
-  ContextItem,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
@@ -39,7 +36,6 @@ export function PodKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
     isChanging,
     doUpdatePodKnowledgePolicy,
   } = usePodKnowledgePolicy({ owner });
-  const { hasFeature } = useFeatureFlags();
 
   const selectedPolicy = POD_KNOWLEDGE_POLICIES.find(
     (policy) =>
@@ -47,28 +43,10 @@ export function PodKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
       allowManualPodKnowledgeManagement
   );
 
-  if (hasFeature("admin_governance")) {
-    return (
-      <GovernanceSettingRowLayout
-        label={LABEL}
-        description={DESCRIPTION}
-        action={
-          <PodKnowledgePolicyDropdown
-            selectedPolicy={selectedPolicy}
-            isChanging={isChanging}
-            doUpdatePodKnowledgePolicy={doUpdatePodKnowledgePolicy}
-          />
-        }
-      />
-    );
-  }
-
   return (
-    <ContextItem
-      title={LABEL}
-      subElement={DESCRIPTION}
-      visual={<BookOpen01 className="h-6 w-6" />}
-      hasSeparatorIfLast={true}
+    <GovernanceSettingRowLayout
+      label={LABEL}
+      description={DESCRIPTION}
       action={
         <PodKnowledgePolicyDropdown
           selectedPolicy={selectedPolicy}

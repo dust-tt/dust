@@ -1,5 +1,4 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { hasFeatureFlag } from "@app/lib/auth";
 import {
   ADMIN_GROUP_NAME,
   BUILDER_GROUP_NAME,
@@ -73,13 +72,9 @@ export const applyGroupRoles = createPlugin({
       });
     }
 
-    const isManagerProvisioningEnabled = await hasFeatureFlag(
-      auth,
-      "admin_governance"
+    const [managerGroup] = provisioningGroups.filter(
+      (g) => g.name === MANAGER_GROUP_NAME
     );
-    const [managerGroup] = isManagerProvisioningEnabled
-      ? provisioningGroups.filter((g) => g.name === MANAGER_GROUP_NAME)
-      : [];
 
     const [builderGroup] = provisioningGroups.filter(
       (g) => g.name === BUILDER_GROUP_NAME

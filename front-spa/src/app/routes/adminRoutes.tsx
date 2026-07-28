@@ -68,11 +68,6 @@ const SubscriptionPage = withSuspense(
     ),
   "SubscriptionPage"
 );
-const WorkspaceSettingsPage = withSuspense(
-  () =>
-    import("@dust-tt/front/components/pages/workspace/WorkspaceSettingsPage"),
-  "WorkspaceSettingsPage"
-);
 const WorkspaceBrandingPage = withSuspense(
   () =>
     import("@dust-tt/front/components/pages/workspace/WorkspaceBrandingPage"),
@@ -117,7 +112,6 @@ export const adminRoutes: RouteObject[] = [
     element: <RequireRoleLayout requiredRole="admin" />,
     children: [
       { path: "model-providers", element: <ModelProvidersPage /> },
-      { path: "workspace", element: <WorkspaceSettingsPage /> },
       { path: "branding", element: <WorkspaceBrandingPage /> },
       { path: "developers/api-keys", element: <APIKeysPage /> },
       {

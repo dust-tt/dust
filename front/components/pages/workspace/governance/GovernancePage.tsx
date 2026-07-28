@@ -101,7 +101,6 @@ function groupGovernancePermissionsBySection(
 
 export const GovernancePage = () => {
   const { hasFeature } = useFeatureFlags();
-  const hasAdminGovernanceFeature = hasFeature("admin_governance");
   const hasSkillPublicationFeature = hasFeature(
     "admin_governance_skill_publication"
   );
@@ -181,10 +180,6 @@ export const GovernancePage = () => {
         ]
       : []),
   ];
-
-  if (!hasAdminGovernanceFeature) {
-    return null;
-  }
 
   if (isLoading) {
     return <GovernancePageSkeleton />;

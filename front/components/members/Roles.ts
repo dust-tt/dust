@@ -12,13 +12,9 @@ export function displayRoleCapitalized(role: RoleType): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-// `builder` is deprecated under admin governance: when the feature flag is
-// enabled, surface it to end users as a regular member.
-export function normalizeDisplayRole<T extends RoleType>(
-  role: T,
-  isAdminGovernanceEnabled: boolean
-): T | "user" {
-  if (role === "builder" && isAdminGovernanceEnabled) {
+// `builder` is deprecated: surface it to end users as a regular member.
+export function normalizeDisplayRole<T extends RoleType>(role: T): T | "user" {
+  if (role === "builder") {
     return "user";
   }
   return role;
@@ -26,30 +22,23 @@ export function normalizeDisplayRole<T extends RoleType>(
 
 export const ROLES_DATA: Record<
   ActiveRoleType,
-  { description: string; color: "warning" | "info" | "success" | "highlight" }
+  { color: "warning" | "info" | "success" | "highlight" }
 > = {
   admin: {
-    description:
-      "Can use and create agents, manage settings, members, spaces, connections, and tools.",
     color: "warning",
   },
   manager: {
-    description: "",
     color: "highlight",
   },
   builder: {
-    description:
-      "Can use, create agents and manage folders, websites and dust apps in the company space.",
     color: "info",
   },
   user: {
-    description: "Can use and create agents in conversations.",
     color: "success",
   },
 };
 
-// Role descriptions shown to workspaces with the `admin_governance` feature
-const ADMIN_GOVERNANCE_ROLE_DESCRIPTIONS: Record<ActiveRoleType, string> = {
+const ROLE_DESCRIPTIONS: Record<ActiveRoleType, string> = {
   user: "Can use agents in conversations. Building permissions are set by admins.",
   builder:
     "Can use agents in conversations. Building permissions are set by admins.",
@@ -58,20 +47,9 @@ const ADMIN_GOVERNANCE_ROLE_DESCRIPTIONS: Record<ActiveRoleType, string> = {
     "Full administrative control, including settings, connections, billing, and governance.",
 };
 
-export function getRoleDescription(
-  role: ActiveRoleType,
-  hasAdminGovernance: boolean
-): string {
-  if (hasAdminGovernance) {
-    return ADMIN_GOVERNANCE_ROLE_DESCRIPTIONS[role];
-  }
-  return ROLES_DATA[role].description;
+export function getRoleDescription(role: ActiveRoleType): string {
+  return ROLE_DESCRIPTIONS[role];
 }
 
-export function getRoleProvisioningGroupsLabel(
-  isAdminGovernanceEnabled: boolean
-): string {
-  return isAdminGovernanceEnabled
-    ? "dust-admins and dust-managers groups"
-    : "dust-admins and dust-builders groups";
-}
+export const ROLE_PROVISIONING_GROUPS_LABEL =
+  "dust-admins and dust-managers groups";

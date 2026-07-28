@@ -1,4 +1,4 @@
-import { type Authenticator, getFeatureFlagsForWorkspace } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import {
   ADMIN_GROUP_NAME,
@@ -302,10 +302,6 @@ export async function determineUserRoleFromGroups(
     workspace,
   });
 
-  const featureFlags = await getFeatureFlagsForWorkspace(workspace);
-  const isManagerProvisioningEnabled =
-    featureFlags.includes("admin_governance");
-
   let atLeastManager = false;
   let atLeastBuilder = false;
 
@@ -322,7 +318,7 @@ export async function determineUserRoleFromGroups(
   }
   // If we're here, the user is not in the admin group. Role precedence is
   // admin > manager > builder > user.
-  if (atLeastManager && isManagerProvisioningEnabled) {
+  if (atLeastManager) {
     return "manager";
   }
   if (atLeastBuilder) {

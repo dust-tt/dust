@@ -1,11 +1,8 @@
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { useOpenPodsPolicy } from "@app/hooks/useOpenPodsPolicy";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  ContextItem,
-  CubeOutline,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
@@ -36,34 +33,15 @@ type OpenPodPolicy = (typeof OPEN_PODS_POLICIES)[number];
 export function OpenPodPolicy({ owner }: { owner: WorkspaceType }) {
   const { allowOpenPods, isChanging, doUpdateOpenPodsPolicy } =
     useOpenPodsPolicy({ owner });
-  const { hasFeature } = useFeatureFlags();
 
   const selectedPolicy = OPEN_PODS_POLICIES.find(
     (policy) => policy.allowOpenProjects === allowOpenPods
   );
 
-  if (hasFeature("admin_governance")) {
-    return (
-      <GovernanceSettingRowLayout
-        label={LABEL}
-        description={DESCRIPTION}
-        action={
-          <OpenPodPolicyDropdown
-            selectedPolicy={selectedPolicy}
-            isChanging={isChanging}
-            doUpdateOpenPodsPolicy={doUpdateOpenPodsPolicy}
-          />
-        }
-      />
-    );
-  }
-
   return (
-    <ContextItem
-      title={LABEL}
-      subElement={DESCRIPTION}
-      visual={<CubeOutline className="h-6 w-6" />}
-      hasSeparatorIfLast={true}
+    <GovernanceSettingRowLayout
+      label={LABEL}
+      description={DESCRIPTION}
       action={
         <OpenPodPolicyDropdown
           selectedPolicy={selectedPolicy}

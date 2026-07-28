@@ -16,7 +16,6 @@ import {
   BarChart01,
   Brackets,
   Brain,
-  Building04,
   CreditCard01,
   File04,
   Fingerprint04,
@@ -90,7 +89,6 @@ export type SubNavigationAssistantsId =
 export type SubNavigationAdminId =
   | "subscription"
   | "billing"
-  | "workspace"
   | "governance"
   | "workspace_branding"
   | "model_providers"
@@ -108,7 +106,6 @@ export type SubNavigationAdminId =
 export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   members: ["/w/[wId]/members"],
   identity_and_provisioning: ["/w/[wId]/identity-and-provisioning"],
-  workspace: ["/w/[wId]/workspace"],
   governance: ["/w/[wId]/governance"],
   workspace_branding: ["/w/[wId]/brand"],
   model_providers: ["/w/[wId]/model-providers"],
@@ -279,7 +276,6 @@ export const subNavigationAdmin = ({
 
   const hasAdminRole = isAdmin(owner);
   const hasManagerRole = isManager(owner);
-  const isAdminGovernanceEnabled = featureFlags.includes("admin_governance");
 
   nav.push({
     id: "workspace",
@@ -295,35 +291,20 @@ export const subNavigationAdmin = ({
       },
       {
         id: "identity_and_provisioning",
-        label: isAdminGovernanceEnabled
-          ? "IT & Security"
-          : "Identity & Provisioning",
+        label: "IT & Security",
         icon: Fingerprint04,
         href: `/w/${owner.sId}/identity-and-provisioning`,
         current: isCurrent("identity_and_provisioning"),
         disabled: !canAdminSecurity,
       },
-      ...(isAdminGovernanceEnabled
-        ? [
-            {
-              id: "governance" as const,
-              label: "Settings & Governance",
-              icon: Toggle01Left,
-              href: `/w/${owner.sId}/governance`,
-              current: isCurrent("governance"),
-              disabled: !hasManagerRole,
-            },
-          ]
-        : [
-            {
-              id: "workspace" as const,
-              label: "Workspace Settings",
-              icon: Building04,
-              href: `/w/${owner.sId}/workspace`,
-              current: isCurrent("workspace"),
-              disabled: !hasAdminRole,
-            },
-          ]),
+      {
+        id: "governance",
+        label: "Settings & Governance",
+        icon: Toggle01Left,
+        href: `/w/${owner.sId}/governance`,
+        current: isCurrent("governance"),
+        disabled: !hasManagerRole,
+      },
       ...(featureFlags.includes("whitelabel_frames")
         ? [
             {
