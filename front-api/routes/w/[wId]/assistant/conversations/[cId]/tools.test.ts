@@ -170,7 +170,8 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/tools", () => {
       });
 
       expect(response.status).toBe(200);
-      expect((await response.json()).success).toBe(true);
+      const body = await response.json();
+      expect(body.success).toBe(true);
 
       const relationships = await ConversationResource.fetchMCPServerViews(
         auth,

@@ -482,14 +482,14 @@ describe("POST /api/w/:wId/assistant/agent_configurations - additionalRequestedS
     expect(data.agentConfiguration.requestedSpaceIds).not.toContain(
       openSpace.sId
     );
-    expect(
+    const agentMCPServerConfigurationCount =
       await AgentMCPServerConfigurationModel.count({
         where: {
           workspaceId: workspace.id,
           agentConfigurationId: data.agentConfiguration.id,
         },
-      })
-    ).toBe(0);
+      });
+    expect(agentMCPServerConfigurationCount).toBe(0);
   });
 });
 
