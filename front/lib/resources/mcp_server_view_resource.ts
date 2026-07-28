@@ -1583,6 +1583,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
             description: systemView?.description ?? null,
             oAuthUseCase: systemView?.oAuthUseCase ?? null,
             oauthScope: systemView?.oauthScope ?? null,
+            isRestrictedToSkills: systemView?.isRestrictedToSkills ?? false,
           });
         }
       }
