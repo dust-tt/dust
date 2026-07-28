@@ -31,7 +31,6 @@ import {
   Check,
   Checkbox,
   ContentMessage,
-  cn,
   Label,
   XClose,
 } from "@dust-tt/sparkle";
@@ -41,7 +40,6 @@ type ToolOverride = {
   title?: (inputs: Record<string, unknown>) => string;
   approveLabel?: string;
   alwaysAllowLabel?: (inputs: Record<string, unknown>) => string;
-  compactFooter?: boolean;
   detailsExpanded?: boolean;
 };
 
@@ -72,7 +70,6 @@ const MCP_TOOL_OVERRIDES: Partial<
       title: () => "Publish this function?",
       approveLabel: "Publish",
       alwaysAllowLabel: () => "Always allow agent to publish Pod functions",
-      compactFooter: true,
     },
   },
   [POD_TASKS_SERVER_NAME]: {
@@ -295,13 +292,7 @@ export function ToolValidationCard({
               {errorMessage}
             </div>
           )}
-          <div
-            className={cn(
-              "flex flex-col gap-3 sm:mt-3",
-              toolOverride?.compactFooter &&
-                "sm:flex-row sm:items-center sm:justify-between"
-            )}
-          >
+          <div className="flex flex-col gap-3 sm:mt-3">
             {(validationRequest.stake === "low" ||
               validationRequest.stake === "medium") && (
               <Label
@@ -320,15 +311,8 @@ export function ToolValidationCard({
                 </span>
               </Label>
             )}
-            {!toolOverride?.compactFooter && (
-              <div className="hidden sm:block sm:grow" />
-            )}
-            <div
-              className={cn(
-                "flex flex-row gap-3 self-end",
-                toolOverride?.compactFooter && "sm:self-auto"
-              )}
-            >
+            <div className="hidden sm:block sm:grow" />
+            <div className="flex flex-row gap-3 self-end">
               <Button
                 label="Decline"
                 variant="outline"
