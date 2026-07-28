@@ -28,14 +28,14 @@ function formatDuration(durationMs: number) {
 function formatTokenUsage({
   inputTokens,
   uncachedInputTokens,
-  outputTokens,
+  totalOutputTokens,
 }: TokenUsage) {
   const inputStr =
     inputTokens.toLocaleString() +
     (uncachedInputTokens
       ? ` (uncached: ${uncachedInputTokens.toLocaleString()})`
       : "");
-  const outputStr = outputTokens.toLocaleString();
+  const outputStr = totalOutputTokens.toLocaleString();
   return `${inputStr} → ${outputStr}`;
 }
 
