@@ -284,7 +284,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       name: systemView.name,
       description: systemView.description,
       oauthScope: systemView.oauthScope,
-      isRestrictedToSkills: systemView.isRestrictedToSkills,
+      isRestrictedToSkills: false,
     };
 
     if (space.kind === "global") {
@@ -1583,7 +1583,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
             description: systemView?.description ?? null,
             oAuthUseCase: systemView?.oAuthUseCase ?? null,
             oauthScope: systemView?.oauthScope ?? null,
-            isRestrictedToSkills: systemView?.isRestrictedToSkills ?? false,
+            isRestrictedToSkills: false,
           });
         }
       }
