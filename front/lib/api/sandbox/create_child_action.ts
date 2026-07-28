@@ -393,6 +393,13 @@ export async function createSandboxChildAction(
     });
   }
 
+  if (parentAction.status === "blocked_child_action_input_required") {
+    // The parent resume scans all non-final actions from its step and will launch this child.
+    return new Ok({
+      actionId: action.sId,
+    });
+  }
+
   const userMessageInfo = await getUserMessageIdFromMessageId(auth, {
     messageId: agentMessage.sId,
   });

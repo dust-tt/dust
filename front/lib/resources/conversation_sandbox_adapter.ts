@@ -148,12 +148,13 @@ export class ConversationSandboxAdapter {
 
   static async pauseSandboxForApproval(
     auth: Authenticator,
-    conversation: ConversationSandboxOwner
+    conversation: ConversationSandboxOwner,
+    opts: { shouldPause?: () => Promise<boolean> } = {}
   ): Promise<Result<void, Error>> {
     return SandboxResource.pauseForApproval(auth, {
       lockKey: conversation.sId,
       fetchSandbox: () => this.fetchSandboxByConversation(auth, conversation),
-    });
+    }, opts);
   }
 
   static async deleteSandbox(

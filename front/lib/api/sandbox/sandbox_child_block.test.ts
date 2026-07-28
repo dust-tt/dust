@@ -8,6 +8,9 @@ vi.mock("@app/temporal/agent_loop/client", () => ({
 vi.mock("@app/lib/resources/conversation_sandbox_adapter", () => ({
   ConversationSandboxAdapter: {
     pauseSandboxForApproval: vi.fn().mockResolvedValue(new Ok(undefined)),
+    dangerouslySleepSandboxIfPendingApproval: vi
+      .fn()
+      .mockResolvedValue(new Ok(undefined)),
   },
 }));
 
@@ -17,6 +20,7 @@ import {
   finishSandboxBash,
   pauseSandboxBashForBlockedChild,
   reserveSandboxChildRun,
+  reserveSandboxParentRun,
   resolveSandboxChildBlock,
 } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
@@ -291,6 +295,48 @@ describe("resolveSandboxChildBlock", () => {
     ).not.toHaveBeenCalled();
   });
 
+  it("rechecks the child after acquiring the sandbox lifecycle lock", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "running",
+    });
+    const { sId: childId } = await createAction({
+      name: "child_tool",
+      status: "blocked_validation_required",
+      sandboxChildActionInfo: { parentActionId: parentId },
+    });
+    const child = await AgentMCPActionResource.fetchById(auth, childId);
+    if (!child) {
+      throw new Error("Expected the child action to exist.");
+    }
+    vi.mocked(
+      ConversationSandboxAdapter.pauseSandboxForApproval
+    ).mockImplementationOnce(async (_auth, _conversation, opts) => {
+      const shouldPause = opts?.shouldPause;
+      if (!shouldPause) {
+        throw new Error("Expected a pause condition.");
+      }
+      await ConversationFactory.setAgentMessageStatus({
+        workspace,
+        agentMessageModelId: agentMessageId,
+        status: "cancelled",
+      });
+      expect(await shouldPause()).toBe(false);
+      return new Ok(undefined);
+    });
+
+    const accepted = await pauseSandboxBashForBlockedChild(
+      auth,
+      child,
+      conversation
+    );
+
+    expect(accepted).toBe(false);
+    expect(
+      vi.mocked(ConversationSandboxAdapter.pauseSandboxForApproval)
+    ).toHaveBeenCalledOnce();
+  });
+
   it("denies a ready child when its parent finishes before the child starts", async () => {
     const { sId: parentId } = await createAction({
       name: "bash",
@@ -347,6 +393,11 @@ describe("resolveSandboxChildBlock", () => {
     expect(completed).toBe(true);
     expect(parent.status).toBe("succeeded");
     expect(child?.status).toBe("denied");
+    expect(
+      vi.mocked(
+        ConversationSandboxAdapter.dangerouslySleepSandboxIfPendingApproval
+      )
+    ).toHaveBeenCalledOnce();
   });
 
   it("denies a pending child when its parent errors", async () => {
@@ -418,6 +469,74 @@ describe("resolveSandboxChildBlock", () => {
     const reserved = await reserveSandboxChildRun(auth, child, conversation);
 
     expect(reserved?.status).toBe("running");
+  });
+
+  it("defers a ready child while its parent is blocked", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "blocked_child_action_input_required",
+    });
+    const { sId: childId } = await createAction({
+      name: "child_tool",
+      status: "ready_allowed_implicitly",
+      sandboxChildActionInfo: { parentActionId: parentId },
+    });
+    const child = await AgentMCPActionResource.fetchById(auth, childId);
+    if (!child) {
+      throw new Error("Expected the child action to exist.");
+    }
+
+    const reserved = await reserveSandboxChildRun(auth, child, conversation);
+
+    const deferredChild = await AgentMCPActionResource.fetchById(auth, childId);
+    expect(reserved).toBeNull();
+    expect(deferredChild?.status).toBe("ready_allowed_implicitly");
+  });
+
+  it("reserves a ready parent and child together", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "ready_allowed_explicitly",
+      resumeState: { execId: "0123456789abcdef" },
+    });
+    const { sId: childId } = await createAction({
+      name: "child_tool",
+      status: "ready_allowed_explicitly",
+      sandboxChildActionInfo: { parentActionId: parentId },
+    });
+    const child = await AgentMCPActionResource.fetchById(auth, childId);
+    if (!child) {
+      throw new Error("Expected the child action to exist.");
+    }
+
+    const reserved = await reserveSandboxChildRun(auth, child, conversation);
+
+    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
+    expect(reserved?.status).toBe("running");
+    expect(parent?.status).toBe("running");
+  });
+
+  it("denies a resumed parent when cancellation wins", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "ready_allowed_explicitly",
+      resumeState: { execId: "0123456789abcdef" },
+    });
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: agentMessageId,
+      status: "cancelled",
+    });
+    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
+    if (!parent) {
+      throw new Error("Expected the parent action to exist.");
+    }
+
+    const reserved = await reserveSandboxParentRun(auth, parent, conversation);
+
+    const deniedParent = await AgentMCPActionResource.fetchById(auth, parentId);
+    expect(reserved).toBeNull();
+    expect(deniedParent?.status).toBe("denied");
   });
 
   it("skips relaunch when the parent is not in blocked_child_action_input_required", async () => {

@@ -131,18 +131,22 @@ export async function pauseReservedSandboxBash(
   action: AgentMCPActionResource,
   conversation: ConversationWithoutContentType
 ): Promise<void> {
-  const freshAction = await AgentMCPActionResource.fetchById(auth, action.sId);
-  if (
-    !freshAction ||
-    !isToolExecutionStatusBlocked(freshAction.status) ||
-    !(await freshAction.canAgentMessageResume(auth))
-  ) {
-    return;
-  }
-
   const pauseResult = await ConversationSandboxAdapter.pauseSandboxForApproval(
     auth,
-    conversation
+    conversation,
+    {
+      shouldPause: async () => {
+        const freshAction = await AgentMCPActionResource.fetchById(
+          auth,
+          action.sId
+        );
+        return (
+          freshAction !== null &&
+          isToolExecutionStatusBlocked(freshAction.status) &&
+          (await freshAction.canAgentMessageResume(auth))
+        );
+      },
+    }
   );
   if (pauseResult.isErr()) {
     logger.error(
@@ -185,21 +189,7 @@ export async function reserveSandboxChildRun(
       info.parentActionId,
       transaction
     );
-    if (
-      !freshAction ||
-      !parentAction ||
-      (parentAction.status !== "running" &&
-        parentAction.status !== "ready_allowed_explicitly" &&
-        parentAction.status !== "ready_allowed_implicitly") ||
-      !(await freshAction.canAgentMessageResume(auth, transaction))
-    ) {
-      if (freshAction) {
-        await freshAction.updateStatusFromExpected(auth, {
-          status: "denied",
-          expectedStatus: freshAction.status,
-          transaction,
-        });
-      }
+    if (!freshAction) {
       return null;
     }
 
@@ -207,6 +197,94 @@ export async function reserveSandboxChildRun(
       freshAction.status !== "ready_allowed_explicitly" &&
       freshAction.status !== "ready_allowed_implicitly"
     ) {
+      return null;
+    }
+
+    if (
+      !parentAction ||
+      (parentAction.status !== "running" &&
+        parentAction.status !== "ready_allowed_explicitly" &&
+        parentAction.status !== "ready_allowed_implicitly" &&
+        parentAction.status !== "blocked_child_action_input_required") ||
+      !(await freshAction.canAgentMessageResume(auth, transaction))
+    ) {
+      await freshAction.updateStatusFromExpected(auth, {
+        status: "denied",
+        expectedStatus: freshAction.status,
+        transaction,
+      });
+      return null;
+    }
+
+    if (parentAction.status === "blocked_child_action_input_required") {
+      return null;
+    }
+
+    if (
+      parentAction.status === "ready_allowed_explicitly" ||
+      parentAction.status === "ready_allowed_implicitly"
+    ) {
+      const [updatedParentCount] = await parentAction.updateStatusFromExpected(
+        auth,
+        {
+          status: "running",
+          expectedStatus: parentAction.status,
+          transaction,
+        }
+      );
+      if (updatedParentCount === 0) {
+        return null;
+      }
+    }
+
+    const [updatedCount] = await freshAction.updateStatusFromExpected(auth, {
+      status: "running",
+      expectedStatus: freshAction.status,
+      transaction,
+    });
+    if (updatedCount === 0) {
+      return null;
+    }
+
+    return AgentMCPActionResource.fetchById(auth, freshAction.sId, transaction);
+  });
+}
+
+/**
+ * Reserves a resumed sandbox parent at the tool-activity boundary. A child may have already
+ * reserved the parent in the same batch, in which case the running parent is returned directly.
+ */
+export async function reserveSandboxParentRun(
+  auth: Authenticator,
+  action: AgentMCPActionResource,
+  conversation: ConversationWithoutContentType
+): Promise<AgentMCPActionResource | null> {
+  return withTransaction(async (transaction) => {
+    await getConversationRankVersionLock(auth, conversation, transaction);
+
+    const freshAction = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId,
+      transaction
+    );
+    if (!freshAction) {
+      return null;
+    }
+    if (freshAction.status === "running") {
+      return freshAction;
+    }
+    if (
+      freshAction.status !== "ready_allowed_explicitly" &&
+      freshAction.status !== "ready_allowed_implicitly"
+    ) {
+      return null;
+    }
+    if (!(await freshAction.canAgentMessageResume(auth, transaction))) {
+      await freshAction.updateStatusFromExpected(auth, {
+        status: "denied",
+        expectedStatus: freshAction.status,
+        transaction,
+      });
       return null;
     }
 
@@ -276,6 +354,34 @@ export async function finishSandboxBash(
   });
 
   if (result.deniedChildren.length > 0) {
+    if (
+      result.deniedChildren.some((child) =>
+        isToolExecutionStatusBlocked(child.status)
+      )
+    ) {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      if (conversationResource) {
+        const sleepResult =
+          await ConversationSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(
+            auth,
+            conversationResource
+          );
+        if (sleepResult.isErr()) {
+          logger.error(
+            {
+              err: sleepResult.error,
+              conversationId: conversation.sId,
+              messageId,
+            },
+            "Failed to release sandbox after parent completion"
+          );
+        }
+      }
+    }
+
     await clearBlockedActionEffects(auth, {
       actionIds: result.deniedChildren.map((child) => child.sId),
       conversationId: conversation.sId,

@@ -279,6 +279,31 @@ describe("blocked actions resolution", () => {
       expect(reloadedAction?.status).toBe("denied");
     });
 
+    it("denies a resumed sandbox parent that had not restarted", async () => {
+      const { agentMessage, action } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+          status: "ready_allowed_explicitly",
+        });
+      await action.updateStepContext({
+        ...action.stepContext,
+        resumeState: { execId: "0123456789abcdef" },
+      });
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "cancelled",
+      });
+
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("denied");
+    });
+
     it("emits approval audit events only for actions actually denied", async () => {
       const { agentMessage, action: deniedAction } =
         await AgentMCPActionFactory.createWithAgentMessage(auth, {

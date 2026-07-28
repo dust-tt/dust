@@ -23,6 +23,7 @@ import type {
 import {
   isFileAuthorizationInfo,
   isSandboxChildActionInfo,
+  isSandboxResumeState,
   isUserQuestionResumeState,
 } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -99,7 +100,7 @@ const OUTPUT_ITEMS_BATCH_SIZE = 32;
 
 const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
 
-const DENIABLE_SANDBOX_CHILD_STATUSES = [
+const DENIABLE_PENDING_STATUSES = [
   "ready_allowed_explicitly",
   "ready_allowed_implicitly",
   ...TOOL_EXECUTION_BLOCKED_STATUSES,
@@ -987,7 +988,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         where: {
           id: { [Op.in]: actions.map((a) => a.id) },
           workspaceId: auth.getNonNullableWorkspace().id,
-          status: { [Op.in]: DENIABLE_SANDBOX_CHILD_STATUSES },
+          status: { [Op.in]: DENIABLE_PENDING_STATUSES },
         },
         returning: true,
         transaction,
@@ -1001,9 +1002,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   /**
    * Denies actions that cannot start or resume after an agent message terminates: all blocked
-   * actions, plus not-yet-started sandbox children. Must run in the message finalization
-   * transaction so a child workflow can atomically reserve a ready child before termination, or
-   * observe it as denied afterward.
+   * actions, plus not-yet-started sandbox children and resumed sandbox parents. Must run in the
+   * message finalization transaction so a workflow can atomically reserve an action before
+   * termination, or observe it as denied afterward.
    */
   static async denyPendingActionsForMessage(
     auth: Authenticator,
@@ -1022,7 +1023,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       {
         where: {
           agentMessageId,
-          status: { [Op.in]: DENIABLE_SANDBOX_CHILD_STATUSES },
+          status: { [Op.in]: DENIABLE_PENDING_STATUSES },
         },
       },
       transaction
@@ -1031,7 +1032,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     const deniableActions = pendingActions.filter(
       (action) =>
         isToolExecutionStatusBlocked(action.status) ||
-        isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
+        isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo) ||
+        isSandboxResumeState(action.stepContext.resumeState)
     );
 
     return this.denyActions(auth, deniableActions, transaction);
@@ -1059,7 +1061,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       {
         where: {
           agentMessageId: parentAction.agentMessageId,
-          status: { [Op.in]: DENIABLE_SANDBOX_CHILD_STATUSES },
+          status: { [Op.in]: DENIABLE_PENDING_STATUSES },
         },
       },
       transaction

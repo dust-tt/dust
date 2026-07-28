@@ -1,13 +1,19 @@
 import { isAgentLoopToolEvent } from "@app/lib/actions/mcp";
 import type { ToolContext } from "@app/lib/actions/types";
-import { isSandboxChildActionInfo } from "@app/lib/actions/types";
+import {
+  isSandboxChildActionInfo,
+  isSandboxResumeState,
+} from "@app/lib/actions/types";
 import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
-import { reserveSandboxChildRun } from "@app/lib/api/sandbox/sandbox_child_block";
+import {
+  reserveSandboxChildRun,
+  reserveSandboxParentRun,
+} from "@app/lib/api/sandbox/sandbox_child_block";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
@@ -178,11 +184,20 @@ export async function runToolActivity(
     userMessage,
   } = runAgentDataRes.value;
 
-  const actionToRun = isSandboxChildActionInfo(
-    action.stepContext.sandboxChildActionInfo
-  )
-    ? await reserveSandboxChildRun(auth, action, originalConversation)
-    : action;
+  let actionToRun: AgentMCPActionResource | null = action;
+  if (isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)) {
+    actionToRun = await reserveSandboxChildRun(
+      auth,
+      action,
+      originalConversation
+    );
+  } else if (isSandboxResumeState(action.stepContext.resumeState)) {
+    actionToRun = await reserveSandboxParentRun(
+      auth,
+      action,
+      originalConversation
+    );
+  }
   if (!actionToRun) {
     logger.info(
       {
@@ -191,7 +206,7 @@ export async function runToolActivity(
         agentMessageId: runAgentArgs.agentMessageId,
         workspaceId: authType.workspaceId,
       },
-      "Skipping sandbox child that can no longer run"
+      "Skipping sandbox action that can no longer run"
     );
     return { deferredEvents };
   }

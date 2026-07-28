@@ -324,6 +324,27 @@ describe("createSandboxChildAction", () => {
     expect(vi.mocked(launchSandboxChildToolWorkflow)).toHaveBeenCalledTimes(1);
   });
 
+  it("defers a ready child while its parent is blocked", async () => {
+    await setToolPermission("never_ask");
+    const parent = await AgentMCPActionResource.fetchById(auth, parentActionId);
+    if (!parent) {
+      throw new Error("Expected the parent action to exist.");
+    }
+    await parent.updateStatus("blocked_child_action_input_required");
+
+    const result = await callChildTool();
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    const child = await AgentMCPActionResource.fetchById(
+      auth,
+      result.value.actionId
+    );
+    expect(child?.status).toBe("ready_allowed_implicitly");
+    expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
+  });
+
   it("rejects child calls after the parent action finished", async () => {
     const parent = await AgentMCPActionResource.fetchById(auth, parentActionId);
     if (!parent) {
