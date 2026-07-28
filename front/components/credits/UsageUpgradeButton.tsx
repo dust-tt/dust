@@ -164,23 +164,24 @@ export function UsageUpgradeButton({
                     onChange,
                     errorMessage,
                     fieldState,
-                  }) => (
-                    <TextArea
-                      ref={registerRef}
-                      placeholder="e.g. running a large one-off backfill this week"
-                      rows={3}
-                      showErrorLabel={
-                        fieldState.isDirty || fieldState.isTouched
-                      }
-                      error={
-                        fieldState.isDirty || fieldState.isTouched
-                          ? errorMessage
-                          : undefined
-                      }
-                      onChange={onChange}
-                      {...registerProps}
-                    />
-                  )}
+                  }) => {
+                    const showError =
+                      fieldState.isDirty ||
+                      fieldState.isTouched ||
+                      form.formState.isSubmitted;
+
+                    return (
+                      <TextArea
+                        ref={registerRef}
+                        placeholder="e.g. running a large one-off backfill this week"
+                        rows={3}
+                        showErrorLabel={showError}
+                        error={showError ? errorMessage : undefined}
+                        onChange={onChange}
+                        {...registerProps}
+                      />
+                    );
+                  }}
                 </BaseFormFieldSection>
               </div>
             </DialogContainer>
@@ -195,7 +196,13 @@ export function UsageUpgradeButton({
                 variant: "primary",
                 isLoading: form.formState.isSubmitting,
                 disabled: form.formState.isSubmitting,
-                onClick: () => void form.handleSubmit(onSubmit)(),
+                onClick: (event: React.MouseEvent<HTMLButtonElement>) => {
+                  // The button is wrapped in Radix's DialogClose, which closes the
+                  // dialog on click unless prevented. Closing must instead happen
+                  // only after a successful submit, inside `onSubmit`.
+                  event.preventDefault();
+                  void form.handleSubmit(onSubmit)();
+                },
               }}
             />
           </FormProvider>
