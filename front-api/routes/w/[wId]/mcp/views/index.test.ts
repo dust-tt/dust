@@ -36,7 +36,12 @@ describe("GET /api/w/:wId/mcp/views", () => {
       globalSpace
     );
 
-    const url = `/api/w/${workspace.sId}/mcp/views?spaceIds=${globalSpace.sId}&availabilities=manual,auto`;
+    const baseUrl = `/api/w/${workspace.sId}/mcp/views`;
+    const queryParams = new URLSearchParams({
+      spaceIds: globalSpace.sId,
+      availabilities: "manual,auto",
+    });
+    const url = `${baseUrl}?${queryParams.toString()}`;
     const response = await honoApp.request(url);
 
     expect(response.status).toBe(200);
@@ -64,9 +69,9 @@ describe("GET /api/w/:wId/mcp/views", () => {
       defaultBody.serverViews.some((v: MCPServerViewType) => v.sId === view.sId)
     ).toBe(false);
 
-    const skillBuilderResponse = await honoApp.request(
-      `${url}&includeRestrictedToSkills=true`
-    );
+    queryParams.set("includeRestrictedToSkills", "true");
+    const skillBuilderUrl = `${baseUrl}?${queryParams.toString()}`;
+    const skillBuilderResponse = await honoApp.request(skillBuilderUrl);
     const skillBuilderBody = await skillBuilderResponse.json();
     const skillBuilderView = skillBuilderBody.serverViews.find(
       (v: MCPServerViewType) => v.sId === view.sId

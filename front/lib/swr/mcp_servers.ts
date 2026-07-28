@@ -1261,12 +1261,15 @@ function useMCPServerViewsFromSpacesBase(
   const configFetcher: Fetcher<GetMCPServerViewsListResponseBody> = fetcher;
   const { includeRestrictedToSkills = false, ...swrOptions } = options ?? {};
 
-  const spaceIds = spaces.map((s) => s.sId).join(",");
-  const availabilitiesParam = availabilities.join(",");
+  const queryParams = new URLSearchParams({
+    spaceIds: spaces.map((s) => s.sId).join(","),
+    availabilities: availabilities.join(","),
+  });
+  if (includeRestrictedToSkills) {
+    queryParams.set("includeRestrictedToSkills", "true");
+  }
 
-  const url =
-    `/api/w/${owner.sId}/mcp/views?spaceIds=${spaceIds}&availabilities=${availabilitiesParam}` +
-    (includeRestrictedToSkills ? "&includeRestrictedToSkills=true" : "");
+  const url = `/api/w/${owner.sId}/mcp/views?${queryParams.toString()}`;
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     ...swrOptions,
     ...(!spaces.length ? { disabled: true } : {}),
