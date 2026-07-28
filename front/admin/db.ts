@@ -98,6 +98,7 @@ import {
 } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
+import { GroupPoolCapModel } from "@app/lib/resources/storage/models/group_pool_caps";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
@@ -168,6 +169,7 @@ export function loadAllModels() {
     MembershipUpgradeRequestModel,
     MembershipInvitationModel,
     GroupModel,
+    GroupPoolCapModel,
     GroupMembershipModel,
     TagModel,
     SpaceModel,

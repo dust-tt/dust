@@ -156,7 +156,13 @@ export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
         await mutateGroups(
           (previous) =>
             previous
-              ? { ...previous, groups: [body.group, ...previous.groups] }
+              ? {
+                  ...previous,
+                  groups: [
+                    { ...body.group, poolCapAwuCredits: null },
+                    ...previous.groups,
+                  ],
+                }
               : previous,
           { revalidate: false }
         );
@@ -233,7 +239,12 @@ export function useUpdateGroup({
               ? {
                   ...previous,
                   groups: previous.groups.map((g) =>
-                    g.sId === body.group.sId ? body.group : g
+                    g.sId === body.group.sId
+                      ? {
+                          ...body.group,
+                          poolCapAwuCredits: g.poolCapAwuCredits,
+                        }
+                      : g
                   ),
                 }
               : previous,

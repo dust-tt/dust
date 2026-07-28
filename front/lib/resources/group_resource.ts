@@ -7,6 +7,7 @@ import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupPoolCapModel } from "@app/lib/resources/storage/models/group_pool_caps";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
@@ -83,7 +84,6 @@ type CachedGroup = {
   kind: GroupKind;
   workspaceId: ModelId;
   workOSGroupId: string | null;
-  poolCapAwuCredits: number | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -138,7 +138,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: g.kind,
       workspaceId: g.workspaceId,
       workOSGroupId: g.workOSGroupId,
-      poolCapAwuCredits: g.poolCapAwuCredits,
       createdAt: g.createdAt.getTime(),
       updatedAt: g.updatedAt.getTime(),
     }));
@@ -178,7 +177,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: data.kind,
       workspaceId: data.workspaceId,
       workOSGroupId: data.workOSGroupId,
-      poolCapAwuCredits: data.poolCapAwuCredits,
       createdAt: new Date(data.createdAt),
       updatedAt: new Date(data.updatedAt),
     });
@@ -1345,21 +1343,34 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const groupModelIds = [...new Set(memberships.map((m) => m.groupId))];
-    const groups = await GroupModel.findAll({
+    const caps = await GroupPoolCapModel.findAll({
       where: {
-        id: groupModelIds,
+        groupId: groupModelIds,
         workspaceId: workspace.id,
-        kind: [...CAP_ELIGIBLE_GROUP_KINDS],
-        poolCapAwuCredits: { [Op.ne]: null },
       },
     });
+    if (caps.length === 0) {
+      return result;
+    }
+
+    const groups = await GroupModel.findAll({
+      where: {
+        id: caps.map((c) => c.groupId),
+        workspaceId: workspace.id,
+        kind: [...CAP_ELIGIBLE_GROUP_KINDS],
+      },
+      attributes: ["id"],
+    });
+    const eligibleGroupIds = new Set(groups.map((g) => g.id));
     const capByGroupId = new Map(
-      groups.map((g) => [g.id, g.poolCapAwuCredits])
+      caps
+        .filter((c) => eligibleGroupIds.has(c.groupId))
+        .map((c) => [c.groupId, c.poolCapAwuCredits])
     );
 
     for (const m of memberships) {
       const cap = capByGroupId.get(m.groupId);
-      if (cap === undefined || cap === null) {
+      if (cap === undefined) {
         continue;
       }
       const existing = result.get(m.userId);
@@ -2319,8 +2330,51 @@ export class GroupResource extends BaseResource<GroupModel> {
       return new Err(new Error("Only admins can update group spend limits."));
     }
 
-    await this.update({ poolCapAwuCredits });
+    if (poolCapAwuCredits === null) {
+      await GroupPoolCapModel.destroy({
+        where: {
+          groupId: this.id,
+          workspaceId: this.workspaceId,
+        },
+      });
+    } else {
+      await GroupPoolCapModel.upsert({
+        groupId: this.id,
+        workspaceId: this.workspaceId,
+        poolCapAwuCredits,
+      });
+    }
+
     return new Ok(undefined);
+  }
+
+  // Per-group usage spend limit (excluding seat allowance), applied per member.
+  // null means the group carries no cap (falls back to the workspace default).
+  async getPoolCapAwuCredits(): Promise<number | null> {
+    const cap = await GroupPoolCapModel.findOne({
+      where: {
+        groupId: this.id,
+        workspaceId: this.workspaceId,
+      },
+    });
+    return cap?.poolCapAwuCredits ?? null;
+  }
+
+  static async getPoolCapAwuCreditsForGroups(
+    auth: Authenticator,
+    groups: GroupResource[]
+  ): Promise<Map<ModelId, number>> {
+    if (groups.length === 0) {
+      return new Map();
+    }
+
+    const caps = await GroupPoolCapModel.findAll({
+      where: {
+        groupId: groups.map((g) => g.id),
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    return new Map(caps.map((c) => [c.groupId, c.poolCapAwuCredits]));
   }
 
   // Deletion
@@ -2375,6 +2429,14 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
 
       await GroupMembershipModel.destroy({
+        where: {
+          groupId: this.id,
+          workspaceId: owner.id,
+        },
+        transaction,
+      });
+
+      await GroupPoolCapModel.destroy({
         where: {
           groupId: this.id,
           workspaceId: owner.id,
@@ -2780,7 +2842,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: this.workspaceId,
       kind: this.kind,
       memberCount: 0, // Default value, use toJSONWithMemberCount for actual count
-      poolCapAwuCredits: this.poolCapAwuCredits,
     };
   }
 
@@ -2793,7 +2854,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: this.workspaceId,
       kind: this.kind,
       memberCount,
-      poolCapAwuCredits: this.poolCapAwuCredits,
     };
   }
 }
