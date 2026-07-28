@@ -49,6 +49,13 @@ vi.mock("@app/lib/file_storage", () => ({
       }
       gcsStore.delete(path);
     }),
+    deleteByPrefix: vi.fn(async (prefix: string) => {
+      for (const path of [...gcsStore.keys()]) {
+        if (path.startsWith(prefix)) {
+          gcsStore.delete(path);
+        }
+      }
+    }),
   })),
 }));
 
@@ -518,6 +525,34 @@ describe("Output items with GCS storage", () => {
     expect(gcsStore.size).toBe(0);
 
     // DB rows should be deleted.
+    const remainingItems = await AgentMCPActionOutputItemModel.findAll({
+      where: { workspaceId: workspace.id, agentMCPActionId: action.id },
+    });
+    expect(remainingItems).toHaveLength(0);
+  });
+
+  it("should delete legacy GCS paths that are outside the action prefix", async () => {
+    const { action, outputItemRows } = await createActionWithOutputItems([
+      { type: "text", text: "canonical" },
+      { type: "text", text: "legacy" },
+    ]);
+
+    expect(gcsStore.size).toBe(2);
+
+    // Point the second item at a legacy path that is not under the action prefix.
+    const legacyPath = `mcp_output_items/${action.sId}/${outputItemRows[1].id}.json`;
+    const legacyContent = gcsStore.get(outputItemRows[1].contentGcsPath!);
+    assert(legacyContent);
+    gcsStore.delete(outputItemRows[1].contentGcsPath!);
+    gcsStore.set(legacyPath, legacyContent);
+    await outputItemRows[1].update({ contentGcsPath: legacyPath });
+
+    await AgentMCPActionResource.destroyOutputItemsByActionIds(auth, [
+      action.id,
+    ]);
+
+    expect(gcsStore.size).toBe(0);
+
     const remainingItems = await AgentMCPActionOutputItemModel.findAll({
       where: { workspaceId: workspace.id, agentMCPActionId: action.id },
     });
