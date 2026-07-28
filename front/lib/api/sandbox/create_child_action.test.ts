@@ -11,12 +11,12 @@ vi.mock(import("@app/temporal/agent_loop/client"), async (importOriginal) => {
 
 // The blocked path publishes the approval event to Redis; keep it out of tests.
 vi.mock(
-  import("@app/temporal/agent_loop/activities/common"),
+  import("@app/lib/api/assistant/streaming/events"),
   async (importOriginal) => {
     const mod = await importOriginal();
     return {
       ...mod,
-      updateResourceAndPublishEvent: vi.fn().mockResolvedValue(undefined),
+      publishConversationRelatedEvent: vi.fn().mockResolvedValue(undefined),
     };
   }
 );
@@ -27,6 +27,7 @@ import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -35,7 +36,6 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
@@ -242,17 +242,15 @@ describe("createSandboxChildAction", () => {
     });
     expect(child?.toolConfiguration.permission).toBe("medium");
     expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
-    expect(vi.mocked(updateResourceAndPublishEvent)).toHaveBeenCalledWith(
-      auth,
+    expect(vi.mocked(publishConversationRelatedEvent)).toHaveBeenCalledWith(
       expect.objectContaining({
+        conversationId: conversation.sId,
         event: expect.objectContaining({
           type: "tool_approve_execution",
           actionId: child?.sId,
           inputs: { objectName: "Contact" },
           stake: "medium",
-          metadata: expect.objectContaining({
-            toolName: TOOL_NAME,
-          }),
+          metadata: expect.objectContaining({ toolName: TOOL_NAME }),
         }),
       })
     );
@@ -367,7 +365,7 @@ describe("createSandboxChildAction", () => {
     expect(result.error.message).toBe(
       "Parent sandbox action is no longer running."
     );
-    expect(vi.mocked(updateResourceAndPublishEvent)).not.toHaveBeenCalled();
+    expect(vi.mocked(publishConversationRelatedEvent)).not.toHaveBeenCalled();
     expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
   });
 
@@ -387,34 +385,7 @@ describe("createSandboxChildAction", () => {
     expect(result.error.message).toBe(
       "Agent message can no longer run sandbox child actions."
     );
-    expect(vi.mocked(updateResourceAndPublishEvent)).not.toHaveBeenCalled();
-    expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
-  });
-
-  it("removes a blocked child when cancellation wins during approval publication", async () => {
-    await setToolPermission("medium");
-    let childActionId: string | null = null;
-    vi.mocked(updateResourceAndPublishEvent).mockImplementationOnce(
-      async (_auth, { event }) => {
-        if ("actionId" in event) {
-          childActionId = event.actionId;
-        }
-        await ConversationFactory.setAgentMessageStatus({
-          workspace,
-          agentMessageModelId: agentMessage.agentMessageId,
-          status: "cancelled",
-        });
-      }
-    );
-
-    const result = await callChildTool();
-
-    expect(result.isErr()).toBe(true);
-    if (!childActionId) {
-      throw new Error("Expected the child approval event to be published.");
-    }
-    const child = await AgentMCPActionResource.fetchById(auth, childActionId);
-    expect(child?.status).toBe("denied");
+    expect(vi.mocked(publishConversationRelatedEvent)).not.toHaveBeenCalled();
     expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
   });
 

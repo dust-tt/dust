@@ -473,6 +473,7 @@ async function executeToolStreaming(
             agentMessageId: agentMessage.sId,
             agentMessageRowId: agentMessage.agentMessageId,
             conversationId: conversation.sId,
+            originActionId: action.sId,
             step,
             workspaceId: conversation.owner.id,
           },

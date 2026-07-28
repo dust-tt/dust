@@ -518,6 +518,29 @@ describe("blocked actions resolution", () => {
   });
 
   describe("updateAgentMessageWithFinalStatus", () => {
+    it("denies blocked actions when the message succeeds", async () => {
+      const { agentMessage, action } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+        });
+
+      await ConversationResource.markAsActionRequired(auth, { conversation });
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "succeeded",
+      });
+
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("denied");
+      expect(await getActionRequired()).toBe(false);
+    });
+
     it("denies blocked actions when the message is interrupted", async () => {
       const { agentMessage, action } =
         await AgentMCPActionFactory.createWithAgentMessage(auth, {

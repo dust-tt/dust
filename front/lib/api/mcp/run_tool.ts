@@ -5,6 +5,7 @@ import type {
 } from "@app/lib/actions/mcp";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import {
+  prepareToolResults,
   processToolNotification,
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
@@ -25,7 +26,10 @@ import {
 } from "@app/lib/actions/types";
 import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
-import { finishSandboxBash } from "@app/lib/api/sandbox/sandbox_child_block";
+import {
+  finishSandboxBash,
+  persistSandboxBashOutput,
+} from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -33,6 +37,19 @@ import { TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agen
 import { removeNulls } from "@app/types/shared/utils/general";
 import { heartbeat } from "@temporalio/activity";
 import assert from "assert";
+
+function makeSandboxPausedEvent(
+  runContext: Extract<ToolContext["runContext"], { contextType: "agent_loop" }>
+): ToolPausedEvent {
+  return {
+    type: "tool_paused",
+    created: Date.now(),
+    actionId: runContext.action.sId,
+    configurationId: runContext.agentConfiguration.sId,
+    conversationId: runContext.conversation.sId,
+    messageId: runContext.agentMessage.sId,
+  };
+}
 
 /**
  * Runs a tool with streaming for the given tool context.
@@ -131,7 +148,7 @@ export async function* runToolWithStreaming(
   if (toolCallResult.isError) {
     const endDate = performance.now();
     if (isSandboxBash) {
-      const completed = await finishSandboxBash(auth, {
+      const { completed } = await finishSandboxBash(auth, {
         action: runContext.action,
         conversation: runContext.conversation,
         executionDurationMs: endDate - startDate,
@@ -139,14 +156,7 @@ export async function* runToolWithStreaming(
         status: "errored",
       });
       if (!completed) {
-        yield {
-          type: "tool_paused",
-          created: Date.now(),
-          actionId: action.sId,
-          configurationId: runContext.agentConfiguration.sId,
-          conversationId: runContext.conversation.sId,
-          messageId: runContext.agentMessage.sId,
-        };
+        yield makeSandboxPausedEvent(runContext);
         return;
       }
     }
@@ -159,6 +169,75 @@ export async function* runToolWithStreaming(
     return;
   }
 
+  const processingOptions = {
+    intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
+    heartbeatFn: () => {
+      heartbeat();
+      localLogger.info("MCP tool result processing heartbeat");
+    },
+  };
+
+  if (isSandboxBash) {
+    // File handling can legitimately take up to 5 minutes. Prepare everything first, but leave the
+    // action output uncommitted until the current workflow proves ownership under the conversation
+    // lock.
+    const { preparedOutputItems, generatedFiles } = await withPeriodicHeartbeat(
+      () =>
+        prepareToolResults(auth, {
+          localLogger,
+          toolCallResultContent: toolCallResult.content,
+          toolContext,
+        }),
+      processingOptions
+    );
+    const agentPauseEvents = await getExitOrPauseEvents(auth, {
+      outputItems: preparedOutputItems,
+      toolContext,
+    });
+
+    if (agentPauseEvents.length > 0) {
+      const outputItems = await persistSandboxBashOutput(auth, {
+        action: runContext.action,
+        conversation: runContext.conversation,
+        outputs: preparedOutputItems,
+      });
+      if (!outputItems) {
+        yield makeSandboxPausedEvent(runContext);
+        return;
+      }
+      for (const event of agentPauseEvents) {
+        yield event;
+      }
+      return;
+    }
+
+    const endDate = performance.now();
+    const { completed, outputItems } = await finishSandboxBash(auth, {
+      action: runContext.action,
+      conversation: runContext.conversation,
+      executionDurationMs: endDate - startDate,
+      messageId: runContext.agentMessage.sId,
+      outputs: preparedOutputItems,
+      status: "succeeded",
+    });
+    if (!completed) {
+      yield makeSandboxPausedEvent(runContext);
+      return;
+    }
+
+    yield {
+      type: "tool_success",
+      created: Date.now(),
+      output: removeNulls(
+        [...intermediateOutputItems, ...outputItems].map(
+          hideFileFromActionOutput
+        )
+      ),
+      generatedFiles,
+    };
+    return;
+  }
+
   // Tool result processing can legitimately take up to 5 minutes when processing files,
   // so heartbeat while this scoped post-processing phase is running.
   const { outputItems, generatedFiles } = await withPeriodicHeartbeat(
@@ -168,13 +247,7 @@ export async function* runToolWithStreaming(
         toolCallResultContent: toolCallResult.content,
         toolContext,
       }),
-    {
-      intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
-      heartbeatFn: () => {
-        heartbeat();
-        localLogger.info("MCP tool result processing heartbeat");
-      },
-    }
+    processingOptions
   );
 
   // Parse the output resources to check if we find special events that require the agent loop to pause.
@@ -192,28 +265,7 @@ export async function* runToolWithStreaming(
   }
 
   const endDate = performance.now();
-  if (isSandboxBash) {
-    const completed = await finishSandboxBash(auth, {
-      action: runContext.action,
-      conversation: runContext.conversation,
-      executionDurationMs: endDate - startDate,
-      messageId: runContext.agentMessage.sId,
-      status: "succeeded",
-    });
-    if (!completed) {
-      yield {
-        type: "tool_paused",
-        created: Date.now(),
-        actionId: action.sId,
-        configurationId: runContext.agentConfiguration.sId,
-        conversationId: runContext.conversation.sId,
-        messageId: runContext.agentMessage.sId,
-      };
-      return;
-    }
-  } else {
-    await action.markAsSucceeded({ executionDurationMs: endDate - startDate });
-  }
+  await action.markAsSucceeded({ executionDurationMs: endDate - startDate });
 
   yield {
     type: "tool_success",

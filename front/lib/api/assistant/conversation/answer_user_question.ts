@@ -1,7 +1,9 @@
 import { isToolAskUserQuestionEvent } from "@app/lib/actions/mcp";
 import type { UserQuestionAnswer } from "@app/lib/actions/types";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
+import { validateBlockedSteps } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
+import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/lock";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { resumeAncestorConversations } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
@@ -11,6 +13,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { Result } from "@app/types/shared/result";
@@ -69,7 +72,7 @@ export async function registerUserAnswer(
     );
   }
 
-  const action = await AgentMCPActionResource.fetchById(auth, actionId);
+  let action = await AgentMCPActionResource.fetchById(auth, actionId);
   if (!action) {
     return new Err(
       new DustError("action_not_found", `Action not found: ${actionId}`)
@@ -85,31 +88,63 @@ export async function registerUserAnswer(
     );
   }
 
-  // A blocked action is only actionable while its agent message can still resume: answering one
-  // left behind by a non-resumable terminal message would relaunch an agent loop that was already
-  // terminated.
-  if (!(await action.canAgentMessageResume(auth))) {
-    return new Err(
-      new DustError(
-        "action_not_blocked",
-        "Action belongs to an agent message that can no longer resume"
-      )
+  const transitionRes = await withTransaction(async (transaction) => {
+    await getConversationRankVersionLock(auth, conversation, transaction);
+
+    const freshAction = await AgentMCPActionResource.fetchById(
+      auth,
+      actionId,
+      transaction
     );
+    if (!freshAction || freshAction.status !== "blocked_user_answer_required") {
+      return new Err(
+        new DustError(
+          "action_not_blocked",
+          "Action is no longer blocked for user question"
+        )
+      );
+    }
+    if (!(await freshAction.canAgentMessageResume(auth, transaction))) {
+      return new Err(
+        new DustError(
+          "action_not_blocked",
+          "Action belongs to an agent message that can no longer resume"
+        )
+      );
+    }
+
+    const stepValidation = await validateBlockedSteps(
+      auth,
+      freshAction,
+      transaction
+    );
+    if (stepValidation.isErr()) {
+      return stepValidation;
+    }
+
+    await freshAction.updateStepContext(
+      {
+        ...freshAction.stepContext,
+        resumeState: {
+          ...freshAction.stepContext.resumeState,
+          answer,
+        },
+      },
+      transaction
+    );
+
+    const [updatedCount] = await freshAction.updateStatusFromExpected(auth, {
+      status: "ready_allowed_explicitly",
+      expectedStatus: "blocked_user_answer_required",
+      transaction,
+    });
+    return new Ok({ action: freshAction, updatedCount });
+  });
+  if (transitionRes.isErr()) {
+    return transitionRes;
   }
-
-  await action.updateStepContext({
-    ...action.stepContext,
-    resumeState: {
-      ...action.stepContext.resumeState,
-      answer,
-    },
-  });
-
-  // Change status to ready so the tool re-runs.
-  const [updatedCount] = await action.updateStatusFromExpected(auth, {
-    status: "ready_allowed_explicitly",
-    expectedStatus: "blocked_user_answer_required",
-  });
+  const { action: freshAction, updatedCount } = transitionRes.value;
+  action = freshAction;
 
   if (updatedCount === 0) {
     logger.info(

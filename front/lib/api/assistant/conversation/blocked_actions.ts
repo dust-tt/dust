@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
@@ -21,11 +22,51 @@ import type {
   AgentMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Transaction } from "sequelize";
 
 export type GetBlockedActionsResponseType = {
   blockedActions: AgentLoopBlockedToolExecution[];
 };
+
+export async function validateBlockedSteps(
+  auth: Authenticator,
+  action: AgentMCPActionResource,
+  transaction: Transaction
+): Promise<Result<void, DustError>> {
+  // Scoped by agentMessageId and blocked statuses, using the
+  // (workspaceId, agentMessageId, status) index.
+  const blockedActions =
+    await AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
+      agentMessageId: action.agentMessageId,
+      skipSameStepCheck: true,
+      transaction,
+    });
+  const blockedSteps = new Set(
+    blockedActions.map((blockedAction) => blockedAction.stepContent.step)
+  );
+  if (blockedSteps.size <= 1) {
+    return new Ok(undefined);
+  }
+
+  logger.warn(
+    {
+      actionId: action.sId,
+      blockedSteps: [...blockedSteps],
+      workspaceId: auth.getNonNullableWorkspace().sId,
+    },
+    "Refusing to resume actions blocked across multiple steps"
+  );
+  return new Err(
+    new DustError(
+      "invalid_request_error",
+      "This generation cannot resume because its pending actions belong to different steps. " +
+        "Cancel it and retry."
+    )
+  );
+}
 
 export async function releaseSandboxIfUnused(
   auth: Authenticator,

@@ -289,9 +289,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   static async fetchBlockedActionIds({
     actionIds,
     workspaceModelId,
+    transaction,
   }: {
     actionIds: string[];
     workspaceModelId: ModelId;
+    transaction?: Transaction;
   }): Promise<Set<string>> {
     if (actionIds.length === 0) {
       return new Set();
@@ -310,6 +312,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         id: { [Op.in]: actionModelIds },
         status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
       },
+      transaction,
     });
 
     return new Set(
@@ -1217,7 +1220,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     contents: Array<{
       content: CallToolResult["content"][number];
       fileId?: ModelId;
-    }>
+    }>,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<ToolOutputItemType[], Error>> {
     // Write GCS first: the helper retries and cleans up partial batches, and DB insertion only
     // starts once every object has been persisted.
@@ -1257,7 +1261,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             generatedFilePath,
             generatedFileContentType,
           };
-        })
+        }),
+        { transaction }
       );
     } catch (err) {
       // A DB error can be ambiguous after commit, so keep the GCS objects rather than risk

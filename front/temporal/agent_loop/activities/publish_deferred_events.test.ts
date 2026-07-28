@@ -1,22 +1,34 @@
 import type { DeferredEvent } from "@app/temporal/agent_loop/lib/deferred_events";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { fetchBlockedMock, messageFindMock, publishEventMock, removeEventMock } =
-  vi.hoisted(() => ({
-    fetchBlockedMock: vi.fn(),
-    messageFindMock: vi.fn(),
-    publishEventMock: vi.fn(),
-    removeEventMock: vi.fn(),
-  }));
+const {
+  fetchBlockedMock,
+  lockMock,
+  messageFindMock,
+  publishEventMock,
+  transaction,
+} = vi.hoisted(() => ({
+  fetchBlockedMock: vi.fn(),
+  lockMock: vi.fn(),
+  messageFindMock: vi.fn(),
+  publishEventMock: vi.fn(),
+  transaction: {},
+}));
 
 vi.mock("@app/lib/api/assistant/streaming/events", () => ({
   publishConversationRelatedEvent: publishEventMock,
 }));
-vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
-  getRedisHybridManager: () => ({ removeEvent: removeEventMock }),
+vi.mock("@app/lib/api/assistant/conversation/lock", () => ({
+  getConversationLockById: lockMock,
+}));
+vi.mock("@app/lib/utils/sql_utils", () => ({
+  withTransaction: (fn: (transaction: unknown) => unknown) => fn(transaction),
+}));
+vi.mock("@app/lib/resources/string_ids", () => ({
+  getResourceIdFromSId: () => 42,
 }));
 vi.mock("@app/lib/models/agent/conversation", () => ({
-  AgentMessageModel: { findOne: messageFindMock },
+  AgentMessageModel: { findAll: messageFindMock },
 }));
 vi.mock("@app/lib/resources/agent_mcp_action_resource", () => ({
   AgentMCPActionResource: {
@@ -31,6 +43,7 @@ const DEFERRED_EVENT: DeferredEvent = {
     agentMessageId: "message_id",
     agentMessageRowId: 1,
     conversationId: "conversation_id",
+    originActionId: "origin_action_id",
     step: 2,
     workspaceId: 3,
   },
@@ -60,21 +73,22 @@ describe("publishDeferredEventsActivity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     fetchBlockedMock.mockReset();
-    messageFindMock.mockResolvedValue({});
+    messageFindMock.mockResolvedValue([{ id: 1 }]);
     publishEventMock.mockResolvedValue(undefined);
-    removeEventMock.mockResolvedValue(undefined);
+    lockMock.mockResolvedValue(undefined);
   });
 
-  it("removes an event denied while it is being published", async () => {
-    fetchBlockedMock
-      .mockResolvedValueOnce(new Set(["action_id"]))
-      .mockResolvedValueOnce(new Set());
+  it("skips a nested event whose originating action is no longer blocked", async () => {
+    fetchBlockedMock.mockResolvedValueOnce(new Set(["action_id"]));
 
     const shouldPause = await publishDeferredEventsActivity([DEFERRED_EVENT]);
 
-    expect(fetchBlockedMock).toHaveBeenCalledTimes(2);
-    expect(publishEventMock).toHaveBeenCalledTimes(1);
-    expect(removeEventMock).toHaveBeenCalledTimes(1);
+    expect(fetchBlockedMock).toHaveBeenCalledWith({
+      actionIds: ["action_id", "origin_action_id"],
+      workspaceModelId: 3,
+      transaction,
+    });
+    expect(publishEventMock).not.toHaveBeenCalled();
     expect(shouldPause).toBe(false);
   });
 
@@ -86,9 +100,9 @@ describe("publishDeferredEventsActivity", () => {
         actionId: "stale_action_id",
       },
     };
-    fetchBlockedMock
-      .mockResolvedValueOnce(new Set(["action_id"]))
-      .mockResolvedValueOnce(new Set(["action_id"]));
+    fetchBlockedMock.mockResolvedValueOnce(
+      new Set(["action_id", "origin_action_id"])
+    );
 
     const shouldPause = await publishDeferredEventsActivity([
       DEFERRED_EVENT,
@@ -107,33 +121,16 @@ describe("publishDeferredEventsActivity", () => {
     expect(shouldPause).toBe(true);
   });
 
-  it("publishes a last marker when the last action resolves during publication", async () => {
-    const lastEvent: DeferredEvent = {
-      ...DEFERRED_EVENT,
-      event: {
-        ...DEFERRED_EVENT.event,
-        actionId: "last_action_id",
-      },
-    };
-    fetchBlockedMock
-      .mockResolvedValueOnce(new Set(["action_id", "last_action_id"]))
-      .mockResolvedValueOnce(new Set(["action_id"]));
+  it("skips publication after the agent message terminated", async () => {
+    messageFindMock.mockResolvedValueOnce([]);
+    fetchBlockedMock.mockResolvedValueOnce(
+      new Set(["action_id", "origin_action_id"])
+    );
 
-    const shouldPause = await publishDeferredEventsActivity([
-      DEFERRED_EVENT,
-      lastEvent,
-    ]);
+    const shouldPause = await publishDeferredEventsActivity([DEFERRED_EVENT]);
 
-    expect(publishEventMock).toHaveBeenCalledTimes(2);
-    expect(publishEventMock).toHaveBeenLastCalledWith({
-      conversationId: "conversation_id",
-      event: expect.objectContaining({
-        actionId: "last_action_id",
-        isLastBlockingEventForStep: true,
-      }),
-      step: 2,
-    });
-    expect(removeEventMock).toHaveBeenCalledOnce();
-    expect(shouldPause).toBe(true);
+    expect(lockMock).toHaveBeenCalledWith(expect.any(Number), transaction);
+    expect(publishEventMock).not.toHaveBeenCalled();
+    expect(shouldPause).toBe(false);
   });
 });

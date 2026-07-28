@@ -10,12 +10,12 @@ import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { clearBlockedActionEffects } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/lock";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
+import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import { pauseReservedSandboxBash } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
@@ -24,7 +24,6 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
@@ -340,16 +339,7 @@ export async function createSandboxChildAction(
       isLastBlockingEventForStep: true,
     };
 
-    await updateResourceAndPublishEvent(auth, {
-      event: approvalRequirementEvent,
-      agentMessage,
-      conversation,
-      step: parentAction.stepContent.step,
-    });
-
-    await ConversationResource.markAsActionRequired(auth, { conversation });
-
-    const canStillBlock = await withTransaction(async (transaction) => {
+    const eventPublished = await withTransaction(async (transaction) => {
       await getConversationRankVersionLock(auth, conversation, transaction);
 
       const freshAction = await AgentMCPActionResource.fetchById(
@@ -361,6 +351,18 @@ export async function createSandboxChildAction(
         freshAction?.status === "blocked_validation_required" &&
         (await freshAction.canAgentMessageResume(auth, transaction))
       ) {
+        await ConversationResource.markAsActionRequired(auth, {
+          conversation,
+          transaction,
+        });
+        // Keep publication under the same lock as message termination and action resolution.
+        // The prompt is therefore either published before their client-visible event, or skipped
+        // after their state transition; it can never become the final event after termination.
+        await publishConversationRelatedEvent({
+          conversationId: conversation.sId,
+          event: approvalRequirementEvent,
+          step: parentAction.stepContent.step,
+        });
         return true;
       }
 
@@ -373,16 +375,7 @@ export async function createSandboxChildAction(
       }
       return false;
     });
-    if (!canStillBlock) {
-      // Cancellation can commit immediately before the approval event is published. Its terminal
-      // cleanup then has nothing left to remove, so this post-publish check removes the late event
-      // and clears the denormalized actionRequired flag. If cancellation commits afterward, its
-      // normal cleanup performs the same idempotent work.
-      await clearBlockedActionEffects(auth, {
-        actionIds: [action.sId],
-        conversationId: conversation.sId,
-        messageId: agentMessage.sId,
-      });
+    if (!eventPublished) {
       return new Err(
         new Error("Agent message can no longer run sandbox child actions.")
       );

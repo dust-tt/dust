@@ -8,7 +8,9 @@ import {
   setUserAlwaysApprovedTool,
 } from "@app/lib/actions/tool_status";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
+import { validateBlockedSteps } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
+import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/lock";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { resumeAncestorConversations as resumeAncestorConversationsHelper } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
@@ -23,6 +25,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { Result } from "@app/types/shared/result";
@@ -82,7 +85,7 @@ export async function validateAction(
     );
   }
 
-  const action = await AgentMCPActionResource.fetchById(auth, actionId);
+  let action = await AgentMCPActionResource.fetchById(auth, actionId);
   if (!action) {
     return new Err(
       new DustError("action_not_found", `Action not found: ${actionId}`)
@@ -98,50 +101,49 @@ export async function validateAction(
     );
   }
 
-  // Stale approval links must not relaunch an already terminated agent message.
-  if (!(await action.canAgentMessageResume(auth))) {
-    return new Err(
-      new DustError(
-        "action_not_blocked",
-        "Action belongs to an agent message that can no longer resume"
-      )
-    );
-  }
+  const transitionRes = await withTransaction(async (transaction) => {
+    await getConversationRankVersionLock(auth, conversation, transaction);
 
-  // Scoped by agentMessageId and blocked statuses, using the
-  // (workspaceId, agentMessageId, status) index.
-  const messageBlockedActions =
-    await AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
-      agentMessageId: action.agentMessageId,
-      skipSameStepCheck: true,
+    const freshAction = await AgentMCPActionResource.fetchById(
+      auth,
+      actionId,
+      transaction
+    );
+    if (!freshAction || freshAction.status !== "blocked_validation_required") {
+      return new Err(
+        new DustError("action_not_blocked", "Action is no longer blocked")
+      );
+    }
+    if (!(await freshAction.canAgentMessageResume(auth, transaction))) {
+      return new Err(
+        new DustError(
+          "action_not_blocked",
+          "Action belongs to an agent message that can no longer resume"
+        )
+      );
+    }
+
+    const stepValidation = await validateBlockedSteps(
+      auth,
+      freshAction,
+      transaction
+    );
+    if (stepValidation.isErr()) {
+      return stepValidation;
+    }
+
+    const [updatedCount] = await freshAction.updateStatusFromExpected(auth, {
+      status: getMCPApprovalStateFromUserApprovalState(approvalState),
+      expectedStatus: "blocked_validation_required",
+      transaction,
     });
-  const blockedSteps = new Set(
-    messageBlockedActions.map((blockedAction) => blockedAction.stepContent.step)
-  );
-  if (blockedSteps.size > 1) {
-    logger.warn(
-      {
-        actionId,
-        blockedSteps: [...blockedSteps],
-        conversationId,
-        messageId,
-        workspaceId: owner.sId,
-      },
-      "Refusing to resume actions blocked across multiple steps"
-    );
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        "This generation cannot resume because its pending actions belong to different steps. " +
-          "Cancel it and retry."
-      )
-    );
-  }
-
-  const [updatedCount] = await action.updateStatusFromExpected(auth, {
-    status: getMCPApprovalStateFromUserApprovalState(approvalState),
-    expectedStatus: "blocked_validation_required",
+    return new Ok({ action: freshAction, updatedCount });
   });
+  if (transitionRes.isErr()) {
+    return transitionRes;
+  }
+  const { action: freshAction, updatedCount } = transitionRes.value;
+  action = freshAction;
 
   if (updatedCount > 0 && approvalState === "always_approved" && user) {
     switch (action.toolConfiguration.permission) {

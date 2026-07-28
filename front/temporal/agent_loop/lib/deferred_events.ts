@@ -25,6 +25,10 @@ type DeferredEventContext = {
   agentMessageId: string;
   agentMessageRowId: ModelId;
   conversationId: string;
+  // The action whose activity produced the event. Nested run_agent events can carry a descendant
+  // action ID in the event itself, while this ID remains the sandbox child owned by this workflow.
+  // Optional until workflows started before this field was deployed have drained.
+  originActionId?: string;
   step: number;
   workspaceId: ModelId;
 };

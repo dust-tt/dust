@@ -5,6 +5,7 @@ import type { SandboxFunctionRunContext } from "@app/lib/actions/types";
 import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import { finishSandboxBash } from "@app/lib/api/sandbox/sandbox_child_block";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -149,7 +150,7 @@ describe("runToolWithStreaming (sandbox function run context)", () => {
 });
 
 describe("runToolWithStreaming (sandbox bash)", () => {
-  it("pauses a stale failed run after another workflow reserved the parent", async () => {
+  it("pauses stale failed and successful runs without persisting success output", async () => {
     const { workspace, authenticator: auth } = await createResourceTest({});
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
     const conversation = await ConversationFactory.create(auth, {
@@ -220,12 +221,43 @@ describe("runToolWithStreaming (sandbox bash)", () => {
       isError: true,
       content: [{ type: "text", text: "connection failed" }],
     });
-    vi.mocked(finishSandboxBash).mockResolvedValueOnce(false);
+    vi.mocked(finishSandboxBash).mockResolvedValueOnce({
+      completed: false,
+      outputItems: [],
+    });
 
     const eventTypes = await collectEvents(
       runToolWithStreaming(auth, { toolContext: { runContext } })
     );
 
     expect(eventTypes).toEqual(["tool_paused"]);
+
+    mockToolCallResult({
+      isError: false,
+      content: [{ type: "text", text: "stale output" }],
+    });
+    vi.mocked(finishSandboxBash).mockResolvedValueOnce({
+      completed: false,
+      outputItems: [],
+    });
+
+    const successEventTypes = await collectEvents(
+      runToolWithStreaming(auth, { toolContext: { runContext } })
+    );
+
+    expect(successEventTypes).toEqual(["tool_paused"]);
+    expect(vi.mocked(finishSandboxBash)).toHaveBeenLastCalledWith(
+      auth,
+      expect.objectContaining({
+        outputs: [{ content: { type: "text", text: "stale output" } }],
+        status: "succeeded",
+      })
+    );
+    const outputItems =
+      await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+        actionIds: [action.id],
+        ignoreContent: false,
+      });
+    expect(outputItems.get(action.id)).toBeUndefined();
   });
 });

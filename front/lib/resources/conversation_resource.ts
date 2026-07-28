@@ -2630,7 +2630,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async markAsActionRequired(
     auth: Authenticator,
-    { conversation }: { conversation: ConversationWithoutContentType }
+    {
+      conversation,
+      transaction,
+    }: {
+      conversation: ConversationWithoutContentType;
+      transaction?: Transaction;
+    }
   ) {
     const user = auth.user();
     if (!user) {
@@ -2649,6 +2655,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           userId: user.id,
           actionRequired: { [Op.ne]: true },
         },
+        transaction,
       }
     );
 
