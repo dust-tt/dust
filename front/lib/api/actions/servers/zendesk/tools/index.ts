@@ -1,7 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   getUniqueCustomFieldIds,
   getZendeskClient,
@@ -40,7 +39,7 @@ function isTrackedError(error: Error): boolean {
 const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
   get_ticket: async (
     { ticketId, includeMetrics, includeConversation, includeAttachments },
-    { authInfo, auth, runContext }
+    { authInfo, auth }
   ) => {
     const clientResult = getZendeskClient(authInfo);
     if (clientResult.isErr()) {
@@ -186,9 +185,7 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
           fileName: attachment.file_name,
           fileSize: contentLength ?? attachment.size,
           useCase: "conversation",
-          useCaseMetadata: isAgentLoopRunContext(runContext)
-            ? { conversationId: runContext.conversation.sId }
-            : {},
+          useCaseMetadata: {},
         });
 
         const processResult = await processAndStoreFile(auth, {
@@ -216,7 +213,6 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
         }
 
         const storedFile = processResult.value;
-        const path = storedFile.toScopedPath(auth);
         const fileResource = {
           mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
           fileId: storedFile.sId,
@@ -225,7 +221,6 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
           text: `Attachment: ${attachment.file_name}`,
           snippet: storedFile.snippet,
           uri: storedFile.getPublicUrl(auth),
-          ...(path ? { path } : {}),
         };
         contentBlocks.push({
           type: "resource" as const,
