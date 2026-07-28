@@ -416,6 +416,35 @@ export class FileResource extends BaseResource<FileModel> {
     return files.map((f) => new this(this.model, f.get()));
   }
 
+  static async fetchPinnedPodFrame(
+    auth: Authenticator,
+    { spaceId, pinnedFramePath }: { spaceId: string; pinnedFramePath: string }
+  ): Promise<FileResource | null> {
+    const target = resolveCanonicalScopedPath(pinnedFramePath, {
+      conversationId: null,
+      spaceId,
+    });
+    if (!target) {
+      return null;
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const files = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId },
+        contentType: {
+          [Op.in]: [frameContentType, frameSlideshowContentType],
+        },
+      },
+    });
+
+    const resources = files.map((f) => new this(this.model, f.get()));
+    return resources.find((f) => f.toScopedPath(auth) === target) ?? null;
+  }
+
   static async fetchByMountFilePaths(
     auth: Authenticator,
     mountFilePaths: string[]

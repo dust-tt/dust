@@ -9,6 +9,7 @@ import {
 import { hasUnreadSucceededAgentReply } from "@app/lib/notifications/conversation_fetch";
 import { renderEmail } from "@app/lib/notifications/email-templates/activation-new-conversation";
 import {
+  getActivationFramePreview,
   getActivationRecommendation,
   getConversationDetails,
 } from "@app/lib/notifications/helpers";
@@ -45,6 +46,8 @@ const activationNewConversationDetailsSchema = z.object({
   podName: z.string(),
   purpose: z.string().nullable(),
   summary: z.string().nullable(),
+  frameImageUrl: z.string().nullable(),
+  frameUrl: z.string().nullable(),
 });
 
 export type activationNewConversationDetailsType = z.infer<
@@ -100,14 +103,23 @@ const getActivationNewConversationDetails = async ({
       podName: "your pod",
       purpose: null,
       summary: null,
+      frameImageUrl: null,
+      frameUrl: null,
     };
   }
 
-  const { purpose, summary } = await getActivationRecommendation({
-    details: detailsResult.value,
-    subscriberId: subscriberId ?? "",
-    payload,
-  });
+  const [{ purpose, summary }, framePreview] = await Promise.all([
+    getActivationRecommendation({
+      details: detailsResult.value,
+      subscriberId: subscriberId ?? "",
+      payload,
+    }),
+    getActivationFramePreview({
+      details: detailsResult.value,
+      subscriberId: subscriberId ?? "",
+      payload,
+    }),
+  ]);
 
   return {
     subject: detailsResult.value.subject,
@@ -115,6 +127,8 @@ const getActivationNewConversationDetails = async ({
     podName: detailsResult.value.projectName ?? "your pod",
     purpose,
     summary,
+    frameImageUrl: framePreview?.imageUrl ?? null,
+    frameUrl: framePreview?.frameUrl ?? null,
   };
 };
 
@@ -166,6 +180,8 @@ export const activationNewConversationWorkflow = workflow(
           podName: details.podName,
           purpose: details.purpose,
           summary: details.summary,
+          frameImageUrl: details.frameImageUrl,
+          frameUrl: details.frameUrl,
           action: {
             label: details.subject,
             url:

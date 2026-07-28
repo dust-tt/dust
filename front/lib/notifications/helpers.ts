@@ -7,6 +7,8 @@ import {
   renderConversationAsText,
 } from "@app/lib/api/assistant/conversation/render_as_text";
 import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
+import type { ConversationFramePreview } from "@app/lib/api/files/frame_email_preview";
+import { getConversationFramePreview } from "@app/lib/api/files/frame_email_preview";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -761,4 +763,35 @@ export const getActivationRecommendation = async ({
   }
 
   return result.value;
+};
+
+export const getActivationFramePreview = async ({
+  details,
+  subscriberId,
+  payload,
+}: {
+  details: ConversationDetailsType;
+  subscriberId: string;
+  payload: ConversationDetailsPayload;
+}): Promise<ConversationFramePreview | null> => {
+  if (!subscriberId) {
+    return null;
+  }
+
+  // Do not render/host the Frame preview when data retention policies apply.
+  if (
+    details.hasConversationRetentionPolicy ||
+    details.hasAgentRetentionPolicies
+  ) {
+    return null;
+  }
+
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    subscriberId,
+    payload.workspaceId
+  );
+
+  return getConversationFramePreview(auth, {
+    conversationId: payload.conversationId,
+  });
 };
