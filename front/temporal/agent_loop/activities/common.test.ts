@@ -1123,15 +1123,12 @@ describe("late terminal events after finalization", () => {
     expect(dbMessage?.status).toBe("interrupted");
 
     // The next loop must still be marked as running.
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        conversation.sId
-      );
-    expect(conversationRes.isOk()).toBe(true);
-    if (conversationRes.isOk()) {
-      expect(conversationRes.value.isRunningAgentLoop).toBe(true);
-    }
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(conversationResource).not.toBeNull();
+    expect(conversationResource!.isRunningAgentLoop).toBe(true);
   });
 
   it("drops a late error event without failing the message or the conversation", async () => {
@@ -1163,16 +1160,13 @@ describe("late terminal events after finalization", () => {
     expect(dbMessage?.status).toBe("interrupted");
     expect(dbMessage?.errorCode).toBeNull();
 
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        conversation.sId
-      );
-    expect(conversationRes.isOk()).toBe(true);
-    if (conversationRes.isOk()) {
-      expect(conversationRes.value.hasError).toBe(false);
-      expect(conversationRes.value.isRunningAgentLoop).toBe(true);
-    }
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(conversationResource).not.toBeNull();
+    expect(conversationResource!.hasError).toBe(false);
+    expect(conversationResource!.isRunningAgentLoop).toBe(true);
   });
 
   it("still applies the first terminal event normally", async () => {

@@ -545,7 +545,6 @@ export async function notifyWorkflowError(
 ): Promise<void> {
   const auth = await AuthenticatorClass.fromJsonWithRefrehedGroups(authType);
 
-  // Use lighter fetchConversationWithoutContent
   const conversation = await ConversationResource.fetchById(
     auth,
     conversationId

@@ -4327,17 +4327,16 @@ describe("postNewContentFragment", () => {
       });
       expect(messageCountAfterFirst).toBe(1);
 
-      const conversationWithoutContentResult =
-        await ConversationResource.fetchConversationWithoutContent(
-          auth,
-          conversationWithoutContent.sId
-        );
-      expect(conversationWithoutContentResult.isOk()).toBe(true);
-      if (conversationWithoutContentResult.isErr()) {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversationWithoutContent.sId
+      );
+      expect(conversationResource).not.toBeNull();
+      if (!conversationResource) {
         throw new Error("Failed to fetch conversation metadata");
       }
 
-      const conversationAfterFirst = conversationWithoutContentResult.value;
+      const conversationAfterFirst = conversationResource.toJSON();
 
       const second = await postNewContentFragment(
         auth,
@@ -4409,19 +4408,18 @@ describe("postNewContentFragment", () => {
       );
       expect(first.isOk()).toBe(true);
 
-      const conversationMetadataResult =
-        await ConversationResource.fetchConversationWithoutContent(
-          auth,
-          conversationWithoutContent.sId
-        );
-      expect(conversationMetadataResult.isOk()).toBe(true);
-      if (conversationMetadataResult.isErr()) {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversationWithoutContent.sId
+      );
+      expect(conversationResource).not.toBeNull();
+      if (!conversationResource) {
         throw new Error("Failed to fetch conversation metadata");
       }
 
       const second = await postNewContentFragment(
         auth,
-        conversationMetadataResult.value,
+        conversationResource.toJSON(),
         {
           ...input,
           supersededContentFragmentId: first.isOk()
@@ -4918,19 +4916,16 @@ describe("conversation fetch forkingData", () => {
       },
     ];
 
-    const conversationResult =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        parentConversation.sId,
-        { includeForkingData: true }
-      );
-    expect(conversationResult.isOk()).toBe(true);
-
-    if (conversationResult.isOk()) {
-      expect(conversationResult.value.forkingData).toEqual({
-        forkedChildren: expectedForkedChildren,
-      });
-    }
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      parentConversation.sId,
+      { includeForkingData: true }
+    );
+    expect(conversationResource).not.toBeNull();
+    const forkingData = await conversationResource!.fetchForkingData(auth);
+    expect(forkingData).toEqual({
+      forkedChildren: expectedForkedChildren,
+    });
   });
 });
 

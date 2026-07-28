@@ -1,5 +1,6 @@
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { ConversationError } from "@app/types/assistant/conversation";
 import type {
   GetMCPServerViewsResponseType,
   PatchConversationResponseType,
@@ -45,17 +46,17 @@ app.post(
     const auth = ctx.get("auth");
     const { cId: conversationId } = ctx.req.valid("param");
 
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        conversationId
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+
+    if (!conversation) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
       );
-
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
     }
-
-    const conversationWithoutContent = conversationRes.value;
 
     if (!auth.isSystemKey()) {
       return apiError(ctx, {
@@ -86,7 +87,7 @@ app.post(
     }
 
     const r = await ConversationResource.upsertMCPServerViews(auth, {
-      conversation: conversationWithoutContent,
+      conversation,
       mcpServerViews: [mcpServerViewRes],
       enabled: action === "add",
       ...(agent_configuration_id

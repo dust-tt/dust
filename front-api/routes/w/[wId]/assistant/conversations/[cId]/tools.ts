@@ -1,5 +1,6 @@
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { ConversationError } from "@app/types/assistant/conversation";
 import { isString } from "@app/types/shared/utils/general";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -24,27 +25,24 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId: conversationId } = ctx.req.valid("param");
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return apiErrorForConversation(
+      ctx,
+      new ConversationError("conversation_not_found")
     );
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
-  const conversationWithoutContent = conversationRes.value;
   const agentConfigurationId = ctx.req.query("agent_configuration_id");
 
   const conversationMCPServerViews =
-    await ConversationResource.fetchMCPServerViews(
-      auth,
-      conversationWithoutContent,
-      {
-        onlyEnabled: true,
-        ...(isString(agentConfigurationId) ? { agentConfigurationId } : {}),
-      }
-    );
+    await ConversationResource.fetchMCPServerViews(auth, conversation, {
+      onlyEnabled: true,
+      ...(isString(agentConfigurationId) ? { agentConfigurationId } : {}),
+    });
 
   const mcpServerViewIds = conversationMCPServerViews.map(
     (v) => v.mcpServerViewId
@@ -76,16 +74,17 @@ app.post(
     const auth = ctx.get("auth");
     const { cId: conversationId } = ctx.req.valid("param");
 
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        conversationId
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversation) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
       );
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
     }
 
-    const conversationWithoutContent = conversationRes.value;
     const { action, mcp_server_view_id } = ctx.req.valid("json");
 
     const mcpServerView = await MCPServerViewResource.fetchById(
@@ -104,7 +103,7 @@ app.post(
     }
 
     const upsertResult = await ConversationResource.upsertMCPServerViews(auth, {
-      conversation: conversationWithoutContent,
+      conversation,
       mcpServerViews: [mcpServerView],
       enabled: action === "add",
       source: "conversation",

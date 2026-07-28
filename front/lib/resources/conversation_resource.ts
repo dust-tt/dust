@@ -88,7 +88,7 @@ export type FetchConversationOptions = {
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
   // Read within the given transaction, seeing its uncommitted writes. Only honored on the
   // `baseFetchWithAuthorization` path (`fetchById`, `fetchByIds`, `listAll`, ...). Helpers that
-  // cherry-pick options, such as `fetchConversationWithoutContent`, still read outside of it.
+  // cherry-pick options, such as `fetchConversationWithParticipantState`, still read outside of it.
   transaction?: Transaction;
 };
 
@@ -1714,17 +1714,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return messages.map((m) => m.createdAt);
   }
 
-  static async fetchConversationWithoutContent(
+  static async fetchConversationWithParticipantState(
     auth: Authenticator,
-    sId: string,
-    options?: FetchConversationOptions
+    sId: string
   ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
-    const conversation = await this.fetchById(auth, sId, {
-      includeDeleted: options?.includeDeleted,
-      dangerouslySkipPermissionFiltering:
-        options?.dangerouslySkipPermissionFiltering,
-      includeForkingData: options?.includeForkingData,
-    });
+    const conversation = await this.fetchById(auth, sId);
 
     if (!conversation) {
       return new Err(new ConversationError("conversation_not_found"));
@@ -1735,9 +1729,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         auth,
         conversation.id
       );
-    const forkingData = options?.includeForkingData
-      ? await conversation.fetchForkingData(auth)
-      : undefined;
 
     return new Ok({
       actionRequired,
@@ -1757,7 +1748,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       unread: lastReadAt === null || conversation.updatedAt > lastReadAt,
       updated: conversation.updatedAt.getTime(),
       isRunningAgentLoop: conversation.isRunningAgentLoop,
-      ...(forkingData && { forkingData }),
     });
   }
 
@@ -2576,7 +2566,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Ok([0]);
     }
 
-    // Update the conversation participant to set actionRequired to true
+    // Update the conversation participant to set actionRequired to true.
+    // Skip rows already at the target value to avoid a no-op row lock/write.
     const updated = await ConversationParticipantModel.update(
       { actionRequired: true },
       {
@@ -2584,6 +2575,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           conversationId: conversation.id,
           workspaceId: auth.getNonNullableWorkspace().id,
           userId: user.id,
+          actionRequired: { [Op.ne]: true },
         },
       }
     );
@@ -2610,12 +2602,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     conversation: ConversationResource
   ) {
+    // Skip rows already at the target value to avoid a no-op row lock/write.
     const updated = await ConversationParticipantModel.update(
       { actionRequired: false },
       {
         where: {
           conversationId: conversation.id,
           workspaceId: auth.getNonNullableWorkspace().id,
+          actionRequired: { [Op.ne]: false },
         },
         // Do not update `updatedAt.
         silent: true,
@@ -2630,7 +2624,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       conversation,
       t,
-    }: { conversation: ConversationWithoutContentType; t?: Transaction }
+    }: {
+      conversation: ConversationWithoutContentType | ConversationResource;
+      t?: Transaction;
+    }
   ): Promise<Result<number, Error>> {
     const updated = await ConversationModel.update(
       {
@@ -4114,7 +4111,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async getMessageByIds(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType,
+    conversation: ConversationWithoutContentType | ConversationResource,
     messageIds: string[]
   ): Promise<MessageModel[]> {
     return MessageModel.findAll({
@@ -4529,7 +4526,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async fetchMCPServerViews(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType,
+    conversation: ConversationWithoutContentType | ConversationResource,
     {
       onlyEnabled,
       agentConfigurationId,
@@ -4950,7 +4947,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    */
   static async listParticipantDetails(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType
+    conversation: ConversationWithoutContentType | ConversationResource
   ): Promise<{ userId: ModelId; action: ParticipantActionType }[]> {
     const participants = await ConversationParticipantModel.findAll({
       where: {
@@ -5034,6 +5031,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const userModelId = auth.getNonNullableUser().id;
     const workspaceModelId = auth.getNonNullableWorkspace().id;
 
+    // Skip rows already at the target value to avoid a no-op row lock/write.
     await ConversationParticipantModel.update(
       { actionRequired: false },
       {
@@ -5041,6 +5039,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           conversationId: { [Op.in]: conversationModelIds },
           workspaceId: workspaceModelId,
           userId: userModelId,
+          actionRequired: { [Op.ne]: false },
         },
       }
     );

@@ -18,7 +18,6 @@ import {
 } from "@app/lib/api/projects/context";
 import { fetchProjectDataSourceView } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isPodConversation } from "@app/types/assistant/conversation";
@@ -157,24 +156,7 @@ export async function getPod(
   if ("toolContext" in from && from.toolContext) {
     const { toolContext } = from;
     if (isAgentLoopRunContext(toolContext.runContext)) {
-      const conversationRes =
-        await ConversationResource.fetchConversationWithoutContent(
-          auth,
-          toolContext.runContext.conversation.sId
-        );
-
-      if (conversationRes.isErr()) {
-        return new Err(
-          new MCPError(
-            `Conversation not found: ${conversationRes.error.message}`,
-            {
-              tracked: false,
-            }
-          )
-        );
-      }
-
-      const conversation = conversationRes.value;
+      const conversation = toolContext.runContext.conversation;
 
       if (!isPodConversation(conversation)) {
         return new Err(

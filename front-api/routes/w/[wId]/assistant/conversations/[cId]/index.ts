@@ -200,22 +200,19 @@ app.get(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(auth, cId, {
-        includeForkingData: true,
-      });
+    const conversation = await ConversationResource.fetchById(auth, cId, {
+      includeForkingData: true,
+    });
 
-    if (conversationRes.isErr()) {
+    if (!conversation) {
       // Distinguish between "not found" and "access restricted" for the UI.
       const canAccess = await ConversationResource.canAccess(auth, cId);
       const error =
         canAccess === "conversation_access_restricted"
           ? new ConversationError("conversation_access_restricted")
-          : conversationRes.error;
+          : new ConversationError("conversation_not_found");
       return apiErrorForConversation(ctx, error);
     }
-
-    const conversation = conversationRes.value;
 
     void emitAuditLogEvent({
       auth,
@@ -262,7 +259,11 @@ app.patch(
     const { cId } = ctx.req.valid("param");
 
     const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(auth, cId);
+      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional ConversationWithoutContentType
+      await ConversationResource.fetchConversationWithParticipantState(
+        auth,
+        cId
+      );
     if (conversationRes.isErr()) {
       return apiErrorForConversation(ctx, conversationRes.error);
     }
