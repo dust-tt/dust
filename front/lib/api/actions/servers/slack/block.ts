@@ -41,3 +41,22 @@ export function makeMarkdownBlock(
     },
   ];
 }
+
+// "Sent via <agent> on Dust" attribution as a standalone context block (mrkdwn,
+// so the link uses `<url|label>`). Kept separate from the message block — like
+// the connector's makeFooterBlock — so it is never absorbed into a markdown
+// table.
+export function makeSentByFooterBlock(
+  agentName: string,
+  agentUrl: string
+): KnownBlock {
+  return {
+    type: "context",
+    elements: [
+      {
+        type: "mrkdwn",
+        text: `Sent via <${agentUrl}|${agentName} Agent> on Dust`,
+      },
+    ],
+  };
+}

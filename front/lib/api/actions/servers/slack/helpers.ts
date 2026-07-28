@@ -4,7 +4,10 @@ import {
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
-import { makeMarkdownBlock } from "@app/lib/api/actions/servers/slack/block";
+import {
+  makeMarkdownBlock,
+  makeSentByFooterBlock,
+} from "@app/lib/api/actions/servers/slack/block";
 import {
   formatSlackMessageForLLM,
   renderFormattedMessage,
@@ -18,7 +21,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { WebAPICallResult } from "@slack/web-api";
+import type { KnownBlock, WebAPICallResult } from "@slack/web-api";
 import { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/types/response/ConversationsListResponse";
 import type { Usergroup } from "@slack/web-api/dist/types/response/UsergroupsListResponse";
@@ -795,11 +798,12 @@ export async function executePostMessage(
 
   const originalMessage = message;
 
-  // Regular messages are sent as a `markdown` block (GFM: tables, headers, ...),
-  // so the footer uses GFM link syntax. The file-upload path uses legacy Slack
-  // mrkdwn via `initial_comment`, so it keeps `<url|label>` link syntax.
-  let gfmMessage = originalMessage;
+  // The regular path renders the message as a `markdown` block and appends the
+  // footer as a separate context block (so it is never absorbed into a markdown
+  // table). The file-upload path uses legacy Slack mrkdwn via `initial_comment`
+  // (a plain string, no blocks), so the footer is concatenated inline there.
   let mrkdwnMessage = slackifyMarkdown(originalMessage);
+  let footerBlock: KnownBlock | undefined;
 
   if (
     showSentByFooter !== false &&
@@ -812,8 +816,8 @@ export async function executePostMessage(
       config.getAppUrl()
     );
     const agentName = toolContext.runContext?.agentConfiguration.name;
-    gfmMessage = `${originalMessage}\n_Sent via [${agentName} Agent](${agentUrl}) on Dust_`;
     mrkdwnMessage = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentName} Agent> on Dust_`;
+    footerBlock = makeSentByFooterBlock(agentName, agentUrl);
   }
 
   if (!(await hasSlackScope(accessToken, "files:write"))) {
@@ -882,11 +886,15 @@ export async function executePostMessage(
   }
 
   // No file provided: regular message. Sent as a `markdown` block so full GFM
-  // (tables, headers, lists) renders; `text` is a plain fallback for places
-  // that cannot render blocks (e.g. push notifications).
+  // (tables, headers, lists) renders, with the footer as a separate context
+  // block; `text` is a plain fallback for places that cannot render blocks
+  // (e.g. push notifications).
   const response = await slackClient.chat.postMessage({
     channel: resolvedTo,
-    blocks: makeMarkdownBlock(gfmMessage),
+    blocks: [
+      ...makeMarkdownBlock(originalMessage),
+      ...(footerBlock ? [footerBlock] : []),
+    ],
     text: originalMessage,
     mrkdwn: true,
     thread_ts: threadTs,
@@ -963,9 +971,9 @@ export async function executeScheduleMessage(
   const slackClient = await getSlackClient(accessToken);
   const originalMessage = message;
 
-  // Regular messages are sent as a `markdown` block (GFM: tables, headers, ...),
-  // so the footer uses GFM link syntax.
-  let gfmMessage = originalMessage;
+  // The message is rendered as a `markdown` block; the footer is appended as a
+  // separate context block so it is never absorbed into a markdown table.
+  let footerBlock: KnownBlock | undefined;
 
   if (
     showSentByFooter !== false &&
@@ -978,7 +986,7 @@ export async function executeScheduleMessage(
       config.getAppUrl()
     );
     const agentName = toolContext.runContext?.agentConfiguration.name;
-    gfmMessage = `${originalMessage}\n_Sent via [${agentName} Agent](${agentUrl}) on Dust_`;
+    footerBlock = makeSentByFooterBlock(agentName, agentUrl);
   }
 
   // Convert post_at to Unix timestamp in seconds.
@@ -1023,8 +1031,11 @@ export async function executeScheduleMessage(
 
   const response = await slackClient.chat.scheduleMessage({
     channel: to,
-    blocks: makeMarkdownBlock(gfmMessage),
-    text: gfmMessage,
+    blocks: [
+      ...makeMarkdownBlock(originalMessage),
+      ...(footerBlock ? [footerBlock] : []),
+    ],
+    text: originalMessage,
     post_at: timestampSeconds.toString(),
     thread_ts: threadTs,
     unfurl_links: unfurlLinks,
