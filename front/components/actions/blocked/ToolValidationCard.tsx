@@ -278,7 +278,7 @@ export function ToolValidationCard({
     <ContentMessage
       title={title}
       variant="primary"
-      className="flex w-full flex-col gap-3 sm:w-80 sm:min-w-[500px]"
+      className="flex w-full flex-col gap-3 sm:w-80 sm:min-w-125"
       icon={icon}
     >
       {canCurrentUserRespond ? (
@@ -321,7 +321,7 @@ export function ToolValidationCard({
               </Label>
             )}
             {!toolOverride?.compactFooter && (
-              <div className="hidden sm:block sm:flex-grow" />
+              <div className="hidden sm:block sm:grow" />
             )}
             <div
               className={cn(
@@ -351,7 +351,7 @@ export function ToolValidationCard({
           </div>
         </>
       ) : (
-        <div className="font-sm whitespace-normal break-words text-foreground">
+        <div className="font-sm whitespace-normal wrap-break-word text-foreground">
           Waiting for{" "}
           <span className="font-semibold">{triggeringUser?.fullName}</span> to
           confirm.

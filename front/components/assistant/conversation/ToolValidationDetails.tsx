@@ -268,7 +268,9 @@ export function ToolValidationDetails({
                 <span className="text-xs font-medium text-muted-foreground">
                   {label}
                 </span>
-                <span className="whitespace-pre-wrap break-words">{value}</span>
+                <span className="whitespace-pre-wrap wrap-break-word">
+                  {value}
+                </span>
               </div>
             )
           )}
