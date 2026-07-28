@@ -31,7 +31,6 @@ import {
   Check,
   Checkbox,
   ContentMessage,
-  cn,
   Label,
   XClose,
 } from "@dust-tt/sparkle";
@@ -41,8 +40,9 @@ type ToolOverride = {
   title?: (inputs: Record<string, unknown>) => string;
   approveLabel?: string;
   alwaysAllowLabel?: (inputs: Record<string, unknown>) => string;
+  compactFooter?: boolean;
   detailsExpanded?: boolean;
-  inlineActions?: boolean;
+  hideIcon?: boolean;
 };
 
 /** Overrides title, alwaysAllowLabel, and details expansion for specific MCP tools */
@@ -72,7 +72,8 @@ const MCP_TOOL_OVERRIDES: Partial<
       title: () => "Publish this function?",
       approveLabel: "Publish",
       alwaysAllowLabel: () => "Always allow agent to publish Pod functions",
-      inlineActions: true,
+      compactFooter: true,
+      hideIcon: true,
     },
   },
   [POD_TASKS_SERVER_NAME]: {
@@ -279,7 +280,7 @@ export function ToolValidationCard({
       title={title}
       variant="primary"
       className="flex w-full flex-col gap-3 sm:w-80 sm:min-w-[500px]"
-      icon={icon}
+      icon={toolOverride?.hideIcon ? undefined : icon}
     >
       {canCurrentUserRespond ? (
         <>
@@ -295,13 +296,7 @@ export function ToolValidationCard({
               {errorMessage}
             </div>
           )}
-          <div
-            className={cn(
-              "flex flex-col gap-3 sm:mt-3",
-              toolOverride?.inlineActions &&
-                "mt-1 pt-1 sm:mt-2 sm:flex-row sm:items-center sm:justify-between"
-            )}
-          >
+          <div className="flex flex-col gap-3 sm:mt-3">
             {(validationRequest.stake === "low" ||
               validationRequest.stake === "medium") && (
               <Label
@@ -320,15 +315,10 @@ export function ToolValidationCard({
                 </span>
               </Label>
             )}
-            {!toolOverride?.inlineActions && (
+            {!toolOverride?.compactFooter && (
               <div className="hidden sm:block sm:flex-grow" />
             )}
-            <div
-              className={cn(
-                "flex flex-row gap-3 self-end",
-                toolOverride?.inlineActions && "sm:self-auto"
-              )}
-            >
+            <div className="flex flex-row gap-3 self-end">
               <Button
                 label="Decline"
                 variant="outline"
