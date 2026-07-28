@@ -14,7 +14,7 @@ vi.mock("@app/lib/resources/conversation_sandbox_adapter", () => ({
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
-  completeSandboxBash,
+  finishSandboxBash,
   pauseSandboxBashForBlockedChild,
   reserveSandboxChildRun,
   resolveSandboxChildBlock,
@@ -265,10 +265,11 @@ describe("resolveSandboxChildBlock", () => {
       status: "blocked_user_answer_required",
       sandboxChildActionInfo: { parentActionId: parentId },
     });
-    await AgentMessageModel.update(
-      { status: "cancelled" },
-      { where: { id: agentMessageId } }
-    );
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: agentMessageId,
+      status: "cancelled",
+    });
     const child = await AgentMCPActionResource.fetchById(auth, childId);
     if (!child) {
       throw new Error("Expected the child action to exist.");
@@ -305,11 +306,12 @@ describe("resolveSandboxChildBlock", () => {
       throw new Error("Expected the parent action to exist.");
     }
 
-    const completed = await completeSandboxBash(auth, {
+    const completed = await finishSandboxBash(auth, {
       action: parent,
       conversation,
       executionDurationMs: 10,
       messageId: AGENT_LOOP_ARGS.agentMessageId,
+      status: "succeeded",
     });
 
     const child = await AgentMCPActionResource.fetchById(auth, childId);
@@ -333,16 +335,46 @@ describe("resolveSandboxChildBlock", () => {
       throw new Error("Expected the parent action to exist.");
     }
 
-    const completed = await completeSandboxBash(auth, {
+    const completed = await finishSandboxBash(auth, {
       action: parent,
       conversation,
       executionDurationMs: 10,
       messageId: AGENT_LOOP_ARGS.agentMessageId,
+      status: "succeeded",
     });
 
     const child = await AgentMCPActionResource.fetchById(auth, childId);
     expect(completed).toBe(true);
     expect(parent.status).toBe("succeeded");
+    expect(child?.status).toBe("denied");
+  });
+
+  it("denies a pending child when its parent errors", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "running",
+    });
+    const { sId: childId } = await createAction({
+      name: "child_tool",
+      status: "blocked_validation_required",
+      sandboxChildActionInfo: { parentActionId: parentId },
+    });
+    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
+    if (!parent) {
+      throw new Error("Expected the parent action to exist.");
+    }
+
+    const completed = await finishSandboxBash(auth, {
+      action: parent,
+      conversation,
+      executionDurationMs: 10,
+      messageId: AGENT_LOOP_ARGS.agentMessageId,
+      status: "errored",
+    });
+
+    const child = await AgentMCPActionResource.fetchById(auth, childId);
+    expect(completed).toBe(true);
+    expect(parent.status).toBe("errored");
     expect(child?.status).toBe("denied");
   });
 

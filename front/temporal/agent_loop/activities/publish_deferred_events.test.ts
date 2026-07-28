@@ -1,17 +1,13 @@
 import type { DeferredEvent } from "@app/temporal/agent_loop/lib/deferred_events";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  isBlockedMock,
-  messageFindMock,
-  publishEventMock,
-  removeEventMock,
-} = vi.hoisted(() => ({
-  isBlockedMock: vi.fn(),
-  messageFindMock: vi.fn(),
-  publishEventMock: vi.fn(),
-  removeEventMock: vi.fn(),
-}));
+const { isBlockedMock, messageFindMock, publishEventMock, removeEventMock } =
+  vi.hoisted(() => ({
+    isBlockedMock: vi.fn(),
+    messageFindMock: vi.fn(),
+    publishEventMock: vi.fn(),
+    removeEventMock: vi.fn(),
+  }));
 
 vi.mock("@app/lib/api/assistant/streaming/events", () => ({
   publishConversationRelatedEvent: publishEventMock,
@@ -69,12 +65,46 @@ describe("publishDeferredEventsActivity", () => {
   });
 
   it("removes an event denied while it is being published", async () => {
-    isBlockedMock.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    isBlockedMock
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
 
     const shouldPause = await publishDeferredEventsActivity([DEFERRED_EVENT]);
 
     expect(publishEventMock).toHaveBeenCalledTimes(1);
     expect(removeEventMock).toHaveBeenCalledTimes(1);
     expect(shouldPause).toBe(false);
+  });
+
+  it("marks the last active event as the last blocking event", async () => {
+    const staleEvent: DeferredEvent = {
+      ...DEFERRED_EVENT,
+      event: {
+        ...DEFERRED_EVENT.event,
+        actionId: "stale_action_id",
+      },
+    };
+    isBlockedMock
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true);
+
+    const shouldPause = await publishDeferredEventsActivity([
+      DEFERRED_EVENT,
+      staleEvent,
+    ]);
+
+    expect(publishEventMock).toHaveBeenCalledOnce();
+    expect(publishEventMock).toHaveBeenCalledWith({
+      conversationId: "conversation_id",
+      event: expect.objectContaining({
+        actionId: "action_id",
+        isLastBlockingEventForStep: true,
+      }),
+      step: 2,
+    });
+    expect(shouldPause).toBe(true);
   });
 });

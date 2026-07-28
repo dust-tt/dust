@@ -1667,21 +1667,23 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
-  async markSucceededFromExpected(
+  async markFinalFromExpected(
     auth: Authenticator,
     {
       executionDurationMs,
       expectedStatus,
+      status,
       transaction,
     }: {
       executionDurationMs: number;
       expectedStatus: ToolExecutionStatus;
+      status: "errored" | "succeeded";
       transaction: Transaction;
     }
   ): Promise<[affectedCount: number]> {
     const [affectedCount, affectedRows] = await AgentMCPActionModel.update(
       {
-        status: "succeeded",
+        status,
         executionDurationMs: Math.round(executionDurationMs),
       },
       {

@@ -1,6 +1,6 @@
 import { isBlockedActionEvent } from "@app/lib/actions/mcp";
-import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
+import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
@@ -42,10 +42,17 @@ export async function publishDeferredEventsActivity(
   deferredEvents: DeferredEvent[]
 ): Promise<boolean> {
   let shouldPauseWorkflow = false;
+  const activeDeferredEvents: DeferredEvent[] = [];
 
-  for (const [index, deferredEvent] of deferredEvents.entries()) {
+  for (const deferredEvent of deferredEvents) {
+    if (await isDeferredActionBlocked(deferredEvent)) {
+      activeDeferredEvents.push(deferredEvent);
+    }
+  }
+
+  for (const [index, deferredEvent] of activeDeferredEvents.entries()) {
     const { event, context } = deferredEvent;
-    const isLastEvent = index === deferredEvents.length - 1;
+    const isLastEvent = index === activeDeferredEvents.length - 1;
 
     const where: WhereOptions<AgentMessageModel> = {
       id: context.agentMessageRowId,

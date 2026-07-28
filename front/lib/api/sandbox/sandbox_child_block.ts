@@ -18,12 +18,6 @@ import type {
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 
-const ACTIVE_SANDBOX_PARENT_STATUSES = [
-  "running",
-  "ready_allowed_explicitly",
-  "ready_allowed_implicitly",
-] as const;
-
 /**
  * Called when a sandbox-child action enters a blocked state. Flips the
  * parent bash action's status to `blocked_child_action_input_required`
@@ -194,9 +188,9 @@ export async function reserveSandboxChildRun(
     if (
       !freshAction ||
       !parentAction ||
-      !ACTIVE_SANDBOX_PARENT_STATUSES.includes(
-        parentAction.status as (typeof ACTIVE_SANDBOX_PARENT_STATUSES)[number]
-      ) ||
+      (parentAction.status !== "running" &&
+        parentAction.status !== "ready_allowed_explicitly" &&
+        parentAction.status !== "ready_allowed_implicitly") ||
       !(await freshAction.canAgentMessageResume(auth, transaction))
     ) {
       if (freshAction) {
@@ -230,22 +224,24 @@ export async function reserveSandboxChildRun(
 }
 
 /**
- * Completes a sandbox bash under the same lock as child insertion. Any child that committed before
- * the parent finished but has not started is denied; a later child sees the succeeded parent and is
+ * Finishes a sandbox bash under the same lock as child insertion. Any child that committed before
+ * the parent finished but has not started is denied; a later child sees the final parent and is
  * rejected.
  */
-export async function completeSandboxBash(
+export async function finishSandboxBash(
   auth: Authenticator,
   {
     action,
     conversation,
     executionDurationMs,
     messageId,
+    status,
   }: {
     action: AgentMCPActionResource;
     conversation: ConversationWithoutContentType;
     executionDurationMs: number;
     messageId: string;
+    status: "errored" | "succeeded";
   }
 ): Promise<boolean> {
   const result = await withTransaction(async (transaction) => {
@@ -269,9 +265,10 @@ export async function completeSandboxBash(
         parentAction,
         transaction,
       });
-    const [updatedCount] = await action.markSucceededFromExpected(auth, {
+    const [updatedCount] = await action.markFinalFromExpected(auth, {
       executionDurationMs,
       expectedStatus: parentAction.status,
+      status,
       transaction,
     });
 

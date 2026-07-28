@@ -25,7 +25,7 @@ import {
 } from "@app/lib/actions/types";
 import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
-import { completeSandboxBash } from "@app/lib/api/sandbox/sandbox_child_block";
+import { finishSandboxBash } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -86,6 +86,10 @@ export async function* runToolWithStreaming(
           invocationId: runContext.invocation.sId,
         }),
   });
+  const isSandboxBash =
+    isAgentLoopRunContext(runContext) &&
+    runContext.action.metadata.internalMCPServerName === SANDBOX_TOOL_NAME &&
+    runContext.action.toolConfiguration.originalName === "bash";
 
   // Sandbox function actions and auto-allowed agent-loop actions are created in running
   // status; only approved or resumed actions still carry a pre-run status to transition.
@@ -126,9 +130,18 @@ export async function* runToolWithStreaming(
   // as content.
   if (toolCallResult.isError) {
     const endDate = performance.now();
+    if (isSandboxBash) {
+      await finishSandboxBash(auth, {
+        action: runContext.action,
+        conversation: runContext.conversation,
+        executionDurationMs: endDate - startDate,
+        messageId: runContext.agentMessage.sId,
+        status: "errored",
+      });
+    }
     yield await handleMCPActionError(auth, {
       action,
-      status,
+      status: isSandboxBash ? "errored" : status,
       errorContent: toolCallResult.content,
       executionDurationMs: endDate - startDate,
     });
@@ -168,16 +181,13 @@ export async function* runToolWithStreaming(
   }
 
   const endDate = performance.now();
-  if (
-    isAgentLoopRunContext(runContext) &&
-    runContext.action.metadata.internalMCPServerName === SANDBOX_TOOL_NAME &&
-    runContext.action.toolConfiguration.originalName === "bash"
-  ) {
-    const completed = await completeSandboxBash(auth, {
+  if (isSandboxBash) {
+    const completed = await finishSandboxBash(auth, {
       action: runContext.action,
       conversation: runContext.conversation,
       executionDurationMs: endDate - startDate,
       messageId: runContext.agentMessage.sId,
+      status: "succeeded",
     });
     if (!completed) {
       yield {
