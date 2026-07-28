@@ -140,6 +140,9 @@ export function MembersDataTable({
           data={prepareMembersForDisplay(members)}
           enableRowSelection={!readonly}
           getRowId={(row) => row.sId}
+          getRowClassName={(row) =>
+            row.role === "none" ? "text-gray-400" : undefined
+          }
           renderBulkActions={
             readonly
               ? undefined

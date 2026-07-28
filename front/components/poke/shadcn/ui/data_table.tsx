@@ -74,6 +74,9 @@ interface DataTableProps<TData, TValue> {
     selectedRows: TData[];
     resetSelection: () => void;
   }) => React.ReactNode;
+  // Optional per-row CSS classes, computed from the row data (e.g. to mute
+  // revoked members).
+  getRowClassName?: (row: TData) => string | undefined;
 }
 
 export function PokeDataTable<TData, TValue>({
@@ -94,6 +97,7 @@ export function PokeDataTable<TData, TValue>({
   enableRowSelection,
   getRowId,
   renderBulkActions,
+  getRowClassName,
 }: DataTableProps<TData, TValue>) {
   const isServerSide = serverSideRowCount !== undefined;
   const isServerSearch = onSearchChange !== undefined;
@@ -273,7 +277,14 @@ export function PokeDataTable<TData, TValue>({
                 <PokeTableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className={onRowClick ? "cursor-pointer" : undefined}
+                  className={
+                    [
+                      onRowClick ? "cursor-pointer" : "",
+                      getRowClassName?.(row.original) ?? "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
                   onClick={
                     onRowClick ? () => onRowClick(row.original) : undefined
                   }
