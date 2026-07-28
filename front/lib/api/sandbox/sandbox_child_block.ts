@@ -7,7 +7,10 @@ import {
   isSandboxChildActionInfo,
   isSandboxResumeState,
 } from "@app/lib/actions/types";
-import { clearBlockedActionEffects } from "@app/lib/api/assistant/conversation/blocked_actions";
+import {
+  clearBlockedActionEffects,
+  releaseSandboxIfUnused,
+} from "@app/lib/api/assistant/conversation/blocked_actions";
 import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/lock";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -15,7 +18,10 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import {
+  launchAgentLoopWorkflow,
+  launchSandboxChildToolWorkflow,
+} from "@app/temporal/agent_loop/client";
 import type {
   ConversationWithoutContentType,
   UserMessageOrigin,
@@ -330,10 +336,23 @@ export async function reserveSandboxChildRun(
     }
 
     if (parentAction.status === "blocked_child_action_input_required") {
-      return null;
-    }
-
-    if (
+      // Pre-deploy children have no execId, so their sandbox was never paused. Run the resolved
+      // child independently and restore the parent's truthful running state.
+      if (info.execId) {
+        return null;
+      }
+      const [updatedParentCount] = await parentAction.updateStatusFromExpected(
+        auth,
+        {
+          status: "running",
+          expectedStatus: "blocked_child_action_input_required",
+          transaction,
+        }
+      );
+      if (updatedParentCount === 0) {
+        return null;
+      }
+    } else if (
       parentAction.status === "ready_allowed_explicitly" ||
       parentAction.status === "ready_allowed_implicitly"
     ) {
@@ -472,27 +491,7 @@ export async function finishSandboxBash(
         isToolExecutionStatusBlocked(child.status)
       )
     ) {
-      const conversationResource = await ConversationResource.fetchById(
-        auth,
-        conversation.sId
-      );
-      if (conversationResource) {
-        const sleepResult =
-          await ConversationSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(
-            auth,
-            conversationResource
-          );
-        if (sleepResult.isErr()) {
-          logger.error(
-            {
-              err: sleepResult.error,
-              conversationId: conversation.sId,
-              messageId,
-            },
-            "Failed to release sandbox after parent completion"
-          );
-        }
-      }
+      await releaseSandboxIfUnused(auth, { conversation, messageId });
     }
 
     await clearBlockedActionEffects(auth, {
@@ -503,6 +502,68 @@ export async function finishSandboxBash(
   }
 
   return result.completed;
+}
+
+async function reserveParentRelaunch(
+  auth: Authenticator,
+  {
+    conversation,
+    sandboxChildActionInfo,
+  }: {
+    conversation: ConversationResource;
+    sandboxChildActionInfo: SandboxChildActionInfo;
+  }
+): Promise<{
+  parentAction: AgentMCPActionResource | null;
+  needsLegacyRun: boolean;
+}> {
+  return withTransaction(async (transaction) => {
+    await getConversationRankVersionLock(auth, conversation, transaction);
+
+    const { parentActionId, execId } = sandboxChildActionInfo;
+    const parent = await AgentMCPActionResource.fetchById(
+      auth,
+      parentActionId,
+      transaction
+    );
+    if (!parent || parent.status !== "blocked_child_action_input_required") {
+      return { parentAction: null, needsLegacyRun: false };
+    }
+
+    // Only the last blocked sibling resumes the parent. Keeping this read and the parent
+    // transition under the child-creation lock prevents a new sibling from slipping in between.
+    if (
+      await AgentMCPActionResource.hasBlockedSandboxChildren(auth, {
+        parentAction: parent,
+        transaction,
+      })
+    ) {
+      return { parentAction: null, needsLegacyRun: false };
+    }
+
+    if (!isSandboxResumeState(parent.stepContext.resumeState)) {
+      if (!execId) {
+        return { parentAction: null, needsLegacyRun: true };
+      }
+      await parent.updateStepContext(
+        {
+          ...parent.stepContext,
+          resumeState: { execId },
+        },
+        transaction
+      );
+    }
+
+    const [updatedCount] = await parent.updateStatusFromExpected(auth, {
+      status: "ready_allowed_explicitly",
+      expectedStatus: "blocked_child_action_input_required",
+      transaction,
+    });
+    return {
+      parentAction: updatedCount === 1 ? parent : null,
+      needsLegacyRun: false,
+    };
+  });
 }
 
 /**
@@ -549,46 +610,36 @@ export async function resolveSandboxChildBlock(
     return;
   }
 
-  const parentAction = await withTransaction(async (transaction) => {
-    await getConversationRankVersionLock(auth, conversation, transaction);
-
-    const parent = await AgentMCPActionResource.fetchById(
-      auth,
-      parentActionId,
-      transaction
-    );
-    if (!parent || parent.status !== "blocked_child_action_input_required") {
-      return null;
-    }
-
-    // Only the last blocked sibling resumes the parent. Keeping this read and the parent
-    // transition under the child-creation lock prevents a new sibling from slipping in between.
-    const blockedActions =
-      await AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
-        agentMessageId: parent.agentMessageId,
-        transaction,
-        skipSameStepCheck: true,
-      });
-    const blockedSiblings = blockedActions.filter(
-      (blockedAction) =>
-        blockedAction.stepContext.sandboxChildActionInfo?.parentActionId ===
-        parentActionId
-    );
-    if (
-      blockedSiblings.length > 0 ||
-      !isSandboxResumeState(parent.stepContext.resumeState)
-    ) {
-      return null;
-    }
-
-    const [updatedCount] = await parent.updateStatusFromExpected(auth, {
-      status: "ready_allowed_explicitly",
-      expectedStatus: "blocked_child_action_input_required",
-      transaction,
-    });
-    return updatedCount === 1 ? parent : null;
+  const reservation = await reserveParentRelaunch(auth, {
+    conversation,
+    sandboxChildActionInfo,
   });
+  if (reservation.needsLegacyRun) {
+    const launchResult = await launchSandboxChildToolWorkflow(auth, {
+      action,
+      agentLoopArgs: {
+        ...agentLoopArgs,
+        initialStartTime: Date.now(),
+      },
+      step: action.stepContent.step,
+      waitForCompletion: true,
+    });
+    if (launchResult.isErr()) {
+      logger.error(
+        {
+          err: launchResult.error,
+          actionId: action.sId,
+          parentActionId,
+          conversationId: agentLoopArgs.conversationId,
+          workspaceId,
+        },
+        "Failed to run pre-deploy sandbox child after resolution"
+      );
+    }
+    return;
+  }
 
+  const { parentAction } = reservation;
   if (!parentAction) {
     return;
   }

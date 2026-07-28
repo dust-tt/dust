@@ -332,6 +332,72 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
+  static async hasBlockedSandboxActions(
+    auth: Authenticator,
+    {
+      conversationId,
+      transaction,
+    }: {
+      conversationId: ModelId;
+      transaction: Transaction;
+    }
+  ): Promise<boolean> {
+    // This lifecycle-only query is infrequent and uses the workspace/conversation index before
+    // narrowing to resumable messages.
+    const agentMessages = await AgentMessageModel.findAll({
+      attributes: ["id"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId,
+        status: "created",
+      },
+      transaction,
+    });
+    if (agentMessages.length === 0) {
+      return false;
+    }
+
+    const actions = await this.baseFetch(
+      auth,
+      {
+        where: {
+          agentMessageId: {
+            [Op.in]: agentMessages.map((message) => message.id),
+          },
+          status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
+        },
+      },
+      transaction
+    );
+    return actions.some(
+      (action) =>
+        isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo) ||
+        isSandboxResumeState(action.stepContext.resumeState)
+    );
+  }
+
+  static async hasBlockedSandboxChildren(
+    auth: Authenticator,
+    {
+      parentAction,
+      transaction,
+    }: {
+      parentAction: AgentMCPActionResource;
+      transaction?: Transaction;
+    }
+  ): Promise<boolean> {
+    const blockedActions = await this.listBlockedActionsForAgentMessage(auth, {
+      agentMessageId: parentAction.agentMessageId,
+      transaction,
+      skipSameStepCheck: true,
+    });
+    return blockedActions.some(
+      (action) =>
+        action.stepContext.sandboxChildActionInfo?.parentActionId ===
+        parentAction.sId
+    );
+  }
+
   static async listBlockedActionsForConversation(
     auth: Authenticator,
     conversation: ConversationResource

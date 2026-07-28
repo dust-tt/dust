@@ -1,6 +1,12 @@
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
-import type { SandboxFunctionRunContext } from "@app/lib/actions/types";
+import type {
+  AgentLoopRunContext,
+  SandboxFunctionRunContext,
+} from "@app/lib/actions/types";
+import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
+import { finishSandboxBash } from "@app/lib/api/sandbox/sandbox_child_block";
+import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -16,6 +22,16 @@ vi.mock("@app/lib/actions/mcp_actions", async (importOriginal) => {
   return {
     ...actual,
     tryCallMCPTool: vi.fn(),
+  };
+});
+vi.mock("@app/lib/api/sandbox/sandbox_child_block", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@app/lib/api/sandbox/sandbox_child_block")
+    >();
+  return {
+    ...actual,
+    finishSandboxBash: vi.fn(),
   };
 });
 
@@ -126,5 +142,45 @@ describe("runToolWithStreaming (sandbox function run context)", () => {
     expect(JSON.parse(outputWrite?.content.toString() ?? "")).toEqual(
       errorContent
     );
+  });
+});
+
+describe("runToolWithStreaming (sandbox bash)", () => {
+  it("pauses a stale failed run after another workflow reserved the parent", async () => {
+    const auth = {
+      getNonNullableWorkspace: () => ({ sId: "w_test" }),
+    } as Authenticator;
+    const toolConfiguration = {
+      originalName: "bash",
+    };
+    const action = {
+      sId: "action_test",
+      status: "running",
+      augmentedInputs: {},
+      metadata: { internalMCPServerName: SANDBOX_TOOL_NAME },
+      stepContext: {},
+      toolConfiguration,
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+    };
+    const runContext = {
+      contextType: "agent_loop",
+      action,
+      agentConfiguration: { sId: "agent_test" },
+      agentMessage: { sId: "message_test" },
+      conversation: { sId: "conversation_test" },
+      toolConfiguration,
+    } as unknown as AgentLoopRunContext;
+
+    mockToolCallResult({
+      isError: true,
+      content: [{ type: "text", text: "connection failed" }],
+    });
+    vi.mocked(finishSandboxBash).mockResolvedValueOnce(false);
+
+    const eventTypes = await collectEvents(
+      runToolWithStreaming(auth, { toolContext: { runContext } })
+    );
+
+    expect(eventTypes).toEqual(["tool_paused"]);
   });
 });

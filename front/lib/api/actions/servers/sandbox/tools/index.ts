@@ -407,7 +407,11 @@ export async function runSandboxBashTool(
     sandboxAction.sId
   );
   const wasPaused =
-    freshParent !== null && isToolExecutionStatusBlocked(freshParent.status);
+    freshParent !== null &&
+    isToolExecutionStatusBlocked(freshParent.status) &&
+    (await AgentMCPActionResource.hasBlockedSandboxChildren(auth, {
+      parentAction: freshParent,
+    }));
 
   if (!wasPaused) {
     const durationMs = performance.now() - startMs;

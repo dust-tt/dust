@@ -131,13 +131,24 @@ export async function* runToolWithStreaming(
   if (toolCallResult.isError) {
     const endDate = performance.now();
     if (isSandboxBash) {
-      await finishSandboxBash(auth, {
+      const completed = await finishSandboxBash(auth, {
         action: runContext.action,
         conversation: runContext.conversation,
         executionDurationMs: endDate - startDate,
         messageId: runContext.agentMessage.sId,
         status: "errored",
       });
+      if (!completed) {
+        yield {
+          type: "tool_paused",
+          created: Date.now(),
+          actionId: action.sId,
+          configurationId: runContext.agentConfiguration.sId,
+          conversationId: runContext.conversation.sId,
+          messageId: runContext.agentMessage.sId,
+        };
+        return;
+      }
     }
     yield await handleMCPActionError(auth, {
       action,

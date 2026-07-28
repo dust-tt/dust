@@ -183,11 +183,13 @@ export class ConversationSandboxAdapter {
 
   static async dangerouslySleepSandboxIfPendingApproval(
     auth: Authenticator,
-    conversation: ConversationSandboxLifecycleOwner
+    conversation: ConversationSandboxLifecycleOwner,
+    opts: { shouldSleep?: () => Promise<boolean> } = {}
   ): Promise<Result<void, Error>> {
     return SandboxResource.dangerouslySleepIfPendingApproval(
       auth,
-      this.toSandboxLifecycleOwner(conversation)
+      this.toSandboxLifecycleOwner(conversation),
+      opts
     );
   }
 

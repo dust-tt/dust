@@ -1,12 +1,31 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock Redis hybrid manager to prevent it from removing events
-const { emitAuditLogEventDirectMock, removeEventMock, sleepSandboxMock } =
-  vi.hoisted(() => ({
+const {
+  emitAuditLogEventDirectMock,
+  removeEventMock,
+  sleepSandboxChecks,
+  sleepSandboxMock,
+} = vi.hoisted(() => {
+  const sleepSandboxChecks: boolean[] = [];
+  return {
     emitAuditLogEventDirectMock: vi.fn().mockResolvedValue(undefined),
     removeEventMock: vi.fn().mockResolvedValue(undefined),
-    sleepSandboxMock: vi.fn().mockResolvedValue({ isErr: () => false }),
-  }));
+    sleepSandboxChecks,
+    sleepSandboxMock: vi.fn(
+      async (
+        _auth: unknown,
+        _conversation: unknown,
+        opts?: { shouldSleep?: () => Promise<boolean> }
+      ) => {
+        if (opts?.shouldSleep) {
+          sleepSandboxChecks.push(await opts.shouldSleep());
+        }
+        return { isErr: () => false };
+      }
+    ),
+  };
+});
 vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
   getRedisHybridManager: vi.fn().mockReturnValue({
     removeEvent: removeEventMock,
@@ -49,6 +68,7 @@ describe("blocked actions resolution", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    sleepSandboxChecks.length = 0;
 
     const setup = await createResourceTest({});
     workspace = setup.workspace;
@@ -285,6 +305,41 @@ describe("blocked actions resolution", () => {
       );
       expect(reloadedAction?.status).toBe("denied");
       expect(sleepSandboxMock).toHaveBeenCalledOnce();
+      expect(sleepSandboxChecks).toEqual([true]);
+    });
+
+    it("keeps the sandbox paused while another child still needs approval", async () => {
+      const { agentMessage, action } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+          status: "ready_allowed_implicitly",
+        });
+      await action.updateStepContext({
+        ...action.stepContext,
+        sandboxChildActionInfo: { parentActionId: "parent_action" },
+      });
+
+      const { agentMessageRowId: otherAgentMessageRowId } =
+        await createAgentMessageAtRank(3);
+      const { action: otherAction } = await AgentMCPActionFactory.create(auth, {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId: otherAgentMessageRowId,
+      });
+      await otherAction.updateStepContext({
+        ...otherAction.stepContext,
+        sandboxChildActionInfo: { parentActionId: "other_parent" },
+      });
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "cancelled",
+      });
+
+      expect(sleepSandboxMock).toHaveBeenCalledOnce();
+      expect(sleepSandboxChecks).toEqual([false]);
     });
 
     it("denies a resumed sandbox parent that had not restarted", async () => {

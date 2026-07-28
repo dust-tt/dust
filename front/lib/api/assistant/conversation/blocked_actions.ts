@@ -4,6 +4,7 @@ import {
   isSandboxChildActionInfo,
   isSandboxResumeState,
 } from "@app/lib/actions/types";
+import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/lock";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import {
   buildAuditLogTarget,
@@ -14,6 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   AgentMessageType,
@@ -24,6 +26,66 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 export type GetBlockedActionsResponseType = {
   blockedActions: AgentLoopBlockedToolExecution[];
 };
+
+export async function releaseSandboxIfUnused(
+  auth: Authenticator,
+  {
+    conversation,
+    messageId,
+  }: {
+    conversation: ConversationWithoutContentType;
+    messageId: string;
+  }
+): Promise<void> {
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversation.sId
+  );
+  if (!conversationResource) {
+    logger.warn(
+      {
+        conversationId: conversation.sId,
+        messageId,
+      },
+      "Conversation not found while releasing sandbox approval"
+    );
+    return;
+  }
+
+  const sleepResult =
+    await ConversationSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(
+      auth,
+      conversationResource,
+      {
+        shouldSleep: () =>
+          withTransaction(async (transaction) => {
+            // Lifecycle cleanup and sandbox pausing both take these locks in this order.
+            await getConversationRankVersionLock(
+              auth,
+              conversation,
+              transaction
+            );
+            return !(await AgentMCPActionResource.hasBlockedSandboxActions(
+              auth,
+              {
+                conversationId: conversation.id,
+                transaction,
+              }
+            ));
+          }),
+      }
+    );
+  if (sleepResult.isErr()) {
+    logger.error(
+      {
+        err: sleepResult.error,
+        conversationId: conversation.sId,
+        messageId,
+      },
+      "Failed to release sandbox approval"
+    );
+  }
+}
 
 /**
  * Cleans up the blocked actions of an agent message that reached a terminal status
@@ -72,39 +134,10 @@ export async function cleanupDeniedBlockedActions(
           isSandboxResumeState(action.stepContext.resumeState)
       )
     ) {
-      // Serializes with an in-flight pause. If cancellation won the race, the pause callback sees
-      // the denied action and no-ops; if the pause won, this converts pending_approval to regular
-      // sleeping state so the sandbox is not left waiting on an approval that no longer exists.
-      const conversationResource = await ConversationResource.fetchById(
-        auth,
-        conversation.sId
-      );
-      const sleepResult = conversationResource
-        ? await ConversationSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(
-            auth,
-            conversationResource
-          )
-        : null;
-      if (!sleepResult) {
-        logger.warn(
-          {
-            conversationId: conversation.sId,
-            messageId: agentMessage.sId,
-          },
-          "Conversation not found while releasing terminated child approval"
-        );
-        return;
-      }
-      if (sleepResult.isErr()) {
-        logger.error(
-          {
-            err: sleepResult.error,
-            conversationId: conversation.sId,
-            messageId: agentMessage.sId,
-          },
-          "Failed to release sandbox after terminated child approval"
-        );
-      }
+      await releaseSandboxIfUnused(auth, {
+        conversation,
+        messageId: agentMessage.sId,
+      });
     }
     return;
   }
