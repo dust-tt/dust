@@ -50,8 +50,43 @@ app.post(
       (agent) => agent.canEdit || auth.isAdmin()
     );
 
-    await TagResource.addToAgents(auth, tagsToAdd, editableAgents);
-    await TagResource.removeFromAgents(auth, tagsToRemove, editableAgents);
+    const addTagsResult = await TagResource.addToAgents(
+      auth,
+      tagsToAdd,
+      editableAgents
+    );
+    if (addTagsResult.isErr()) {
+      return apiError(
+        ctx,
+        {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: addTagsResult.error.message,
+          },
+        },
+        addTagsResult.error
+      );
+    }
+
+    const removeTagsResult = await TagResource.removeFromAgents(
+      auth,
+      tagsToRemove,
+      editableAgents
+    );
+    if (removeTagsResult.isErr()) {
+      return apiError(
+        ctx,
+        {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: removeTagsResult.error.message,
+          },
+        },
+        removeTagsResult.error
+      );
+    }
 
     return ctx.json({ success: true });
   }

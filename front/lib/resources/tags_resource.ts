@@ -277,18 +277,20 @@ export class TagResource extends BaseResource<TagModel> {
     auth: Authenticator,
     tags: TagResource[],
     agentConfigurations: LightAgentConfigurationType[]
-  ) {
+  ): Promise<Result<undefined, Error>> {
     if (
       !auth.isAdmin() &&
       agentConfigurations.some(
         (agentConfiguration) => !agentConfiguration.canEdit
       )
     ) {
-      throw new Error("You are not allowed to add tags to this agent");
+      return new Err(
+        new Error("You are not allowed to add tags to this agent")
+      );
     }
 
     if (tags.length === 0 || agentConfigurations.length === 0) {
-      return;
+      return new Ok(undefined);
     }
 
     await TagAgentModel.bulkCreate(
@@ -301,6 +303,7 @@ export class TagResource extends BaseResource<TagModel> {
       ),
       { ignoreDuplicates: true }
     );
+    return new Ok(undefined);
   }
 
   async removeFromAgent(
@@ -324,18 +327,20 @@ export class TagResource extends BaseResource<TagModel> {
     auth: Authenticator,
     tags: TagResource[],
     agentConfigurations: LightAgentConfigurationType[]
-  ) {
+  ): Promise<Result<undefined, Error>> {
     if (
       !auth.isAdmin() &&
       agentConfigurations.some(
         (agentConfiguration) => !agentConfiguration.canEdit
       )
     ) {
-      throw new Error("You are not allowed to remove tags from this agent");
+      return new Err(
+        new Error("You are not allowed to remove tags from this agent")
+      );
     }
 
     if (tags.length === 0 || agentConfigurations.length === 0) {
-      return;
+      return new Ok(undefined);
     }
 
     await TagAgentModel.destroy({
@@ -347,6 +352,7 @@ export class TagResource extends BaseResource<TagModel> {
         ),
       },
     });
+    return new Ok(undefined);
   }
 
   async updateTag({ name, kind }: { name: string; kind: TagKind }) {
