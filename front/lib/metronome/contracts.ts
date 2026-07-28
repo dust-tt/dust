@@ -467,28 +467,45 @@ function billingPeriodFromContract(
   contract: CachedContract
 ): Result<BillingCycle, Error> {
   // Per-seat credits recur MONTHLY even on annually-billed seats (see
-  // `getNextSeatCreditRenewalDate`), on the grid anchored at the contract
-  // start — so the credit cycle is the current month of the contract
-  // anniversary day, regardless of any subscription's billing frequency.
-  // Boundaries keep the contract start's (hour-aligned) time-of-day, matching
-  // Metronome's period boundaries.
-  const hasCurrentPeriod = (contract.subscriptions ?? []).some(
-    (s) => s.billing_periods?.current !== undefined
-  );
-  if (!hasCurrentPeriod) {
+  // `getNextSeatCreditRenewalDate`), on the grid anchored at the contract's
+  // billing anchor date — so the credit cycle is the current month of that
+  // anchor day, regardless of any subscription's billing frequency.
+  //
+  // Read the anchor off `usage_statement_schedule.billing_anchor_date` — a
+  // required, contract-level field — rather than off
+  // `subscriptions[].billing_periods`: some contracts carry no subscriptions
+  // at all (e.g. programmatic-only contracts), so keying off subscription
+  // presence/ordering is fragile. Metronome resolves this field to a fixed
+  // date whose day-of-month recurs every period regardless of package (a
+  // contract-start-anchored package resolves it to the contract start's
+  // day-of-month; a "1st of month" package resolves it to day 1).
+  const anchorDateString =
+    contract.usage_statement_schedule?.billing_anchor_date;
+  if (!anchorDateString) {
     return new Err(
-      new Error("No current billing period found on Metronome contract")
+      new Error("No billing anchor date found on Metronome contract")
     );
   }
-  const contractStart = new Date(contract.starting_at);
-  return new Ok(
-    getBillingCycleFromDay(
-      contractStart.getUTCDate(),
-      new Date(),
-      true,
-      contractStart
-    )
+  const anchorDate = new Date(anchorDateString);
+  const cycle = getBillingCycleFromDay(
+    anchorDate.getUTCDate(),
+    new Date(),
+    true,
+    anchorDate
   );
+
+  // Clamp to the contract's actual start: during the partial first period
+  // (e.g. a "1st of month" package on a contract starting mid-month), the
+  // reconstructed monthly bucket extends earlier than the contract existed —
+  // there can't be usage to count before the contract started, so never
+  // report a cycleStart earlier than `contract.starting_at`.
+  const contractStart = new Date(contract.starting_at);
+  const cycleStart =
+    cycle.cycleStart.getTime() < contractStart.getTime()
+      ? contractStart
+      : cycle.cycleStart;
+
+  return new Ok({ cycleStart, cycleEnd: cycle.cycleEnd });
 }
 
 /**
