@@ -1363,6 +1363,7 @@ export function validateToolInputs<
   const toolMetadata = INTERNAL_MCP_SERVERS[serverName].metadata.tools.find(
     (tool) => tool.name === toolName
   );
+  // The type enforces that this exists, but we return false out of retro-compatibility over tool/server name changes.
   if (!toolMetadata) {
     return false;
   }
