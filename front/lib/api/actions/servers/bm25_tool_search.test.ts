@@ -1110,6 +1110,10 @@ const QUERIES: LabeledQuery[] = [
     maxRank: 10,
   },
   {
+    query: "which models did the workspace use most this month",
+    expected: "workspace_analytics.get_top_models",
+  },
+  {
     query: "how many AWU credits did the workspace consume this month",
     expected: "workspace_analytics.get_credit_usage",
   },
