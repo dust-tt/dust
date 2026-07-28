@@ -7,16 +7,22 @@ import {
   formatConversationForLLM,
   formatDraftsForLLM,
   formatMessagesForLLM,
+  getConversationInboxes,
   getFrontAPITokenFromExtra,
   makeFrontAPIRequest,
   parseFrontDraftsResponse,
 } from "@app/lib/api/actions/servers/front/helpers";
 import { FRONT_TOOLS_METADATA } from "@app/lib/api/actions/servers/front/metadata";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-interface FrontListResponse {
-  _results?: unknown[];
+const FRONT_API_CONCURRENCY = 5;
+
+type FrontConversation = Parameters<typeof formatConversationForLLM>[0];
+
+interface FrontListResponse<T = unknown> {
+  _results?: T[];
 }
 
 interface FrontTag {
@@ -39,6 +45,14 @@ interface FrontInbox {
   is_private: boolean;
 }
 
+async function formatConversation(
+  apiToken: string,
+  conversation: FrontConversation
+) {
+  const inboxes = await getConversationInboxes(apiToken, conversation.id);
+  return formatConversationForLLM(conversation, inboxes);
+}
+
 const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
   search_conversations: async ({ q, limit = 20 }, extra) => {
     try {
@@ -49,7 +63,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
         endpoint: `conversations/search/${encodeURIComponent(q)}`,
         apiToken,
         params: { limit: Math.min(limit, 100) },
-      })) as FrontListResponse;
+      })) as FrontListResponse<FrontConversation>;
 
       const conversations = data._results ?? [];
 
@@ -62,13 +76,13 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
         ]);
       }
 
-      const formatted = conversations
-        .map((conv) =>
-          formatConversationForLLM(
-            conv as Parameters<typeof formatConversationForLLM>[0]
-          )
+      const formatted = (
+        await concurrentExecutor(
+          conversations,
+          (conversation) => formatConversation(apiToken, conversation),
+          { concurrency: FRONT_API_CONCURRENCY }
         )
-        .join("\n\n");
+      ).join("\n\n");
 
       return new Ok([
         {
@@ -95,15 +109,13 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
     try {
       const apiToken = await getFrontAPITokenFromExtra(extra);
 
-      const data = await makeFrontAPIRequest({
+      const data = (await makeFrontAPIRequest({
         method: "GET",
         endpoint: `conversations/${conversation_id}`,
         apiToken,
-      });
+      })) as FrontConversation;
 
-      const formatted = formatConversationForLLM(
-        data as Parameters<typeof formatConversationForLLM>[0]
-      );
+      const formatted = await formatConversation(apiToken, data);
 
       return new Ok([
         {
@@ -281,7 +293,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
         params: {
           limit: Math.min(limit, 100),
         },
-      })) as FrontListResponse;
+      })) as FrontListResponse<FrontConversation>;
 
       const conversations = data._results ?? [];
 
@@ -294,13 +306,13 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
         ]);
       }
 
-      const formatted = conversations
-        .map((conv) =>
-          formatConversationForLLM(
-            conv as Parameters<typeof formatConversationForLLM>[0]
-          )
+      const formatted = (
+        await concurrentExecutor(
+          conversations,
+          (conversation) => formatConversation(apiToken, conversation),
+          { concurrency: FRONT_API_CONCURRENCY }
         )
-        .join("\n\n");
+      ).join("\n\n");
 
       return new Ok([
         {

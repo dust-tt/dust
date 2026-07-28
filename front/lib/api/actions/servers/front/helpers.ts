@@ -146,13 +146,32 @@ interface FrontConversation {
   recipient?: { handle?: string; name?: string };
 }
 
+const FrontInboxesResponseSchema = z.object({
+  _results: z.array(z.object({ name: z.string() })),
+});
+
+export async function getConversationInboxes(
+  apiToken: string,
+  conversationId: string
+) {
+  const data = await makeFrontAPIRequest({
+    method: "GET",
+    endpoint: `conversations/${conversationId}/inboxes`,
+    apiToken,
+  });
+
+  return FrontInboxesResponseSchema.parse(data)._results;
+}
+
 export function formatConversationForLLM(
-  conversation: FrontConversation
+  conversation: FrontConversation,
+  inboxes: Array<{ name: string }>
 ): string {
   const assigneeEmail = conversation.assignee
     ? conversation.assignee.email
     : "Unassigned";
-  const inboxName = conversation.inbox?.name ?? "Unknown";
+  const inboxNames =
+    inboxes.length > 0 ? inboxes.map(({ name }) => name).join(", ") : "None";
   const tagNames = conversation.tags?.map((t) => t.name).join(", ") ?? "None";
   const createdAt = conversation.created_at
     ? new Date(conversation.created_at * 1000).toISOString()
@@ -168,7 +187,7 @@ export function formatConversationForLLM(
   SUBJECT: ${conversation.subject ?? "(No subject)"}
   STATUS: ${conversation.status}
   ASSIGNEE: ${assigneeEmail}
-  INBOX: ${inboxName}
+  INBOX: ${inboxNames}
   TAGS: ${tagNames}
   CREATED: ${createdAt}
   LAST_MESSAGE: ${lastMessageAt}
