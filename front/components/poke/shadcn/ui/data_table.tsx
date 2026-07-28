@@ -8,11 +8,12 @@ import {
   PokeTableHeader,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import { Input } from "@dust-tt/sparkle";
+import { Checkbox, Input } from "@dust-tt/sparkle";
 import type {
   ColumnDef,
   ColumnFiltersState,
   PaginationState,
+  RowSelectionState,
   SortingState,
   Updater,
 } from "@tanstack/react-table";
@@ -59,6 +60,20 @@ interface DataTableProps<TData, TValue> {
   search?: string;
   onSearchChange?: (search: string) => void;
   onRowClick?: (row: TData) => void;
+  // When true, a leading checkbox column is added and rows become selectable.
+  // The header checkbox selects/deselects all rows matching the current
+  // filters (across pages), not just the current page.
+  enableRowSelection?: boolean;
+  // Stable row identity, so a selection survives filtering/pagination. Defaults
+  // to the row index when omitted.
+  getRowId?: (row: TData) => string;
+  // Rendered above the table whenever at least one row is selected. Receives
+  // the rows matching the current filters that are selected, plus a callback to
+  // clear the selection.
+  renderBulkActions?: (args: {
+    selectedRows: TData[];
+    resetSelection: () => void;
+  }) => React.ReactNode;
 }
 
 export function PokeDataTable<TData, TValue>({
@@ -76,19 +91,55 @@ export function PokeDataTable<TData, TValue>({
   search,
   onSearchChange,
   onRowClick,
+  enableRowSelection,
+  getRowId,
+  renderBulkActions,
 }: DataTableProps<TData, TValue>) {
   const isServerSide = serverSideRowCount !== undefined;
   const isServerSearch = onSearchChange !== undefined;
 
   const [internalSorting, setInternalSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const resolvedSorting = isServerSide ? (sorting ?? []) : internalSorting;
+
+  const selectionColumn: ColumnDef<TData, TValue> = {
+    id: "select",
+    enableSorting: false,
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllRowsSelected()
+            ? true
+            : table.getIsSomeRowsSelected()
+              ? "partial"
+              : false
+        }
+        onCheckedChange={(checked) =>
+          table.toggleAllRowsSelected(checked === true)
+        }
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(checked) => row.toggleSelected(checked === true)}
+      />
+    ),
+  };
+
+  const resolvedColumns = enableRowSelection
+    ? [selectionColumn, ...columns]
+    : columns;
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
-    columns,
+    columns: resolvedColumns,
+    getRowId,
+    enableRowSelection,
+    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -121,6 +172,7 @@ export function PokeDataTable<TData, TValue>({
     state: {
       columnFilters,
       sorting: resolvedSorting,
+      rowSelection,
       ...(isServerSide && pagination ? { pagination } : {}),
     },
     initialState: {
@@ -175,6 +227,26 @@ export function PokeDataTable<TData, TValue>({
             />
           ))}
       </div>
+      {renderBulkActions &&
+        (() => {
+          const selectedRows = table
+            .getFilteredSelectedRowModel()
+            .rows.map((row) => row.original);
+          if (selectedRows.length === 0) {
+            return null;
+          }
+          return (
+            <div className="flex items-center gap-3 rounded-md border bg-muted-background p-2">
+              <span className="text-sm font-medium">
+                {selectedRows.length} selected
+              </span>
+              {renderBulkActions({
+                selectedRows,
+                resetSelection: () => table.resetRowSelection(),
+              })}
+            </div>
+          );
+        })()}
       <div className="rounded-md border">
         <PokeTable>
           <PokeTableHeader>
@@ -219,7 +291,7 @@ export function PokeDataTable<TData, TValue>({
             ) : (
               <PokeTableRow>
                 <PokeTableCell
-                  colSpan={columns.length}
+                  colSpan={table.getVisibleFlatColumns().length}
                   className="h-24 text-center"
                 >
                   No results.
