@@ -322,6 +322,58 @@ export async function addFixedWindowCount({
 }
 
 /**
+ * Overwrites the fixed-window counter for `key` in the window identified by
+ * `bounds` with an absolute `value` (SET, not INCRBY). Use for backfill /
+ * resync from an external source of truth — regular accounting should use
+ * `addFixedWindowCount`. Returns a Result so callers can report failures.
+ */
+export async function setFixedWindowCount({
+  key,
+  bounds,
+  value,
+  logger,
+}: {
+  key: string;
+  bounds: FixedWindowBounds;
+  value: number;
+  logger: LoggerInterface;
+}): Promise<Result<void, Error>> {
+  if (!Number.isInteger(value) || value < 0) {
+    return new Err(new Error("value must be a non-negative integer."));
+  }
+
+  const redisKey = makeRateLimiterKey(`${key}:${bounds.label}`);
+  const expireAtMs = bounds.windowEndMs + FIXED_WINDOW_EXPIRE_GRACE_MS;
+
+  const luaScript = `
+    local key = KEYS[1]
+    local value = tonumber(ARGV[1])
+    local expire_at_ms = tonumber(ARGV[2])
+
+    redis.call('SET', key, value)
+    redis.call('PEXPIREAT', key, expire_at_ms)
+  `;
+
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    await redis.eval(luaScript, {
+      keys: [redisKey],
+      arguments: [value.toString(), expireAtMs.toString()],
+    });
+    return new Ok(undefined);
+  } catch (e) {
+    getStatsDClient().increment("ratelimiter.error.count", 1, [
+      "operation:set_fixed_window",
+    ]);
+    logger.error(
+      { key, label: bounds.label, value, error: e },
+      "setFixedWindowCount error"
+    );
+    return new Err(normalizeError(e));
+  }
+}
+
+/**
  * Reads the current fixed-window count for `key` in the window identified by
  * `bounds`. Returns 0 when the window has no entries yet. Mirrors
  * `getRateLimiterCount` but for the boundary-bucketed counter written by
