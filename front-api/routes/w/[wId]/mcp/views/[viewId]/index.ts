@@ -1,7 +1,6 @@
 import type { PatchMCPServerViewResponseBody } from "@app/lib/api/mcp/views";
 import {
   PatchMCPServerViewBodySchema,
-  updateIsRestrictedToSkillsForMCPServerViews,
   updateNameAndDescriptionForMCPServerViews,
   updateOAuthUseCaseForMCPServerViews,
 } from "@app/lib/api/mcp/views";
@@ -69,12 +68,9 @@ app.patch(
         return respondToUpdateError(ctx, updateResult.error.code);
       }
     } else if ("isRestrictedToSkills" in body) {
-      const updateResult = await updateIsRestrictedToSkillsForMCPServerViews(
+      const updateResult = await systemView.updateIsRestrictedToSkills(
         auth,
-        {
-          mcpServerId,
-          isRestrictedToSkills: body.isRestrictedToSkills,
-        }
+        body.isRestrictedToSkills
       );
       if (updateResult.isErr()) {
         return respondToUpdateError(ctx, updateResult.error.code);
