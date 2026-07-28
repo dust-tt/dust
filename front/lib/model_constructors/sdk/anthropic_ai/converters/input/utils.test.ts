@@ -5,6 +5,7 @@ import type {
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { MessageBlockConverters } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import {
+  ANTHROPIC_IMAGE_COUNT_THRESHOLD,
   assistantMessageToContentBlocks,
   assistantProviderPassthroughMessageToBlocks,
   assistantReasoningMessageToThinkingBlocks,
@@ -91,6 +92,19 @@ function makeStubConverters(): MessageBlockConverters {
     ),
     assistantProviderPassthroughMessageToBlocks: vi.fn(() => []),
   };
+}
+
+function makeToolImageResults(count: number): BaseToolCallResultMessage[] {
+  return Array.from({ length: count }, (_, index) => ({
+    role: "user",
+    type: "tool_call_result",
+    content: {
+      callId: `call_${index}`,
+      toolName: "read_image",
+      parts: [{ type: "image_url", url: `https://example.com/${index}.png` }],
+      isError: false,
+    },
+  }));
 }
 
 describe("cacheControlFor", () => {
@@ -738,6 +752,60 @@ describe("conversationToMessages", () => {
       "user",
       "assistant",
     ]);
+  });
+
+  it("keeps all images at the threshold", async () => {
+    const converters = makeStubConverters();
+    const conversation: BaseConversation = {
+      system: [],
+      messages: [
+        {
+          role: "user",
+          type: "image_url",
+          content: { url: "https://example.com/upload.png" },
+        },
+        ...makeToolImageResults(ANTHROPIC_IMAGE_COUNT_THRESHOLD - 1),
+      ],
+    };
+
+    await conversationToMessages(conversation, converters);
+
+    expect(converters.imageUrlToImageBlock).toHaveBeenCalledTimes(
+      ANTHROPIC_IMAGE_COUNT_THRESHOLD
+    );
+    expect(converters.imageUrlToImageBlock).toHaveBeenCalledWith(
+      "https://example.com/0.png"
+    );
+  });
+
+  it("discards the oldest tool images while preserving user images", async () => {
+    const converters = makeStubConverters();
+    const conversation: BaseConversation = {
+      system: [],
+      messages: [
+        {
+          role: "user",
+          type: "image_url",
+          content: { url: "https://example.com/upload.png" },
+        },
+        ...makeToolImageResults(ANTHROPIC_IMAGE_COUNT_THRESHOLD),
+      ],
+    };
+
+    await conversationToMessages(conversation, converters);
+
+    expect(converters.imageUrlToImageBlock).toHaveBeenCalledTimes(
+      ANTHROPIC_IMAGE_COUNT_THRESHOLD
+    );
+    expect(converters.imageUrlToImageBlock).toHaveBeenCalledWith(
+      "https://example.com/upload.png"
+    );
+    expect(converters.imageUrlToImageBlock).not.toHaveBeenCalledWith(
+      "https://example.com/0.png"
+    );
+    expect(converters.imageUrlToImageBlock).toHaveBeenCalledWith(
+      `https://example.com/${ANTHROPIC_IMAGE_COUNT_THRESHOLD - 1}.png`
+    );
   });
 });
 
