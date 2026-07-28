@@ -2,6 +2,7 @@ import {
   formatConversationForLLM,
   formatConversationsForLLM,
   getConversationInboxes,
+  parseFrontConversation,
 } from "@app/lib/api/actions/servers/front/helpers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -68,6 +69,21 @@ describe("formatConversationForLLM", () => {
     );
 
     expect(formatted).toContain("INBOX: Support, Escalations");
+  });
+
+  it("accepts a recipient without a name", () => {
+    const conversation = parseFrontConversation({
+      id: "cnv_123",
+      status: "open",
+      recipient: {
+        handle: "customer@example.com",
+        name: null,
+      },
+    });
+
+    expect(formatConversationForLLM(conversation, [])).toContain(
+      "RECIPIENT: customer@example.com"
+    );
   });
 });
 

@@ -151,7 +151,7 @@ const FrontConversationSchema = z.object({
     .nullable()
     .optional(),
   recipient: z
-    .object({ handle: z.string().optional(), name: z.string().optional() })
+    .object({ handle: z.string(), name: z.string().nullable() })
     .nullable()
     .optional(),
 });
