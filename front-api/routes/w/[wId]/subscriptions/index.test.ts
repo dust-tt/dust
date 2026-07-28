@@ -1,10 +1,9 @@
-import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { honoApp } from "@front-api/app";
 import type { Stripe } from "stripe";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const TEST_CHECKOUT_URL = "https://checkout.stripe.com/test-session";
 const TEST_CLIENT_SECRET = "cs_test_client_secret";
@@ -49,12 +48,6 @@ describe("POST /api/w/:wId/subscriptions", () => {
     vi.clearAllMocks();
   });
 
-  afterEach(async () => {
-    await KillSwitchResource.disableKillSwitch(
-      "global_disable_metronome_billing"
-    );
-  });
-
   it("returns 400 on invalid request body", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
@@ -65,42 +58,6 @@ describe("POST /api/w/:wId/subscriptions", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
-  });
-
-  it("returns hosted checkoutUrl and plan details for legacy subscription when metronome billing is killed", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      role: "admin",
-    });
-
-    await KillSwitchResource.enableKillSwitch(
-      "global_disable_metronome_billing"
-    );
-
-    const response = await post(workspace, { billingPeriod: "monthly" });
-
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data.mode).toEqual("hosted");
-    expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
-  });
-
-  it("handles yearly billing period for legacy subscription when metronome billing is killed", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      role: "admin",
-    });
-
-    await KillSwitchResource.enableKillSwitch(
-      "global_disable_metronome_billing"
-    );
-
-    const response = await post(workspace, { billingPeriod: "yearly" });
-
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data.mode).toEqual("hosted");
-    expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
   });
 
   it("returns embedded clientSecret and sessionId by default", async () => {
@@ -133,7 +90,7 @@ describe("POST /api/w/:wId/subscriptions", () => {
     expect(response.status).toBe(400);
   });
 
-  it("returns hosted checkoutUrl when legacy_billing flag is set even without the kill switch", async () => {
+  it("returns hosted checkoutUrl when legacy_billing flag is set", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",

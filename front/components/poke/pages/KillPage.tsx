@@ -14,7 +14,6 @@ import {
   AnthropicLogo,
   Button,
   CloudArrowLeftRight,
-  CreditCard01,
   Fire,
   OpenaiLogo,
   PauseCircle,
@@ -68,13 +67,6 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
       "Force Dust and Deep Dive agents to use non-Anthropic providers.",
     note: "Use only when the latest Sonnet or Opus models are down.",
     icon: RefreshCw02,
-  },
-  global_disable_metronome_billing: {
-    title: "Metronome Billing",
-    description:
-      "Disable Metronome billing globally and fall back to legacy Stripe subscriptions.",
-    note: "Workspaces with the `legacy_billing` feature flag are always on legacy billing regardless of this switch.",
-    icon: CreditCard01,
   },
   pause_upsert_queue: {
     title: "Upsert Queue",
