@@ -2849,7 +2849,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async getActionRequiredAndLastReadAtForUser(
     auth: Authenticator,
-    id: number
+    id: number,
+    transaction?: Transaction
   ) {
     if (!auth.user()) {
       return {
@@ -2865,6 +2866,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
           userId: auth.getNonNullableUser().id,
         },
+        transaction,
       }),
       UserConversationReadsModel.findOne({
         where: {
@@ -2872,6 +2874,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
           userId: auth.getNonNullableUser().id,
         },
+        transaction,
       }),
     ]);
 

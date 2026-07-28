@@ -1,8 +1,11 @@
 import { getConversationLockById } from "@app/lib/api/assistant/conversation/lock";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import { Authenticator } from "@app/lib/auth";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { DeferredEvent } from "@app/temporal/agent_loop/lib/deferred_events";
@@ -74,6 +77,11 @@ export async function publishDeferredEventsActivity(
   if (!conversationModelId) {
     throw new Error(`Invalid conversation ID: ${conversationId}`);
   }
+  const authType = deferredEvents.find(({ context }) => context.authType)
+    ?.context.authType;
+  const auth = authType
+    ? await Authenticator.fromJsonWithRefrehedGroups(authType)
+    : null;
 
   // Termination, sandbox-parent completion, and action resolution take this same lock. Publishing
   // inside it gives clients a stable ordering: a prompt is either skipped after the state change,
@@ -107,6 +115,28 @@ export async function publishDeferredEventsActivity(
         blockedActionIds.has(event.actionId) &&
         blockedActionIds.has(context.originActionId ?? event.actionId)
     );
+    let shouldNotify = false;
+    if (activeDeferredEvents.length > 0 && auth) {
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        conversationId,
+        { transaction }
+      );
+      if (!conversation) {
+        throw new Error(`Conversation not found: ${conversationId}`);
+      }
+      const { actionRequired } =
+        await ConversationResource.getActionRequiredAndLastReadAtForUser(
+          auth,
+          conversation.id,
+          transaction
+        );
+      shouldNotify = !actionRequired;
+      await ConversationResource.markAsActionRequired(auth, {
+        conversation: { ...conversation.toJSON(), actionRequired },
+        transaction,
+      });
+    }
 
     for (const [index, deferredEvent] of activeDeferredEvents.entries()) {
       const { event, context } = deferredEvent;
@@ -169,6 +199,12 @@ export async function publishDeferredEventsActivity(
         conversationId: context.conversationId,
         event: eventToPublish,
         step: context.step,
+      });
+    }
+    if (shouldNotify && auth) {
+      notifyManualActionRequired(auth, {
+        conversationId,
+        actionId: activeDeferredEvents[0].event.actionId,
       });
     }
 

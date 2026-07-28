@@ -4,6 +4,7 @@ import type {
   AgentLoopToolFileAuthRequiredEvent,
   AgentLoopToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
+import type { AuthenticatorType } from "@app/lib/auth";
 import type { ModelId } from "@app/types/shared/model_id";
 
 /**
@@ -24,6 +25,8 @@ type DeferrableEvent =
 type DeferredEventContext = {
   agentMessageId: string;
   agentMessageRowId: ModelId;
+  // Optional until workflows started before action-required marking moved to publication drain.
+  authType?: AuthenticatorType;
   conversationId: string;
   // The action whose activity produced the event. Nested run_agent events can carry a descendant
   // action ID in the event itself, while this ID remains the sandbox child owned by this workflow.

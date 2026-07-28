@@ -18,6 +18,7 @@ vi.mock("@app/lib/resources/conversation_sandbox_adapter", () => ({
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
+import * as blockedActionHelpers from "@app/lib/api/assistant/conversation/blocked_actions";
 import {
   finishSandboxBash,
   pauseReservedSandboxBash,
@@ -534,6 +535,37 @@ describe("resolveSandboxChildBlock", () => {
     expect(child?.status).toBe("denied");
   });
 
+  it("keeps the parent final when denied-child cleanup fails", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "running",
+    });
+    await createAction({
+      name: "child_tool",
+      status: "blocked_validation_required",
+      sandboxChildActionInfo: { parentActionId: parentId },
+    });
+    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
+    if (!parent) {
+      throw new Error("Expected the parent action to exist.");
+    }
+    vi.spyOn(
+      blockedActionHelpers,
+      "clearBlockedActionEffects"
+    ).mockRejectedValueOnce(new Error("Redis unavailable"));
+
+    const result = await finishSandboxBash(auth, {
+      action: parent,
+      conversation,
+      executionDurationMs: 10,
+      messageId: AGENT_LOOP_ARGS.agentMessageId,
+      status: "succeeded",
+    });
+
+    expect(result.completed).toBe(true);
+    expect(parent.status).toBe("succeeded");
+  });
+
   it("does not let an old workflow finish a newer parent reservation", async () => {
     const { sId: parentId } = await createAction({
       name: "bash",
@@ -598,6 +630,13 @@ describe("resolveSandboxChildBlock", () => {
     if (!parent) {
       throw new Error("Expected the parent action to exist.");
     }
+    const existingOutput = { type: "text" as const, text: "progress" };
+    const existingOutputRes = await parent.createOutputItems(auth, [
+      { content: existingOutput },
+    ]);
+    if (existingOutputRes.isErr()) {
+      throw existingOutputRes.error;
+    }
     await ConversationFactory.setAgentMessageStatus({
       workspace,
       agentMessageModelId: agentMessageId,
@@ -622,7 +661,9 @@ describe("resolveSandboxChildBlock", () => {
     expect(completed).toBe(false);
     expect(outputItems).toEqual([]);
     expect(freshParent?.status).toBe("denied");
-    expect(persistedOutputs.get(parent.id)).toBeUndefined();
+    expect(
+      persistedOutputs.get(parent.id)?.map(({ content }) => content)
+    ).toEqual([existingOutput]);
   });
 
   it("does not start a child whose parent already finished", async () => {

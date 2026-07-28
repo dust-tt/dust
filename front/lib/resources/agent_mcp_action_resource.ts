@@ -45,6 +45,7 @@ import {
   batchFetchContentsFromGcs,
   batchWriteContentsToGcs,
   deleteActionOutputsFromGcs,
+  deleteContentsFromGcs,
   warmGcsContentCache,
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -105,6 +106,12 @@ const DENIABLE_PENDING_STATUSES = [
   "ready_allowed_implicitly",
   ...TOOL_EXECUTION_BLOCKED_STATUSES,
 ] as const satisfies readonly ToolExecutionStatus[];
+
+export type StagedActionOutputs = {
+  gcsPaths: string[];
+  itemIds: ModelId[];
+  outputItems: ToolOutputItemType[];
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -1223,6 +1230,21 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     }>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<ToolOutputItemType[], Error>> {
+    const result = await this.stageOutputItems(auth, contents, { transaction });
+    if (result.isErr()) {
+      return result;
+    }
+    return new Ok(result.value.outputItems);
+  }
+
+  async stageOutputItems(
+    auth: Authenticator,
+    contents: Array<{
+      content: CallToolResult["content"][number];
+      fileId?: ModelId;
+    }>,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<StagedActionOutputs, Error>> {
     // Write GCS first: the helper retries and cleans up partial batches, and DB insertion only
     // starts once every object has been persisted.
     const gcsResult = await batchWriteContentsToGcs(
@@ -1294,8 +1316,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     }
 
     // Return the stored contents in the generic tool output item shape.
-    return new Ok(
-      removeNulls(
+    return new Ok({
+      gcsPaths: removeNulls(outputItems.map((item) => item.contentGcsPath)),
+      itemIds: outputItems.map((item) => item.id),
+      outputItems: removeNulls(
         outputItems.map((item) =>
           item.content
             ? {
@@ -1306,8 +1330,32 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
               }
             : null
         )
-      )
-    );
+      ),
+    });
+  }
+
+  static async discardOutputItems(
+    auth: Authenticator,
+    stagedOutputs: StagedActionOutputs
+  ): Promise<void> {
+    const deleteResult = await deleteContentsFromGcs(stagedOutputs.gcsPaths);
+    if (deleteResult.isErr()) {
+      logger.error(
+        {
+          err: deleteResult.error,
+          itemIds: stagedOutputs.itemIds,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+        },
+        "Failed to delete discarded MCP output content"
+      );
+    }
+
+    await AgentMCPActionOutputItemModel.destroy({
+      where: {
+        id: { [Op.in]: stagedOutputs.itemIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
   }
 
   static async fetchOutputItemsByActionIds(

@@ -16,10 +16,8 @@ import {
 } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getShutdownSignal } from "@app/lib/shutdown_signal";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -244,6 +242,7 @@ export async function runToolActivity(
       return executeToolStreaming(auth, {
         action: actionToRun,
         agentConfiguration,
+        authType,
         model,
         agentMessage,
         conversation,
@@ -262,6 +261,7 @@ async function executeToolStreaming(
   {
     action,
     agentConfiguration,
+    authType,
     model: modelInfo,
     agentMessage,
     conversation,
@@ -272,6 +272,7 @@ async function executeToolStreaming(
   }: {
     action: AgentMCPActionResource;
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    authType: AuthenticatorType;
     model: AgentLoopExecutionData["modelInfo"];
     agentMessage: AgentLoopExecutionData["agentMessage"];
     conversation: AgentLoopExecutionData["conversation"];
@@ -472,6 +473,7 @@ async function executeToolStreaming(
           context: {
             agentMessageId: agentMessage.sId,
             agentMessageRowId: agentMessage.agentMessageId,
+            authType,
             conversationId: conversation.sId,
             originActionId: action.sId,
             step,
@@ -479,17 +481,6 @@ async function executeToolStreaming(
           },
           shouldPauseAgentLoop: true,
         });
-
-        await ConversationResource.markAsActionRequired(auth, {
-          conversation,
-        });
-
-        if (!conversation.actionRequired) {
-          notifyManualActionRequired(auth, {
-            conversationId: conversation.sId,
-            actionId: action.sId,
-          });
-        }
 
         return { deferredEvents };
 

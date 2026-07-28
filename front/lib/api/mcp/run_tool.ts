@@ -153,16 +153,24 @@ export async function* runToolWithStreaming(
         conversation: runContext.conversation,
         executionDurationMs: endDate - startDate,
         messageId: runContext.agentMessage.sId,
+        outputs: toolCallResult.content.map((content) => ({ content })),
         status: "errored",
       });
       if (!completed) {
         yield makeSandboxPausedEvent(runContext);
         return;
       }
+      yield {
+        type: "tool_success",
+        created: Date.now(),
+        output: toolCallResult.content,
+        generatedFiles: [],
+      };
+      return;
     }
     yield await handleMCPActionError(auth, {
       action,
-      status: isSandboxBash ? "errored" : status,
+      status,
       errorContent: toolCallResult.content,
       executionDurationMs: endDate - startDate,
     });
