@@ -19,8 +19,12 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+// `requestId`, set when this save resolves a specific upgrade request, is
+// not part of `UserSpendLimit` itself — it's stripped out in the handler and
+// passed to `setUserSpendLimit` separately so the granted amount/expiry can
+// be snapshotted onto that request for the admin history view.
 const UpdateUserSpendLimitBodySchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("unlimited") }),
+  z.object({ kind: z.literal("unlimited"), requestId: z.string().optional() }),
   z.object({
     kind: z.literal("limited"),
     awuCredits: z
@@ -30,6 +34,7 @@ const UpdateUserSpendLimitBodySchema = z.discriminatedUnion("kind", [
       .max(MAX_USER_SPEND_LIMIT_AWU_CREDITS),
     timeframe: z.enum(SPEND_LIMIT_OVERRIDE_TIMEFRAMES).nullable().optional(),
     expiresAt: z.number().int().positive().nullable().optional(),
+    requestId: z.string().optional(),
   }),
 ]);
 
@@ -122,12 +127,14 @@ app.put(
     }
 
     const { uId } = ctx.req.valid("param");
+    const { requestId, ...limit } = ctx.req.valid("json");
 
     const auditContext = getAuditLogContext(auth);
     const result = await setUserSpendLimit(auth, {
       userId: uId,
-      limit: ctx.req.valid("json"),
+      limit,
       auditContext,
+      requestId,
     });
     if (result.isErr()) {
       return apiError(ctx, spendLimitErrorToApiError(result.error));

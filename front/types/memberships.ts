@@ -322,6 +322,17 @@ export interface MembershipUpgradeRequestType {
     image: string | null;
     seatType: MembershipSeatType | null;
   };
+  // The admin who approved/denied the request. Null while pending.
+  resolvedBy: { sId: string; name: string } | null;
+  // Snapshot of the spend-limit override granted when this request was
+  // approved via the linked "Edit limit" flow. Null when denied, or approved
+  // through a flow not tied to a pool-cap override (e.g. a seat upgrade).
+  grantedAwuCredits: number | null;
+  grantedExpiresAt: number | null;
+  // When the grant above stopped being in effect (swept, or superseded by a
+  // later spend-limit change). Null while a recorded grant is still active,
+  // and always null when there is no recorded grant.
+  expiredAt: number | null;
 }
 
 /**

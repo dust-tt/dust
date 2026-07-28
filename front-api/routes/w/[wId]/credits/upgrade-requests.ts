@@ -3,6 +3,7 @@ import type { UpgradeRequestError } from "@app/lib/api/credits/upgrade_requests"
 import {
   createUpgradeRequest,
   listPendingUpgradeRequests,
+  listResolvedUpgradeRequests,
   resolveUpgradeRequest,
 } from "@app/lib/api/credits/upgrade_requests";
 import type {
@@ -30,6 +31,12 @@ const ParamsSchema = z.object({
 
 const ResolveBodySchema = z.object({
   status: z.union([z.literal("approved"), z.literal("denied")]),
+});
+
+// Omitted/"pending" preserves the existing behavior (the requests queue);
+// "resolved" switches to the admin history view.
+const ListUpgradeRequestsQuerySchema = z.object({
+  status: z.union([z.literal("pending"), z.literal("resolved")]).optional(),
 });
 
 // TODO(BACK12): make `reason`/`requestedDurationDays` required once the
@@ -95,9 +102,14 @@ const app = workspaceApp();
 app.get(
   "/",
   ensureIsManager(),
+  validate("query", ListUpgradeRequestsQuerySchema),
   async (ctx): HandlerResult<GetUpgradeRequestsResponseBody> => {
     const auth = ctx.get("auth");
-    const requests = await listPendingUpgradeRequests(auth);
+    const { status } = ctx.req.valid("query");
+    const requests =
+      status === "resolved"
+        ? await listResolvedUpgradeRequests(auth)
+        : await listPendingUpgradeRequests(auth);
     return ctx.json({ requests });
   }
 );

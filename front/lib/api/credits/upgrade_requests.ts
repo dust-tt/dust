@@ -242,6 +242,22 @@ export async function listPendingUpgradeRequests(
   return requests.map((r) => r.toJSON());
 }
 
+const RESOLVED_UPGRADE_REQUESTS_HISTORY_LIMIT = 50;
+
+// Admin-only: history of resolved (approved/denied) upgrade requests for the
+// workspace, most recently resolved first. Bounded to the most recent
+// `RESOLVED_UPGRADE_REQUESTS_HISTORY_LIMIT` — see
+// `MembershipUpgradeRequestResource.listResolvedByWorkspace`.
+export async function listResolvedUpgradeRequests(
+  auth: Authenticator
+): Promise<MembershipUpgradeRequestType[]> {
+  const requests =
+    await MembershipUpgradeRequestResource.listResolvedByWorkspace(auth, {
+      limit: RESOLVED_UPGRADE_REQUESTS_HISTORY_LIMIT,
+    });
+  return requests.map((r) => r.toJSON());
+}
+
 // Admin-only: record the outcome of a request. The actual spend-limit / seat
 // change is performed by the existing flows; this only marks the request.
 export async function resolveUpgradeRequest(

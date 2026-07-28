@@ -12,9 +12,24 @@ import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
+import { mutate as globalMutate } from "swr";
 
 function upgradeRequestsUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/credits/upgrade-requests`;
+}
+
+function upgradeRequestsHistoryUrl(workspaceId: string): string {
+  return `${upgradeRequestsUrl(workspaceId)}?status=resolved`;
+}
+
+async function invalidateUpgradeRequestsHistory(
+  workspaceId: string
+): Promise<void> {
+  await globalMutate(
+    (key) =>
+      typeof key === "string" &&
+      key.startsWith(upgradeRequestsHistoryUrl(workspaceId))
+  );
 }
 
 function usageStatusUrl(workspaceId: string): string {
@@ -96,6 +111,37 @@ export function useUpgradeRequests({
   };
 }
 
+// Admin-only: history of resolved (approved/denied) upgrade requests for the
+// workspace. Separate endpoint call (same route, `status=resolved`) so the
+// pending-requests fetch above stays cheap and isn't gated behind history
+// being visible.
+export function useUpgradeRequestsHistory({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const upgradeRequestsHistoryFetcher: Fetcher<GetUpgradeRequestsResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    upgradeRequestsHistoryUrl(workspaceId),
+    upgradeRequestsHistoryFetcher,
+    { disabled }
+  );
+
+  const requests = data?.requests ?? emptyArray();
+
+  return {
+    upgradeRequestsHistory: requests,
+    isUpgradeRequestsHistoryLoading: !error && !data && !disabled,
+    isUpgradeRequestsHistoryError: !!error,
+    mutateUpgradeRequestsHistory: mutate,
+  };
+}
+
 export function useResolveUpgradeRequest({
   workspaceId,
 }: {
@@ -133,11 +179,12 @@ export function useResolveUpgradeRequest({
         return false;
       }
 
-      // Resolving always removes the request from the pending list. Only an
-      // approval edits the member's seat / limit, so the members-usage surface
-      // only needs refreshing on approve.
+      // Resolving always removes the request from the pending list and adds
+      // it to history. Only an approval edits the member's seat / limit, so
+      // the members-usage surface only needs refreshing on approve.
       await Promise.all([
         mutate(),
+        invalidateUpgradeRequestsHistory(workspaceId),
         status === "approved"
           ? invalidateMembersUsage(workspaceId)
           : Promise.resolve(),

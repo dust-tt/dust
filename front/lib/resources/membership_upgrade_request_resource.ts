@@ -18,6 +18,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 export interface MembershipUpgradeRequestResource
   extends ReadonlyAttributesType<MembershipUpgradeRequestModel> {}
@@ -29,6 +30,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
 
   readonly requester: UserResource;
   readonly requesterSeatType: MembershipSeatType | null;
+  readonly resolvedByUser: UserResource | null;
 
   constructor(
     _: ModelStatic<MembershipUpgradeRequestModel>,
@@ -36,14 +38,17 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     {
       requester,
       requesterSeatType,
+      resolvedByUser,
     }: {
       requester: UserResource;
       requesterSeatType: MembershipSeatType | null;
+      resolvedByUser?: UserResource | null;
     }
   ) {
     super(MembershipUpgradeRequestModel, blob);
     this.requester = requester;
     this.requesterSeatType = requesterSeatType;
+    this.resolvedByUser = resolvedByUser ?? null;
   }
 
   get sId(): string {
@@ -138,6 +143,17 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     );
     const requesterByModelId = new Map(requesters.map((u) => [u.id, u]));
 
+    const resolvedByUserModelIds = rows.flatMap((r) =>
+      r.resolvedByUserId !== null ? [r.resolvedByUserId] : []
+    );
+    const resolvedByUsers =
+      resolvedByUserModelIds.length > 0
+        ? await UserResource.fetchByModelIds(resolvedByUserModelIds)
+        : [];
+    const resolvedByUserByModelId = new Map(
+      resolvedByUsers.map((u) => [u.id, u])
+    );
+
     const { memberships } = await MembershipResource.getActiveMemberships({
       users: requesters,
       workspace: auth.getNonNullableWorkspace(),
@@ -155,6 +171,10 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
         new this(this.model, r.get(), {
           requester,
           requesterSeatType: seatTypeByUserModelId.get(r.userId) ?? null,
+          resolvedByUser:
+            r.resolvedByUserId !== null
+              ? (resolvedByUserByModelId.get(r.resolvedByUserId) ?? null)
+              : null,
         }),
       ];
     });
@@ -179,6 +199,24 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     return this.baseFetch(auth, {
       where: { status: "pending" },
       order: [["createdAt", "DESC"]],
+    });
+  }
+
+  // Admin history: most recently resolved requests (approved or denied),
+  // newest first. Bounded rather than paginated — a first cut for the
+  // history view; revisit with cursor pagination if workspaces need to see
+  // further back than `limit`.
+  static async listResolvedByWorkspace(
+    auth: Authenticator,
+    { limit }: { limit: number }
+  ): Promise<MembershipUpgradeRequestResource[]> {
+    if (!auth.isManager()) {
+      return [];
+    }
+    return this.baseFetch(auth, {
+      where: { status: { [Op.ne]: "pending" } },
+      order: [["resolvedAt", "DESC"]],
+      limit,
     });
   }
 
@@ -226,6 +264,51 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     return new Ok(undefined);
   }
 
+  // Snapshot the spend-limit override actually granted when this (approved)
+  // request was resolved via the linked "Edit limit" flow. Called from
+  // `setUserSpendLimit` right after the override is persisted — see
+  // `expireActiveGrantsForUser` for how this grant later gets closed out.
+  async recordGrant(
+    { awuCredits, expiresAt }: { awuCredits: number; expiresAt: Date | null },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await this.update(
+      {
+        grantedAwuCredits: awuCredits,
+        grantedExpiresAt: expiresAt,
+        expiredAt: null,
+      },
+      transaction
+    );
+  }
+
+  // Close out any grant(s) still tracked as active for `user` — stamps
+  // `expiredAt` on every request row with a recorded grant that hasn't
+  // already been closed. Called both by the expiration sweep (the grant
+  // naturally lapsed) and by `setUserSpendLimit` before applying *any* new
+  // override for this user (a manual change supersedes it early, whether or
+  // not the new value is itself request-linked). Because the override is a
+  // single overwritable slot per membership, at most one row is normally
+  // still open, but this closes all of them defensively.
+  static async expireActiveGrantsForUser(
+    auth: Authenticator,
+    { user }: { user: UserResource },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await this.model.update(
+      { expiredAt: new Date() },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: user.id,
+          grantedAwuCredits: { [Op.ne]: null },
+          expiredAt: null,
+        },
+        transaction,
+      }
+    );
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
@@ -268,6 +351,17 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
         image: this.requester.imageUrl ?? null,
         seatType: this.requesterSeatType,
       },
+      resolvedBy: this.resolvedByUser
+        ? {
+            sId: this.resolvedByUser.sId,
+            name: this.resolvedByUser.fullName() || this.resolvedByUser.name,
+          }
+        : null,
+      grantedAwuCredits: this.grantedAwuCredits,
+      grantedExpiresAt: this.grantedExpiresAt
+        ? this.grantedExpiresAt.getTime()
+        : null,
+      expiredAt: this.expiredAt ? this.expiredAt.getTime() : null,
     };
   }
 

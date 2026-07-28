@@ -1,5 +1,7 @@
+import { Authenticator } from "@app/lib/auth";
 import * as spendLimits from "@app/lib/metronome/alerts/spend_limits";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import { expirePoolCapOverridesActivity } from "@app/temporal/spend_limit_expiration/activities";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -88,5 +90,41 @@ describe("expirePoolCapOverridesActivity", () => {
     await expirePoolCapOverridesActivity();
 
     expect(spendLimits.clearMetronomePerUserCapAlert).not.toHaveBeenCalled();
+  });
+
+  it("stamps expiredAt on the upgrade request that granted the reverted override", async () => {
+    const workspace = await WorkspaceFactory.metronome({
+      metronomeCustomerId: "cust_linked_xxx",
+    });
+    const user = await UserFactory.basic();
+    const membership = await MembershipFactory.associate(workspace, user, {
+      role: "user",
+    });
+    await membership.updatePoolCapOverride({
+      poolCapOverrideAwuCredits: 1500,
+      poolCapOverrideExpiresAt: new Date(Date.now() - 1000),
+    });
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const requestResult = await MembershipUpgradeRequestResource.createPending(
+      auth,
+      { user, reason: "backfill", requestedDurationDays: 1 }
+    );
+    if (requestResult.isErr()) {
+      throw requestResult.error;
+    }
+    await requestResult.value.recordGrant({
+      awuCredits: 1500,
+      expiresAt: new Date(Date.now() - 1000),
+    });
+
+    await expirePoolCapOverridesActivity();
+
+    const afterSweep = await MembershipUpgradeRequestResource.fetchById(
+      auth,
+      requestResult.value.sId
+    );
+    expect(afterSweep?.grantedAwuCredits).toBe(1500);
+    expect(afterSweep?.expiredAt).not.toBeNull();
   });
 });

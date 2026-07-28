@@ -252,4 +252,56 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       expect(response.status).toBe(403);
     });
   });
+
+  describe("GET ?status=resolved (history)", () => {
+    it("excludes pending requests and includes resolvedBy once resolved", async () => {
+      const workspace = await creditPricedWorkspace();
+      const { user: member } = await createMemberRequest(workspace);
+
+      const { user: admin } = await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+        workspace,
+      });
+
+      const pendingBefore = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?status=resolved`
+      );
+      expect((await pendingBefore.json()).requests).toHaveLength(0);
+
+      const listResponse = await honoApp.request(
+        upgradeRequestsUrl(workspace.sId)
+      );
+      const requestId = (await listResponse.json()).requests[0].sId;
+
+      await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}/${requestId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "denied" }),
+        }
+      );
+
+      const historyResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?status=resolved`
+      );
+      expect(historyResponse.status).toBe(200);
+      const { requests: history } = await historyResponse.json();
+      expect(history).toHaveLength(1);
+      expect(history[0].status).toBe("denied");
+      expect(history[0].requester.sId).toBe(member.sId);
+      expect(history[0].resolvedBy).toEqual({
+        sId: admin.sId,
+        name: admin.fullName(),
+      });
+      expect(history[0].grantedAwuCredits).toBeNull();
+
+      // Still absent from the pending list.
+      const pendingAfter = await honoApp.request(
+        upgradeRequestsUrl(workspace.sId)
+      );
+      expect((await pendingAfter.json()).requests).toHaveLength(0);
+    });
+  });
 });

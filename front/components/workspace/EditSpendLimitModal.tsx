@@ -74,6 +74,9 @@ interface EditSpendLimitModalProps {
   // opened to resolve one. Pre-fills the expiry date; the admin can still
   // change it. Null when opened from the members table directly.
   requestedDurationDays?: number | null;
+  // sId of the linked upgrade request, if any — forwarded on save so the
+  // granted amount/expiry gets recorded on it for the admin history view.
+  linkedRequestId?: string | null;
   onSavingChange?: (memberId: string, isSaving: boolean) => void;
   // Fired once the spend limit has been persisted successfully (not on cancel
   // or a load error). Used to resolve a linked upgrade request as approved.
@@ -86,6 +89,7 @@ export function EditSpendLimitModal({
   member,
   owner,
   requestedDurationDays,
+  linkedRequestId,
   onSavingChange,
   onSaved,
 }: EditSpendLimitModalProps) {
@@ -254,6 +258,7 @@ export function EditSpendLimitModal({
         memberId: displayedMember.sId,
         memberName: displayedMember.name,
         limit,
+        requestId: linkedRequestId,
       });
       if (body) {
         onSaved?.();

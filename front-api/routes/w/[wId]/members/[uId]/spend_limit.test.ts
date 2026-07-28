@@ -1,7 +1,9 @@
+import { Authenticator } from "@app/lib/auth";
 import * as spendLimits from "@app/lib/metronome/alerts/spend_limits";
 import * as planType from "@app/lib/metronome/plan_type";
 import * as seatTypes from "@app/lib/metronome/seat_types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -516,6 +518,76 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         });
       expect(updatedMembership?.poolCapOverrideAwuCredits).toBeNull();
       expect(updatedMembership?.poolCapOverrideExpiresAt).toBeNull();
+    });
+  });
+
+  describe("PUT with requestId (linked upgrade request)", () => {
+    it("snapshots the grant onto the request, then closes it out when superseded", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const requestAResult =
+        await MembershipUpgradeRequestResource.createPending(auth, {
+          user: targetUser,
+          reason: "backfill",
+          requestedDurationDays: 7,
+        });
+      if (requestAResult.isErr()) {
+        throw requestAResult.error;
+      }
+      const requestA = requestAResult.value;
+
+      await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "admin",
+        workspace,
+      });
+
+      const expiresAtA = Date.now() + 7 * 24 * 60 * 60 * 1000;
+      const putA = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind: "limited",
+            awuCredits: 2000,
+            expiresAt: expiresAtA,
+            requestId: requestA.sId,
+          }),
+        }
+      );
+      expect(putA.status).toBe(200);
+
+      const afterA = await MembershipUpgradeRequestResource.fetchById(
+        auth,
+        requestA.sId
+      );
+      expect(afterA?.grantedAwuCredits).toBe(2000);
+      expect(afterA?.grantedExpiresAt?.getTime()).toBe(expiresAtA);
+      expect(afterA?.expiredAt).toBeNull();
+
+      // A second, unrelated save for the same member supersedes request A's
+      // grant, even though it isn't itself linked to any request.
+      const putB = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: "limited", awuCredits: 500 }),
+        }
+      );
+      expect(putB.status).toBe(200);
+
+      const afterB = await MembershipUpgradeRequestResource.fetchById(
+        auth,
+        requestA.sId
+      );
+      expect(afterB?.grantedAwuCredits).toBe(2000);
+      expect(afterB?.expiredAt).not.toBeNull();
     });
   });
 });

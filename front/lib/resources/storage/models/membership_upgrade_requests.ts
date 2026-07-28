@@ -1,5 +1,5 @@
 import { frontSequelize } from "@app/lib/resources/storage";
-import { DataTypes } from "@app/lib/resources/storage/data_types";
+import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import {
@@ -28,6 +28,18 @@ export class MembershipUpgradeRequestModel extends WorkspaceAwareModel<Membershi
   // How long the member expects to need it, in days. Informational only —
   // surfaced to the admin for context, not auto-enforced.
   declare requestedDurationDays: number | null;
+
+  // Snapshot of the spend-limit override actually granted when this request
+  // was approved via the linked "Edit limit" flow (see
+  // `MembershipUpgradeRequestResource.recordGrant`). NULL when the request
+  // was denied, or approved through a different flow (e.g. a seat upgrade)
+  // that isn't tied to a pool-cap override.
+  declare grantedAwuCredits: number | null;
+  declare grantedExpiresAt: Date | null;
+  // Stamped once the granted override stops being in effect — either the
+  // expiration sweep reverted it, or a later spend-limit change superseded
+  // it before its own expiry. NULL while the grant (if any) is still active.
+  declare expiredAt: Date | null;
 
   // The member who requested the upgrade.
   declare userId: ForeignKey<UserModel["id"]>;
@@ -70,6 +82,21 @@ MembershipUpgradeRequestModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    grantedAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    grantedExpiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    expiredAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "membership_upgrade_request",
@@ -91,6 +118,20 @@ MembershipUpgradeRequestModel.init(
       {
         fields: ["resolvedByUserId"],
         name: "membership_upgrade_requests_resolved_by_user_idx",
+      },
+      // Admin history listing (resolved requests, most recent first).
+      {
+        fields: ["workspaceId", "resolvedAt"],
+        name: "membership_upgrade_requests_workspace_resolved_at_idx",
+        concurrently: true,
+      },
+      // Finds a user's still-active grant(s) to close out when superseded or
+      // swept.
+      {
+        fields: ["userId", "expiredAt"],
+        where: { grantedAwuCredits: { [Op.ne]: null } },
+        name: "membership_upgrade_requests_user_active_grant_idx",
+        concurrently: true,
       },
     ],
   }

@@ -17,6 +17,7 @@ import { toFreeMetronomeUserId } from "@app/lib/metronome/constants";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import { getCachedSeatDataByUserId } from "@app/lib/metronome/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -226,10 +227,16 @@ export async function setUserSpendLimit(
     userId,
     limit,
     auditContext,
+    requestId,
   }: {
     userId: string;
     limit: UserSpendLimit;
     auditContext: AuditLogContext;
+    // Set when this save resolves a specific upgrade request (the admin
+    // opened "Edit limit" from that request in the requests table).
+    // Snapshots the granted amount/expiry onto that request for history —
+    // see `MembershipUpgradeRequestResource.recordGrant`.
+    requestId?: string | null;
   }
 ): Promise<Result<SetUserSpendLimitResponse, UserSpendLimitError>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -295,6 +302,13 @@ export async function setUserSpendLimit(
     );
   }
 
+  // Any override change (whether or not this save is itself request-linked)
+  // supersedes whatever grant was previously tracked as active for this
+  // user — close it out before applying the new value.
+  await MembershipUpgradeRequestResource.expireActiveGrantsForUser(auth, {
+    user,
+  });
+
   // Persist the admin's intent first: the membership is the source of truth,
   // the Metronome alerts below are derived enforcement (a failed sync can be
   // retried and re-derives from this value).
@@ -307,6 +321,24 @@ export async function setUserSpendLimit(
         ? new Date(limit.expiresAt)
         : null,
   });
+
+  if (requestId && limit.kind === "limited") {
+    const request = await MembershipUpgradeRequestResource.fetchById(
+      auth,
+      requestId
+    );
+    if (request) {
+      await request.recordGrant({
+        awuCredits: limit.awuCredits,
+        expiresAt: limit.expiresAt ? new Date(limit.expiresAt) : null,
+      });
+    } else {
+      logger.warn(
+        { workspaceId: workspace.sId, userId: user.sId, requestId },
+        "[Metronome PerUserCap] Linked upgrade request not found; grant not recorded on it"
+      );
+    }
+  }
 
   switch (limit.kind) {
     case "unlimited": {
@@ -474,6 +506,10 @@ export async function expireUserSpendLimitOverride(
 
   const previousAwuCredits = membership.poolCapOverrideAwuCredits;
   const previousTimeframe = membership.overrideLimitTimeframe;
+
+  await MembershipUpgradeRequestResource.expireActiveGrantsForUser(auth, {
+    user,
+  });
 
   await membership.updatePoolCapOverride({
     poolCapOverrideAwuCredits: null,
