@@ -1,10 +1,14 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import { destroyAgentMCPServerConfigurationsForViews } from "@app/lib/models/agent/actions/mcp_server_view_helper";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { Op } from "sequelize";
 import { z } from "zod";
 
 export const PatchMCPServerViewBodySchema = z
@@ -15,6 +19,11 @@ export const PatchMCPServerViewBodySchema = z
     z.object({
       name: z.string().nullable(),
       description: z.string().nullable(),
+    })
+  )
+  .or(
+    z.object({
+      isRestrictedToSkills: z.boolean(),
     })
   );
 
@@ -68,6 +77,60 @@ export async function updateOAuthUseCaseForMCPServerViews(
       return result;
     }
   }
+
+  return new Ok(undefined);
+}
+
+export async function updateIsRestrictedToSkillsForMCPServerViews(
+  auth: Authenticator,
+  {
+    mcpServerId,
+    isRestrictedToSkills,
+  }: {
+    mcpServerId: string;
+    isRestrictedToSkills: boolean;
+  }
+): Promise<
+  Result<undefined, DustError<"mcp_server_view_not_found" | "unauthorized">>
+> {
+  const r = await getAllMCPServerViewsInWorkspace(auth, mcpServerId);
+  if (r.isErr()) {
+    return r;
+  }
+  const views = r.value;
+
+  if (views.some((view) => !view.canAdministrate(auth))) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        "Not allowed to update skill-only availability."
+      )
+    );
+  }
+
+  await withTransaction(async (transaction) => {
+    await MCPServerViewModel.update(
+      {
+        isRestrictedToSkills,
+        editedAt: new Date(),
+        editedByUserId: auth.getNonNullableUser().id,
+      },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: { [Op.in]: views.map((view) => view.id) },
+        },
+        transaction,
+      }
+    );
+
+    if (isRestrictedToSkills) {
+      await destroyAgentMCPServerConfigurationsForViews(auth, {
+        mcpServerViewIds: views.map((view) => view.id),
+        transaction,
+      });
+    }
+  });
 
   return new Ok(undefined);
 }
