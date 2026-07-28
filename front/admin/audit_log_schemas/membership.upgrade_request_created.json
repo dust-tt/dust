@@ -9,6 +9,7 @@
     }
   ],
   "metadata": {
-    "request_sid": "string"
+    "request_sid": "string",
+    "reason": "string"
   }
 }

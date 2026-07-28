@@ -21,6 +21,11 @@ export class MembershipUpgradeRequestModel extends WorkspaceAwareModel<Membershi
   declare status: CreationOptional<MembershipUpgradeRequestStatus>;
   declare resolvedAt: Date | null;
 
+  // Why the member needs the raised limit. Required for new requests
+  // (enforced in application code, not at the DB level, so existing rows
+  // are unaffected).
+  declare reason: string | null;
+
   // The member who requested the upgrade.
   declare userId: ForeignKey<UserModel["id"]>;
   // The admin who approved/denied the request (null while pending).
@@ -49,6 +54,11 @@ MembershipUpgradeRequestModel.init(
     },
     resolvedAt: {
       type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    reason: {
+      type: DataTypes.STRING(1000),
       allowNull: true,
       defaultValue: null,
     },

@@ -300,11 +300,17 @@ export const MEMBERSHIP_UPGRADE_REQUEST_STATUSES = [
 export type MembershipUpgradeRequestStatus =
   (typeof MEMBERSHIP_UPGRADE_REQUEST_STATUSES)[number];
 
+export const MIN_UPGRADE_REQUEST_REASON_LENGTH = 10;
+export const MAX_UPGRADE_REQUEST_REASON_LENGTH = 1000;
+
 export interface MembershipUpgradeRequestType {
   sId: string;
   status: MembershipUpgradeRequestStatus;
   createdAt: number;
   resolvedAt: number | null;
+  // Why the member needs the raised limit. Null only for requests created
+  // before this field existed.
+  reason: string | null;
   requester: {
     sId: string;
     name: string;

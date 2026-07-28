@@ -11,6 +11,7 @@ import {
   DataTable,
   LoadingBlock,
   Spinner,
+  Tooltip,
   X,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
@@ -59,11 +60,21 @@ const reasonColumn: ColumnDef<RowData, string> = {
   id: "reason" as const,
   header: "",
   enableSorting: false,
-  cell: () => (
-    <DataTable.CellContent>
+  cell: (info: Info) => {
+    const { reason } = info.row.original.request;
+    const label = (
       <span className="text-sm text-muted-foreground">{REASON_LABEL}</span>
-    </DataTable.CellContent>
-  ),
+    );
+    return (
+      <DataTable.CellContent>
+        {reason ? (
+          <Tooltip tooltipTriggerAsChild label={reason} trigger={label} />
+        ) : (
+          label
+        )}
+      </DataTable.CellContent>
+    );
+  },
 };
 
 const requestedColumn: ColumnDef<RowData, string> = {

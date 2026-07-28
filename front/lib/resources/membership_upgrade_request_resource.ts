@@ -69,7 +69,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
   // against concurrent duplicates.
   static async createPending(
     auth: Authenticator,
-    { user }: { user: UserResource }
+    { user, reason }: { user: UserResource; reason: string | null }
   ): Promise<Result<MembershipUpgradeRequestResource, Error>> {
     const workspace = auth.getNonNullableWorkspace();
     const row = await withTransaction(async (transaction) => {
@@ -89,6 +89,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
           workspaceId: workspace.id,
           userId: user.id,
           status: "pending",
+          reason,
         },
         { transaction }
       );
@@ -249,6 +250,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
       status: this.status,
       createdAt: this.createdAt.getTime(),
       resolvedAt: this.resolvedAt ? this.resolvedAt.getTime() : null,
+      reason: this.reason,
       requester: {
         sId: this.requester.sId,
         name: this.requester.fullName() || this.requester.name,

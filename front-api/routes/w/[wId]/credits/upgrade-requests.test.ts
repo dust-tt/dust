@@ -106,6 +106,52 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       expect(body.request.requester.sId).toBe(user.sId);
     });
 
+    it("stores the reason when provided", async () => {
+      const workspace = await creditPricedWorkspace();
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+        workspace,
+      });
+
+      const response = await honoApp.request(
+        upgradeRequestsUrl(workspace.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reason: "Running a large one-off backfill this week.",
+          }),
+        }
+      );
+
+      expect(response.status).toBe(200);
+      const { request } = await response.json();
+      expect(request.reason).toBe(
+        "Running a large one-off backfill this week."
+      );
+    });
+
+    it("rejects a reason shorter than the minimum length", async () => {
+      const workspace = await creditPricedWorkspace();
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+        workspace,
+      });
+
+      const response = await honoApp.request(
+        upgradeRequestsUrl(workspace.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: "short" }),
+        }
+      );
+
+      expect(response.status).toBe(400);
+    });
+
     it("is idempotent — a second request reuses the pending one", async () => {
       const workspace = await creditPricedWorkspace();
       const { membership, response: first } =
