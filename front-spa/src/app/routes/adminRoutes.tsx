@@ -2,6 +2,7 @@ import { RequirePermissionLayout } from "@spa/app/layouts/RequirePermissionLayou
 import { RequireRoleLayout } from "@spa/app/layouts/RequireRoleLayout";
 import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 
 const AnalyticsPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/AnalyticsPage"),
@@ -105,6 +106,8 @@ export const adminRoutes: RouteObject[] = [
       { path: "analytics", element: <AnalyticsPage /> },
       { path: "usage", element: <UsagePage /> },
       { path: "governance", element: <GovernancePage /> },
+      // Legacy Workspace Settings page, merged into Settings & Governance.
+      { path: "workspace", element: <Navigate to="../governance" replace /> },
     ],
   },
   {

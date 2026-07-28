@@ -15,6 +15,7 @@ import { PrivateConversationUrlsToggle } from "@app/components/workspace/setting
 import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
 import { WorkspaceAnalyticsToggle } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
+import { WorkspaceDefaultAgentPicker } from "@app/components/workspace/settings/WorkspaceDefaultAgentPicker";
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import {
@@ -242,6 +243,7 @@ export const GovernancePage = () => {
               <PodKnowledgePolicy owner={owner} />
             </GovernanceSettingSection>
             <GovernanceSettingSection label="Features" icon={ShapesPlus}>
+              <WorkspaceDefaultAgentPicker owner={owner} />
               <VoiceTranscriptionToggle owner={owner} />
               <EmailAgentsToggle owner={owner} />
               <PrivateConversationUrlsToggle owner={owner} />

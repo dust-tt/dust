@@ -221,7 +221,6 @@ export const getTopNavigationTabs = (
         matchesRoutePattern(currentRoute, [
           "/w/[wId]/members",
           "/w/[wId]/identity-and-provisioning",
-          "/w/[wId]/workspace",
           "/w/[wId]/governance",
           "/w/[wId]/branding",
           "/w/[wId]/model-providers",
