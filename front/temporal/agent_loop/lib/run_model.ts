@@ -1010,10 +1010,18 @@ export async function runModel(
     // Successful generation.
     const processedContent = contentParser.getContent() ?? "";
 
-    // No tool call and no text: the model produced no answer, either because it
-    // ran out of iterations or because the turn came back empty. Surface a
-    // retryable error, since publishing a success would silently end the run.
-    if (!processedContent.length) {
+    // The answer may have been streamed in an earlier step (text emitted before
+    // a tool call), so an empty step is not an empty message.
+    const answerSoFar = concatWithNewlineBoundary(
+      agentMessage.content,
+      processedContent
+    );
+
+    // No tool call and no text at all: the model produced no answer, either
+    // because it ran out of iterations or because the turn came back empty.
+    // Surface a retryable error, since publishing a success would silently end
+    // the run.
+    if (!answerSoFar.length) {
       localLogger.warn(
         {
           modelId: modelConfig.modelId,
@@ -1057,10 +1065,7 @@ export async function runModel(
     const updatedAgentMessage = {
       ...agentMessage,
       chainOfThought: (agentMessage.chainOfThought ?? "") + chainOfThought,
-      content: concatWithNewlineBoundary(
-        agentMessage.content,
-        processedContent
-      ),
+      content: answerSoFar,
       completedTs,
       status: "succeeded",
       completionDurationMs: getCompletionDuration(
