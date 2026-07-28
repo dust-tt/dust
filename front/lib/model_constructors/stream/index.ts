@@ -1,5 +1,4 @@
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
-import { AnthropicClaudeFableFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_fable_five_eu_agent_platform";
 import { AnthropicClaudeFableFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_fable_five_global_anthropic";
 import { AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_haiku_four_dot_five_eu_agent_platform";
 import { AnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_haiku_four_dot_five_global_anthropic";
@@ -61,8 +60,6 @@ import { XaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/model_constructors/s
 import { ZAiGlmFiveDotTwoGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_two_global_fireworks";
 
 export const STREAM_ENDPOINTS = {
-  [AnthropicClaudeFableFiveEuropeAgentPlatformStream.id]:
-    AnthropicClaudeFableFiveEuropeAgentPlatformStream,
   [AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream.id]:
     AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream,
   [AnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream.id]:

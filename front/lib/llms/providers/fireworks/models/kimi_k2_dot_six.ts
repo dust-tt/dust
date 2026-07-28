@@ -1,3 +1,4 @@
+import { mapNonNoneReasoningToHigh } from "@app/lib/llms/stream/types/configuration";
 import { FIREWORKS_KIMI_K2P6_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 
 export function WithDustMoonshotAiKimiK2Dot6Config<
@@ -16,6 +17,10 @@ export function WithDustMoonshotAiKimiK2Dot6Config<
     // `ModelConfigurationType` off the endpoint without spreading its fields
     // onto the class statics.
     static readonly modelConfig = FIREWORKS_KIMI_K2P6_MODEL_CONFIG;
+
+    // Legacy parity: we never sent an effort to K2.6, only enabled thinking, so
+    // any non-none effort maps to "high".
+    static readonly configParsers = [mapNonNoneReasoningToHigh];
   }
 
   return DustMoonshotAiKimiK2Dot6;

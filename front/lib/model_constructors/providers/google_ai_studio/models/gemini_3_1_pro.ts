@@ -10,9 +10,10 @@ import { z } from "zod";
 
 const DEFAULT_REASONING_EFFORT = "high";
 
-// `none` maps to the minimum thinking budget (no "off" level on Gemini 3).
+// No `none` and no `minimal`: Pro answers "Budget 0 is invalid. This model only
+// works in thinking mode" and "Thinking level MINIMAL is not supported for this
+// model" (verified live 2026-07-27). It cannot reduce thinking below `low`.
 const GEMINI_3_1_PRO_REASONING_EFFORTS = [
-  "none",
   ...GEMINI_PRO_SUPPORTED_REASONING_EFFORTS,
 ] as const;
 

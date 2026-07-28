@@ -20,6 +20,7 @@ export const NoopNoopGlobalNoopStreamSetup: StreamSetup = {
     "simple/no-tools/t-default/r-low": [SUCCESS],
     "simple/no-tools/t-default/r-medium": [SUCCESS],
     "simple/no-tools/t-default/r-high": [SUCCESS],
+    "simple/no-tools/t-default/r-xhigh": [SUCCESS],
     "simple/no-tools/t-default/r-maximal": [SUCCESS],
     "simple/no-tools/t-0/r-default": [SUCCESS],
     "simple/no-tools/t-0/r-none": [SUCCESS],
@@ -27,6 +28,7 @@ export const NoopNoopGlobalNoopStreamSetup: StreamSetup = {
     "simple/no-tools/t-0/r-low": [SUCCESS],
     "simple/no-tools/t-0/r-medium": [SUCCESS],
     "simple/no-tools/t-0/r-high": [SUCCESS],
+    "simple/no-tools/t-0/r-xhigh": [SUCCESS],
     "simple/no-tools/t-0/r-maximal": [SUCCESS],
     "simple/no-tools/t-0.1/r-default": [SUCCESS],
     "simple/no-tools/t-0.1/r-none": [SUCCESS],
@@ -34,6 +36,7 @@ export const NoopNoopGlobalNoopStreamSetup: StreamSetup = {
     "simple/no-tools/t-0.1/r-low": [SUCCESS],
     "simple/no-tools/t-0.1/r-medium": [SUCCESS],
     "simple/no-tools/t-0.1/r-high": [SUCCESS],
+    "simple/no-tools/t-0.1/r-xhigh": [SUCCESS],
     "simple/no-tools/t-0.1/r-maximal": [SUCCESS],
     "simple/no-tools/t-1/r-default": [SUCCESS],
     "simple/no-tools/t-1/r-none": [SUCCESS],
@@ -41,6 +44,7 @@ export const NoopNoopGlobalNoopStreamSetup: StreamSetup = {
     "simple/no-tools/t-1/r-low": [SUCCESS],
     "simple/no-tools/t-1/r-medium": [SUCCESS],
     "simple/no-tools/t-1/r-high": [SUCCESS],
+    "simple/no-tools/t-1/r-xhigh": [SUCCESS],
     "simple/no-tools/t-1/r-maximal": [SUCCESS],
 
     "calc/calc/t-default/r-medium": [SUCCESS],
@@ -48,9 +52,11 @@ export const NoopNoopGlobalNoopStreamSetup: StreamSetup = {
     "calc/calc/t-0.1/r-medium": [SUCCESS],
     "calc/calc/t-default/r-default/force-tool-default": [SUCCESS],
     "calc/calc/t-default/r-default/force-tool": [SUCCESS],
+    "calc/calc/t-default/r-high/force-tool": null,
     "calc/calc/t-default/r-none/force-tool": [SUCCESS],
 
     "reasoning/no-tools/t-default/r-none": [SUCCESS],
+    "reasoning/no-tools/t-default/r-minimal": [SUCCESS],
     "reasoning/no-tools/t-default/r-low": [SUCCESS],
 
     "output-format/json-schema/t-default/r-none": [SUCCESS],

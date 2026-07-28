@@ -483,6 +483,18 @@ function effortToAnthropicEffort(
   }
 }
 
+// An absent `reasoning` and an explicit effort of "none" are different
+// requests, so they map to different payloads: "none" sends
+// `thinking: {type: "disabled"}`, while an absent `reasoning` sends no thinking
+// config at all and lets the model apply its own default. Conflating the two
+// would send "disabled" to models that reject it (Fable 5 400s on
+// `thinking.type.disabled`) and would silently turn thinking off on models
+// whose default is adaptive.
+//
+// In practice every Anthropic model schema either defaults `reasoning` to an
+// effort or pins it to "none", so the empty case is unreachable today — it
+// exists because the converter is typed against the wide `AnthropicInputConfig`
+// rather than a per-model config.
 export type ReasoningToThinkingConfig = (
   reasoning: AnthropicInputConfig["reasoning"]
 ) =>
@@ -491,14 +503,19 @@ export type ReasoningToThinkingConfig = (
       thinking: ThinkingConfigAdaptive;
     }
   | { thinking: ThinkingConfigEnabled }
-  | { thinking: ThinkingConfigDisabled };
+  | { thinking: ThinkingConfigDisabled }
+  | Record<string, never>;
 
 // Adaptive thinking; extended-thinking-only models swap in
 // `reasoningToExtendedThinkingConfig`.
 export const reasoningToThinkingConfig: ReasoningToThinkingConfig = (
   reasoning
-) => {
-  if (!reasoning || reasoning.effort === "none") {
+): ReturnType<ReasoningToThinkingConfig> => {
+  if (!reasoning) {
+    return {};
+  }
+
+  if (reasoning.effort === "none") {
     return { thinking: { type: "disabled" } };
   }
 
@@ -521,8 +538,12 @@ const EXTENDED_THINKING_BUDGET_TOKENS = {
 // Extended thinking for models without adaptive-thinking support (e.g. Haiku 4.5).
 export const reasoningToExtendedThinkingConfig: ReasoningToThinkingConfig = (
   reasoning
-) => {
-  if (!reasoning || reasoning.effort === "none") {
+): ReturnType<ReasoningToThinkingConfig> => {
+  if (!reasoning) {
+    return {};
+  }
+
+  if (reasoning.effort === "none") {
     return { thinking: { type: "disabled" } };
   }
 

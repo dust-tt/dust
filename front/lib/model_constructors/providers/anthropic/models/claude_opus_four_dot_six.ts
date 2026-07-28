@@ -11,10 +11,35 @@ const MAX_OUTPUT_TOKENS = 128_000;
 
 const baseConfig = anthropicBaseConfigSchema;
 
-// Opus 4.6 has its own config rather than sharing the Opus 4.7/4.8 one because
-// it differs on two axes: it predates the `xhigh` reasoning effort (introduced
-// in 4.7), and unlike 4.7/4.8 it accepts a caller-supplied `temperature`
-// (inherited from `inputConfigSchema`).
+// Opus 4.6 has its own config rather than sharing the Opus 4.7/4.8/5 one
+// because it differs on two axes: it predates the `xhigh` reasoning effort
+// (introduced in 4.7), and unlike 4.7+ it accepts a caller-supplied
+// `temperature` (inherited from `inputConfigSchema`) while thinking is off.
+//
+// Characterized against the live API (2026-07-27) by running both endpoint
+// suites with the widest `inputConfigSchema`. `global/anthropic` and
+// `eu/agent-platform` (Vertex) reject the same inputs — only the wording
+// differs — so one schema covers both. It lands on exactly the same contract as
+// Sonnet 4.6:
+//
+//   - `temperature` is a real knob, but only while thinking is off. With an
+//     effort set, any value but `1` is a 400 ("`temperature` may only be set to
+//     1 when thinking is enabled or in adaptive mode"); with effort "none" the
+//     full 0..1 range is accepted. Hence the union.
+//   - Effort `xhigh` is rejected — "This model does not support effort level
+//     'xhigh'. Supported levels: high, low, max, medium" (Vertex phrases it
+//     "Input should be 'low', 'medium', 'high' or 'max'"). `maximal` maps to
+//     the native `max` and works.
+//   - Effort "minimal" has no Anthropic equivalent and `assertNever`s in the
+//     converter.
+//
+// Forcing a tool needs no special handling: 4.6 accepts a forced `tool_choice`
+// alongside adaptive thinking (verified live on both endpoints). That
+// restriction belongs to *extended* thinking, not adaptive.
+//
+// Note the reasoning `.default(...)`: Anthropic runs a `thinking`-less request
+// on 4.6 *without* thinking, so the default here is a deliberate Dust
+// divergence — see `anthropicBaseConfigSchema`.
 const configSchema = z.union([
   baseConfig.extend({
     reasoning: z
@@ -22,7 +47,6 @@ const configSchema = z.union([
         effort: z.enum(["low", "medium", "high", "maximal"]),
       })
       .default({ effort: DEFAULT_REASONING_EFFORT }),
-    forceTool: z.undefined(),
     temperature: z.literal(1).optional().default(1),
   }),
   baseConfig.extend({

@@ -21,12 +21,17 @@ export const OpenAIGptFiveNanoEuropeOpenAIResponsesStreamSetup: StreamSetup = {
     // "none" maps to "minimal", so it runs normally. "maximal" (→ xhigh) is
     // unsupported and rejected locally.
     "simple/no-tools/t-default/r-maximal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-default/r-xhigh": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-0/r-maximal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-0/r-xhigh": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-0.1/r-maximal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-0.1/r-xhigh": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-1/r-maximal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-1/r-xhigh": [INPUT_CONFIGURATION_ERROR],
     // The Responses API accepts a forced tool without requiring reasoning
     // "none", so this is a normal tool call.
     "calc/calc/t-default/r-default/force-tool": null,
+    "calc/calc/t-default/r-high/force-tool": null,
 
     "simple/no-tools/t-default/r-default": null,
     "simple/no-tools/t-default/r-none": null,
@@ -57,6 +62,7 @@ export const OpenAIGptFiveNanoEuropeOpenAIResponsesStreamSetup: StreamSetup = {
     "calc/calc/t-default/r-none/force-tool": null,
 
     "reasoning/no-tools/t-default/r-none": null,
+    "reasoning/no-tools/t-default/r-minimal": null,
     "reasoning/no-tools/t-default/r-low": null,
 
     "output-format/json-schema/t-default/r-none": null,

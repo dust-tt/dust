@@ -21,9 +21,13 @@ export const OpenAIGptFiveMiniEuropeOpenAIResponsesStreamSetup: StreamSetup = {
     "simple/no-tools/t-0.1/r-none": null,
     "simple/no-tools/t-1/r-none": null,
     "simple/no-tools/t-default/r-maximal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-default/r-xhigh": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-0/r-maximal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-0/r-xhigh": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-0.1/r-maximal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-0.1/r-xhigh": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-1/r-maximal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-1/r-xhigh": [INPUT_CONFIGURATION_ERROR],
 
     "simple/no-tools/t-default/r-default": null,
     "simple/no-tools/t-default/r-minimal": null,
@@ -52,10 +56,12 @@ export const OpenAIGptFiveMiniEuropeOpenAIResponsesStreamSetup: StreamSetup = {
 
     "calc/calc/t-default/r-default/force-tool-default": null,
     "calc/calc/t-default/r-default/force-tool": null,
+    "calc/calc/t-default/r-high/force-tool": null,
     // Reasoning "none" maps to "minimal", so the forced tool call runs normally.
     "calc/calc/t-default/r-none/force-tool": null,
 
     "reasoning/no-tools/t-default/r-none": null,
+    "reasoning/no-tools/t-default/r-minimal": null,
     "reasoning/no-tools/t-default/r-low": null,
 
     "output-format/json-schema/t-default/r-none": null,

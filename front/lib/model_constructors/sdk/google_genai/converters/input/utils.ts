@@ -374,9 +374,13 @@ export function effortToThinkingConfig(
 ): ThinkingConfig {
   switch (effort) {
     case "none":
-      // Gemini 3 has no "off" thinking level; matching the legacy router, the
-      // minimum budget with thoughts hidden is the closest to disabling it.
-      return { thinkingBudget: 128, includeThoughts: false };
+      // `thinkingBudget: 0` genuinely turns thinking off — verified live on
+      // 2026-07-27, 0 thought tokens. The previous mapping (budget 128 with
+      // thoughts hidden) only *hid* the thinking: gemini-3.5-flash still spent
+      // 158 thought tokens on it. Only the models that accept budget 0 expose
+      // effort "none" at all; the others reject it in their schema, so this
+      // branch is unreachable for them.
+      return { thinkingBudget: 0, includeThoughts: false };
     case "minimal":
       return { thinkingLevel: ThinkingLevel.MINIMAL, includeThoughts: true };
     case "low":

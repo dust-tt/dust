@@ -1,7 +1,7 @@
+import { openaiTemperatureSchema } from "@app/lib/model_constructors/providers/openai/temperature";
 import {
   type InputConfig,
   inputConfigSchema,
-  temperatureSchema,
 } from "@app/lib/model_constructors/types/input/configuration";
 import { GPT_5_4 } from "@app/lib/model_constructors/types/models";
 
@@ -17,18 +17,26 @@ const DEFAULT_REASONING_EFFORT = "none";
 // configuration error.
 const GPT_5_4_REASONING_EFFORTS = ["low", "medium", "high", "xhigh"] as const;
 
+// Characterized against the live API (2026-07-27) by running the endpoint suite
+// with the widest `inputConfigSchema`. Accepted efforts: none/low/medium/high/xhigh; 'minimal', 'maximal' are rejected with a 400.
+//
+// `temperature` is only a real knob with effort "none": the Responses API then
+// accepts the full 0..2 range. With any other effort it accepts `1` and
+// rejects every other value with "Unsupported parameter: 'temperature' is not
+// supported with this model" — so the field is pinned to `z.literal(1)`,
+// defaulted so callers can omit it.
 const configSchema = z.union([
-  // Reasoning off is the default; the Responses API then allows a temperature.
   inputConfigSchema.extend({
+    reasoning: z.object({ effort: z.enum(GPT_5_4_REASONING_EFFORTS) }),
+    temperature: z.literal(1).optional().default(1),
+  }),
+  inputConfigSchema.extend({
+    // The default lives on this branch: an absent `reasoning` means effort
+    // "none" for this model.
     reasoning: z
       .object({ effort: z.literal("none") })
       .default({ effort: DEFAULT_REASONING_EFFORT }),
-    temperature: temperatureSchema.optional(),
-  }),
-  // Reasoning on: the Responses API rejects an explicit temperature.
-  inputConfigSchema.extend({
-    reasoning: z.object({ effort: z.enum(GPT_5_4_REASONING_EFFORTS) }),
-    temperature: z.undefined(),
+    temperature: openaiTemperatureSchema.optional(),
   }),
 ]);
 

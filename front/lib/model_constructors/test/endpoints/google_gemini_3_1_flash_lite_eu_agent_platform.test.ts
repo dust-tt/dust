@@ -17,13 +17,17 @@ export const GoogleGeminiThreeDotOneFlashLiteEuropeAgentPlatformStreamSetup: Str
     // `null` runs the case with its default checkers; a checker array overrides
     // them. Every case always runs.
     tests: {
-      // Flash-Lite supports none/minimal/low/medium/high. `maximal` is
-      // unsupported and rejected by the config schema. `none` maps to the minimum
+      // Flash-Lite supports none/minimal/low/medium/high. `xhigh` and `maximal`
+      // are unsupported and rejected by the config schema. `none` maps to the minimum
       // thinking budget with thoughts hidden (legacy parity).
       "simple/no-tools/t-default/r-maximal": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-default/r-xhigh": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-0/r-maximal": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0/r-xhigh": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-0.1/r-maximal": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0.1/r-xhigh": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-1/r-maximal": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-1/r-xhigh": [INPUT_CONFIGURATION_ERROR],
 
       "simple/no-tools/t-default/r-none": null,
       "simple/no-tools/t-0/r-none": null,
@@ -65,9 +69,11 @@ export const GoogleGeminiThreeDotOneFlashLiteEuropeAgentPlatformStreamSetup: Str
 
       "calc/calc/t-default/r-default/force-tool-default": null,
       "calc/calc/t-default/r-default/force-tool": null,
+      "calc/calc/t-default/r-high/force-tool": null,
 
       // Unlike Pro/Flash, this lightweight model does not reliably surface thought
       // content at `low` effort, so we only assert the stream completes.
+      "reasoning/no-tools/t-default/r-minimal": [SUCCESS],
       "reasoning/no-tools/t-default/r-low": [SUCCESS],
 
       "output-format/json-schema/t-default/r-high": null,

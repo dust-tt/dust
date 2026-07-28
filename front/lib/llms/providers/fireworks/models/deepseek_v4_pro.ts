@@ -1,3 +1,4 @@
+import { forceHighReasoningEffort } from "@app/lib/llms/stream/types/configuration";
 import { FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 
 export function WithDustDeepSeekDeepSeekV4ProConfig<
@@ -16,6 +17,9 @@ export function WithDustDeepSeekDeepSeekV4ProConfig<
     // `ModelConfigurationType` off the endpoint without spreading its fields
     // onto the class statics.
     static readonly modelConfig = FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG;
+
+    // Legacy parity: this model always ran at `high`.
+    static readonly configParsers = [forceHighReasoningEffort];
   }
 
   return DustDeepSeekDeepSeekV4Pro;

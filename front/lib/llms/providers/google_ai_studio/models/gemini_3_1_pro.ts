@@ -1,3 +1,4 @@
+import { forceTemperatureToOne } from "@app/lib/llms/stream/types/configuration";
 import { GEMINI_3_1_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 
 export function WithDustGoogleGeminiThreeDotOneProConfig<
@@ -16,6 +17,9 @@ export function WithDustGoogleGeminiThreeDotOneProConfig<
     // `ModelConfigurationType` off the endpoint without spreading its fields
     // onto the class statics.
     static readonly modelConfig = GEMINI_3_1_PRO_MODEL_CONFIG;
+
+    // Gemini accepts 0..2, but Google recommends 1 for Gemini 3.
+    static readonly configParsers = [forceTemperatureToOne];
   }
 
   return DustGoogleGeminiThreeDotOnePro;

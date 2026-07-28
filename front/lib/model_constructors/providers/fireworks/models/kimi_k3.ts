@@ -9,21 +9,28 @@ import { z } from "zod";
 // applied in the llms layer.
 const CONTEXT_SIZE = 1_040_000;
 const MAX_OUTPUT_TOKENS = 131_072;
-const DEFAULT_REASONING_EFFORT = "low";
+const DEFAULT_REASONING_EFFORT = "maximal";
 
-// K3 has thinking permanently enabled, so there is no `none` tier to expose:
-// every effort reaches the model as a `reasoning_effort` value, low/medium/high
-// straight through. Dust's `light` maps to `low` via `useNativeLightReasoning`
-// on the legacy config.
-// TODO(2026-07-27 henry): Moonshot's own platform documents K3 as low/high/max
-// (https://platform.kimi.ai/docs/guide/kimi-k3-quickstart), while Fireworks
-// documents low/medium/high across the models it serves
-// (https://docs.fireworks.ai/guides/reasoning). We follow Fireworks here since
-// Fireworks is the host; the live endpoint test must confirm `medium` before
-// merge.
+// Moonshot documents exactly low/high/max for K3, with `max` as the model
+// default: https://platform.kimi.ai/docs/guide/use-reasoning-effort
+// Fireworks' own reasoning page is generic gateway guidance ("low", "medium" or
+// "high") and says nothing specific about K3
+// (https://docs.fireworks.ai/guides/reasoning), so it is not a contradiction —
+// we follow the model author. Our `maximal` maps to Moonshot's `max`.
+//
+// Confirmed live through Fireworks on 2026-07-27 with the widest
+// `inputConfigSchema`: low/high/max all reason. The gateway is looser than
+// either doc — it also accepts `medium`, `xhigh` and `none` (which does turn
+// thinking off, despite K3 being described as "thinking permanently enabled"),
+// and rejects only `minimal`. We expose the documented set only, since
+// undocumented efforts can change without notice.
+//
+// The default is `max`, as Moonshot documents. Dust's legacy low/medium/high
+// efforts are folded onto K3's low/high/max by the `mapReasoningEffortToLowHighMax`
+// config parser in the llms layer.
 const configSchema = fireworksConfigSchema.extend({
   reasoning: z
-    .object({ effort: z.enum(["low", "medium", "high"]) })
+    .object({ effort: z.enum(["low", "high", "maximal"]) })
     .default({ effort: DEFAULT_REASONING_EFFORT }),
 });
 

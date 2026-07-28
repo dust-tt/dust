@@ -1,5 +1,5 @@
 import { googleAiStudioConfigSchema } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
-import { GEMINI_FLASH_LITE_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
+import { GEMINI_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
 import { GEMINI_3_5_FLASH_LITE } from "@app/lib/model_constructors/types/models";
 import { z } from "zod";
 
@@ -8,11 +8,13 @@ export const MAX_OUTPUT_TOKENS = 65_536;
 
 const DEFAULT_REASONING_EFFORT = "minimal";
 
-// Flash-Lite is the only Gemini model that exposes `none` (legacy parity).
+// No `none`: gemini-3.5-flash-lite rejects `thinkingBudget: 0` with
+// INVALID_ARGUMENT (verified live 2026-07-27), so thinking cannot be turned
+// off. Its sibling gemini-3.1-flash-lite does accept budget 0 and keeps `none`.
 export const configSchema = googleAiStudioConfigSchema.extend({
   reasoning: z
     .object({
-      effort: z.enum(GEMINI_FLASH_LITE_SUPPORTED_REASONING_EFFORTS),
+      effort: z.enum(GEMINI_SUPPORTED_REASONING_EFFORTS),
     })
     .default({ effort: DEFAULT_REASONING_EFFORT }),
 });

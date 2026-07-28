@@ -5,19 +5,27 @@ import { z } from "zod";
 const CONTEXT_SIZE = 1_000_000;
 const MAX_OUTPUT_TOKENS = 64_000;
 
-// DeepSeek V4 Pro only supports none/high/maximal reasoning; `none` drops
-// reasoning_effort, high/maximal reach the model. Defaults to high.
+// DeepSeek documents exactly three states: thinking disabled
+// (`thinking: {type: "disabled"}`), effort `high` (the default) and effort
+// `max`: https://api-docs.deepseek.com/guides/thinking_mode/
+// It also accepts low/medium/xhigh purely for compatibility — "low and medium
+// are mapped to high, and xhigh is mapped to max" — so exposing them would
+// silently rewrite the caller's choice. We expose the three real states only;
+// our `maximal` is DeepSeek's `max`.
+//
+// Confirmed live through Fireworks on 2026-07-27 with the widest
+// `inputConfigSchema`: `none` returns no reasoning content at all, high and max
+// both reason, and the gateway rejects only `minimal`.
+//
+// The legacy router only ever ran this model at `high` (its one configurable
+// effort was `none`, which omitted `reasoning_effort` and let Fireworks fall
+// back to `high`). That coercion is a Dust product choice, so it lives in the
+// llms layer as the `forceHighReasoningEffort` config parser rather than as a
+// schema transform.
 const configSchema = fireworksConfigSchema.extend({
-  // TODO(new-llm-router): force reasoning effort to `high` regardless of input.
-  // In the legacy model the only configurable effort is `none`, and when set we
-  // omit reasoning_effort from the payload, which makes Fireworks fall back to
-  // its `high` default. So legacy DeepSeek V4 Pro effectively always runs `high`.
-  // We force `high` here to match that behavior. Once the router supports all
-  // reasoning efforts, migrate the legacy `none` values to `high` and remove this.
   reasoning: z
     .object({ effort: z.enum(["none", "high", "maximal"]) })
-    .optional()
-    .transform(() => ({ effort: "high" as const })),
+    .default({ effort: "high" }),
 });
 
 export function WithDeepSeekDeepSeekV4ProConfig<

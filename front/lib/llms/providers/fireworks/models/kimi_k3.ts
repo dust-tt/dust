@@ -1,3 +1,4 @@
+import { mapReasoningEffortToLowHighMax } from "@app/lib/llms/stream/types/configuration";
 import { FIREWORKS_KIMI_K3_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 
 export function WithDustMoonshotAiKimiK3Config<
@@ -21,6 +22,9 @@ export function WithDustMoonshotAiKimiK3Config<
     // `ModelConfigurationType` off the endpoint without spreading its fields
     // onto the class statics.
     static readonly modelConfig = FIREWORKS_KIMI_K3_MODEL_CONFIG;
+
+    // K3 has no `medium`: fold low/medium/high onto its low/high/max.
+    static readonly configParsers = [mapReasoningEffortToLowHighMax];
   }
 
   return DustMoonshotAiKimiK3;
