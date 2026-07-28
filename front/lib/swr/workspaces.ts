@@ -610,7 +610,7 @@ export function useAwuUsageFromAnalytics({
   urlPrefix,
 }: {
   workspaceId: string;
-  groupBy?: "usage_type" | "agent" | "user" | "origin" | "api_key";
+  groupBy?: "usage_type" | "agent" | "user" | "origin" | "api_key" | "model";
   groupByCount?: number;
   granularity?: "day" | "week" | "month";
   days?: number;
