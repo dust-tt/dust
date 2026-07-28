@@ -1,6 +1,10 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { isInteractiveContentFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  getFileNameFromScopedPath,
+  getFilePreviewDirectivePaths,
+} from "@app/lib/markdown/file_preview";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { isInteractiveContentType } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -9,6 +13,25 @@ import React from "react";
 interface UseAutoOpenSidePanelProps {
   isLastMessage: boolean;
   agentMessage: AgentMessageWithStreaming;
+}
+
+// The agent can steer which frame opens by referencing it with a
+// `:preview_file` directive in the message — an explicit "open this one"
+// signal that is present in the message content from the start, unlike the
+// streaming/generated file lists which populate as tools run. When a directive
+// names one of the candidate frames, prefer it over whichever frame merely
+// streamed first. Matched by filename, which is unambiguous here since a
+// message's frames have distinct names. Falls back to the first frame.
+function preferDirectiveFrame<
+  T extends { fileId: string | null; title: string },
+>(files: T[], preferredFrameNames: Set<string>): T | undefined {
+  if (preferredFrameNames.size > 0) {
+    const preferred = files.find((file) => preferredFrameNames.has(file.title));
+    if (preferred) {
+      return preferred;
+    }
+  }
+  return files[0];
 }
 
 /**
@@ -45,6 +68,17 @@ export function useAutoOpenSidePanel({
 
   // Track which message sId last triggered file-panel auto-open to open only once per message.
   const autoOpenedFilesForRef = React.useRef<string | null>(null);
+
+  // Frame filenames the agent asked to open via `:preview_file` directives.
+  const preferredFrameNames = React.useMemo(
+    () =>
+      new Set(
+        Array.from(
+          getFilePreviewDirectivePaths(agentMessage.content ?? "")
+        ).map(getFileNameFromScopedPath)
+      ),
+    [agentMessage.content]
+  );
 
   const interactiveFilesFromProgress = React.useMemo(
     () =>
@@ -92,7 +126,10 @@ export function useAutoOpenSidePanel({
 
     // Priority 1: interactive content drawer (covers streaming and completed states).
     if (interactiveFilesFromProgress.length > 0) {
-      const [firstFile] = interactiveFilesFromProgress;
+      const firstFile = preferDirectiveFrame(
+        interactiveFilesFromProgress,
+        preferredFrameNames
+      );
       if (firstFile?.fileId) {
         lastOpenedFileIdRef.current = firstFile.fileId;
         openPanel({
@@ -105,7 +142,10 @@ export function useAutoOpenSidePanel({
     }
 
     if (completedInteractiveFiles.length > 0 && isLastMessage) {
-      const [firstFile] = completedInteractiveFiles;
+      const firstFile = preferDirectiveFrame(
+        completedInteractiveFiles,
+        preferredFrameNames
+      );
       if (
         firstFile?.fileId &&
         lastOpenedFileIdRef.current !== firstFile.fileId
@@ -131,6 +171,7 @@ export function useAutoOpenSidePanel({
   }, [
     completedInteractiveFiles,
     interactiveFilesFromProgress,
+    preferredFrameNames,
     regularGeneratedFiles,
     isLastMessage,
     agentMessage.sId,
