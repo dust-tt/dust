@@ -163,7 +163,11 @@ export function useResolveAuthentication({
         sendNotification({
           type: "error",
           title: `Failed to complete ${label}`,
-          description: `The tool could not resume after ${label}. Please try again.`,
+          description:
+            isAPIErrorResponse(error) &&
+            error.error.type === "invalid_request_error"
+              ? error.error.message
+              : `The tool could not resume after ${label}. Please try again.`,
         });
         return { success: false };
       } finally {

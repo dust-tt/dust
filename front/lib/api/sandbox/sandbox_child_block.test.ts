@@ -1,4 +1,4 @@
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Prevent the Temporal agent loop from actually starting.
@@ -564,6 +564,42 @@ describe("resolveSandboxChildBlock", () => {
 
     expect(result.completed).toBe(true);
     expect(parent.status).toBe("succeeded");
+  });
+
+  it("keeps DB output readable when the GCS copy fails", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "running",
+    });
+    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
+    if (!parent) {
+      throw new Error("Expected the parent action to exist.");
+    }
+    vi.spyOn(
+      AgentMCPActionResource.prototype,
+      "syncOutputRowsToGcs"
+    ).mockResolvedValueOnce(new Err(new Error("GCS unavailable")));
+    const output = { type: "text" as const, text: "completed" };
+
+    const result = await finishSandboxBash(auth, {
+      action: parent,
+      conversation,
+      executionDurationMs: 10,
+      messageId: AGENT_LOOP_ARGS.agentMessageId,
+      outputs: [{ content: output }],
+      status: "succeeded",
+    });
+    const persistedOutputs =
+      await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+        actionIds: [parent.id],
+        ignoreContent: false,
+      });
+
+    expect(result.completed).toBe(true);
+    expect(result.outputItems).toHaveLength(1);
+    expect(
+      persistedOutputs.get(parent.id)?.map(({ content }) => content)
+    ).toEqual([output]);
   });
 
   it("does not let an old workflow finish a newer parent reservation", async () => {

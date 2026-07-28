@@ -45,7 +45,6 @@ import {
   batchFetchContentsFromGcs,
   batchWriteContentsToGcs,
   deleteActionOutputsFromGcs,
-  deleteContentsFromGcs,
   warmGcsContentCache,
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -100,6 +99,7 @@ type ConversationGeneratedFileType = ActionGeneratedDBFileType & {
 const OUTPUT_ITEMS_BATCH_SIZE = 32;
 
 const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
+const SYNC_OUTPUT_ROWS_CONCURRENCY = 16;
 
 const DENIABLE_PENDING_STATUSES = [
   "ready_allowed_explicitly",
@@ -107,9 +107,8 @@ const DENIABLE_PENDING_STATUSES = [
   ...TOOL_EXECUTION_BLOCKED_STATUSES,
 ] as const satisfies readonly ToolExecutionStatus[];
 
-export type StagedActionOutputs = {
-  gcsPaths: string[];
-  itemIds: ModelId[];
+export type ActionOutputRows = {
+  rows: AgentMCPActionOutputItemModel[];
   outputItems: ToolOutputItemType[];
 };
 
@@ -1230,97 +1229,51 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     }>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<ToolOutputItemType[], Error>> {
-    const result = await this.stageOutputItems(auth, contents, { transaction });
-    if (result.isErr()) {
-      return result;
+    const outputRows = await this.createOutputRows(contents, { transaction });
+    const syncResult = await this.syncOutputRowsToGcs(auth, outputRows.rows, {
+      transaction,
+    });
+    if (syncResult.isErr()) {
+      return syncResult;
     }
-    return new Ok(result.value.outputItems);
+    return new Ok(outputRows.outputItems);
   }
 
-  async stageOutputItems(
-    auth: Authenticator,
+  async createOutputRows(
     contents: Array<{
       content: CallToolResult["content"][number];
       fileId?: ModelId;
     }>,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<StagedActionOutputs, Error>> {
-    // Write GCS first: the helper retries and cleans up partial batches, and DB insertion only
-    // starts once every object has been persisted.
-    const gcsResult = await batchWriteContentsToGcs(
-      auth,
-      this,
-      contents.map(({ content }) => content)
+  ): Promise<ActionOutputRows> {
+    const rows = await AgentMCPActionOutputItemModel.bulkCreate(
+      contents.map((c) => {
+        const { generatedFilePath, generatedFileContentType } =
+          isToolGeneratedFilePath(c.content)
+            ? {
+                generatedFilePath: c.content.resource.path,
+                generatedFileContentType: c.content.resource.contentType,
+              }
+            : { generatedFilePath: null, generatedFileContentType: null };
+
+        return {
+          agentMCPActionId: this.id,
+          // Write content to DB (kept during migration period to ease rollback).
+          content: c.content,
+          citations: getCitationsFromToolOutput([c.content]),
+          fileId: c.fileId,
+          workspaceId: this.workspaceId,
+          generatedFilePath,
+          generatedFileContentType,
+        };
+      }),
+      { transaction }
     );
 
-    if (gcsResult.isErr()) {
-      return new Err(gcsResult.error);
-    }
-
-    let outputItems: AgentMCPActionOutputItemModel[];
-    try {
-      outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
-        contents.map((c, index) => {
-          const contentGcsPath = gcsResult.value[index];
-          assert(contentGcsPath, "GCS path not found for output item.");
-
-          const { generatedFilePath, generatedFileContentType } =
-            isToolGeneratedFilePath(c.content)
-              ? {
-                  generatedFilePath: c.content.resource.path,
-                  generatedFileContentType: c.content.resource.contentType,
-                }
-              : { generatedFilePath: null, generatedFileContentType: null };
-
-          return {
-            agentMCPActionId: this.id,
-            // Write content to DB (kept during migration period to ease rollback).
-            content: c.content,
-            contentGcsPath,
-            citations: getCitationsFromToolOutput([c.content]),
-            fileId: c.fileId,
-            workspaceId: this.workspaceId,
-            generatedFilePath,
-            generatedFileContentType,
-          };
-        }),
-        { transaction }
-      );
-    } catch (err) {
-      // A DB error can be ambiguous after commit, so keep the GCS objects rather than risk
-      // deleting content referenced by committed rows. Action-prefix cleanup removes orphans.
-      return new Err(normalizeError(err));
-    }
-
-    try {
-      await warmGcsContentCache(
-        auth,
-        removeNulls(
-          outputItems.map((item) =>
-            item.contentGcsPath
-              ? {
-                  itemId: item.id,
-                  gcsPath: item.contentGcsPath,
-                  content: item.content,
-                }
-              : null
-          )
-        )
-      );
-    } catch (err) {
-      // Cache warming is best-effort and must not turn a successful persistence into a retry.
-      logger.warn(
-        { err: normalizeError(err), actionId: this.sId },
-        "Failed to warm MCP output content cache"
-      );
-    }
-
-    // Return the stored contents in the generic tool output item shape.
-    return new Ok({
-      gcsPaths: removeNulls(outputItems.map((item) => item.contentGcsPath)),
-      itemIds: outputItems.map((item) => item.id),
+    return {
+      rows,
       outputItems: removeNulls(
-        outputItems.map((item) =>
+        rows.map((item) =>
           item.content
             ? {
                 content: item.content,
@@ -1331,31 +1284,67 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             : null
         )
       ),
-    });
+    };
   }
 
-  static async discardOutputItems(
+  async syncOutputRowsToGcs(
     auth: Authenticator,
-    stagedOutputs: StagedActionOutputs
-  ): Promise<void> {
-    const deleteResult = await deleteContentsFromGcs(stagedOutputs.gcsPaths);
-    if (deleteResult.isErr()) {
-      logger.error(
-        {
-          err: deleteResult.error,
-          itemIds: stagedOutputs.itemIds,
-          workspaceId: auth.getNonNullableWorkspace().sId,
+    rows: AgentMCPActionOutputItemModel[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<void, Error>> {
+    const gcsResult = await batchWriteContentsToGcs(
+      auth,
+      this,
+      rows.map((item) => item.content)
+    );
+
+    if (gcsResult.isErr()) {
+      return gcsResult;
+    }
+
+    const rowsWithPaths = rows.map((item, index) => {
+      const gcsPath = gcsResult.value[index];
+      assert(gcsPath, "GCS path not found for output item.");
+      return { item, gcsPath };
+    });
+
+    try {
+      await concurrentExecutor(
+        rowsWithPaths,
+        async ({ item, gcsPath }) => {
+          await AgentMCPActionOutputItemModel.update(
+            { contentGcsPath: gcsPath },
+            {
+              where: { id: item.id, workspaceId: this.workspaceId },
+              transaction,
+            }
+          );
+          item.contentGcsPath = gcsPath;
         },
-        "Failed to delete discarded MCP output content"
+        { concurrency: SYNC_OUTPUT_ROWS_CONCURRENCY }
+      );
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+
+    try {
+      await warmGcsContentCache(
+        auth,
+        rowsWithPaths.map(({ item, gcsPath }) => ({
+          itemId: item.id,
+          gcsPath,
+          content: item.content,
+        }))
+      );
+    } catch (err) {
+      // Cache warming is best-effort and must not turn a successful persistence into a retry.
+      logger.warn(
+        { err: normalizeError(err), actionId: this.sId },
+        "Failed to warm MCP output content cache"
       );
     }
 
-    await AgentMCPActionOutputItemModel.destroy({
-      where: {
-        id: { [Op.in]: stagedOutputs.itemIds },
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
+    return new Ok(undefined);
   }
 
   static async fetchOutputItemsByActionIds(

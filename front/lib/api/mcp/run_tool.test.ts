@@ -4,7 +4,10 @@ import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { SandboxFunctionRunContext } from "@app/lib/actions/types";
 import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
-import { finishSandboxBash } from "@app/lib/api/sandbox/sandbox_child_block";
+import {
+  canStoreSandboxOutput,
+  finishSandboxBash,
+} from "@app/lib/api/sandbox/sandbox_child_block";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
@@ -35,6 +38,7 @@ vi.mock("@app/lib/api/sandbox/sandbox_child_block", async (importOriginal) => {
     >();
   return {
     ...actual,
+    canStoreSandboxOutput: vi.fn().mockResolvedValue(true),
     finishSandboxBash: vi.fn(),
   };
 });
@@ -236,23 +240,19 @@ describe("runToolWithStreaming (sandbox bash)", () => {
       isError: false,
       content: [{ type: "text", text: "stale output" }],
     });
-    vi.mocked(finishSandboxBash).mockResolvedValueOnce({
-      completed: false,
-      outputItems: [],
-    });
+    vi.mocked(canStoreSandboxOutput).mockResolvedValueOnce(false);
 
     const successEventTypes = await collectEvents(
       runToolWithStreaming(auth, { toolContext: { runContext } })
     );
 
     expect(successEventTypes).toEqual(["tool_paused"]);
-    expect(vi.mocked(finishSandboxBash)).toHaveBeenLastCalledWith(
+    expect(vi.mocked(canStoreSandboxOutput)).toHaveBeenCalledWith(
       auth,
-      expect.objectContaining({
-        outputs: [{ content: { type: "text", text: "stale output" } }],
-        status: "succeeded",
-      })
+      action,
+      conversation
     );
+    expect(vi.mocked(finishSandboxBash)).toHaveBeenCalledTimes(1);
     const outputItems =
       await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
         actionIds: [action.id],

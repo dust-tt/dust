@@ -27,6 +27,7 @@ import {
 import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
 import {
+  canStoreSandboxOutput,
   finishSandboxBash,
   persistSandboxBashOutput,
 } from "@app/lib/api/sandbox/sandbox_child_block";
@@ -186,9 +187,20 @@ export async function* runToolWithStreaming(
   };
 
   if (isSandboxBash) {
-    // File handling can legitimately take up to 5 minutes. Prepare everything first, but leave the
-    // action output uncommitted until the current workflow proves ownership under the conversation
-    // lock.
+    // File handling can create durable FileResources and legitimately take up to five minutes.
+    // Reject an orphaned workflow before that work, then re-check ownership when committing the
+    // authoritative output rows below.
+    if (
+      !(await canStoreSandboxOutput(
+        auth,
+        runContext.action,
+        runContext.conversation
+      ))
+    ) {
+      yield makeSandboxPausedEvent(runContext);
+      return;
+    }
+
     const { preparedOutputItems, generatedFiles } = await withPeriodicHeartbeat(
       () =>
         prepareToolResults(auth, {

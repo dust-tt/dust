@@ -48,7 +48,11 @@ export function useAnswerUserQuestion({ owner }: UseAnswerUserQuestionParams) {
         if (isAPIErrorResponse(e) && e.error.type === "action_not_blocked") {
           return { success: true };
         }
-        setErrorMessage("Failed to submit answer. Please try again.");
+        setErrorMessage(
+          isAPIErrorResponse(e) && e.error.type === "invalid_request_error"
+            ? e.error.message
+            : "Failed to submit answer. Please try again."
+        );
         return { success: false };
       } finally {
         setIsSubmitting(false);

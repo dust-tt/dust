@@ -15,6 +15,7 @@ import {
 } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/lock";
 import type { Authenticator } from "@app/lib/auth";
+import type { ActionOutputRows } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
@@ -30,6 +31,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { Transaction } from "sequelize";
 
 interface AgentLoopRelaunchArgs {
   agentMessageId: string;
@@ -305,6 +307,72 @@ type PreparedOutput = {
   fileId?: ModelId;
 };
 
+async function ownsSandboxRun(
+  auth: Authenticator,
+  expectedAction: AgentMCPActionResource,
+  currentAction: AgentMCPActionResource,
+  transaction: Transaction
+): Promise<boolean> {
+  if (
+    currentAction.status !== "running" &&
+    currentAction.status !== "blocked_child_action_input_required"
+  ) {
+    return false;
+  }
+  if (!(await currentAction.canAgentMessageResume(auth, transaction))) {
+    return false;
+  }
+
+  const expectedResumeState = expectedAction.stepContext.resumeState;
+  const currentResumeState = currentAction.stepContext.resumeState;
+  const expectedRunId = isSandboxResumeState(expectedResumeState)
+    ? expectedResumeState.runId
+    : undefined;
+  const currentRunId = isSandboxResumeState(currentResumeState)
+    ? currentResumeState.runId
+    : undefined;
+  return expectedRunId === currentRunId;
+}
+
+export async function canStoreSandboxOutput(
+  auth: Authenticator,
+  action: AgentMCPActionResource,
+  conversation: ConversationWithoutContentType
+): Promise<boolean> {
+  return withTransaction(async (transaction) => {
+    await getConversationRankVersionLock(auth, conversation, transaction);
+
+    const currentAction = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId,
+      transaction
+    );
+    return currentAction
+      ? ownsSandboxRun(auth, action, currentAction, transaction)
+      : false;
+  });
+}
+
+async function syncSandboxOutputs(
+  auth: Authenticator,
+  action: AgentMCPActionResource,
+  outputRows: ActionOutputRows
+): Promise<void> {
+  const syncResult = await action.syncOutputRowsToGcs(auth, outputRows.rows);
+  if (syncResult.isErr()) {
+    // Content remains readable from the DB migration fallback. The authoritative rows were
+    // committed atomically with the owning action transition and must not be rolled back.
+    logger.error(
+      {
+        err: syncResult.error,
+        actionId: action.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "Failed to copy sandbox output rows to GCS"
+    );
+  }
+}
+
 export async function persistSandboxBashOutput(
   auth: Authenticator,
   {
@@ -317,51 +385,29 @@ export async function persistSandboxBashOutput(
     outputs: PreparedOutput[];
   }
 ): Promise<ToolOutputItemType[] | null> {
-  const stagedRes = await action.stageOutputItems(auth, outputs);
-  if (stagedRes.isErr()) {
-    throw stagedRes.error;
-  }
-  const stagedOutputs = stagedRes.value;
+  const outputRows = await withTransaction(async (transaction) => {
+    await getConversationRankVersionLock(auth, conversation, transaction);
 
-  let accepted: boolean;
-  try {
-    accepted = await withTransaction(async (transaction) => {
-      await getConversationRankVersionLock(auth, conversation, transaction);
+    const currentAction = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId,
+      transaction
+    );
+    if (
+      !currentAction ||
+      !(await ownsSandboxRun(auth, action, currentAction, transaction))
+    ) {
+      return null;
+    }
 
-      const parentAction = await AgentMCPActionResource.fetchById(
-        auth,
-        action.sId,
-        transaction
-      );
-      if (
-        !parentAction ||
-        (parentAction.status !== "running" &&
-          parentAction.status !== "blocked_child_action_input_required") ||
-        !(await parentAction.canAgentMessageResume(auth, transaction))
-      ) {
-        return false;
-      }
-
-      const expectedResumeState = action.stepContext.resumeState;
-      const currentResumeState = parentAction.stepContext.resumeState;
-      const expectedRunId = isSandboxResumeState(expectedResumeState)
-        ? expectedResumeState.runId
-        : undefined;
-      const currentRunId = isSandboxResumeState(currentResumeState)
-        ? currentResumeState.runId
-        : undefined;
-      return expectedRunId === currentRunId;
-    });
-  } catch (err) {
-    await AgentMCPActionResource.discardOutputItems(auth, stagedOutputs);
-    throw err;
-  }
-
-  if (!accepted) {
-    await AgentMCPActionResource.discardOutputItems(auth, stagedOutputs);
+    return currentAction.createOutputRows(outputs, { transaction });
+  });
+  if (!outputRows) {
     return null;
   }
-  return stagedOutputs.outputItems;
+
+  await syncSandboxOutputs(auth, action, outputRows);
+  return outputRows.outputItems;
 }
 
 /**
@@ -549,77 +595,58 @@ export async function finishSandboxBash(
     status: "errored" | "succeeded";
   }
 ): Promise<{ completed: boolean; outputItems: ToolOutputItemType[] }> {
-  const stagedRes = await action.stageOutputItems(auth, outputs);
-  if (stagedRes.isErr()) {
-    throw stagedRes.error;
-  }
-  const stagedOutputs = stagedRes.value;
-
-  let result: {
+  const result: {
     completed: boolean;
     deniedChildren: AgentMCPActionResource[];
-  };
-  try {
-    result = await withTransaction(async (transaction) => {
-      await getConversationRankVersionLock(auth, conversation, transaction);
+    outputRows: ActionOutputRows | null;
+  } = await withTransaction(async (transaction) => {
+    await getConversationRankVersionLock(auth, conversation, transaction);
 
-      const parentAction = await AgentMCPActionResource.fetchById(
-        auth,
-        action.sId,
-        transaction
-      );
-      if (
-        !parentAction ||
-        (parentAction.status !== "running" &&
-          parentAction.status !== "blocked_child_action_input_required")
-      ) {
-        return { completed: false, deniedChildren: [] };
-      }
+    const parentAction = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId,
+      transaction
+    );
+    if (
+      !parentAction ||
+      (parentAction.status !== "running" &&
+        parentAction.status !== "blocked_child_action_input_required")
+    ) {
+      return { completed: false, deniedChildren: [], outputRows: null };
+    }
 
-      const expectedResumeState = action.stepContext.resumeState;
-      const currentResumeState = parentAction.stepContext.resumeState;
-      const expectedRunId = isSandboxResumeState(expectedResumeState)
-        ? expectedResumeState.runId
-        : undefined;
-      const currentRunId = isSandboxResumeState(currentResumeState)
-        ? currentResumeState.runId
-        : undefined;
-      if (expectedRunId !== currentRunId) {
-        return { completed: false, deniedChildren: [] };
-      }
+    if (!(await ownsSandboxRun(auth, action, parentAction, transaction))) {
       if (!(await parentAction.canAgentMessageResume(auth, transaction))) {
         await parentAction.updateStatusFromExpected(auth, {
           status: "denied",
           expectedStatus: parentAction.status,
           transaction,
         });
-        return { completed: false, deniedChildren: [] };
       }
+      return { completed: false, deniedChildren: [], outputRows: null };
+    }
 
-      const deniedChildren =
-        await AgentMCPActionResource.denyPendingSandboxChildren(auth, {
-          parentAction,
-          transaction,
-        });
-      const [updatedCount] = await action.markFinalFromExpected(auth, {
-        executionDurationMs,
-        expectedStatus: parentAction.status,
-        status,
+    const deniedChildren =
+      await AgentMCPActionResource.denyPendingSandboxChildren(auth, {
+        parentAction,
         transaction,
       });
-      if (updatedCount !== 1) {
-        throw new Error("Sandbox parent changed while finishing.");
-      }
-
-      return { completed: true, deniedChildren };
+    const outputRows = await parentAction.createOutputRows(outputs, {
+      transaction,
     });
-  } catch (err) {
-    await AgentMCPActionResource.discardOutputItems(auth, stagedOutputs);
-    throw err;
-  }
+    const [updatedCount] = await action.markFinalFromExpected(auth, {
+      executionDurationMs,
+      expectedStatus: parentAction.status,
+      status,
+      transaction,
+    });
+    if (updatedCount !== 1) {
+      throw new Error("Sandbox parent changed while finishing.");
+    }
 
+    return { completed: true, deniedChildren, outputRows };
+  });
   if (!result.completed) {
-    await AgentMCPActionResource.discardOutputItems(auth, stagedOutputs);
     return { completed: false, outputItems: [] };
   }
 
@@ -651,7 +678,11 @@ export async function finishSandboxBash(
     }
   }
 
-  return { completed: true, outputItems: stagedOutputs.outputItems };
+  if (!result.outputRows) {
+    throw new Error("Completed sandbox action has no output rows.");
+  }
+  await syncSandboxOutputs(auth, action, result.outputRows);
+  return { completed: true, outputItems: result.outputRows.outputItems };
 }
 
 async function reserveParentRelaunch(

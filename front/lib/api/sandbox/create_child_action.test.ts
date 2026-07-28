@@ -256,6 +256,29 @@ describe("createSandboxChildAction", () => {
     );
   });
 
+  it("compensates the blocked child when approval publication fails", async () => {
+    await setToolPermission("medium");
+    vi.mocked(publishConversationRelatedEvent).mockRejectedValueOnce(
+      new Error("Redis unavailable")
+    );
+
+    const result = await callChildTool();
+
+    expect(result.isErr()).toBe(true);
+    const parent = await AgentMCPActionResource.fetchById(auth, parentActionId);
+    expect(parent?.status).toBe("running");
+    const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
+      agentMessage.agentMessageId,
+    ]);
+    const child = actions.find(
+      (action) =>
+        action.stepContext.sandboxChildActionInfo?.parentActionId ===
+        parentActionId
+    );
+    expect(child?.status).toBe("denied");
+    expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
+  });
+
   it("auto-approves medium-stake tools when a direct-call approval exists", async () => {
     await setToolPermission("medium");
 
