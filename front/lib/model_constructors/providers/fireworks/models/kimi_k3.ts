@@ -18,9 +18,9 @@ const DEFAULT_REASONING_EFFORT = "maximal";
 // (https://docs.fireworks.ai/guides/reasoning), so it is not a contradiction —
 // we follow the model author. Our `maximal` maps to Moonshot's `max`.
 //
-// Confirmed live through Fireworks on 2026-07-27 with the widest
-// `inputConfigSchema`: low/high/max all reason. The gateway is looser than
-// either doc — it also accepts `medium`, `xhigh` and `none` (which does turn
+// Confirmed live through Fireworks' Responses API on 2026-07-28:
+// low/high/max all reason. A 2026-07-27 broad gateway characterization also
+// found that Fireworks accepts `medium`, `xhigh` and `none` (which does turn
 // thinking off, despite K3 being described as "thinking permanently enabled"),
 // and rejects only `minimal`. We expose the documented set only, since
 // undocumented efforts can change without notice.
