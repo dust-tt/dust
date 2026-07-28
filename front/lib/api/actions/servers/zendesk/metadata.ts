@@ -79,8 +79,8 @@ export const ZENDESK_TOOLS_METADATA = [
   {
     name: "list_ticket_fields",
     description:
-      "List and enumerate all Zendesk ticket field definitions — built-in fields " +
-      "(Subject, Priority, Status) and custom fields — with their id, title, type, " +
+      "List and enumerate all Zendesk ticket field definitions, including built-in fields " +
+      "(Subject, Priority, Status) and custom fields, with their id, title, type, " +
       "and active state. Use this to discover what fields exist on a ticket.",
     schema: {
       includeInactive: z
