@@ -63,6 +63,7 @@ import {
 } from "@app/lib/api/programmatic_usage/tracking";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { config as regionConfig } from "@app/lib/api/regions/config";
+import { isUserSpendLimitRateCapReached } from "@app/lib/api/users/spend_limit";
 import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -2533,6 +2534,27 @@ async function checkMessagesLimit(
             message: "You have reached your personal usage cap.",
           },
         });
+      }
+      // Redis fixed-window per-user spend cap: a synchronous backup of the
+      // Metronome per-user cap over the current contract billing cycle. Only
+      // applies to real users (API keys are gated by pool / programmatic caps
+      // instead). Enforcement is gated behind a feature flag while we validate
+      // the counter; usage is recorded regardless (in credit_cost), so the flag
+      // only controls blocking.
+      if (user) {
+        const featureFlags = await getFeatureFlags(auth);
+        if (
+          featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
+          (await isUserSpendLimitRateCapReached(auth, { user }))
+        ) {
+          return new Err({
+            status_code: 403,
+            api_error: {
+              type: "user_cap_reached",
+              message: "You have reached your personal usage cap.",
+            },
+          });
+        }
       }
       if (blockedReason === "credits_exhausted") {
         return new Err({

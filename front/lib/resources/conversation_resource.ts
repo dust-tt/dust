@@ -734,6 +734,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     status: AgentMessageStatus;
     runIds: string[] | null;
     triggeringUserMessageOrigin: UserMessageOrigin | null;
+    // The total cost already stored (and already recorded to the usage
+    // counters) by a prior finalize of this message. Used to record only the
+    // newly-accrued delta on re-finalize.
+    previousCostCredits: number | null;
   } | null> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -766,6 +770,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       status: agentMessage.status,
       runIds: agentMessage.runIds,
       triggeringUserMessageOrigin,
+      previousCostCredits: agentMessage.costCredits,
     };
   }
 

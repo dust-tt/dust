@@ -3,6 +3,7 @@ import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
   expireRateLimiterKey,
+  type FixedWindowBounds,
   getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
@@ -66,6 +67,32 @@ export const makeFairUseAwuCreditsRateLimitKeyForUser = (
   maxAwuCreditsTimeframe: MaxAwuCreditsTimeframeType
 ) => {
   return `workspace:${owner.id}:user:${user.id}:fair_use_awu_credit_count:${maxAwuCreditsTimeframe}`;
+};
+
+// Fixed-window counter backing the admin-configured per-user spend cap. Always
+// bucketed on the Metronome contract billing cycle (the fixed-window counter
+// appends the cycle-boundary label). Distinct from the rolling plan-level
+// fair-use key above.
+export const makeSpendLimitAwuCreditsRateLimitKeyForUser = (
+  owner: LightWorkspaceType,
+  user: UserType
+) => {
+  return `workspace:${owner.id}:user:${user.id}:spend_limit_awu_credit_count`;
+};
+
+// Fixed-window bounds for the per-user spend cap over a Metronome contract
+// billing cycle. Pure — both the recorder/enforcer (`spend_limit.ts`) and the
+// poke read (`members_usage.ts`) derive the window from the same cycle so they
+// hit the same Redis key. Labelled by the cycle start so each recurrence is a
+// distinct key.
+export const makeSpendLimitCycleWindowBounds = (
+  cycleStart: Date,
+  cycleEnd: Date
+): FixedWindowBounds => {
+  return {
+    label: `cycle-${cycleStart.getTime()}`,
+    windowEndMs: cycleEnd.getTime(),
+  };
 };
 
 export const makeProgrammaticUsageRateLimitKeyForWorkspace = (

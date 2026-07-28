@@ -843,6 +843,78 @@ export async function fetchRemainingCapCreditsPercentageForUser({
   return Math.max(0, (spendLimitAwuCredits - consumed) / spendLimitAwuCredits);
 }
 
+/**
+ * Resolves a single user's effective per-user spend cap in AWU credits (incl.
+ * the seat allowance): per-user override > max group cap > seat-type/workspace
+ * default. Returns `null` when no cap applies (e.g. "none"/free seats with no
+ * pool cap). Mirrors the resolution used to populate the members-usage table —
+ * the canonical cap resolution (workspace default / group / user override).
+ */
+export async function getEffectiveSpendCapAwuCreditsForUser(
+  auth: Authenticator,
+  { user }: { user: UserResource }
+): Promise<number | null> {
+  const workspace = auth.getNonNullableWorkspace();
+  const { metronomeCustomerId } = workspace;
+
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  if (!membership) {
+    return null;
+  }
+
+  const creditUsageConfig =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+
+  const [
+    { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType },
+    groupCapByUserModelId,
+  ] = await Promise.all([
+    fetchEffectivePerUserSpendLimits({
+      metronomeCustomerId: metronomeCustomerId ?? null,
+      workspaceId: workspace.sId,
+      defaultPoolCapAwuCredits:
+        creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
+      includeAlertLinks: false,
+    }),
+    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: [user.id],
+    }),
+  ]);
+
+  const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
+  const seatAllowance = normalizedSeatType
+    ? (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
+    : 0;
+
+  const defaultAwuCredits = normalizedSeatType
+    ? (defaultCapAwuCreditsBySeatType[normalizedSeatType] ?? null)
+    : null;
+
+  // "none" seat users have no pool access, so their override is irrelevant.
+  const overrideAwuCredits =
+    membership.poolCapOverrideAwuCredits !== null &&
+    membership.seatType !== "none"
+      ? membership.poolCapOverrideAwuCredits + seatAllowance
+      : null;
+
+  const groupPoolCapAwuCredits = groupCapByUserModelId.get(user.id) ?? null;
+  const groupCapAwuCredits =
+    groupPoolCapAwuCredits !== null && normalizedSeatType !== null
+      ? groupPoolCapAwuCredits + seatAllowance
+      : null;
+
+  return resolveEffectiveSpendLimitAwuCredits({
+    overrideAwuCredits,
+    groupCapAwuCredits,
+    defaultAwuCredits,
+  });
+}
+
 export type GetMemberUsageResponseBody = {
   member: MemberUsageType | null;
 };

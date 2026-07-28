@@ -5,7 +5,9 @@ import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_l
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { ToolCostCategory } from "@app/lib/api/mcp";
+import { recordUserSpendLimitUsage } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   computeRunKey,
   getToolBillingInfo,
@@ -224,8 +226,13 @@ export async function computeAndStoreAgentMessageCredits(
     return null;
   }
 
-  const { agentMessageModelId, status, runIds, triggeringUserMessageOrigin } =
-    creditContext;
+  const {
+    agentMessageModelId,
+    status,
+    runIds,
+    triggeringUserMessageOrigin,
+    previousCostCredits,
+  } = creditContext;
 
   if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(status)) {
     return null;
@@ -262,21 +269,28 @@ export async function computeAndStoreAgentMessageCredits(
     costCredits,
   });
 
+  // `costCredits` is the message-level running total (recomputed from all
+  // accumulated runIds + actions), and a message can be finalized multiple
+  // times (agent-loop early exit, tool confirmation, authentication resume,
+  // Temporal retry). The stored column is overwritten with the total, but the
+  // usage counters are additive — so only the newly-accrued delta since the
+  // last finalize (`total − previouslyStored`) may be recorded, or repeated
+  // finalizes would over-count. A retry with no new usage yields a 0 delta.
+  const recordedCostDelta =
+    costCredits !== null ? costCredits - (previousCostCredits ?? 0) : 0;
+
   const user = auth.user();
   const plan = auth.plan();
   const assistantLimits = plan?.limits.assistant;
   if (
     user &&
     assistantLimits &&
-    costCredits !== null &&
-    costCredits > 0 &&
+    recordedCostDelta > 0 &&
     assistantLimits.maxAwuCredits !== -1
   ) {
-    // Always record the credit cost unconditionally. The limit guard lives in
-    // isMessagesLimitReached (pre-message), which reads the count via getRateLimiterCount and
-    // blocks the next message once the total reaches maxAwuCredits. Using rateLimiter here was
-    // incorrect: its Lua script silently drops the write when count + costCredits > limit,
-    // causing the counter to stall below the limit and never trigger enforcement.
+    // The limit guard lives in isMessagesLimitReached (pre-message), which reads
+    // the count via getRateLimiterCount and blocks the next message once the
+    // total reaches maxAwuCredits.
     await addRateLimiterCount({
       key: makeFairUseAwuCreditsRateLimitKeyForUser(
         auth.getNonNullableWorkspace(),
@@ -286,9 +300,24 @@ export async function computeAndStoreAgentMessageCredits(
       timeframeSeconds: getTimeframeSecondsFromLiteral(
         assistantLimits.maxAwuCreditsTimeframe
       ),
-      incrementBy: costCredits,
+      incrementBy: recordedCostDelta,
       logger,
     });
+  }
+
+  // Record against the per-user spend-cap backup (Redis fixed-window counter
+  // over the contract billing cycle). Independent of the plan-level fair-use
+  // limiter above. Gated behind the same feature flag as enforcement so the
+  // counter only accrues where the backup is active; enforcement happens
+  // pre-message in `checkMessagesLimit`.
+  if (user && recordedCostDelta > 0) {
+    const featureFlags = await getFeatureFlags(auth);
+    if (featureFlags.includes("enforce_user_spend_limit_rate_cap")) {
+      await recordUserSpendLimitUsage(auth, {
+        user,
+        incrementBy: recordedCostDelta,
+      });
+    }
   }
 
   return costCredits;

@@ -805,6 +805,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "workday_mcp"
   | "user_memory"
   | "similar_agents_check"
+  | "enforce_user_spend_limit_rate_cap"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
