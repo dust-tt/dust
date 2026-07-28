@@ -483,7 +483,9 @@ function eventToStoredStepContent(
         type: "reasoning",
         value: {
           reasoning: event.content.text,
-          metadata: event.metadata.encrypted_content ?? "",
+          // Same JSON shape as the streaming path (get_output_from_llm.ts), so
+          // replay can extract `id` / `encrypted_content` from it.
+          metadata: JSON.stringify(event.metadata),
           tokens: 0,
           provider: event.metadata.clientId,
         },
