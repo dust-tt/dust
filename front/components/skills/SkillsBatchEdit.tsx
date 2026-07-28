@@ -20,8 +20,6 @@ export type BatchAvailabilityAction = {
   availability: SkillAvailability;
   getDialogTitle: (count: number) => string;
   dialogDescription: string;
-  confirmLabel: string;
-  confirmVariant: "primary" | "warning";
 };
 
 const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
@@ -31,9 +29,7 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     getDialogTitle: (count) =>
       `Make ${count} skill${pluralize(count)} editor only`,
     dialogDescription:
-      "Non-editors won't see these skills as options in the builder. Agents and skills that already use them won't lose access.",
-    confirmLabel: "Make editor only",
-    confirmVariant: "warning",
+      "Non-editors won’t see these skills as options in the builder. Agents and skills that already use them won’t lose access.",
   },
   {
     label: "Workspace members",
@@ -42,8 +38,6 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
       `Make ${count} skill${pluralize(count)} available to workspace members`,
     dialogDescription:
       "Every workspace member can add them to agents, other skills and use them directly.",
-    confirmLabel: "Make available",
-    confirmVariant: "primary",
   },
   {
     label: "Auto-discoverable",
@@ -52,8 +46,6 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
       `Make ${count} skill${pluralize(count)} auto-discoverable`,
     dialogDescription:
       "Auto-discoverable skills are available to workspace members and can be automatically activated by agents with Discover Skills tools enabled.",
-    confirmLabel: "Make auto-discoverable",
-    confirmVariant: "primary",
   },
 ];
 
@@ -84,7 +76,7 @@ export function SkillsBatchEditBar({
           <Button
             variant="outline"
             size="sm"
-            label="Set access"
+            label="Set availability"
             isSelect
             isLoading={isUpdating}
             disabled={selectedCount === 0 || isUpdating}
@@ -132,7 +124,9 @@ export function BatchAvailabilityDialog({
         <DialogHeader hideButton>
           <DialogTitle>{action.getDialogTitle(selectedCount)}</DialogTitle>
         </DialogHeader>
-        <DialogContainer>{action.dialogDescription}</DialogContainer>
+        <DialogContainer className="text-sm">
+          {action.dialogDescription}
+        </DialogContainer>
         <DialogFooter
           leftButtonProps={{
             label: "Cancel",
@@ -140,8 +134,7 @@ export function BatchAvailabilityDialog({
             disabled: isUpdating,
           }}
           rightButtonProps={{
-            label: action.confirmLabel,
-            variant: action.confirmVariant,
+            label: "Update",
             disabled: isUpdating,
             isLoading: isUpdating,
             onClick: async (e: React.MouseEvent) => {

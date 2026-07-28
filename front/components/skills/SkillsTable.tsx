@@ -83,7 +83,7 @@ const nameColumn = {
 };
 
 const availabilityColumn = {
-  header: "Access",
+  header: "Availability",
   accessorKey: "availability",
   cell: (info: CellContext<RowData, SkillAvailability>) => {
     const display = SKILL_AVAILABILITY_DISPLAY[info.getValue()];
