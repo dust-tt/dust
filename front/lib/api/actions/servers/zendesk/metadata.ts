@@ -5,7 +5,12 @@ export const ZENDESK_TOOLS_METADATA = [
   {
     name: "get_ticket",
     description:
-      "Look up and retrieve a Zendesk support ticket by its ID. Returns subject, description, status, priority, assignee, and other metadata. Optionally include ticket metrics, the full conversation of comments, and file attachments. If the ticket suggests that attachments may contain useful screenshots or documents, call this tool again with includeAttachments set to true.",
+      "Look up and retrieve a Zendesk support ticket by its ID. " +
+      "Returns subject, description, status, priority, assignee, and other metadata. " +
+      "Optionally include ticket metrics, the full conversation of comments, " +
+      "and file attachments. " +
+      "If the ticket suggests that attachments may contain useful screenshots or documents, " +
+      "call this tool again with includeAttachments set to true.",
     schema: {
       ticketId: z
         .number()
@@ -42,7 +47,10 @@ export const ZENDESK_TOOLS_METADATA = [
   {
     name: "search_tickets",
     description:
-      "Search and find Zendesk tickets using query syntax. Returns matching tickets with their details. Filter by status (open, pending, solved), priority (low, medium, high), type, assignee, tags, dates, and text fields.",
+      "Search and find Zendesk tickets using query syntax. " +
+      "Returns matching tickets with their details. " +
+      "Filter by status (open, pending, solved), priority (low, medium, high), " +
+      "type, assignee, tags, dates, and text fields.",
     schema: {
       query: z
         .string()
@@ -71,7 +79,9 @@ export const ZENDESK_TOOLS_METADATA = [
   {
     name: "list_ticket_fields",
     description:
-      "List and enumerate all Zendesk ticket field definitions — built-in fields (Subject, Priority, Status) and custom fields — with their id, title, type, and active state. Use this to discover what fields exist on a ticket.",
+      "List and enumerate all Zendesk ticket field definitions — built-in fields " +
+      "(Subject, Priority, Status) and custom fields — with their id, title, type, " +
+      "and active state. Use this to discover what fields exist on a ticket.",
     schema: {
       includeInactive: z
         .boolean()
@@ -89,7 +99,8 @@ export const ZENDESK_TOOLS_METADATA = [
   {
     name: "draft_reply",
     description:
-      "Draft a reply to a Zendesk ticket. Creates a private comment (not visible to the end user) " +
+      "Draft a reply to a Zendesk ticket. Creates a private comment " +
+      "(not visible to the end user) " +
       "that can be edited before being published. This is useful for preparing responses before " +
       "making them public.",
     schema: {
@@ -111,7 +122,8 @@ export const ZENDESK_TOOLS_METADATA = [
   {
     name: "post_reply",
     description:
-      "Post or send a public reply (response) on a Zendesk ticket, visible to the end user (the customer).",
+      "Post or send a public reply (response) on a Zendesk ticket, visible to the " +
+      "end user (the customer).",
     schema: {
       ticketId: z
         .number()
@@ -131,7 +143,9 @@ export const ZENDESK_TOOLS_METADATA = [
   {
     name: "update_ticket_tags",
     description:
-      "Add tags to a Zendesk ticket, or replace all of its tags. By default (override=false) the provided tags are added to the existing ones. With override=true they replace the full list (omitted tags are removed).",
+      "Add tags to a Zendesk ticket, or replace all of its tags. " +
+      "By default (override=false) the provided tags are added to the existing ones. " +
+      "With override=true they replace the full list (omitted tags are removed).",
     schema: {
       ticketId: z
         .number()
