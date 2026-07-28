@@ -42,7 +42,6 @@ export const IMAGE_CONTENT_TOKEN_COUNT = 3100;
 export const ANTHROPIC_IMAGE_COUNT_LIMIT = 20;
 export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
-const DUST_FILES_URI_PREFIX = "dust://files/";
 
 // Compaction remains available once enough previous interactions exist, independently of how
 // tool results are pruned from the model context.
@@ -131,18 +130,13 @@ function replaceOldestToolResultImages(
               content: message.content.flatMap((content) => {
                 if (isImageContent(content) && toReplace > 0) {
                   toReplace -= 1;
-                  const filePath = content.sourceUri?.startsWith(
-                    DUST_FILES_URI_PREFIX
-                  )
-                    ? content.sourceUri.slice(DUST_FILES_URI_PREFIX.length)
-                    : undefined;
                   return [
                     {
                       type: "text" as const,
                       text:
                         `[This image preview is no longer displayed because the conversation exceeds the ${ANTHROPIC_IMAGE_COUNT_LIMIT}-image limit.` +
-                        (filePath
-                          ? ` Use \`files__cat\` with path \`${filePath}\` to display it again.]`
+                        (content.file_path
+                          ? ` Use \`files__cat\` with path \`${content.file_path}\` to display it again.]`
                           : " Re-run the tool to display it again.]"),
                     },
                   ];

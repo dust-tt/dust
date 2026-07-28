@@ -370,7 +370,6 @@ describe("vision image rendering in getSteps", () => {
         {
           type: "image_url",
           image_url: { url: "https://signed-url.test" },
-          sourceUri: "dust://files/conversation/photo.png",
         },
       ]);
     }

@@ -4,6 +4,7 @@ import logger from "@app/logger/logger";
 import type {
   Content,
   FunctionMessageTypeModel,
+  ImageContent,
   ModelMessageTypeMultiActions,
   UserMessageTypeModel,
 } from "@app/types/assistant/generation";
@@ -98,12 +99,15 @@ function functionMessage(
   };
 }
 
-function image(url: string, sourceUri?: string): Content {
-  return {
+function image(url: string, filePath?: string): ImageContent {
+  const content: ImageContent = {
     type: "image_url",
     image_url: { url },
-    ...(sourceUri ? { sourceUri } : {}),
   };
+  if (filePath) {
+    content.file_path = filePath;
+  }
+  return content;
 }
 
 function functionImageMessage(
@@ -115,7 +119,7 @@ function functionImageMessage(
     role: "function",
     name,
     function_call_id: `${name}_call`,
-    content: [image(url, filePath ? `dust://files/${filePath}` : undefined)],
+    content: [image(url, filePath)],
   };
 }
 

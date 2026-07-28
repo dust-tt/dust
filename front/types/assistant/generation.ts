@@ -22,7 +22,7 @@ export interface ImageContent {
   image_url: {
     url: string;
   };
-  sourceUri?: string;
+  file_path?: string;
 }
 
 export interface TextContent {

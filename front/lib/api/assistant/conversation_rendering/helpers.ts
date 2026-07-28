@@ -41,6 +41,7 @@ import type {
   Content,
   FunctionCallType,
   FunctionMessageTypeModel,
+  ImageContent,
   ModelMessageTypeMultiActions,
   UserMessageTypeModel,
 } from "@app/types/assistant/generation";
@@ -198,11 +199,14 @@ async function renderActionForMultiActionsModel(
           : await getDustFileSystemDownloadUrl(auth, path);
 
         if (urlRes.isOk()) {
-          contentArray.push({
+          const imageContent: ImageContent = {
             type: "image_url",
             image_url: { url: urlRes.value },
-            sourceUri: item.resource.uri,
-          });
+          };
+          if (!path.startsWith("w/")) {
+            imageContent.file_path = path;
+          }
+          contentArray.push(imageContent);
         } else {
           contentArray.push({
             type: "text",
