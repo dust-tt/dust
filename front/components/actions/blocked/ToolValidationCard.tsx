@@ -31,6 +31,7 @@ import {
   Check,
   Checkbox,
   ContentMessage,
+  cn,
   Label,
   XClose,
 } from "@dust-tt/sparkle";
@@ -294,7 +295,13 @@ export function ToolValidationCard({
               {errorMessage}
             </div>
           )}
-          <div className="flex flex-col gap-3 sm:mt-3">
+          <div
+            className={cn(
+              "flex flex-col gap-3 sm:mt-3",
+              toolOverride?.compactFooter &&
+                "sm:flex-row sm:items-center sm:justify-between"
+            )}
+          >
             {(validationRequest.stake === "low" ||
               validationRequest.stake === "medium") && (
               <Label
@@ -316,7 +323,12 @@ export function ToolValidationCard({
             {!toolOverride?.compactFooter && (
               <div className="hidden sm:block sm:flex-grow" />
             )}
-            <div className="flex flex-row gap-3 self-end">
+            <div
+              className={cn(
+                "flex flex-row gap-3 self-end",
+                toolOverride?.compactFooter && "sm:self-auto"
+              )}
+            >
               <Button
                 label="Decline"
                 variant="outline"

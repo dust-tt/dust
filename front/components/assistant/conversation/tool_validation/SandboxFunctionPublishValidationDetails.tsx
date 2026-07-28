@@ -16,8 +16,8 @@ export function SandboxFunctionPublishValidationDetails({
   const sourceFileName = input.path.split("/").pop() || input.path;
 
   return (
-    <div className="flex flex-col items-start gap-3 pb-1 pt-2">
-      <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-3 pb-1 pl-7 pt-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <p className="heading-base wrap-break-word text-foreground">
           {input.slug}
         </p>
@@ -30,6 +30,7 @@ export function SandboxFunctionPublishValidationDetails({
         variant="outline"
         size="xs"
         icon={CodeBrowser}
+        className="shrink-0 self-start"
         onClick={() =>
           openFilePreview({
             filePath: input.path,
