@@ -24,7 +24,7 @@ describe("ACTIVATION_POD_FRAME_TEMPLATE", () => {
     );
   });
 
-  it("embeds the result as a hidden frame opened from a result sheet", () => {
+  it("embeds the result frame opened from a result sheet", () => {
     expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain(
       "fil_REPLACE_WITH_RESULT_FRAME_ID"
     );

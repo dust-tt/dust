@@ -43,7 +43,7 @@ export async function createInteractiveContentTools(
 ): Promise<ToolDefinition[]> {
   const handlers: ToolHandlers<typeof INTERACTIVE_CONTENT_TOOLS_METADATA> = {
     create_interactive_content_file: async (
-      { file_name, mime_type, mode, source, description, hidden },
+      { file_name, mime_type, mode, source, description },
       { sendNotification, _meta }
     ) => {
       // TODO: enable create and publish to be conversation agnostic for both templates (local) and
@@ -82,7 +82,6 @@ export async function createInteractiveContentTools(
         fileName: file_name,
         mimeType: mime_type,
         createdByAgentConfigurationId: agentConfiguration?.sId,
-        hideFromUser: hidden,
       });
 
       if (result.isErr()) {
