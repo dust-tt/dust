@@ -94,6 +94,51 @@ async function rollbackSandboxApproval(
   });
 }
 
+async function publishSandboxApproval(
+  auth: Authenticator,
+  {
+    action,
+    conversation,
+    event,
+    parentActionId,
+    step,
+  }: {
+    action: AgentMCPActionResource;
+    conversation: ConversationWithoutContentType;
+    event: AgentLoopMCPApproveExecutionEvent;
+    parentActionId: string;
+    step: number;
+  }
+): Promise<void> {
+  await withTransaction(async (transaction) => {
+    await getConversationRankVersionLock(auth, conversation, transaction);
+
+    const freshAction = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId,
+      transaction
+    );
+    const parentAction = await AgentMCPActionResource.fetchById(
+      auth,
+      parentActionId,
+      transaction
+    );
+    if (
+      freshAction?.status !== "blocked_validation_required" ||
+      parentAction?.status !== "blocked_child_action_input_required" ||
+      !(await freshAction.canAgentMessageResume(auth, transaction))
+    ) {
+      throw new Error("Agent message can no longer run sandbox child actions.");
+    }
+
+    await publishConversationRelatedEvent({
+      conversationId: conversation.sId,
+      event,
+      step,
+    });
+  });
+}
+
 /**
  * Creates a sandbox child MCP action — the result of an LLM running inside a
  * `sandbox` MCP tool invoking another MCP tool through the public sandbox API.
@@ -290,7 +335,6 @@ export async function createSandboxChildAction(
           approvalSubjectName: agentConfiguration.name,
         })
       : null;
-  let approvalActionId: string | null = null;
   const creationRes = await (async () => {
     try {
       return await withTransaction(async (transaction) => {
@@ -363,53 +407,15 @@ export async function createSandboxChildAction(
         });
 
         if (makeApprovalEvent) {
-          approvalActionId = action.sId;
-          const event: AgentLoopMCPApproveExecutionEvent = {
-            ...makeApprovalEvent(action.sId),
-            configurationId: fullToolConfiguration.sId,
-            conversationId: conversation.sId,
-            messageId: agentMessage.sId,
-            isLastBlockingEventForStep: true,
-          };
           await ConversationResource.markAsActionRequired(auth, {
             conversation,
             transaction,
-          });
-          await publishConversationRelatedEvent({
-            conversationId: conversation.sId,
-            event,
-            step: parentAction.stepContent.step,
           });
         }
 
         return new Ok({ action, parentAction, shouldPauseSandbox });
       });
     } catch (err) {
-      if (approvalActionId) {
-        try {
-          await rollbackSandboxApproval(auth, {
-            actionId: approvalActionId,
-            conversation,
-            parentActionId,
-          });
-          // Redis publication is not transactional. Remove a prompt if it was delivered before
-          // the transaction failed and rolled back the corresponding action.
-          await clearBlockedActionEffects(auth, {
-            actionIds: [approvalActionId],
-            conversationId: conversation.sId,
-            messageId: agentMessage.sId,
-          });
-        } catch (cleanupError) {
-          logger.error(
-            {
-              err: cleanupError,
-              actionId: approvalActionId,
-              conversationId: conversation.sId,
-            },
-            "Failed to clean up a rolled-back sandbox approval event"
-          );
-        }
-      }
       return new Err(normalizeError(err));
     }
   })();
@@ -418,6 +424,53 @@ export async function createSandboxChildAction(
   }
 
   const { action, parentAction, shouldPauseSandbox } = creationRes.value;
+
+  if (makeApprovalEvent) {
+    const event: AgentLoopMCPApproveExecutionEvent = {
+      ...makeApprovalEvent(action.sId),
+      configurationId: fullToolConfiguration.sId,
+      conversationId: conversation.sId,
+      messageId: agentMessage.sId,
+      isLastBlockingEventForStep: true,
+    };
+    try {
+      // Publish only after the child commits. Holding the lifecycle lock keeps terminal cleanup
+      // ordered with publication while ensuring consumers can already fetch the referenced row.
+      await publishSandboxApproval(auth, {
+        action,
+        conversation,
+        event,
+        parentActionId,
+        step: parentAction.stepContent.step,
+      });
+    } catch (err) {
+      try {
+        await rollbackSandboxApproval(auth, {
+          actionId: action.sId,
+          conversation,
+          parentActionId,
+        });
+        // Redis publication is not transactional. Remove a prompt if publication succeeded before
+        // the lifecycle transaction failed to commit.
+        await clearBlockedActionEffects(auth, {
+          actionIds: [action.sId],
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+        });
+      } catch (cleanupError) {
+        logger.error(
+          {
+            err: cleanupError,
+            actionId: action.sId,
+            conversationId: conversation.sId,
+          },
+          "Failed to clean up a sandbox approval event"
+        );
+      }
+      return new Err(normalizeError(err));
+    }
+  }
+
   const userMessageInfo = await getUserMessageIdFromMessageId(auth, {
     messageId: agentMessage.sId,
   });
