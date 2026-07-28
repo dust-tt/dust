@@ -10,6 +10,7 @@ import { sendInvitations, updateInvitation } from "@app/lib/invitations";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Button,
   Mail01,
@@ -63,6 +64,11 @@ export function EditInvitationModal({
   const { hasFeature } = useFeatureFlags();
 
   const isAdminGovernanceEnabled = hasFeature("admin_governance");
+
+  // Managers cannot revoke or resend invitations targeting the admin role
+  // (matches the server-side escalation guard); only admins can.
+  const canManageAdminInvitation =
+    invitation?.initialRole !== "admin" || isAdmin(owner);
 
   const { roleProvisioningStatus } = useProvisioningStatus({
     workspaceId: owner.sId,
@@ -144,36 +150,38 @@ export function EditInvitationModal({
                 <div className="text-muted-foreground">{roleMessage}</div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="primary"
-                  label="Send invitation again"
-                  icon={Mail01}
-                  onClick={async () => {
-                    await sendInvitations({
-                      owner,
-                      emails: [invitation.inviteEmail],
-                      invitationRole: selectedRole,
-                      sendNotification,
-                      isNewInvitation: false,
-                    });
-                  }}
-                />
-                <Button
-                  variant="warning"
-                  label="Revoke invitation"
-                  icon={XClose}
-                  disabled={owner.ssoEnforced}
-                  onClick={async () => {
-                    await updateInvitation({
-                      invitation,
-                      owner,
-                      sendNotification,
-                      confirm,
-                    });
-                  }}
-                />
-              </div>
+              {canManageAdminInvitation && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="primary"
+                    label="Send invitation again"
+                    icon={Mail01}
+                    onClick={async () => {
+                      await sendInvitations({
+                        owner,
+                        emails: [invitation.inviteEmail],
+                        invitationRole: selectedRole,
+                        sendNotification,
+                        isNewInvitation: false,
+                      });
+                    }}
+                  />
+                  <Button
+                    variant="warning"
+                    label="Revoke invitation"
+                    icon={XClose}
+                    disabled={owner.ssoEnforced}
+                    onClick={async () => {
+                      await updateInvitation({
+                        invitation,
+                        owner,
+                        sendNotification,
+                        confirm,
+                      });
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
         </SheetContainer>
