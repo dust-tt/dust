@@ -51,10 +51,10 @@ function getMemberRoleMessage({
     )}). Role changes must be made in your identity provider.`;
   }
 
-  return `The role defines the rights of a member of the workspace. ${getRoleDescription(
+  return getRoleDescription(
     role,
     isAdminGovernanceEnabled
-  )}`;
+  );
 }
 
 export function ChangeMemberModal({

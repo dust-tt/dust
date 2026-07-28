@@ -82,7 +82,7 @@ export function RoleDropDown({
           iconRight={ChevronDown}
           size="sm"
           label={displayRoleCapitalized(displayedRole)}
-          variant="ghost"
+          variant="outline"
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
