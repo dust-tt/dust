@@ -1,6 +1,7 @@
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
 import type { Authenticator } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import {
   AgentMessageFeedbackModel,
@@ -18,12 +19,13 @@ import {
 } from "@app/lib/models/skill/conversation_skill";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
-import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { getContentFragmentBaseCloudStorageForWorkspace } from "@app/lib/resources/content_fragment_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import {
   ProjectTaskConversationModel,
   ProjectTaskSourceModel,
@@ -110,50 +112,20 @@ async function destroyMessageRelatedResources(
 
 async function destroyContentFragments(
   auth: Authenticator,
-  messageAndContentFragmentIds: Array<{
-    contentFragmentId: ModelId;
-    messageId: string;
-  }>,
-  {
-    conversationId,
-  }: {
-    conversationId: string;
-  }
+  contentFragmentIds: ModelId[]
 ) {
-  const contentFragmentIds = messageAndContentFragmentIds.map(
-    (c) => c.contentFragmentId
-  );
   if (contentFragmentIds.length === 0) {
     return;
   }
 
-  const contentFragments = await ContentFragmentResource.fetchManyByModelIds(
-    auth,
-    contentFragmentIds
-  );
-
-  for (const contentFragment of contentFragments) {
-    const messageContentFragmentId = messageAndContentFragmentIds.find(
-      (c) => c.contentFragmentId === contentFragment.id
-    );
-
-    if (!messageContentFragmentId) {
-      throw new Error(
-        `Failed to destroy content fragment with id ${contentFragment.id}.`
-      );
-    }
-
-    const { messageId } = messageContentFragmentId;
-
-    const deletionRes = await contentFragment.destroy({
-      conversationId,
-      messageId,
-      workspaceId: auth.getNonNullableWorkspace().sId,
-    });
-    if (deletionRes.isErr()) {
-      throw deletionRes;
-    }
-  }
+  // GCS objects for this conversation were already removed via a single prefix
+  // delete in destroyConversation.
+  await ContentFragmentModel.destroy({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      id: contentFragmentIds,
+    },
+  });
 }
 
 async function destroyConversationDataSource(
@@ -219,10 +191,16 @@ export async function destroyConversation(
       },
     });
 
+    // One prefix covers every content-fragment attachment for this conversation
+    // (`.../conversations/{conversationId}/content_fragment/{messageId}/{text|raw}`).
+    // Failures abort destroy before DB rows are touched so Temporal can retry.
+    await getPrivateUploadBucket().deleteByPrefix(
+      `${getContentFragmentBaseCloudStorageForWorkspace(owner.sId)}${conversation.sId}/`
+    );
+
     const messages = await MessageModel.findAll({
       attributes: [
         "id",
-        "sId",
         "userMessageId",
         "agentMessageId",
         "contentFragmentId",
@@ -247,14 +225,8 @@ export async function destroyConversation(
       const compactionMessageIds = removeNulls(
         messagesChunk.map((m) => m.compactionMessageId)
       );
-      const messageAndContentFragmentIds = removeNulls(
-        messagesChunk.map((m) => {
-          if (m.contentFragmentId) {
-            return { contentFragmentId: m.contentFragmentId, messageId: m.sId };
-          }
-
-          return null;
-        })
+      const contentFragmentIds = removeNulls(
+        messagesChunk.map((m) => m.contentFragmentId)
       );
 
       await destroyActionsRelatedResources(auth, agentMessageIds);
@@ -290,9 +262,7 @@ export async function destroyConversation(
         },
       });
 
-      await destroyContentFragments(auth, messageAndContentFragmentIds, {
-        conversationId: conversation.sId,
-      });
+      await destroyContentFragments(auth, contentFragmentIds);
 
       await CompactionMessageModel.destroy({
         where: {

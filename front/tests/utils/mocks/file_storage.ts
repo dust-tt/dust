@@ -299,6 +299,13 @@ class FileStorageMock {
         this._objectStore.delete(filePath);
         return Promise.resolve(undefined);
       }),
+      deleteByPrefix: vi.fn(async (prefix: string) => {
+        for (const path of [...this._objectStore.keys()]) {
+          if (path.startsWith(prefix)) {
+            this._objectStore.delete(path);
+          }
+        }
+      }),
       deleteFiles: vi.fn().mockResolvedValue(undefined),
       getAllFilesByPrefix: vi
         .fn()
