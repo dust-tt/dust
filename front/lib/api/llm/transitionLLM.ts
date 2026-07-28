@@ -904,6 +904,7 @@ export class NoopStreamTransition extends StreamEndpointTransition {
           modelId: NOOP_MODEL,
           promptTokens: 0,
           completionTokens: 0,
+          reasoningTokens: null,
           cachedTokens: null,
           costMicroUsd,
           isBatch: false,
