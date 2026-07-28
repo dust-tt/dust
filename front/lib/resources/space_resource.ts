@@ -25,6 +25,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import type { GrantVerb } from "@app/types/group_permissions";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
@@ -2077,15 +2078,53 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   canAdministrate(auth: Authenticator) {
-    return auth.hasPermission("admin", this);
+    const perms = this.getAccessControlLists(auth);
+    this.shadowCompareSpacePermission(auth, perms, "admin");
+    return auth.hasPermissionForAcls("admin", perms);
   }
 
   canWrite(auth: Authenticator) {
-    return auth.hasPermission("write", this);
+    const perms = this.getAccessControlLists(auth);
+    this.shadowCompareSpacePermission(auth, perms, "write");
+    return auth.hasPermissionForAcls("write", perms);
   }
 
   canRead(auth: Authenticator) {
-    return auth.hasPermission("read", this);
+    const perms = this.getAccessControlLists(auth);
+    this.shadowCompareSpacePermission(auth, perms, "read");
+    return auth.hasPermissionForAcls("read", perms);
+  }
+
+  // Shadow-compare (#9479): while the `group_permissions_shadow` flag is on for the workspace, check
+  // whether routing group access through the group_permissions table yields the same decision as the
+  // legacy inline-group ACL, once composed with the (unchanged) code role rules. The served ACL is
+  // `getAccessControlLists(auth)` (legacy inline groups); the candidate keeps the same roles but
+  // takes its groups from `auth.getGroupPermissions("space", id)` (the table). Delegates the flag
+  // lookup + compare + log to the Authenticator as fire-and-forget — never changes the served
+  // result. Kept off system/global/conversations spaces, which stay code-ruled and are not part of
+  // the migration.
+  private shadowCompareSpacePermission(
+    auth: Authenticator,
+    legacyAcls: AccessControlList[],
+    permission: GrantVerb
+  ): void {
+    if (this.isSystem() || this.isGlobal() || this.isConversations()) {
+      return;
+    }
+
+    const candidateAcls: AccessControlList[] = legacyAcls.map((acl) => ({
+      roles: acl.roles,
+      groups: auth.getGroupPermissions("space", this.id),
+      workspaceId: acl.workspaceId,
+    }));
+
+    auth.shadowComparePermission(permission, legacyAcls, candidateAcls, {
+      resource: "space",
+      spaceId: this.sId,
+      spaceKind: this.kind,
+      permission,
+      workspaceId: this.workspaceId,
+    });
   }
 
   canReadOrAdministrate(auth: Authenticator) {
