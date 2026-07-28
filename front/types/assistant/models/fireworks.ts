@@ -206,6 +206,8 @@ export const FIREWORKS_KIMI_K3_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: false,
     light: true,
+    // K3 has no native `medium`; the `mapReasoningEffortToLowHighMax` config
+    // parser folds it onto `high`.
     medium: true,
     high: true,
   },

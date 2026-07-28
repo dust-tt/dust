@@ -5,9 +5,20 @@ import { GROK_4_5 } from "@app/lib/model_constructors/types/models";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 import { z } from "zod";
 
-// grok-4.5 reasoning is always on: only low/medium/high are accepted (it rejects
-// none/minimal/xhigh/maximal) and it defaults to high. A temperature is allowed.
-// https://docs.x.ai/docs/guides/reasoning (2026-07-21)
+// grok-4.5 reasoning is always on and defaults to `high`. A temperature is
+// allowed.
+//
+// xAI documents exactly low/medium/high for this model — `xhigh` is documented
+// only for grok-4.20-multi-agent, and minimal/none/max are not documented at
+// all: https://docs.x.ai/developers/model-capabilities/text/reasoning
+//
+// The live API is looser than the docs (characterized 2026-07-27 with the
+// widest `inputConfigSchema`): it hard-rejects `none` ("This model does not
+// support `reasoning_effort` value `none`") and `maximal` ("Invalid reasoning
+// effort"), but silently accepts `minimal` and `xhigh` as real, distinct
+// efforts (on a fixed prompt: minimal 384 reasoning tokens, low 354, high 538,
+// xhigh 823). We deliberately expose only the documented set — undocumented
+// efforts can change without notice.
 const configSchema = inputConfigSchema.extend({
   reasoning: z
     .object({ effort: z.enum(["low", "medium", "high"]) })
