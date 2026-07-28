@@ -274,7 +274,7 @@ describe("renderConversationForModel", () => {
         10 +
         Math.floor(10 * TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR) +
         10 +
-        20 * 5 +
+        ANTHROPIC_IMAGE_COUNT_LIMIT * 5 +
         ANTHROPIC_IMAGE_COUNT_LIMIT * IMAGE_CONTENT_TOKEN_COUNT
     );
   });

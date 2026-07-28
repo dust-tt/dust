@@ -30,6 +30,7 @@ import {
   isImageContent,
   isTextContent,
 } from "@app/types/assistant/generation";
+import { ANTHROPIC_PROVIDER_ID } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { CredentialsType } from "@app/types/provider";
 import type { Result } from "@app/types/shared/result";
@@ -168,7 +169,7 @@ export async function renderConversationForModel(
     enabledSkills,
   });
   const messages =
-    model.providerId === "anthropic"
+    model.providerId === ANTHROPIC_PROVIDER_ID
       ? discardOldestToolResultImages([...leadingMessages, ...renderedMessages])
       : [...leadingMessages, ...renderedMessages];
   const renderAllMessagesMs = Date.now() - stepStart;
