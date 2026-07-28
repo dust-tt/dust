@@ -285,7 +285,7 @@ async function attachRunToAgentMessage(
     auth,
     {
       inputTokens: promptTokens,
-      outputTokens: 20,
+      totalOutputTokens: 20,
       totalTokens: promptTokens + 20,
     },
     model.modelId

@@ -100,7 +100,7 @@ describe("usageToTokenUsageEvent", () => {
         shortCacheCreated: 0,
         cacheHit: 1200,
         standardInput: 86,
-        standardOutput: 250,
+        totalOutput: 300,
         reasoning: 50,
       },
       metadata,

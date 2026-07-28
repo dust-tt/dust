@@ -524,7 +524,7 @@ export function convertToOldEvent(
     case "token_usage": {
       const {
         standardInput,
-        standardOutput,
+        totalOutput,
         cacheHit,
         cacheCreated,
         longCacheCreated,
@@ -538,13 +538,21 @@ export function convertToOldEvent(
         ? longCacheCreated + shortCacheCreated
         : cacheCreated;
       const inputTokens = standardInput + cacheHit + totalCacheCreated;
+      if (
+        reasoning !== undefined &&
+        (reasoning < 0 || reasoning > totalOutput)
+      ) {
+        throw new Error(
+          "reasoning must be a non-negative subset of totalOutput"
+        );
+      }
       return {
         type: "token_usage",
         content: {
           inputTokens,
-          outputTokens: standardOutput,
-          reasoningTokens: reasoning,
-          totalTokens: inputTokens + standardOutput + reasoning,
+          totalOutputTokens: totalOutput,
+          ...(reasoning !== undefined ? { reasoningTokens: reasoning } : {}),
+          totalTokens: inputTokens + totalOutput,
           cachedTokens: cacheHit,
           cacheCreationTokens: totalCacheCreated,
           ...(hasDurationBreakdown

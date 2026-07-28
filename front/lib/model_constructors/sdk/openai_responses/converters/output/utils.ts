@@ -240,7 +240,7 @@ export function usageToTokenUsageEvent(
 ): TokenUsageEvent {
   const cacheHit = usage.input_tokens_details?.cached_tokens ?? 0;
   const cacheCreated = usage.input_tokens_details?.cache_write_tokens ?? 0;
-  const reasoning = usage.output_tokens_details?.reasoning_tokens ?? 0;
+  const reasoning = usage.output_tokens_details?.reasoning_tokens;
   return {
     type: "token_usage",
     content: {
@@ -252,8 +252,10 @@ export function usageToTokenUsageEvent(
       // input_tokens includes cache reads and writes. Subtract both to get
       // standard input.
       standardInput: Math.max(0, usage.input_tokens - cacheHit - cacheCreated),
-      standardOutput: usage.output_tokens - reasoning,
-      reasoning,
+      // OpenAI reports reasoning_tokens as a breakdown of the inclusive
+      // output_tokens total, not as an additional token count.
+      totalOutput: usage.output_tokens,
+      ...(reasoning !== undefined ? { reasoning } : {}),
     },
     metadata,
   };
