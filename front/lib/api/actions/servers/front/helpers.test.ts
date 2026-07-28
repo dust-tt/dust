@@ -34,6 +34,26 @@ describe("getConversationInboxes", () => {
       }
     );
   });
+
+  it("keeps metadata available without inbox permissions", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("Forbidden", { status: 403 }))
+    );
+
+    const inboxes = await getConversationInboxes("front-token", "cnv_123");
+    const formatted = formatConversationForLLM(
+      {
+        id: "cnv_123",
+        status: "open",
+      },
+      inboxes
+    );
+
+    expect(formatted).toContain(
+      "INBOX: Unknown (Front token needs inboxes:read)"
+    );
+  });
 });
 
 describe("formatConversationForLLM", () => {

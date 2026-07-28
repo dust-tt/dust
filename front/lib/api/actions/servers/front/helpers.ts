@@ -154,24 +154,36 @@ export async function getConversationInboxes(
   apiToken: string,
   conversationId: string
 ) {
-  const data = await makeFrontAPIRequest({
-    method: "GET",
-    endpoint: `conversations/${conversationId}/inboxes`,
-    apiToken,
-  });
+  let data: unknown;
+  try {
+    data = await makeFrontAPIRequest({
+      method: "GET",
+      endpoint: `conversations/${conversationId}/inboxes`,
+      apiToken,
+    });
+  } catch (error) {
+    if (error instanceof MCPError && error.code === 403) {
+      return null;
+    }
+    throw error;
+  }
 
   return FrontInboxesResponseSchema.parse(data)._results;
 }
 
 export function formatConversationForLLM(
   conversation: FrontConversation,
-  inboxes: Array<{ name: string }>
+  inboxes: Array<{ name: string }> | null
 ): string {
   const assigneeEmail = conversation.assignee
     ? conversation.assignee.email
     : "Unassigned";
   const inboxNames =
-    inboxes.length > 0 ? inboxes.map(({ name }) => name).join(", ") : "None";
+    inboxes === null
+      ? "Unknown (Front token needs inboxes:read)"
+      : inboxes.length > 0
+        ? inboxes.map(({ name }) => name).join(", ")
+        : "None";
   const tagNames = conversation.tags?.map((t) => t.name).join(", ") ?? "None";
   const createdAt = conversation.created_at
     ? new Date(conversation.created_at * 1000).toISOString()

@@ -18,6 +18,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const FRONT_API_CONCURRENCY = 5;
+const MAX_CONVERSATIONS = 20;
 
 type FrontConversation = Parameters<typeof formatConversationForLLM>[0];
 
@@ -62,7 +63,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
         method: "GET",
         endpoint: `conversations/search/${encodeURIComponent(q)}`,
         apiToken,
-        params: { limit: Math.min(limit, 100) },
+        params: { limit: Math.min(limit, MAX_CONVERSATIONS) },
       })) as FrontListResponse<FrontConversation>;
 
       const conversations = data._results ?? [];
@@ -291,7 +292,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
         endpoint: `conversations/search/${encodeURIComponent(`from:${customer_email}`)}`,
         apiToken,
         params: {
-          limit: Math.min(limit, 100),
+          limit: Math.min(limit, MAX_CONVERSATIONS),
         },
       })) as FrontListResponse<FrontConversation>;
 
