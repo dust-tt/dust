@@ -44,8 +44,8 @@ const SHARING_POLICY_OPTIONS: {
   },
 ];
 
-const LABEL = "Frame access";
-const DESCRIPTION = "Control who can access frames in this workspace.";
+const LABEL = "Frame sharing policy";
+const DESCRIPTION = "Whether frames are shareable outside the workspace.";
 
 interface InteractiveContentSharingToggleProps {
   owner: WorkspaceType;
