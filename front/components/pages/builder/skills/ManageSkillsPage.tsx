@@ -242,31 +242,28 @@ export function ManageSkillsPage() {
     [rowSelection]
   );
 
-  const closeBatchEdition = useCallback(() => {
+  const closeBatchEdition = () => {
     setIsBatchEditing(false);
     setRowSelection({});
-  }, []);
+  };
 
-  const handleBatchAvailability = useCallback(
-    async (availability: SkillAvailability) => {
-      if (selectedSkillIds.length === 0 || isBatchUpdating) {
-        return;
+  const handleBatchAvailability = async (availability: SkillAvailability) => {
+    if (selectedSkillIds.length === 0 || isBatchUpdating) {
+      return;
+    }
+    setIsBatchUpdating(true);
+    try {
+      const success = await doUpdateAvailability(
+        selectedSkillIds,
+        availability
+      );
+      if (success) {
+        setRowSelection({});
       }
-      setIsBatchUpdating(true);
-      try {
-        const success = await doUpdateAvailability(
-          selectedSkillIds,
-          availability
-        );
-        if (success) {
-          setRowSelection({});
-        }
-      } finally {
-        setIsBatchUpdating(false);
-      }
-    },
-    [selectedSkillIds, isBatchUpdating, doUpdateAvailability]
-  );
+    } finally {
+      setIsBatchUpdating(false);
+    }
+  };
 
   const isBatchEditionAvailable =
     hasSkillPublicationGovernance &&
