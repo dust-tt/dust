@@ -20,6 +20,26 @@ const metadata = {
 } as const;
 
 describe("outputItemToEvents", () => {
+  it("preserves an id-bearing reasoning item with no visible summary", () => {
+    const item = {
+      type: "reasoning",
+      id: "rs_empty",
+      summary: [],
+      status: "completed",
+    } satisfies ResponseOutputItem;
+
+    expect(outputItemToEvents(item, metadata, converters)).toEqual([
+      {
+        type: "reasoning",
+        content: { value: "" },
+        metadata: {
+          ...metadata,
+          content: { id: "rs_empty" },
+        },
+      },
+    ]);
+  });
+
   it("preserves a discovered function call namespace", () => {
     const item = {
       type: "function_call",

@@ -221,22 +221,27 @@ export function toBaseMessages(
                 },
               ];
             case "reasoning": {
-              if (!c.value.reasoning) {
+              const reasoning = c.value.reasoning ?? "";
+              const { id, encryptedContent } = parseReasoningMetadata(
+                c.value.metadata
+              );
+              // Empty reasoning summaries can still carry replay state. Some
+              // reasoners emit such items on tool-use turns, so only discard
+              // an empty block when it has neither an item id nor encrypted
+              // content.
+              if (!reasoning && !id && !encryptedContent) {
                 return [];
               }
               // Responses APIs store a short reasoning item `id` (kept in
               // `signature`) separately from the long `encrypted_content`.
               // Detect that wire format from the persisted id rather than the
               // model provider: Fireworks also exposes the Responses API.
-              const { id, encryptedContent } = parseReasoningMetadata(
-                c.value.metadata
-              );
               if (id || c.value.provider === "openai") {
                 return [
                   {
                     role: "assistant",
                     type: "reasoning",
-                    content: { value: c.value.reasoning },
+                    content: { value: reasoning },
                     signature: id,
                     ...(encryptedContent ? { encryptedContent } : {}),
                   },
@@ -246,7 +251,7 @@ export function toBaseMessages(
                 {
                   role: "assistant",
                   type: "reasoning",
-                  content: { value: c.value.reasoning },
+                  content: { value: reasoning },
                   signature: extractEncryptedContentFromMetadata(
                     c.value.metadata
                   ),

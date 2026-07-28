@@ -414,17 +414,17 @@ export function outputItemToEvents(
       });
     case "reasoning": {
       const text = item.summary.map((summary) => summary.text).join("\n\n");
-      // Skip empty reasoning items (no summary emitted, e.g. effort "none").
-      return text
-        ? [
-            converters.accumulatedReasoningToReasoningEvent(
-              metadata,
-              text,
-              item.id,
-              item.encrypted_content ?? undefined
-            ),
-          ]
-        : [];
+      // Preserve the item even when the provider exposes no visible summary:
+      // its id/encrypted content is replay state required by some reasoners on
+      // the next tool-use turn.
+      return [
+        converters.accumulatedReasoningToReasoningEvent(
+          metadata,
+          text,
+          item.id,
+          item.encrypted_content ?? undefined
+        ),
+      ];
     }
     case "function_call":
       return [
