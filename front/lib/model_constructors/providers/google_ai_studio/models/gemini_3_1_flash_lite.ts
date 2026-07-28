@@ -1,5 +1,5 @@
 import { googleAiStudioConfigSchema } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
-import { GEMINI_FLASH_LITE_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
+import { GEMINI_THINKING_OFF_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
 import { GEMINI_3_1_FLASH_LITE } from "@app/lib/model_constructors/types/models";
 import { z } from "zod";
 
@@ -12,7 +12,7 @@ const DEFAULT_REASONING_EFFORT = "minimal";
 export const configSchema = googleAiStudioConfigSchema.extend({
   reasoning: z
     .object({
-      effort: z.enum(GEMINI_FLASH_LITE_SUPPORTED_REASONING_EFFORTS),
+      effort: z.enum(GEMINI_THINKING_OFF_SUPPORTED_REASONING_EFFORTS),
     })
     .default({ effort: DEFAULT_REASONING_EFFORT }),
 });
