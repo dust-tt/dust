@@ -300,6 +300,19 @@ export async function createSandboxChildAction(
   }
 
   const { action, parentAction, shouldPauseSandbox } = creationRes.value;
+  const userMessageInfo = await getUserMessageIdFromMessageId(auth, {
+    messageId: agentMessage.sId,
+  });
+  const agentLoopArgs = {
+    agentMessageId: agentMessage.sId,
+    agentMessageVersion: agentMessage.version,
+    conversationId: conversation.sId,
+    conversationTitle: conversation.title,
+    userMessageId: userMessageInfo.userMessageId,
+    userMessageVersion: userMessageInfo.userMessageVersion,
+    userMessageOrigin: userMessageInfo.userMessageOrigin,
+    initialStartTime: Date.now(),
+  };
 
   // The lock above prevents creation after terminalization. Re-check before external side effects
   // to cover terminalization immediately after the transaction committed.
@@ -393,7 +406,8 @@ export async function createSandboxChildAction(
     return new Ok({
       actionId: action.sId,
       pauseSandbox: shouldPauseSandbox
-        ? () => pauseReservedSandboxBash(auth, action, conversation)
+        ? () =>
+            pauseReservedSandboxBash(auth, action, conversation, agentLoopArgs)
         : () => Promise.resolve(),
     });
   }
@@ -405,21 +419,8 @@ export async function createSandboxChildAction(
     });
   }
 
-  const userMessageInfo = await getUserMessageIdFromMessageId(auth, {
-    messageId: agentMessage.sId,
-  });
-
   await launchSandboxChildToolWorkflow(auth, {
-    agentLoopArgs: {
-      agentMessageId: agentMessage.sId,
-      agentMessageVersion: agentMessage.version,
-      conversationId: conversation.sId,
-      conversationTitle: conversation.title,
-      userMessageId: userMessageInfo.userMessageId,
-      userMessageVersion: userMessageInfo.userMessageVersion,
-      userMessageOrigin: userMessageInfo.userMessageOrigin,
-      initialStartTime: Date.now(),
-    },
+    agentLoopArgs,
     action,
     step: parentAction.stepContent.step,
   });

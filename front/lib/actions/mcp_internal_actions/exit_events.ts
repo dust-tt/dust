@@ -9,7 +9,10 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { AgentLoopRunContext, ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
-import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
+import {
+  pauseSandboxBashForBlockedChild,
+  persistActionPause,
+} from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever, isAgentPauseOutputResourceType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -31,6 +34,19 @@ function makeStoppedChildEvent(
     text: "Sandbox parent already finished.",
     isError: false,
     reason: "user_cancellation",
+  };
+}
+
+function getRelaunchArgs(runContext: AgentLoopRunContext) {
+  return {
+    agentMessageId: runContext.agentMessage.sId,
+    agentMessageVersion: runContext.agentMessage.version,
+    conversationBranchId: runContext.agentMessage.branchId,
+    conversationId: runContext.conversation.sId,
+    conversationTitle: runContext.conversation.title,
+    userMessageId: runContext.userMessage.sId,
+    userMessageVersion: runContext.userMessage.version,
+    userMessageOrigin: runContext.userMessage.context.origin,
   };
 }
 
@@ -119,16 +135,16 @@ export async function getExitOrPauseEvents(
       const { blockingEvents, state } = exitOutputItem;
 
       if (isAgentLoopRunContext(runContext)) {
-        // Update the action status to blocked_child_action_input_required to break the agent loop.
-        await runContext.action.updateStatus(
-          "blocked_child_action_input_required"
-        );
-
-        // Update the step context to save the resume state.
-        await runContext.action.updateStepContext({
-          ...runContext.action.stepContext,
-          resumeState: state,
-        });
+        if (
+          !(await persistActionPause(
+            auth,
+            runContext.action,
+            runContext.conversation,
+            state
+          ))
+        ) {
+          return [makeStoppedChildEvent(runContext)];
+        }
       }
 
       // TODO(SANDBOX_FUNCTIONS): supporting run_agent from a sandbox function requires
@@ -175,7 +191,8 @@ export async function getExitOrPauseEvents(
             !(await pauseSandboxBashForBlockedChild(
               auth,
               runContext.action,
-              runContext.conversation
+              runContext.conversation,
+              getRelaunchArgs(runContext)
             ))
           ) {
             return [makeStoppedChildEvent(runContext)];
@@ -234,7 +251,8 @@ export async function getExitOrPauseEvents(
           !(await pauseSandboxBashForBlockedChild(
             auth,
             runContext.action,
-            runContext.conversation
+            runContext.conversation,
+            getRelaunchArgs(runContext)
           ))
         ) {
           return [makeStoppedChildEvent(runContext)];
@@ -289,7 +307,8 @@ export async function getExitOrPauseEvents(
           !(await pauseSandboxBashForBlockedChild(
             auth,
             runContext.action,
-            runContext.conversation
+            runContext.conversation,
+            getRelaunchArgs(runContext)
           ))
         ) {
           return [makeStoppedChildEvent(runContext)];

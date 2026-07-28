@@ -20,6 +20,7 @@ import {
   finishSandboxBash,
   pauseReservedSandboxBash,
   pauseSandboxBashForBlockedChild,
+  persistActionPause,
   reserveSandboxChildRun,
   reserveSandboxParentRun,
   resolveSandboxChildBlock,
@@ -240,7 +241,12 @@ describe("resolveSandboxChildBlock", () => {
       throw new Error("Expected the child action to exist.");
     }
 
-    await pauseSandboxBashForBlockedChild(auth, child, conversation);
+    await pauseSandboxBashForBlockedChild(
+      auth,
+      child,
+      conversation,
+      AGENT_LOOP_ARGS
+    );
 
     const parent = await AgentMCPActionResource.fetchById(auth, parentId);
     const deniedChild = await AgentMCPActionResource.fetchById(auth, childId);
@@ -283,7 +289,8 @@ describe("resolveSandboxChildBlock", () => {
     const accepted = await pauseSandboxBashForBlockedChild(
       auth,
       child,
-      conversation
+      conversation,
+      AGENT_LOOP_ARGS
     );
 
     const parent = await AgentMCPActionResource.fetchById(auth, parentId);
@@ -325,7 +332,8 @@ describe("resolveSandboxChildBlock", () => {
     const accepted = await pauseSandboxBashForBlockedChild(
       auth,
       child,
-      conversation
+      conversation,
+      AGENT_LOOP_ARGS
     );
 
     const parent = await AgentMCPActionResource.fetchById(auth, parentId);
@@ -366,7 +374,8 @@ describe("resolveSandboxChildBlock", () => {
     const accepted = await pauseSandboxBashForBlockedChild(
       auth,
       child,
-      conversation
+      conversation,
+      AGENT_LOOP_ARGS
     );
 
     expect(accepted).toBe(false);
@@ -611,7 +620,7 @@ describe("resolveSandboxChildBlock", () => {
     expect(vi.mocked(launchAgentLoopWorkflow)).not.toHaveBeenCalled();
   });
 
-  it("does not pause or relaunch when approval wins before pause", async () => {
+  it("pauses and relaunches when approval wins before pause", async () => {
     const { sId: parentId } = await createAction({
       name: "bash",
       status: "blocked_child_action_input_required",
@@ -635,16 +644,46 @@ describe("resolveSandboxChildBlock", () => {
       if (!shouldPause) {
         throw new Error("Expected a pause condition.");
       }
-      expect(await shouldPause()).toBe(false);
+      expect(await shouldPause()).toBe(true);
       return new Ok(undefined);
     });
 
     await resolveChild(childId, parentId);
-    await pauseReservedSandboxBash(auth, child, conversation);
+    await pauseReservedSandboxBash(auth, child, conversation, {
+      ...AGENT_LOOP_ARGS,
+      conversationId: conversation.sId,
+    });
 
     const parent = await AgentMCPActionResource.fetchById(auth, parentId);
-    expect(parent?.stepContext.resumeState).toBeNull();
-    expect(vi.mocked(launchAgentLoopWorkflow)).not.toHaveBeenCalled();
+    expect(parent?.stepContext.resumeState).toEqual({
+      execId: "0123456789abcdef",
+    });
+    expect(parent?.status).toBe("ready_allowed_explicitly");
+    expect(vi.mocked(launchAgentLoopWorkflow)).toHaveBeenCalledOnce();
+  });
+
+  it("does not resurrect a cancelled action from a late pause result", async () => {
+    const resumeState = { execId: "0123456789abcdef" };
+    const { sId: actionId } = await createAction({
+      name: "bash",
+      status: "denied",
+    });
+    const action = await AgentMCPActionResource.fetchById(auth, actionId);
+    if (!action) {
+      throw new Error("Expected the action to exist.");
+    }
+
+    const persisted = await persistActionPause(
+      auth,
+      action,
+      conversation,
+      resumeState
+    );
+
+    const freshAction = await AgentMCPActionResource.fetchById(auth, actionId);
+    expect(persisted).toBe(false);
+    expect(freshAction?.status).toBe("denied");
+    expect(freshAction?.stepContext.resumeState).toBeNull();
   });
 
   it("does not defer relaunch because of an unrelated parent's blocked child", async () => {

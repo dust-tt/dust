@@ -72,10 +72,6 @@ export async function publishDeferredEventsActivity(
       );
     }
 
-    if (!(await isDeferredActionBlocked(deferredEvent))) {
-      continue;
-    }
-
     let eventToPublish: AgentMessageEvents;
 
     switch (event.type) {

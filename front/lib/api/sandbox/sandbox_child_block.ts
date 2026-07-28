@@ -1,5 +1,8 @@
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
-import type { SandboxChildActionInfo } from "@app/lib/actions/types";
+import type {
+  SandboxChildActionInfo,
+  StepContext,
+} from "@app/lib/actions/types";
 import {
   isSandboxChildActionInfo,
   isSandboxResumeState,
@@ -18,6 +21,16 @@ import type {
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 
+interface AgentLoopRelaunchArgs {
+  agentMessageId: string;
+  agentMessageVersion: number;
+  conversationId: string;
+  conversationTitle: string | null;
+  userMessageId: string;
+  userMessageVersion: number;
+  userMessageOrigin: UserMessageOrigin;
+}
+
 /**
  * Called when a sandbox-child action enters a blocked state. Flips the
  * parent bash action's status to `blocked_child_action_input_required`
@@ -30,7 +43,8 @@ import type {
 export async function pauseSandboxBashForBlockedChild(
   auth: Authenticator,
   action: AgentMCPActionResource,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType,
+  agentLoopArgs: AgentLoopRelaunchArgs
 ): Promise<boolean> {
   const info = action.stepContext.sandboxChildActionInfo;
   if (!isSandboxChildActionInfo(info)) {
@@ -111,7 +125,7 @@ export async function pauseSandboxBashForBlockedChild(
   }
 
   if (reservation.shouldPause) {
-    await pauseReservedSandboxBash(auth, action, conversation);
+    await pauseReservedSandboxBash(auth, action, conversation, agentLoopArgs);
   }
 
   const freshAction = await AgentMCPActionResource.fetchById(auth, action.sId);
@@ -129,7 +143,8 @@ export async function pauseSandboxBashForBlockedChild(
 export async function pauseReservedSandboxBash(
   auth: Authenticator,
   action: AgentMCPActionResource,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType,
+  agentLoopArgs: AgentLoopRelaunchArgs
 ): Promise<void> {
   const info = action.stepContext.sandboxChildActionInfo;
   if (!isSandboxChildActionInfo(info)) {
@@ -159,7 +174,6 @@ export async function pauseReservedSandboxBash(
           if (
             !freshAction ||
             !parentAction ||
-            !isToolExecutionStatusBlocked(freshAction.status) ||
             parentAction.status !== "blocked_child_action_input_required" ||
             !(await freshAction.canAgentMessageResume(auth, transaction))
           ) {
@@ -197,6 +211,60 @@ export async function pauseReservedSandboxBash(
       "Failed to pause sandbox for blocked sandbox-child"
     );
   }
+
+  const freshAction = await AgentMCPActionResource.fetchById(auth, action.sId);
+  if (freshAction && !isToolExecutionStatusBlocked(freshAction.status)) {
+    await resolveSandboxChildBlock(auth, {
+      action: freshAction,
+      sandboxChildActionInfo: info,
+      agentLoopArgs,
+    });
+  }
+}
+
+export async function persistActionPause(
+  auth: Authenticator,
+  action: AgentMCPActionResource,
+  conversation: ConversationWithoutContentType,
+  resumeState: StepContext["resumeState"]
+): Promise<boolean> {
+  return withTransaction(async (transaction) => {
+    await getConversationRankVersionLock(auth, conversation, transaction);
+
+    const freshAction = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId,
+      transaction
+    );
+    if (
+      !freshAction ||
+      (freshAction.status !== "running" &&
+        freshAction.status !== "blocked_child_action_input_required") ||
+      !(await freshAction.canAgentMessageResume(auth, transaction))
+    ) {
+      return false;
+    }
+
+    if (freshAction.status === "running") {
+      const [updatedCount] = await freshAction.updateStatusFromExpected(auth, {
+        status: "blocked_child_action_input_required",
+        expectedStatus: "running",
+        transaction,
+      });
+      if (updatedCount === 0) {
+        return false;
+      }
+    }
+
+    await freshAction.updateStepContext(
+      {
+        ...freshAction.stepContext,
+        resumeState,
+      },
+      transaction
+    );
+    return true;
+  });
 }
 
 /**
@@ -428,16 +496,6 @@ export async function finishSandboxBash(
   }
 
   return result.completed;
-}
-
-interface AgentLoopRelaunchArgs {
-  agentMessageId: string;
-  agentMessageVersion: number;
-  conversationId: string;
-  conversationTitle: string | null;
-  userMessageId: string;
-  userMessageVersion: number;
-  userMessageOrigin: UserMessageOrigin;
 }
 
 /**

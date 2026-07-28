@@ -59,16 +59,14 @@ const DEFERRED_EVENT: DeferredEvent = {
 describe("publishDeferredEventsActivity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isBlockedMock.mockReset();
     messageFindMock.mockResolvedValue({});
     publishEventMock.mockResolvedValue(undefined);
     removeEventMock.mockResolvedValue(undefined);
   });
 
   it("removes an event denied while it is being published", async () => {
-    isBlockedMock
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false);
+    isBlockedMock.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
     const shouldPause = await publishDeferredEventsActivity([DEFERRED_EVENT]);
 
@@ -105,6 +103,38 @@ describe("publishDeferredEventsActivity", () => {
       }),
       step: 2,
     });
+    expect(shouldPause).toBe(true);
+  });
+
+  it("publishes a last marker when the last action resolves during publication", async () => {
+    const lastEvent: DeferredEvent = {
+      ...DEFERRED_EVENT,
+      event: {
+        ...DEFERRED_EVENT.event,
+        actionId: "last_action_id",
+      },
+    };
+    isBlockedMock
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+
+    const shouldPause = await publishDeferredEventsActivity([
+      DEFERRED_EVENT,
+      lastEvent,
+    ]);
+
+    expect(publishEventMock).toHaveBeenCalledTimes(2);
+    expect(publishEventMock).toHaveBeenLastCalledWith({
+      conversationId: "conversation_id",
+      event: expect.objectContaining({
+        actionId: "last_action_id",
+        isLastBlockingEventForStep: true,
+      }),
+      step: 2,
+    });
+    expect(removeEventMock).toHaveBeenCalledOnce();
     expect(shouldPause).toBe(true);
   });
 });
