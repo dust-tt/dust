@@ -1,6 +1,5 @@
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { useKillSwitches } from "@app/lib/swr/kill";
 import { Button, Check, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
@@ -9,11 +8,8 @@ export function TrialPage() {
   const { workspace } = useAuth();
   const router = useAppRouter();
   const { hasFeature } = useFeatureFlags();
-  const { killSwitches } = useKillSwitches();
 
-  const isMetronome =
-    !hasFeature("legacy_billing") &&
-    !killSwitches?.includes("global_disable_metronome_billing");
+  const isMetronome = !hasFeature("legacy_billing");
 
   const skip = async () => {
     void router.push(`/w/${workspace.sId}/subscribe`);

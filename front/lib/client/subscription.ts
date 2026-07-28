@@ -2,13 +2,11 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
-import type { KillSwitchType } from "@app/lib/poke/types";
 import { useGeolocation } from "@app/lib/swr/geo";
 import type { SupportedCurrency } from "@app/types/currency";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { useEffect, useState } from "react";
-import { useKillSwitches } from "../swr/kill";
 
 // If mention the price of the PRO plan in a few different places in the code base,
 // so this is just a way to have that value hardcoded in one place.
@@ -28,30 +26,23 @@ export const CP_MAX_SEAT_COST_YEARLY = 120;
 /**
  * Client-side mirror of the server-side `isMetronomeBillingEnabled` gate: the
  * credit-priced checkout flow follows Metronome billing, which is enabled by
- * default for all workspaces. The `global_disable_metronome_billing` kill
- * switch turns it off globally; the `legacy_billing` feature flag forces it
- * off for individual workspaces.
+ * default for all workspaces. The `legacy_billing` feature flag forces it off
+ * for individual workspaces.
  *
  * Prefer the `useIsMetronomeCheckout` hook; this helper is for components that
  * render outside the auth context provider (e.g. the SPA workspace layout).
  */
 export function computeIsMetronomeCheckout({
   featureFlags,
-  killSwitches,
 }: {
   featureFlags: WhitelistableFeature[];
-  killSwitches: KillSwitchType[] | null | undefined;
 }): boolean {
-  return (
-    !featureFlags.includes("legacy_billing") &&
-    !killSwitches?.includes("global_disable_metronome_billing")
-  );
+  return !featureFlags.includes("legacy_billing");
 }
 
 export function useIsMetronomeCheckout(): boolean {
   const { featureFlags } = useFeatureFlags();
-  const { killSwitches } = useKillSwitches();
-  return computeIsMetronomeCheckout({ featureFlags, killSwitches });
+  return computeIsMetronomeCheckout({ featureFlags });
 }
 
 /**
@@ -67,10 +58,7 @@ export function useIsMetronomeCheckout(): boolean {
 export function useUserBillingCurrency(): SupportedCurrency {
   const { geoData } = useGeolocation();
   const { hasFeature } = useFeatureFlags();
-  const { killSwitches } = useKillSwitches();
-  const isMetronomeBillingEnabled =
-    !hasFeature("legacy_billing") &&
-    !killSwitches?.includes("global_disable_metronome_billing");
+  const isMetronomeBillingEnabled = !hasFeature("legacy_billing");
 
   if (geoData?.countryCode) {
     return getBillingCurrencyForCountry(
