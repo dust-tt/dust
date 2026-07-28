@@ -131,7 +131,7 @@ export async function validateAction(
     );
     return new Err(
       new DustError(
-        "action_not_blocked",
+        "invalid_request_error",
         "This generation cannot resume because its pending actions belong to different steps. " +
           "Cancel it and retry."
       )

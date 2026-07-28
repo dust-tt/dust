@@ -264,18 +264,19 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async fetchById(
     auth: Authenticator,
-    sId: string
+    sId: string,
+    transaction?: Transaction
   ): Promise<AgentMCPActionResource | null> {
     const modelId = getResourceIdFromSId(sId);
     if (!modelId) {
       return null;
     }
 
-    const [action] = await AgentMCPActionResource.fetchByModelIds(auth, [
+    return AgentMCPActionResource.fetchByModelIdWithAuth(
+      auth,
       modelId,
-    ]);
-
-    return action;
+      transaction
+    );
   }
 
   static async fetchByModelIds(
@@ -997,13 +998,17 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
    * (approving, denying, answering, retrying) is only allowed while the message can resume:
    * otherwise it would relaunch an agent loop that was already terminated.
    */
-  async canAgentMessageResume(auth: Authenticator): Promise<boolean> {
+  async canAgentMessageResume(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<boolean> {
     const agentMessage = await AgentMessageModel.findOne({
       attributes: ["status"],
       where: {
         id: this.agentMessageId,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
+      transaction,
     });
 
     return (
@@ -1509,9 +1514,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     {
       status,
       expectedStatus,
+      transaction,
     }: {
       status: ToolExecutionStatus;
       expectedStatus: ToolExecutionStatus;
+      transaction?: Transaction;
     }
   ): Promise<[affectedCount: number]> {
     return AgentMCPActionModel.update(
@@ -1522,6 +1529,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
           status: expectedStatus,
         },
+        transaction,
       }
     );
   }

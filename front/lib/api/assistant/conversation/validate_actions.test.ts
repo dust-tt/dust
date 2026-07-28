@@ -1416,7 +1416,7 @@ describe("validateAction", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.code).toBe("action_not_blocked");
+        expect(result.error.code).toBe("invalid_request_error");
         expect(result.error.message).toContain(
           "pending actions belong to different steps"
         );

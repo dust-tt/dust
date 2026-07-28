@@ -51,7 +51,6 @@ export function MCPToolValidationRequired({
     });
 
     if (!result.success) {
-      setErrorMessage("Failed to assess action approval. Please try again.");
       return false;
     }
     removeCompletedAction(blockedAction.actionId);

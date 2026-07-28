@@ -13,6 +13,7 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import omit from "lodash/omit";
+import type { Transaction } from "sequelize";
 
 /**
  * Creates an MCP action in the database and returns both the DB record and the type object.
@@ -27,6 +28,7 @@ export async function createMCPAction(
     status,
     stepContent,
     stepContext,
+    transaction,
   }: {
     actionConfiguration: MCPToolConfigurationType;
     agentMessage: AgentMessageType;
@@ -35,6 +37,7 @@ export async function createMCPAction(
     status: ToolExecutionStatus;
     stepContent: AgentStepContentResource;
     stepContext: StepContext;
+    transaction?: Transaction;
   }
 ): Promise<AgentMCPActionResource> {
   const toolConfiguration = omit(
@@ -53,6 +56,7 @@ export async function createMCPAction(
       status,
       stepContext,
       toolConfiguration,
-    }
+    },
+    { transaction }
   );
 }

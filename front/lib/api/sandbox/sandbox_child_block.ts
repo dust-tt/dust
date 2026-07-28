@@ -86,6 +86,18 @@ export async function pauseSandboxBashForBlockedChild(
     return;
   }
 
+  await pauseReservedSandboxBash(auth, action, conversation);
+}
+
+/**
+ * Pauses a sandbox whose parent was reserved before the blocked child action
+ * was returned to the in-sandbox caller.
+ */
+export async function pauseReservedSandboxBash(
+  auth: Authenticator,
+  action: AgentMCPActionResource,
+  conversation: ConversationWithoutContentType
+): Promise<void> {
   const pauseResult = await ConversationSandboxAdapter.pauseSandboxForApproval(
     auth,
     conversation
@@ -94,9 +106,9 @@ export async function pauseSandboxBashForBlockedChild(
     logger.error(
       {
         err: pauseResult.error,
-        parentActionId: parentAction.sId,
+        actionId: action.sId,
         conversationId: conversation.sId,
-        workspaceId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
       },
       "Failed to pause sandbox for blocked sandbox-child"
     );

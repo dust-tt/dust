@@ -10,17 +10,19 @@ import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/lock";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
-import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
+import { pauseReservedSandboxBash } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
@@ -221,35 +223,89 @@ export async function createSandboxChildAction(
   const persistedStatus =
     status === "ready_allowed_implicitly" ? "running" : status;
 
-  // Fetch the parent immediately before creating the child: a background sandbox call can reach
-  // this endpoint after its parent bash has already completed and the agent has moved on.
-  const parentAction = await AgentMCPActionResource.fetchById(
-    auth,
-    parentActionId
-  );
-  if (!parentAction) {
-    return new Err(new Error("Parent action not found."));
-  }
-  if (
-    parentAction.status !== "running" &&
-    parentAction.status !== "blocked_child_action_input_required"
-  ) {
-    return new Err(new Error("Parent sandbox action is no longer running."));
+  const creationRes = await withTransaction(async (transaction) => {
+    // Terminal message updates use the same lock. This prevents a delayed sandbox request from
+    // creating a child after cancellation while still letting terminal cleanup see any child
+    // committed immediately before it.
+    await getConversationRankVersionLock(auth, conversation, transaction);
+
+    const parentAction = await AgentMCPActionResource.fetchById(
+      auth,
+      parentActionId,
+      transaction
+    );
+    if (!parentAction) {
+      return new Err(new Error("Parent action not found."));
+    }
+    if (parentAction.agentMessageId !== agentMessage.agentMessageId) {
+      return new Err(
+        new Error("Parent action does not belong to the agent message.")
+      );
+    }
+    if (
+      parentAction.status !== "running" &&
+      parentAction.status !== "blocked_child_action_input_required"
+    ) {
+      return new Err(new Error("Parent sandbox action is no longer running."));
+    }
+    if (!(await parentAction.canAgentMessageResume(auth, transaction))) {
+      return new Err(
+        new Error("Agent message can no longer run sandbox child actions.")
+      );
+    }
+
+    let shouldPauseSandbox = false;
+    if (
+      status === "blocked_validation_required" &&
+      parentAction.status === "running"
+    ) {
+      const [updatedCount] = await parentAction.updateStatusFromExpected(auth, {
+        status: "blocked_child_action_input_required",
+        expectedStatus: "running",
+        transaction,
+      });
+      if (updatedCount === 0) {
+        return new Err(
+          new Error("Parent sandbox action is no longer running.")
+        );
+      }
+      shouldPauseSandbox = true;
+    }
+
+    const action = await createMCPAction(auth, {
+      actionConfiguration: fullToolConfiguration,
+      agentMessage,
+      augmentedInputs: rawInputs,
+      conversation,
+      status: persistedStatus,
+      stepContent: parentAction.stepContent,
+      stepContext: {
+        ...parentAction.stepContext,
+        resumeState: null,
+        sandboxChildActionInfo: { parentActionId: parentAction.sId },
+      },
+      transaction,
+    });
+
+    return new Ok({ action, parentAction, shouldPauseSandbox });
+  });
+  if (creationRes.isErr()) {
+    return creationRes;
   }
 
-  const action = await createMCPAction(auth, {
-    actionConfiguration: fullToolConfiguration,
-    agentMessage,
-    augmentedInputs: rawInputs,
-    conversation,
-    status: persistedStatus,
-    stepContent: parentAction.stepContent,
-    stepContext: {
-      ...parentAction.stepContext,
-      resumeState: null,
-      sandboxChildActionInfo: { parentActionId: parentAction.sId },
-    },
-  });
+  const { action, parentAction, shouldPauseSandbox } = creationRes.value;
+
+  // The lock above prevents creation after terminalization. Re-check before external side effects
+  // to cover terminalization immediately after the transaction committed.
+  if (!(await action.canAgentMessageResume(auth))) {
+    await action.updateStatusFromExpected(auth, {
+      status: "denied",
+      expectedStatus: action.status,
+    });
+    return new Err(
+      new Error("Agent message can no longer run sandbox child actions.")
+    );
+  }
 
   if (status === "blocked_validation_required") {
     const approvalRequirementEvent: AgentLoopMCPApproveExecutionEvent = {
@@ -282,7 +338,7 @@ export async function createSandboxChildAction(
     }
 
     // Hand the sandbox pause back to the caller instead of pausing here.
-    // `pauseSandboxBashForBlockedChild` freezes the whole sandbox via
+    // `pauseReservedSandboxBash` freezes the whole sandbox via
     // `betaPause` — including the `dsbx` client still blocked on this `/call`
     // request. Pausing before the response is flushed would mean `dsbx` never
     // receives `actionId`, so it could never poll for the result. The caller
@@ -291,8 +347,9 @@ export async function createSandboxChildAction(
     // wait-and-collect wake-up flow.
     return new Ok({
       actionId: action.sId,
-      pauseSandbox: () =>
-        pauseSandboxBashForBlockedChild(auth, action, conversation),
+      pauseSandbox: shouldPauseSandbox
+        ? () => pauseReservedSandboxBash(auth, action, conversation)
+        : () => Promise.resolve(),
     });
   }
 

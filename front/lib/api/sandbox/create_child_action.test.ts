@@ -226,6 +226,9 @@ describe("createSandboxChildAction", () => {
     }
     expect(result.value.pauseSandbox).toBeDefined();
 
+    const parent = await AgentMCPActionResource.fetchById(auth, parentActionId);
+    expect(parent?.status).toBe("blocked_child_action_input_required");
+
     const child = await AgentMCPActionResource.fetchById(
       auth,
       result.value.actionId
@@ -337,6 +340,27 @@ describe("createSandboxChildAction", () => {
     expect(result.error.message).toBe(
       "Parent sandbox action is no longer running."
     );
+    expect(vi.mocked(updateResourceAndPublishEvent)).not.toHaveBeenCalled();
+    expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
+  });
+
+  it("rejects child calls after the agent message was cancelled", async () => {
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "cancelled",
+    });
+
+    const result = await callChildTool();
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected the child call to fail.");
+    }
+    expect(result.error.message).toBe(
+      "Agent message can no longer run sandbox child actions."
+    );
+    expect(vi.mocked(updateResourceAndPublishEvent)).not.toHaveBeenCalled();
     expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
   });
 
