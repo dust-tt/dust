@@ -37,7 +37,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Fixed number of tokens assumed for image contents
-const IMAGE_CONTENT_TOKEN_COUNT = 3100;
+export const IMAGE_CONTENT_TOKEN_COUNT = 3100;
+export const ANTHROPIC_IMAGE_COUNT_LIMIT = 20;
 export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
 
@@ -78,6 +79,37 @@ function pruneConversationToBudget(
   }
 
   return state.fit();
+}
+
+function discardOldestToolResultImages(
+  messages: ModelMessageTypeMultiActions[]
+): ModelMessageTypeMultiActions[] {
+  const imageCount = messages.reduce(
+    (count, message) =>
+      count +
+      ("content" in message && Array.isArray(message.content)
+        ? message.content.filter(isImageContent).length
+        : 0),
+    0
+  );
+  let toDiscard = imageCount - ANTHROPIC_IMAGE_COUNT_LIMIT;
+
+  return toDiscard > 0
+    ? messages.map((message) =>
+        message.role === "function" && Array.isArray(message.content)
+          ? {
+              ...message,
+              content: message.content.filter((content) => {
+                if (isImageContent(content) && toDiscard > 0) {
+                  toDiscard -= 1;
+                  return false;
+                }
+                return true;
+              }),
+            }
+          : message
+      )
+    : messages;
 }
 
 export async function renderConversationForModel(
@@ -135,7 +167,10 @@ export async function renderConversationForModel(
     agentConfiguration,
     enabledSkills,
   });
-  const messages = [...leadingMessages, ...renderedMessages];
+  const messages =
+    model.providerId === "anthropic"
+      ? discardOldestToolResultImages([...leadingMessages, ...renderedMessages])
+      : [...leadingMessages, ...renderedMessages];
   const renderAllMessagesMs = Date.now() - stepStart;
   stepStart = Date.now();
 

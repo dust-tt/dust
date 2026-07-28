@@ -50,9 +50,6 @@ import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 const MESSAGE_CONVERSION_CONCURRENCY = 10;
 
-// Anthropic applies stricter image dimension limits above this threshold.
-export const ANTHROPIC_IMAGE_COUNT_THRESHOLD = 20;
-
 const SUPPORTED_IMAGE_MEDIA_TYPES = [
   "image/jpeg",
   "image/png",
@@ -343,78 +340,12 @@ function contentToBlocks(
     : content;
 }
 
-function discardOldestToolResultImages(
-  conversation: BaseConversation
-): BaseConversation {
-  const imageCount = conversation.messages.reduce((count, message) => {
-    switch (message.type) {
-      case "image_url":
-        return count + 1;
-      case "tool_call_result":
-        return (
-          count +
-          message.content.parts.filter((part) => part.type === "image_url")
-            .length
-        );
-      case "text":
-      case "reasoning":
-      case "tool_call_request":
-      case "provider_passthrough":
-        return count;
-      default:
-        return assertNever(message);
-    }
-  }, 0);
-
-  let imageResultsToDiscard = Math.max(
-    0,
-    imageCount - ANTHROPIC_IMAGE_COUNT_THRESHOLD
-  );
-  if (imageResultsToDiscard === 0) {
-    return conversation;
-  }
-
-  return {
-    ...conversation,
-    messages: conversation.messages.map((message) => {
-      switch (message.type) {
-        case "tool_call_result":
-          if (imageResultsToDiscard === 0) {
-            return message;
-          }
-          return {
-            ...message,
-            content: {
-              ...message.content,
-              parts: message.content.parts.filter((part) => {
-                if (part.type === "image_url" && imageResultsToDiscard > 0) {
-                  imageResultsToDiscard -= 1;
-                  return false;
-                }
-                return true;
-              }),
-            },
-          };
-        case "image_url":
-        case "text":
-        case "reasoning":
-        case "tool_call_request":
-        case "provider_passthrough":
-          return message;
-        default:
-          return assertNever(message);
-      }
-    }),
-  };
-}
-
 export async function conversationToMessages(
   conversation: BaseConversation,
   converters: MessageBlockConverters
 ): Promise<MessageParam[]> {
-  const trimmedConversation = discardOldestToolResultImages(conversation);
   const messages = await concurrentExecutor(
-    trimmedConversation.messages,
+    conversation.messages,
     async (message): Promise<MessageParam> => {
       switch (message.role) {
         case "user":

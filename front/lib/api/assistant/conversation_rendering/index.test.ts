@@ -6,11 +6,13 @@ import type {
   ModelMessageTypeMultiActions,
   UserMessageTypeModel,
 } from "@app/types/assistant/generation";
-import { isTextContent } from "@app/types/assistant/generation";
+import { isImageContent, isTextContent } from "@app/types/assistant/generation";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  ANTHROPIC_IMAGE_COUNT_LIMIT,
+  IMAGE_CONTENT_TOKEN_COUNT,
   renderConversationForModel,
   TOKENS_MARGIN,
   TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR,
@@ -84,6 +86,22 @@ function functionMessage(
     name,
     function_call_id: `${name}_call`,
     content,
+  };
+}
+
+function image(url: string): Content {
+  return { type: "image_url", image_url: { url } };
+}
+
+function functionImageMessage(
+  name: string,
+  url: string
+): ModelMessageTypeMultiActions {
+  return {
+    role: "function",
+    name,
+    function_call_id: `${name}_call`,
+    content: [image(url)],
   };
 }
 
@@ -213,6 +231,52 @@ describe("renderConversationForModel", () => {
     expect(res.value.modelConversation.messages).toHaveLength(3);
     expect(res.value.tokensUsed).toBe(1071);
     expect(res.value.prunedContext).toBe(false);
+  });
+
+  it("drops oldest tool images before counting Anthropic context", async () => {
+    const userUpload = image("user-upload");
+    vi.mocked(renderAllMessages).mockResolvedValue([
+      {
+        role: "user",
+        name: "user",
+        content: [{ type: "text", text: "u1" }, userUpload],
+      },
+      ...Array.from({ length: ANTHROPIC_IMAGE_COUNT_LIMIT }, (_, index) =>
+        functionImageMessage(`tool_${index}`, `tool-${index}`)
+      ),
+    ]);
+    mockTokenCounter({ byContains: { u1: 10 } });
+
+    const res = await renderConversationForModel(auth, {
+      conversation: createConversation(),
+      model: { ...model, providerId: "anthropic" },
+      prompt: "PROMPT",
+      enabledSkills: [],
+      tools: "TOOLS",
+      allowedTokenCount: 100_000,
+    });
+
+    expect(res.isOk()).toBe(true);
+    if (res.isErr()) {
+      return;
+    }
+
+    const images = res.value.modelConversation.messages.flatMap((message) =>
+      "content" in message && Array.isArray(message.content)
+        ? message.content.filter(isImageContent)
+        : []
+    );
+    expect(images).toHaveLength(ANTHROPIC_IMAGE_COUNT_LIMIT);
+    expect(images).toContain(userUpload);
+    expect(images).not.toContainEqual(image("tool-0"));
+    expect(res.value.tokensUsed).toBe(
+      TOKENS_MARGIN +
+        10 +
+        Math.floor(10 * TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR) +
+        10 +
+        20 * 5 +
+        ANTHROPIC_IMAGE_COUNT_LIMIT * IMAGE_CONTENT_TOKEN_COUNT
+    );
   });
 
   it("prunes old tool outputs globally across separate interactions", async () => {
