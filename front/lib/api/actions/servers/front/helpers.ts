@@ -1,5 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { marked } from "marked";
@@ -11,6 +12,7 @@ const FRONT_API_BASE_URL = "https://api2.frontapp.com";
 export const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 1000;
 const MAX_RETRY_DELAY_MS = 10000;
+const FRONT_API_CONCURRENCY = 5;
 
 interface FrontAPIOptions {
   method: string;
@@ -232,6 +234,53 @@ export function formatConversationForLLM(
   </conversation>`;
 
   return metadata;
+}
+
+async function loadInboxes(apiToken: string, conversation: FrontConversation) {
+  try {
+    return await getConversationInboxes(apiToken, conversation.id);
+  } catch (error) {
+    logger.warn(
+      {
+        conversationId: conversation.id,
+        error: normalizeError(error),
+      },
+      "[FrontMCP] Failed to load conversation inboxes"
+    );
+    return undefined;
+  }
+}
+
+export async function formatConversationsForLLM(
+  apiToken: string,
+  conversations: FrontConversation[]
+) {
+  const [firstConversation, ...remainingConversations] = conversations;
+  if (!firstConversation) {
+    return [];
+  }
+
+  const firstInboxes = await loadInboxes(apiToken, firstConversation);
+  if (firstInboxes === null) {
+    return conversations.map((conversation) =>
+      formatConversationForLLM(conversation, null)
+    );
+  }
+
+  const remainingFormatted = await concurrentExecutor(
+    remainingConversations,
+    async (conversation) =>
+      formatConversationForLLM(
+        conversation,
+        await loadInboxes(apiToken, conversation)
+      ),
+    { concurrency: FRONT_API_CONCURRENCY }
+  );
+
+  return [
+    formatConversationForLLM(firstConversation, firstInboxes),
+    ...remainingFormatted,
+  ];
 }
 
 interface FrontRecipient {

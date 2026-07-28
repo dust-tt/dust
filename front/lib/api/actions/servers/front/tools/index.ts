@@ -3,12 +3,10 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   convertMarkdownToHTML,
-  type FrontConversation,
   findChannelAddress,
-  formatConversationForLLM,
+  formatConversationsForLLM,
   formatDraftsForLLM,
   formatMessagesForLLM,
-  getConversationInboxes,
   getFrontAPITokenFromExtra,
   makeFrontAPIRequest,
   parseFrontConversation,
@@ -16,12 +14,10 @@ import {
   parseFrontDraftsResponse,
 } from "@app/lib/api/actions/servers/front/helpers";
 import { FRONT_TOOLS_METADATA } from "@app/lib/api/actions/servers/front/metadata";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import assert from "assert";
 
-const FRONT_API_CONCURRENCY = 5;
 const MAX_CONVERSATIONS = 20;
 
 interface FrontListResponse {
@@ -48,53 +44,6 @@ interface FrontInbox {
   is_private: boolean;
 }
 
-async function loadInboxes(apiToken: string, conversation: FrontConversation) {
-  try {
-    return await getConversationInboxes(apiToken, conversation.id);
-  } catch (error) {
-    logger.warn(
-      {
-        conversationId: conversation.id,
-        error: normalizeError(error),
-      },
-      "[FrontMCP] Failed to load conversation inboxes"
-    );
-    return undefined;
-  }
-}
-
-async function formatConversations(
-  apiToken: string,
-  conversations: FrontConversation[]
-) {
-  const [firstConversation, ...remainingConversations] = conversations;
-  if (!firstConversation) {
-    return [];
-  }
-
-  const firstInboxes = await loadInboxes(apiToken, firstConversation);
-  if (firstInboxes === null) {
-    return conversations.map((conversation) =>
-      formatConversationForLLM(conversation, null)
-    );
-  }
-
-  const remainingFormatted = await concurrentExecutor(
-    remainingConversations,
-    async (conversation) =>
-      formatConversationForLLM(
-        conversation,
-        await loadInboxes(apiToken, conversation)
-      ),
-    { concurrency: FRONT_API_CONCURRENCY }
-  );
-
-  return [
-    formatConversationForLLM(firstConversation, firstInboxes),
-    ...remainingFormatted,
-  ];
-}
-
 const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
   search_conversations: async ({ q, limit = 20 }, extra) => {
     try {
@@ -118,7 +67,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
       }
 
       const formatted = (
-        await formatConversations(apiToken, conversations)
+        await formatConversationsForLLM(apiToken, conversations)
       ).join("\n\n");
 
       return new Ok([
@@ -154,10 +103,8 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
         })
       );
 
-      const formatted = formatConversationForLLM(
-        data,
-        await loadInboxes(apiToken, data)
-      );
+      const [formatted] = await formatConversationsForLLM(apiToken, [data]);
+      assert(formatted);
 
       return new Ok([
         {
@@ -348,7 +295,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
       }
 
       const formatted = (
-        await formatConversations(apiToken, conversations)
+        await formatConversationsForLLM(apiToken, conversations)
       ).join("\n\n");
 
       return new Ok([
