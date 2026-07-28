@@ -2,6 +2,7 @@ import {
   getBotOrUserName,
   getUserInfo,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import { getChannelNameById } from "@connectors/connectors/slack/lib/channels";
 import { splitSlackAttachments } from "@connectors/connectors/slack/lib/message_attachments";
 import {
   EMPTY_SECTION,
@@ -15,74 +16,85 @@ import { safeSubstring } from "@connectors/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 
-async function processMessageForMentions(
-  message: string,
+// `<@U123>` and `<#C123>`: Slack sends mentions as bare ids (no label) in both rich_text and
+// mrkdwn, and the formatter leaves these tokens intact for us to resolve here.
+const USER_MENTION_RE = /<@[UW][A-Z0-9]+>/g;
+const CHANNEL_MENTION_RE = /<#[A-Z0-9]+>/g;
+
+// Resolves a single mention token to its display form via the Slack API: `<@U123>` -> `@name`,
+// `<#C123>` -> `#name`, falling back to the raw id when it does not resolve.
+async function resolveMentionToken(
+  token: string,
   connectorId: ModelId,
   slackClient: WebClient
 ): Promise<string> {
-  const matches = message.match(/<@[A-Z-0-9]+>/g);
-  if (!matches) {
-    return message;
+  const id = token.replace(/[<@#>]/g, "");
+  if (token.startsWith("<@")) {
+    const { name } = await getUserInfo(id, connectorId, slackClient);
+    return `@${name ?? id}`;
   }
-  for (const m of matches) {
-    const userId = m.replace(/<|@|>/g, "");
-    const { name: userName } = await getUserInfo(
-      userId,
-      connectorId,
-      slackClient
-    );
-    if (!userName) {
-      continue;
-    }
-
-    message = message.replace(m, `@${userName}`);
-  }
-
-  return message;
+  const name = await getChannelNameById(connectorId, slackClient, id);
+  return `#${name ?? id}`;
 }
 
-// Single entry point to turn a Slack message into its upsert body text: resolves
-// mentions, uses the top-level `text` when present (else reconstructs the content
-// from its Block Kit blocks/attachments), and appends forwarded (unfurl) messages.
+// Resolves every user/channel mention token the formatter left in the rendered body.
+async function processMessageForMentions(
+  body: string,
+  connectorId: ModelId,
+  slackClient: WebClient
+): Promise<string> {
+  const tokens = new Set([
+    ...(body.match(USER_MENTION_RE) ?? []),
+    ...(body.match(CHANNEL_MENTION_RE) ?? []),
+  ]);
+
+  let resolved = body;
+  for (const token of tokens) {
+    resolved = resolved.replaceAll(
+      token,
+      await resolveMentionToken(token, connectorId, slackClient)
+    );
+  }
+  return resolved;
+}
+
+// Single entry point to turn a Slack message into its upsert body text: renders the
+// content (blocks first, top-level `text` as a fallback), appends forwarded (unfurl)
+// messages, then resolves the mention tokens left in the assembled body.
 async function formatSlackMessageBody(
   message: MessageElement,
   connectorId: ModelId,
   slackClient: WebClient
 ): Promise<string> {
-  const text = await processMessageForMentions(
-    message.text ?? "",
-    connectorId,
-    slackClient
-  );
-
   const { nonUnfurlAttachments, forwardedMessagesText } = splitSlackAttachments(
     message.attachments
   );
 
   const formatted = formatSlackMessageForLLM({
-    text,
+    text: message.text,
     blocks: message.blocks,
     attachments: nonUnfurlAttachments,
     files: message.files,
   });
 
-  // `text` is Slack's fallback for `blocks`: a message typed in Slack repeats its
-  // content in both, so rendering both would duplicate it. When `text` is present
-  // it is also the better-rendered version (mentions resolved to names), so we use
-  // it alone. Only when `text` is empty (bot alerts whose content lives entirely in
-  // Block Kit) do we reconstruct from blocks/attachments.
-  const messageContent =
-    formatted.text !== EMPTY_SECTION
-      ? [formatted.text]
-      : [formatted.blocks, formatted.attachments];
+  // `blocks` is the authoritative content of a Slack message; the top-level `text` is
+  // Slack's fallback rendering of the same thing, so rendering both would duplicate it.
+  // We render the blocks and only fall back to `text` when the message has none (rare bot
+  // alerts). Attachments (content cards, link previews) render alongside either way.
+  const mainContent =
+    formatted.blocks !== EMPTY_SECTION ? formatted.blocks : formatted.text;
 
   // `content` has a single text slot, so flatten the sections into one string,
   // dropping the ones the formatter marked empty.
-  const body = [...messageContent, formatted.files]
+  const body = [mainContent, formatted.attachments, formatted.files]
     .filter((s) => s !== EMPTY_SECTION)
     .join("\n");
 
-  return forwardedMessagesText ? `${body}\n${forwardedMessagesText}` : body;
+  const assembled = forwardedMessagesText
+    ? `${body}\n${forwardedMessagesText}`
+    : body;
+
+  return processMessageForMentions(assembled, connectorId, slackClient);
 }
 
 export async function formatMessagesForUpsert({

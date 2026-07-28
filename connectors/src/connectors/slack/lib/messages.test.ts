@@ -3,14 +3,20 @@ import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetBotOrUserName, mockGetUserInfo } = vi.hoisted(() => ({
-  mockGetBotOrUserName: vi.fn(),
-  mockGetUserInfo: vi.fn(),
-}));
+const { mockGetBotOrUserName, mockGetUserInfo, mockGetChannelNameById } =
+  vi.hoisted(() => ({
+    mockGetBotOrUserName: vi.fn(),
+    mockGetUserInfo: vi.fn(),
+    mockGetChannelNameById: vi.fn(),
+  }));
 
 vi.mock("@connectors/connectors/slack/lib/bot_user_helpers", () => ({
   getBotOrUserName: mockGetBotOrUserName,
   getUserInfo: mockGetUserInfo,
+}));
+
+vi.mock("@connectors/connectors/slack/lib/channels", () => ({
+  getChannelNameById: mockGetChannelNameById,
 }));
 
 // Keep everything real except `renderDocumentTitleAndContent`, which tokenizes
@@ -196,22 +202,23 @@ describe("formatMessagesForUpsert", () => {
     vi.clearAllMocks();
     mockGetBotOrUserName.mockResolvedValue("grafana");
     mockGetUserInfo.mockResolvedValue({ name: "bob", email: null });
+    mockGetChannelNameById.mockResolvedValue("general");
   });
 
-  it("renders a human link message once, without duplicating it into blocks or leaking the link unfurl", async () => {
-    // `text` and the `rich_text` block carry the same content, and a link-unfurl
-    // attachment previews the URL. We render `text` alone.
+  it("renders a human link message once (from blocks) and keeps the successful link preview", async () => {
+    // `text` and the `rich_text` block carry the same content; we render the blocks (not
+    // both), and the link-unfurl attachment resolved to a real preview we keep as content.
     const text = sectionFullText(await upsert([LINK_MESSAGE]));
 
-    // The title comes through exactly once (not once from text + once from the block).
+    // The content comes through exactly once (from the blocks, not duplicated by `text`).
     expect(text.match(/Multiplayer AI/g)).toHaveLength(1);
 
     // The URL the user typed is preserved.
     expect(text).toContain("example.com/rfs#multiplayer-ai");
 
-    // The link-unfurl attachment (Slack's URL preview) never leaks in.
-    expect(text).not.toContain("Example is looking for startups");
-    expect(text).not.toContain("Requests for Startups");
+    // The successful preview is useful content, so it is kept.
+    expect(text).toContain("Example is looking for startups");
+    expect(text).toContain("Requests for Startups");
   });
 
   it("renders a forwarded message once and resolves the author's mention", async () => {
@@ -233,26 +240,37 @@ describe("formatMessagesForUpsert", () => {
     expect(text.match(/I built a few things today/g)).toHaveLength(1);
   });
 
-  it("drops a failed link preview ([no preview available]) when text is present", async () => {
-    // Slack could not build the preview, so the attachment's only content is the
-    // "[no preview available]" fallback. With `text` present, it must not leak.
+  it("resolves a channel mention in a rich_text block to its name", async () => {
+    mockGetChannelNameById.mockResolvedValue("general");
+
+    // A human message mentioning a channel: the bare channel id lives in a typed
+    // `rich_text` element, which the formatter emits as a `<#C…>` token.
     const message = makeSlackMessage({
       user: "U1",
-      ts: "1720000000.000300",
-      text: "look at this https://example.com/x",
-      attachments: [
+      ts: "1720000000.000600",
+      blocks: [
         {
-          from_url: "https://example.com/x",
-          original_url: "https://example.com/x",
-          fallback: "[no preview available]",
+          type: "rich_text",
+          elements: [
+            {
+              type: "rich_text_section",
+              elements: [
+                { type: "text", text: "ping " },
+                { type: "channel", channel_id: "C0GENERAL01" },
+                { type: "text", text: " please" },
+              ],
+            },
+          ],
         },
       ],
     });
 
     const text = sectionFullText(await upsert([message]));
 
-    expect(text).toContain("look at this https://example.com/x");
-    expect(text).not.toContain("[no preview available]");
+    // Resolved to `#name`; neither the raw id nor the token leaks.
+    expect(text).toContain("ping #general please");
+    expect(text).not.toContain("C0GENERAL01");
+    expect(text).not.toContain("<#");
   });
 
   it("reconstructs a block-only bot alert whose top-level text is empty", async () => {
