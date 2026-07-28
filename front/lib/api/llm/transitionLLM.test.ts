@@ -37,9 +37,11 @@ const serverToolUseBlock = {
 function reasoningMessage({
   provider,
   metadata,
+  reasoning = "let me think",
 }: {
   provider: ModelProviderIdType;
   metadata: string;
+  reasoning?: string;
 }) {
   return {
     role: "assistant" as const,
@@ -48,7 +50,7 @@ function reasoningMessage({
       {
         type: "reasoning" as const,
         value: {
-          reasoning: "let me think",
+          reasoning,
           metadata,
           tokens: 10,
           provider,
@@ -285,6 +287,27 @@ describe("OpenAI reasoning round-trip — persisted metadata to Responses input"
 });
 
 describe("Fireworks reasoning round-trip — persisted metadata to Responses input", () => {
+  it("replays an id-bearing reasoning item with an empty summary", () => {
+    const [baseMessage] = toBaseMessages(
+      reasoningMessage({
+        provider: "fireworks",
+        metadata: JSON.stringify({ id: "rs_fireworks_empty" }),
+        reasoning: "",
+      })
+    );
+    if (baseMessage.type !== "reasoning") {
+      throw new Error("Expected a reasoning BaseMessage.");
+    }
+
+    expect(assistantReasoningMessageToInputItems(baseMessage)).toEqual([
+      {
+        id: "rs_fireworks_empty",
+        type: "reasoning",
+        summary: [],
+      },
+    ]);
+  });
+
   it("preserves interleaved reasoning ids and tool calls in wire order", () => {
     const message: ModelMessageTypeMultiActionsWithoutContentFragment = {
       role: "assistant",
