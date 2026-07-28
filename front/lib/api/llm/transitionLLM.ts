@@ -224,32 +224,32 @@ export function toBaseMessages(
               if (!c.value.reasoning) {
                 return [];
               }
-              // OpenAI Responses stores a short reasoning item `id` (kept in
-              // `signature`) separately from the long `encrypted_content`. Every
-              // other provider stores its thinking signature under
-              // `encrypted_content`, which we carry directly in `signature`.
-              if (c.value.provider !== "openai") {
+              // Responses APIs store a short reasoning item `id` (kept in
+              // `signature`) separately from the long `encrypted_content`.
+              // Detect that wire format from the persisted id rather than the
+              // model provider: Fireworks also exposes the Responses API.
+              const { id, encryptedContent } = parseReasoningMetadata(
+                c.value.metadata
+              );
+              if (id || c.value.provider === "openai") {
                 return [
                   {
                     role: "assistant",
                     type: "reasoning",
                     content: { value: c.value.reasoning },
-                    signature: extractEncryptedContentFromMetadata(
-                      c.value.metadata
-                    ),
+                    signature: id,
+                    ...(encryptedContent ? { encryptedContent } : {}),
                   },
                 ];
               }
-              const { id, encryptedContent } = parseReasoningMetadata(
-                c.value.metadata
-              );
               return [
                 {
                   role: "assistant",
                   type: "reasoning",
                   content: { value: c.value.reasoning },
-                  signature: id,
-                  encryptedContent,
+                  signature: extractEncryptedContentFromMetadata(
+                    c.value.metadata
+                  ),
                 },
               ];
             }
@@ -337,10 +337,11 @@ export function withMessageCacheBreakpoints(
   return result;
 }
 
-// The new router nests reasoning replay state under `metadata.content`: OpenAI
-// uses `id` + `encryptedContent`, Anthropic/Gemini use `signature`. Persist it in
-// the legacy top-level shape (`id` / `encrypted_content`) the replay path reads,
-// matching what the old router writes.
+// The new router nests reasoning replay state under `metadata.content`:
+// Responses APIs use `id` + `encryptedContent`, while other APIs use
+// `signature`. Persist it in the legacy top-level shape (`id` /
+// `encrypted_content`) the replay path reads, matching what the old router
+// writes.
 export function reasoningContentToLegacyMetadata(
   content: Record<string, unknown> | undefined
 ): { id?: string; encrypted_content?: string } {
