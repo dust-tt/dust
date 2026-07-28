@@ -1253,15 +1253,20 @@ function useMCPServerViewsFromSpacesBase(
   owner: LightWorkspaceType,
   spaces: SpaceType[],
   availabilities: MCPServerAvailability[],
-  swrOptions?: SWRConfiguration
+  options?: SWRConfiguration & {
+    includeRestrictedToSkills?: boolean;
+  }
 ) {
   const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServerViewsListResponseBody> = fetcher;
+  const { includeRestrictedToSkills = false, ...swrOptions } = options ?? {};
 
   const spaceIds = spaces.map((s) => s.sId).join(",");
   const availabilitiesParam = availabilities.join(",");
 
-  const url = `/api/w/${owner.sId}/mcp/views?spaceIds=${spaceIds}&availabilities=${availabilitiesParam}`;
+  const url =
+    `/api/w/${owner.sId}/mcp/views?spaceIds=${spaceIds}&availabilities=${availabilitiesParam}` +
+    (includeRestrictedToSkills ? "&includeRestrictedToSkills=true" : "");
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     ...swrOptions,
     ...(!spaces.length ? { disabled: true } : {}),
@@ -1278,13 +1283,16 @@ function useMCPServerViewsFromSpacesBase(
 export function useMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
   spaces: SpaceType[],
-  swrOptions?: SWRConfiguration & { disabled?: boolean }
+  options?: SWRConfiguration & {
+    disabled?: boolean;
+    includeRestrictedToSkills?: boolean;
+  }
 ) {
   return useMCPServerViewsFromSpacesBase(
     owner,
     spaces,
     ["manual", "auto"],
-    swrOptions
+    options
   );
 }
 

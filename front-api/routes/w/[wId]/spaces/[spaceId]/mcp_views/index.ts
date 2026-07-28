@@ -142,7 +142,9 @@ app.get(
           "sharedSecret",
         ],
       })
-    ).map((view) => view.toJSON());
+    )
+      .filter((view) => auth.isAdmin() || !view.isRestrictedToSkills)
+      .map((view) => view.toJSON());
 
     const filteredServerViews = serverViews.filter(
       (s) => availability === "all" || s.server.availability === availability

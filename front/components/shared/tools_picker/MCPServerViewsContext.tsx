@@ -137,11 +137,13 @@ export const useMaybeMCPServerViewsContext = () => {
 interface MCPServerViewsProviderProps {
   owner: LightWorkspaceType;
   children: ReactNode;
+  includeRestrictedToSkills?: boolean;
 }
 
 export const MCPServerViewsProvider = ({
   owner,
   children,
+  includeRestrictedToSkills = false,
 }: MCPServerViewsProviderProps) => {
   const { spaces, isSpacesLoading } = useSpacesContext();
 
@@ -150,6 +152,7 @@ export const MCPServerViewsProvider = ({
     isLoading,
     isError: isMCPServerViewsError,
   } = useMCPServerViewsFromSpaces(owner, spaces, {
+    includeRestrictedToSkills,
     revalidateIfStale: false,
     revalidateOnFocus: false,
   });
