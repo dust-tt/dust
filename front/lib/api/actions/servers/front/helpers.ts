@@ -134,16 +134,38 @@ export function getFrontAPITokenFromExtra(extra: ToolHandlerExtra): string {
   return apiToken;
 }
 
-interface FrontConversation {
-  id: string;
-  status: string;
-  subject?: string;
-  assignee?: { email: string };
-  inbox?: { name: string; address?: string };
-  tags?: Array<{ name: string }>;
-  created_at?: number;
-  last_message?: { received_at?: number };
-  recipient?: { handle?: string; name?: string };
+const FrontConversationSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  subject: z.string().optional(),
+  assignee: z.object({ email: z.string() }).nullable().optional(),
+  inbox: z
+    .object({ name: z.string(), address: z.string().optional() })
+    .optional(),
+  tags: z.array(z.object({ name: z.string() })).optional(),
+  created_at: z.number().optional(),
+  last_message: z
+    .object({ received_at: z.number().optional() })
+    .nullable()
+    .optional(),
+  recipient: z
+    .object({ handle: z.string().optional(), name: z.string().optional() })
+    .nullable()
+    .optional(),
+});
+
+const FrontConversationsResponseSchema = z.object({
+  _results: z.array(FrontConversationSchema),
+});
+
+export type FrontConversation = z.infer<typeof FrontConversationSchema>;
+
+export function parseFrontConversation(data: unknown): FrontConversation {
+  return FrontConversationSchema.parse(data);
+}
+
+export function parseFrontConversations(data: unknown): FrontConversation[] {
+  return FrontConversationsResponseSchema.parse(data)._results;
 }
 
 const FrontInboxesResponseSchema = z.object({

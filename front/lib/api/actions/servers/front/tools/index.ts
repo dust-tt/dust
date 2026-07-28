@@ -3,6 +3,7 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   convertMarkdownToHTML,
+  type FrontConversation,
   findChannelAddress,
   formatConversationForLLM,
   formatDraftsForLLM,
@@ -10,6 +11,8 @@ import {
   getConversationInboxes,
   getFrontAPITokenFromExtra,
   makeFrontAPIRequest,
+  parseFrontConversation,
+  parseFrontConversations,
   parseFrontDraftsResponse,
 } from "@app/lib/api/actions/servers/front/helpers";
 import { FRONT_TOOLS_METADATA } from "@app/lib/api/actions/servers/front/metadata";
@@ -20,10 +23,8 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 const FRONT_API_CONCURRENCY = 5;
 const MAX_CONVERSATIONS = 20;
 
-type FrontConversation = Parameters<typeof formatConversationForLLM>[0];
-
-interface FrontListResponse<T = unknown> {
-  _results?: T[];
+interface FrontListResponse {
+  _results?: unknown[];
 }
 
 interface FrontTag {
@@ -59,14 +60,13 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
     try {
       const apiToken = await getFrontAPITokenFromExtra(extra);
 
-      const data = (await makeFrontAPIRequest({
+      const data = await makeFrontAPIRequest({
         method: "GET",
         endpoint: `conversations/search/${encodeURIComponent(q)}`,
         apiToken,
         params: { limit: Math.min(limit, MAX_CONVERSATIONS) },
-      })) as FrontListResponse<FrontConversation>;
-
-      const conversations = data._results ?? [];
+      });
+      const conversations = parseFrontConversations(data);
 
       if (conversations.length === 0) {
         return new Ok([
@@ -110,11 +110,13 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
     try {
       const apiToken = await getFrontAPITokenFromExtra(extra);
 
-      const data = (await makeFrontAPIRequest({
-        method: "GET",
-        endpoint: `conversations/${conversation_id}`,
-        apiToken,
-      })) as FrontConversation;
+      const data = parseFrontConversation(
+        await makeFrontAPIRequest({
+          method: "GET",
+          endpoint: `conversations/${conversation_id}`,
+          apiToken,
+        })
+      );
 
       const formatted = await formatConversation(apiToken, data);
 
@@ -287,16 +289,15 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
     try {
       const apiToken = await getFrontAPITokenFromExtra(extra);
 
-      const data = (await makeFrontAPIRequest({
+      const data = await makeFrontAPIRequest({
         method: "GET",
         endpoint: `conversations/search/${encodeURIComponent(`from:${customer_email}`)}`,
         apiToken,
         params: {
           limit: Math.min(limit, MAX_CONVERSATIONS),
         },
-      })) as FrontListResponse<FrontConversation>;
-
-      const conversations = data._results ?? [];
+      });
+      const conversations = parseFrontConversations(data);
 
       if (conversations.length === 0) {
         return new Ok([
