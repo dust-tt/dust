@@ -54,8 +54,9 @@ function usageToTokenUsageEvent(
       shortCacheCreated: 0,
       cacheHit: 0,
       standardInput: usage?.promptTokens ?? 0,
-      standardOutput: usage?.completionTokens ?? 0,
-      reasoning: 0,
+      // Mistral exposes one aggregate completion count with no reasoning-token
+      // breakdown, so the inclusive total remains unattributed.
+      totalOutput: usage?.completionTokens ?? 0,
     },
     metadata,
   };

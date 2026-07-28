@@ -427,10 +427,12 @@ export class RunResource extends BaseResource<RunModel> {
       return;
     }
 
+    // totalOutputTokens is the canonical inclusive billed output total. Any
+    // reasoningTokens value is already a subset and must not be added here.
     const usageCostMicroUsd = computeTokensCostForUsageInMicroUsd({
       modelId: modelConfig.modelId,
       promptTokens: usage.inputTokens,
-      completionTokens: usage.outputTokens,
+      completionTokens: usage.totalOutputTokens,
       cachedTokens: usage.cachedTokens ?? null,
       cacheCreationTokens: usage.cacheCreationTokens ?? null,
       longCacheCreationTokens: usage.longCacheCreationTokens ?? null,
@@ -442,7 +444,7 @@ export class RunResource extends BaseResource<RunModel> {
       {
         cacheCreationTokens: usage.cacheCreationTokens,
         cachedTokens: usage.cachedTokens ?? null,
-        completionTokens: usage.outputTokens,
+        completionTokens: usage.totalOutputTokens,
         modelId: modelConfig.modelId,
         promptTokens: usage.inputTokens,
         providerId: modelConfig.providerId,

@@ -40,7 +40,7 @@ function usageToTokenUsageEvent(
 ): TokenUsageEvent {
   const cacheHit = usage?.prompt_tokens_details?.cached_tokens ?? 0;
   const cacheCreated = usage?.prompt_tokens_details?.cache_write_tokens ?? 0;
-  const reasoning = usage?.completion_tokens_details?.reasoning_tokens ?? 0;
+  const reasoning = usage?.completion_tokens_details?.reasoning_tokens;
   return {
     type: "token_usage",
     content: {
@@ -55,8 +55,11 @@ function usageToTokenUsageEvent(
         0,
         (usage?.prompt_tokens ?? 0) - cacheHit - cacheCreated
       ),
-      standardOutput: (usage?.completion_tokens ?? 0) - reasoning,
-      reasoning,
+      // The current Fireworks path reports completion_tokens as its aggregate
+      // output. Preserve any optional reasoning detail as a subset. Providers
+      // without the breakdown simply omit reasoning.
+      totalOutput: usage?.completion_tokens ?? 0,
+      ...(reasoning !== undefined ? { reasoning } : {}),
     },
     metadata,
   };

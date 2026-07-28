@@ -43,7 +43,11 @@ export function emitTokenUsageMetrics(usage: TokenUsage, tags: string[]): void {
       ]);
     }
   }
-  if (usage.outputTokens > 0) {
-    statsD.distribution("llm_usage.output_tokens", usage.outputTokens, tags);
+  if (usage.totalOutputTokens > 0) {
+    statsD.distribution(
+      "llm_usage.output_tokens",
+      usage.totalOutputTokens,
+      tags
+    );
   }
 }

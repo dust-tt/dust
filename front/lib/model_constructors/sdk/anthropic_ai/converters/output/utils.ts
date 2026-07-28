@@ -344,10 +344,10 @@ export function messageDeltaUsageToTokenUsageEvent(
 ): TokenUsageEvent {
   const cacheHit = usage.cache_read_input_tokens ?? 0;
   const uncachedInput = usage.input_tokens ?? 0;
-  // thinking_tokens is the reasoning portion of output_tokens; subtracting
-  // yields non-reasoning generation. Null (no breakdown) rolls reasoning into
-  // standardOutput.
-  const thinkingTokens = usage.output_tokens_details?.thinking_tokens ?? 0;
+  // Anthropic defines output_tokens as the inclusive, authoritative billed
+  // output total. thinking_tokens is an optional subset for observability.
+  // https://platform.claude.com/docs/en/build-with-claude/thinking-steering-and-cost
+  const thinkingTokens = usage.output_tokens_details?.thinking_tokens;
 
   // The per-TTL breakdown lives on the full `Usage` object (`cache_creation`),
   // not on `MessageDeltaUsage`. When it's present, split cache creation into the
@@ -373,8 +373,8 @@ export function messageDeltaUsageToTokenUsageEvent(
       shortCacheCreated,
       cacheHit,
       standardInput: uncachedInput,
-      standardOutput: usage.output_tokens - thinkingTokens,
-      reasoning: thinkingTokens,
+      totalOutput: usage.output_tokens,
+      ...(thinkingTokens !== undefined ? { reasoning: thinkingTokens } : {}),
     },
     metadata,
   };
