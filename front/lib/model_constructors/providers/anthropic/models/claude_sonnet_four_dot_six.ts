@@ -12,6 +12,31 @@ const MAX_OUTPUT_TOKENS = 128_000;
 
 const baseConfig = anthropicBaseConfigSchema;
 
+// Characterized against the live API (2026-07-27) by running both endpoint
+// suites with the widest `inputConfigSchema`. `global/anthropic` and
+// `eu/agent-platform` (Vertex) reject the same inputs — only the wording
+// differs — so one schema covers both. Three constraints shape the union:
+//
+//   - `temperature` is the axis where 4.6 differs from Sonnet 5: it is still a
+//     real knob here, but only while thinking is off. With an effort set, any
+//     value but `1` is a 400 ("`temperature` may only be set to 1 when thinking
+//     is enabled or in adaptive mode"); with effort "none", the full 0..1 range
+//     is accepted. Hence the union. Sonnet 5 dropped sampling parameters
+//     outright, which is why it needs no union at all.
+//   - Effort `xhigh` is rejected — "This model does not support effort level
+//     'xhigh'. Supported levels: high, low, max, medium" (Vertex phrases it
+//     "Input should be 'low', 'medium', 'high' or 'max'"). `maximal` maps to
+//     the native `max` and works.
+//   - Effort "minimal" has no Anthropic equivalent and `assertNever`s in the
+//     converter.
+//
+// Forcing a tool needs no special handling: 4.6 accepts a forced `tool_choice`
+// alongside adaptive thinking at high effort (verified live on both endpoints).
+// That restriction belongs to *extended* thinking, not adaptive.
+//
+// Note the reasoning `.default(...)`: Anthropic runs a `thinking`-less request
+// on 4.6 *without* thinking, so the default here is a deliberate Dust
+// divergence — see `anthropicBaseConfigSchema`.
 const configSchema = z.union([
   baseConfig.extend({
     reasoning: z
@@ -19,8 +44,6 @@ const configSchema = z.union([
         effort: z.enum(["low", "medium", "high", "maximal"]),
       })
       .default({ effort: DEFAULT_REASONING_EFFORT }),
-    forceTool: z.undefined(),
-    // Reasoning requires temperature=1.
     temperature: z.literal(1).optional().default(1),
   }),
   baseConfig.extend({
