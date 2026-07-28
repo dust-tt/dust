@@ -124,7 +124,9 @@ export function BatchAvailabilityDialog({
         <DialogHeader hideButton>
           <DialogTitle>{action.getDialogTitle(selectedCount)}</DialogTitle>
         </DialogHeader>
-        <DialogContainer className="text-sm">{action.dialogDescription}</DialogContainer>
+        <DialogContainer className="text-sm">
+          {action.dialogDescription}
+        </DialogContainer>
         <DialogFooter
           leftButtonProps={{
             label: "Cancel",

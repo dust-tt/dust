@@ -333,7 +333,8 @@ app.post(
         status_code: 403,
         api_error: {
           type: "app_auth_error",
-          message: "You don't have permission to change this skill's availability.",
+          message:
+            "You don't have permission to change this skill's availability.",
         },
       });
     }
