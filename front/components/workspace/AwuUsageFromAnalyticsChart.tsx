@@ -54,7 +54,8 @@ export type AnalyticsGroupBy =
   | "agent"
   | "user"
   | "origin"
-  | "api_key";
+  | "api_key"
+  | "model";
 
 type GroupByOption = { value: AnalyticsGroupBy | undefined; label: string };
 
@@ -65,6 +66,7 @@ const GROUP_BY_OPTIONS: GroupByOption[] = [
   { value: "user", label: "By User" },
   { value: "origin", label: "By Source" },
   { value: "api_key", label: "By API Key" },
+  { value: "model", label: "By Model" },
 ];
 
 // "By User" is redundant when the chart is already scoped to a single user.
