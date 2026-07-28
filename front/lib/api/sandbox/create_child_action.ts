@@ -10,6 +10,7 @@ import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { clearBlockedActionEffects } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/lock";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
@@ -329,6 +330,45 @@ export async function createSandboxChildAction(
     });
 
     await ConversationResource.markAsActionRequired(auth, { conversation });
+
+    const canStillBlock = await withTransaction(async (transaction) => {
+      await getConversationRankVersionLock(auth, conversation, transaction);
+
+      const freshAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId,
+        transaction
+      );
+      if (
+        freshAction?.status === "blocked_validation_required" &&
+        (await freshAction.canAgentMessageResume(auth, transaction))
+      ) {
+        return true;
+      }
+
+      if (freshAction?.status === "blocked_validation_required") {
+        await freshAction.updateStatusFromExpected(auth, {
+          status: "denied",
+          expectedStatus: "blocked_validation_required",
+          transaction,
+        });
+      }
+      return false;
+    });
+    if (!canStillBlock) {
+      // Cancellation can commit immediately before the approval event is published. Its terminal
+      // cleanup then has nothing left to remove, so this post-publish check removes the late event
+      // and clears the denormalized actionRequired flag. If cancellation commits afterward, its
+      // normal cleanup performs the same idempotent work.
+      await clearBlockedActionEffects(auth, {
+        actionIds: [action.sId],
+        conversationId: conversation.sId,
+        messageId: agentMessage.sId,
+      });
+      return new Err(
+        new Error("Agent message can no longer run sandbox child actions.")
+      );
+    }
 
     if (!conversation.actionRequired) {
       notifyManualActionRequired(auth, {

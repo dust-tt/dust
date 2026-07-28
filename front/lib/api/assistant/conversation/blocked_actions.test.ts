@@ -254,6 +254,31 @@ describe("blocked actions resolution", () => {
       expect(emitAuditLogEventDirectMock).not.toHaveBeenCalled();
     });
 
+    it("denies a sandbox child that was ready but had not started", async () => {
+      const { agentMessage, action } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+          status: "ready_allowed_implicitly",
+        });
+      await action.updateStepContext({
+        ...action.stepContext,
+        sandboxChildActionInfo: { parentActionId: "parent_action" },
+      });
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "cancelled",
+      });
+
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("denied");
+    });
+
     it("emits approval audit events only for actions actually denied", async () => {
       const { agentMessage, action: deniedAction } =
         await AgentMCPActionFactory.createWithAgentMessage(auth, {

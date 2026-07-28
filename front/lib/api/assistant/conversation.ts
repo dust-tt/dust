@@ -3161,7 +3161,7 @@ export async function updateAgentMessageWithFinalStatus(
     }
 
     const deniedActions = UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(status)
-      ? await AgentMCPActionResource.denyBlockedActionsForAgentMessage(auth, {
+      ? await AgentMCPActionResource.denyPendingActionsForMessage(auth, {
           agentMessageId: agentMessage.agentMessageId,
           transaction: t,
         })

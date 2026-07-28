@@ -1,5 +1,6 @@
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import { isBlockedActionEvent } from "@app/lib/actions/mcp";
+import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import {
   buildAuditLogTarget,
@@ -8,6 +9,7 @@ import {
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -54,15 +56,54 @@ export async function cleanupDeniedBlockedActions(
       "Denied blocked actions of terminated agent message"
     );
 
-    // Remove the pending blocked-action events (approval requests, auth requests, user
-    // questions) from the message channel so live clients stop surfacing prompts for them.
-    const deniedActionIds = new Set(deniedActions.map((a) => a.sId));
-    await getRedisHybridManager().removeEvent((event) => {
-      const payload = JSON.parse(event.message["payload"]);
-      return (
-        isBlockedActionEvent(payload) && deniedActionIds.has(payload.actionId)
+    await clearBlockedActionEffects(auth, {
+      actionIds: deniedActions.map((a) => a.sId),
+      conversationId: conversation.sId,
+      messageId: agentMessage.sId,
+    });
+
+    if (
+      deniedActions.some((action) =>
+        isSandboxChildActionInfo(
+          action.stepContext.sandboxChildActionInfo
+        )
+      )
+    ) {
+      // Serializes with an in-flight pause. If cancellation won the race, the pause callback sees
+      // the denied child and no-ops; if the pause won, this converts pending_approval to regular
+      // sleeping state so the sandbox is not left waiting on an approval that no longer exists.
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
       );
-    }, getMessageChannelId(agentMessage.sId));
+      const sleepResult = conversationResource
+        ? await ConversationSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(
+            auth,
+            conversationResource
+          )
+        : null;
+      if (!sleepResult) {
+        logger.warn(
+          {
+            conversationId: conversation.sId,
+            messageId: agentMessage.sId,
+          },
+          "Conversation not found while releasing terminated child approval"
+        );
+        return;
+      }
+      if (sleepResult.isErr()) {
+        logger.error(
+          {
+            err: sleepResult.error,
+            conversationId: conversation.sId,
+            messageId: agentMessage.sId,
+          },
+          "Failed to release sandbox after terminated child approval"
+        );
+      }
+    }
+    return;
   }
 
   // Always re-check the flag, even when no blocked action remains: a partial previous run may
@@ -70,6 +111,32 @@ export async function cleanupDeniedBlockedActions(
   await clearActionRequiredIfNoBlockedActions(auth, {
     conversationId: conversation.sId,
   });
+}
+
+export async function clearBlockedActionEffects(
+  auth: Authenticator,
+  {
+    actionIds,
+    conversationId,
+    messageId,
+  }: {
+    actionIds: string[];
+    conversationId: string;
+    messageId: string;
+  }
+): Promise<void> {
+  if (actionIds.length > 0) {
+    // Remove pending approval/auth/question events so live clients stop surfacing resolved prompts.
+    const deniedActionIds = new Set(actionIds);
+    await getRedisHybridManager().removeEvent((event) => {
+      const payload = JSON.parse(event.message["payload"]);
+      return (
+        isBlockedActionEvent(payload) && deniedActionIds.has(payload.actionId)
+      );
+    }, getMessageChannelId(messageId));
+  }
+
+  await clearActionRequiredIfNoBlockedActions(auth, { conversationId });
 }
 
 /**

@@ -8,6 +8,7 @@ import {
   processToolNotification,
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
+import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import type {
   MCPApproveExecutionEvent,
   ToolAskUserQuestionEvent,
@@ -19,8 +20,12 @@ import type {
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolContext, ToolOutputItemType } from "@app/lib/actions/types";
-import { isAgentLoopRunContext } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  isSandboxChildActionInfo,
+} from "@app/lib/actions/types";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
+import { completeSandboxBash } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -84,8 +89,19 @@ export async function* runToolWithStreaming(
 
   // Sandbox function actions and auto-allowed agent-loop actions are created in running
   // status; only approved or resumed actions still carry a pre-run status to transition.
-  if (isAgentLoopRunContext(runContext) && status !== "running") {
-    await runContext.action.updateStatus("running");
+  if (isAgentLoopRunContext(runContext)) {
+    if (
+      isSandboxChildActionInfo(
+        runContext.action.stepContext.sandboxChildActionInfo
+      )
+    ) {
+      assert(
+        runContext.action.status === "running",
+        "Sandbox child must be reserved before execution."
+      );
+    } else if (status !== "running") {
+      await runContext.action.updateStatus("running");
+    }
   }
   const startDate = performance.now();
 
@@ -152,7 +168,31 @@ export async function* runToolWithStreaming(
   }
 
   const endDate = performance.now();
-  await action.markAsSucceeded({ executionDurationMs: endDate - startDate });
+  if (
+    isAgentLoopRunContext(runContext) &&
+    runContext.action.metadata.internalMCPServerName === SANDBOX_TOOL_NAME &&
+    runContext.action.toolConfiguration.originalName === "bash"
+  ) {
+    const completed = await completeSandboxBash(auth, {
+      action: runContext.action,
+      conversation: runContext.conversation,
+      executionDurationMs: endDate - startDate,
+      messageId: runContext.agentMessage.sId,
+    });
+    if (!completed) {
+      yield {
+        type: "tool_paused",
+        created: Date.now(),
+        actionId: action.sId,
+        configurationId: runContext.agentConfiguration.sId,
+        conversationId: runContext.conversation.sId,
+        messageId: runContext.agentMessage.sId,
+      };
+      return;
+    }
+  } else {
+    await action.markAsSucceeded({ executionDurationMs: endDate - startDate });
+  }
 
   yield {
     type: "tool_success",

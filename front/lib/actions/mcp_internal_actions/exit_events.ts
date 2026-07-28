@@ -1,4 +1,5 @@
 import type {
+  AgentLoopToolEarlyExitEvent,
   MCPApproveExecutionEvent,
   ToolAskUserQuestionEvent,
   ToolEarlyExitEvent,
@@ -6,7 +7,7 @@ import type {
   ToolPausedEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
-import type { ToolContext } from "@app/lib/actions/types";
+import type { AgentLoopRunContext, ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
@@ -17,6 +18,21 @@ import assert from "assert";
 type MCPActionOutputItemWithContent = {
   content: CallToolResult["content"][number];
 };
+
+function makeStoppedChildEvent(
+  runContext: AgentLoopRunContext
+): AgentLoopToolEarlyExitEvent {
+  return {
+    type: "tool_early_exit",
+    created: Date.now(),
+    configurationId: runContext.agentConfiguration.sId,
+    conversationId: runContext.conversation.sId,
+    messageId: runContext.agentMessage.sId,
+    text: "Sandbox parent already finished.",
+    isError: false,
+    reason: "user_cancellation",
+  };
+}
 
 /**
  * Server-only utility for processing exit/pause events from MCP tool outputs.
@@ -155,11 +171,15 @@ export async function getExitOrPauseEvents(
           await runContext.action.updateStatus(
             "blocked_authentication_required"
           );
-          await pauseSandboxBashForBlockedChild(
-            auth,
-            runContext.action,
-            runContext.conversation
-          );
+          if (
+            !(await pauseSandboxBashForBlockedChild(
+              auth,
+              runContext.action,
+              runContext.conversation
+            ))
+          ) {
+            return [makeStoppedChildEvent(runContext)];
+          }
           break;
         case "sandbox_function":
           await runContext.action.updateStatus(
@@ -210,11 +230,15 @@ export async function getExitOrPauseEvents(
         await runContext.action.updateStatus(
           "blocked_file_authorization_required"
         );
-        await pauseSandboxBashForBlockedChild(
-          auth,
-          runContext.action,
-          runContext.conversation
-        );
+        if (
+          !(await pauseSandboxBashForBlockedChild(
+            auth,
+            runContext.action,
+            runContext.conversation
+          ))
+        ) {
+          return [makeStoppedChildEvent(runContext)];
+        }
 
         // Persisted here so the blocked action can be reconstructed on page reload.
         await runContext.action.updateStepContext({
@@ -261,11 +285,15 @@ export async function getExitOrPauseEvents(
       // invocations observe the returned event instead.
       if (isAgentLoopRunContext(runContext)) {
         await runContext.action.updateStatus("blocked_user_answer_required");
-        await pauseSandboxBashForBlockedChild(
-          auth,
-          runContext.action,
-          runContext.conversation
-        );
+        if (
+          !(await pauseSandboxBashForBlockedChild(
+            auth,
+            runContext.action,
+            runContext.conversation
+          ))
+        ) {
+          return [makeStoppedChildEvent(runContext)];
+        }
 
         await runContext.action.updateStepContext({
           ...runContext.action.stepContext,

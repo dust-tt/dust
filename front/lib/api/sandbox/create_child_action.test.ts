@@ -364,6 +364,33 @@ describe("createSandboxChildAction", () => {
     expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
   });
 
+  it("removes a blocked child when cancellation wins during approval publication", async () => {
+    await setToolPermission("medium");
+    let childActionId: string | null = null;
+    vi.mocked(updateResourceAndPublishEvent).mockImplementationOnce(
+      async (_auth, { event }) => {
+        if ("actionId" in event) {
+          childActionId = event.actionId;
+        }
+        await ConversationFactory.setAgentMessageStatus({
+          workspace,
+          agentMessageModelId: agentMessage.agentMessageId,
+          status: "cancelled",
+        });
+      }
+    );
+
+    const result = await callChildTool();
+
+    expect(result.isErr()).toBe(true);
+    if (!childActionId) {
+      throw new Error("Expected the child approval event to be published.");
+    }
+    const child = await AgentMCPActionResource.fetchById(auth, childActionId);
+    expect(child?.status).toBe("denied");
+    expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
+  });
+
   it("keys approvals on the space-disambiguated name when same-named servers are attached", async () => {
     await setToolPermission("medium");
 

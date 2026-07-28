@@ -99,6 +99,12 @@ const OUTPUT_ITEMS_BATCH_SIZE = 32;
 
 const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
 
+const DENIABLE_SANDBOX_CHILD_STATUSES = [
+  "ready_allowed_explicitly",
+  "ready_allowed_implicitly",
+  ...TOOL_EXECUTION_BLOCKED_STATUSES,
+] as const satisfies readonly ToolExecutionStatus[];
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -945,14 +951,40 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return actions;
   }
 
+  private static async denyActions(
+    auth: Authenticator,
+    actions: AgentMCPActionResource[],
+    transaction: Transaction
+  ): Promise<AgentMCPActionResource[]> {
+    if (actions.length === 0) {
+      return [];
+    }
+
+    const [, affectedRows] = await AgentMCPActionModel.update(
+      { status: "denied" },
+      {
+        where: {
+          id: { [Op.in]: actions.map((a) => a.id) },
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: { [Op.in]: DENIABLE_SANDBOX_CHILD_STATUSES },
+        },
+        returning: true,
+        transaction,
+      }
+    );
+
+    const deniedActionIds = new Set(affectedRows.map((a) => a.id));
+
+    return actions.filter((a) => deniedActionIds.has(a.id));
+  }
+
   /**
-   * Denies all still-blocked actions of an agent message. Must run inside the same
-   * transaction as the message's terminal status update so that "message terminal" and
-   * "blocked actions denied" commit atomically. Guarded on blocked statuses so a concurrent
-   * approval that already transitioned the action is not clobbered. Returns the actions
-   * actually denied, with their pre-deny resources.
+   * Denies actions that cannot start or resume after an agent message terminates: all blocked
+   * actions, plus not-yet-started sandbox children. Must run in the message finalization
+   * transaction so a child workflow can atomically reserve a ready child before termination, or
+   * observe it as denied afterward.
    */
-  static async denyBlockedActionsForAgentMessage(
+  static async denyPendingActionsForMessage(
     auth: Authenticator,
     {
       agentMessageId,
@@ -962,35 +994,62 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       transaction: Transaction;
     }
   ): Promise<AgentMCPActionResource[]> {
-    const blockedActions = await this.listBlockedActionsForAgentMessage(auth, {
-      agentMessageId,
-      transaction,
-      skipSameStepCheck: true,
-    });
-
-    if (blockedActions.length === 0) {
-      return [];
-    }
-
-    const [, affectedRows] = await AgentMCPActionModel.update(
-      { status: "denied" },
+    // The (workspaceId, agentMessageId, status) index narrows the candidate rows before the
+    // sandbox-child check, avoiding a scan over the message's completed actions.
+    const pendingActions = await this.baseFetch(
+      auth,
       {
         where: {
-          // Scoping by agentMessageId lets the (workspaceId, agentMessageId, status) index
-          // drive the update; the id list keeps it restricted to the rows fetched above.
           agentMessageId,
-          id: { [Op.in]: blockedActions.map((a) => a.id) },
-          workspaceId: auth.getNonNullableWorkspace().id,
-          status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
+          status: { [Op.in]: DENIABLE_SANDBOX_CHILD_STATUSES },
         },
-        returning: true,
-        transaction,
-      }
+      },
+      transaction
     );
 
-    const deniedActionIds = new Set(affectedRows.map((a) => a.id));
+    const deniableActions = pendingActions.filter(
+      (action) =>
+        isToolExecutionStatusBlocked(action.status) ||
+        isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
+    );
 
-    return blockedActions.filter((a) => deniedActionIds.has(a.id));
+    return this.denyActions(auth, deniableActions, transaction);
+  }
+
+  /**
+   * Denies children that have not started when their parent bash finishes. Child insertion and
+   * parent completion use the same conversation lock, so the child is either rejected after the
+   * parent finishes or committed early enough to be denied here.
+   */
+  static async denyPendingSandboxChildren(
+    auth: Authenticator,
+    {
+      parentAction,
+      transaction,
+    }: {
+      parentAction: AgentMCPActionResource;
+      transaction: Transaction;
+    }
+  ): Promise<AgentMCPActionResource[]> {
+    // The (workspaceId, agentMessageId, status) index narrows this to unfinished actions of the
+    // parent's message; the JSON parent link is then checked on that small result set.
+    const pendingActions = await this.baseFetch(
+      auth,
+      {
+        where: {
+          agentMessageId: parentAction.agentMessageId,
+          status: { [Op.in]: DENIABLE_SANDBOX_CHILD_STATUSES },
+        },
+      },
+      transaction
+    );
+    const children = pendingActions.filter(
+      (action) =>
+        action.stepContext.sandboxChildActionInfo?.parentActionId ===
+        parentAction.sId
+    );
+
+    return this.denyActions(auth, children, transaction);
   }
 
   /**
@@ -1585,6 +1644,41 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       status: "succeeded",
       executionDurationMs: Math.round(executionDurationMs),
     });
+  }
+
+  async markSucceededFromExpected(
+    auth: Authenticator,
+    {
+      executionDurationMs,
+      expectedStatus,
+      transaction,
+    }: {
+      executionDurationMs: number;
+      expectedStatus: ToolExecutionStatus;
+      transaction: Transaction;
+    }
+  ): Promise<[affectedCount: number]> {
+    const [affectedCount, affectedRows] = await AgentMCPActionModel.update(
+      {
+        status: "succeeded",
+        executionDurationMs: Math.round(executionDurationMs),
+      },
+      {
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: expectedStatus,
+        },
+        returning: true,
+        transaction,
+      }
+    );
+
+    if (affectedRows[0]) {
+      Object.assign(this, affectedRows[0].get());
+    }
+
+    return [affectedCount];
   }
 
   async updateStepContext(

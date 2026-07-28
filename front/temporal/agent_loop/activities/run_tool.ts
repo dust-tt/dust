@@ -7,6 +7,7 @@ import {
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
+import { reserveSandboxChildRun } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
@@ -177,6 +178,24 @@ export async function runToolActivity(
     userMessage,
   } = runAgentDataRes.value;
 
+  const actionToRun = isSandboxChildActionInfo(
+    action.stepContext.sandboxChildActionInfo
+  )
+    ? await reserveSandboxChildRun(auth, action, originalConversation)
+    : action;
+  if (!actionToRun) {
+    logger.info(
+      {
+        actionId,
+        conversationId: runAgentArgs.conversationId,
+        agentMessageId: runAgentArgs.agentMessageId,
+        workspaceId: authType.workspaceId,
+      },
+      "Skipping sandbox child that can no longer run"
+    );
+    return { deferredEvents };
+  }
+
   const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
     sliceConversationForAgentMessage(originalConversation, {
       agentMessageId: originalAgentMessage.sId,
@@ -191,21 +210,21 @@ export async function runToolActivity(
     });
 
   return startActiveObservation(
-    `${action.toolConfiguration.mcpServerName}/${action.toolConfiguration.name}`,
+    `${actionToRun.toolConfiguration.mcpServerName}/${actionToRun.toolConfiguration.name}`,
     () => {
       updateActiveObservation(
         {
           input: {
             actionId,
-            toolName: action.toolConfiguration.name,
-            mcpServerName: action.toolConfiguration.mcpServerName,
+            toolName: actionToRun.toolConfiguration.name,
+            mcpServerName: actionToRun.toolConfiguration.mcpServerName,
           },
         },
         { asType: "tool" }
       );
 
       return executeToolStreaming(auth, {
-        action,
+        action: actionToRun,
         agentConfiguration,
         model,
         agentMessage,
