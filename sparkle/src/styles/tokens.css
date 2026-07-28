@@ -284,10 +284,15 @@
   --color-border-dark: var(--color-stone-150);
   --color-border-focus: var(--color-blue-400);
   --color-border-warning: var(--color-rose-200);
+  /* Form controls: resting boundary and its active (focused/filled) state.
+     The active step must keep 3:1 against the field background (WCAG 1.4.11). */
+  --color-border-form: var(--color-stone-300);
+  --color-border-form-active: var(--color-stone-500);
 
-  /* Focus rings */
-  --color-ring: var(--color-blue-200);
-  --color-ring-warning: var(--color-rose-300);
+  /* Focus rings: the ring is the only focus indicator on most controls, so it
+     must keep 3:1 against the page background (WCAG 1.4.11). */
+  --color-ring: var(--color-blue-500);
+  --color-ring-warning: var(--color-rose-500);
 
   /* Sidebar */
   --color-sidebar-foreground: oklch(94.86% 0.0027 106.45);
@@ -440,10 +445,13 @@
   --color-border-dark: var(--color-stone-700);
   --color-border-focus: var(--color-blue-600);
   --color-border-warning: var(--color-rose-800);
+  /* Form controls: mirrors the light ramp around the stone-500 pivot. */
+  --color-border-form: var(--color-stone-700);
+  --color-border-form-active: var(--color-stone-500);
 
-  /* Focus rings */
-  --color-ring: var(--color-stone-700);
-  --color-ring-warning: var(--color-rose-800);
+  /* Focus rings: must keep 3:1 against the page background (WCAG 1.4.11). */
+  --color-ring: var(--color-stone-500);
+  --color-ring-warning: var(--color-rose-500);
 
   /* Sidebar */
   --color-sidebar-foreground: var(--color-stone-800);

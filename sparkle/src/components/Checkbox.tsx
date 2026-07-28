@@ -10,7 +10,9 @@ export const checkboxStyles = cva(
   cn(
     "h-4 w-4 rounded-md relative shrink-0 peer border transition duration-100 ease-out motion-reduce:transition-none",
     "active:scale-95",
-    "border-border-dark bg-background",
+    "border-border-form bg-background",
+    "data-[state=checked]:border-border-form-active",
+    "data-[state=indeterminate]:border-border-form-active",
     "text-foreground",
     "focus-visible:ring-ring ring-offset-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2",
     "disabled:cursor-not-allowed disabled:opacity-50 disabled:border-border-dark disabled:bg-background"
@@ -18,7 +20,7 @@ export const checkboxStyles = cva(
 );
 
 // The checked state renders a dark rounded square that fills the box's inner
-// content area; the light "ring" is the box's own border showing through.
+// content area; the "ring" is the box's own border showing through.
 // Concentric corners: inner radius = outer radius (rounded-md, 6px) minus the
 // 1px border the fill sits inside.
 export const checkboxIndicatorStyles = cva(
