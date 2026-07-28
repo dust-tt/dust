@@ -1099,7 +1099,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const gcsPaths = removeNulls(gcsItems.map((item) => item.contentGcsPath));
 
-    // Results intentionally unused — failures must not block DB cleanup. Prefixes are deleted even
+    // Results intentionally unused. Failures must not block DB cleanup. Prefixes are deleted even
     // without persisted paths to clean objects orphaned between the GCS and DB writes.
     await deleteActionOutputsFromGcs(auth, actionIds, gcsPaths);
 
