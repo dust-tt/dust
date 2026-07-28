@@ -1,7 +1,12 @@
 import * as workosAudit from "@app/lib/api/audit/workos_audit";
-import { expireUserSpendLimitOverride } from "@app/lib/api/users/spend_limit";
+import {
+  expireUserSpendLimitOverride,
+  getUserSpendLimit,
+} from "@app/lib/api/users/spend_limit";
 import { Authenticator } from "@app/lib/auth";
 import * as spendLimits from "@app/lib/metronome/alerts/spend_limits";
+import type { SeatData } from "@app/lib/metronome/seats";
+import * as metronomeSeats from "@app/lib/metronome/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -18,6 +23,13 @@ vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
     clearMetronomePerUserCapAlert: vi.fn(),
     clearMetronomePerUserWarningAlert: vi.fn(),
   };
+});
+
+vi.mock("@app/lib/metronome/seats", async () => {
+  const actual = await vi.importActual<typeof metronomeSeats>(
+    "@app/lib/metronome/seats"
+  );
+  return { ...actual, getCachedSeatDataByUserId: vi.fn() };
 });
 
 vi.mock("@app/lib/api/audit/workos_audit", async () => {
@@ -37,6 +49,7 @@ beforeEach(() => {
     new Ok(undefined)
   );
   vi.mocked(workosAudit.emitAuditLogEventDirect).mockResolvedValue(undefined);
+  vi.mocked(metronomeSeats.getCachedSeatDataByUserId).mockResolvedValue({});
 });
 
 describe("expireUserSpendLimitOverride", () => {
@@ -133,6 +146,78 @@ describe("expireUserSpendLimitOverride", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe("workspace_not_metronome_billed");
+    }
+  });
+});
+
+describe("getUserSpendLimit", () => {
+  it("includes nextCreditResetAt resolved from Metronome seat data", async () => {
+    const workspace = await WorkspaceFactory.metronome({
+      metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
+    });
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, {
+      role: "user",
+      seatType: "pro",
+    });
+    const nextCreditResetAt = "2026-09-01T00:00:00.000Z";
+    vi.mocked(metronomeSeats.getCachedSeatDataByUserId).mockResolvedValue({
+      [user.sId]: {
+        awuAllocation: 1000,
+        billingFrequency: null,
+        nextCreditResetAt,
+      } satisfies SeatData,
+    });
+
+    // `getUserSpendLimit` is only ever called from a real request (an
+    // admin/manager acting on another member), which requires `auth.user()` —
+    // build a request-shaped Authenticator rather than the userless
+    // `internalAdminForWorkspace` used by the system-actored sweep above.
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      admin.sId,
+      workspace.sId
+    );
+    const result = await getUserSpendLimit(auth, { userId: user.sId });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({
+        kind: "unlimited",
+        nextCreditResetAt: new Date(nextCreditResetAt).getTime(),
+      });
+    }
+  });
+
+  it("degrades to a null nextCreditResetAt when the Metronome lookup fails", async () => {
+    const workspace = await WorkspaceFactory.metronome({
+      metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
+    });
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    vi.mocked(metronomeSeats.getCachedSeatDataByUserId).mockRejectedValue(
+      new Error("Metronome is down")
+    );
+
+    // `getUserSpendLimit` is only ever called from a real request (an
+    // admin/manager acting on another member), which requires `auth.user()` —
+    // build a request-shaped Authenticator rather than the userless
+    // `internalAdminForWorkspace` used by the system-actored sweep above.
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      admin.sId,
+      workspace.sId
+    );
+    const result = await getUserSpendLimit(auth, { userId: user.sId });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({
+        kind: "unlimited",
+        nextCreditResetAt: null,
+      });
     }
   });
 });

@@ -14,7 +14,13 @@ export type UserSpendLimit =
       expiresAt?: number | null;
     };
 
-export type GetUserSpendLimitResponse = UserSpendLimit;
+export type GetUserSpendLimitResponse = UserSpendLimit & {
+  // Epoch ms of this user's next AWU credit pool reset (Metronome billing
+  // period boundary), if resolvable from an active Metronome contract.
+  // Read-only context for admins choosing an override's expiry — never sent
+  // on PUT.
+  nextCreditResetAt: number | null;
+};
 
 export type GetUserSpendLimitResponseBody = GetUserSpendLimitResponse;
 

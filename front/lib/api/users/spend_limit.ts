@@ -13,7 +13,9 @@ import {
   upsertMetronomePerUserCapAlert,
   upsertMetronomePerUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
+import { toFreeMetronomeUserId } from "@app/lib/metronome/constants";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
+import { getCachedSeatDataByUserId } from "@app/lib/metronome/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -24,6 +26,7 @@ import type {
   UserSpendLimit,
 } from "@app/types/api/users/spend_limit";
 import type { SpendLimitOverrideTimeframeType } from "@app/types/credits";
+import type { MembershipSeatType } from "@app/types/memberships";
 import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -159,8 +162,14 @@ export async function getUserSpendLimit(
       user,
       workspace,
     });
+
+  const nextCreditResetAt = await resolveNextCreditResetAt(auth, {
+    userId: user.sId,
+    seatType: membership?.seatType ?? null,
+  });
+
   if (!membership || membership.poolCapOverrideAwuCredits === null) {
-    return new Ok({ kind: "unlimited" });
+    return new Ok({ kind: "unlimited", nextCreditResetAt });
   }
 
   return new Ok({
@@ -168,7 +177,47 @@ export async function getUserSpendLimit(
     awuCredits: membership.poolCapOverrideAwuCredits,
     timeframe: membership.overrideLimitTimeframe,
     expiresAt: membership.poolCapOverrideExpiresAt?.getTime() ?? null,
+    nextCreditResetAt,
   });
+}
+
+/**
+ * Resolve the next time this user's AWU credit pool resets (the Metronome
+ * billing-period boundary), in epoch ms. Null when there is no active
+ * Metronome contract to derive it from. Backed by
+ * `getCachedSeatDataByUserId` (Redis-cached), the same primitive the members
+ * usage table uses — a single cached workspace-wide fetch, not a per-user
+ * Metronome round trip.
+ */
+async function resolveNextCreditResetAt(
+  auth: Authenticator,
+  { userId, seatType }: { userId: string; seatType: MembershipSeatType | null }
+): Promise<number | null> {
+  const workspace = auth.getNonNullableWorkspace();
+  const metronomeContractId = auth.subscription()?.metronomeContractId ?? null;
+  if (!workspace.metronomeCustomerId || !metronomeContractId) {
+    return null;
+  }
+
+  // Best-effort: a Metronome outage should not break reads of the DB-backed
+  // override/timeframe/expiresAt fields above, only degrade this hint to null.
+  try {
+    const seatDataByUserId = await getCachedSeatDataByUserId({
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      contractId: metronomeContractId,
+    });
+    const metronomeUserId =
+      seatType === "free" ? toFreeMetronomeUserId(userId) : userId;
+    const nextCreditResetAt =
+      seatDataByUserId[metronomeUserId]?.nextCreditResetAt;
+    return nextCreditResetAt ? new Date(nextCreditResetAt).getTime() : null;
+  } catch (err) {
+    logger.warn(
+      { workspaceId: workspace.sId, userId, err },
+      "[Metronome PerUserCap] Failed to resolve next credit reset date"
+    );
+    return null;
+  }
 }
 
 export async function setUserSpendLimit(

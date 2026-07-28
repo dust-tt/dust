@@ -50,6 +50,21 @@ function dateInputValueToEpochMs(value: string): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+function formatShortDate(epochMs: number): string {
+  return new Date(epochMs).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+type ExpiryMode = "never" | "date" | "next_credit_reset";
+
+function isExpiryMode(value: string): value is ExpiryMode {
+  return value === "never" || value === "date" || value === "next_credit_reset";
+}
+
 interface EditSpendLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -100,6 +115,7 @@ export function EditSpendLimitModal({
   const [creditsInput, setCreditsInput] = useState<string>("");
   const [timeframe, setTimeframe] =
     useState<SpendLimitOverrideTimeframeType | null>(null);
+  const [expiryMode, setExpiryMode] = useState<ExpiryMode>("never");
   const [expiresAtInput, setExpiresAtInput] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(
@@ -120,23 +136,29 @@ export function EditSpendLimitModal({
         setKind("override");
         setCreditsInput(String(spendLimit.awuCredits));
         setTimeframe(spendLimit.timeframe ?? null);
-        setExpiresAtInput(
-          spendLimit.expiresAt
-            ? epochMsToDateInputValue(spendLimit.expiresAt)
-            : ""
-        );
+        if (spendLimit.expiresAt) {
+          setExpiryMode("date");
+          setExpiresAtInput(epochMsToDateInputValue(spendLimit.expiresAt));
+        } else {
+          setExpiryMode("never");
+          setExpiresAtInput("");
+        }
         break;
       case "unlimited":
         setKind("default");
         setCreditsInput("");
         setTimeframe(null);
-        setExpiresAtInput(
-          requestedDurationDays
-            ? epochMsToDateInputValue(
-                Date.now() + requestedDurationDays * ONE_DAY_MS
-              )
-            : ""
-        );
+        if (requestedDurationDays) {
+          setExpiryMode("date");
+          setExpiresAtInput(
+            epochMsToDateInputValue(
+              Date.now() + requestedDurationDays * ONE_DAY_MS
+            )
+          );
+        } else {
+          setExpiryMode("never");
+          setExpiresAtInput("");
+        }
         break;
       default:
         assertNeverAndIgnore(spendLimit);
@@ -200,14 +222,30 @@ export function EditSpendLimitModal({
         case "default":
           limit = { kind: "unlimited" };
           break;
-        case "override":
+        case "override": {
+          let expiresAt: number | null;
+          switch (expiryMode) {
+            case "never":
+              expiresAt = null;
+              break;
+            case "date":
+              expiresAt = dateInputValueToEpochMs(expiresAtInput);
+              break;
+            case "next_credit_reset":
+              expiresAt = spendLimit?.nextCreditResetAt ?? null;
+              break;
+            default:
+              assertNeverAndIgnore(expiryMode);
+              expiresAt = null;
+          }
           limit = {
             kind: "limited",
             awuCredits: result.awuCredits,
             timeframe,
-            expiresAt: dateInputValueToEpochMs(expiresAtInput),
+            expiresAt,
           };
           break;
+        }
         default:
           assertNeverAndIgnore(kind);
           return;
@@ -352,21 +390,46 @@ export function EditSpendLimitModal({
                     />
                   </RadioGroup>
                   <div className="flex flex-col gap-1.5 pt-2">
-                    <label
-                      htmlFor="spend-limit-expires-at"
-                      className="text-sm font-medium"
+                    <span className="text-sm font-medium">Expires</span>
+                    <RadioGroup
+                      value={expiryMode}
+                      onValueChange={(v) => {
+                        if (isExpiryMode(v)) {
+                          setExpiryMode(v);
+                        }
+                      }}
+                      className="flex flex-col gap-2"
                     >
-                      Expires (optional)
-                    </label>
-                    <Input
-                      id="spend-limit-expires-at"
-                      type="date"
-                      value={expiresAtInput}
-                      onChange={(e) => setExpiresAtInput(e.target.value)}
-                    />
+                      <RadioGroupItem
+                        value="never"
+                        id="spend-limit-expiry-never"
+                        label="Never"
+                      />
+                      <RadioGroupItem
+                        value="date"
+                        id="spend-limit-expiry-date"
+                        label="On a specific date"
+                      />
+                      {spendLimit?.nextCreditResetAt && (
+                        <RadioGroupItem
+                          value="next_credit_reset"
+                          id="spend-limit-expiry-next-credit-reset"
+                          label={`At next credit refresh (${formatShortDate(spendLimit.nextCreditResetAt)})`}
+                        />
+                      )}
+                    </RadioGroup>
+                    {expiryMode === "date" && (
+                      <Input
+                        id="spend-limit-expires-at"
+                        type="date"
+                        value={expiresAtInput}
+                        onChange={(e) => setExpiresAtInput(e.target.value)}
+                        className="mt-1"
+                      />
+                    )}
                     <p className="text-xs text-muted-foreground">
                       On this date, the limit automatically reverts to the
-                      workspace default. Leave blank for a permanent override.
+                      workspace default. "Never" is a permanent override.
                     </p>
                   </div>
                 </div>

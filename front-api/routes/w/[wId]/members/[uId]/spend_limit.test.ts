@@ -118,6 +118,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         awuCredits: 1500,
         timeframe: null,
         expiresAt: null,
+        nextCreditResetAt: null,
       });
     });
 
@@ -159,6 +160,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         awuCredits: 500,
         timeframe: "week",
         expiresAt: null,
+        nextCreditResetAt: null,
       });
     });
 
@@ -294,7 +296,10 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ kind: "unlimited" });
+      expect(await response.json()).toEqual({
+        kind: "unlimited",
+        nextCreditResetAt: null,
+      });
     });
 
     it("returns limited with the override persisted on the membership", async () => {
@@ -325,6 +330,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         awuCredits: 2500,
         timeframe: null,
         expiresAt: null,
+        nextCreditResetAt: null,
       });
     });
   });
@@ -461,6 +467,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         awuCredits: 1500,
         timeframe: null,
         expiresAt,
+        nextCreditResetAt: null,
       });
 
       const updatedMembership =
