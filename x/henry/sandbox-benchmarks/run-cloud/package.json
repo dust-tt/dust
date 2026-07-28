@@ -1,0 +1,11 @@
+{
+  "name": "@dust-tt/sandbox-benchmark-run-cloud",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Local dependency scope for Run Cloud sandbox benchmark",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@run-cloud/sdk": "0.8.0"
+  }
+}
