@@ -28,6 +28,8 @@ export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServ
   declare name: string | null;
   declare description: string | null;
 
+  declare isRestrictedToSkills: CreationOptional<boolean>;
+
   declare vaultId: ForeignKey<SpaceModel["id"]>;
 
   declare editedByUser: NonAttribute<UserModel>;
@@ -72,6 +74,11 @@ MCPServerViewModel.init(
     description: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    isRestrictedToSkills: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     internalMCPServerId: {
       type: DataTypes.STRING,
