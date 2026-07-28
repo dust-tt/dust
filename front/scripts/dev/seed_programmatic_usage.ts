@@ -6,6 +6,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { AgentMessageAnalyticsData } from "@app/types/assistant/analytics";
+import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
 
 const MICRO_USD_PER_DOLLAR = 1_000_000;
 const TOKEN_PROMPT_RANGE = { min: 100, max: 5000 };
@@ -101,6 +102,12 @@ async function seedProgrammaticUsage(
       agent_id: `seed-agent-${i % AGENT_COUNT}`,
       agent_version: "1",
       agent_tag_ids: [],
+      model: {
+        provider_id: "anthropic",
+        model_id: CLAUDE_SONNET_4_6_MODEL_ID,
+        reasoning_effort: "medium",
+        resolution_method: "agent",
+      },
       ancestor_message_ids: [],
       conversation_id: `seed-conv-${i}`,
       space_id: null,
