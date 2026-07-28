@@ -74,6 +74,7 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/apps/:aId", () => {
       name: null,
       description: null,
       oAuthUseCase: null,
+      isRestrictedToSkills: false,
     });
 
     await AgentMCPServerConfigurationModel.create({

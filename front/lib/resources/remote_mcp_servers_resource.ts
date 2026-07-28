@@ -264,6 +264,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         editedAt: new Date(),
         editedByUserId: auth.user()?.id,
         oAuthUseCase: blob.oAuthUseCase,
+        isRestrictedToSkills: false,
       },
       {
         transaction,

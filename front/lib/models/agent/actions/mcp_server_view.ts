@@ -28,7 +28,7 @@ export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServ
   declare name: string | null;
   declare description: string | null;
 
-  declare isRestrictedToSkills: CreationOptional<boolean>;
+  declare isRestrictedToSkills: boolean;
 
   declare vaultId: ForeignKey<SpaceModel["id"]>;
 
