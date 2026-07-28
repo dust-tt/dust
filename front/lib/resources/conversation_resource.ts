@@ -4621,11 +4621,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       | { source: "conversation"; agentConfigurationId: null }
     )
   ): Promise<Result<undefined, Error>> {
+    const mcpServerViewsToUpsert =
+      source === "conversation" && enabled
+        ? mcpServerViews.filter((view) => !view.isRestrictedToSkills)
+        : mcpServerViews;
+
     // For now we only allow MCP server views from the Company Space.
     // It's blocked in the UI but it's a last line of defense.
     // If we lift this limit, we should handle the requestedSpaceIds on the conversation.
     if (
-      mcpServerViews.some(
+      mcpServerViewsToUpsert.some(
         (mcpServerViewResource) => mcpServerViewResource.space.kind !== "global"
       )
     ) {
@@ -4649,7 +4654,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       });
 
     // Cycle through the mcpServerViewIds and create or update the conversationMCPServerView
-    for (const mcpServerView of mcpServerViews) {
+    for (const mcpServerView of mcpServerViewsToUpsert) {
       const existingConversationMCPServerView =
         existingConversationMCPServerViews.find(
           (view) => view.mcpServerViewId === mcpServerView.id
