@@ -88,8 +88,13 @@ function replaceOldestToolResultImages(
     workspaceId: string;
     conversationId: string;
     modelId: string;
+    providerId: ModelConfigurationType["providerId"];
   }
 ): ModelMessageTypeMultiActions[] {
+  if (logContext.providerId !== ANTHROPIC_PROVIDER_ID) {
+    return messages;
+  }
+
   const imageCounts = messages.reduce(
     (counts, message) => {
       const count =
@@ -200,17 +205,15 @@ export async function renderConversationForModel(
     agentConfiguration,
     enabledSkills,
   });
-  const messages =
-    model.providerId === ANTHROPIC_PROVIDER_ID
-      ? replaceOldestToolResultImages(
-          [...leadingMessages, ...renderedMessages],
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            modelId: model.modelId,
-          }
-        )
-      : [...leadingMessages, ...renderedMessages];
+  const messages = replaceOldestToolResultImages(
+    [...leadingMessages, ...renderedMessages],
+    {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
+      modelId: model.modelId,
+      providerId: model.providerId,
+    }
+  );
   const renderAllMessagesMs = Date.now() - stepStart;
   stepStart = Date.now();
 

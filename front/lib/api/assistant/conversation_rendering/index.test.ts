@@ -308,6 +308,37 @@ describe("renderConversationForModel", () => {
     );
   });
 
+  it("keeps tool image previews for other providers", async () => {
+    vi.mocked(renderAllMessages).mockResolvedValue([
+      userMessage("u1"),
+      ...Array.from({ length: ANTHROPIC_IMAGE_COUNT_LIMIT + 1 }, (_, index) =>
+        functionImageMessage(`tool_${index}`, `tool-${index}`)
+      ),
+    ]);
+    mockTokenCounter({ byContains: { u1: 10 } });
+
+    const res = await renderConversationForModel(auth, {
+      conversation: createConversation(),
+      model,
+      prompt: "PROMPT",
+      enabledSkills: [],
+      tools: "TOOLS",
+      allowedTokenCount: 100_000,
+    });
+
+    expect(res.isOk()).toBe(true);
+    if (res.isErr()) {
+      return;
+    }
+
+    const images = res.value.modelConversation.messages.flatMap((message) =>
+      "content" in message && Array.isArray(message.content)
+        ? message.content.filter(isImageContent)
+        : []
+    );
+    expect(images).toHaveLength(ANTHROPIC_IMAGE_COUNT_LIMIT + 1);
+  });
+
   it("warns when Anthropic has 20 unprunable images", async () => {
     vi.mocked(renderAllMessages).mockResolvedValue([
       {
