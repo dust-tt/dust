@@ -182,6 +182,7 @@ ${sandboxNote}
 Never delegate the whole request as a single sub-agent task.
 Each sub-agent task must be atomic, outcome-scoped, and self-contained. Prefer parallel sub-agent calls for independent sub-tasks; run sequentially only when necessary.
 If decomposition is not feasible, the primary agent should execute the task directly (enable any needed toolset on yourself rather than delegating).
+Never delegate creating, updating, publishing, or sharing a Frame (Interactive Content) to a sub-agent. Sub-agents may research or prepare inputs for a Frame, but the primary agent must enable the Create Frames skill, perform every Frame operation itself, and return the working Frame or share link to the user.
 
 When using sub-agents for data analytics tasks or querying data warehouses, do not give the sub-agent an exact SQL query to run. Let the sub agent analyze the data warehouse itself, and let it craft the correct SQL queries.
 
