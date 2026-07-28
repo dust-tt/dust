@@ -9,12 +9,25 @@ import type { DeferredEvent } from "@app/temporal/agent_loop/lib/deferred_events
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WhereOptions } from "sequelize";
 
-async function isDeferredActionBlocked(
-  deferredEvent: DeferredEvent
-): Promise<boolean> {
-  return AgentMCPActionResource.isBlockedForWorkspace({
-    actionId: deferredEvent.event.actionId,
-    workspaceModelId: deferredEvent.context.workspaceId,
+async function fetchBlockedActionIds(
+  deferredEvents: DeferredEvent[]
+): Promise<Set<string>> {
+  if (deferredEvents.length === 0) {
+    return new Set();
+  }
+
+  const workspaceModelId = deferredEvents[0].context.workspaceId;
+  if (
+    deferredEvents.some(
+      ({ context }) => context.workspaceId !== workspaceModelId
+    )
+  ) {
+    throw new Error("Deferred events must belong to the same workspace.");
+  }
+
+  return AgentMCPActionResource.fetchBlockedActionIds({
+    actionIds: deferredEvents.map(({ event }) => event.actionId),
+    workspaceModelId,
   });
 }
 
@@ -42,13 +55,10 @@ export async function publishDeferredEventsActivity(
   deferredEvents: DeferredEvent[]
 ): Promise<boolean> {
   let shouldPauseWorkflow = false;
-  const activeDeferredEvents: DeferredEvent[] = [];
-
-  for (const deferredEvent of deferredEvents) {
-    if (await isDeferredActionBlocked(deferredEvent)) {
-      activeDeferredEvents.push(deferredEvent);
-    }
-  }
+  const initiallyBlockedIds = await fetchBlockedActionIds(deferredEvents);
+  const activeDeferredEvents = deferredEvents.filter(({ event }) =>
+    initiallyBlockedIds.has(event.actionId)
+  );
 
   for (const [index, deferredEvent] of activeDeferredEvents.entries()) {
     const { event, context } = deferredEvent;
@@ -133,8 +143,11 @@ export async function publishDeferredEventsActivity(
       event: eventToPublish,
       step: context.step,
     });
+  }
 
-    if (!(await isDeferredActionBlocked(deferredEvent))) {
+  const stillBlockedIds = await fetchBlockedActionIds(activeDeferredEvents);
+  for (const deferredEvent of activeDeferredEvents) {
+    if (!stillBlockedIds.has(deferredEvent.event.actionId)) {
       // The action can be denied by message termination or parent completion between the first
       // status check and publication. Remove the just-published prompt; if denial happens after
       // this check, the denial path performs the same idempotent cleanup.

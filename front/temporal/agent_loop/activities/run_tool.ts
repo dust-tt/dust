@@ -46,6 +46,7 @@ import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
 const CONVERSATION_CACHE_TTL_MS = 5000;
+const INITIAL_ACTIVITY_ATTEMPT = 1;
 
 // Extracts sIds of accessed datasources/tables from tool augmentedInputs.
 // Dust-internal MCP servers receive { uri } objects whose last path segment is
@@ -189,7 +190,8 @@ export async function runToolActivity(
     actionToRun = await reserveSandboxChildRun(
       auth,
       action,
-      originalConversation
+      originalConversation,
+      { isRetry: Context.current().info.attempt > INITIAL_ACTIVITY_ATTEMPT }
     );
   } else if (isSandboxResumeState(action.stepContext.resumeState)) {
     actionToRun = await reserveSandboxParentRun(

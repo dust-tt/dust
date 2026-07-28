@@ -286,25 +286,37 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     );
   }
 
-  static async isBlockedForWorkspace({
-    actionId,
+  static async fetchBlockedActionIds({
+    actionIds,
     workspaceModelId,
   }: {
-    actionId: string;
+    actionIds: string[];
     workspaceModelId: ModelId;
-  }): Promise<boolean> {
-    const actionModelId = getResourceIdFromSId(actionId);
-    assert(actionModelId, "Agent MCP action ID is invalid.");
+  }): Promise<Set<string>> {
+    if (actionIds.length === 0) {
+      return new Set();
+    }
 
-    const action = await AgentMCPActionModel.findOne({
-      attributes: ["status"],
+    const actionModelIds = actionIds.map((actionId) => {
+      const actionModelId = getResourceIdFromSId(actionId);
+      assert(actionModelId, "Agent MCP action ID is invalid.");
+      return actionModelId;
+    });
+    const blockedActions = await AgentMCPActionModel.findAll({
+      attributes: ["id", "workspaceId"],
       where: {
-        id: actionModelId,
         workspaceId: workspaceModelId,
+        // Action IDs are primary keys, so this remains an indexed point lookup as the batch grows.
+        id: { [Op.in]: actionModelIds },
+        status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
       },
     });
 
-    return action !== null && isToolExecutionStatusBlocked(action.status);
+    return new Set(
+      blockedActions.map(({ id, workspaceId }) =>
+        AgentMCPActionResource.modelIdToSId({ id, workspaceId })
+      )
+    );
   }
 
   static async fetchByModelIds(

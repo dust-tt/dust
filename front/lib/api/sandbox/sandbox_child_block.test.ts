@@ -491,7 +491,9 @@ describe("resolveSandboxChildBlock", () => {
       throw new Error("Expected the child action to exist.");
     }
 
-    const reserved = await reserveSandboxChildRun(auth, child, conversation);
+    const reserved = await reserveSandboxChildRun(auth, child, conversation, {
+      isRetry: false,
+    });
 
     const deniedChild = await AgentMCPActionResource.fetchById(auth, childId);
     expect(reserved).toBeNull();
@@ -513,9 +515,47 @@ describe("resolveSandboxChildBlock", () => {
       throw new Error("Expected the child action to exist.");
     }
 
-    const reserved = await reserveSandboxChildRun(auth, child, conversation);
+    const reserved = await reserveSandboxChildRun(auth, child, conversation, {
+      isRetry: false,
+    });
 
     expect(reserved?.status).toBe("running");
+  });
+
+  it("reuses a running child only for an activity retry", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "running",
+    });
+    const { sId: childId } = await createAction({
+      name: "child_tool",
+      status: "ready_allowed_implicitly",
+      sandboxChildActionInfo: { parentActionId: parentId },
+    });
+    const child = await AgentMCPActionResource.fetchById(auth, childId);
+    if (!child) {
+      throw new Error("Expected the child action to exist.");
+    }
+
+    const firstAttempt = await reserveSandboxChildRun(
+      auth,
+      child,
+      conversation,
+      { isRetry: false }
+    );
+    const competingRun = await reserveSandboxChildRun(
+      auth,
+      child,
+      conversation,
+      { isRetry: false }
+    );
+    const retry = await reserveSandboxChildRun(auth, child, conversation, {
+      isRetry: true,
+    });
+
+    expect(firstAttempt?.status).toBe("running");
+    expect(competingRun).toBeNull();
+    expect(retry?.status).toBe("running");
   });
 
   it("defers a ready child while its parent is blocked", async () => {
@@ -533,7 +573,9 @@ describe("resolveSandboxChildBlock", () => {
       throw new Error("Expected the child action to exist.");
     }
 
-    const reserved = await reserveSandboxChildRun(auth, child, conversation);
+    const reserved = await reserveSandboxChildRun(auth, child, conversation, {
+      isRetry: false,
+    });
 
     const deferredChild = await AgentMCPActionResource.fetchById(auth, childId);
     expect(reserved).toBeNull();
@@ -556,7 +598,9 @@ describe("resolveSandboxChildBlock", () => {
       throw new Error("Expected the child action to exist.");
     }
 
-    const reserved = await reserveSandboxChildRun(auth, child, conversation);
+    const reserved = await reserveSandboxChildRun(auth, child, conversation, {
+      isRetry: false,
+    });
 
     const parent = await AgentMCPActionResource.fetchById(auth, parentId);
     expect(reserved?.status).toBe("running");

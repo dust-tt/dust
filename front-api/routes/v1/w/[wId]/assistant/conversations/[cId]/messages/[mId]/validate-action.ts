@@ -75,7 +75,7 @@ app.use("*", streamingTag);
  *                 success:
  *                   type: boolean
  *       400:
- *         description: Invalid request body
+ *         description: Invalid request or action state
  *       404:
  *         description: Conversation, message, or workspace not found
  *       500:
@@ -113,6 +113,14 @@ app.post(
 
     if (result.isErr()) {
       switch (result.error.code) {
+        case "invalid_request_error":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: result.error.message,
+            },
+          });
         case "action_not_blocked":
           return apiError(ctx, {
             status_code: 400,

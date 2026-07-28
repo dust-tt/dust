@@ -1,9 +1,9 @@
 import type { DeferredEvent } from "@app/temporal/agent_loop/lib/deferred_events";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { isBlockedMock, messageFindMock, publishEventMock, removeEventMock } =
+const { fetchBlockedMock, messageFindMock, publishEventMock, removeEventMock } =
   vi.hoisted(() => ({
-    isBlockedMock: vi.fn(),
+    fetchBlockedMock: vi.fn(),
     messageFindMock: vi.fn(),
     publishEventMock: vi.fn(),
     removeEventMock: vi.fn(),
@@ -20,7 +20,7 @@ vi.mock("@app/lib/models/agent/conversation", () => ({
 }));
 vi.mock("@app/lib/resources/agent_mcp_action_resource", () => ({
   AgentMCPActionResource: {
-    isBlockedForWorkspace: isBlockedMock,
+    fetchBlockedActionIds: fetchBlockedMock,
   },
 }));
 
@@ -59,17 +59,20 @@ const DEFERRED_EVENT: DeferredEvent = {
 describe("publishDeferredEventsActivity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    isBlockedMock.mockReset();
+    fetchBlockedMock.mockReset();
     messageFindMock.mockResolvedValue({});
     publishEventMock.mockResolvedValue(undefined);
     removeEventMock.mockResolvedValue(undefined);
   });
 
   it("removes an event denied while it is being published", async () => {
-    isBlockedMock.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    fetchBlockedMock
+      .mockResolvedValueOnce(new Set(["action_id"]))
+      .mockResolvedValueOnce(new Set());
 
     const shouldPause = await publishDeferredEventsActivity([DEFERRED_EVENT]);
 
+    expect(fetchBlockedMock).toHaveBeenCalledTimes(2);
     expect(publishEventMock).toHaveBeenCalledTimes(1);
     expect(removeEventMock).toHaveBeenCalledTimes(1);
     expect(shouldPause).toBe(false);
@@ -83,11 +86,9 @@ describe("publishDeferredEventsActivity", () => {
         actionId: "stale_action_id",
       },
     };
-    isBlockedMock
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true);
+    fetchBlockedMock
+      .mockResolvedValueOnce(new Set(["action_id"]))
+      .mockResolvedValueOnce(new Set(["action_id"]));
 
     const shouldPause = await publishDeferredEventsActivity([
       DEFERRED_EVENT,
@@ -114,11 +115,9 @@ describe("publishDeferredEventsActivity", () => {
         actionId: "last_action_id",
       },
     };
-    isBlockedMock
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false);
+    fetchBlockedMock
+      .mockResolvedValueOnce(new Set(["action_id", "last_action_id"]))
+      .mockResolvedValueOnce(new Set(["action_id"]));
 
     const shouldPause = await publishDeferredEventsActivity([
       DEFERRED_EVENT,

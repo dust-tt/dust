@@ -275,7 +275,8 @@ export async function persistActionPause(
 export async function reserveSandboxChildRun(
   auth: Authenticator,
   action: AgentMCPActionResource,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType,
+  { isRetry }: { isRetry: boolean }
 ): Promise<AgentMCPActionResource | null> {
   const info = action.stepContext.sandboxChildActionInfo;
   if (!isSandboxChildActionInfo(info)) {
@@ -299,10 +300,10 @@ export async function reserveSandboxChildRun(
       return null;
     }
 
-    if (
-      freshAction.status !== "ready_allowed_explicitly" &&
-      freshAction.status !== "ready_allowed_implicitly"
-    ) {
+    const isReady =
+      freshAction.status === "ready_allowed_explicitly" ||
+      freshAction.status === "ready_allowed_implicitly";
+    if (!isReady && !(isRetry && freshAction.status === "running")) {
       return null;
     }
 
@@ -320,6 +321,12 @@ export async function reserveSandboxChildRun(
         transaction,
       });
       return null;
+    }
+
+    // The previous activity attempt reserved the child before being interrupted. A distinct
+    // workflow reaches this boundary on its first attempt and must not run the same tool twice.
+    if (freshAction.status === "running") {
+      return freshAction;
     }
 
     if (parentAction.status === "blocked_child_action_input_required") {
