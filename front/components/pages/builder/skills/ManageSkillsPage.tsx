@@ -21,6 +21,7 @@ import {
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
 import { isDustProvidedSkill, SKILL_ICON } from "@app/lib/skill";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   useSkillsWithRelations,
   useUpdateSkillsAvailability,
@@ -97,6 +98,7 @@ function sortSkillsByName(
 export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
   const { hasFeature } = useFeatureFlags();
   const [selectedSkill, setSelectedSkill] =
     useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
@@ -267,7 +269,9 @@ export function ManageSkillsPage() {
   );
 
   const isBatchEditionAvailable =
-    hasSkillPublicationGovernance && activeTab !== "archived";
+    hasSkillPublicationGovernance &&
+    hasPermission("publish", "skill") &&
+    activeTab !== "archived";
 
   const knownSkillsById = useMemo(
     () =>
@@ -424,12 +428,7 @@ export function ManageSkillsPage() {
                         ? "Auto-discoverable"
                         : tab.label
                     }
-                    onClick={() => {
-                      setSelectedTab(tab.id);
-                      // Selected rows belong to the current tab: drop the
-                      // selection when it changes.
-                      setRowSelection({});
-                    }}
+                    onClick={() => setSelectedTab(tab.id)}
                     tooltip={tab.description}
                     isCounter={tab.id !== "archived"}
                     counterValue={`${skillsByTab[tab.id].length}`}

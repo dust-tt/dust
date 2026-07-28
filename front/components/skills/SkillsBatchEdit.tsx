@@ -3,8 +3,8 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,
   Dialog,
+  DialogContainer,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -31,7 +31,7 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     getDialogTitle: (count) =>
       `Make ${count} skill${pluralize(count)} editor only`,
     dialogDescription:
-      "Editor only skills will no longer appear in the builder. They will keep working inside agents that already use them.",
+      "Non-editors won't see these skills as options in the builder. Agents and skills that already use them won't lose access.",
     confirmLabel: "Make editor only",
     confirmVariant: "warning",
   },
@@ -41,7 +41,7 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     getDialogTitle: (count) =>
       `Make ${count} skill${pluralize(count)} available to workspace members`,
     dialogDescription:
-      "Skills available to workspace members are visible to everyone. They can add them to agents, other skills and use them directly.",
+      "Every workspace member can add them to agents, other skills and use them directly.",
     confirmLabel: "Make available",
     confirmVariant: "primary",
   },
@@ -131,8 +131,8 @@ export function BatchAvailabilityDialog({
       <DialogContent size="md" isAlertDialog>
         <DialogHeader hideButton>
           <DialogTitle>{action.getDialogTitle(selectedCount)}</DialogTitle>
-          <DialogDescription>{action.dialogDescription}</DialogDescription>
         </DialogHeader>
+        <DialogContainer>{action.dialogDescription}</DialogContainer>
         <DialogFooter
           leftButtonProps={{
             label: "Cancel",
