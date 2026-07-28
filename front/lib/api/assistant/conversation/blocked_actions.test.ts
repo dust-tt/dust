@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock Redis hybrid manager to prevent it from removing events
-const { emitAuditLogEventDirectMock, removeEventMock } = vi.hoisted(() => ({
-  emitAuditLogEventDirectMock: vi.fn().mockResolvedValue(undefined),
-  removeEventMock: vi.fn().mockResolvedValue(undefined),
-}));
+const { emitAuditLogEventDirectMock, removeEventMock, sleepSandboxMock } =
+  vi.hoisted(() => ({
+    emitAuditLogEventDirectMock: vi.fn().mockResolvedValue(undefined),
+    removeEventMock: vi.fn().mockResolvedValue(undefined),
+    sleepSandboxMock: vi.fn().mockResolvedValue({ isErr: () => false }),
+  }));
 vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
   getRedisHybridManager: vi.fn().mockReturnValue({
     removeEvent: removeEventMock,
@@ -19,6 +21,11 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
     emitAuditLogEventDirect: emitAuditLogEventDirectMock,
   };
 });
+vi.mock("@app/lib/resources/conversation_sandbox_adapter", () => ({
+  ConversationSandboxAdapter: {
+    dangerouslySleepSandboxIfPendingApproval: sleepSandboxMock,
+  },
+}));
 
 import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
 import {
@@ -277,6 +284,7 @@ describe("blocked actions resolution", () => {
         action.sId
       );
       expect(reloadedAction?.status).toBe("denied");
+      expect(sleepSandboxMock).toHaveBeenCalledOnce();
     });
 
     it("denies a resumed sandbox parent that had not restarted", async () => {
@@ -302,6 +310,7 @@ describe("blocked actions resolution", () => {
         action.sId
       );
       expect(reloadedAction?.status).toBe("denied");
+      expect(sleepSandboxMock).toHaveBeenCalledOnce();
     });
 
     it("emits approval audit events only for actions actually denied", async () => {

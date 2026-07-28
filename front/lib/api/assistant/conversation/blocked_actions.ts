@@ -1,6 +1,9 @@
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import { isBlockedActionEvent } from "@app/lib/actions/mcp";
-import { isSandboxChildActionInfo } from "@app/lib/actions/types";
+import {
+  isSandboxChildActionInfo,
+  isSandboxResumeState,
+} from "@app/lib/actions/types";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import {
   buildAuditLogTarget,
@@ -63,12 +66,14 @@ export async function cleanupDeniedBlockedActions(
     });
 
     if (
-      deniedActions.some((action) =>
-        isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
+      deniedActions.some(
+        (action) =>
+          isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo) ||
+          isSandboxResumeState(action.stepContext.resumeState)
       )
     ) {
       // Serializes with an in-flight pause. If cancellation won the race, the pause callback sees
-      // the denied child and no-ops; if the pause won, this converts pending_approval to regular
+      // the denied action and no-ops; if the pause won, this converts pending_approval to regular
       // sleeping state so the sandbox is not left waiting on an approval that no longer exists.
       const conversationResource = await ConversationResource.fetchById(
         auth,
