@@ -42,7 +42,6 @@ type ToolOverride = {
   alwaysAllowLabel?: (inputs: Record<string, unknown>) => string;
   compactFooter?: boolean;
   detailsExpanded?: boolean;
-  hideIcon?: boolean;
 };
 
 /** Overrides title, alwaysAllowLabel, and details expansion for specific MCP tools */
@@ -73,7 +72,6 @@ const MCP_TOOL_OVERRIDES: Partial<
       approveLabel: "Publish",
       alwaysAllowLabel: () => "Always allow agent to publish Pod functions",
       compactFooter: true,
-      hideIcon: true,
     },
   },
   [POD_TASKS_SERVER_NAME]: {
@@ -280,7 +278,7 @@ export function ToolValidationCard({
       title={title}
       variant="primary"
       className="flex w-full flex-col gap-3 sm:w-80 sm:min-w-[500px]"
-      icon={toolOverride?.hideIcon ? undefined : icon}
+      icon={icon}
     >
       {canCurrentUserRespond ? (
         <>
