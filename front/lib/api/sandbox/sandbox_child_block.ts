@@ -131,21 +131,59 @@ export async function pauseReservedSandboxBash(
   action: AgentMCPActionResource,
   conversation: ConversationWithoutContentType
 ): Promise<void> {
+  const info = action.stepContext.sandboxChildActionInfo;
+  if (!isSandboxChildActionInfo(info)) {
+    return;
+  }
+
   const pauseResult = await ConversationSandboxAdapter.pauseSandboxForApproval(
     auth,
     conversation,
     {
-      shouldPause: async () => {
-        const freshAction = await AgentMCPActionResource.fetchById(
-          auth,
-          action.sId
-        );
-        return (
-          freshAction !== null &&
-          isToolExecutionStatusBlocked(freshAction.status) &&
-          (await freshAction.canAgentMessageResume(auth))
-        );
-      },
+      shouldPause: () =>
+        withTransaction(async (transaction) => {
+          // Conversation mutations release their DB lock before lifecycle cleanup, so taking the
+          // conversation lock from inside this lifecycle callback does not invert a nested lock.
+          await getConversationRankVersionLock(auth, conversation, transaction);
+
+          const freshAction = await AgentMCPActionResource.fetchById(
+            auth,
+            action.sId,
+            transaction
+          );
+          const parentAction = await AgentMCPActionResource.fetchById(
+            auth,
+            info.parentActionId,
+            transaction
+          );
+          if (
+            !freshAction ||
+            !parentAction ||
+            !isToolExecutionStatusBlocked(freshAction.status) ||
+            parentAction.status !== "blocked_child_action_input_required" ||
+            !(await freshAction.canAgentMessageResume(auth, transaction))
+          ) {
+            return false;
+          }
+
+          const execId = isSandboxResumeState(
+            parentAction.stepContext.resumeState
+          )
+            ? parentAction.stepContext.resumeState.execId
+            : info.execId;
+          if (!execId) {
+            return false;
+          }
+
+          await parentAction.updateStepContext(
+            {
+              ...parentAction.stepContext,
+              resumeState: { execId },
+            },
+            transaction
+          );
+          return true;
+        }),
     }
   );
   if (pauseResult.isErr()) {

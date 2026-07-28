@@ -1707,11 +1707,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   async updateStepContext(
-    stepContext: StepContext
+    stepContext: StepContext,
+    transaction?: Transaction
   ): Promise<[affectedCount: number]> {
-    return this.update({
-      stepContext,
-    });
+    return this.update(
+      {
+        stepContext,
+      },
+      transaction
+    );
   }
 
   static async deleteByAgentMessageId(

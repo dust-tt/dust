@@ -18,6 +18,7 @@ import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   finishSandboxBash,
+  pauseReservedSandboxBash,
   pauseSandboxBashForBlockedChild,
   reserveSandboxChildRun,
   reserveSandboxParentRun,
@@ -124,7 +125,7 @@ describe("resolveSandboxChildBlock", () => {
     status: ToolExecutionStatus;
     step?: number;
     resumeState?: { execId: string } | null;
-    sandboxChildActionInfo?: { parentActionId: string };
+    sandboxChildActionInfo?: { parentActionId: string; execId?: string };
   }) {
     const stepContent = await AgentStepContentModel.create({
       workspaceId: workspace.id,
@@ -293,6 +294,43 @@ describe("resolveSandboxChildBlock", () => {
     expect(
       vi.mocked(ConversationSandboxAdapter.pauseSandboxForApproval)
     ).not.toHaveBeenCalled();
+  });
+
+  it("persists the execId before pausing the sandbox", async () => {
+    const execId = "0123456789abcdef";
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "running",
+    });
+    const { sId: childId } = await createAction({
+      name: "child_tool",
+      status: "blocked_validation_required",
+      sandboxChildActionInfo: { parentActionId: parentId, execId },
+    });
+    const child = await AgentMCPActionResource.fetchById(auth, childId);
+    if (!child) {
+      throw new Error("Expected the child action to exist.");
+    }
+    vi.mocked(
+      ConversationSandboxAdapter.pauseSandboxForApproval
+    ).mockImplementationOnce(async (_auth, _conversation, opts) => {
+      const shouldPause = opts?.shouldPause;
+      if (!shouldPause) {
+        throw new Error("Expected a pause condition.");
+      }
+      expect(await shouldPause()).toBe(true);
+      return new Ok(undefined);
+    });
+
+    const accepted = await pauseSandboxBashForBlockedChild(
+      auth,
+      child,
+      conversation
+    );
+
+    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
+    expect(accepted).toBe(true);
+    expect(parent?.stepContext.resumeState).toEqual({ execId });
   });
 
   it("rechecks the child after acquiring the sandbox lifecycle lock", async () => {
@@ -570,6 +608,42 @@ describe("resolveSandboxChildBlock", () => {
 
     await resolveChild(childId, parentId);
 
+    expect(vi.mocked(launchAgentLoopWorkflow)).not.toHaveBeenCalled();
+  });
+
+  it("does not pause or relaunch when approval wins before pause", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "blocked_child_action_input_required",
+    });
+    const { sId: childId } = await createAction({
+      name: "child_tool",
+      status: "ready_allowed_explicitly",
+      sandboxChildActionInfo: {
+        parentActionId: parentId,
+        execId: "0123456789abcdef",
+      },
+    });
+    const child = await AgentMCPActionResource.fetchById(auth, childId);
+    if (!child) {
+      throw new Error("Expected the child action to exist.");
+    }
+    vi.mocked(
+      ConversationSandboxAdapter.pauseSandboxForApproval
+    ).mockImplementationOnce(async (_auth, _conversation, opts) => {
+      const shouldPause = opts?.shouldPause;
+      if (!shouldPause) {
+        throw new Error("Expected a pause condition.");
+      }
+      expect(await shouldPause()).toBe(false);
+      return new Ok(undefined);
+    });
+
+    await resolveChild(childId, parentId);
+    await pauseReservedSandboxBash(auth, child, conversation);
+
+    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
+    expect(parent?.stepContext.resumeState).toBeNull();
     expect(vi.mocked(launchAgentLoopWorkflow)).not.toHaveBeenCalled();
   });
 

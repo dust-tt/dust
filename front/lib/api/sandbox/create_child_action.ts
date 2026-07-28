@@ -48,6 +48,7 @@ export async function createSandboxChildAction(
   auth: Authenticator,
   {
     parentActionId,
+    execId,
     agentId,
     agentVersion,
     conversationId,
@@ -57,6 +58,7 @@ export async function createSandboxChildAction(
     rawInputs,
   }: {
     parentActionId: string;
+    execId: string;
     agentId: string;
     agentVersion: number;
     conversationId: string;
@@ -283,7 +285,10 @@ export async function createSandboxChildAction(
       stepContext: {
         ...parentAction.stepContext,
         resumeState: null,
-        sandboxChildActionInfo: { parentActionId: parentAction.sId },
+        sandboxChildActionInfo: {
+          parentActionId: parentAction.sId,
+          execId,
+        },
       },
       transaction,
     });

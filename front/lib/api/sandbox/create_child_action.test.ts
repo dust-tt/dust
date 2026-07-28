@@ -53,6 +53,7 @@ import { slugify } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 
 const TOOL_NAME = "tool";
+const EXEC_ID = "0123456789abcdef";
 
 describe("createSandboxChildAction", () => {
   let workspace: WorkspaceType;
@@ -178,6 +179,7 @@ describe("createSandboxChildAction", () => {
   ) {
     return createSandboxChildAction(auth, {
       parentActionId,
+      execId: EXEC_ID,
       agentId: agentConfig.sId,
       agentVersion: agentConfig.version,
       conversationId: conversation.sId,
@@ -234,6 +236,10 @@ describe("createSandboxChildAction", () => {
       result.value.actionId
     );
     expect(child?.status).toBe("blocked_validation_required");
+    expect(child?.stepContext.sandboxChildActionInfo).toEqual({
+      parentActionId,
+      execId: EXEC_ID,
+    });
     expect(child?.toolConfiguration.permission).toBe("medium");
     expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
     expect(vi.mocked(updateResourceAndPublishEvent)).toHaveBeenCalledWith(

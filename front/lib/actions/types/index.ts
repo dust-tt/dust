@@ -36,6 +36,7 @@ export function isFileAuthorizationInfo(
 
 const SandboxChildActionInfoSchema = z.object({
   parentActionId: z.string(),
+  execId: z.string().optional(),
 });
 
 export type SandboxChildActionInfo = z.infer<
