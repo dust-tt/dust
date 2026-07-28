@@ -26,11 +26,16 @@ export type MemberDisplayType = {
 };
 
 export function makeColumnsForMembers({
+  availableSeatTypes,
   onRevokeMember,
   onUpdateMemberRole,
   onUpdateMemberSeatType,
   readonly,
 }: {
+  // Seat types selectable in the dropdown. When undefined, all seat types are
+  // offered; when provided (e.g. restricted to the current contract's seats),
+  // only these are selectable.
+  availableSeatTypes?: readonly MembershipSeatType[];
   onRevokeMember: (m: MemberDisplayType) => Promise<void>;
   onUpdateMemberRole: (
     m: MemberDisplayType,
@@ -155,6 +160,14 @@ export function makeColumnsForMembers({
     cell: ({ row }) => {
       const member = row.original;
 
+      const seatTypes = availableSeatTypes ?? MEMBERSHIP_SEAT_TYPES;
+      // Keep the member's current seat selectable even if it is no longer
+      // offered by the contract, so the dropdown reflects the actual value.
+      const seatOptions =
+        member.seatType && !seatTypes.includes(member.seatType)
+          ? [...seatTypes, member.seatType]
+          : seatTypes;
+
       const scheduledChange =
         member.scheduledSeatType &&
         member.scheduledSeatType !== member.seatType ? (
@@ -190,7 +203,7 @@ export function makeColumnsForMembers({
             <option value="" disabled>
               -
             </option>
-            {MEMBERSHIP_SEAT_TYPES.map((st) => (
+            {seatOptions.map((st) => (
               <option key={st} value={st}>
                 {st}
               </option>

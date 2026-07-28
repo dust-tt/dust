@@ -33,6 +33,9 @@ function prepareMembersForDisplay(
 }
 
 interface MembersDataTableProps {
+  // Seat types selectable in the seat dropdown. When undefined, all seat types
+  // are offered; typically restricted to the current contract's seats.
+  availableSeatTypes?: readonly MembershipSeatType[];
   groupName?: string;
   members: PokeWorkspaceMember[];
   owner: WorkspaceType;
@@ -40,6 +43,7 @@ interface MembersDataTableProps {
 }
 
 export function MembersDataTable({
+  availableSeatTypes,
   groupName,
   members,
   owner,
@@ -148,6 +152,7 @@ export function MembersDataTable({
         </div>
         <PokeDataTable
           columns={makeColumnsForMembers({
+            availableSeatTypes,
             onRevokeMember,
             onUpdateMemberRole,
             onUpdateMemberSeatType,
