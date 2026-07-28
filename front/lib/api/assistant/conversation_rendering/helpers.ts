@@ -198,17 +198,10 @@ async function renderActionForMultiActionsModel(
           : await getDustFileSystemDownloadUrl(auth, path);
 
         if (urlRes.isOk()) {
-          // Keep the files__cat path alongside the signed URL so image-limit
-          // pruning can replace the preview with a recoverable instruction.
-          const displayFilePath = item.resource.uri.startsWith("dust://files/")
-            ? item.resource.uri.slice("dust://files/".length)
-            : undefined;
           contentArray.push({
             type: "image_url",
-            image_url: {
-              url: urlRes.value,
-              ...(displayFilePath ? { filePath: displayFilePath } : {}),
-            },
+            image_url: { url: urlRes.value },
+            sourceUri: item.resource.uri,
           });
         } else {
           contentArray.push({

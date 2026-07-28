@@ -21,8 +21,8 @@ export interface ImageContent {
   type: "image_url";
   image_url: {
     url: string;
-    filePath?: string;
   };
+  sourceUri?: string;
 }
 
 export interface TextContent {

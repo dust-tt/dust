@@ -98,10 +98,11 @@ function functionMessage(
   };
 }
 
-function image(url: string, filePath?: string): Content {
+function image(url: string, sourceUri?: string): Content {
   return {
     type: "image_url",
-    image_url: { url, ...(filePath ? { filePath } : {}) },
+    image_url: { url },
+    ...(sourceUri ? { sourceUri } : {}),
   };
 }
 
@@ -114,7 +115,7 @@ function functionImageMessage(
     role: "function",
     name,
     function_call_id: `${name}_call`,
-    content: [image(url, filePath)],
+    content: [image(url, filePath ? `dust://files/${filePath}` : undefined)],
   };
 }
 
