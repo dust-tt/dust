@@ -39,7 +39,7 @@ const SHARING_POLICY_OPTIONS: {
   {
     label: "No restrictions",
     description:
-      "Members can share Frames publicly, with the workspace, or via email invite",
+      "Members can share frames publicly, with the workspace, or via email invite",
     value: "all_scopes",
   },
 ];

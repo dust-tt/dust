@@ -55,13 +55,13 @@ const GOVERNANCE_SETTING_METADATA: Partial<
     description: "Who can create public links to frames.",
   },
   "admin:billing": {
-    label: "Access Billing features",
+    label: "Access billing features",
     description:
       "Who can manage billing settings, invoices, and payment methods.",
     isGroupsOnly: true,
   },
   "admin:security": {
-    label: "Access Security features",
+    label: "Access security features",
     description: "Who can manage user access, identities, and provisioning.",
     isGroupsOnly: true,
   },
