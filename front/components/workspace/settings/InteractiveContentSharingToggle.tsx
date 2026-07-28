@@ -119,7 +119,7 @@ export function InteractiveContentSharing({
         />
       ) : (
         <ContextItem
-          title="Frame sharing policy"
+          title={LABEL}
           subElement="Control how Frames can be shared in this workspace"
           visual={<ActionFrame className="h-6 w-6" />}
           hasSeparatorIfLast={true}
