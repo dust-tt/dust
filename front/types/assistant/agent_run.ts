@@ -10,6 +10,7 @@ import { selectPreferredStreamEndpointForWorkspace } from "@app/lib/api/llm/sele
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
+import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_noop_global_noop";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import type {
@@ -28,6 +29,7 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
+import { NOOP_MODEL_ID } from "@app/types/assistant/models/noop";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
@@ -344,22 +346,32 @@ export async function getAgentLoopDataWithAuth(
   // The resolved model is stored in the agent message.
   // Legacy message will not have a resolved model.
   const { resolvedModel } = agentMessage;
+  // Global agents may pin the noop model at run time (static replies from the dust and
+  // sidekick agents, see `getStaticReplyForUserMessage`). The model stored on the agent
+  // message was resolved at creation time without that context, so it must not override
+  // the noop pin.
+  const isNoopPinnedModel = agentModelConfig.modelId === NOOP_MODEL_ID;
   const resolvedModelConfig: AgentModelConfigurationType = {
     // Apply configuration that are not stored in the resolved model (temperature, responseFormat, etc.)
     ...agentModelConfig,
     // Apply the resolved model.
-    ...resolvedModel,
+    ...(isNoopPinnedModel ? null : resolvedModel),
   };
 
   // Select the endpoint by its router-native `model` id (bare `Model`), 1-to-1
   // with legacy model selection.
   const model = legacyModelIdToModel(resolvedModelConfig.modelId);
 
-  const endpoint = model
-    ? await selectPreferredStreamEndpointForWorkspace(auth, {
-        model: { eq: model },
-      })
-    : null;
+  // The noop pin is internal (static replies): it must resolve for every workspace, so it
+  // bypasses the workspace endpoint gating (feature flag, region) that applies to
+  // user-selected models.
+  const endpoint = isNoopPinnedModel
+    ? DustNoopNoopGlobalNoopStream
+    : model
+      ? await selectPreferredStreamEndpointForWorkspace(auth, {
+          model: { eq: model },
+        })
+      : null;
 
   if (!endpoint) {
     return new Err(
@@ -369,7 +381,8 @@ export async function getAgentLoopDataWithAuth(
     );
   }
 
-  const { temperature, reasoningEffort, responseFormat } = resolvedModelConfig;
+  const { temperature, reasoningEffort, responseFormat, metaData } =
+    resolvedModelConfig;
 
   return new Ok({
     agentConfiguration: agentConfigurationWithoutModel,
@@ -377,6 +390,7 @@ export async function getAgentLoopDataWithAuth(
       endpoint,
       temperature,
       reasoningEffort,
+      metaData,
       // Cleanup unsupported settings
       responseFormat: endpoint.modelConfig.supportsResponseFormat
         ? responseFormat
