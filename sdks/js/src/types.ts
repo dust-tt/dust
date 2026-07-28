@@ -807,6 +807,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "workspace_default_agent"
   | "whitelabel_frames"
   | "workday_mcp"
+  | "user_memory"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

@@ -2,7 +2,7 @@
  * DustFileSystem is the single entry point for all file system operations in the Dust platform.
  *
  * Scoped path: the agent/API-visible path format, e.g. `conversation-{cId}/report.pdf`,
- * `pod-{pId}/data.csv`, or `user-{uId}/memory.md`. Every public method accepts and returns
+ * `pod-{pId}/data.csv`, or `user-{uId}/MEMORY.md`. Every public method accepts and returns
  * scoped paths. Legacy paths (`conversation/...`, `project/...`) are accepted for backward compat.
  *
  * Factories:
