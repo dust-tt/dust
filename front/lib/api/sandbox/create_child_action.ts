@@ -34,6 +34,7 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Transaction } from "sequelize";
 
 type CreateSandboxChildActionResult = {
   actionId: string;
@@ -49,49 +50,45 @@ async function rollbackSandboxApproval(
   auth: Authenticator,
   {
     actionId,
-    conversation,
     parentActionId,
+    transaction,
   }: {
     actionId: string;
-    conversation: ConversationWithoutContentType;
     parentActionId: string;
+    transaction: Transaction;
   }
 ): Promise<void> {
-  await withTransaction(async (transaction) => {
-    await getConversationRankVersionLock(auth, conversation, transaction);
+  const action = await AgentMCPActionResource.fetchById(
+    auth,
+    actionId,
+    transaction
+  );
+  if (action?.status === "blocked_validation_required") {
+    await action.updateStatusFromExpected(auth, {
+      status: "denied",
+      expectedStatus: "blocked_validation_required",
+      transaction,
+    });
+  }
 
-    const action = await AgentMCPActionResource.fetchById(
-      auth,
-      actionId,
-      transaction
-    );
-    if (action?.status === "blocked_validation_required") {
-      await action.updateStatusFromExpected(auth, {
-        status: "denied",
-        expectedStatus: "blocked_validation_required",
-        transaction,
-      });
-    }
-
-    const parent = await AgentMCPActionResource.fetchById(
-      auth,
-      parentActionId,
-      transaction
-    );
-    if (
-      parent?.status === "blocked_child_action_input_required" &&
-      !(await AgentMCPActionResource.hasBlockedSandboxChildren(auth, {
-        parentAction: parent,
-        transaction,
-      }))
-    ) {
-      await parent.updateStatusFromExpected(auth, {
-        status: "running",
-        expectedStatus: "blocked_child_action_input_required",
-        transaction,
-      });
-    }
-  });
+  const parent = await AgentMCPActionResource.fetchById(
+    auth,
+    parentActionId,
+    transaction
+  );
+  if (
+    parent?.status === "blocked_child_action_input_required" &&
+    !(await AgentMCPActionResource.hasBlockedSandboxChildren(auth, {
+      parentAction: parent,
+      transaction,
+    }))
+  ) {
+    await parent.updateStatusFromExpected(auth, {
+      status: "running",
+      expectedStatus: "blocked_child_action_input_required",
+      transaction,
+    });
+  }
 }
 
 async function publishSandboxApproval(
@@ -110,7 +107,7 @@ async function publishSandboxApproval(
     step: number;
   }
 ): Promise<void> {
-  await withTransaction(async (transaction) => {
+  const publishRes = await withTransaction(async (transaction) => {
     await getConversationRankVersionLock(auth, conversation, transaction);
 
     const freshAction = await AgentMCPActionResource.fetchById(
@@ -131,12 +128,27 @@ async function publishSandboxApproval(
       throw new Error("Agent message can no longer run sandbox child actions.");
     }
 
-    await publishConversationRelatedEvent({
-      conversationId: conversation.sId,
-      event,
-      step,
-    });
+    try {
+      await publishConversationRelatedEvent({
+        conversationId: conversation.sId,
+        event,
+        step,
+      });
+      return new Ok(undefined);
+    } catch (err) {
+      // Redis may expose an event before reporting failure. Deny the referenced child before
+      // releasing the lifecycle lock so an approval request cannot resolve it in between.
+      await rollbackSandboxApproval(auth, {
+        actionId: action.sId,
+        parentActionId,
+        transaction,
+      });
+      return new Err(normalizeError(err));
+    }
   });
+  if (publishRes.isErr()) {
+    throw publishRes.error;
+  }
 }
 
 /**
@@ -445,13 +457,29 @@ export async function createSandboxChildAction(
       });
     } catch (err) {
       try {
-        await rollbackSandboxApproval(auth, {
-          actionId: action.sId,
-          conversation,
-          parentActionId,
+        // Retry compensation in case its first attempt failed before the publication transaction
+        // committed. The updates are idempotent.
+        await withTransaction(async (transaction) => {
+          await getConversationRankVersionLock(auth, conversation, transaction);
+          await rollbackSandboxApproval(auth, {
+            actionId: action.sId,
+            parentActionId,
+            transaction,
+          });
         });
-        // Redis publication is not transactional. Remove a prompt if publication succeeded before
-        // the lifecycle transaction failed to commit.
+      } catch (cleanupError) {
+        logger.error(
+          {
+            err: cleanupError,
+            actionId: action.sId,
+            conversationId: conversation.sId,
+          },
+          "Failed to clean up a sandbox approval event"
+        );
+      }
+      try {
+        // Redis cleanup is independent from DB compensation: a partially published prompt must be
+        // removed even if the fallback transaction failed.
         await clearBlockedActionEffects(auth, {
           actionIds: [action.sId],
           conversationId: conversation.sId,
@@ -464,7 +492,7 @@ export async function createSandboxChildAction(
             actionId: action.sId,
             conversationId: conversation.sId,
           },
-          "Failed to clean up a sandbox approval event"
+          "Failed to remove a sandbox approval event"
         );
       }
       return new Err(normalizeError(err));
