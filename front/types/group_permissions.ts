@@ -144,7 +144,7 @@ export function capabilityKey({
 }
 
 /**
- * Catalog of the governance capabilities the Workspace & Governance page manages, grouped by the
+ * Catalog of the governance capabilities the Settings & Governance page manages, grouped by the
  * section they belong to.
  */
 export const GOVERNANCE_CAPABILITIES = {

@@ -19,7 +19,7 @@ interface DustMcpServerSettingsItemProps {
 
 const LABEL = "MCP server";
 const DESCRIPTION =
-  "Control whether external MCP clients can connect to this workspace.";
+  "Whether external MCP clients can connect to this workspace.";
 
 export function DustMcpServerSettingsItem({
   owner,

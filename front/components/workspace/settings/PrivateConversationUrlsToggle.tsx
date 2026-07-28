@@ -6,7 +6,7 @@ import { ContextItem, Lock01, SliderToggle } from "@dust-tt/sparkle";
 
 const LABEL = "Private conversation URLs by default";
 const DESCRIPTION =
-  "Control whether conversation URLs are private by default, limiting access to participants.";
+  "Whether conversation URLs are private by default, limiting access to participants.";
 
 interface PrivateConversationUrlsToggleProps {
   owner: WorkspaceType;

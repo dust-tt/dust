@@ -8,7 +8,7 @@ import { WorkspaceSection } from "./WorkspaceSection";
 
 const LABEL = "Browser Extension Tools";
 const DESCRIPTION =
-  "Control whether the Dust browser extension can use MCP tools such as " +
+  "Whether the Dust browser extension can use MCP tools such as " +
   "listing and reading browser tabs.";
 
 interface ExtensionMcpToolsSectionProps {

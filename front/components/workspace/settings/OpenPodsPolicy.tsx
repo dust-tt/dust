@@ -28,9 +28,8 @@ const OPEN_PODS_POLICIES = [
   },
 ] as const;
 
-const LABEL = "Pod access";
-const DESCRIPTION =
-  "Control whether Pods can be restricted only or restricted and open.";
+const LABEL = "Restricted and Open Pods";
+const DESCRIPTION = "Whether members are allowed to create open pods.";
 
 type OpenPodPolicy = (typeof OPEN_PODS_POLICIES)[number];
 

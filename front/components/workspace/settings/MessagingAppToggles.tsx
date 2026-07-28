@@ -48,7 +48,7 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
         name="Slack Bot"
         description={
           hasAdminGovernanceFeature
-            ? "Control whether the Dust Bot can be used in Slack."
+            ? "Whether the Dust Bot can be used in Slack."
             : "Use Dust Agents in Slack with the Dust Slack app"
         }
         visual={<SlackLogo className="h-6 w-6" />}
@@ -67,7 +67,7 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
         name="Microsoft Teams Bot"
         description={
           hasAdminGovernanceFeature
-            ? "Control whether the Dust Bot can be used in Microsoft Teams."
+            ? "Whether the Dust Bot can be used in Microsoft Teams."
             : "Use Dust Agents in Teams with the Dust Microsoft Teams Bot"
         }
         visual={<MicrosoftLogo className="h-6 w-6" />}
@@ -87,7 +87,7 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
           name="Discord Bot"
           description={
             hasAdminGovernanceFeature
-              ? "Control whether the Dust Bot can be used in Discord."
+              ? "Whether the Dust Bot can be used in Discord."
               : "Use Dust Agents in Discord with the Dust Discord app"
           }
           visual={<DiscordLogo className="h-6 w-6" />}
