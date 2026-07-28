@@ -53,26 +53,34 @@ function durationLabel(days: number): string {
   }
 }
 
+const DURATION_FIELD_LABEL_ID = "upgrade-request-duration-label";
+
 function DurationField() {
   const { field } = useController<RequestUpgradeFormValues>({
     name: "requestedDurationDays",
   });
 
   return (
-    <RadioGroup
-      value={String(field.value)}
-      onValueChange={(v) => field.onChange(Number(v))}
-      className="flex flex-row gap-4"
-    >
-      {DURATION_PRESETS_DAYS.map((days) => (
-        <RadioGroupItem
-          key={days}
-          value={String(days)}
-          id={`upgrade-request-duration-${days}`}
-          label={durationLabel(days)}
-        />
-      ))}
-    </RadioGroup>
+    <div className="flex flex-col gap-2">
+      <label id={DURATION_FIELD_LABEL_ID} className="text-sm font-medium">
+        How long do you need it?
+      </label>
+      <RadioGroup
+        aria-labelledby={DURATION_FIELD_LABEL_ID}
+        value={String(field.value)}
+        onValueChange={(v) => field.onChange(Number(v))}
+        className="flex flex-row gap-4"
+      >
+        {DURATION_PRESETS_DAYS.map((days) => (
+          <RadioGroupItem
+            key={days}
+            value={String(days)}
+            id={`upgrade-request-duration-${days}`}
+            label={durationLabel(days)}
+          />
+        ))}
+      </RadioGroup>
+    </div>
   );
 }
 
@@ -224,12 +232,7 @@ export function UsageUpgradeButton({
                     );
                   }}
                 </BaseFormFieldSection>
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium">
-                    How long do you need it?
-                  </label>
-                  <DurationField />
-                </div>
+                <DurationField />
               </div>
             </DialogContainer>
             <DialogFooter
