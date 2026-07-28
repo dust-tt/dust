@@ -94,7 +94,7 @@ Adding the id to `STATIC_MODEL_IDS` makes these fail to compile until updated:
 
 | File | What to add |
 |------|-------------|
-| `front/lib/model_constructors/test/endpoints/{...}.test.ts` | One `StreamSetup` per endpoint (mirror the sibling's expected cases). |
+| `front/lib/model_constructors/test/endpoints/{...}.test.ts` | One `StreamSetup` per endpoint. Copy the sibling's **key set**, but start every case at `null` — never copy its expected values (see the TDD loop). |
 | `front/lib/model_constructors/test/endpoints/setups.ts` | Import + register each **registered** endpoint's setup (`satisfies Record<StreamEndpointId, StreamSetup>` forces completeness). |
 
 ### E. `llms` — the dust layer (stream)
@@ -120,28 +120,150 @@ Adding the id to `STATIC_MODEL_IDS` makes these fail to compile until updated:
 
 ## The TDD loop (steps to actually run)
 
-The endpoint classes derive their behavior from a shared integration test harness. The proper
-flow:
+The endpoint classes derive their behavior from a shared integration test harness. **Let the
+live API tell you the input contract — never infer it from the sibling model.** Sibling
+expectations are the single biggest source of wrong config: two models in the same family
+routinely differ on temperature, reasoning efforts, and forced tool use.
 
-1. Write the config mixin with `configSchema` set to the **broad default**
-   `inputConfigSchema` (from `front/lib/model_constructors/types/input/configuration.ts`).
-2. Write the endpoint class + its `.test.ts` (mirror the sibling's setup).
-3. Run the endpoint's test **live** against the real provider:
-   ```bash
-   cd front
-   NODE_ENV=test RUN_LLM_TEST=true DUST_MANAGED_{PROVIDER}_API_KEY=... \
-     npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 \
-     lib/model_constructors/test/endpoints/{...}.test.ts
-   ```
-   (The exact env-var names are in the sibling's `createInstance`, e.g.
-   `DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY`, `VERTEX_AI_PROJECT_ID`.)
-4. From the failures, **narrow** `configSchema` to what the model actually accepts (reasoning
-   efforts, temperature handling, response-format vs tool-use, etc.) and mark the rejected
-   cases with `INPUT_CONFIGURATION_ERROR` in the test. Re-run until green.
+**The config schema must ALWAYS mirror the API's real behavior as closely as possible.** It
+describes what the provider accepts — not what Dust happens to send today, and not what would
+be convenient. If the API accepts a value, the schema accepts it; if the API rejects a value,
+the schema rejects it. Never narrow past the API because an upstream layer already strips the
+field (the `dropTemperature` / `dropTemperatureWhenReasoning` config parsers in `lib/llms` are
+a *product* policy and belong there, not in the endpoint schema), and never widen past it to
+avoid a union. Concretely: Anthropic reasoning models accept exactly `temperature: 1`, so the
+field is `z.literal(1).optional().default(1)` — not `z.undefined()`, even though the Dust layer
+drops it before the endpoint ever sees it.
+
+When a divergence from the API is genuinely wanted (exposing a narrower effort set to control
+cost, say), it is a **policy choice** — write it as a comment stating that the API allows more
+and why Dust doesn't, so the next reader doesn't mistake it for a provider constraint.
+
+**Reasoning efforts must ALWAYS mirror the model's official documentation**, not merely whatever
+the endpoint happens to accept. This is the one place where "what the API tolerates" is the wrong
+source of truth, because gateways are routinely looser than the models they serve:
+
+- The **Fireworks** gateway validates `reasoning_effort` against low/medium/high/xhigh/max/none
+  for *every* model it hosts, so a live run "passes" on efforts the model never defined.
+- **DeepSeek** documents disabled/high/max and says low/medium are *mapped to* high and xhigh to
+  max — accepting them would silently rewrite the caller's choice.
+- **Kimi K3** is documented low/high/max by Moonshot; `medium` works through Fireworks but is not
+  a K3 effort.
+- **Kimi K2.6** has binary thinking; the graded values are accepted and do nothing (measured:
+  `low` produced *more* reasoning than `medium`).
+- **grok-4.5** silently accepts `minimal` and `xhigh`, which xAI documents only for other models.
+
+So: find the **model author's** doc (not just the host's), expose exactly the efforts it lists,
+and link it in a comment. Where host and author docs disagree, follow the author unless the host
+documents a model-specific override — generic host guidance is not a contradiction. Then confirm
+each documented effort actually works on the live endpoint, and record any effort the endpoint
+accepts but the docs omit, with a note that undocumented efforts can change without notice.
+
+When the product still offers an effort the model does not have, map it in the **llms layer** with
+a `configParsers` entry (`mapReasoningNoneToMinimal`, `mapNonNoneReasoningToHigh`,
+`mapReasoningEffortToLowHighMax`, `forceHighReasoningEffort`) — never with a schema `.transform()`, and never by widening the
+endpoint schema to swallow it.
+
+### 1. Widen
+
+Write the config mixin with `configSchema` set to the broad `inputConfigSchema`
+(`front/lib/model_constructors/types/input/configuration.ts`), marked `// TDD SCAFFOLD`. Every
+case must reach the API instead of being short-circuited by a guessed schema.
+
+### 2. Write the test with every case `null`
+
+Copy the sibling's **key set** (so coverage matches) but **not** its expected values. `null`
+runs the case with its default checkers. Starting from the sibling's
+`INPUT_CONFIGURATION_ERROR` markers hides exactly the differences you are trying to find, and
+lets stale expectations survive — a suite whose expectations were never run green will happily
+assert things the schema makes impossible.
+
+### 3. Red run — the whole suite, no `--bail`
+
+You want every failure at once in order to characterize the contract:
+
+```bash
+cd front
+NODE_ENV=test RUN_LLM_TEST=true DUST_MANAGED_{PROVIDER}_API_KEY=... \
+  npm run test -- --config lib/model_constructors/test/vite.config.js \
+  lib/model_constructors/test/endpoints/{...}.test.ts
+```
+
+Env-var names live in the sibling's `createInstance` (`DUST_MANAGED_ANTHROPIC_API_KEY`,
+`DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY`, …). Agent-platform/Vertex endpoints need
+`VERTEX_AI_PROJECT_ID` plus GCP credentials — a `GOOGLE_APPLICATION_CREDENTIALS` service-account
+key works and needs no `gcloud auth application-default login`. Add `--bail 1` or
+`-t "<substring>"` only later, when iterating on a single case.
+
+### 4. Sort every failure into one of three buckets
+
+The bucket decides the fix:
+
+| Last event | Meaning | What to do |
+|---|---|---|
+| `error` carrying a provider message (`invalid_request_error`, …) | Real API constraint | The schema **must** encode it |
+| `error` of type `input_configuration_error` | Our own zod rejected it before any request | With the widest schema this means a converter or base client still rejects it |
+| The case **passes** | The API accepts this input | Whether to *allow* it is a **policy choice** — match the sibling unless there's a reason to diverge, and state which you chose and why |
+
+A passing case is evidence. It disproves any assumption that the model rejects that input —
+including assumptions already written down. Do not keep an `INPUT_CONFIGURATION_ERROR` because
+a code comment says the model doesn't support something: **the run outranks the comment.**
+
+### 5. Narrow — including the defaults
+
+Rewrite `configSchema` to the real contract, with a doc URL + date in a comment next to each
+value. Three things to pin deliberately, not by inheritance:
+
+- **`reasoning` default effort — read it off the official doc, every time.** The `.default(...)`
+  is load-bearing: an absent `reasoning` sends *no* thinking config, so the provider's own default
+  applies, and that differs per model (adaptive-on for Fable 5 / Opus 5 / Sonnet 5; thinking-*off*
+  for Opus 4.8/4.7/4.6 and Sonnet 4.6; no thinking for Haiku 4.5; `max` for Kimi K3 and GLM-5.2).
+  **Never carry over a sibling's default or invent one for cost reasons** — Kimi K3 sat at `low`
+  when Moonshot documents `max`. Mirror the documented default and cite the page; if the product
+  wants a cheaper default, that belongs in `defaultReasoningEffort` on the llms model config, not
+  in the endpoint schema.
+- **`temperature` handling.** Sweep actual values against the API rather than assuming — the
+  rule is per-model. Anthropic reasoning models accept only `1` while thinking is on and any
+  value while thinking is off; some reject the field outright.
+- **Effort set and `forceTool` compatibility.** Which efforts are genuinely accepted, and
+  whether a forced `tool_choice` may coexist with reasoning.
+
+### 6. Green run
+
+Mark the genuinely-rejected cases `INPUT_CONFIGURATION_ERROR`, re-run the **full** suite until
+every case passes, then delete the `// TDD SCAFFOLD` comment.
+
+### 7. Re-run every endpoint sharing the mixin
+
+A config mixin is shared across regions and provider APIs (e.g. `global/anthropic` +
+`eu/agent-platform`), so narrowing it changes all of them. Run each one.
+
+### 8. Push the new behavior *up* into the family's shared config
+
+Shared configs are **per family** — Opus, Sonnet, Haiku each have their own; a family with a
+single member (Fable 5) just keeps a standalone config. A family's shared config should
+**track the latest member of that family**, because the next model in it is far likelier to
+repeat the newest behavior than the oldest. So when characterizing a model reveals that its
+family's shared config was wrong, **fix the shared config and put the override on the older
+models** — never special-case the newest one.
+
+The reflex to resist is the opposite: leaving the shared config alone and giving the new model
+a bespoke schema. That makes every future model in the family inherit stale behavior, and it
+is how a restriction that only ever applied to one old model ends up applied to all of them.
+(Worked example: `forceTool: z.undefined()` sat in the shared Opus config because *extended*
+thinking forbids a forced `tool_choice`. Opus 4.7, 4.8 and 5 all use *adaptive* thinking and
+all accept it — verified live — so the fix was to drop it from the shared config, not to
+override it on Opus 5.)
+
+Do not merge families that happen to agree today. Fable 5 and Opus 5 share every value except
+one (Fable 5 cannot disable thinking), but they are different families, so they keep separate
+configs and the coincidence is allowed to drift.
+
+Then re-run the suites of every model in the family (§7), since they all moved.
 
 If you cannot run the live suite (no key / non-interactive), narrow the config from the
-sibling model in the same family (same tier ⇒ same input contract) and **say so explicitly** —
-the live run should still be done before merge.
+sibling model in the same family and **say so explicitly** — flag every expectation as
+unverified; the live run must still happen before merge.
 
 Without `NODE_ENV=test`+`RUN_LLM_TEST`, the test file loads but its cases are skipped; that
 still validates it compiles and is registered.
@@ -182,7 +304,14 @@ NODE_ENV=test npm run test -- \
 - [ ] `STATIC_MODEL_IDS` + `SUPPORTED_MODEL_CONFIGS` + `model_constructors/types/models.ts`
 - [ ] Pricing/tiers/reasoning trio updated (compile-forced)
 - [ ] `model_constructors`: config mixin + endpoint class(es) + `stream/index.ts`
-- [ ] Tests: `.test.ts` per endpoint + `setups.ts`; live TDD run to narrow the config
+- [ ] Tests: `.test.ts` per endpoint + `setups.ts`
+- [ ] TDD loop run live: widened schema → all cases `null` → full red run → narrowed schema
+      with reasoning-default and temperature confirmed against docs → green run → scaffold removed
+- [ ] Config schema mirrors the API: every value the API accepts is accepted, every value it
+      rejects is rejected; deliberate divergences commented as policy, not as provider limits
+- [ ] New behavior pushed up into the family's shared config, with overrides on the *older*
+      models rather than a bespoke schema on the new one
+- [ ] Every endpoint sharing the config mixin re-run green (all regions / provider APIs)
 - [ ] `llms` dust layer: dust mixin + endpoint(s) + `llms/stream/index.ts`
 - [ ] SDK union updated **and rebuilt**; UI `model_configs.ts`; marketing mirror
 - [ ] `tsgo` clean; `sdk_drift` / `types` / `tiers` tests green
@@ -194,4 +323,6 @@ NODE_ENV=test npm run test -- \
 - **`tsgo` on `setups.ts` / index files** → you added an endpoint to `STREAM_ENDPOINTS` without a matching setup, or vice-versa. Register both.
 - **`tiers.test.ts` fails** → `static_model_reasoning_efforts.ts` disagrees with the config's `supportedReasoningEfforts`.
 - **Model not in UI** → missing from `USED_MODEL_CONFIGS`.
-- **Live test rejects a config** → narrow `configSchema` and mark the case `INPUT_CONFIGURATION_ERROR`.
+- **Live test rejects a config** → check the bucket first (§4). A provider `invalid_request_error` means narrow `configSchema` and mark the case `INPUT_CONFIGURATION_ERROR`; an `input_configuration_error` under the widened scaffold means a converter or base client is rejecting it, not the API.
+- **A case you expected to fail passes** → the model accepts that input. Fix the expectation (and any comment claiming otherwise) rather than keeping the marker.
+- **Live suite 401s** → check the key you actually exported. A shell profile can define the same `DUST_MANAGED_*_API_KEY` twice; the last export wins interactively, so grepping for the first match can hand you a stale key.
