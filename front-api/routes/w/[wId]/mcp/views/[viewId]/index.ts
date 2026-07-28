@@ -22,49 +22,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/mcp/views/:viewId.
 const app = workspaceApp();
 
-/**
- * @swagger
- * /api/w/{wId}/mcp/views/{viewId}:
- *   patch:
- *     summary: Update an MCP server view setting
- *     description: Updates the selected setting on all views of the MCP server in the workspace. Restricting the server to skills also removes it from direct agent configurations.
- *     tags:
- *       - MCP
- *     parameters:
- *       - in: path
- *         name: wId
- *         required: true
- *         description: ID of the workspace
- *         schema:
- *           type: string
- *       - in: path
- *         name: viewId
- *         required: true
- *         description: ID of the system MCP server view
- *         schema:
- *           type: string
- *     security:
- *       - BearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/PrivatePatchMCPServerViewBody'
- *     responses:
- *       200:
- *         description: Updated MCP server view
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/PrivatePatchMCPServerViewResponseBody'
- *       400:
- *         description: Invalid update or the view is not a system view
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: MCP server view not found
- */
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),

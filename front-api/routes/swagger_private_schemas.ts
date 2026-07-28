@@ -1957,36 +1957,4 @@
  *           type: string
  *         step:
  *           type: integer
- *     PrivatePatchMCPServerViewBody:
- *       oneOf:
- *         - type: object
- *           required: [oAuthUseCase]
- *           properties:
- *             oAuthUseCase:
- *               type: string
- *               enum: [platform_actions, personal_actions]
- *         - type: object
- *           required: [name, description]
- *           properties:
- *             name:
- *               type: string
- *               nullable: true
- *             description:
- *               type: string
- *               nullable: true
- *         - type: object
- *           required: [isRestrictedToSkills]
- *           properties:
- *             isRestrictedToSkills:
- *               type: boolean
- *               description: When true, the MCP server can only be exposed through skills.
- *     PrivatePatchMCPServerViewResponseBody:
- *       type: object
- *       required: [success, serverView]
- *       properties:
- *         success:
- *           type: boolean
- *           enum: [true]
- *         serverView:
- *           $ref: '#/components/schemas/MCPServerView'
  */
