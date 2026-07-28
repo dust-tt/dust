@@ -55,7 +55,7 @@ export function makeSentByFooterBlock(
     elements: [
       {
         type: "mrkdwn",
-        text: `Sent via <${agentUrl}|${agentName} Agent> on Dust`,
+        text: `_Sent via <${agentUrl}|${agentName} Agent> on Dust_`,
       },
     ],
   };
