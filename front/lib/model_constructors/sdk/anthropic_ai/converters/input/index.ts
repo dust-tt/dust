@@ -117,7 +117,11 @@ export function WithAnthropicAIInputConverter<
               { type: "text", text: ANTHROPIC_TOOL_SEARCH_INSTRUCTION },
             ]
           : system,
-        thinking: thinkingConfig.thinking,
+        // Omit the key entirely when the config carries no thinking, so the
+        // model applies its own default instead of being told "disabled".
+        ...("thinking" in thinkingConfig
+          ? { thinking: thinkingConfig.thinking }
+          : {}),
         tools: anthropicTools,
         tool_choice: forceToolNameToToolChoice(
           tools,
