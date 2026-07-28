@@ -285,6 +285,27 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     );
   }
 
+  static async isBlockedForWorkspace({
+    actionId,
+    workspaceModelId,
+  }: {
+    actionId: string;
+    workspaceModelId: ModelId;
+  }): Promise<boolean> {
+    const actionModelId = getResourceIdFromSId(actionId);
+    assert(actionModelId, "Agent MCP action ID is invalid.");
+
+    const action = await AgentMCPActionModel.findOne({
+      attributes: ["status"],
+      where: {
+        id: actionModelId,
+        workspaceId: workspaceModelId,
+      },
+    });
+
+    return action !== null && isToolExecutionStatusBlocked(action.status);
+  }
+
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[]

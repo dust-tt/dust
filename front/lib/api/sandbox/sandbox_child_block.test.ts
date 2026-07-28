@@ -255,6 +255,41 @@ describe("resolveSandboxChildBlock", () => {
     ).not.toHaveBeenCalled();
   });
 
+  it("denies a child that blocks after its message was cancelled", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "running",
+    });
+    const { sId: childId } = await createAction({
+      name: "child_tool",
+      status: "blocked_user_answer_required",
+      sandboxChildActionInfo: { parentActionId: parentId },
+    });
+    await AgentMessageModel.update(
+      { status: "cancelled" },
+      { where: { id: agentMessageId } }
+    );
+    const child = await AgentMCPActionResource.fetchById(auth, childId);
+    if (!child) {
+      throw new Error("Expected the child action to exist.");
+    }
+
+    const accepted = await pauseSandboxBashForBlockedChild(
+      auth,
+      child,
+      conversation
+    );
+
+    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
+    const deniedChild = await AgentMCPActionResource.fetchById(auth, childId);
+    expect(accepted).toBe(false);
+    expect(parent?.status).toBe("running");
+    expect(deniedChild?.status).toBe("denied");
+    expect(
+      vi.mocked(ConversationSandboxAdapter.pauseSandboxForApproval)
+    ).not.toHaveBeenCalled();
+  });
+
   it("denies a ready child when its parent finishes before the child starts", async () => {
     const { sId: parentId } = await createAction({
       name: "bash",

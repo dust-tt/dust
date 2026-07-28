@@ -8,7 +8,6 @@ import {
   processToolNotification,
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
-import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import type {
   MCPApproveExecutionEvent,
   ToolAskUserQuestionEvent,
@@ -24,6 +23,7 @@ import {
   isAgentLoopRunContext,
   isSandboxChildActionInfo,
 } from "@app/lib/actions/types";
+import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
 import { completeSandboxBash } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";

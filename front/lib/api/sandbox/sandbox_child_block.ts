@@ -47,6 +47,15 @@ export async function pauseSandboxBashForBlockedChild(
   const reservation = await withTransaction(async (transaction) => {
     await getConversationRankVersionLock(auth, conversation, transaction);
 
+    if (!(await action.canAgentMessageResume(auth, transaction))) {
+      await action.updateStatusFromExpected(auth, {
+        status: "denied",
+        expectedStatus: action.status,
+        transaction,
+      });
+      return { accepted: false, parentStatus: null, shouldPause: false };
+    }
+
     const parentAction = await AgentMCPActionResource.fetchById(
       auth,
       info.parentActionId,
@@ -111,7 +120,12 @@ export async function pauseSandboxBashForBlockedChild(
     await pauseReservedSandboxBash(auth, action, conversation);
   }
 
-  return true;
+  const freshAction = await AgentMCPActionResource.fetchById(auth, action.sId);
+  return (
+    freshAction !== null &&
+    isToolExecutionStatusBlocked(freshAction.status) &&
+    (await freshAction.canAgentMessageResume(auth))
+  );
 }
 
 /**

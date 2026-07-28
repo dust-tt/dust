@@ -9,8 +9,8 @@ import {
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import logger from "@app/logger/logger";
 import type {
   AgentMessageType,
@@ -64,9 +64,7 @@ export async function cleanupDeniedBlockedActions(
 
     if (
       deniedActions.some((action) =>
-        isSandboxChildActionInfo(
-          action.stepContext.sandboxChildActionInfo
-        )
+        isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
       )
     ) {
       // Serializes with an in-flight pause. If cancellation won the race, the pause callback sees

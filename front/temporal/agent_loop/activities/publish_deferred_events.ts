@@ -1,9 +1,34 @@
+import { isBlockedActionEvent } from "@app/lib/actions/mcp";
+import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { DeferredEvent } from "@app/temporal/agent_loop/lib/deferred_events";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WhereOptions } from "sequelize";
+
+async function isDeferredActionBlocked(
+  deferredEvent: DeferredEvent
+): Promise<boolean> {
+  return AgentMCPActionResource.isBlockedForWorkspace({
+    actionId: deferredEvent.event.actionId,
+    workspaceModelId: deferredEvent.context.workspaceId,
+  });
+}
+
+async function removeDeferredEvent(
+  deferredEvent: DeferredEvent
+): Promise<void> {
+  await getRedisHybridManager().removeEvent((event) => {
+    const payload = JSON.parse(event.message["payload"]);
+    return (
+      isBlockedActionEvent(payload) &&
+      payload.actionId === deferredEvent.event.actionId
+    );
+  }, getMessageChannelId(deferredEvent.context.agentMessageId));
+}
 
 /**
  * Activity to publish events that were deferred during tool execution.
@@ -38,6 +63,10 @@ export async function publishDeferredEventsActivity(
       throw new Error(
         `Agent message row not found: ${context.agentMessageRowId}`
       );
+    }
+
+    if (!(await isDeferredActionBlocked(deferredEvent))) {
+      continue;
     }
 
     let eventToPublish: AgentMessageEvents;
@@ -101,6 +130,14 @@ export async function publishDeferredEventsActivity(
       event: eventToPublish,
       step: context.step,
     });
+
+    if (!(await isDeferredActionBlocked(deferredEvent))) {
+      // The action can be denied by message termination or parent completion between the first
+      // status check and publication. Remove the just-published prompt; if denial happens after
+      // this check, the denial path performs the same idempotent cleanup.
+      await removeDeferredEvent(deferredEvent);
+      continue;
+    }
 
     // Check if this event should pause the workflow.
     if (deferredEvent.shouldPauseAgentLoop) {
