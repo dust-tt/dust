@@ -12,8 +12,8 @@ import type {
 } from "@app/types/api/credits/upgrade_requests";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import {
-  MAX_UPGRADE_REQUEST_REASON_LENGTH,
-  MIN_UPGRADE_REQUEST_REASON_LENGTH,
+  MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS,
+  MIN_UPGRADE_REQUEST_REASON_LENGTH_CHARS,
 } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -38,8 +38,8 @@ const CreateUpgradeRequestBodySchema = z.object({
   reason: z
     .string()
     .trim()
-    .min(MIN_UPGRADE_REQUEST_REASON_LENGTH)
-    .max(MAX_UPGRADE_REQUEST_REASON_LENGTH)
+    .min(MIN_UPGRADE_REQUEST_REASON_LENGTH_CHARS)
+    .max(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS)
     .optional(),
 });
 

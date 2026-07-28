@@ -2,8 +2,8 @@ import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSectio
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRequestUpgrade } from "@app/lib/swr/upgrade_requests";
 import {
-  MAX_UPGRADE_REQUEST_REASON_LENGTH,
-  MIN_UPGRADE_REQUEST_REASON_LENGTH,
+  MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS,
+  MIN_UPGRADE_REQUEST_REASON_LENGTH_CHARS,
 } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -27,10 +27,10 @@ const requestUpgradeFormSchema = z.object({
     .string()
     .trim()
     .min(
-      MIN_UPGRADE_REQUEST_REASON_LENGTH,
+      MIN_UPGRADE_REQUEST_REASON_LENGTH_CHARS,
       "Tell your admin why you need this."
     )
-    .max(MAX_UPGRADE_REQUEST_REASON_LENGTH),
+    .max(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS),
 });
 
 type RequestUpgradeFormValues = z.infer<typeof requestUpgradeFormSchema>;

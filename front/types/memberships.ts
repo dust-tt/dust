@@ -300,8 +300,8 @@ export const MEMBERSHIP_UPGRADE_REQUEST_STATUSES = [
 export type MembershipUpgradeRequestStatus =
   (typeof MEMBERSHIP_UPGRADE_REQUEST_STATUSES)[number];
 
-export const MIN_UPGRADE_REQUEST_REASON_LENGTH = 10;
-export const MAX_UPGRADE_REQUEST_REASON_LENGTH = 1000;
+export const MIN_UPGRADE_REQUEST_REASON_LENGTH_CHARS = 10;
+export const MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS = 1000;
 
 export interface MembershipUpgradeRequestType {
   sId: string;
