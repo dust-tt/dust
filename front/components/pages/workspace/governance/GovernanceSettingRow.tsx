@@ -42,8 +42,8 @@ const GOVERNANCE_SETTING_METADATA: Partial<
     description: "Control who can build custom skills.",
   },
   "publish:skill": {
-    label: "Publish skills",
-    description: "Control who can publish skills to the whole workspace.",
+    label: "Manage skill availability",
+    description: "Control who can share skills across the workspace.",
   },
   "invite:frame": {
     label: "Invite people by email",
