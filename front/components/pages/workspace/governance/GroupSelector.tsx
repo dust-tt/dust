@@ -37,7 +37,13 @@ export const GroupSelector = ({
   const selectedGroupIds = selectedGroups.map((g) => g.sId);
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <DropdownMenu>
+      <DropdownMenu
+        onOpenChange={(open) => {
+          if (open) {
+            setGroupSearch("");
+          }
+        }}
+      >
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
