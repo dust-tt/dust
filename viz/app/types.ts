@@ -22,10 +22,12 @@ export interface WorkspaceUserIdentity {
 export type UserIdentityState =
   | {
       isAuthenticated: true;
+      isWorkspaceMember: true;
       user: WorkspaceUserIdentity;
     }
   | {
       isAuthenticated: false;
+      isWorkspaceMember: false;
       user: null;
     };
 

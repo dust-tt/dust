@@ -34,6 +34,7 @@ import {
   assertNeverAndIgnore,
 } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { RoleType } from "@app/types/user";
 import {
   AlertCircle,
   Button,
@@ -81,7 +82,7 @@ export type FrameAccess = "conversation" | "public-anonymous" | "public-member";
 
 interface WorkspaceAuthIdentity {
   user: NonNullable<UserIdentityState["user"]>;
-  workspace: { sId: string };
+  workspace: { role: RoleType; sId: string };
 }
 
 export function getConversationFrameUserIdentity(
@@ -92,14 +93,20 @@ export function getConversationFrameUserIdentity(
   if (
     frameAccess !== "conversation" ||
     !authContext ||
-    authContext.workspace.sId !== workspaceId
+    authContext.workspace.sId !== workspaceId ||
+    authContext.workspace.role === "none"
   ) {
-    return { isAuthenticated: false, user: null };
+    return {
+      isAuthenticated: false,
+      isWorkspaceMember: false,
+      user: null,
+    };
   }
 
   const { user } = authContext;
   return {
     isAuthenticated: true,
+    isWorkspaceMember: true,
     user: {
       sId: user.sId,
       firstName: user.firstName,

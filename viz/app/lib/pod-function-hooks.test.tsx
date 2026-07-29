@@ -29,9 +29,11 @@ function makeDataAPI(
     callFunction,
     fetchCode: vi.fn(),
     fetchFile: vi.fn(),
-    getUserIdentity: vi
-      .fn()
-      .mockResolvedValue({ isAuthenticated: false, user: null }),
+    getUserIdentity: vi.fn().mockResolvedValue({
+      isAuthenticated: false,
+      isWorkspaceMember: false,
+      user: null,
+    }),
   };
 }
 
@@ -46,6 +48,7 @@ describe("useUserIdentity", () => {
     const dataAPI = makeDataAPI(vi.fn());
     dataAPI.getUserIdentity = vi.fn().mockResolvedValue({
       isAuthenticated: true,
+      isWorkspaceMember: true,
       user: {
         sId: "usr_123",
         firstName: "Ada",
@@ -61,6 +64,7 @@ describe("useUserIdentity", () => {
 
     expect(result.current).toMatchObject({
       isAuthenticated: false,
+      isWorkspaceMember: false,
       isLoading: true,
       user: null,
     });
@@ -68,6 +72,7 @@ describe("useUserIdentity", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current).toMatchObject({
       isAuthenticated: true,
+      isWorkspaceMember: true,
       user: { sId: "usr_123", fullName: "Ada Lovelace" },
     });
   });
@@ -85,6 +90,7 @@ describe("useUserIdentity", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current).toMatchObject({
       isAuthenticated: false,
+      isWorkspaceMember: false,
       user: null,
       error: new Error("Frame host unavailable"),
     });

@@ -51,7 +51,11 @@ export class CacheDataAPI implements VisualizationDataAPI {
   }
 
   async getUserIdentity(): Promise<UserIdentityState> {
-    return { isAuthenticated: false, user: null };
+    return {
+      isAuthenticated: false,
+      isWorkspaceMember: false,
+      user: null,
+    };
   }
 
   async fetchFile(fileId: string): Promise<File | null> {

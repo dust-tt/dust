@@ -7,6 +7,7 @@ describe("sandbox function data APIs", () => {
   it("loads workspace-scoped identity over RPC", async () => {
     const sendMessage = vi.fn().mockResolvedValue({
       isAuthenticated: true,
+      isWorkspaceMember: true,
       user: {
         sId: "usr_123",
         firstName: "Ada",
@@ -19,6 +20,7 @@ describe("sandbox function data APIs", () => {
 
     await expect(api.getUserIdentity()).resolves.toMatchObject({
       isAuthenticated: true,
+      isWorkspaceMember: true,
       user: { sId: "usr_123" },
     });
     expect(sendMessage).toHaveBeenCalledWith("getUserIdentity", null);
@@ -29,6 +31,7 @@ describe("sandbox function data APIs", () => {
 
     await expect(api.getUserIdentity()).resolves.toEqual({
       isAuthenticated: false,
+      isWorkspaceMember: false,
       user: null,
     });
   });

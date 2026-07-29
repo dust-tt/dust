@@ -158,6 +158,7 @@ export function useUserIdentity(): UseUserIdentityResult {
     return {
       error: result.error,
       isAuthenticated: false,
+      isWorkspaceMember: false,
       isLoading: !result.error,
       user: null,
     };
