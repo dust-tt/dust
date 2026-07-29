@@ -1,7 +1,13 @@
 import config from "@app/lib/api/config";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  AgentMessageModel,
+  ConversationModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionType } from "@app/types/actions";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -24,6 +30,7 @@ const SandboxTokenPayloadSchema = z
     execId: z.string(),
     cId: z.string().optional(),
     aId: z.string().optional(),
+    aV: z.number().int().nonnegative().optional(),
     mId: z.string().optional(),
     actionId: z.string().optional(),
     spaceId: z.string().optional(),
@@ -67,6 +74,7 @@ export type SandboxTokenPayload = z.infer<typeof SandboxTokenPayloadSchema>;
 export type SandboxExecTokenPayload = SandboxTokenPayload & {
   cId: string;
   aId: string;
+  aV: number;
   mId: string;
   actionId: string;
 };
@@ -83,9 +91,71 @@ export function isSandboxExecTokenPayload(
   return (
     payload.cId !== undefined &&
     payload.aId !== undefined &&
+    payload.aV !== undefined &&
     payload.mId !== undefined &&
     payload.actionId !== undefined
   );
+}
+
+function hasLegacySandboxExecTokenPayload(
+  payload: SandboxTokenPayload
+): payload is SandboxTokenPayload & {
+  cId: string;
+  aId: string;
+  mId: string;
+  actionId: string;
+} {
+  return (
+    payload.cId !== undefined &&
+    payload.aId !== undefined &&
+    payload.mId !== undefined &&
+    payload.actionId !== undefined
+  );
+}
+
+async function resolveLegacySandboxExecAgentVersion(
+  payload: SandboxTokenPayload & {
+    cId: string;
+    aId: string;
+    mId: string;
+  }
+): Promise<number | null> {
+  const workspace = await WorkspaceResource.fetchById(payload.wId);
+  if (!workspace) {
+    return null;
+  }
+
+  const message = await MessageModel.findOne({
+    where: {
+      sId: payload.mId,
+      workspaceId: workspace.id,
+    },
+    attributes: ["id"],
+    include: [
+      {
+        model: ConversationModel,
+        as: "conversation",
+        required: true,
+        attributes: [],
+        where: {
+          sId: payload.cId,
+          workspaceId: workspace.id,
+        },
+      },
+      {
+        model: AgentMessageModel,
+        as: "agentMessage",
+        required: true,
+        attributes: ["agentConfigurationVersion"],
+        where: {
+          agentConfigurationId: payload.aId,
+          workspaceId: workspace.id,
+        },
+      },
+    ],
+  });
+
+  return message?.agentMessage?.agentConfigurationVersion ?? null;
 }
 
 export function isSandboxFunctionInvocationTokenPayload(
@@ -184,6 +254,7 @@ export async function generateSandboxExecToken(
     cId: conversation.sId,
     uId: auth.user()?.sId,
     aId: agentConfiguration.sId,
+    aV: agentConfiguration.version,
     mId: agentMessage.sId,
     sbId: sandbox.sId,
     actionId: sandboxAction.sId,
@@ -276,8 +347,7 @@ export async function verifySandboxExecToken(
     return null;
   }
 
-  const payload = parseResult.data;
-
+  let payload = parseResult.data;
   const valid = await isExecTokenValid(payload);
   if (!valid) {
     logger.warn(
@@ -285,6 +355,27 @@ export async function verifySandboxExecToken(
       "Sandbox exec token revoked"
     );
     return null;
+  }
+
+  // Tokens issued before the agent-version claim was introduced remain valid
+  // for pause/resume. Recover their immutable run version from the signed
+  // conversation, message, and agent identifiers instead of falling back to
+  // the agent's latest version.
+  if (hasLegacySandboxExecTokenPayload(payload) && payload.aV === undefined) {
+    const agentVersion = await resolveLegacySandboxExecAgentVersion(payload);
+    if (agentVersion === null) {
+      logger.warn(
+        {
+          agentId: payload.aId,
+          agentMessageId: payload.mId,
+          conversationId: payload.cId,
+          workspaceId: payload.wId,
+        },
+        "Could not resolve the agent version for a legacy sandbox exec token"
+      );
+      return null;
+    }
+    payload = { ...payload, aV: agentVersion };
   }
 
   return payload;

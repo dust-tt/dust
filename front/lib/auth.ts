@@ -45,6 +45,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type {
   ConcreteResourceType,
@@ -601,13 +602,15 @@ export class Authenticator {
     // access resources visible to the workload, not everything the user can.
     const groupModelIdSets: ModelId[][] = [];
     if (isSandboxExecTokenPayload(claims)) {
-      groupModelIdSets.push(
-        await this.restrictGroupsToSandboxExecSpaces(
-          baseGroupModelIds,
-          claims,
-          workspace.id
-        )
+      const groupModelIdsRes = await this.restrictGroupsToSandboxExecSpaces(
+        baseGroupModelIds,
+        claims,
+        workspace.id
       );
+      if (groupModelIdsRes.isErr()) {
+        return new Err(groupModelIdsRes.error);
+      }
+      groupModelIdSets.push(groupModelIdsRes.value);
     }
     if (isSandboxFunctionInvocationTokenPayload(claims)) {
       const groupModelIdsRes =
@@ -681,7 +684,7 @@ export class Authenticator {
     userGroupIds: ModelId[],
     claims: SandboxExecTokenPayload,
     workspaceId: ModelId
-  ): Promise<ModelId[]> {
+  ): Promise<Result<ModelId[], APIErrorWithContentfulStatusCode>> {
     const [conversationRequestedSpaceIds, agentConfiguration] =
       await Promise.all([
         this.fetchRequestedSpaceIdsForSandboxTokenAuth({
@@ -691,18 +694,29 @@ export class Authenticator {
         AgentConfigurationModel.findOne({
           where: {
             sId: claims.aId,
+            version: claims.aV,
             workspaceId,
           },
           attributes: ["requestedSpaceIds"],
-          order: [["version", "DESC"]],
         }),
       ]);
+
+    if (!agentConfiguration && !isGlobalAgentId(claims.aId)) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message:
+            "The agent version referenced by the sandbox token was not found.",
+        },
+      });
+    }
 
     if (
       conversationRequestedSpaceIds === null ||
       conversationRequestedSpaceIds.length === 0
     ) {
-      return userGroupIds;
+      return new Ok(userGroupIds);
     }
 
     const requestedSpaceIds = new Set(conversationRequestedSpaceIds);
@@ -722,7 +736,7 @@ export class Authenticator {
       spaceGroups.map((sg) => Number(sg.groupId) as ModelId)
     );
 
-    return userGroupIds.filter((id) => allowedGroupIds.has(id));
+    return new Ok(userGroupIds.filter((id) => allowedGroupIds.has(id)));
   }
 
   private static async restrictGroupsToSandboxFunctionInvocationSpaces(
