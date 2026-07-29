@@ -28,6 +28,7 @@ export type ToolHandlerResult = Result<CallToolResult["content"], MCPError>;
 
 export type ToolHandlers<
   ToolsList extends readonly ToolMeta[],
+  HandlerExtraArgs extends unknown[] = [extra: ToolHandlerExtra],
   // Keep tool names as a separate generic so that generic consumers don't widen them to strings.
   ToolNames extends string = ToolsList[number]["name"],
 > = {
@@ -36,21 +37,14 @@ export type ToolHandlers<
     params: z.infer<
       z.ZodObject<Extract<ToolsList[number], { name: ToolName }>["schema"]>
     >,
-    extra: ToolHandlerExtra
-  ) => Promise<ToolHandlerResult>;
-};
-
-export type ClientToolHandlers<
-  T extends Record<string, { schema: ZodRawShape }>,
-> = {
-  [K in keyof T]: (
-    params: z.infer<z.ZodObject<T[K]["schema"]>>
+    ...extra: HandlerExtraArgs
   ) => Promise<ToolHandlerResult>;
 };
 
 export interface ToolDefinition<
   TName extends string = string,
   TSchema extends ZodRawShape = ZodRawShape,
+  HandlerExtraArgs extends unknown[] = [extra: ToolHandlerExtra],
 > {
   name: TName;
   enableAlerting?: boolean;
@@ -63,30 +57,13 @@ export interface ToolDefinition<
   displayLabels: ToolDisplayLabels;
   toolCostCategory: ToolCostCategory;
   freeUsage: boolean;
-  handler(
-    params: z.infer<z.ZodObject<TSchema>>,
-    extra: ToolHandlerExtra
-  ): Promise<ToolHandlerResult>;
-}
-
-interface ClientToolDefinition<
-  TName extends string = string,
-  TSchema extends ZodRawShape = ZodRawShape,
-> {
-  name: TName;
-  enableAlerting?: boolean;
-  description: string;
-  schema: TSchema;
-  stake: MCPToolStakeLevelType;
-  displayLabels: ToolDisplayLabels;
-  toolCostCategory: ToolCostCategory;
-  freeUsage: boolean;
-  argumentsRequiringApproval?: Array<
+  argumentsRequiringApproval?: ReadonlyArray<
     Extract<keyof z.infer<z.ZodObject<TSchema>>, string>
   >;
-  handler: (
-    params: z.infer<z.ZodObject<TSchema>>
-  ) => Promise<ToolHandlerResult>;
+  handler(
+    params: z.infer<z.ZodObject<TSchema>>,
+    ...extra: HandlerExtraArgs
+  ): Promise<ToolHandlerResult>;
 }
 
 export type ToolMeta<
@@ -94,43 +71,14 @@ export type ToolMeta<
   TSchema extends ZodRawShape = ZodRawShape,
 > = Omit<ToolDefinition<TName, TSchema>, "handler">;
 
-export type ClientToolMeta<
-  TName extends string = string,
-  TSchema extends ZodRawShape = ZodRawShape,
-> = Omit<ClientToolDefinition<TName, TSchema>, "handler">;
-
-export function createClientToolsRecord<
-  T extends {
-    [K in keyof T]: T[K] extends { schema: infer S extends ZodRawShape }
-      ? Omit<ClientToolMeta<string, S>, "name">
-      : Omit<ClientToolMeta, "name">;
-  },
->(tools: T): { [K in keyof T]: T[K] & { name: K } } {
-  return Object.fromEntries(
-    Object.entries(tools).map(([key, value]) => [
-      key,
-      { ...(value as object), name: key },
-    ])
-  ) as { [K in keyof T]: T[K] & { name: K } };
-}
-
-export function buildClientTools<T extends Record<string, ClientToolMeta>>(
-  metadata: T,
-  handlers: ClientToolHandlers<T>
-): ClientToolDefinition[] {
-  return (Object.keys(metadata) as (keyof T & string)[]).map(
-    (key) =>
-      ({
-        ...metadata[key],
-        handler: handlers[key],
-      }) as unknown as ClientToolDefinition
-  );
-}
-
 export function buildTools<
   const TName extends string,
   const T extends readonly ToolMeta<TName>[],
->(metadata: T, handlers: ToolHandlers<T, TName>): ToolDefinition[] {
+  HandlerExtraArgs extends unknown[] = [extra: ToolHandlerExtra],
+>(
+  metadata: T,
+  handlers: ToolHandlers<T, HandlerExtraArgs, TName>
+): ToolDefinition<TName, ZodRawShape, HandlerExtraArgs>[] {
   return metadata.map((tool) => ({
     ...tool,
     handler: handlers[tool.name],
