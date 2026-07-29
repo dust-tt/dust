@@ -75,10 +75,6 @@ export function PublicFrameRenderer({
     shareToken,
   });
 
-  // Members can call functions on shared frames; anonymous viewers cannot.
-  // Real authorization still happens server-side on invocation.
-  const access = isAuthenticatedMember ? "public-member" : "public-anonymous";
-
   const [cookies] = useCookies([DUST_HAS_SESSION]);
   const hasSession = hasSessionIndicator(cookies[DUST_HAS_SESSION]);
 
@@ -141,8 +137,8 @@ export function PublicFrameRenderer({
               identifier: `viz-${fileId}`,
             }}
             key={`viz-${fileId}`}
-            frameAccess={access}
-            publicUserIdentity={publicUserIdentity}
+            canInvokeFunctions={publicUserIdentity !== undefined}
+            scopedUserIdentity={publicUserIdentity}
             isInDrawer
           />
         </div>

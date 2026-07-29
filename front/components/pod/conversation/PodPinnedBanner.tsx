@@ -1,4 +1,4 @@
-import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
 import { useScopedPodUiPreferences } from "@app/hooks/useScopedUIPreferences";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -45,7 +45,7 @@ function PodPinnedBannerFrame({
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   return (
-    <VisualizationActionIframe
+    <AuthenticatedVisualizationActionIframe
       agentConfigurationId={null}
       workspaceId={owner.sId}
       vizUrl={vizUrl}

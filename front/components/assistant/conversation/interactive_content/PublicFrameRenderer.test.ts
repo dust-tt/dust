@@ -2,18 +2,31 @@ import {
   getPublicFrameUserIdentity,
   PublicFrameRenderer,
 } from "@app/components/assistant/conversation/interactive_content/PublicFrameRenderer";
+import type { ScopedWorkspaceUserIdentity } from "@app/types/assistant/visualization";
 import { cleanup, render, screen } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  iframeProps: null as {
+    canInvokeFunctions: boolean;
+    scopedUserIdentity?: ScopedWorkspaceUserIdentity;
+  } | null,
+  isAuthenticatedMember: true,
   isUserLoading: true,
+  user: null as typeof user | null,
 }));
 
 vi.mock(
   "@app/components/assistant/conversation/actions/VisualizationActionIframe",
   () => ({
-    VisualizationActionIframe: () => "frame-iframe",
+    VisualizationActionIframe: (props: {
+      canInvokeFunctions: boolean;
+      scopedUserIdentity?: ScopedWorkspaceUserIdentity;
+    }) => {
+      mocks.iframeProps = props;
+      return "frame-iframe";
+    },
   })
 );
 
@@ -29,13 +42,13 @@ vi.mock("@app/lib/swr/frames", () => ({
     isFrameLoading: false,
     error: null,
     accessToken: "token",
-    isAuthenticatedMember: true,
+    isAuthenticatedMember: mocks.isAuthenticatedMember,
   }),
 }));
 
 vi.mock("@app/lib/swr/user", () => ({
   useUser: () => ({
-    user: null,
+    user: mocks.user,
     isUserLoading: mocks.isUserLoading,
   }),
 }));
@@ -55,7 +68,10 @@ const user = {
 
 afterEach(() => {
   cleanup();
+  mocks.iframeProps = null;
+  mocks.isAuthenticatedMember = true;
   mocks.isUserLoading = true;
+  mocks.user = null;
 });
 
 describe("getPublicFrameUserIdentity", () => {
@@ -100,5 +116,48 @@ describe("PublicFrameRenderer", () => {
     rerender(createElement(PublicFrameRenderer, props));
 
     expect(screen.getByText("frame-iframe")).not.toBeNull();
+  });
+
+  it("enables function calls with the matching member identity", () => {
+    mocks.isUserLoading = false;
+    mocks.user = user;
+
+    render(
+      createElement(PublicFrameRenderer, {
+        fileId: "file_123",
+        hideHeader: true,
+        shareToken: "share-token",
+        workspaceId: "w_current",
+        vizUrl: "https://viz.dust.tt",
+      })
+    );
+
+    expect(mocks.iframeProps).toMatchObject({
+      canInvokeFunctions: true,
+      scopedUserIdentity: {
+        workspaceId: "w_current",
+        user: expect.objectContaining({ sId: "usr_123" }),
+      },
+    });
+  });
+
+  it("disables function calls without a member identity", () => {
+    mocks.isAuthenticatedMember = false;
+    mocks.isUserLoading = false;
+
+    render(
+      createElement(PublicFrameRenderer, {
+        fileId: "file_123",
+        hideHeader: true,
+        shareToken: "share-token",
+        workspaceId: "w_current",
+        vizUrl: "https://viz.dust.tt",
+      })
+    );
+
+    expect(mocks.iframeProps).toMatchObject({
+      canInvokeFunctions: false,
+      scopedUserIdentity: undefined,
+    });
   });
 });
