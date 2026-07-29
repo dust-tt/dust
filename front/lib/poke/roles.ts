@@ -1,21 +1,15 @@
 import { getPokeUserConfigBucket } from "@app/lib/file_storage";
 import { isGCSPreconditionFailedError } from "@app/lib/file_storage/types";
 import logger from "@app/logger/logger";
+import { type PokeRole, PokeRoleSchema } from "@app/types/poke/roles";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
 
-export const PokeRoleSchema = z.enum([
-  "admin",
-  "billing",
-  "engineering",
-  "support",
-  "talent",
-]);
-
-export type PokeRole = z.infer<typeof PokeRoleSchema>;
+export type { PokeRole } from "@app/types/poke/roles";
+export { hasPokeRole, PokeRoleSchema } from "@app/types/poke/roles";
 
 export const RolesConfigSchema = z.record(
   z.string().email(),
@@ -168,12 +162,4 @@ export async function getPokeRolesForUser(email: string): Promise<PokeRole[]> {
   }
   const roles = await loadRolesForAuth();
   return roles[normalizeEmail(email)] ?? [];
-}
-
-export function hasPokeRole(
-  userRoles: PokeRole[],
-  requiredRoles: PokeRole[]
-): boolean {
-  const userRoleSet = new Set(userRoles);
-  return requiredRoles.some((r) => userRoleSet.has(r));
 }

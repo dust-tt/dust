@@ -11,11 +11,11 @@ import {
 } from "@app/components/poke/shadcn/ui/command";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
-import { hasPokeRole } from "@app/lib/poke/roles";
 import { usePokeAuthContext, usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import { usePokeSearchAllRegions } from "@app/poke/swr/search";
 import type { PokeItemBase } from "@app/types/poke";
+import { hasPokeRole } from "@app/types/poke/roles";
 import type { RegionType } from "@app/types/region";
 import { isDevelopment } from "@app/types/shared/env";
 import {

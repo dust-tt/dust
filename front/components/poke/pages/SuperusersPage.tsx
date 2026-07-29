@@ -4,8 +4,6 @@ import type {
   DriftState,
   SuperuserMemberInfo,
 } from "@app/lib/api/poke/superusers";
-import type { PokeRole } from "@app/lib/poke/roles";
-import { PokeRoleSchema } from "@app/lib/poke/roles";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import {
   useGrantSuperuser,
@@ -14,6 +12,7 @@ import {
   useRevokeSuperuser,
   useUpdateSuperuserRoles,
 } from "@app/poke/swr/superusers";
+import { type PokeRole, PokeRoleSchema } from "@app/types/poke/roles";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Button, Chip, Spinner } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
