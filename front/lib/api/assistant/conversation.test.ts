@@ -34,6 +34,7 @@ import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -89,6 +90,7 @@ vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
 import { runOnRedis } from "@app/lib/api/redis";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
+import { ConversationGoalResource } from "@app/lib/resources/conversation_goal_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
@@ -1606,6 +1608,79 @@ describe("postUserMessage", () => {
     );
 
     vi.clearAllMocks();
+  });
+
+  it("creates an active goal atomically with its first agent turn", async () => {
+    await FeatureFlagFactory.basic(auth, "goal_mode");
+    const user = auth.getNonNullableUser().toJSON();
+
+    const result = await postUserMessage(auth, {
+      conversationResource,
+      content: "Ship and verify Goal Mode",
+      mentions: [{ configurationId: agentConfig1.sId }],
+      context: {
+        username: user.username,
+        timezone: "UTC",
+        fullName: user.fullName,
+        email: user.email,
+        profilePictureUrl: user.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+      goal: { objective: "Ship and verify Goal Mode" },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+
+    const goal = await ConversationGoalResource.fetchLatest(auth, {
+      conversation: conversationResource,
+      branchId: null,
+    });
+    expect(goal?.toJSON()).toMatchObject({
+      objective: "Ship and verify Goal Mode",
+      status: "active",
+      agentConfigurationId: agentConfig1.sId,
+      turnCount: 1,
+      maxTurns: 25,
+    });
+    expect(result.value.agentMessages).toHaveLength(1);
+    expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+
+  });
+
+  it("rejects goal metadata when Goal Mode is not enabled", async () => {
+    const user = auth.getNonNullableUser().toJSON();
+
+    const result = await postUserMessage(auth, {
+      conversationResource,
+      content: "Try to start a goal",
+      mentions: [{ configurationId: agentConfig1.sId }],
+      context: {
+        username: user.username,
+        timezone: "UTC",
+        fullName: user.fullName,
+        email: user.email,
+        profilePictureUrl: user.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+      goal: { objective: "Try to start a goal" },
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(403);
+      expect(result.error.api_error.type).toBe("invalid_request_error");
+    }
+    expect(
+      await ConversationGoalResource.fetchLatest(auth, {
+        conversation: conversationResource,
+        branchId: null,
+      })
+    ).toBeNull();
   });
 
   it("should reject programmatic messages when programmatic credits are exhausted", async () => {

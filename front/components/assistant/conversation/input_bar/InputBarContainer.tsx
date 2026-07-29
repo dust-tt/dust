@@ -328,6 +328,8 @@ const InputBarContainer = ({
     null
   );
   const { subscription } = useAuth();
+  const { hasFeature } = useFeatureFlags();
+  const isGoalModeEnabled = hasFeature("goal_mode");
   const isMobile = useIsMobile();
   const { selectedSingleAgent, setSelectedSingleAgent, isLoadingGoTemplate } =
     useContext(InputBarContext);
@@ -406,6 +408,7 @@ const InputBarContainer = ({
   slashCommandsRef.current = getAvailableInputBarSlashCommands({
     hasAttachment: actions.includes("attachment"),
     hasConversation: Boolean(conversation?.sId),
+    hasGoalMode: isGoalModeEnabled,
   });
   const onSelectRef = useRef<((item: SlashCommand) => void) | undefined>(
     undefined
@@ -682,6 +685,9 @@ const InputBarContainer = ({
           }
         })();
         break;
+      case "goal":
+        editorRef.current?.chain().focus().insertContent("/goal ").run();
+        break;
       default:
         assertNeverAndIgnore(command.id);
     }
@@ -945,7 +951,6 @@ const InputBarContainer = ({
     });
   }, [attachedNodes]);
 
-  const { hasFeature } = useFeatureFlags();
   const isLiveStt = hasFeature("live_speech_to_text");
 
   const voiceTranscriberService = useVoiceTranscriberService({

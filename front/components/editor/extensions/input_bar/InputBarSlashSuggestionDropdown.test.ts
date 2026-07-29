@@ -15,6 +15,7 @@ import {
 const ALL_COMMANDS = getAvailableInputBarSlashCommands({
   hasAttachment: true,
   hasConversation: true,
+  hasGoalMode: true,
 });
 
 function getInputBarSlashCommandItemId(item: SlashCommand): string {
@@ -31,6 +32,7 @@ describe("getAvailableInputBarSlashCommands", () => {
       getAvailableInputBarSlashCommands({
         hasAttachment: true,
         hasConversation: false,
+        hasGoalMode: false,
       }).map((command) => command.id)
     ).toEqual(["upload-file"]);
   });
@@ -40,8 +42,19 @@ describe("getAvailableInputBarSlashCommands", () => {
       getAvailableInputBarSlashCommands({
         hasAttachment: true,
         hasConversation: true,
+        hasGoalMode: false,
       }).map((command) => command.id)
     ).toEqual(["upload-file", "compact"]);
+  });
+
+  it("includes goal only when Goal Mode is enabled", () => {
+    expect(
+      getAvailableInputBarSlashCommands({
+        hasAttachment: false,
+        hasConversation: false,
+        hasGoalMode: true,
+      }).map((command) => command.id)
+    ).toEqual(["goal"]);
   });
 });
 
@@ -64,6 +77,7 @@ describe("buildInputBarSlashCommandItems", () => {
     });
 
     expect(result.map(getInputBarSlashCommandItemId)).toEqual([
+      "goal",
       "compact",
       "upload-file",
       "attach-knowledge",
@@ -77,7 +91,7 @@ describe("buildInputBarSlashCommandItems", () => {
         includeAttachKnowledge: false,
         query: "",
       }).map(getInputBarSlashCommandItemId)
-    ).toEqual(["compact", "upload-file"]);
+    ).toEqual(["goal", "compact", "upload-file"]);
 
     expect(
       buildInputBarSlashCommandItems({

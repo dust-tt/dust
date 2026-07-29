@@ -125,6 +125,14 @@ const app = workspaceApp();
  *             properties:
  *               content:
  *                 type: string
+ *               goal:
+ *                 type: object
+ *                 description: Optional Goal Mode request. When present, the objective is created atomically with this message.
+ *                 required: [objective]
+ *                 properties:
+ *                   objective:
+ *                     type: string
+ *                     maxLength: 4000
  *               mentions:
  *                 type: array
  *                 items:
@@ -266,8 +274,14 @@ app.post(
     const user = auth.getNonNullableUser();
     const { cId: conversationId } = ctx.req.valid("param");
 
-    const { content, context, mentions, skipToolsValidation, modelSelection } =
-      ctx.req.valid("json");
+    const {
+      content,
+      context,
+      goal,
+      mentions,
+      skipToolsValidation,
+      modelSelection,
+    } = ctx.req.valid("json");
 
     if (context.clientSideMCPServerIds) {
       const hasServerAccess = await concurrentExecutor(
@@ -398,6 +412,7 @@ app.post(
       },
       skipToolsValidation: skipToolsValidation ?? false,
       modelSelection,
+      goal,
     });
 
     if (messageRes.isErr()) {

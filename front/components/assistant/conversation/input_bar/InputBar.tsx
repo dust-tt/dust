@@ -1,6 +1,7 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { parseGoalCommand } from "@app/components/assistant/conversation/goal_mode/utils";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer, {
@@ -39,6 +40,7 @@ import type {
   ConversationWithoutContentType,
   SelectableConversationSpaceType,
 } from "@app/types/assistant/conversation";
+import type { GoalCreation } from "@app/types/assistant/goal";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
@@ -82,7 +84,8 @@ interface InputBarProps {
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[],
     selectedSpaceIds?: string[],
-    modelSelection?: ModelSelectionType
+    modelSelection?: ModelSelectionType,
+    goal?: GoalCreation
   ) => Promise<Result<undefined, DustError>>;
   draftKey: string;
   conversation?: ConversationWithoutContentType;
@@ -141,6 +144,7 @@ export const InputBar = React.memo(function InputBar({
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const [isShaking, setIsShaking] = useState(false);
   const { featureFlags } = useFeatureFlags();
+  const isGoalModeEnabled = featureFlags.includes("goal_mode");
 
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
@@ -533,6 +537,7 @@ export const InputBar = React.memo(function InputBar({
     onBeforeSubmit?.();
 
     const { mentions: rawMentions, markdown } = markdownAndMentions;
+    const { input, goal } = parseGoalCommand(markdown, isGoalModeEnabled);
     const shouldInjectSelectedAgent =
       selectedSingleAgent &&
       !rawMentions.some((m) => m.id === selectedSingleAgent.id);
@@ -563,7 +568,8 @@ export const InputBar = React.memo(function InputBar({
         attachment_count: attachedNodes.length + uploadedFiles.length,
         tool_count: selectedMCPServerViews.length,
         tool_names: selectedMCPServerViews.map((t) => t.server.name).join(","),
-        message_length: markdown.length,
+        message_length: input.length,
+        is_goal_mode: Boolean(goal),
       },
     });
 
@@ -575,7 +581,7 @@ export const InputBar = React.memo(function InputBar({
 
       try {
         const r = await onSubmit(
-          markdown,
+          input,
           mentions,
           {
             uploaded: fileUploaderService.getFileBlobs().map((cf) => {
@@ -592,7 +598,8 @@ export const InputBar = React.memo(function InputBar({
           // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
           selectedMCPServerViews.map((sv) => sv.sId),
           selectedSpaceIds,
-          modelSelectionRef.current
+          modelSelectionRef.current,
+          goal
         );
 
         if (r.isOk()) {
@@ -613,7 +620,7 @@ export const InputBar = React.memo(function InputBar({
 
       try {
         const submitPromise = onSubmit(
-          markdown,
+          input,
           mentions,
           {
             uploaded: fileUploaderService.getFileBlobs().map((cf) => {
@@ -630,7 +637,8 @@ export const InputBar = React.memo(function InputBar({
           // conversationTools hook.
           undefined,
           selectedSpaceIds,
-          modelSelectionRef.current
+          modelSelectionRef.current,
+          goal
         );
 
         // Execute these operations in parallel with the submission.

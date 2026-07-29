@@ -97,6 +97,10 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import {
+  ConversationGoalResource,
+  DEFAULT_GOAL_MAX_TURNS,
+} from "@app/lib/resources/conversation_goal_resource";
+import {
   ConversationResource,
   type RunningAgentMessageContext,
 } from "@app/lib/resources/conversation_resource";
@@ -152,6 +156,7 @@ import {
   isUserMessageType,
   UNRESUMABLE_AGENT_MESSAGE_STATUSES,
 } from "@app/types/assistant/conversation";
+import type { GoalCreation } from "@app/types/assistant/goal";
 import type { MentionType } from "@app/types/assistant/mentions";
 import {
   isAgentMention,
@@ -533,6 +538,7 @@ export async function postUserMessage(
     skipDustAutoMention,
     doNotAssociateUser,
     modelSelection,
+    goal,
   }: {
     conversationResource: ConversationResource;
     branchId?: string | null;
@@ -544,6 +550,7 @@ export async function postUserMessage(
     doNotAssociateUser?: boolean;
     skipDustAutoMention?: boolean;
     modelSelection?: ModelSelectionType;
+    goal?: GoalCreation;
   }
 ): Promise<
   Result<
@@ -576,6 +583,25 @@ export async function postUserMessage(
 
   const featureFlags = await getFeatureFlags(auth);
   const isPartOfPod = isPodConversation(conversation);
+
+  if (goal && !featureFlags.includes("goal_mode")) {
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Goal Mode is not enabled for this workspace.",
+      },
+    });
+  }
+  if (goal && !user) {
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Goal Mode requires an authenticated user.",
+      },
+    });
+  }
 
   if (isPartOfPod) {
     // Check if the user is a member of the space.
@@ -685,6 +711,17 @@ export async function postUserMessage(
   let runningAgentMessage: RunningAgentMessageContext | undefined =
     runningAgentContext ?? undefined;
 
+  if (goal && runningAgentMessage) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "A goal cannot be started while another agent turn is still running.",
+      },
+    });
+  }
+
   // Steering invariants: enforce single agent loop per conversation.
   if (explicitAgentMentions.length > 1) {
     return new Err({
@@ -743,6 +780,16 @@ export async function postUserMessage(
 
   let agentConfigurations = removeNulls(results[0]);
   let shouldCreateBranch = false;
+
+  if (goal && agentConfigurations.length !== 1) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Goal Mode requires exactly one agent.",
+      },
+    });
+  }
 
   // Retired global agents can't be invoked (new conversations or new messages).
   // The internal `run_agent` path is exempt: some hidden sub-agents are retired.
@@ -820,7 +867,7 @@ export async function postUserMessage(
   }
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
-  const { userMessage, agentMessages } = await withTransaction(async (t) => {
+  const transactionResult = await withTransaction(async (t) => {
     // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
     // this transaction, otherwise this other query will be competing for a connection in the database
     // connection pool, resulting in a deadlock.
@@ -910,6 +957,20 @@ export async function postUserMessage(
             nextMessageRank = previousMessage.rank + 1;
           }
         }
+      }
+    }
+
+    if (goal) {
+      const existingGoal = await ConversationGoalResource.fetchUnfinished(
+        auth,
+        {
+          conversationModelId: conversation.id,
+          branchId: conversation.branchId,
+          transaction: t,
+        }
+      );
+      if (existingGoal) {
+        return { goalConflict: true as const };
       }
     }
 
@@ -1028,6 +1089,30 @@ export async function postUserMessage(
 
       richMentions.push(...agentRichMentions);
 
+      if (goal) {
+        const agentMessage = agentMessages[0];
+        if (!agentMessage || !user) {
+          throw new Error(
+            "Goal Mode invariant violated: expected one agent message and an authenticated user."
+          );
+        }
+        await ConversationGoalResource.makeNew(
+          auth,
+          {
+            objective: goal.objective,
+            conversationId: conversation.id,
+            branchId: conversation.branchId
+              ? getResourceIdFromSId(conversation.branchId)
+              : null,
+            createdByUserId: user.id,
+            agentConfigurationId: agentMessage.configuration.sId,
+            currentAgentMessageId: agentMessage.agentMessageId,
+            maxTurns: DEFAULT_GOAL_MAX_TURNS,
+          },
+          t
+        );
+      }
+
       const userMessage = {
         ...userMessageWithoutMentions,
         richMentions: richMentions,
@@ -1040,6 +1125,19 @@ export async function postUserMessage(
       };
     }
   });
+
+  if ("goalConflict" in transactionResult) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "An unfinished goal already exists for this conversation branch.",
+      },
+    });
+  }
+
+  const { userMessage, agentMessages } = transactionResult;
 
   // If a user is mentioned, we want to make sure the conversation has a title.
   // This ensures that mentioned users receive a notification with a conversation title.

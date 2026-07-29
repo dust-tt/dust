@@ -7552,6 +7552,19 @@
                   "content": {
                     "type": "string"
                   },
+                  "goal": {
+                    "type": "object",
+                    "description": "Optional Goal Mode request. When present, the objective is created atomically with this message.",
+                    "required": [
+                      "objective"
+                    ],
+                    "properties": {
+                      "objective": {
+                        "type": "string",
+                        "maxLength": 4000
+                      }
+                    }
+                  },
                   "mentions": {
                     "type": "array",
                     "items": {
@@ -8185,6 +8198,19 @@
                     "properties": {
                       "content": {
                         "type": "string"
+                      },
+                      "goal": {
+                        "type": "object",
+                        "description": "Optional Goal Mode request. When present, the objective is created atomically with this message.",
+                        "required": [
+                          "objective"
+                        ],
+                        "properties": {
+                          "objective": {
+                            "type": "string",
+                            "maxLength": 4000
+                          }
+                        }
                       },
                       "mentions": {
                         "type": "array",

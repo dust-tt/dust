@@ -137,6 +137,14 @@ const app = workspaceApp();
  *                 properties:
  *                   content:
  *                     type: string
+ *                   goal:
+ *                     type: object
+ *                     description: Optional Goal Mode request. When present, the objective is created atomically with this message.
+ *                     required: [objective]
+ *                     properties:
+ *                       objective:
+ *                         type: string
+ *                         maxLength: 4000
  *                   mentions:
  *                     type: array
  *                     items:
@@ -459,6 +467,7 @@ app.post(
         },
         skipToolsValidation: skipToolsValidation ?? false,
         modelSelection: message.modelSelection,
+        goal: message.goal,
       });
       if (messageRes.isErr()) {
         return apiError(ctx, messageRes.error);

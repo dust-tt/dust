@@ -1,6 +1,7 @@
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import { z } from "zod";
+import { GoalCreationSchema } from "../assistant/goal";
 import { ModelSelectionSchema } from "../assistant/models/types";
 import type { SupportedNonImageContentType } from "../files";
 import { getSupportedNonImageMimeTypes } from "../files";
@@ -24,6 +25,7 @@ const UserMessageOriginSchema = z.enum([
 
 export const MessageBaseSchema = z.object({
   content: z.string(),
+  goal: GoalCreationSchema.optional(),
   mentions: z.array(z.union([AgentMentionSchema, UserMentionSchema])),
   context: z.object({
     timezone: z.string(),

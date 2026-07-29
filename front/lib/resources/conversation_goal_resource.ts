@@ -16,6 +16,9 @@ import type { GoalStatus, GoalType } from "@app/types/assistant/goal";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import type { Attributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
+
+export const DEFAULT_GOAL_MAX_TURNS = 25;
 
 export class GoalTransitionError extends Error {
   constructor(
@@ -196,6 +199,34 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
         conversationId: conversationModelId,
       },
     });
+  }
+
+  static async fetchUnfinished(
+    auth: Authenticator,
+    {
+      conversationModelId,
+      branchId,
+      transaction,
+    }: {
+      conversationModelId: ModelId;
+      branchId: string | null;
+      transaction?: Transaction;
+    }
+  ): Promise<ConversationGoalResource | null> {
+    const row = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversationModelId,
+        branchId: branchId ? getResourceIdFromSId(branchId) : null,
+        status: { [Op.in]: ["active", "paused"] },
+      },
+      order: [
+        ["createdAt", "DESC"],
+        ["id", "DESC"],
+      ],
+      transaction,
+     });
+     return row ? new this(this.model, row.get()) : null;
   }
 
   static async fetchActiveForAgentLoop(

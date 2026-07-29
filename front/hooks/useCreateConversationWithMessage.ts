@@ -21,6 +21,7 @@ import type {
   ConversationVisibility,
   SubmitMessageError,
 } from "@app/types/assistant/conversation";
+import type { GoalCreation } from "@app/types/assistant/goal";
 import type { MentionType, RichMention } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
@@ -68,6 +69,7 @@ export function useCreateConversationWithMessage({
         richMentions?: RichMention[];
         // Optional per-message model override from the input-bar model picker.
         modelSelection?: ModelSelectionType;
+        goal?: GoalCreation;
       };
       visibility?: ConversationVisibility;
       title?: string;
@@ -102,6 +104,7 @@ export function useCreateConversationWithMessage({
         origin: messageOrigin,
         richMentions,
         modelSelection,
+        goal,
       } = messageData;
       const origin = messageOrigin ?? contextOrigin;
       const selectedSpaceIds =
@@ -159,6 +162,7 @@ export function useCreateConversationWithMessage({
             skipToolsValidation,
             profilePictureUrl: user.image,
             modelSelection,
+            goal,
             onError:
               onError ??
               ((err) => {
@@ -197,6 +201,7 @@ export function useCreateConversationWithMessage({
           },
           mentions,
           modelSelection,
+          goal,
         },
         contentFragments: [
           ...contentFragments.uploaded.map((cf) => ({
@@ -276,6 +281,7 @@ async function postFirstMessageInBackground({
   skipToolsValidation,
   profilePictureUrl,
   modelSelection,
+  goal,
   onError,
 }: {
   workspaceId: string;
@@ -290,6 +296,7 @@ async function postFirstMessageInBackground({
   skipToolsValidation: boolean;
   profilePictureUrl: string | null;
   modelSelection?: ModelSelectionType;
+  goal?: GoalCreation;
   onError?: (err: SubmitMessageError) => void;
 }): Promise<void> {
   const timezone =
@@ -366,6 +373,7 @@ async function postFirstMessageInBackground({
           mentions,
           skipToolsValidation,
           modelSelection,
+          goal,
         }),
       }
     );
