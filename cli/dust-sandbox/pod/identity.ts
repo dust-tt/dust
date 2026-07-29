@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const POD_USER_IDENTITY_ENV = "DUST_POD_USER_IDENTITY";
 export const POD_WORKSPACE_ID_ENV = "WORKSPACE_ID";
 
@@ -14,44 +16,19 @@ interface WorkspaceUserIdentityEnvelope {
   user: WorkspaceUserIdentity;
 }
 
+const workspaceUserIdentityEnvelopeSchema = z.object({
+  workspaceId: z.string(),
+  user: z.object({
+    sId: z.string(),
+    firstName: z.string(),
+    lastName: z.string().nullable(),
+    fullName: z.string(),
+    image: z.string().nullable(),
+  }),
+});
+
 export class PodUserIdentityError extends Error {
   override readonly name = "PodUserIdentityError";
-}
-
-function isNullableString(value: unknown): value is string | null {
-  return value === null || typeof value === "string";
-}
-
-function isWorkspaceUserIdentity(
-  value: unknown
-): value is WorkspaceUserIdentity {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "sId" in value &&
-    typeof value.sId === "string" &&
-    "firstName" in value &&
-    typeof value.firstName === "string" &&
-    "lastName" in value &&
-    isNullableString(value.lastName) &&
-    "fullName" in value &&
-    typeof value.fullName === "string" &&
-    "image" in value &&
-    isNullableString(value.image)
-  );
-}
-
-function isWorkspaceUserIdentityEnvelope(
-  value: unknown
-): value is WorkspaceUserIdentityEnvelope {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "workspaceId" in value &&
-    typeof value.workspaceId === "string" &&
-    "user" in value &&
-    isWorkspaceUserIdentity(value.user)
-  );
 }
 
 /**
@@ -66,16 +43,18 @@ export function currentUser(): WorkspaceUserIdentity | null {
     return null;
   }
 
-  let value: unknown;
+  let parsedJson: unknown;
   try {
-    value = JSON.parse(rawIdentity);
+    parsedJson = JSON.parse(rawIdentity);
   } catch {
     throw new PodUserIdentityError("The Pod user identity is invalid.");
   }
-
-  if (!isWorkspaceUserIdentityEnvelope(value)) {
+  const parsedIdentity =
+    workspaceUserIdentityEnvelopeSchema.safeParse(parsedJson);
+  if (!parsedIdentity.success) {
     throw new PodUserIdentityError("The Pod user identity is invalid.");
   }
+  const value: WorkspaceUserIdentityEnvelope = parsedIdentity.data;
 
   const workspaceId = process.env[POD_WORKSPACE_ID_ENV];
   if (!workspaceId || value.workspaceId !== workspaceId) {
