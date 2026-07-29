@@ -45,7 +45,7 @@ async function fetchStepContentByCallId(
 > {
   const stepContents = await AgentStepContentResource.fetchByAgentMessages(
     auth,
-    { agentMessageIds: [agentMessageModelId], latestVersionsOnly: true }
+    { agentMessageIds: [agentMessageModelId] }
   );
 
   const functionCallStepContents = stepContents.filter(
