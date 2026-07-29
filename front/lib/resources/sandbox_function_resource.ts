@@ -23,6 +23,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
   PostSandboxFunctionInvocationRequestBody,
+  SandboxFunctionInvocationOrigin,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
 import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
@@ -49,6 +50,8 @@ function userIdentityPolicyStrength(
       return 0;
     case "workspace_user_required":
       return 1;
+    case "interactive_workspace_user_required":
+      return 2;
     default:
       return assertNever(policy);
   }
@@ -405,7 +408,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
   async invoke(
     auth: Authenticator,
-    body: PostSandboxFunctionInvocationRequestBody
+    body: PostSandboxFunctionInvocationRequestBody,
+    { origin = "delegated" }: { origin?: SandboxFunctionInvocationOrigin } = {}
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
     if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
@@ -416,18 +420,18 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
     const authorization = await authorizeSandboxFunctionInvocation(auth, {
       userIdentity: this.userIdentity,
+      origin,
     });
     if (!authorization.authorized) {
       return new Err(
-        new SandboxFunctionInvocationError(
-          "This Pod Function requires a logged-in user from its workspace."
-        )
+        new SandboxFunctionInvocationError(authorization.errorMessage)
       );
     }
 
     return SandboxFunctionInvocationResource.createAndStartExecution(auth, {
       sandboxFunction: this,
       body,
+      origin,
     });
   }
 

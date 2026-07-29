@@ -120,7 +120,10 @@ app.post(
       });
     }
 
-    const invocationResult = await sandboxFunction.invoke(auth, body);
+    const invocationResult = await sandboxFunction.invoke(auth, body, {
+      origin:
+        auth.authMethod() === "session" ? "interactive_session" : "delegated",
+    });
     if (invocationResult.isErr()) {
       if (isSandboxFunctionInvocationError(invocationResult.error)) {
         return apiError(ctx, {

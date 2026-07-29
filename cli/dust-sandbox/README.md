@@ -65,6 +65,9 @@ export const schema = {
 ```
 
 Omitting `userIdentity` keeps the function callable without a user.
+Use `interactive_workspace_user_required` when the function must be called
+directly from a logged-in member's live Dust session, rather than by an agent,
+schedule, or API client acting on that member's behalf.
 
 ### Unprivileged execution
 

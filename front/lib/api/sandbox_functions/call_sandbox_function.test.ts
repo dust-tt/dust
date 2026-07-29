@@ -6,7 +6,10 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { SandboxFunctionInvocationEvent } from "@app/types/api/sandbox_functions";
+import type {
+  SandboxFunctionInvocationEvent,
+  SandboxFunctionUserIdentityPolicy,
+} from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -73,7 +76,7 @@ function mockResult(result: unknown, invocationId: string): void {
 async function makeFunction(
   auth: Authenticator,
   space: SpaceResource,
-  userIdentity: "optional" | "workspace_user_required" = "optional"
+  userIdentity: SandboxFunctionUserIdentityPolicy = "optional"
 ): Promise<SandboxFunctionResource> {
   const file = await FileFactory.create(auth, null, {
     contentType: sandboxFunctionContentType,
@@ -138,6 +141,12 @@ describe("callSandboxFunction", () => {
       input: { name: "Soupinou" },
       context: { timezone: "Europe/Paris" },
     });
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledWith(
+      auth,
+      expect.objectContaining({
+        invocation: expect.objectContaining({ origin: "delegated" }),
+      })
+    );
   });
 
   it("returns a typed invocation error", async () => {
@@ -229,6 +238,60 @@ describe("callSandboxFunction", () => {
     });
     expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
     expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+  });
+
+  it("rejects delegated calls to an interactive-session-required function", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const fn = await makeFunction(
+      authenticator,
+      space,
+      "interactive_workspace_user_required"
+    );
+    vi.spyOn(authenticator, "authMethod").mockReturnValue("session");
+
+    const result = await callSandboxFunction(authenticator, fn, {
+      name: "Soupinou",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error).toEqual({
+      code: "user_authentication_required",
+      message:
+        "This Pod Function requires a logged-in workspace member in a live Dust session.",
+    });
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-session authenticator even with an interactive origin", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const fn = await makeFunction(
+      authenticator,
+      space,
+      "interactive_workspace_user_required"
+    );
+
+    const result = await fn.invoke(
+      authenticator,
+      { input: { name: "Soupinou" } },
+      { origin: "interactive_session" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.message).toContain("live Dust session");
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
   });
 
   it("errors when no result event arrives", async () => {

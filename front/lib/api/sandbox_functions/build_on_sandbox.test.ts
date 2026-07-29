@@ -18,7 +18,7 @@ const okEnvelope = JSON.stringify({ ok: true });
 const validSchemaFile = JSON.stringify({
   name: "greet",
   description: "Greet someone.",
-  userIdentity: "workspace_user_required",
+  userIdentity: "interactive_workspace_user_required",
   input_schema: { type: "object", properties: { name: { type: "string" } } },
   output_schema: {
     type: "object",
@@ -79,7 +79,9 @@ describe("buildSandboxFunctionOnSandbox", () => {
       return;
     }
     expect(result.value.bundleCode).toBe("export default {/*bundle*/};");
-    expect(result.value.userIdentity).toBe("workspace_user_required");
+    expect(result.value.userIdentity).toBe(
+      "interactive_workspace_user_required"
+    );
     expect(result.value.inputSchema).toEqual({
       type: "object",
       properties: { name: { type: "string" } },

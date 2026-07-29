@@ -6,7 +6,10 @@ import { z } from "zod";
 export interface FunctionSchema {
   name: string;
   description: string | null;
-  userIdentity: "optional" | "workspace_user_required";
+  userIdentity:
+    | "optional"
+    | "workspace_user_required"
+    | "interactive_workspace_user_required";
   input_schema: Record<string, unknown> | null;
   output_schema: Record<string, unknown> | null;
 }
@@ -17,11 +20,14 @@ function parseUserIdentityPolicy(
   if (value === undefined || value === "optional") {
     return "optional";
   }
-  if (value === "workspace_user_required") {
+  if (
+    value === "workspace_user_required" ||
+    value === "interactive_workspace_user_required"
+  ) {
     return value;
   }
   throw new Error(
-    "`schema.userIdentity` must be `optional` or `workspace_user_required`"
+    "`schema.userIdentity` must be `optional`, `workspace_user_required`, or `interactive_workspace_user_required`"
   );
 }
 
