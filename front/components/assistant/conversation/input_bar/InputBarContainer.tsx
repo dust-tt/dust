@@ -1720,6 +1720,19 @@ const InputBarContainer = ({
           <BubbleMenu
             editor={editor ?? undefined}
             className={cn("flex", isMobile && "hidden")}
+            // Default appendTo is the editor's parent element, which sits
+            // inside the composer's `overflow-hidden` rounded card — Floating
+            // UI's clipping-boundary detection then sees that ancestor and
+            // can push the menu far from the selection to "stay visible"
+            // within it. Escape to the body and position relative to the
+            // viewport instead, so placement is consistent regardless of
+            // where the composer sits on the page.
+            appendTo={() => document.body}
+            options={{
+              strategy: "fixed",
+              placement: "top",
+              offset: 8,
+            }}
           >
             {editor && (
               <Toolbar className={cn("inline-flex", isMobile && "hidden")}>

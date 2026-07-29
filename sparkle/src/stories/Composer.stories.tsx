@@ -1,5 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 
 import { Composer } from "@sparkle/components/Composer";
 import type { ComposerSuggestionItem } from "@sparkle/components/ComposerInput";
@@ -7,18 +14,27 @@ import { ComposerInput } from "@sparkle/components/ComposerInput";
 import {
   ArrowUp,
   Attachment01,
+  Bold01,
+  CheckDone01,
   ChevronDown,
+  Code01,
   Command,
+  DoubleQuotes,
   File01,
   Folder,
   Globe01,
+  Heading01,
   Image01,
+  Italic01,
+  Link01,
+  List,
   Planet,
   Plus,
   Robot,
   SearchMd,
   ShapesPlus,
   Table,
+  Type01,
   UploadCloud02,
 } from "@sparkle/icons/v2-stroke";
 
@@ -44,6 +60,9 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Icon,
+  Toolbar,
+  ToolbarContent,
+  ToolbarIcon,
   Tooltip,
   VoicePicker,
   type VoicePickerStatus,
@@ -198,6 +217,115 @@ function ComposerDemo({
   const [messages, setMessages] = useState<{ id: string; text: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  // Mobile: tapping the "T" button toggles the formatting toolbar (below).
+  const [isToolbarOpen, setIsToolbarOpen] = useState(false);
+  // Desktop: selecting text in the textarea shows it instead, mirroring the
+  // real editor's BubbleMenu.
+  const [hasSelection, setHasSelection] = useState(false);
+  const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
+  // Visual-only demo: the story's ComposerInput is a plain textarea (no
+  // TipTap editor), so these buttons toggle their own active state instead
+  // of applying real formatting to the text.
+  const toggleFormat = useCallback((format: string) => {
+    setActiveFormats((prev) => {
+      const next = new Set(prev);
+      if (next.has(format)) {
+        next.delete(format);
+      } else {
+        next.add(format);
+      }
+      return next;
+    });
+  }, []);
+  const formatGroups = useMemo(
+    () => [
+      {
+        id: "block",
+        items: [
+          <ToolbarIcon
+            key="heading"
+            icon={Heading01}
+            size="xs"
+            active={activeFormats.has("heading")}
+            tooltip="Heading"
+            onClick={() => toggleFormat("heading")}
+          />,
+        ],
+      },
+      {
+        id: "marks",
+        items: [
+          <ToolbarIcon
+            key="bold"
+            icon={Bold01}
+            size="xs"
+            active={activeFormats.has("bold")}
+            tooltip="Bold"
+            onClick={() => toggleFormat("bold")}
+          />,
+          <ToolbarIcon
+            key="italic"
+            icon={Italic01}
+            size="xs"
+            active={activeFormats.has("italic")}
+            tooltip="Italic"
+            onClick={() => toggleFormat("italic")}
+          />,
+          <ToolbarIcon
+            key="link"
+            icon={Link01}
+            size="xs"
+            active={activeFormats.has("link")}
+            tooltip="Link"
+            onClick={() => toggleFormat("link")}
+          />,
+        ],
+      },
+      {
+        id: "lists",
+        items: [
+          <ToolbarIcon
+            key="checklist"
+            icon={CheckDone01}
+            size="xs"
+            active={activeFormats.has("checklist")}
+            tooltip="Checklist"
+            onClick={() => toggleFormat("checklist")}
+          />,
+          <ToolbarIcon
+            key="list"
+            icon={List}
+            size="xs"
+            active={activeFormats.has("list")}
+            tooltip="Bulleted list"
+            onClick={() => toggleFormat("list")}
+          />,
+        ],
+      },
+      {
+        id: "code",
+        items: [
+          <ToolbarIcon
+            key="quote"
+            icon={DoubleQuotes}
+            size="xs"
+            active={activeFormats.has("quote")}
+            tooltip="Quote"
+            onClick={() => toggleFormat("quote")}
+          />,
+          <ToolbarIcon
+            key="code"
+            icon={Code01}
+            size="xs"
+            active={activeFormats.has("code")}
+            tooltip="Code"
+            onClick={() => toggleFormat("code")}
+          />,
+        ],
+      },
+    ],
+    [activeFormats, toggleFormat]
+  );
   const [agentSearch, setAgentSearch] = useState("");
   const [toolSearch, setToolSearch] = useState("");
   const [knowledgeSearch, setKnowledgeSearch] = useState("");
@@ -211,6 +339,38 @@ function ComposerDemo({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nextMessageId = useRef(0);
+  // Anchors the floating desktop toolbar: it's portaled to document.body (like
+  // the real BubbleMenu) so it isn't clipped by the composer's overflow-hidden
+  // card, then positioned centered above this element's top edge.
+  const composerWrapperRef = useRef<HTMLDivElement>(null);
+  const [toolbarAnchor, setToolbarAnchor] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) {
+      return;
+    }
+    const updateSelection = () => {
+      const selected = el.selectionStart !== el.selectionEnd;
+      setHasSelection(selected);
+      const wrapper = composerWrapperRef.current;
+      if (selected && wrapper) {
+        const rect = wrapper.getBoundingClientRect();
+        setToolbarAnchor({ top: rect.top, left: rect.left + rect.width / 2 });
+      }
+    };
+    el.addEventListener("select", updateSelection);
+    el.addEventListener("mouseup", updateSelection);
+    el.addEventListener("keyup", updateSelection);
+    return () => {
+      el.removeEventListener("select", updateSelection);
+      el.removeEventListener("mouseup", updateSelection);
+      el.removeEventListener("keyup", updateSelection);
+    };
+  }, []);
 
   const voice = useMockVoiceService(
     useCallback((transcript: string) => {
@@ -643,183 +803,226 @@ function ComposerDemo({
         </div>
       )}
 
-      <Composer
-        variant={variant}
-        isFocused={isFocused}
-        onContentClick={() => inputRef.current?.focus()}
-        attachments={
-          attachments.length > 0
-            ? attachments.map((attachment) => {
-                const removeAttachment = () => {
-                  revokeAttachmentPreview(attachment);
-                  setAttachments((prev) =>
-                    prev.filter((a) => a.id !== attachment.id)
-                  );
-                };
-                return (
-                  <Tooltip
-                    key={attachment.id}
-                    label={attachment.title}
-                    tooltipTriggerAsChild
-                    trigger={
-                      attachment.previewUrl ? (
-                        <Citation
-                          compact
-                          isLoading={attachment.isUploading}
-                          containerClassName="h-full min-h-24"
-                        >
-                          <CitationImage
-                            imgSrc={attachment.previewUrl}
-                            title={attachment.title}
+      <div ref={composerWrapperRef} className="relative w-full">
+        <Composer
+          variant={variant}
+          isFocused={isFocused}
+          onContentClick={() => inputRef.current?.focus()}
+          attachments={
+            attachments.length > 0
+              ? attachments.map((attachment) => {
+                  const removeAttachment = () => {
+                    revokeAttachmentPreview(attachment);
+                    setAttachments((prev) =>
+                      prev.filter((a) => a.id !== attachment.id)
+                    );
+                  };
+                  return (
+                    <Tooltip
+                      key={attachment.id}
+                      label={attachment.title}
+                      tooltipTriggerAsChild
+                      trigger={
+                        attachment.previewUrl ? (
+                          <Citation
+                            compact
                             isLoading={attachment.isUploading}
-                            onClose={removeAttachment}
-                          />
-                        </Citation>
-                      ) : (
-                        <Citation
-                          compact
-                          containerClassName="h-full min-h-24"
-                          className="h-full"
-                          isLoading={attachment.isUploading}
-                          loadingLabel="Uploading"
-                          action={<CitationClose onClick={removeAttachment} />}
-                        >
-                          <CitationIcons>
-                            <Icon visual={attachment.icon} size="sm" />
-                          </CitationIcons>
-                          <CitationTitle className="truncate text-ellipsis">
-                            {attachment.title}
-                          </CitationTitle>
-                        </Citation>
-                      )
-                    }
-                  />
-                );
-              })
-            : undefined
-        }
-        chips={
-          selectedTools.length > 0 || selectedSpaceIds.length > 0
-            ? [
-                ...selectedTools.map((tool) => (
-                  <Chip
-                    key={tool.id}
-                    size="xs"
-                    label={tool.label}
-                    icon={tool.icon}
-                    className="bg-background text-foreground"
-                    onRemove={() =>
-                      setSelectedTools((prev) =>
-                        prev.filter((t) => t.id !== tool.id)
-                      )
-                    }
-                  />
-                )),
-                ...MOCK_SPACES.filter((space) =>
-                  selectedSpaceIds.includes(space.id)
-                ).map((space) => (
-                  <Chip
-                    key={space.id}
-                    size="xs"
-                    label={space.name}
-                    icon={Planet}
-                    className="bg-background text-foreground"
-                    onRemove={() =>
-                      setSelectedSpaceIds((prev) =>
-                        prev.filter((id) => id !== space.id)
-                      )
-                    }
-                  />
-                )),
-              ]
-            : undefined
-        }
-        leftActions={
-          voice.status !== "recording" && (
-            <>
-              {agentPicker}
-              {plusMenu}
-            </>
-          )
-        }
-        rightActions={
-          <>
-            {modelPicker}
-            {!text || voice.status !== "idle" ? (
-              <VoicePicker
-                status={voice.status}
-                level={voice.level}
-                elapsedSeconds={voice.elapsedSeconds}
-                onRecordStart={voice.startRecording}
-                onRecordStop={voice.stopRecording}
-                size="xs"
-                showStopLabel
-                buttonProps={
-                  voice.status === "idle"
-                    ? {
-                        className: cn(
-                          "rounded-full",
-                          "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:transition-colors",
-                          "bg-linear-to-b from-highlight-400 to-highlight-500 dark:from-blue-500 dark:to-blue-600 text-white",
-                          "shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_color-mix(in_oklch,var(--color-foreground)_10%,transparent)]",
-                          "dark:shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_rgba(0,0,0,0.1)]",
-                          "hover:after:bg-white/10 active:after:bg-white/10"
-                        ),
+                            containerClassName="h-full min-h-24"
+                          >
+                            <CitationImage
+                              imgSrc={attachment.previewUrl}
+                              title={attachment.title}
+                              isLoading={attachment.isUploading}
+                              onClose={removeAttachment}
+                            />
+                          </Citation>
+                        ) : (
+                          <Citation
+                            compact
+                            containerClassName="h-full min-h-24"
+                            className="h-full"
+                            isLoading={attachment.isUploading}
+                            loadingLabel="Uploading"
+                            action={
+                              <CitationClose onClick={removeAttachment} />
+                            }
+                          >
+                            <CitationIcons>
+                              <Icon visual={attachment.icon} size="sm" />
+                            </CitationIcons>
+                            <CitationTitle className="truncate text-ellipsis">
+                              {attachment.title}
+                            </CitationTitle>
+                          </Citation>
+                        )
                       }
-                    : undefined
-                }
-              />
-            ) : (
-              <Button
-                variant="highlight"
-                size="xs"
-                aria-label="Send message"
-                icon={ArrowUp}
-                className="rounded-full"
-                isLoading={isSubmitting}
-                disabled={isSubmitDisabled}
-                onClick={handleSubmit}
-              />
-            )}
-          </>
-        }
-      >
-        <ComposerInput
-          ref={inputRef}
-          value={text}
-          onChange={setText}
-          onSubmit={handleSubmit}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          placeholder="Get work done"
-          suggestions={[
-            {
-              trigger: "/",
-              items: slashItems,
-              onSelect: (item) => {
-                if (item.id === "upload-file") {
-                  fileInputRef.current?.click();
-                  return;
-                }
-                const tool = MOCK_TOOLS.find((t) => t.id === item.id);
-                if (tool) {
-                  addTool(tool);
-                }
+                    />
+                  );
+                })
+              : undefined
+          }
+          chips={
+            selectedTools.length > 0 || selectedSpaceIds.length > 0
+              ? [
+                  ...selectedTools.map((tool) => (
+                    <Chip
+                      key={tool.id}
+                      size="xs"
+                      label={tool.label}
+                      icon={tool.icon}
+                      className="bg-background text-foreground"
+                      onRemove={() =>
+                        setSelectedTools((prev) =>
+                          prev.filter((t) => t.id !== tool.id)
+                        )
+                      }
+                    />
+                  )),
+                  ...MOCK_SPACES.filter((space) =>
+                    selectedSpaceIds.includes(space.id)
+                  ).map((space) => (
+                    <Chip
+                      key={space.id}
+                      size="xs"
+                      label={space.name}
+                      icon={Planet}
+                      className="bg-background text-foreground"
+                      onRemove={() =>
+                        setSelectedSpaceIds((prev) =>
+                          prev.filter((id) => id !== space.id)
+                        )
+                      }
+                    />
+                  )),
+                ]
+              : undefined
+          }
+          leftActions={
+            voice.status !== "recording" && (
+              <>
+                {agentPicker}
+                {plusMenu}
+              </>
+            )
+          }
+          rightActions={
+            <>
+              {modelPicker}
+              {!text || voice.status !== "idle" ? (
+                <VoicePicker
+                  status={voice.status}
+                  level={voice.level}
+                  elapsedSeconds={voice.elapsedSeconds}
+                  onRecordStart={voice.startRecording}
+                  onRecordStop={voice.stopRecording}
+                  size="xs"
+                  showStopLabel
+                  buttonProps={
+                    voice.status === "idle"
+                      ? {
+                          className: cn(
+                            "rounded-full",
+                            "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:transition-colors",
+                            "bg-linear-to-b from-highlight-400 to-highlight-500 dark:from-blue-500 dark:to-blue-600 text-white",
+                            "shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_color-mix(in_oklch,var(--color-foreground)_10%,transparent)]",
+                            "dark:shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_rgba(0,0,0,0.1)]",
+                            "hover:after:bg-white/10 active:after:bg-white/10"
+                          ),
+                        }
+                      : undefined
+                  }
+                />
+              ) : (
+                <Button
+                  variant="highlight"
+                  size="xs"
+                  aria-label="Send message"
+                  icon={ArrowUp}
+                  className="rounded-full"
+                  isLoading={isSubmitting}
+                  disabled={isSubmitDisabled}
+                  onClick={handleSubmit}
+                />
+              )}
+            </>
+          }
+        >
+          {/* Mobile: manual "T" button toggles the overlay toolbar, as in prod. */}
+          <div className="relative flex w-full md:hidden">
+            <ToolbarIcon
+              icon={Type01}
+              size="xs"
+              active={isToolbarOpen}
+              tooltip="Formatting"
+              onClick={() => setIsToolbarOpen((open) => !open)}
+            />
+            <Toolbar
+              variant="overlay"
+              className={cn(
+                isToolbarOpen
+                  ? "pointer-events-auto w-full"
+                  : "pointer-events-none hidden"
+              )}
+              onClose={() => setIsToolbarOpen(false)}
+            >
+              <ToolbarContent groups={formatGroups} />
+            </Toolbar>
+          </div>
+          <ComposerInput
+            ref={inputRef}
+            value={text}
+            onChange={setText}
+            onSubmit={handleSubmit}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            placeholder="Get work done"
+            suggestions={[
+              {
+                trigger: "/",
+                items: slashItems,
+                onSelect: (item) => {
+                  if (item.id === "upload-file") {
+                    fileInputRef.current?.click();
+                    return;
+                  }
+                  const tool = MOCK_TOOLS.find((t) => t.id === item.id);
+                  if (tool) {
+                    addTool(tool);
+                  }
+                },
               },
-            },
-            {
-              trigger: "@",
-              items: mentionItems,
-              onSelect: (item) => {
-                const agent = MOCK_AGENTS.find((a) => a.id === item.id);
-                if (agent) {
-                  setSelectedAgent(agent);
-                }
+              {
+                trigger: "@",
+                items: mentionItems,
+                onSelect: (item) => {
+                  const agent = MOCK_AGENTS.find((a) => a.id === item.id);
+                  if (agent) {
+                    setSelectedAgent(agent);
+                  }
+                },
               },
-            },
-          ]}
-        />
-      </Composer>
+            ]}
+          />
+        </Composer>
+        {/* Desktop: selecting text reveals the toolbar automatically, mirroring
+          the real editor's BubbleMenu. Portaled to the body (like the real
+          BubbleMenu's appendTo) so it floats above the composer instead of
+          being clipped by its overflow-hidden card, centered on top of its
+          top edge. */}
+        {hasSelection &&
+          toolbarAnchor &&
+          createPortal(
+            <div
+              className="fixed z-30 hidden -translate-x-1/2 -translate-y-1/2 md:block"
+              style={{ top: toolbarAnchor.top, left: toolbarAnchor.left }}
+            >
+              <Toolbar variant="inline">
+                <ToolbarContent groups={formatGroups} />
+              </Toolbar>
+            </div>,
+            document.body
+          )}
+      </div>
 
       <p className="text-xs text-muted-foreground">
         <kbd>/</kbd> commands · <kbd>@</kbd> agents · <kbd>↵</kbd> send ·{" "}
