@@ -3,6 +3,7 @@ import { loadAllModels } from "@app/admin/db";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -757,6 +758,7 @@ describe("destroyConversation", () => {
   });
 
   it("should delete MCP actions with a missing step content link", async () => {
+    mockDeleteOwnerPolicy.mockResolvedValue(new Ok(undefined));
     const conversationType = await ConversationFactory.create(auth, {
       agentConfigurationId,
       messagesCreatedAt: [new Date()],
@@ -806,7 +808,7 @@ describe("destroyConversation", () => {
       mcpServerName: "test_server",
     };
 
-    await AgentMCPActionModel.create({
+    const action = await AgentMCPActionModel.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       agentMessageId,
       mcpServerConfigurationId: generateRandomModelSId(),
@@ -823,11 +825,35 @@ describe("destroyConversation", () => {
       },
     });
 
+    await AgentMessageConsumptionItemModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      conversationId: conversation.id,
+      agentMessageId,
+      runUsageId: null,
+      agentMCPActionId: action.id,
+      itemKey: `tool-action:${action.id}`,
+      itemType: "tool",
+      attributionVersion: 1,
+      inputTokensCount: null,
+      outputTokensCount: null,
+      grossAttributedCreditAmountMicro: 0,
+      directCreditAmountMicro: null,
+      completedAt: null,
+    });
+
     const result = await destroyConversation(auth, { conversation });
 
     expect(result.isOk()).toBe(true);
     await expect(
       AgentMCPActionModel.count({
+        where: {
+          agentMessageId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      })
+    ).resolves.toBe(0);
+    await expect(
+      AgentMessageConsumptionItemModel.count({
         where: {
           agentMessageId,
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -7171,6 +7197,7 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
 });
 
 const KNOWN_CONVERSATION_RELATED_MODELS = [
+  "agent_message_consumption_item",
   "agent_message_skills",
   "agent_message_feedback",
   "agent_step_content_tool_execution",

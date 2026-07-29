@@ -2,6 +2,7 @@ import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import {
   AgentMessageFeedbackModel,
@@ -228,6 +229,13 @@ export async function destroyConversation(
       const contentFragmentIds = removeNulls(
         messagesChunk.map((m) => m.contentFragmentId)
       );
+
+      await AgentMessageConsumptionItemModel.destroy({
+        where: {
+          workspaceId: owner.id,
+          agentMessageId: agentMessageIds,
+        },
+      });
 
       await destroyActionsRelatedResources(auth, agentMessageIds);
 
