@@ -557,30 +557,27 @@ const ACTIVATION_RECOMMENDATION_FUNCTION_NAME = "write_recommendation";
 
 const activationRecommendationSpecification: AgentActionSpecification = {
   name: ACTIVATION_RECOMMENDATION_FUNCTION_NAME,
-  description:
-    "Write the intro purpose phrase and summary for a proactive recommendation email",
+  description: "Write the intro goal for a proactive recommendation email",
   inputSchema: {
     type: "object",
     properties: {
-      purpose: {
+      goal: {
         type: "string",
         description:
-          'A short phrase completing the sentence " We put something together to help ...". Start with a lowercase verb, no trailing period, at most ~12 words. Example: "help your team simplify weekly reporting".',
-      },
-      summary: {
-        type: "string",
-        description:
-          "A 1-2 sentence summary of what the recommendation covers and what the reader can try first.",
+          "A clear, friendly, plain-English goal that completes: 'We put together a simple way to help you [GOAL].' " +
+          "Return a concise 6–8 word phrase that fits naturally after 'help you' and expresses what the user will be able to do or achieve. " +
+          "Use direct, everyday language that makes sense to someone unfamiliar with Dust. Avoid Dust-specific terms or references to how the " +
+          "recommendation works, such as 'agent,' 'workflow,' 'prompt,' 'pod,' or 'automation.' " +
+          "For example, return ‘stay on top of important follow-ups’ rather than ‘use an agent to summarize meeting transcripts.’",
       },
     },
-    required: ["purpose", "summary"],
+    required: ["goal"],
   },
 };
 
 // A proactive recommendation email surfaces a conversation a Dust agent
-// prepared for the user. We generate two pieces in a single LLM call: a short
-// "purpose" phrase for the intro line and a 1-2 sentence "summary" of the
-// recommendation content.
+// prepared for the user. We generate a short "goal" phrase for the intro
+// line via a single LLM call.
 const generateActivationRecommendation = async ({
   subscriberId,
   payload,
@@ -589,7 +586,7 @@ const generateActivationRecommendation = async ({
   payload: ConversationDetailsPayload;
 }): Promise<
   Result<
-    { purpose: string; summary: string },
+    { goal: string },
     DustError<
       | "conversation_not_found"
       | "no_whitelisted_model_found"
@@ -636,7 +633,7 @@ const generateActivationRecommendation = async ({
   const recommendationCardSection =
     recommendations.length > 0
       ? `# Recommendation card shown to the user\n` +
-        `Base the purpose and summary primarily on this card; use the conversation below only for supporting context.\n` +
+        `Base the goal primarily on this card; use the conversation below only for supporting context.\n` +
         recommendations
           .map((rec) => `- ${rec.title}: ${rec.content}`)
           .join("\n") +
@@ -644,20 +641,11 @@ const generateActivationRecommendation = async ({
       : "";
 
   const prompt =
-    `# Task\n` +
-    `A Dust agent proactively prepared a recommendation for ${userFullName}. Based on the recommendation card and conversation below, produce two things: a short "purpose" phrase and a 1-2 sentence "summary".\n\n` +
-    `# purpose\n` +
-    `- Completes the sentence: "We put something together to help ___."\n` +
-    `- Start with a lowercase verb, no trailing period, at most ~12 words.\n` +
-    `- Example: "your team simplify weekly reporting".\n\n` +
-    `# summary\n` +
-    `- 1-2 sentences describing what the recommendation covers and what ${userFullName} can try first.\n` +
-    `- Write in second person ("you/your"); NEVER write "${userFullName}".\n` +
-    `- No chat narration ("the agent said", "it then explained"). Describe the content directly.\n` +
-    `- Only include information actually present in the conversation.\n\n` +
-    `# Example\n` +
-    `purpose: "help your team simplify weekly reporting"\n` +
-    `summary: "It covers three practical workflows you can try first, including where Dust can gather information, summarize updates, and prepare a report for review."`;
+    "A clear, friendly, plain-English goal that completes: 'We put together a simple way to help you [GOAL].' " +
+    "Return a concise 6–8 word phrase that fits naturally after 'help you' and expresses what the user will be able to do or achieve. " +
+    "Use direct, everyday language that makes sense to someone unfamiliar with Dust. Avoid Dust-specific terms or references to how the " +
+    "recommendation works, such as 'agent,' 'workflow,' 'prompt,' 'pod,' or 'automation.' " +
+    "For example, return ‘stay on top of important follow-ups’ rather than ‘use an agent to summarize meeting transcripts.’";
 
   const renderedMessages = renderConversationAsText(conversation, {
     includeTimestamps: true,
@@ -690,16 +678,10 @@ const generateActivationRecommendation = async ({
     return new Err(res.error);
   }
 
-  const { purpose, summary } = res.value;
-  if (
-    typeof purpose === "string" &&
-    purpose.length > 0 &&
-    typeof summary === "string" &&
-    summary.length > 0
-  ) {
+  const { goal } = res.value;
+  if (typeof goal === "string" && goal.length > 0) {
     return new Ok({
-      purpose: stripMarkdown(purpose),
-      summary: stripMarkdown(summary),
+      goal: stripMarkdown(goal),
     });
   }
 
@@ -716,7 +698,7 @@ export const getActivationRecommendation = async ({
   details: ConversationDetailsType;
   subscriberId: string;
   payload: ConversationDetailsPayload;
-}): Promise<{ purpose: string | null; summary: string | null }> => {
+}): Promise<{ goal: string | null }> => {
   if (
     details.hasConversationRetentionPolicy ||
     details.hasAgentRetentionPolicies
@@ -730,7 +712,7 @@ export const getActivationRecommendation = async ({
       },
       "[activation] Skipping recommendation generation due to data retention policy; email falls back to static copy."
     );
-    return { purpose: null, summary: null };
+    return { goal: null };
   }
 
   const result = await generateActivationRecommendation({
@@ -757,7 +739,7 @@ export const getActivationRecommendation = async ({
       },
       "[activation] Recommendation generation failed; email falls back to static copy."
     );
-    return { purpose: null, summary: null };
+    return { goal: null };
   }
 
   return result.value;

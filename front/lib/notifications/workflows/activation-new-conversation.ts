@@ -43,8 +43,7 @@ const activationNewConversationDetailsSchema = z.object({
   subject: z.string(),
   workspaceName: z.string(),
   podName: z.string(),
-  purpose: z.string().nullable(),
-  summary: z.string().nullable(),
+  goal: z.string().nullable(),
 });
 
 type activationNewConversationDetailsType = z.infer<
@@ -98,12 +97,11 @@ const getActivationNewConversationDetails = async ({
       subject: "A new conversation",
       workspaceName: "your workspace",
       podName: "your pod",
-      purpose: null,
-      summary: null,
+      goal: null,
     };
   }
 
-  const { purpose, summary } = await getActivationRecommendation({
+  const { goal } = await getActivationRecommendation({
     details: detailsResult.value,
     subscriberId: subscriberId ?? "",
     payload,
@@ -113,8 +111,7 @@ const getActivationNewConversationDetails = async ({
     subject: detailsResult.value.subject,
     workspaceName: detailsResult.value.workspaceName,
     podName: detailsResult.value.projectName ?? "your pod",
-    purpose,
-    summary,
+    goal,
   };
 };
 
@@ -164,8 +161,7 @@ export const activationNewConversationWorkflow = workflow(
             name: details.workspaceName,
           },
           podName: details.podName,
-          purpose: details.purpose,
-          summary: details.summary,
+          goal: details.goal,
           action: {
             label: details.subject,
             url:
