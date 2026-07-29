@@ -1,5 +1,6 @@
 import { Card } from "@sparkle/components/Card";
 import {
+  checkboxIconStyles,
   checkboxIndicatorStyles,
   checkboxStyles,
 } from "@sparkle/components/Checkbox";
@@ -156,13 +157,15 @@ export function OptionCard(props: OptionCardProps) {
       {selectionIndicator === "checkbox" && (
         <div
           aria-hidden="true"
+          data-state={selected ? "checked" : "unchecked"}
           className={cn(checkboxStyles(), "pointer-events-none shrink-0")}
         >
-          {selected && (
-            <div className={checkboxIndicatorStyles()}>
-              <Check className="h-3 w-3 text-background" />
-            </div>
-          )}
+          <div
+            data-state={selected ? "checked" : "unchecked"}
+            className={checkboxIndicatorStyles()}
+          >
+            <Check className={checkboxIconStyles({ state: "checked" })} />
+          </div>
         </div>
       )}
     </Card>
