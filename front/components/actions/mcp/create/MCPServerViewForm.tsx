@@ -34,9 +34,6 @@ export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
           message={form.formState.errors.description?.message}
           placeholder={getMcpServerViewDescription(mcpServerView)}
         />
-        <p className="text-xs text-primary-500">
-          This is only for internal reference and is not shown to the model.
-        </p>
       </div>
     </div>
   );
