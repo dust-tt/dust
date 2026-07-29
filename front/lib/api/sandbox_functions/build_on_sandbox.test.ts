@@ -184,6 +184,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
             JSON.stringify({
               name: "greet",
               description: null,
+              authentication: "optional",
               input_schema: null,
               output_schema: { type: "object" },
             })
@@ -203,7 +204,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
     expect(result.error.code).toBe("invalid_contract");
   });
 
-  it("defaults functions built by an older sandbox image to optional authentication", async () => {
+  it("rejects an older sandbox image that omits authentication", async () => {
     const { authenticator, sandbox, space } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({ exitCode: 0, stdout: okEnvelope, stderr: "" })
@@ -228,11 +229,11 @@ describe("buildSandboxFunctionOnSandbox", () => {
       srcSandboxPath: SRC,
     });
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
       return;
     }
-    expect(result.value.authentication).toBe("optional");
+    expect(result.error.code).toBe("schema_extraction_failed");
   });
 
   it("returns an internal error when the exec itself fails", async () => {

@@ -13,7 +13,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const inputSchema: JSONSchema = {
   type: "object",
@@ -433,6 +433,59 @@ describe("SandboxFunctionResource", () => {
     expect(fetched?.fileId).toBe(firstFile.id);
     expect(fetched?.description).toBe("Second.");
     expect(fetched?.outputSchema).toEqual(newOutputSchema);
+  });
+
+  it("locks re-publish and persists a stricter policy before replacing the bundle", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const file = await FileFactory.create(authenticator, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "greet.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+    const sandboxFunction = await SandboxFunctionResource.makeNew(
+      authenticator,
+      {
+        space,
+        file,
+        slug: "greet",
+        description: "First.",
+        authentication: "optional",
+        inputSchema,
+        outputSchema,
+      }
+    );
+    const lockSpy = vi.spyOn(SandboxFunctionModel, "findOne");
+    vi.spyOn(sandboxFunction.file, "uploadContent").mockRejectedValueOnce(
+      new Error("upload failed")
+    );
+
+    const result = await sandboxFunction.updateContent(authenticator, {
+      bundleCode: "v2",
+      description: "Second.",
+      authentication: "workspace_user_required",
+      inputSchema,
+      outputSchema,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(lockSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lock: expect.anything(),
+        transaction: expect.anything(),
+      })
+    );
+    const fetched = await SandboxFunctionResource.fetchById(
+      authenticator,
+      sandboxFunction.sId
+    );
+    expect(fetched?.authentication).toBe("workspace_user_required");
+    expect(fetched?.description).toBe("First.");
   });
 
   it("deletes all sandbox functions for a space", async () => {

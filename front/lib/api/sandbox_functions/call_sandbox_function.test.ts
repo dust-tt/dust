@@ -211,6 +211,23 @@ describe("callSandboxFunction", () => {
     expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
   });
 
+  it("rejects an authentication policy unknown to this application version", async () => {
+    const { auth, fn } = await setup();
+    Object.assign(fn, { authentication: "newer_required_policy" });
+
+    const result = await callSandboxFunction(auth, fn, {
+      name: "Soupinou",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.code).toBe("user_authentication_required");
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+  });
+
   it("errors when no result event arrives", async () => {
     const { auth, fn } = await setup();
     vi.mocked(getSandboxFunctionInvocationEvents).mockReturnValue(
