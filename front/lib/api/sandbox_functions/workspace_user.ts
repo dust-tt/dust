@@ -2,7 +2,8 @@ import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { SandboxFunctionAuthenticationPolicy } from "@app/types/api/sandbox_functions";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { isSandboxFunctionAuthenticationPolicy } from "@app/types/api/sandbox_functions";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export async function getAuthenticatedWorkspaceUser(
   auth: Authenticator
@@ -29,14 +30,16 @@ export async function authorizeSandboxFunctionInvocation(
   }
 ): Promise<{ authorized: boolean; user: UserResource | null }> {
   const user = await getAuthenticatedWorkspaceUser(auth);
-  const policy = authentication ?? "optional";
+  const policy: unknown = authentication ?? "optional";
+  if (!isSandboxFunctionAuthenticationPolicy(policy)) {
+    return { authorized: false, user: null };
+  }
   switch (policy) {
     case "optional":
       return { authorized: true, user };
     case "workspace_user_required":
       return { authorized: user !== null, user };
     default:
-      assertNeverAndIgnore(policy);
-      return { authorized: false, user: null };
+      return assertNever(policy);
   }
 }
