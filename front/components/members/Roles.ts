@@ -50,12 +50,12 @@ export const ROLES_DATA: Record<
 
 // Role descriptions shown to workspaces with the `admin_governance` feature
 const ADMIN_GOVERNANCE_ROLE_DESCRIPTIONS: Record<ActiveRoleType, string> = {
-  user: "Can use agents in conversations. Building permissions are set by admins.",
+  user: "Can use agents in conversations. Admins and managers control their permissions.",
   builder:
-    "Can use agents in conversations. Building permissions are set by admins.",
+    "Can use agents in conversations. Admins and managers control their permissions.",
   manager: "Can manage members, groups, roles, and workspace analytics.",
   admin:
-    "Full administrative control, including settings, connections, billing, and governance.",
+    "Full workspace control, including settings, connections, billing, and governance.",
 };
 
 export function getRoleDescription(
