@@ -57,8 +57,8 @@ import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { GroupKind } from "@app/types/groups";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
-import type { ResourcePermission } from "@app/types/resource_permissions";
-import { hasRolePermissions } from "@app/types/resource_permissions";
+import type { AccessRule } from "@app/types/resource_permissions";
+import { hasRoleGrants } from "@app/types/resource_permissions";
 import { isDevelopment } from "@app/types/shared/env";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
@@ -201,21 +201,21 @@ export class Authenticator {
   }
 
   /**
-   * Converts an array of arrays of group sIDs into ResourcePermission objects.
+   * Converts an array of arrays of group sIDs into AccessRule objects.
    *
    * This utility method creates standard read/write permissions for each group.
    *
    * Permission logic:
    * - A user must belong to AT LEAST ONE group from EACH sub-array.
-   *   Each sub-array creates a ResourcePermission entry that can be satisfied by ANY of its groups.
+   *   Each sub-array creates a AccessRule entry that can be satisfied by ANY of its groups.
    *   Example: [[1,2], [3,4]] means (1 OR 2) AND (3 OR 4)
    *
    * @param groupIds - Array of arrays of group string identifiers
-   * @returns Array of ResourcePermission objects, one entry per sub-array
+   * @returns Array of AccessRule objects, one entry per sub-array
    */
   static createResourcePermissionsFromGroupIds(
     groupIds: string[][]
-  ): ResourcePermission[] {
+  ): AccessRule[] {
     const getIdFromSIdOrThrow = (groupId: string) => {
       const id = getResourceIdFromSId(groupId);
       if (!id) {
@@ -1223,7 +1223,7 @@ export class Authenticator {
   /**
    * Whether the caller holds a workspace-level capability, asked as a type-level verb (e.g.
    * "create" on "agent"). A thin wrapper over `hasPermission` against a type-wide
-   * `GroupResourcePermission`: the synthetic admin role grants admins every capability by default,
+   * `GrantedAccessRule`: the synthetic admin role grants admins every capability by default,
    * and everyone else derives it from their type-wide grants (which fold in "*" wildcard grants).
    */
   async hasWorkspacePermission(
@@ -1462,20 +1462,17 @@ export class Authenticator {
   }
 
   /**
-   * Checks whether the caller holds `verb` on EVERY one of the given resource permission targets
-   * (conjunction). The caller must pass each target for the check to succeed.
+   * Checks whether the caller holds `verb` on EVERY one of the given access rules (conjunction).
+   * The caller must pass each rule for the check to succeed.
    */
-  hasPermissionForAllResources(
-    resourcePermissions: ResourcePermission[],
-    verb: GrantVerb
-  ): boolean {
-    return resourcePermissions.every((rp) => this.hasPermission(verb, rp));
+  hasPermissionForAll(verb: GrantVerb, rules: AccessRule[]): boolean {
+    return rules.every((rule) => this.hasPermission(verb, rule));
   }
 
   /**
    * Determines whether the caller holds `verb` on a single resource permission target. `verb` is a
    * grant verb (instance verbs like read/write/admin, or type-level capabilities like "create").
-   * Handles both instance targets and type-wide targets: a `GroupResourcePermission` with
+   * Handles both instance targets and type-wide targets: a `GrantedAccessRule` with
    * `resourceId` omitted resolves to the type-wide (-1) grant.
    *
    * Three independent paths (OR):
@@ -1484,9 +1481,9 @@ export class Authenticator {
    *    target's `(resourceType, resourceId)` — a type-wide grant satisfies any instance.
    * 3. Legacy group permissions (inline groups): the caller belongs to a listed group granting `verb`.
    */
-  hasPermission(verb: GrantVerb, target: ResourcePermission): boolean {
+  hasPermission(verb: GrantVerb, target: AccessRule): boolean {
     // 1. Role-based check.
-    if (hasRolePermissions(target)) {
+    if (hasRoleGrants(target)) {
       const workspace = this.getNonNullableWorkspace();
 
       if (
@@ -1524,16 +1521,16 @@ export class Authenticator {
     return false;
   }
 
-  canAdministrate(resourcePermissions: ResourcePermission[]): boolean {
-    return this.hasPermissionForAllResources(resourcePermissions, "admin");
+  canAdministrate(rules: AccessRule[]): boolean {
+    return this.hasPermissionForAll("admin", rules);
   }
 
-  canRead(resourcePermissions: ResourcePermission[]): boolean {
-    return this.hasPermissionForAllResources(resourcePermissions, "read");
+  canRead(rules: AccessRule[]): boolean {
+    return this.hasPermissionForAll("read", rules);
   }
 
-  canWrite(resourcePermissions: ResourcePermission[]): boolean {
-    return this.hasPermissionForAllResources(resourcePermissions, "write");
+  canWrite(rules: AccessRule[]): boolean {
+    return this.hasPermissionForAll("write", rules);
   }
 
   key(): KeyAuthType | null {
