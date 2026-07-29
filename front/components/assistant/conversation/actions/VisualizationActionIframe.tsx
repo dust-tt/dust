@@ -7,6 +7,7 @@ import type {
   SandboxFunctionMCPApproveExecutionEvent,
   SandboxFunctionToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
+import { AuthContext } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -21,6 +22,7 @@ import type {
   CallFunctionRequest,
   CommandResultMap,
   EditTextFn,
+  UserIdentityState,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types/assistant/visualization";
@@ -51,6 +53,7 @@ import type { SetStateAction } from "react";
 import {
   forwardRef,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -75,6 +78,37 @@ type ProtectedVisualization = BaseVisualization & {
 export type Visualization = PublicVisualization | ProtectedVisualization;
 
 export type FrameAccess = "conversation" | "public-anonymous" | "public-member";
+
+interface WorkspaceAuthIdentity {
+  user: NonNullable<UserIdentityState["user"]>;
+  workspace: { sId: string };
+}
+
+export function getConversationFrameUserIdentity(
+  authContext: WorkspaceAuthIdentity | null,
+  frameAccess: FrameAccess,
+  workspaceId: string
+): UserIdentityState {
+  if (
+    frameAccess !== "conversation" ||
+    !authContext ||
+    authContext.workspace.sId !== workspaceId
+  ) {
+    return { isAuthenticated: false, user: null };
+  }
+
+  const { user } = authContext;
+  return {
+    isAuthenticated: true,
+    user: {
+      sId: user.sId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: user.fullName,
+      image: user.image,
+    },
+  };
+}
 
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   request: { command: T } & VisualizationRPCRequest,
@@ -311,6 +345,7 @@ function useVisualizationDataHandler({
   setErrorMessage,
   visualization,
   vizIframeRef,
+  userIdentity,
   waitForSandboxFunctionInvocationResult,
   workspaceId,
 }: {
@@ -326,6 +361,7 @@ function useVisualizationDataHandler({
   setErrorMessage: (v: SetStateAction<string | null>) => void;
   visualization: Visualization;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
+  userIdentity: UserIdentityState;
   waitForSandboxFunctionInvocationResult: (params: {
     functionId: string;
     invocationId: string;
@@ -417,6 +453,10 @@ function useVisualizationDataHandler({
           break;
         }
 
+        case "getUserIdentity":
+          sendResponseToIframe(data, userIdentity, event.source);
+          break;
+
         case "getFile":
           const fileBlob = await getFileBlob(data.params.fileId);
 
@@ -491,6 +531,7 @@ function useVisualizationDataHandler({
     setCodeDrawerOpened,
     visualization.identifier,
     vizIframeRef,
+    userIdentity,
     sendNotification,
     waitForSandboxFunctionInvocationResult,
     workspaceId,
@@ -625,6 +666,15 @@ export const VisualizationActionIframe = forwardRef<
     frameAccess = "conversation",
   } = props;
 
+  const authContext = useContext(AuthContext);
+  const userIdentity = useMemo<UserIdentityState>(() => {
+    return getConversationFrameUserIdentity(
+      authContext,
+      frameAccess,
+      workspaceId
+    );
+  }, [authContext, frameAccess, workspaceId]);
+
   const isPublic = frameAccess !== "conversation";
 
   const getFileBlob = useCallback(
@@ -739,6 +789,7 @@ export const VisualizationActionIframe = forwardRef<
     setErrorMessage,
     visualization,
     vizIframeRef,
+    userIdentity,
     waitForSandboxFunctionInvocationResult,
     workspaceId,
   });

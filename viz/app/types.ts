@@ -11,6 +11,24 @@ interface CallFunctionParams {
   input?: unknown;
 }
 
+export interface WorkspaceUserIdentity {
+  sId: string;
+  firstName: string;
+  lastName: string | null;
+  fullName: string;
+  image: string | null;
+}
+
+export type UserIdentityState =
+  | {
+      isAuthenticated: true;
+      user: WorkspaceUserIdentity;
+    }
+  | {
+      isAuthenticated: false;
+      user: null;
+    };
+
 interface SetContentHeightParams {
   height: number;
 }
@@ -38,6 +56,7 @@ interface EditTextParams {
 // Define a mapped type to extend the base with specific parameters.
 export type VisualizationRPCRequestMap = {
   callFunction: CallFunctionParams;
+  getUserIdentity: null;
   getFile: GetFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
@@ -54,6 +73,7 @@ export type VisualizationRPCCommand = keyof VisualizationRPCRequestMap;
 
 export interface CommandResultMap {
   callFunction: unknown;
+  getUserIdentity: UserIdentityState;
   getCodeToExecute: { code: string };
   getFile: { fileBlob: Blob | null };
   downloadFileRequest: { blob: Blob; filename?: string };

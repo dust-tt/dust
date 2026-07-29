@@ -16,6 +16,10 @@ export class HybridDataAPI implements VisualizationDataAPI {
     return this.rpc.callFunction(functionId, input);
   }
 
+  async getUserIdentity() {
+    return this.rpc.getUserIdentity();
+  }
+
   async fetchFile(fileId: string): Promise<File | null> {
     return this.cache.fetchFile(fileId);
   }

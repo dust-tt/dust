@@ -17,6 +17,41 @@ function hasMessageUniqueId(
 }
 
 describe("makeSendCrossDocumentMessage", () => {
+  it("returns the workspace-scoped identity from the parent", async () => {
+    vi.spyOn(window, "postMessage").mockImplementation((message) => {
+      if (!hasMessageUniqueId(message)) {
+        throw new Error("RPC request has no message id.");
+      }
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          origin: ALLOWED_ORIGIN,
+          data: {
+            messageUniqueId: message.messageUniqueId,
+            result: {
+              isAuthenticated: true,
+              user: {
+                sId: "usr_123",
+                firstName: "Ada",
+                lastName: "Lovelace",
+                fullName: "Ada Lovelace",
+                image: null,
+              },
+            },
+          },
+        })
+      );
+    });
+    const sendMessage = makeSendCrossDocumentMessage({
+      identifier: "frame",
+      allowedOrigins: [ALLOWED_ORIGIN],
+    });
+
+    await expect(sendMessage("getUserIdentity", null)).resolves.toMatchObject({
+      isAuthenticated: true,
+      user: { sId: "usr_123" },
+    });
+  });
+
   it("returns a direct callFunction result from the parent", async () => {
     vi.spyOn(window, "postMessage").mockImplementation((message) => {
       if (!hasMessageUniqueId(message)) {

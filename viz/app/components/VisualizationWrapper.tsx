@@ -9,6 +9,7 @@ import {
   PodFunctionHooksProvider,
   usePodFunction,
   usePodFunctionMutation,
+  useUserIdentity,
 } from "@viz/app/lib/pod-function-hooks";
 import { transformEditableText } from "@viz/app/lib/transformEditableText";
 import type {
@@ -475,6 +476,7 @@ export function VisualizationWrapper({
             useFile: (fileId: string) => useFile(fileId, api.data),
             usePodFunction,
             usePodFunctionMutation,
+            useUserIdentity,
           },
         };
 
