@@ -1,0 +1,45 @@
+front-api/routes/w/[wId]/files/[fileId]/share/grants.ts
+  s_22aa62b9120e4d::t_4fbbbd69c6b78e 1-5,133-150,181-196
+  s_42f528b28a7f7b::t_579b4e77905ccf 197
+front/admin/audit_log_schemas/frame.email_grant_added.json
+  s_22aa62b9120e4d::t_4fbbbd69c6b78e 1-12
+front-api/routes/w/[wId]/files/[fileId]/share/index.ts
+  s_22aa62b9120e4d::t_4fbbbd69c6b78e 1-5,112-127
+  s_42f528b28a7f7b::t_e49add3d1090ef 128
+front-api/routes/w/[wId]/files/[fileId]/share/index.test.ts
+  s_22aa62b9120e4d::t_4fbbbd69c6b78e 11-25,76-79,128-141
+front/admin/audit_log_schemas/frame.email_grant_revoked.json
+  s_22aa62b9120e4d::t_4fbbbd69c6b78e 1-12
+front-api/routes/w/[wId]/files/[fileId]/share/grants.test.ts
+  s_22aa62b9120e4d::t_4fbbbd69c6b78e 11-25,77-80,146-159,266-279
+front/admin/audit_log_schemas/frame.share_scope_updated.json
+  s_22aa62b9120e4d::t_4fbbbd69c6b78e 1-12
+front/lib/api/audit/workos_audit.ts
+  s_22aa62b9120e4d::t_4fbbbd69c6b78e 171-173,417-418
+front/lib/api/audit/schema_versions.json
+  s_22aa62b9120e4d::t_f5844cff5fb70f 33-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "eb9fdb26b948de40d4c1741e343eb967e8c6f3ae",
+  "prompts": {},
+  "sessions": {
+    "s_22aa62b9120e4d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fae68-a172-7232-8af2-194b6369f570",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>"
+    },
+    "s_42f528b28a7f7b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa36b-05d9-7e61-be1a-5a04cc1ffea0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>"
+    }
+  }
+}
