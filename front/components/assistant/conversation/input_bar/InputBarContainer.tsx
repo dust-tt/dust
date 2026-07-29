@@ -139,6 +139,20 @@ function narrowToKnownSlashCommand(
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 const EMPTY_SPACE_IDS: string[] = [];
 const EMPTY_SELECTABLE_SPACES: SelectableConversationSpaceType[] = [];
+
+// Stable references: BubbleMenu's internal effect re-dispatches an editor
+// transaction whenever `appendTo`/`options` change identity, which would
+// re-render this component and recreate them, causing an infinite loop
+// (React error #185, "Maximum update depth exceeded") if these were inline
+// literals on the JSX below.
+function appendBubbleMenuToBody() {
+  return document.body;
+}
+const BUBBLE_MENU_OPTIONS = {
+  strategy: "fixed" as const,
+  placement: "top" as const,
+  offset: 8,
+};
 const acceptSelectedSpaceIds = async (spaceIds: string[]) => spaceIds;
 
 export const INPUT_BAR_ACTIONS = [
@@ -1727,12 +1741,8 @@ const InputBarContainer = ({
             // within it. Escape to the body and position relative to the
             // viewport instead, so placement is consistent regardless of
             // where the composer sits on the page.
-            appendTo={() => document.body}
-            options={{
-              strategy: "fixed",
-              placement: "top",
-              offset: 8,
-            }}
+            appendTo={appendBubbleMenuToBody}
+            options={BUBBLE_MENU_OPTIONS}
           >
             {editor && (
               <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
