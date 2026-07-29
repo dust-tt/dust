@@ -825,7 +825,7 @@ describe("destroyConversation", () => {
       },
     });
 
-    await AgentMessageConsumptionItemResource.recordItems(auth, {
+    await AgentMessageConsumptionItemResource.insertItemsIdempotently(auth, {
       conversationModelId: conversation.id,
       agentMessageModelId: agentMessageId,
       attributionVersion: 1,
@@ -855,8 +855,8 @@ describe("destroyConversation", () => {
       })
     ).resolves.toBe(0);
     await expect(
-      AgentMessageConsumptionItemResource.listByAgentMessageModelId(auth, {
-        agentMessageModelId: agentMessageId,
+      AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+        agentMessageModelIds: [agentMessageId],
         attributionVersion: 1,
       })
     ).resolves.toHaveLength(0);

@@ -72,7 +72,7 @@ async function setupMessageWithEvidence(
 }
 
 describe("AgentMessageConsumptionItemResource", () => {
-  it("records completed facts idempotently without rewriting them", async () => {
+  it("keeps the first completed facts when insertion is retried", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const context = await setupMessageWithEvidence(auth, workspace);
     const records = [
@@ -95,25 +95,30 @@ describe("AgentMessageConsumptionItemResource", () => {
       },
     ];
 
-    const initialItems = await AgentMessageConsumptionItemResource.recordItems(
-      auth,
-      {
-        ...context,
-        attributionVersion: 1,
-        records,
-      }
-    );
-    const retriedItems = await AgentMessageConsumptionItemResource.recordItems(
-      auth,
-      {
-        ...context,
-        attributionVersion: 1,
-        records,
-      }
-    );
+    await AgentMessageConsumptionItemResource.insertItemsIdempotently(auth, {
+      ...context,
+      attributionVersion: 1,
+      records,
+    });
+    await AgentMessageConsumptionItemResource.insertItemsIdempotently(auth, {
+      ...context,
+      attributionVersion: 1,
+      records: [
+        { ...records[0], inputTokensCount: 101 },
+        { ...records[1], inputTokensCount: 41 },
+      ],
+    });
 
-    expect(initialItems).toHaveLength(2);
-    expect(retriedItems).toEqual(
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [context.agentMessageModelId],
+          attributionVersion: 1,
+        }
+      );
+    expect(items).toHaveLength(2);
+    expect(items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           itemKey: `run-usage:${context.runUsageModelId}:input`,
@@ -129,35 +134,37 @@ describe("AgentMessageConsumptionItemResource", () => {
         }),
       ])
     );
-    expect(retriedItems.every((item) => item.completedAt !== null)).toBe(true);
-    expect(retriedItems.map((item) => item.updatedAt)).toEqual(
-      initialItems.map((item) => item.updatedAt)
-    );
+    expect(items.every((item) => item.completedAt !== null)).toBe(true);
   });
 
-  it("completes an approval-spanning fact and makes it immutable", async () => {
+  it("completes an approval-spanning fact without rewriting completed evidence", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const context = await setupMessageWithEvidence(auth, workspace);
-    const [pending] = await AgentMessageConsumptionItemResource.recordItems(
-      auth,
-      {
-        ...context,
-        agentMessageModelId: context.agentMessageModelId,
-        attributionVersion: 1,
-        records: [
-          {
-            itemType: "tool",
-            runUsageModelId: context.runUsageModelId,
-            agentMCPActionModelId: context.action.id,
-            inputTokensCount: null,
-            outputTokensCount: 12,
-            grossAttributedCreditAmountMicro: 400_000,
-            directCreditAmountMicro: null,
-            state: "pending",
-          },
-        ],
-      }
-    );
+    await AgentMessageConsumptionItemResource.insertItemsIdempotently(auth, {
+      ...context,
+      agentMessageModelId: context.agentMessageModelId,
+      attributionVersion: 1,
+      records: [
+        {
+          itemType: "tool",
+          runUsageModelId: context.runUsageModelId,
+          agentMCPActionModelId: context.action.id,
+          inputTokensCount: null,
+          outputTokensCount: 12,
+          grossAttributedCreditAmountMicro: 400_000,
+          directCreditAmountMicro: null,
+          state: "pending",
+        },
+      ],
+    });
+    const [pending] =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [context.agentMessageModelId],
+          attributionVersion: 1,
+        }
+      );
     expect(pending).toMatchObject({
       inputTokensCount: null,
       outputTokensCount: 12,
@@ -175,15 +182,19 @@ describe("AgentMessageConsumptionItemResource", () => {
       directCreditAmountMicro: 1_000_000,
       state: "completed" as const,
     };
-    const [completed] = await AgentMessageConsumptionItemResource.recordItems(
-      auth,
-      {
-        ...context,
-        agentMessageModelId: context.agentMessageModelId,
-        attributionVersion: 1,
-        records: [finalRecord],
-      }
-    );
+    await AgentMessageConsumptionItemResource.completeItemsIdempotently(auth, {
+      ...context,
+      attributionVersion: 1,
+      records: [finalRecord],
+    });
+    const [completed] =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [context.agentMessageModelId],
+          attributionVersion: 1,
+        }
+      );
     expect(completed).toMatchObject({
       inputTokensCount: 40,
       outputTokensCount: 12,
@@ -192,68 +203,75 @@ describe("AgentMessageConsumptionItemResource", () => {
     });
     expect(completed.completedAt).not.toBeNull();
 
-    await expect(
-      AgentMessageConsumptionItemResource.recordItems(auth, {
-        ...context,
-        attributionVersion: 1,
-        records: [finalRecord],
-      })
-    ).resolves.toEqual([expect.objectContaining({ id: completed.id })]);
+    await AgentMessageConsumptionItemResource.completeItemsIdempotently(auth, {
+      ...context,
+      attributionVersion: 1,
+      records: [{ ...finalRecord, inputTokensCount: 41 }],
+    });
+    await AgentMessageConsumptionItemResource.insertItemsIdempotently(auth, {
+      ...context,
+      attributionVersion: 1,
+      records: [
+        {
+          ...finalRecord,
+          inputTokensCount: null,
+          grossAttributedCreditAmountMicro: 400_000,
+          directCreditAmountMicro: null,
+          state: "pending",
+        },
+      ],
+    });
 
-    await expect(
-      AgentMessageConsumptionItemResource.recordItems(auth, {
-        ...context,
-        attributionVersion: 1,
-        records: [{ ...finalRecord, inputTokensCount: 41 }],
-      })
-    ).rejects.toThrow("Completed consumption item");
+    const [unchanged] =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [context.agentMessageModelId],
+          attributionVersion: 1,
+        }
+      );
+    expect(unchanged).toMatchObject({
+      id: completed.id,
+      inputTokensCount: 40,
+      grossAttributedCreditAmountMicro: 2_000_000,
+      directCreditAmountMicro: 1_000_000,
+    });
   });
 
-  it("rejects evidence sources owned by another agent message", async () => {
+  it("inserts a completed fact when no pending row exists", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
-    const owner = await setupMessageWithEvidence(auth, workspace);
-    const foreign = await setupMessageWithEvidence(auth, workspace);
+    const context = await setupMessageWithEvidence(auth, workspace);
+
+    await AgentMessageConsumptionItemResource.completeItemsIdempotently(auth, {
+      ...context,
+      attributionVersion: 1,
+      records: [
+        {
+          itemType: "tool",
+          runUsageModelId: context.runUsageModelId,
+          agentMCPActionModelId: context.action.id,
+          inputTokensCount: 40,
+          outputTokensCount: 12,
+          grossAttributedCreditAmountMicro: 2_000_000,
+          directCreditAmountMicro: 1_000_000,
+          state: "completed",
+        },
+      ],
+    });
 
     await expect(
-      AgentMessageConsumptionItemResource.recordItems(auth, {
-        conversationModelId: owner.conversationModelId,
-        agentMessageModelId: owner.agentMessageModelId,
+      AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+        agentMessageModelIds: [context.agentMessageModelId],
         attributionVersion: 1,
-        records: [
-          {
-            itemType: "tool",
-            runUsageModelId: owner.runUsageModelId,
-            agentMCPActionModelId: foreign.action.id,
-            inputTokensCount: null,
-            outputTokensCount: 12,
-            grossAttributedCreditAmountMicro: 400_000,
-            directCreditAmountMicro: null,
-            state: "pending",
-          },
-        ],
       })
-    ).rejects.toThrow(
-      "Consumption item action does not belong to the agent message"
-    );
-
-    await expect(
-      AgentMessageConsumptionItemResource.recordItems(auth, {
-        conversationModelId: owner.conversationModelId,
-        agentMessageModelId: owner.agentMessageModelId,
-        attributionVersion: 1,
-        records: [
-          {
-            itemType: "input",
-            runUsageModelId: foreign.runUsageModelId,
-            inputTokensCount: 100,
-            grossAttributedCreditAmountMicro: 300_000,
-            state: "completed",
-          },
-        ],
-      })
-    ).rejects.toThrow(
-      "Consumption item run usage does not belong to the agent message"
-    );
+    ).resolves.toEqual([
+      expect.objectContaining({
+        itemKey: `tool-action:${context.action.id}`,
+        inputTokensCount: 40,
+        outputTokensCount: 12,
+        completedAt: expect.any(Date),
+      }),
+    ]);
   });
 
   it("deletes facts only for the requested owning messages", async () => {
@@ -267,7 +285,7 @@ describe("AgentMessageConsumptionItemResource", () => {
       runUsageModelId: ModelId;
       action: AgentMCPActionResource;
     }) {
-      await AgentMessageConsumptionItemResource.recordItems(auth, {
+      await AgentMessageConsumptionItemResource.insertItemsIdempotently(auth, {
         ...context,
         attributionVersion: 1,
         records: [
@@ -295,14 +313,14 @@ describe("AgentMessageConsumptionItemResource", () => {
     );
 
     await expect(
-      AgentMessageConsumptionItemResource.listByAgentMessageModelId(auth, {
-        agentMessageModelId: first.agentMessageModelId,
+      AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+        agentMessageModelIds: [first.agentMessageModelId],
         attributionVersion: 1,
       })
     ).resolves.toHaveLength(0);
     await expect(
-      AgentMessageConsumptionItemResource.listByAgentMessageModelId(auth, {
-        agentMessageModelId: second.agentMessageModelId,
+      AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+        agentMessageModelIds: [second.agentMessageModelId],
         attributionVersion: 1,
       })
     ).resolves.toHaveLength(1);

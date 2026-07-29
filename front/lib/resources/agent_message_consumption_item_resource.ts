@@ -1,46 +1,45 @@
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
-import {
-  AgentMessageModel,
-  ConversationModel,
-} from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import {
-  RunModel,
-  RunUsageModel,
-} from "@app/lib/resources/storage/models/runs";
+import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { Attributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
-interface ConsumptionItemEvidenceBase {
+type ConsumptionItemState = "pending" | "completed";
+
+interface ConsumptionItemEvidenceBase<
+  TState extends ConsumptionItemState = ConsumptionItemState,
+> {
   grossAttributedCreditAmountMicro: number;
-  state: "pending" | "completed";
+  state: TState;
 }
 
-export type AgentMessageConsumptionItemRecord =
-  | (ConsumptionItemEvidenceBase & {
+export type AgentMessageConsumptionItemRecord<
+  TState extends ConsumptionItemState = ConsumptionItemState,
+> =
+  | (ConsumptionItemEvidenceBase<TState> & {
       itemType: "system" | "input";
       runUsageModelId: ModelId;
       inputTokensCount: number | null;
     })
-  | (ConsumptionItemEvidenceBase & {
+  | (ConsumptionItemEvidenceBase<TState> & {
       itemType: "output" | "reasoning";
       runUsageModelId: ModelId;
       outputTokensCount: number | null;
     })
-  | (ConsumptionItemEvidenceBase & {
+  | (ConsumptionItemEvidenceBase<TState> & {
       itemType: "tool";
       runUsageModelId: ModelId | null;
       agentMCPActionModelId: ModelId;
+      /** Estimated tokens in the result returned by this tool execution */
       inputTokensCount: number | null;
+      /** Estimated tokens in the model output that emitted the tool name and arguments */
       outputTokensCount: number | null;
       directCreditAmountMicro: number | null;
     });
@@ -52,6 +51,27 @@ type ConsumptionItemEvidenceAttributes = Pick<
   | "grossAttributedCreditAmountMicro"
   | "directCreditAmountMicro"
 >;
+
+type ConsumptionItemCreationAttributes =
+  CreationAttributes<AgentMessageConsumptionItemModel>;
+
+const UPSERT_COLUMNS = [
+  "workspaceId",
+  "conversationId",
+  "agentMessageId",
+  "runUsageId",
+  "agentMCPActionId",
+  "itemKey",
+  "itemType",
+  "attributionVersion",
+  "inputTokensCount",
+  "outputTokensCount",
+  "grossAttributedCreditAmountMicro",
+  "directCreditAmountMicro",
+  "completedAt",
+  "createdAt",
+  "updatedAt",
+] as const satisfies ReadonlyArray<keyof ConsumptionItemCreationAttributes>;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMessageConsumptionItemResource
@@ -123,274 +143,183 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }
   }
 
-  private static hasSameSource(
-    item: AgentMessageConsumptionItemModel,
-    record: AgentMessageConsumptionItemRecord
-  ): boolean {
-    switch (record.itemType) {
-      case "system":
-      case "input":
-      case "output":
-      case "reasoning":
-        return (
-          item.itemType === record.itemType &&
-          item.runUsageId === record.runUsageModelId &&
-          item.agentMCPActionId === null
-        );
-
-      case "tool":
-        return (
-          item.itemType === "tool" &&
-          item.runUsageId === record.runUsageModelId &&
-          item.agentMCPActionId === record.agentMCPActionModelId
-        );
-
-      default:
-        return assertNever(record);
-    }
-  }
-
-  private static hasSameEvidence(
-    item: AgentMessageConsumptionItemModel,
-    evidence: ConsumptionItemEvidenceAttributes
-  ): boolean {
-    return (
-      item.inputTokensCount === evidence.inputTokensCount &&
-      item.outputTokensCount === evidence.outputTokensCount &&
-      item.grossAttributedCreditAmountMicro ===
-        evidence.grossAttributedCreditAmountMicro &&
-      item.directCreditAmountMicro === evidence.directCreditAmountMicro
-    );
-  }
-
-  private static async validateOwnership(
-    auth: Authenticator,
-    {
-      conversationModelId,
-      agentMessageModelId,
-      records,
-      transaction,
-    }: {
-      conversationModelId: ModelId;
-      agentMessageModelId: ModelId;
-      records: AgentMessageConsumptionItemRecord[];
-      transaction?: Transaction;
-    }
-  ): Promise<void> {
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
-    const [conversation, agentMessage] = await Promise.all([
-      ConversationModel.findOne({
-        where: { id: conversationModelId, workspaceId: workspaceModelId },
-        transaction,
-      }),
-      AgentMessageModel.findOne({
-        where: { id: agentMessageModelId, workspaceId: workspaceModelId },
-        transaction,
-      }),
-    ]);
-
-    if (!conversation || !agentMessage) {
-      throw new Error("Consumption item owner was not found in the workspace");
-    }
-    if (agentMessage.conversationId !== conversation.id) {
-      throw new Error(
-        "Consumption item conversation does not own the agent message"
-      );
-    }
-
-    const runUsageModelIds = [
-      ...new Set(
-        records.flatMap((record) =>
-          record.runUsageModelId === null ? [] : [record.runUsageModelId]
-        )
-      ),
-    ];
-    if (runUsageModelIds.length > 0) {
-      const runUsages = await RunUsageModel.findAll({
-        where: {
-          id: { [Op.in]: runUsageModelIds },
-          workspaceId: workspaceModelId,
-        },
-        transaction,
-      });
-      const runs = await RunModel.findAll({
-        where: {
-          id: { [Op.in]: runUsages.map((usage) => usage.runId) },
-          workspaceId: workspaceModelId,
-        },
-        transaction,
-      });
-      const runByModelId = new Map(runs.map((run) => [run.id, run]));
-      const messageRunIds = new Set(agentMessage.runIds ?? []);
-      if (
-        runUsages.length !== runUsageModelIds.length ||
-        runUsages.some((usage) => {
-          const run = runByModelId.get(usage.runId);
-          return !run || !messageRunIds.has(run.dustRunId);
-        })
-      ) {
-        throw new Error(
-          "Consumption item run usage does not belong to the agent message"
-        );
-      }
-    }
-
-    const actionModelIds = [
-      ...new Set(
-        records.flatMap((record) =>
-          record.itemType === "tool" ? [record.agentMCPActionModelId] : []
-        )
-      ),
-    ];
-    if (actionModelIds.length > 0) {
-      const actions = await AgentMCPActionModel.findAll({
-        where: {
-          id: { [Op.in]: actionModelIds },
-          workspaceId: workspaceModelId,
-          agentMessageId: agentMessageModelId,
-        },
-        transaction,
-      });
-      if (actions.length !== actionModelIds.length) {
-        throw new Error(
-          "Consumption item action does not belong to the agent message"
-        );
-      }
-    }
-  }
-
-  static async recordItems(
-    auth: Authenticator,
-    {
-      conversationModelId,
-      agentMessageModelId,
-      attributionVersion,
-      records,
-      transaction,
-    }: {
-      conversationModelId: ModelId;
-      agentMessageModelId: ModelId;
-      attributionVersion: number;
-      records: AgentMessageConsumptionItemRecord[];
-      transaction?: Transaction;
-    }
-  ): Promise<AgentMessageConsumptionItemResource[]> {
-    if (records.length === 0) {
-      return [];
-    }
-
+  private static assertUniqueItemKeys(
+    records: AgentMessageConsumptionItemRecord[]
+  ): void {
     const itemKeys = records.map((record) => this.itemKey(record));
     if (new Set(itemKeys).size !== itemKeys.length) {
       throw new Error("Consumption items contain duplicate identities");
     }
-
-    await this.validateOwnership(auth, {
-      conversationModelId,
-      agentMessageModelId,
-      records,
-      transaction,
-    });
-
-    return withTransaction(async (currentTransaction) => {
-      const workspaceModelId = auth.getNonNullableWorkspace().id;
-      const completedAt = new Date();
-      await this.model.bulkCreate(
-        records.map((record) => {
-          const attributes = this.evidenceAttributes(record);
-          return {
-            ...attributes,
-            workspaceId: workspaceModelId,
-            conversationId: conversationModelId,
-            agentMessageId: agentMessageModelId,
-            runUsageId: record.runUsageModelId,
-            agentMCPActionId:
-              record.itemType === "tool" ? record.agentMCPActionModelId : null,
-            itemKey: this.itemKey(record),
-            itemType: record.itemType,
-            attributionVersion,
-            completedAt: record.state === "completed" ? completedAt : null,
-          };
-        }),
-        {
-          ignoreDuplicates: true,
-          transaction: currentTransaction,
-          validate: true,
-        }
-      );
-
-      const items = await this.model.findAll({
-        where: {
-          workspaceId: workspaceModelId,
-          agentMessageId: agentMessageModelId,
-          attributionVersion,
-          itemKey: { [Op.in]: itemKeys },
-        },
-        lock: currentTransaction.LOCK.UPDATE,
-        order: [["id", "ASC"]],
-        transaction: currentTransaction,
-      });
-      const itemByKey = new Map(items.map((item) => [item.itemKey, item]));
-
-      for (const record of records) {
-        const itemKey = this.itemKey(record);
-        const item = itemByKey.get(itemKey);
-        if (
-          !item ||
-          item.conversationId !== conversationModelId ||
-          !this.hasSameSource(item, record)
-        ) {
-          throw new Error(`Conflicting consumption item identity ${itemKey}`);
-        }
-        const attributes = this.evidenceAttributes(record);
-        if (item.completedAt !== null) {
-          if (
-            record.state === "completed" &&
-            !this.hasSameEvidence(item, attributes)
-          ) {
-            throw new Error(
-              `Completed consumption item ${itemKey} is immutable`
-            );
-          }
-          continue;
-        }
-
-        if (
-          record.state === "pending" &&
-          this.hasSameEvidence(item, attributes)
-        ) {
-          continue;
-        }
-
-        item.set({
-          ...attributes,
-          completedAt: record.state === "completed" ? completedAt : null,
-        });
-        await item.save({ transaction: currentTransaction });
-      }
-
-      return items.map((item) => new this(this.model, item.get()));
-    }, transaction);
   }
 
-  static async listByAgentMessageModelId(
+  private static creationAttributes(
+    workspaceModelId: ModelId,
+    {
+      conversationModelId,
+      agentMessageModelId,
+      attributionVersion,
+      record,
+      now,
+    }: {
+      conversationModelId: ModelId;
+      agentMessageModelId: ModelId;
+      attributionVersion: number;
+      record: AgentMessageConsumptionItemRecord;
+      now: Date;
+    }
+  ): ConsumptionItemCreationAttributes {
+    return {
+      ...this.evidenceAttributes(record),
+      workspaceId: workspaceModelId,
+      conversationId: conversationModelId,
+      agentMessageId: agentMessageModelId,
+      runUsageId: record.runUsageModelId,
+      agentMCPActionId:
+        record.itemType === "tool" ? record.agentMCPActionModelId : null,
+      itemKey: this.itemKey(record),
+      itemType: record.itemType,
+      attributionVersion,
+      completedAt: record.state === "completed" ? now : null,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  /**
+   * Inserts initial attribution facts without changing an existing identity
+   * Normal executions insert completed facts while approval stops insert pending facts
+   */
+  static async insertItemsIdempotently(
     auth: Authenticator,
     {
+      conversationModelId,
       agentMessageModelId,
+      attributionVersion,
+      records,
+      transaction,
+    }: {
+      conversationModelId: ModelId;
+      agentMessageModelId: ModelId;
+      attributionVersion: number;
+      records: AgentMessageConsumptionItemRecord[];
+      transaction?: Transaction;
+    }
+  ): Promise<void> {
+    if (records.length === 0) {
+      return;
+    }
+
+    this.assertUniqueItemKeys(records);
+    const now = new Date();
+    await this.model.bulkCreate(
+      records.map((record) =>
+        this.creationAttributes(auth.getNonNullableWorkspace().id, {
+          conversationModelId,
+          agentMessageModelId,
+          attributionVersion,
+          record,
+          now,
+        })
+      ),
+      { ignoreDuplicates: true, transaction, validate: true }
+    );
+  }
+
+  /**
+   * Completes approval-spanning facts
+   * A missing pending fact is inserted and an already completed fact stays immutable
+   */
+  static async completeItemsIdempotently(
+    auth: Authenticator,
+    {
+      conversationModelId,
+      agentMessageModelId,
+      attributionVersion,
+      records,
+      transaction,
+    }: {
+      conversationModelId: ModelId;
+      agentMessageModelId: ModelId;
+      attributionVersion: number;
+      records: AgentMessageConsumptionItemRecord<"completed">[];
+      transaction?: Transaction;
+    }
+  ): Promise<void> {
+    if (records.length === 0) {
+      return;
+    }
+
+    this.assertUniqueItemKeys(records);
+    const now = new Date();
+    const attributes = records.map((record) =>
+      this.creationAttributes(auth.getNonNullableWorkspace().id, {
+        conversationModelId,
+        agentMessageModelId,
+        attributionVersion,
+        record,
+        now,
+      })
+    );
+    for (const itemAttributes of attributes) {
+      await this.model.build(itemAttributes).validate();
+    }
+
+    const bind = attributes.flatMap((itemAttributes) =>
+      UPSERT_COLUMNS.map((column) => itemAttributes[column])
+    );
+    const valueTuples = attributes.map((_, rowIndex) => {
+      const firstParameterIndex = rowIndex * UPSERT_COLUMNS.length + 1;
+      return `(${UPSERT_COLUMNS.map(
+        (__, columnIndex) => `$${firstParameterIndex + columnIndex}`
+      ).join(", ")})`;
+    });
+    const quotedColumns = UPSERT_COLUMNS.map((column) => `"${column}"`).join(
+      ", "
+    );
+
+    // biome-ignore lint/plugin/noRawSql: Conditional upsert prevents pending completion races
+    await frontSequelize.query(
+      `INSERT INTO "agent_message_consumption_items" (${quotedColumns})
+       VALUES ${valueTuples.join(", ")}
+       ON CONFLICT ("workspaceId", "agentMessageId", "attributionVersion", "itemKey")
+       DO UPDATE SET
+         "inputTokensCount" = EXCLUDED."inputTokensCount",
+         "outputTokensCount" = EXCLUDED."outputTokensCount",
+         "grossAttributedCreditAmountMicro" = EXCLUDED."grossAttributedCreditAmountMicro",
+         "directCreditAmountMicro" = EXCLUDED."directCreditAmountMicro",
+         "completedAt" = EXCLUDED."completedAt",
+         "updatedAt" = EXCLUDED."updatedAt"
+       WHERE "agent_message_consumption_items"."completedAt" IS NULL`,
+      { bind, type: QueryTypes.INSERT, transaction }
+    );
+  }
+
+  static async listByAgentMessageModelIds(
+    auth: Authenticator,
+    {
+      agentMessageModelIds,
       attributionVersion,
       transaction,
     }: {
-      agentMessageModelId: ModelId;
+      agentMessageModelIds: ModelId[];
       attributionVersion: number;
       transaction?: Transaction;
     }
   ): Promise<AgentMessageConsumptionItemResource[]> {
+    if (agentMessageModelIds.length === 0) {
+      return [];
+    }
+
     const items = await this.model.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        agentMessageId: agentMessageModelId,
+        agentMessageId: { [Op.in]: agentMessageModelIds },
         attributionVersion,
       },
-      order: [["id", "ASC"]],
+      order: [
+        ["agentMessageId", "ASC"],
+        ["id", "ASC"],
+      ],
       transaction,
     });
 
