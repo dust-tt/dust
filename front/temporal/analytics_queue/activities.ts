@@ -65,6 +65,7 @@ import type {
 } from "@app/types/assistant/analytics";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { sha256 } from "@app/types/shared/utils/encryption";
 import type { WhereOptions } from "sequelize";
@@ -240,10 +241,18 @@ export async function storeAgentAnalytics(
     contextOrigin
   );
   const toolAwu = toolsUsed.reduce((sum, tool) => sum + tool.cost_awu, 0);
+
+  const isBillable = AGENT_MESSAGE_STATUSES_TO_TRACK.includes(
+    agentAgentMessageRow.status
+  );
+
   const cost = {
     full_awu: llmAwu + toolAwu,
     llm_awu: llmAwu,
     tool_awu: toolAwu,
+    billable_awu: isBillable
+      ? llmAwu + toolAwu
+      : (agentAgentMessageRow.costCredits ?? 0),
   };
 
   // TODO: replace with a recursive research of ancestor messages

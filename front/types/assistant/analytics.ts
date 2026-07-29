@@ -36,6 +36,7 @@ export interface AgentMessageAnalyticsCost {
   full_awu: number;
   llm_awu: number;
   tool_awu: number;
+  billable_awu: number;
 }
 
 export interface AgentMessageAnalyticsFeedback {
