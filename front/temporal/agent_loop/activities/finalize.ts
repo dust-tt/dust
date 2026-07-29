@@ -4,7 +4,12 @@ import {
   sendEmailReplyOnError,
 } from "@app/lib/api/assistant/email/email_reply";
 import { continueActiveGoal } from "@app/lib/api/assistant/goal_mode";
-import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
+import {
+  Authenticator,
+  type AuthenticatorType,
+  hasFeatureFlag,
+} from "@app/lib/auth";
+import { ConversationGoalResource } from "@app/lib/resources/conversation_goal_resource";
 import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities/analytics";
 import {
   creditsExhaustedMessage,
@@ -26,6 +31,22 @@ import {
 } from "@app/temporal/agent_loop/activities/usage_tracking";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
+async function pauseActiveGoal(
+  auth: Authenticator,
+  agentLoopArgs: AgentLoopArgs,
+  reason: string
+): Promise<void> {
+  if (!(await hasFeatureFlag(auth, "goal_mode"))) {
+    return;
+  }
+  await ConversationGoalResource.pauseForAgentMessage(auth, {
+    conversationId: agentLoopArgs.conversationId,
+    conversationBranchId: agentLoopArgs.conversationBranchId,
+    agentMessageId: agentLoopArgs.agentMessageId,
+    reason,
+  });
+}
+
 export async function finalizeSuccessfulAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
@@ -44,6 +65,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
   if (
     goalOutcome === "continued" ||
     goalOutcome === "already_processed" ||
+    goalOutcome === "newer_message" ||
     goalOutcome === "not_succeeded"
   ) {
     return;
@@ -70,6 +92,7 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
   await finalizeGracefulStop(authType, agentLoopArgs);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  await pauseActiveGoal(auth, agentLoopArgs, "agent_loop_stopped");
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
@@ -97,6 +120,7 @@ export async function finalizeInterruptedAgentLoopActivity(
   await finalizeInterruption(authType, agentLoopArgs);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  await pauseActiveGoal(auth, agentLoopArgs, "user_interrupted");
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
@@ -116,6 +140,7 @@ export async function finalizeCancelledAgentLoopActivity(
   await finalizeCancellation(authType, agentLoopArgs);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  await pauseActiveGoal(auth, agentLoopArgs, "agent_loop_cancelled");
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
@@ -138,6 +163,7 @@ export async function finalizeCreditStoppedAgentLoopActivity(
   await finalizeCreditStop(authType, agentLoopArgs);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  await pauseActiveGoal(auth, agentLoopArgs, "credits_exhausted");
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
@@ -159,6 +185,7 @@ export async function finalizeErroredAgentLoopActivity(
   await notifyWorkflowError(authType, agentLoopArgs, error);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  await pauseActiveGoal(auth, agentLoopArgs, "agent_loop_error");
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),

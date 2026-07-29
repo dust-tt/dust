@@ -152,4 +152,93 @@ describe("ConversationGoalResource", () => {
       )?.turnCount
     ).toBe(1);
   });
+
+  it("pauses instead of continuing behind newer user input", async () => {
+    const { message } = await createAgentMessage("succeeded");
+    await createGoal(message.sId);
+    await ConversationFactory.createUserMessageWithRank({
+      auth,
+      workspace,
+      conversationId: conversation.id,
+      rank: 2,
+      content: "Follow this new direction",
+    });
+
+    expect(
+      await ConversationGoalResource.claimContinuation(auth, {
+        conversationId: conversation.sId,
+        conversationBranchId: null,
+        agentMessageId: message.sId,
+      })
+    ).toEqual({ type: "newer_message" });
+    expect(
+      (
+        await ConversationGoalResource.fetchLatest(auth, {
+          conversation: conversationResource,
+        })
+      )?.toJSON()
+    ).toMatchObject({
+      status: "paused",
+      reason: "user_interrupted",
+    });
+
+    expect(
+      await ConversationGoalResource.claimContinuation(auth, {
+        conversationId: conversation.sId,
+        conversationBranchId: null,
+        agentMessageId: message.sId,
+      })
+    ).toEqual({ type: "inactive" });
+  });
+
+  it("ignores a delayed failure from an older goal turn", async () => {
+    const first = await createAgentMessage("succeeded");
+    const goal = await createGoal(first.message.sId);
+    await ConversationGoalResource.claimContinuation(auth, {
+      conversationId: conversation.sId,
+      conversationBranchId: null,
+      agentMessageId: first.message.sId,
+    });
+    const second = await createAgentMessage("created", 2);
+
+    await withTransaction(async (transaction) => {
+      expect(
+        await goal.setCurrentAgentMessage(auth, {
+          conversation: conversationResource,
+          branchId: null,
+          agentMessageId: second.message.sId,
+          agentConfigurationId: agent.sId,
+          transaction,
+        })
+      ).toBe(true);
+    });
+
+    await ConversationGoalResource.pauseForAgentMessage(auth, {
+      conversationId: conversation.sId,
+      conversationBranchId: null,
+      agentMessageId: first.message.sId,
+      reason: "delayed_old_turn_failure",
+    });
+    expect(
+      (
+        await ConversationGoalResource.fetchLatest(auth, {
+          conversation: conversationResource,
+        })
+      )?.status
+    ).toBe("active");
+
+    await ConversationGoalResource.pauseForAgentMessage(auth, {
+      conversationId: conversation.sId,
+      conversationBranchId: null,
+      agentMessageId: second.message.sId,
+      reason: "current_turn_failure",
+    });
+    expect(
+      (
+        await ConversationGoalResource.fetchLatest(auth, {
+          conversation: conversationResource,
+        })
+      )?.status
+    ).toBe("paused");
+  });
 });

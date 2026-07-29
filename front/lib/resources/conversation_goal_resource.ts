@@ -34,6 +34,7 @@ export type GoalContinuationDecision =
       type:
         | "already_processed"
         | "inactive"
+        | "newer_message"
         | "not_succeeded"
         | "turn_limit_reached";
     };
@@ -311,6 +312,8 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
         status === "complete" ? "completed" : "blocked";
       if (
         goal.agentConfigurationId !== agentLoopData.agentConfiguration.sId ||
+        goal.agentConfigurationId !==
+          agentLoopData.agentMessage.configuration.sId ||
         goal.currentAgentMessageId !==
           agentLoopData.agentMessage.agentMessageId ||
         goal.lastAgentMessageId === goal.currentAgentMessageId
@@ -331,7 +334,11 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
           terminalAt: new Date(),
         },
         {
-          where: { id: goal.id, workspaceId: goal.workspaceId },
+          where: {
+            id: goal.id,
+            workspaceId: goal.workspaceId,
+            status: "active",
+          },
           returning: true,
           transaction,
         }
@@ -391,6 +398,9 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
           workspaceId: auth.getNonNullableWorkspace().id,
           conversationId: conversation.id,
           sId: agentMessageId,
+          branchId: conversationBranchId
+            ? getResourceIdFromSId(conversationBranchId)
+            : null,
         },
         include: [
           {
@@ -423,6 +433,32 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
       ) {
         return { type: "inactive" };
       }
+
+      const newerMessage = await MessageModel.findOne({
+        attributes: ["id"],
+        where: {
+          workspaceId: goalRow.workspaceId,
+          conversationId: goalRow.conversationId,
+          branchId: conversationBranchId
+            ? getResourceIdFromSId(conversationBranchId)
+            : null,
+          rank: { [Op.gt]: message.rank },
+          visibility: { [Op.not]: "deleted" },
+        },
+        transaction,
+      });
+      if (newerMessage) {
+        await goalRow.update(
+          {
+            status: "paused",
+            reason: "user_interrupted",
+            lastAgentMessageId: message.agentMessage.id,
+          },
+          { transaction }
+        );
+        return { type: "newer_message" };
+      }
+
       if (goalRow.turnCount >= goalRow.maxTurns) {
         await goalRow.update(
           {
@@ -446,6 +482,190 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
         type: "continue",
         goal: new this(this.model, goalRow.get()).toJSON(),
       };
+    });
+  }
+
+  static async pauseActiveForUserMessage(
+    auth: Authenticator,
+    {
+      conversation,
+      branchId,
+      transaction,
+    }: {
+      conversation: ConversationResource;
+      branchId: string | null;
+      transaction: Transaction;
+    }
+  ): Promise<boolean> {
+    const row = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
+        branchId: branchId ? getResourceIdFromSId(branchId) : null,
+      },
+      order: [
+        ["createdAt", "DESC"],
+        ["id", "DESC"],
+      ],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!row || row.status !== "active") {
+      return false;
+    }
+    await row.update(
+      { status: "paused", reason: "user_interrupted" },
+      { transaction }
+    );
+    return true;
+  }
+
+  async lockForContinuation(
+    auth: Authenticator,
+    {
+      conversation,
+      branchId,
+      transaction,
+    }: {
+      conversation: ConversationResource;
+      branchId: string | null;
+      transaction: Transaction;
+    }
+  ): Promise<boolean> {
+    const branchModelId = branchId ? getResourceIdFromSId(branchId) : null;
+    if (branchId && !branchModelId) {
+      return false;
+    }
+    const row = await this.model.findOne({
+      where: {
+        id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
+        branchId: branchModelId,
+        currentAgentMessageId: this.currentAgentMessageId,
+        lastAgentMessageId: this.currentAgentMessageId,
+        status: "active",
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    return row !== null;
+  }
+
+  static async pauseForAgentMessage(
+    auth: Authenticator,
+    {
+      conversationId,
+      conversationBranchId,
+      agentMessageId,
+      reason,
+    }: {
+      conversationId: string;
+      conversationBranchId: string | null;
+      agentMessageId: string;
+      reason: string;
+    }
+  ): Promise<boolean> {
+    const conversation = await ConversationModel.findOne({
+      attributes: ["id"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: conversationId,
+      },
+    });
+    if (!conversation) {
+      return false;
+    }
+
+    return withTransaction(async (transaction) => {
+      const goal = await this.model.findOne({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversation.id,
+          branchId: conversationBranchId
+            ? getResourceIdFromSId(conversationBranchId)
+            : null,
+          status: "active",
+        },
+        order: [
+          ["createdAt", "DESC"],
+          ["id", "DESC"],
+        ],
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!goal) {
+        return false;
+      }
+
+      const message = await MessageModel.findOne({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversation.id,
+          sId: agentMessageId,
+          branchId: conversationBranchId
+            ? getResourceIdFromSId(conversationBranchId)
+            : null,
+        },
+        include: [
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: true,
+          },
+        ],
+        transaction,
+      });
+      if (
+        !message?.agentMessage ||
+        goal.currentAgentMessageId !== message.agentMessage.id
+      ) {
+        return false;
+      }
+      await goal.update({ status: "paused", reason }, { transaction });
+      return true;
+    });
+  }
+
+  async failCurrentTurn(
+    auth: Authenticator,
+    {
+      conversation,
+      reason,
+    }: {
+      conversation: ConversationResource;
+      reason: string;
+    }
+  ): Promise<boolean> {
+    return withTransaction(async (transaction) => {
+      const goal = await this.model.findOne({
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversation.id,
+          branchId: this.branchId,
+          currentAgentMessageId: this.currentAgentMessageId,
+          status: "active",
+        },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!goal) {
+        return false;
+      }
+      await AgentMessageModel.update(
+        { status: "failed", completedAt: new Date() },
+        {
+          where: {
+            id: goal.currentAgentMessageId,
+            workspaceId: goal.workspaceId,
+            status: "created",
+          },
+          transaction,
+        }
+      );
+      await goal.update({ status: "paused", reason }, { transaction });
+      return true;
     });
   }
 

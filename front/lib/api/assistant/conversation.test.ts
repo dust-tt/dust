@@ -1688,6 +1688,43 @@ describe("postUserMessage", () => {
       branchId: null,
     });
     expect(continuedGoal?.turnCount).toBe(2);
+
+    vi.mocked(launchAgentLoopWorkflow).mockRejectedValueOnce(
+      new Error("Temporal unavailable")
+    );
+    const failedRecoveryOutcome = await continueActiveGoal(auth, {
+      agentMessageId: firstAgentMessage.sId,
+      agentMessageVersion: firstAgentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      conversationBranchId: null,
+      userMessageId: result.value.userMessage.sId,
+      userMessageVersion: result.value.userMessage.version,
+      userMessageOrigin: "web",
+    });
+    expect(failedRecoveryOutcome).toBe("paused");
+    const failedGoal = await ConversationGoalResource.fetchLatest(auth, {
+      conversation: conversationResource,
+      branchId: null,
+    });
+    expect(failedGoal?.toJSON()).toMatchObject({
+      status: "paused",
+      reason: "continuation_failed",
+    });
+    if (!failedGoal) {
+      throw new Error("Failed goal not found");
+    }
+    expect(
+      (
+        await AgentMessageModel.findOne({
+          where: {
+            id: failedGoal.currentAgentMessageId,
+            workspaceId: workspace.id,
+          },
+        })
+      )?.status
+    ).toBe("failed");
+
     expect(
       await UserMessageModel.count({
         where: {
@@ -1697,6 +1734,50 @@ describe("postUserMessage", () => {
         },
       })
     ).toBe(1);
+  });
+
+  it("pauses an active goal before accepting user steering", async () => {
+    await FeatureFlagFactory.basic(auth, "goal_mode");
+    const user = auth.getNonNullableUser().toJSON();
+    const context = {
+      username: user.username,
+      timezone: "UTC",
+      fullName: user.fullName,
+      email: user.email,
+      profilePictureUrl: user.image,
+      origin: "web" as const,
+    };
+    const started = await postUserMessage(auth, {
+      conversationResource,
+      content: "Ship Goal Mode",
+      mentions: [{ configurationId: agentConfig1.sId }],
+      context,
+      skipToolsValidation: false,
+      goal: { objective: "Ship Goal Mode" },
+    });
+    expect(started.isOk()).toBe(true);
+    if (started.isErr()) {
+      return;
+    }
+
+    const steered = await postUserMessage(auth, {
+      conversationResource,
+      content: "Change direction",
+      mentions: [{ configurationId: agentConfig1.sId }],
+      context,
+      skipToolsValidation: false,
+    });
+    expect(steered.isOk()).toBe(true);
+    expect(
+      (
+        await ConversationGoalResource.fetchLatest(auth, {
+          conversation: conversationResource,
+        })
+      )?.toJSON()
+    ).toMatchObject({
+      status: "paused",
+      reason: "user_interrupted",
+    });
   });
 
   it("rejects goal metadata when Goal Mode is not enabled", async () => {

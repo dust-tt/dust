@@ -541,7 +541,7 @@ export async function postUserMessage(
     modelSelection,
     goal,
     continuationGoal,
-    awaitWorkflowLaunch,
+    deferAgentLoopWorkflow,
   }: {
     conversationResource: ConversationResource;
     branchId?: string | null;
@@ -555,7 +555,7 @@ export async function postUserMessage(
     modelSelection?: ModelSelectionType;
     goal?: GoalCreation;
     continuationGoal?: ConversationGoalResource;
-    awaitWorkflowLaunch?: boolean;
+    deferAgentLoopWorkflow?: boolean;
   }
 ): Promise<
   Result<
@@ -878,6 +878,17 @@ export async function postUserMessage(
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
 
+    if (
+      continuationGoal &&
+      !(await continuationGoal.lockForContinuation(auth, {
+        conversation: conversationResource,
+        branchId: conversation.branchId,
+        transaction: t,
+      }))
+    ) {
+      return { continuationConflict: true as const };
+    }
+
     let nextMessageRank: number | undefined;
 
     // We will do best effort to create a branch, but there a several conditions that we will not create a branch.
@@ -963,6 +974,18 @@ export async function postUserMessage(
           }
         }
       }
+    }
+
+    if (
+      !goal &&
+      context.origin !== "goal_continuation" &&
+      featureFlags.includes("goal_mode")
+    ) {
+      await ConversationGoalResource.pauseActiveForUserMessage(auth, {
+        conversation: conversationResource,
+        branchId: conversation.branchId,
+        transaction: t,
+      });
     }
 
     if (goal) {
@@ -1158,6 +1181,16 @@ export async function postUserMessage(
     });
   }
 
+  if ("continuationConflict" in transactionResult) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message: "This goal continuation was already claimed by another turn.",
+      },
+    });
+  }
+
   const { userMessage, agentMessages } = transactionResult;
 
   // If a user is mentioned, we want to make sure the conversation has a title.
@@ -1219,20 +1252,21 @@ export async function postUserMessage(
   }
 
   // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
-  if (agentMessages.length > 0) {
-    await runAgentLoopWorkflow({
-      auth,
-      agentMessages,
-      conversation,
-      userMessage,
-      awaitLaunch: awaitWorkflowLaunch,
-    });
-  } else if (runningAgentMessage && userMessage.visibility === "pending") {
-    // Pending path: signal the running agent loop to gracefully stop.
-    await gracefullyStopAgentLoop(auth, {
-      messageIds: [runningAgentMessage.sId],
-      conversationId: conversation.sId,
-    });
+  if (!deferAgentLoopWorkflow) {
+    if (agentMessages.length > 0) {
+      await runAgentLoopWorkflow({
+        auth,
+        agentMessages,
+        conversation,
+        userMessage,
+      });
+    } else if (runningAgentMessage && userMessage.visibility === "pending") {
+      // Pending path: signal the running agent loop to gracefully stop.
+      await gracefullyStopAgentLoop(auth, {
+        messageIds: [runningAgentMessage.sId],
+        conversationId: conversation.sId,
+      });
+    }
   }
 
   await Promise.all([
