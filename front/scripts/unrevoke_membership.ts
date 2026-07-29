@@ -1,5 +1,4 @@
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { ArgumentSpecs } from "@app/scripts/helpers";
@@ -81,22 +80,22 @@ makeScript(
     );
 
     if (execute) {
+      // The `builder` role is deprecated and can no longer be assigned, so restore a
+      // previously-revoked builder as a regular user (builders are now driven by the
+      // `dust-builders` provisioning group / manual "Builders" group instead).
+      const restoredRole =
+        latestMembership.role === "builder" ? "user" : latestMembership.role;
+
       // Use updateMembershipRole with allowTerminated=true to unrevoke
       const result = await MembershipResource.updateMembershipRole({
         user,
         workspace,
-        newRole: latestMembership.role,
+        newRole: restoredRole,
         allowTerminated: true,
         author: "no-author",
       });
 
       if (result.isOk()) {
-        await GroupResource.syncBuilderGroupMembership({
-          workspace,
-          user,
-          isBuilder: result.value.newRole === "builder",
-        });
-
         scriptLogger.info(
           {
             userId: user.sId,
