@@ -22,6 +22,7 @@ export const EDIT_INFORMATION_TOOL_NAME = "edit_information" as const;
 export const SET_PINNED_FRAME_TOOL_NAME = "set_pinned_frame" as const;
 export const MOVE_CONVERSATION_TOOL_NAME = "move_conversation" as const;
 export const SET_DEFAULT_AGENT_TOOL_NAME = "set_default_agent" as const;
+export const SET_DEFAULT_SKILLS_TOOL_NAME = "set_default_skills" as const;
 
 export const POD_MANAGER_TOOLS_METADATA = [
   {
@@ -168,6 +169,35 @@ export const POD_MANAGER_TOOLS_METADATA = [
     displayLabels: {
       running: "Setting Pod default agent",
       done: "Set Pod default agent",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SET_DEFAULT_SKILLS_TOOL_NAME,
+    description:
+      "Set or clear the Pod default skills: skills pre-inserted into new conversations started in this Pod. " +
+      "Provide skillNames to set the full list (replacing any existing Pod default skills), or pass null or an empty array to clear it. " +
+      "Only skills available workspace-wide (not scoped to a specific space) can be set as Pod defaults.",
+    schema: {
+      skillNames: z
+        .array(z.string())
+        .nullable()
+        .describe(
+          "Names of the skills to set as Pod defaults. Replaces the current list of Pod default skills. Pass null or an empty array to clear all Pod default skills."
+        ),
+      dustPod: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
+      ]
+        .optional()
+        .describe(
+          "Optional Pod to update, will fallback to the conversation's Pod."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Setting Pod default skills",
+      done: "Set Pod default skills",
     },
     toolCostCategory: "basic",
     freeUsage: true,

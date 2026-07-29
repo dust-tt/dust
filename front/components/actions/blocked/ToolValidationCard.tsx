@@ -6,10 +6,12 @@ import {
   EDIT_INFORMATION_TOOL_NAME,
   POD_MANAGER_SERVER_NAME,
   SET_DEFAULT_AGENT_TOOL_NAME,
+  SET_DEFAULT_SKILLS_TOOL_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import {
   isPodManagerDefaultAgentInput,
+  isPodManagerDefaultSkillsInput,
   isPodManagerEditInformationInput,
   isPodManagerUpdateMembersInput,
 } from "@app/lib/api/actions/servers/pod_manager/types";
@@ -160,6 +162,19 @@ const MCP_TOOL_OVERRIDES: Partial<
         return `Allow agent to set the Pod default agent to @${inputs.agentName}?`;
       },
       alwaysAllowLabel: () => "Always allow agent to set the Pod default agent",
+    },
+    [SET_DEFAULT_SKILLS_TOOL_NAME]: {
+      title: (inputs) => {
+        if (!isPodManagerDefaultSkillsInput(inputs)) {
+          return `Allow agent to set the Pod default skills?`;
+        }
+        if (!inputs.skillNames || inputs.skillNames.length === 0) {
+          return `Allow agent to clear the Pod default skills?`;
+        }
+        return `Allow agent to set the Pod default skills to ${inputs.skillNames.join(", ")}?`;
+      },
+      alwaysAllowLabel: () =>
+        "Always allow agent to set the Pod default skills",
     },
   },
   [WAKEUPS_SERVER_NAME]: {
