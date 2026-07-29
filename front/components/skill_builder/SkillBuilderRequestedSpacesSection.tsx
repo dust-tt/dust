@@ -3,20 +3,14 @@ import { useBlockedSkillSpaceRemovalConfirm } from "@app/components/shared/Remov
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { useSkillSpaceRestrictions } from "@app/components/skill_builder/useSkillSpaceRestrictions";
+import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import { Button, Planet } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
-interface SkillBuilderRequestedSpacesSectionProps {
-  initialRequestedSpaceIds?: string[];
-}
-
-export function SkillBuilderRequestedSpacesSection({
-  initialRequestedSpaceIds,
-}: SkillBuilderRequestedSpacesSectionProps) {
+export function SkillBuilderRequestedSpacesSection() {
   const { resetField } = useFormContext<SkillBuilderFormData>();
 
   const {
@@ -38,12 +32,13 @@ export function SkillBuilderRequestedSpacesSection({
     areSpaceRequirementsReady,
     globalSpace,
     initialAdditionalSpaces,
+    initialRequestedSpaceIds,
     knowledgeBySpaceId,
     missingSpaceIds,
     nonGlobalSpacesWithRestrictions,
     skillsBySpaceId,
     spaceIdsUsedBySkill,
-  } = useSkillSpaceRestrictions({ initialRequestedSpaceIds });
+  } = useSkillSpaceRestrictionsContext();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>([]);

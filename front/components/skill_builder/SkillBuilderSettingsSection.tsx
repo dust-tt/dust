@@ -1,3 +1,4 @@
+import { SpaceRestrictionMessage } from "@app/components/shared/SpaceRestrictionMessage";
 import { SkillBuilderAvailabilityMessage } from "@app/components/skill_builder/SkillBuilderAvailabilityMessage";
 import { SkillBuilderEnableSuggestionsSection } from "@app/components/skill_builder/SkillBuilderEnableSuggestionsSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
@@ -6,8 +7,7 @@ import { SkillBuilderIsDefaultSection } from "@app/components/skill_builder/Skil
 import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuilderNameSection";
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
 import { SkillEditorsSheetWithButton } from "@app/components/skill_builder/SkillEditorsSheetWithButton";
-import { useSkillSpaceRestrictions } from "@app/components/skill_builder/useSkillSpaceRestrictions";
-import { SpaceRestrictionMessage } from "@app/components/shared/SpaceRestrictionMessage";
+import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
@@ -91,9 +91,8 @@ export function SkillBuilderSettingsSection({
   );
   const githubSkillFolderUrl = getGitHubSkillFolderUrl(skill);
 
-  const { nonGlobalSpacesWithRestrictions } = useSkillSpaceRestrictions({
-    initialRequestedSpaceIds: skill?.requestedSpaceIds,
-  });
+  const { nonGlobalSpacesWithRestrictions } =
+    useSkillSpaceRestrictionsContext();
 
   const currentOption = AVAILABILITY_OPTIONS.find(
     (option) => option.value === availability

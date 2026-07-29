@@ -20,6 +20,7 @@ import {
   SkillVersionComparisonProvider,
   useSkillVersionComparisonContext,
 } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import { SkillSpaceRestrictionsProvider } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import {
   getDefaultSkillFormData,
   transformSkillTypeToFormData,
@@ -294,9 +295,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
           )}
           <SkillBuilderAgentFacingDescriptionSection />
           <SkillBuilderInstructionsSection />
-          <SkillBuilderRequestedSpacesSection
-            initialRequestedSpaceIds={skill?.requestedSpaceIds}
-          />
+          <SkillBuilderRequestedSpacesSection />
           <SkillBuilderFilesSection />
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
@@ -337,37 +336,43 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
     <SkillBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
         <SkillVersionComparisonProvider>
-          <div
-            className={cn(
-              "flex h-dvh flex-row",
-              "bg-background text-foreground"
-            )}
+          <SkillSpaceRestrictionsProvider
+            initialRequestedSpaceIds={skill?.requestedSpaceIds}
           >
-            {showSuggestionsPanel ? (
-              <ResizablePanelGroup
-                id="skill-builder-layout"
-                direction="horizontal"
-                className="h-full w-full"
-              >
-                <ResizablePanel defaultSize={65} minSize={40}>
-                  <div className="h-full w-full overflow-y-auto">
-                    {leftPanel}
-                  </div>
-                </ResizablePanel>
-
-                <>
-                  <ResizableHandle withHandle />
-                  <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
+            <div
+              className={cn(
+                "flex h-dvh flex-row",
+                "bg-background text-foreground"
+              )}
+            >
+              {showSuggestionsPanel ? (
+                <ResizablePanelGroup
+                  id="skill-builder-layout"
+                  direction="horizontal"
+                  className="h-full w-full"
+                >
+                  <ResizablePanel defaultSize={65} minSize={40}>
                     <div className="h-full w-full overflow-y-auto">
-                      <SkillBuilderSuggestionsPanel disabled={isEditorLocked} />
+                      {leftPanel}
                     </div>
                   </ResizablePanel>
-                </>
-              </ResizablePanelGroup>
-            ) : (
-              leftPanel
-            )}
-          </div>
+
+                  <>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
+                      <div className="h-full w-full overflow-y-auto">
+                        <SkillBuilderSuggestionsPanel
+                          disabled={isEditorLocked}
+                        />
+                      </div>
+                    </ResizablePanel>
+                  </>
+                </ResizablePanelGroup>
+              ) : (
+                leftPanel
+              )}
+            </div>
+          </SkillSpaceRestrictionsProvider>
         </SkillVersionComparisonProvider>
       </FormProvider>
     </SkillBuilderFormContext.Provider>

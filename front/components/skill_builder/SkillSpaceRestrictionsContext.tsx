@@ -7,16 +7,37 @@ import type {
   SkillBuilderFormData,
 } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
-import { useMemo } from "react";
+import type { SpaceType } from "@app/types/space";
+import type { ReactNode } from "react";
+import { createContext, useContext, useMemo } from "react";
 import { useWatch } from "react-hook-form";
 
-interface UseSkillSpaceRestrictionsParams {
+interface SkillSpaceRestrictionsContextType {
+  actionsBySpaceId: ReturnType<typeof getSpaceIdToActionsMap>;
+  allSpaces: SpaceType[];
+  areSpaceRequirementsReady: boolean;
+  globalSpace: SpaceType | undefined;
+  initialAdditionalSpaces: string[];
+  initialRequestedSpaceIds?: string[];
+  knowledgeBySpaceId: Record<string, AttachedKnowledgeFormData[]>;
+  missingSpaceIds: string[];
+  nonGlobalSpacesWithRestrictions: SpaceType[];
+  skillsBySpaceId: Record<string, ReferencedSkillFormData[]>;
+  spaceIdsUsedBySkill: Set<string>;
+}
+
+const SkillSpaceRestrictionsContext =
+  createContext<SkillSpaceRestrictionsContextType | null>(null);
+
+interface SkillSpaceRestrictionsProviderProps {
+  children: ReactNode;
   initialRequestedSpaceIds?: string[];
 }
 
-export function useSkillSpaceRestrictions({
+export function SkillSpaceRestrictionsProvider({
+  children,
   initialRequestedSpaceIds,
-}: UseSkillSpaceRestrictionsParams) {
+}: SkillSpaceRestrictionsProviderProps) {
   const tools = useWatch<SkillBuilderFormData, "tools">({ name: "tools" });
   const attachedKnowledge = useWatch<SkillBuilderFormData, "attachedKnowledge">(
     {
@@ -138,16 +159,48 @@ export function useSkillSpaceRestrictions({
     return allSpaces.find((s) => s.kind === "global");
   }, [allSpaces]);
 
-  return {
-    actionsBySpaceId,
-    allSpaces,
-    areSpaceRequirementsReady,
-    globalSpace,
-    initialAdditionalSpaces,
-    knowledgeBySpaceId,
-    missingSpaceIds,
-    nonGlobalSpacesWithRestrictions,
-    skillsBySpaceId,
-    spaceIdsUsedBySkill,
-  };
+  const value = useMemo(
+    () => ({
+      actionsBySpaceId,
+      allSpaces,
+      areSpaceRequirementsReady,
+      globalSpace,
+      initialAdditionalSpaces,
+      initialRequestedSpaceIds,
+      knowledgeBySpaceId,
+      missingSpaceIds,
+      nonGlobalSpacesWithRestrictions,
+      skillsBySpaceId,
+      spaceIdsUsedBySkill,
+    }),
+    [
+      actionsBySpaceId,
+      allSpaces,
+      areSpaceRequirementsReady,
+      globalSpace,
+      initialAdditionalSpaces,
+      initialRequestedSpaceIds,
+      knowledgeBySpaceId,
+      missingSpaceIds,
+      nonGlobalSpacesWithRestrictions,
+      skillsBySpaceId,
+      spaceIdsUsedBySkill,
+    ]
+  );
+
+  return (
+    <SkillSpaceRestrictionsContext.Provider value={value}>
+      {children}
+    </SkillSpaceRestrictionsContext.Provider>
+  );
+}
+
+export function useSkillSpaceRestrictionsContext(): SkillSpaceRestrictionsContextType {
+  const context = useContext(SkillSpaceRestrictionsContext);
+  if (!context) {
+    throw new Error(
+      "useSkillSpaceRestrictionsContext must be used within a SkillSpaceRestrictionsProvider"
+    );
+  }
+  return context;
 }
