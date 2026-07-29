@@ -1,3 +1,4 @@
+import { EXTENSION_MESSAGE_SOURCE_LABEL } from "@app/lib/api/assistant/conversation/constants";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import {
   globalAgentInjectsUserContext,
@@ -186,7 +187,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     expect(extensionPrompt).toEqual(webPrompt);
     expect(systemPromptToText(webPrompt)).toContain(
-      "When the current user message's `<dust_system>` metadata identifies its source as `Browser extension`"
+      `When the current user message's \`<dust_system>\` metadata identifies its source as \`${EXTENSION_MESSAGE_SOURCE_LABEL}\``
     );
   });
 
