@@ -617,7 +617,7 @@ export const PEOPLE: Record<string, TeamMember> = {
     github: "https://github.com/avervaet",
   },
   zachfriedland: {
-    name: "Zach friedland",
+    name: "Zach Friedland",
     title: "AI Deployment Strategist",
     image: "https://ca.slack-edge.com/T050RH73H9P-U0BJPL0TUSE-0be6063e3260-512",
     linkedIn: "https://www.linkedin.com/in/zach-friedland/",
