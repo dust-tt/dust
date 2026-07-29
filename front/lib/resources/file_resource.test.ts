@@ -15,7 +15,6 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import type { MockFileVersion } from "@app/tests/utils/mocks/file_storage";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -1575,48 +1574,6 @@ describe("FileResource", () => {
       expect(row?.mountFilePath).toBe(
         `w/${workspace.sId}/pods/${space.sId}/files/notes.txt`
       );
-    });
-  });
-
-  describe("delete", () => {
-    it("rejects deleting a file referenced by skill history", async () => {
-      const { authenticator: auth, user } = await createResourceTest({
-        role: "admin",
-      });
-      const skill = await SkillFactory.create(auth);
-      const file = await FileFactory.create(auth, user, {
-        contentType: "text/plain",
-        fileName: "historical.txt",
-        fileSize: 100,
-        status: "created",
-        useCase: "skill_attachment",
-      });
-      const skillUpdate = {
-        agentFacingDescription: skill.agentFacingDescription,
-        attachedKnowledge: [],
-        icon: skill.icon,
-        instructions: skill.instructions,
-        mcpServerViews: [],
-        name: skill.name,
-        requestedSpaceIds: skill.requestedSpaceIds,
-        userFacingDescription: skill.userFacingDescription,
-      };
-      await skill.updateSkill(auth, {
-        ...skillUpdate,
-        fileAttachments: [file],
-      });
-      await skill.updateSkill(auth, {
-        ...skillUpdate,
-        fileAttachments: [],
-      });
-
-      const result = await file.delete(auth);
-
-      assert(result.isErr());
-      expect(result.error.message).toBe(
-        "File is referenced by a skill or its version history."
-      );
-      expect(await FileResource.fetchById(auth, file.sId)).not.toBeNull();
     });
   });
 });

@@ -3635,9 +3635,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       // Delete files from cloud storage outside the transaction (I/O with GCS).
       for (const file of filesToDelete) {
-        if (await file.isReferencedBySkill()) {
-          continue;
-        }
         const res = await file.delete(auth);
         if (res.isErr()) {
           return res;
@@ -3884,33 +3881,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await editorGroup.delete(auth);
     }
 
-    // Delete file references before their underlying files.
+    // Delete file attachments and their underlying files.
     const fileAttachments = await SkillFileAttachmentModel.findAll({
       where: { workspaceId },
     });
-    const skillVersions = await SkillVersionModel.findAll({
-      attributes: ["fileAttachmentIds"],
-      where: { workspaceId },
-    });
-    const fileIds = uniq([
-      ...fileAttachments.map((attachment) => attachment.fileId),
-      ...skillVersions.flatMap((version) => version.fileAttachmentIds),
-    ]);
-    const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
-      auth,
-      fileIds
-    );
-
-    await SkillVersionModel.destroy({
-      where: { workspaceId },
-    });
-    await SkillFileAttachmentModel.destroy({
-      where: { workspaceId },
-    });
-    for (const file of filesToDelete) {
-      const res = await file.delete(auth);
-      if (res.isErr()) {
-        throw res.error;
+    if (fileAttachments.length > 0) {
+      const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
+        auth,
+        fileAttachments.map((a) => a.fileId)
+      );
+      await SkillFileAttachmentModel.destroy({
+        where: { workspaceId },
+      });
+      for (const file of filesToDelete) {
+        const res = await file.delete(auth);
+        if (res.isErr()) {
+          throw res.error;
+        }
       }
     }
 
@@ -3923,6 +3910,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     await SkillSuggestionModel.destroy({
+      where: { workspaceId },
+    });
+
+    await SkillVersionModel.destroy({
       where: { workspaceId },
     });
 

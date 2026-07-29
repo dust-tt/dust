@@ -290,7 +290,8 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
         },
       });
     }
-    if (await file.isReferencedBySkill()) {
+    const { isReferenced } = await SkillResource.fetchFileSkills(auth, file);
+    if (isReferenced) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
