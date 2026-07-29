@@ -8,9 +8,9 @@ import { isDevelopment } from "@app/types/shared/env";
 // Metrics
 const DEV_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC =
   "e02846b3-956c-48bc-9fd1-162061aed624";
-const DEV_METRIC_TOOL_INVOCATIONS_V2 = "ac310e71-f9a3-40b1-ba7c-82d781287e7d";
+const DEV_METRIC_TOOL_INVOCATIONS_V2 = "0a35a534-0d1c-4ed5-8177-358d9dff71a5";
 const DEV_METRIC_LLM_PROVIDER_COST_AWU_V2 =
-  "5a94e956-cd7f-4e31-8720-194c76ebba44";
+  "a6abefc5-d749-4757-a139-336b53c837f5";
 
 // Products
 const DEV_PRODUCT_PROGRAMMATIC_USAGE = "daaf92ec-d0a7-444d-972e-a2d48c7edd0c";
