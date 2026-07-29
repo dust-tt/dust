@@ -76,6 +76,7 @@ export type ToolMeta<
 export function buildTools<
   const TName extends string,
   const T extends readonly ToolMeta<TName>[],
+  // Internal tools always receive auth and runContext, while client-side tools do not.
   HandlerExtra = ToolHandlerExtra,
 >(
   metadata: T,
