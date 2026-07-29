@@ -54,8 +54,7 @@ export function SkillBuilderAvailabilityMessage({
         content = (
           <>
             {gate} Members can find it via the input bar and agent builder, and
-            agents with Discover Skills can use it automatically within those
-            spaces.
+            agents with Discover Skills can use it automatically.
           </>
         );
         break;
