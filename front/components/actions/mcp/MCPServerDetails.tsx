@@ -21,6 +21,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import {
   useMCPServer,
   useMCPServers,
+  useMCPServersUsage,
   useMutateMCPServersViewsForAdmin,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
@@ -93,6 +94,10 @@ export function MCPServerDetails({
     // cached response. SWR still fetches normally if the cache is unexpectedly empty.
     revalidateIfStale: false,
   });
+  const { usage, mutate: mutateMCPServersUsage } = useMCPServersUsage({
+    owner,
+    disabled: !isOpen || readOnly,
+  });
 
   // Collect all effective view names from other servers (excluding the current one).
   const existingViewNames = useMemo(
@@ -140,6 +145,38 @@ export function MCPServerDetails({
         )
       : undefined,
   });
+
+  const confirmSkillsRestrictionChange = async (
+    isRestrictedToSkills: boolean
+  ): Promise<boolean> => {
+    if (!isRestrictedToSkills || !mcpServerView) {
+      return true;
+    }
+
+    const affectedAgents = usage?.[mcpServerView.server.sId]?.agents ?? [];
+    if (affectedAgents.length === 0) {
+      return true;
+    }
+
+    return confirm({
+      title: "Remove this tool from agents?",
+      message: (
+        <div className="space-y-2">
+          <p>
+            Saving this change will remove the tool from the following agents:
+          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            {affectedAgents.map((agent) => (
+              <li key={agent.sId}>{agent.name}</li>
+            ))}
+          </ul>
+          <p>Skills using this tool will not be affected.</p>
+        </div>
+      ),
+      validateLabel: "Continue",
+      validateVariant: "warning",
+    });
+  };
 
   const applyToolChanges = async (
     toolChanges: Array<{
@@ -381,6 +418,7 @@ export function MCPServerDetails({
           // Revalidate caches.
           await mutateMCPServersViewsForAdmin();
           await mutateMCPServer();
+          await mutateMCPServersUsage();
 
           sendNotification({
             type: "success",
@@ -466,6 +504,7 @@ export function MCPServerDetails({
         spaces={spaces}
         readOnly={readOnly}
         sensitivityLabelsController={sensitivityLabelsController}
+        confirmSkillsRestrictionChange={confirmSkillsRestrictionChange}
       />
     </FormProvider>
   );

@@ -24,6 +24,9 @@ type MCPServerDetailsInfoProps = {
   owner: LightWorkspaceType;
   readOnly?: boolean;
   sensitivityLabelsController?: SensitivityLabelsController;
+  confirmSkillsRestrictionChange?: (
+    isRestrictedToSkills: boolean
+  ) => Promise<boolean>;
 };
 
 export function MCPServerDetailsInfo({
@@ -31,6 +34,7 @@ export function MCPServerDetailsInfo({
   owner,
   readOnly = false,
   sensitivityLabelsController,
+  confirmSkillsRestrictionChange,
 }: MCPServerDetailsInfoProps) {
   const editedAt = useMemo(() => {
     const d = new Date(0);
@@ -82,7 +86,10 @@ export function MCPServerDetailsInfo({
         </div>
       )}
       <Separator />
-      <MCPServerViewForm mcpServerView={mcpServerView} />
+      <MCPServerViewForm
+        mcpServerView={mcpServerView}
+        confirmSkillsRestrictionChange={confirmSkillsRestrictionChange}
+      />
       <Separator />
       {mcpServerView.server.authorization && (
         <MCPServerSettings
