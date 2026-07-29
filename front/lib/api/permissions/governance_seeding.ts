@@ -1,4 +1,3 @@
-import { getPublishingRestrictionLevel } from "@app/lib/api/assistant/publishing_restrictions";
 import type { Authenticator } from "@app/lib/auth";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -18,7 +17,7 @@ import assert from "assert";
  *
  * A capability seeder is defined once here; both call sites drive it identically — a fresh
  * workspace simply has no legacy flag set yet, so `resolveTarget` naturally resolves to the same
- * default a backfill would apply (e.g. no `disallow_agent_creation_to_users` flag => "everyone").
+ * default a backfill would apply (e.g. no `legacy_dust_apps` flag => "admins_only").
  *
  * To register a new capability, add an entry to CAPABILITY_SEEDERS below; nothing else needs to
  * change at either call site.
@@ -36,14 +35,7 @@ export interface CapabilitySeeder {
 export const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
   {
     capability: { grantType: "create", resourceType: "agent" },
-    resolveTarget: async (auth) => {
-      const disallowsUserCreation =
-        await FeatureFlagResource.isEnabledForWorkspace(
-          auth.getNonNullableWorkspace(),
-          "disallow_agent_creation_to_users"
-        );
-      return disallowsUserCreation ? "builders" : "everyone";
-    },
+    resolveTarget: async (_auth) => "everyone",
   },
   {
     capability: { grantType: "create", resourceType: "skill" },
@@ -76,24 +68,7 @@ export const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
   },
   {
     capability: { grantType: "publish", resourceType: "agent" },
-    resolveTarget: async (auth) => {
-      const featureFlags = (
-        await FeatureFlagResource.listForWorkspace(
-          auth.getNonNullableWorkspace()
-        )
-      ).map((flag) => flag.name);
-      const level = getPublishingRestrictionLevel(featureFlags);
-      switch (level) {
-        case "admins_only":
-          return "admins_only";
-        case "builders_and_admins":
-          return "builders";
-        case null:
-          return "everyone";
-        default:
-          assertNever(level);
-      }
-    },
+    resolveTarget: async (_auth) => "everyone",
   },
 ];
 
