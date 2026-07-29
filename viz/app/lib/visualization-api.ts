@@ -1,3 +1,4 @@
+import type { UserIdentityState } from "@viz/app/types";
 import type {
   SupportedEventType,
   SupportedMessage,
@@ -12,6 +13,11 @@ export interface VisualizationDataAPI {
    * Call a sandbox function.
    */
   callFunction(functionId: string, input?: unknown): Promise<unknown>;
+
+  /**
+   * Return the user authenticated in the workspace owning this Frame.
+   */
+  getUserIdentity(): Promise<UserIdentityState>;
 
   /**
    * Fetch a file by ID.

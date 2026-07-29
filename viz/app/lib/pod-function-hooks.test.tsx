@@ -5,6 +5,7 @@ import {
   PodFunctionHooksProvider,
   usePodFunction,
   usePodFunctionMutation,
+  useUserIdentity,
 } from "@viz/app/lib/pod-function-hooks";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import { createElement, type PropsWithChildren } from "react";
@@ -28,6 +29,9 @@ function makeDataAPI(
     callFunction,
     fetchCode: vi.fn(),
     fetchFile: vi.fn(),
+    getUserIdentity: vi
+      .fn()
+      .mockResolvedValue({ isAuthenticated: false, user: null }),
   };
 }
 
@@ -36,6 +40,56 @@ function makeWrapper(dataAPI: VisualizationDataAPI) {
     return createElement(PodFunctionHooksProvider, { dataAPI }, children);
   };
 }
+
+describe("useUserIdentity", () => {
+  it("returns the user authenticated in the Frame workspace", async () => {
+    const dataAPI = makeDataAPI(vi.fn());
+    dataAPI.getUserIdentity = vi.fn().mockResolvedValue({
+      isAuthenticated: true,
+      user: {
+        sId: "usr_123",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        fullName: "Ada Lovelace",
+        image: null,
+      },
+    });
+
+    const { result } = renderHook(() => useUserIdentity(), {
+      wrapper: makeWrapper(dataAPI),
+    });
+
+    expect(result.current).toMatchObject({
+      isAuthenticated: false,
+      isLoading: true,
+      user: null,
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current).toMatchObject({
+      isAuthenticated: true,
+      user: { sId: "usr_123", fullName: "Ada Lovelace" },
+    });
+  });
+
+  it("fails closed when identity cannot be loaded", async () => {
+    const dataAPI = makeDataAPI(vi.fn());
+    dataAPI.getUserIdentity = vi
+      .fn()
+      .mockRejectedValue(new Error("Frame host unavailable"));
+
+    const { result } = renderHook(() => useUserIdentity(), {
+      wrapper: makeWrapper(dataAPI),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current).toMatchObject({
+      isAuthenticated: false,
+      user: null,
+      error: new Error("Frame host unavailable"),
+    });
+  });
+});
 
 describe("usePodFunction", () => {
   it("calls a qualified slug and returns the direct function output", async () => {

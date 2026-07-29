@@ -1,5 +1,6 @@
 import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
+import type { UserIdentityState } from "@viz/app/types";
 
 export interface PreFetchedFile {
   data: string; // base64
@@ -47,6 +48,10 @@ export class CacheDataAPI implements VisualizationDataAPI {
       code: "not_supported",
       message: `Sandbox function ${functionId} is not supported in public frames.`,
     });
+  }
+
+  async getUserIdentity(): Promise<UserIdentityState> {
+    return { isAuthenticated: false, user: null };
   }
 
   async fetchFile(fileId: string): Promise<File | null> {
