@@ -30,6 +30,7 @@ import deleteRoute from "./delete";
 import lookup from "./lookup";
 import nameAvailable from "./name_available";
 import newRoutes from "./new";
+import similar from "./similar";
 import textAsCronRule from "./text_as_cron_rule";
 import webhookFilterGenerator from "./webhook_filter_generator";
 
@@ -339,6 +340,7 @@ app.route("/delete", deleteRoute);
 app.route("/lookup", lookup);
 app.route("/name_available", nameAvailable);
 app.route("/new", newRoutes);
+app.route("/similar", similar);
 app.route("/text_as_cron_rule", textAsCronRule);
 app.route("/webhook_filter_generator", webhookFilterGenerator);
 app.route("/:aId", agent);

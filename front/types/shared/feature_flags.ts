@@ -338,6 +338,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable the user_memory internal MCP server: agents can store and retrieve per-user memory in a user-scoped filesystem.",
     stage: "dust_only",
   },
+  similar_agents_check: {
+    description:
+      "Warn users about similar existing agents before they create a duplicate in the agent builder.",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
