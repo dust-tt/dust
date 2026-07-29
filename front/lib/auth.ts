@@ -57,10 +57,7 @@ import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { GroupKind } from "@app/types/groups";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
-import type {
-  PermissionType,
-  ResourcePermission,
-} from "@app/types/resource_permissions";
+import type { ResourcePermission } from "@app/types/resource_permissions";
 import { hasRolePermissions } from "@app/types/resource_permissions";
 import { isDevelopment } from "@app/types/shared/env";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -1225,8 +1222,9 @@ export class Authenticator {
 
   /**
    * Whether the caller holds a workspace-level capability, asked as a type-level verb (e.g.
-   * "create" on "agent"). Admins hold every workspace capability by default; everyone else derives
-   * it from the grants resolved at construction (which fold in "*" wildcard grants).
+   * "create" on "agent"). A thin wrapper over `hasPermission` against a type-wide
+   * `GroupResourcePermission`: the synthetic admin role grants admins every capability by default,
+   * and everyone else derives it from their type-wide grants (which fold in "*" wildcard grants).
    */
   async hasWorkspacePermission(
     verb: GrantVerb,
@@ -1240,17 +1238,18 @@ export class Authenticator {
       `Verb "${verb}" is not allowed (no type-level role grants it) on resource type "${resourceType}".`
     );
 
-    if (!this.workspace()) {
+    const workspace = this.workspace();
+    if (!workspace) {
       return false;
     }
 
-    // Admins hold every workspace-wide capability by default (this is where role-based access is
-    // layered on top of the grant set; the PermissionSet itself holds only grants).
-    if (this.isAdmin()) {
-      return true;
-    }
-
-    return this._permissions.hasTypeWide(resourceType, verb);
+    // A type-wide target (no resourceId). The admin role carries `verb` so admins pass by role;
+    // everyone else falls through to the group_permissions type-wide grant.
+    return this.hasPermission(verb, {
+      roles: [{ role: "admin", permissions: [verb] }],
+      resourceType,
+      workspaceId: workspace.id,
+    });
   }
 
   /**
@@ -1463,90 +1462,61 @@ export class Authenticator {
   }
 
   /**
-   * Checks if the user has the specified permission across all resource permissions.
-   *
-   * This method applies a conjunction (AND) over all resource permission entries. The user
-   * must have the required permission in EVERY entry for the check to pass.
+   * Checks whether the caller holds `verb` on EVERY one of the given resource permission targets
+   * (conjunction). The caller must pass each target for the check to succeed.
    */
   hasPermissionForAllResources(
     resourcePermissions: ResourcePermission[],
-    permission: PermissionType
+    verb: GrantVerb
   ): boolean {
-    // Apply conjunction (AND) over all resource permission entries.
-    return resourcePermissions.every((rp) =>
-      this.hasResourcePermission(rp, permission)
-    );
+    return resourcePermissions.every((rp) => this.hasPermission(verb, rp));
   }
 
   /**
-   * Determines if a user has a specific permission on a resource based on their role, workspace
-   * capabilities, and group memberships.
+   * Determines whether the caller holds `verb` on a single resource permission target. `verb` is a
+   * grant verb (`PermissionType` ⊆ `GrantVerb`, plus type-level capabilities like "create").
+   * Handles both instance targets and type-wide targets: a `GroupResourcePermission` with
+   * `resourceId` omitted resolves to the type-wide (-1) grant.
    *
-   * The permission check follows three independent paths (OR):
-   *
-   * 1. Role-based permission check:
-   *    Applies when the resource has role-based permissions configured.
-   *    Permission is granted if:
-   *    - The resource has public access (role="none") for the requested permission, OR
-   *    - The user's role has the required permission AND the resource belongs to user's workspace
-   *
-   * 2. Group permissions check (the `group_permissions` table):
-   *    Applies when the resource declares a `resourceType`.
-   *    Permission is granted if the user holds the requested permission as a grant verb on the
-   *    resource's `(resourceType, resourceId)` AND the resource belongs to the user's workspace.
-   *
-   * 3. Legacy group permissions check (inline groups):
-   *    Applies when the resource lists inline group grants.
-   *    Permission is granted if:
-   *    - The user belongs to a group that has the required permission on this resource
-   *
-   * @param resourcePermission - The resource's permission configuration
-   * @param permission - The specific permission being checked
-   * @returns true if any permission path grants access
+   * Three independent paths (OR):
+   * 1. Role: the caller's workspace role grants `verb` (and the target is in the caller's workspace).
+   * 2. Group permissions (the `group_permissions` table): the caller holds `verb` as a grant on the
+   *    target's `(resourceType, resourceId)` — a type-wide grant satisfies any instance.
+   * 3. Legacy group permissions (inline groups): the caller belongs to a listed group granting `verb`.
    */
-  private hasResourcePermission(
-    resourcePermission: ResourcePermission,
-    permission: PermissionType
-  ): boolean {
-    // First path: Role-based permission check.
-    if (hasRolePermissions(resourcePermission)) {
+  hasPermission(verb: GrantVerb, target: ResourcePermission): boolean {
+    // 1. Role-based check.
+    if (hasRolePermissions(target)) {
       const workspace = this.getNonNullableWorkspace();
 
-      // Check workspace-specific role permissions.
-      const hasRolePermission = resourcePermission.roles.some(
-        (r) => this.role() === r.role && r.permissions.includes(permission)
-      );
-
       if (
-        hasRolePermission &&
-        workspace.id === resourcePermission.workspaceId
+        workspace.id === target.workspaceId &&
+        target.roles.some(
+          (r) => this.role() === r.role && r.permissions.includes(verb)
+        )
       ) {
         return true;
       }
 
-      // Second path: group permissions check (the `group_permissions` table). A
-      // GroupResourcePermission declares a `resourceType`; the caller passes if they hold the
-      // requested permission — used directly as a grant verb, since `PermissionType` ⊆ `GrantVerb`
-      // — on this `(resourceType, resourceId)`. A type-wide grant satisfies the check for any
-      // instance (see `PermissionSet.has`).
+      // 2. Group permissions check (the `group_permissions` table).
       if (
-        "resourceType" in resourcePermission &&
-        workspace.id === resourcePermission.workspaceId &&
+        "resourceType" in target &&
+        workspace.id === target.workspaceId &&
         this._permissions.has(
-          resourcePermission.resourceType,
-          resourcePermission.resourceId ?? WHOLE_TYPE_RESOURCE_ID,
-          permission
+          target.resourceType,
+          target.resourceId ?? WHOLE_TYPE_RESOURCE_ID,
+          verb
         )
       ) {
         return true;
       }
     }
 
-    // Third path: legacy group permissions check (inline groups).
-    if ("groups" in resourcePermission) {
+    // 3. Legacy group permissions check (inline groups).
+    if ("groups" in target) {
       return this._groupModelIds.some((groupId) =>
-        resourcePermission.groups.some(
-          (gp) => gp.id === groupId && gp.permissions.includes(permission)
+        target.groups.some(
+          (gp) => gp.id === groupId && gp.permissions.includes(verb)
         )
       );
     }
