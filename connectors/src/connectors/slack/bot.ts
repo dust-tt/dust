@@ -1746,7 +1746,10 @@ async function isAgentAccessingRestrictedSpace(
 
     const agentSpaceIds = agent.requestedSpaceIds.flat();
 
-    const spacesRes = await dustAPI.getSpaces();
+    // Only regular spaces can be restricted in this listing: the endpoint
+    // never returns project spaces, and global and system spaces are never
+    // flagged as restricted.
+    const spacesRes = await dustAPI.getSpaces({ kinds: ["regular"] });
     if (spacesRes.isErr()) {
       logger.error(
         { error: spacesRes.error, agentId },

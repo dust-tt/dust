@@ -269,16 +269,18 @@ const _webhookSlackAPIHandler = async (
                   logger
                 );
 
-                // Make a simple API call to check if workspace is accessible
-                const spacesRes = await dustAPI.getSpaces();
-                if (spacesRes.isErr()) {
+                // Probe the workspace: /exists does no work beyond
+                // authentication and returns an error when the workspace is
+                // gone, relocated or in maintenance.
+                const existsRes = await dustAPI.exists();
+                if (existsRes.isErr()) {
                   logger.info(
                     {
                       connectorId: connector.id,
                       slackTeamId: teamId,
                       slackChannelId: channel,
                       workspaceId: dataSourceConfig.workspaceId,
-                      error: spacesRes.error.message,
+                      error: existsRes.error.message,
                     },
                     "Skipping webhook: workspace is unavailable (likely in maintenance)"
                   );
