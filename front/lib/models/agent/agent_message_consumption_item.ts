@@ -11,6 +11,7 @@ import {
   AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES,
   type AgentMessageConsumptionItemType,
 } from "@app/types/assistant/agent_message_consumption";
+import { assertNever } from "@dust-tt/client";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { Op } from "sequelize";
 
@@ -45,14 +46,19 @@ function validateConsumptionItemShape(
         throw new Error(`${this.itemType} items cannot contain output tokens`);
       }
       break;
+
     case "output":
     case "reasoning":
       if (this.inputTokensCount !== null) {
         throw new Error(`${this.itemType} items cannot contain input tokens`);
       }
       break;
+
     case "tool":
       break;
+
+    default:
+      assertNever(this.itemType);
   }
 }
 
