@@ -16,6 +16,7 @@ const MODEL_CONFIG = {
   isLatest: true,
   generationTokensCount: 128_000,
   supportsVision: true,
+  maxInputImages: 20,
   supportedReasoningEfforts: {
     none: true,
     light: true,
@@ -53,6 +54,7 @@ describe("ModelConfigurationSchema", () => {
     expect(result.customAvailableIf).toEqual({
       featureFlag: "custom_model_feature",
     });
+    expect(result.maxInputImages).toBe(20);
   });
 
   it("rejects unknown availability feature flags", () => {

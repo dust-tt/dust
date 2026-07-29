@@ -9,11 +9,10 @@ import type {
   UserMessageTypeModel,
 } from "@app/types/assistant/generation";
 import { isImageContent, isTextContent } from "@app/types/assistant/generation";
+import { ANTHROPIC_MAX_INPUT_IMAGES } from "@app/types/assistant/models/anthropic";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import {
-  ANTHROPIC_IMAGE_COUNT_LIMIT,
   IMAGE_CONTENT_TOKEN_COUNT,
   renderConversationForModel,
   TOKENS_MARGIN,
@@ -251,7 +250,7 @@ describe("renderConversationForModel", () => {
     expect(res.value.prunedContext).toBe(false);
   });
 
-  it("replaces oldest tool image previews before counting Anthropic context", async () => {
+  it("replaces oldest tool image previews before counting model context", async () => {
     const userUpload = image("user-upload");
     vi.mocked(renderAllMessages).mockResolvedValue([
       {
@@ -259,7 +258,7 @@ describe("renderConversationForModel", () => {
         name: "user",
         content: [{ type: "text", text: "u1" }, userUpload],
       },
-      ...Array.from({ length: ANTHROPIC_IMAGE_COUNT_LIMIT }, (_, index) =>
+      ...Array.from({ length: ANTHROPIC_MAX_INPUT_IMAGES }, (_, index) =>
         functionImageMessage(
           `tool_${index}`,
           `tool-${index}`,
@@ -271,7 +270,7 @@ describe("renderConversationForModel", () => {
 
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
-      model: { ...model, providerId: "anthropic" },
+      model: { ...model, maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES },
       prompt: "PROMPT",
       enabledSkills: [],
       tools: "TOOLS",
@@ -288,7 +287,7 @@ describe("renderConversationForModel", () => {
         ? message.content.filter(isImageContent)
         : []
     );
-    expect(images).toHaveLength(ANTHROPIC_IMAGE_COUNT_LIMIT);
+    expect(images).toHaveLength(ANTHROPIC_MAX_INPUT_IMAGES);
     expect(images).toContain(userUpload);
     expect(images).not.toContainEqual(image("tool-0"));
     const oldestToolResult = getFunctionMessage(
@@ -308,15 +307,15 @@ describe("renderConversationForModel", () => {
         10 +
         Math.floor(10 * TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR) +
         10 +
-        ANTHROPIC_IMAGE_COUNT_LIMIT * 5 +
-        ANTHROPIC_IMAGE_COUNT_LIMIT * IMAGE_CONTENT_TOKEN_COUNT
+        ANTHROPIC_MAX_INPUT_IMAGES * 5 +
+        ANTHROPIC_MAX_INPUT_IMAGES * IMAGE_CONTENT_TOKEN_COUNT
     );
   });
 
-  it("keeps tool image previews for other providers", async () => {
+  it("keeps tool image previews for models without an image limit", async () => {
     vi.mocked(renderAllMessages).mockResolvedValue([
       userMessage("u1"),
-      ...Array.from({ length: ANTHROPIC_IMAGE_COUNT_LIMIT + 1 }, (_, index) =>
+      ...Array.from({ length: ANTHROPIC_MAX_INPUT_IMAGES + 1 }, (_, index) =>
         functionImageMessage(`tool_${index}`, `tool-${index}`)
       ),
     ]);
@@ -341,16 +340,16 @@ describe("renderConversationForModel", () => {
         ? message.content.filter(isImageContent)
         : []
     );
-    expect(images).toHaveLength(ANTHROPIC_IMAGE_COUNT_LIMIT + 1);
+    expect(images).toHaveLength(ANTHROPIC_MAX_INPUT_IMAGES + 1);
   });
 
-  it("warns when Anthropic has 20 unprunable images", async () => {
+  it("warns when a model has 20 unprunable images", async () => {
     vi.mocked(renderAllMessages).mockResolvedValue([
       {
         role: "user",
         name: "user",
         content: Array.from(
-          { length: ANTHROPIC_IMAGE_COUNT_LIMIT },
+          { length: ANTHROPIC_MAX_INPUT_IMAGES },
           (_, index) => image(`user-${index}`)
         ),
       },
@@ -359,7 +358,7 @@ describe("renderConversationForModel", () => {
 
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
-      model: { ...model, providerId: "anthropic" },
+      model: { ...model, maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES },
       prompt: "PROMPT",
       enabledSkills: [],
       tools: "TOOLS",
@@ -371,9 +370,9 @@ describe("renderConversationForModel", () => {
       expect.objectContaining({
         workspaceId: "w_1",
         conversationId: "conv_1",
-        imageCountLimit: ANTHROPIC_IMAGE_COUNT_LIMIT,
-        nonToolImageCount: ANTHROPIC_IMAGE_COUNT_LIMIT,
-        totalImageCount: ANTHROPIC_IMAGE_COUNT_LIMIT,
+        imageCountLimit: ANTHROPIC_MAX_INPUT_IMAGES,
+        nonToolImageCount: ANTHROPIC_MAX_INPUT_IMAGES,
+        totalImageCount: ANTHROPIC_MAX_INPUT_IMAGES,
       }),
       expect.stringContaining("cannot be pruned")
     );

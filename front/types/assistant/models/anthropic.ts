@@ -30,6 +30,7 @@ export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
 export const CLAUDE_SONNET_5_MODEL_ID = "claude-sonnet-5" as const;
 
 export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
+export const ANTHROPIC_MAX_INPUT_IMAGES = 20;
 export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_4_OPUS_20250514_MODEL_ID,
@@ -45,6 +46,7 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 32_000,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportedReasoningEfforts: {
     none: false,
     light: true,
@@ -78,6 +80,7 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportedReasoningEfforts: {
     none: false,
     light: true,
@@ -108,6 +111,7 @@ export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportsResponseFormat: true,
   supportedReasoningEfforts: {
     none: false,
@@ -171,6 +175,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportedReasoningEfforts: {
     none: false,
     light: true,
@@ -200,6 +205,7 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportedReasoningEfforts: {
     none: false,
     light: true,
@@ -231,6 +237,7 @@ export const CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportsResponseFormat: true,
   supportedReasoningEfforts: {
     none: false,
@@ -267,6 +274,7 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportsResponseFormat: true,
   supportedReasoningEfforts: {
     none: false,
@@ -308,6 +316,7 @@ export const CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportsResponseFormat: true,
   supportedReasoningEfforts: {
     none: false,
@@ -351,6 +360,7 @@ export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportsResponseFormat: true,
   supportedReasoningEfforts: {
     none: false,
@@ -396,6 +406,7 @@ export const CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportsResponseFormat: true,
   supportedReasoningEfforts: {
     none: false,
@@ -443,6 +454,7 @@ export const CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportsResponseFormat: true,
   // Fable 5 rejects an explicit `thinking: {type: "disabled"}` (400), so
   // "none" is unsupported and "light" relies on native light reasoning
@@ -496,6 +508,7 @@ export const CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportsResponseFormat: true,
   supportedReasoningEfforts: {
     none: false,
@@ -533,6 +546,7 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportsResponseFormat: true,
   supportedReasoningEfforts: {
     none: false,
@@ -574,6 +588,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 4096,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportedReasoningEfforts: {
     none: false,
     light: true,
@@ -603,6 +618,7 @@ export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurat
     isLatest: false,
     generationTokensCount: 8192,
     supportsVision: true,
+    maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
     supportedReasoningEfforts: {
       none: false,
       light: true,
@@ -631,6 +647,7 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 8192,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportedReasoningEfforts: {
     none: false,
     light: true,
@@ -659,6 +676,7 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
+  maxInputImages: ANTHROPIC_MAX_INPUT_IMAGES,
   supportedReasoningEfforts: {
     none: false,
     light: true,

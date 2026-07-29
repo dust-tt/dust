@@ -5,6 +5,7 @@
  * assert on data instead of mocking a metrics client.
  */
 
+import type { ConversationImagePruningStats } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import type { ConversationPruningStats } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type {
@@ -35,7 +36,6 @@ export function computeConversationRenderingMetrics(
     stats.totalTokensAfterPruning - stats.budgetForInteractions,
     0
   );
-
   return {
     outcome: prunedTokens > 0 ? "pruned" : "fits",
     saturated: stats.totalTokensAfterPruning > stats.pruningBudget,
@@ -53,6 +53,7 @@ export type ConversationRenderingMetricsCaller = "agent_loop";
 
 export function emitConversationRenderingMetrics({
   stats,
+  imageStats,
   caller,
   providerId,
   modelId,
@@ -60,6 +61,7 @@ export function emitConversationRenderingMetrics({
   tokensUsed,
 }: {
   stats: ConversationPruningStats;
+  imageStats?: ConversationImagePruningStats;
   caller: ConversationRenderingMetricsCaller;
   providerId: ModelProviderIdType;
   modelId: ModelIdType;
@@ -94,6 +96,23 @@ export function emitConversationRenderingMetrics({
       "conversation_rendering.pruned_tokens",
       metrics.prunedTokens,
       [...baseTags, "layer:proactive"]
+    );
+  }
+  if (imageStats?.prunedImageCount) {
+    statsD.distribution(
+      "conversation_rendering.pruned_images",
+      imageStats.prunedImageCount,
+      [...baseTags, "layer:input_limit"]
+    );
+  }
+  if (
+    imageStats?.imageCountLimit !== undefined &&
+    imageStats.nonToolImageCount >= imageStats.imageCountLimit
+  ) {
+    statsD.distribution(
+      "conversation_rendering.unprunable_images",
+      imageStats.nonToolImageCount,
+      baseTags
     );
   }
   if (metrics.tokensOverBudget > 0) {

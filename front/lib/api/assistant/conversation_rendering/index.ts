@@ -1,5 +1,8 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
-import { CheckpointedConversationWindowState } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
+import {
+  CheckpointedConversationWindowState,
+  pruneOldestToolResultImages,
+} from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import type { ConversationRenderingMetricsCaller } from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import {
   emitConversationRenderingError,
@@ -30,7 +33,6 @@ import {
   isImageContent,
   isTextContent,
 } from "@app/types/assistant/generation";
-import { ANTHROPIC_PROVIDER_ID } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { CredentialsType } from "@app/types/provider";
 import type { Result } from "@app/types/shared/result";
@@ -39,7 +41,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Fixed number of tokens assumed for image contents
 export const IMAGE_CONTENT_TOKEN_COUNT = 3100;
-export const ANTHROPIC_IMAGE_COUNT_LIMIT = 20;
 export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
 
@@ -80,73 +81,6 @@ function pruneConversationToBudget(
   }
 
   return state.fit();
-}
-
-function replaceOldestToolResultImages(
-  messages: ModelMessageTypeMultiActions[],
-  logContext: {
-    workspaceId: string;
-    conversationId: string;
-    modelId: string;
-    providerId: ModelConfigurationType["providerId"];
-  }
-): ModelMessageTypeMultiActions[] {
-  if (logContext.providerId !== ANTHROPIC_PROVIDER_ID) {
-    return messages;
-  }
-
-  const imageCounts = messages.reduce(
-    (counts, message) => {
-      const count =
-        "content" in message && Array.isArray(message.content)
-          ? message.content.filter(isImageContent).length
-          : 0;
-      return {
-        total: counts.total + count,
-        nonTool: counts.nonTool + (message.role === "function" ? 0 : count),
-      };
-    },
-    { total: 0, nonTool: 0 }
-  );
-  if (imageCounts.nonTool >= ANTHROPIC_IMAGE_COUNT_LIMIT) {
-    logger.warn(
-      {
-        ...logContext,
-        imageCountLimit: ANTHROPIC_IMAGE_COUNT_LIMIT,
-        nonToolImageCount: imageCounts.nonTool,
-        totalImageCount: imageCounts.total,
-      },
-      "Anthropic conversation contains images that cannot be pruned."
-    );
-  }
-
-  let toReplace = imageCounts.total - ANTHROPIC_IMAGE_COUNT_LIMIT;
-
-  return toReplace > 0
-    ? messages.map((message) =>
-        message.role === "function" && Array.isArray(message.content)
-          ? {
-              ...message,
-              content: message.content.flatMap((content) => {
-                if (isImageContent(content) && toReplace > 0) {
-                  toReplace -= 1;
-                  return [
-                    {
-                      type: "text" as const,
-                      text:
-                        `[This image preview is no longer displayed because the conversation exceeds the ${ANTHROPIC_IMAGE_COUNT_LIMIT}-image limit.` +
-                        (content.file_path
-                          ? ` Use \`files__cat\` with path \`${content.file_path}\` to display it again.]`
-                          : " Re-run the tool to display it again.]"),
-                    },
-                  ];
-                }
-                return [content];
-              }),
-            }
-          : message
-      )
-    : messages;
 }
 
 export async function renderConversationForModel(
@@ -204,13 +138,17 @@ export async function renderConversationForModel(
     agentConfiguration,
     enabledSkills,
   });
-  const messages = replaceOldestToolResultImages(
+  // Apply model input limits before tokenization so replacement text is counted.
+  const { messages, stats: imagePruningStats } = pruneOldestToolResultImages(
     [...leadingMessages, ...renderedMessages],
     {
-      workspaceId: conversation.owner.sId,
-      conversationId: conversation.sId,
-      modelId: model.modelId,
-      providerId: model.providerId,
+      maxInputImages: model.maxInputImages,
+      logDetails: {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        modelId: model.modelId,
+        providerId: model.providerId,
+      },
     }
   );
   const renderAllMessagesMs = Date.now() - stepStart;
@@ -401,6 +339,7 @@ export async function renderConversationForModel(
   if (metricsCaller) {
     emitConversationRenderingMetrics({
       stats: pruningStats,
+      imageStats: imagePruningStats,
       caller: metricsCaller,
       providerId: model.providerId,
       modelId: model.modelId,

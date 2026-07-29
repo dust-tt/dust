@@ -12,6 +12,8 @@ import type {
   ConversationWindowResult,
 } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import logger from "@app/logger/logger";
+import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
+import { isImageContent } from "@app/types/assistant/generation";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 
@@ -46,6 +48,98 @@ type WindowInteraction = {
 };
 
 export const MINIMUM_PRUNING_BATCH_TOKENS = 5_000;
+
+export type ConversationImagePruningStats = {
+  imageCountLimit?: number;
+  prunedImageCount: number;
+  nonToolImageCount: number;
+};
+
+export function pruneOldestToolResultImages(
+  messages: ModelMessageTypeMultiActions[],
+  {
+    maxInputImages,
+    logDetails,
+  }: {
+    maxInputImages?: number;
+    logDetails: Record<string, unknown>;
+  }
+): {
+  messages: ModelMessageTypeMultiActions[];
+  stats: ConversationImagePruningStats;
+} {
+  if (maxInputImages === undefined) {
+    return {
+      messages,
+      stats: { prunedImageCount: 0, nonToolImageCount: 0 },
+    };
+  }
+
+  const imageCounts = messages.reduce(
+    (counts, message) => {
+      const count =
+        "content" in message && Array.isArray(message.content)
+          ? message.content.filter(isImageContent).length
+          : 0;
+
+      return {
+        total: counts.total + count,
+        nonTool: counts.nonTool + (message.role === "function" ? 0 : count),
+      };
+    },
+    { total: 0, nonTool: 0 }
+  );
+  const stats = {
+    imageCountLimit: maxInputImages,
+    prunedImageCount: 0,
+    nonToolImageCount: imageCounts.nonTool,
+  };
+
+  if (imageCounts.nonTool >= maxInputImages) {
+    logger.warn(
+      {
+        ...logDetails,
+        imageCountLimit: maxInputImages,
+        nonToolImageCount: imageCounts.nonTool,
+        totalImageCount: imageCounts.total,
+      },
+      "Conversation contains images that cannot be pruned to the model input limit."
+    );
+  }
+
+  let imagesToPrune = imageCounts.total - maxInputImages;
+  if (imagesToPrune <= 0) {
+    return { messages, stats };
+  }
+
+  const prunedMessages = messages.map((message) =>
+    message.role === "function" && Array.isArray(message.content)
+      ? {
+          ...message,
+          content: message.content.flatMap((content) => {
+            if (isImageContent(content) && imagesToPrune > 0) {
+              imagesToPrune -= 1;
+              stats.prunedImageCount += 1;
+              return [
+                {
+                  type: "text" as const,
+                  text:
+                    `[This image preview is no longer displayed because the conversation exceeds the ${maxInputImages}-image limit.` +
+                    (content.file_path
+                      ? ` Use \`files__cat\` with path \`${content.file_path}\` to display it again.]`
+                      : " Re-run the tool to display it again.]"),
+                },
+              ];
+            }
+
+            return [content];
+          }),
+        }
+      : message
+  );
+
+  return { messages: prunedMessages, stats };
+}
 
 function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
   if (message.role === "function") {

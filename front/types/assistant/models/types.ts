@@ -96,6 +96,7 @@ export const ModelConfigurationSchema = z.object({
   tokenCountAdjustment: z.number().optional(),
   generationTokensCount: z.number(),
   supportsVision: z.boolean(),
+  maxInputImages: z.number().int().positive().optional(),
   supportedReasoningEfforts: ReasoningEffortSupportSchema,
   defaultReasoningEffort: z.string(),
   useNativeLightReasoning: z.boolean().optional(),
