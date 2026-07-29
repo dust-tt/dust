@@ -160,11 +160,15 @@ export function useSkillsWithRelations({
   disabled,
   status,
   onlyCustom,
+  bypassEditorVisibility,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status: SkillStatus;
   onlyCustom?: boolean;
+  // Admin-only: bypass the editor-visibility rule and also list unpublished
+  // (editors-only) skills the caller does not edit.
+  bypassEditorVisibility?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const skillsFetcher: Fetcher<GetSkillsWithRelationsResponseBody> = fetcher;
@@ -175,6 +179,9 @@ export function useSkillsWithRelations({
   });
   if (onlyCustom) {
     queryParams.set("onlyCustom", "true");
+  }
+  if (bypassEditorVisibility) {
+    queryParams.set("bypassEditorVisibility", "true");
   }
 
   const { data, isLoading, mutate } = useSWRWithDefaults(

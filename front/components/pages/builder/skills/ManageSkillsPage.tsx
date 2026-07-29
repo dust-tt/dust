@@ -35,11 +35,13 @@ import type {
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
   Button,
+  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   FolderOpen,
+  InfoCircle,
   ListSelect,
   Page,
   Plus,
@@ -48,6 +50,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -97,7 +100,7 @@ function sortSkillsByName(
 
 export function ManageSkillsPage() {
   const owner = useWorkspace();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
   const { hasFeature } = useFeatureFlags();
   const [selectedSkill, setSelectedSkill] =
@@ -111,6 +114,7 @@ export function ManageSkillsPage() {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pendingBatchAction, setPendingBatchAction] =
     useState<BatchAvailabilityAction | null>(null);
+  const [bypassEditorVisibility, setBypassEditorVisibility] = useState(false);
 
   const hasSkillPublicationGovernance = hasFeature(
     "admin_governance_skill_publication"
@@ -132,6 +136,8 @@ export function ManageSkillsPage() {
   } = useSkillsWithRelations({
     owner,
     status: "active",
+    bypassEditorVisibility:
+      isAdmin && hasSkillPublicationGovernance && bypassEditorVisibility,
   });
 
   const {
@@ -431,6 +437,27 @@ export function ManageSkillsPage() {
                     counterValue={`${skillsByTab[tab.id].length}`}
                   />
                 ))}
+                {isAdmin &&
+                  hasSkillPublicationGovernance &&
+                  activeTab === "active" && (
+                    <div className="ml-auto flex flex-row items-center gap-2 self-center text-sm text-muted-foreground">
+                      <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
+                        <Checkbox
+                          checked={bypassEditorVisibility}
+                          onCheckedChange={(checked) =>
+                            setBypassEditorVisibility(checked === true)
+                          }
+                        />
+                        Show hidden skills
+                      </label>
+                      <Tooltip
+                        label="Shows skills you can access as an admin, even if you’re not an editor"
+                        trigger={
+                          <InfoCircle className="h-4 w-4 text-muted-foreground" />
+                        }
+                      />
+                    </div>
+                  )}
               </TabsList>
             </Tabs>
             {isLoading ? (
