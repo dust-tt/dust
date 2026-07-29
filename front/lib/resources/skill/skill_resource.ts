@@ -954,11 +954,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where,
     });
 
-    const skillIds = uniq(
+    const skillModelIds = uniq(
       versions.map((version) => version.skillConfigurationId)
     );
-    const skills = await this.fetchByModelIds(auth, skillIds);
-    return { isReferenced: skillIds.length > 0, skills };
+    const skills = await this.fetchByModelIds(auth, skillModelIds);
+    return { isReferenced: skillModelIds.length > 0, skills };
   }
 
   static async fetchById(
