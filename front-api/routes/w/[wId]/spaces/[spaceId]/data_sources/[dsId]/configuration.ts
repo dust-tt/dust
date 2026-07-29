@@ -10,7 +10,7 @@ import {
   UpdateConnectorConfigurationTypeSchema,
 } from "@app/types/connectors/connectors_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -62,7 +62,7 @@ app.get(
 
 app.patch(
   "/",
-  ensureIsBuilder(),
+  ensureIsManager(),
   withSpace({ requireCanRead: true }),
   withDataSource({ requireCanRead: true }),
   validate("json", UpdateConnectorConfigurationTypeSchema),
