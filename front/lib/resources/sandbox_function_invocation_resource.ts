@@ -513,6 +513,57 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return new Ok(invocation);
   }
 
+  static async markCreatedAsErrored(
+    auth: Authenticator,
+    {
+      error,
+      sandboxFunctionId,
+      invocationId,
+    }: {
+      error: SandboxFunctionCallError;
+      sandboxFunctionId: string;
+      invocationId: string;
+    }
+  ): Promise<boolean> {
+    if (!isResourceSId("sandbox_function_invocation", invocationId)) {
+      return false;
+    }
+
+    const invocationModelId = getResourceIdFromSId(invocationId);
+    if (invocationModelId === null) {
+      return false;
+    }
+
+    const [updatedCount] = await this.model.update(
+      { status: "errored" },
+      {
+        where: {
+          id: invocationModelId,
+          status: "created",
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+    if (updatedCount === 0) {
+      return false;
+    }
+
+    // Do not load or overwrite the invocation blob here. This path is the
+    // fallback for failures that can happen before a newer blob can be parsed.
+    await publishSandboxFunctionInvocationEvent(
+      {
+        type: "sandbox_function_invocation_error",
+        created: Date.now(),
+        invocationId,
+        functionId: sandboxFunctionId,
+        error,
+      },
+      { invocationId }
+    );
+
+    return true;
+  }
+
   private static async baseFetch(
     auth: Authenticator,
     {
