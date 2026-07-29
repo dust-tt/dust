@@ -8,7 +8,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -635,16 +635,12 @@ describe("SandboxFunctionInvocationResource", () => {
   it("fails closed when a newer application persisted an unknown policy", async () => {
     const { authenticator, sandbox, sandboxFunction, invocation } =
       await setupExecutionTest();
-    await SandboxFunctionModel.update(
+    await frontSequelize.getQueryInterface().bulkUpdate(
+      "sandbox_functions",
+      { authentication: "future_policy" },
       {
-        authentication: "future_policy" as SandboxFunctionAuthenticationPolicy,
-      },
-      {
-        validate: false,
-        where: {
-          id: sandboxFunction.id,
-          workspaceId: sandboxFunction.workspaceId,
-        },
+        id: sandboxFunction.id,
+        workspaceId: sandboxFunction.workspaceId,
       }
     );
 
@@ -653,6 +649,25 @@ describe("SandboxFunctionInvocationResource", () => {
     const executionResult = await invocation.execute(authenticator);
 
     expect(executionResult.isErr()).toBe(true);
+    expect(execSpy).not.toHaveBeenCalled();
+  });
+
+  it("blocks execution with an authenticator from another workspace", async () => {
+    const { sandbox, invocation } = await setupExecutionTest();
+    const { authenticator: otherWorkspaceAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const execSpy = vi.spyOn(sandbox, "exec");
+
+    const executionResult = await invocation.execute(otherWorkspaceAuth);
+
+    expect(executionResult.isErr()).toBe(true);
+    if (executionResult.isOk()) {
+      return;
+    }
+    expect(executionResult.error.message).toBe(
+      "This Pod Function belongs to another workspace."
+    );
     expect(execSpy).not.toHaveBeenCalled();
   });
 

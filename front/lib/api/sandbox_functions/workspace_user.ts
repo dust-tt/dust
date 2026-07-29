@@ -24,16 +24,10 @@ export async function authorizeSandboxFunctionInvocation(
   auth: Authenticator,
   {
     authentication,
-    workspaceModelId,
   }: {
     authentication: SandboxFunctionAuthenticationPolicy | null;
-    workspaceModelId: number;
   }
 ): Promise<{ authorized: boolean; user: UserResource | null }> {
-  if (auth.getNonNullableWorkspace().id !== workspaceModelId) {
-    return { authorized: false, user: null };
-  }
-
   const user = await getAuthenticatedWorkspaceUser(auth);
   const policy = authentication ?? "optional";
   switch (policy) {
