@@ -16,7 +16,10 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import { SandboxFunctionInvocationModel } from "@app/lib/resources/storage/models/sandbox_function";
+import {
+  SandboxFunctionInvocationModel,
+  SandboxFunctionModel,
+} from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import {
@@ -325,6 +328,20 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
     try {
       const { sandboxFunction } = this;
+      const persistedFunction = await SandboxFunctionModel.findOne({
+        where: {
+          id: this.sandboxFunctionId,
+          workspaceId: this.workspaceId,
+        },
+      });
+      if (!persistedFunction || persistedFunction.authentication !== null) {
+        return new Err(
+          new Error(
+            "This Pod Function cannot execute with an unsupported authentication policy."
+          )
+        );
+      }
+
       const ensureResult = await ensurePodSandboxReady(
         auth,
         sandboxFunction.space

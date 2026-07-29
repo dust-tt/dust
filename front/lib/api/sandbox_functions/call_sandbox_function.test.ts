@@ -163,6 +163,21 @@ describe("callSandboxFunction", () => {
     });
   });
 
+  it("fails closed on a policy introduced by a newer application version", async () => {
+    const { auth, fn } = await setup();
+    Object.assign(fn, { authentication: "future_policy" });
+
+    const result = await callSandboxFunction(auth, fn, { name: "x" });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.code).toBe("invocation_failed");
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+  });
+
   it("errors when no result event arrives", async () => {
     const { auth, fn } = await setup();
     vi.mocked(getSandboxFunctionInvocationEvents).mockReturnValue(
