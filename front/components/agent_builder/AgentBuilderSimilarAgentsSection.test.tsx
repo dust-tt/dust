@@ -28,6 +28,13 @@ vi.mock("@app/lib/platform", () => ({
   LinkWrapper: ({ children }: { children: ReactNode }) => children,
 }));
 
+let isSimilarAgentsCheckEnabledMock = true;
+vi.mock("@app/lib/auth/AuthContext", () => ({
+  useFeatureFlags: () => ({
+    hasFeature: () => isSimilarAgentsCheckEnabledMock,
+  }),
+}));
+
 let descriptionMock = "";
 vi.mock("react-hook-form", () => ({
   useWatch: () => descriptionMock,
@@ -76,6 +83,7 @@ describe("AgentBuilderSimilarAgentsSection", () => {
     vi.clearAllMocks();
     descriptionMock = "";
     agentConfigurationsMock = [makeAgent("agent_1", "HR Assistant")];
+    isSimilarAgentsCheckEnabledMock = true;
   });
 
   it("does not fetch while the description is too short", async () => {
@@ -136,5 +144,21 @@ describe("AgentBuilderSimilarAgentsSection", () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     expect(getSimilarAgentsMock).not.toHaveBeenCalled();
+  });
+
+  it("does not fetch when the similar_agents_check feature flag is disabled", async () => {
+    isSimilarAgentsCheckEnabledMock = false;
+    descriptionMock = "Answer questions about HR policies";
+
+    const { container } = render(
+      <AgentBuilderSimilarAgentsSection agentConfigurationId={null} />
+    );
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    });
+
+    expect(getSimilarAgentsMock).not.toHaveBeenCalled();
+    expect(container).toBeEmptyDOMElement();
   });
 });
