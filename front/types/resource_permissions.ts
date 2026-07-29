@@ -2,11 +2,6 @@ import type { ConcreteResourceType, GrantVerb } from "./group_permissions";
 import type { ModelId } from "./shared/model_id";
 import type { RoleType } from "./user";
 
-// Supported operations for resource permissions.
-export const SUPPORTED_OPERATIONS = ["admin", "read", "write"] as const;
-
-export type PermissionType = (typeof SUPPORTED_OPERATIONS)[number];
-
 /**
  * Legacy: permissions assigned to a specific group, listed inline on a resource's permission
  * config. Being migrated to the `group_permissions` table (see `GroupResourcePermission`); prefer
@@ -58,8 +53,8 @@ export type LegacyCombinedResourcePermissions = {
 /**
  * Role-based grants plus the `group_permissions` table (the governance-grant channel). The resource
  * is identified by `(resourceType, resourceId)`; a caller passes if their role grants the requested
- * permission, or if they hold it as a grant verb (`PermissionType` ⊆ `GrantVerb`) on that resource
- * — grants are resolved at auth construction (see `Authenticator.resolvePermissions`). `resourceId`
+ * verb, or if they hold it as a grant on that resource — grants are resolved at auth construction
+ * (see `Authenticator.resolvePermissions`). `resourceId`
  * omitted means the type-wide (-1) grant, and a type-wide grant satisfies an instance requirement
  * (see `PermissionSet.has`).
  *
