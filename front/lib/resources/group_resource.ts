@@ -1633,20 +1633,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    if (
-      this.kind === "skill_editors" &&
-      workspaceMemberships.some((member) => !member.isBuilder)
-    ) {
-      return new Err(
-        new DustError(
-          "group_requirements_not_met",
-          userIds.length === 1
-            ? "Cannot add: user is not a builder in the workspace"
-            : "Cannot add: some users are not builders in the workspace"
-        )
-      );
-    }
-
     // Check if the user is already a member of the group.
     const activeMembers = await this.getActiveMembers(auth, { transaction });
     const activeMembersIds = activeMembers.map((m) => m.sId);
