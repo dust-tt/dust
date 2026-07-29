@@ -6,8 +6,23 @@ import { z } from "zod";
 export interface FunctionSchema {
   name: string;
   description: string | null;
+  authentication: "optional" | "workspace_user_required";
   input_schema: Record<string, unknown> | null;
   output_schema: Record<string, unknown> | null;
+}
+
+function parseAuthenticationPolicy(
+  value: unknown
+): FunctionSchema["authentication"] {
+  if (value === undefined || value === "optional") {
+    return "optional";
+  }
+  if (value === "workspace_user_required") {
+    return value;
+  }
+  throw new Error(
+    "`schema.authentication` must be `optional` or `workspace_user_required`"
+  );
 }
 
 export function toJsonSchema(value: unknown): Record<string, unknown> | null {
@@ -23,7 +38,12 @@ export async function getFunctionSchema(
 ): Promise<FunctionSchema> {
   const mod = await import(handlerPath);
   const schema = mod.schema as
-    | { description?: unknown; input?: unknown; output?: unknown }
+    | {
+        description?: unknown;
+        authentication?: unknown;
+        input?: unknown;
+        output?: unknown;
+      }
     | undefined;
   if (schema === undefined) {
     throw new Error("function declares no `schema` export");
@@ -32,6 +52,7 @@ export async function getFunctionSchema(
     name: basename(handlerPath, extname(handlerPath)),
     description:
       typeof schema.description === "string" ? schema.description : null,
+    authentication: parseAuthenticationPolicy(schema.authentication),
     input_schema: toJsonSchema(schema.input),
     output_schema: toJsonSchema(schema.output),
   };
