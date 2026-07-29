@@ -15,6 +15,7 @@ const UpgradeRequestCreatedPayloadSchema = z.object({
   workspaceName: z.string(),
   requesterName: z.string(),
   requesterEmail: z.string().nullable(),
+  reason: z.string().nullable(),
 });
 
 type UpgradeRequestCreatedPayloadType = z.infer<
@@ -32,6 +33,12 @@ function formatRequester(payload: UpgradeRequestCreatedPayloadType): string {
     : payload.requesterName;
 }
 
+function formatRequestDetails(
+  payload: UpgradeRequestCreatedPayloadType
+): string {
+  return payload.reason ? ` (reason: ${payload.reason})` : "";
+}
+
 export const upgradeRequestCreatedWorkflow = workflow(
   UPGRADE_REQUEST_CREATED_TRIGGER_ID,
   async ({ step, payload, subscriber }) => {
@@ -47,7 +54,10 @@ export const upgradeRequestCreatedWorkflow = workflow(
       async () => {
         // Dedupe by requester (a member could re-request across the window) and
         // keep insertion order so the email lists distinct people once.
-        const requesterByKey = new Map<string, string>();
+        const requesterByKey = new Map<
+          string,
+          { label: string; details: string }
+        >();
         for (const event of events) {
           if (!isUpgradeRequestCreatedPayload(event.payload)) {
             continue;
@@ -55,7 +65,10 @@ export const upgradeRequestCreatedWorkflow = workflow(
           const key =
             event.payload.requesterEmail ?? event.payload.requesterName;
           if (!requesterByKey.has(key)) {
-            requesterByKey.set(key, formatRequester(event.payload));
+            requesterByKey.set(key, {
+              label: formatRequester(event.payload),
+              details: formatRequestDetails(event.payload),
+            });
           }
         }
         const requesters = Array.from(requesterByKey.values());
@@ -64,14 +77,16 @@ export const upgradeRequestCreatedWorkflow = workflow(
         const subject =
           count > 1
             ? `[Dust] ${count} members requested a spend-limit upgrade`
-            : `[Dust] ${requesters[0]} requested a spend-limit upgrade`;
+            : `[Dust] ${requesters[0].label} requested a spend-limit upgrade`;
 
         const intro =
           count > 1
             ? `${count} members have reached their per-user spend limit and are requesting an upgrade:`
-            : `${requesters[0]} has reached their per-user spend limit and is requesting an upgrade.`;
+            : `${requesters[0].label} has reached their per-user spend limit and is requesting an upgrade${requesters[0].details}.`;
         const list =
-          count > 1 ? requesters.map((r) => `• ${r}`).join("\n") : "";
+          count > 1
+            ? requesters.map((r) => `• ${r.label}${r.details}`).join("\n")
+            : "";
         const outro =
           count > 1
             ? `Review the requests and adjust their limits from your workspace usage page.`
@@ -119,6 +134,7 @@ export function notifyUpgradeRequested({
   requestId,
   requesterName,
   requesterEmail,
+  reason,
 }: {
   users: Array<{
     sId: string;
@@ -131,6 +147,7 @@ export function notifyUpgradeRequested({
   requestId: string;
   requesterName: string;
   requesterEmail: string | null;
+  reason: string | null;
 }): void {
   if (users.length === 0) {
     return;
@@ -141,6 +158,7 @@ export function notifyUpgradeRequested({
     workspaceName,
     requesterName,
     requesterEmail,
+    reason,
   };
 
   void getNovuClient()

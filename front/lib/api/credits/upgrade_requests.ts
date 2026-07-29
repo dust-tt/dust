@@ -80,6 +80,7 @@ async function notifyManagersAndAdminsOfUpgradeRequest(
       requestId: request.sId,
       requesterName: requester.fullName() ?? requester.name,
       requesterEmail: requester.email ?? null,
+      reason: request.reason,
     });
   } catch (err) {
     logger.error(
@@ -94,7 +95,10 @@ async function notifyManagersAndAdminsOfUpgradeRequest(
 // actually being near/at their limit.
 export async function createUpgradeRequest(
   auth: Authenticator,
-  { auditContext }: { auditContext?: AuditLogContext } = {}
+  {
+    reason,
+    auditContext,
+  }: { reason: string | null; auditContext?: AuditLogContext }
 ): Promise<Result<MembershipUpgradeRequestType, UpgradeRequestError>> {
   const subscription = auth.getNonNullableSubscriptionResource();
   if (
@@ -142,6 +146,7 @@ export async function createUpgradeRequest(
 
   const result = await MembershipUpgradeRequestResource.createPending(auth, {
     user,
+    reason,
   });
   if (result.isErr()) {
     return new Err(
@@ -161,7 +166,10 @@ export async function createUpgradeRequest(
       }),
     ],
     context: auditContext,
-    metadata: { request_sid: request.sId },
+    metadata: {
+      request_sid: request.sId,
+      reason: request.reason ?? "",
+    },
   });
 
   void notifyManagersAndAdminsOfUpgradeRequest(auth, { request });
