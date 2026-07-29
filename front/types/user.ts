@@ -44,6 +44,18 @@ export function isActiveRoleType(role: string): role is ActiveRoleType {
   return ACTIVE_ROLES.includes(role as ActiveRoleType);
 }
 
+// Roles that can be assigned through the API (invitations, membership role updates). The
+// deprecated `builder` role is rejected here — it is granted only through the `dust-builders`
+// provisioning group — while remaining a valid role value elsewhere (existing memberships, role
+// display, and legacy/pending invitations).
+export function isAssignableRole(role: RoleType): boolean {
+  return role !== "builder" && role !== "none";
+}
+
+export const AssignableRoleSchema = ActiveRoleSchema.refine(isAssignableRole, {
+  message: "The 'builder' role can no longer be assigned.",
+});
+
 export type WorkspaceSharingPolicy =
   | "workspace_only"
   | "workspace_and_emails"

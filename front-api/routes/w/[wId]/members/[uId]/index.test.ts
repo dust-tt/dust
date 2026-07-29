@@ -34,7 +34,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
       );
     });
 
-    it("should return 400 when sole admin tries to change own role to builder", async () => {
+    it("should return 400 when sole admin tries to change own role to user", async () => {
       const { workspace, user } = await createPrivateApiMockRequest({
         method: "POST",
         role: "admin",
@@ -45,7 +45,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: "builder" }),
+          body: JSON.stringify({ role: "user" }),
         }
       );
 
@@ -120,14 +120,39 @@ describe("POST /api/w/:wId/members/:uId", () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: "builder" }),
+          body: JSON.stringify({ role: "manager" }),
         }
       );
 
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.member).toBeDefined();
-      expect(data.member.workspaces[0].role).toBe("builder");
+      expect(data.member.workspaces[0].role).toBe("manager");
+    });
+
+    it("should return 400 when assigning the deprecated builder role", async () => {
+      const { workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "admin",
+      });
+
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      const response = await honoApp.request(
+        memberUrl(workspace.sId, targetUser.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "builder" }),
+        }
+      );
+
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error.type).toBe("invalid_request_error");
     });
 
     it("should return 400 when sole admin tries to revoke themselves", async () => {
@@ -383,14 +408,14 @@ describe("POST /api/w/:wId/members/:uId", () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: "builder" }),
+          body: JSON.stringify({ role: "manager" }),
         }
       );
 
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.member).toBeDefined();
-      expect(data.member.workspaces[0].role).toBe("builder");
+      expect(data.member.workspaces[0].role).toBe("manager");
     });
   });
 
@@ -531,7 +556,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: "builder" }),
+          body: JSON.stringify({ role: "manager" }),
         }
       );
 

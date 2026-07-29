@@ -16,8 +16,8 @@ import type {
   GetMemberResponseBody,
   PostMemberResponseBody,
 } from "@app/types/api/user";
-import { isMembershipRoleType } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { AssignableRoleSchema } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -197,17 +197,20 @@ app.post(
         }
       }
     } else {
-      const role = body.role;
-      if (!isMembershipRoleType(role)) {
+      // The deprecated `builder` role can no longer be assigned; it is granted only through the
+      // `dust-builders` provisioning group.
+      const roleParse = AssignableRoleSchema.safeParse(body.role);
+      if (!roleParse.success) {
         return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
             message:
-              "The request body is invalid, expects { role: 'admin' | 'manager' | 'builder' | 'user' }.",
+              "The request body is invalid, expects { role: 'admin' | 'manager' | 'user' }.",
           },
         });
       }
+      const role = roleParse.data;
 
       // Check if this is an admin trying to change their own role and they are the sole admin
       const currentUser = auth.user();
@@ -299,7 +302,6 @@ app.post(
     switch (body.role) {
       case "admin":
       case "manager":
-      case "builder":
       case "user":
         w.role = body.role;
         break;
