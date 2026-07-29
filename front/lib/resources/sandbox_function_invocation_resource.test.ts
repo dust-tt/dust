@@ -500,6 +500,15 @@ describe("SandboxFunctionInvocationResource", () => {
       DUST_POD_DATABASE_MAX_SIZE_BYTES: "1073741824",
       DUST_SANDBOX_TOKEN: "sbt-function-token",
     });
+    expect(
+      JSON.parse(opts?.envVars?.DUST_POD_USER_IDENTITY ?? "")
+    ).toMatchObject({
+      workspaceId: authenticator.getNonNullableWorkspace().sId,
+      user: {
+        sId: authenticator.getNonNullableUser().sId,
+        fullName: authenticator.getNonNullableUser().fullName(),
+      },
+    });
     expect(opts?.user).toBe("agent-proxied");
     expect(opts?.workingDirectory).toBe("/home/agent");
     expect(typeof opts?.stdin).toBe("string");
@@ -539,6 +548,29 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(ensurePodSandboxReady).not.toHaveBeenCalled();
     expect(generateSandboxFunctionInvocationToken).not.toHaveBeenCalled();
     expect(execSpy).not.toHaveBeenCalled();
+  });
+
+  it("clears user identity for a userless invocation", async () => {
+    const { authenticator, sandbox, invocation } = await setupExecutionTest();
+    const userlessAuth = await Authenticator.internalAdminForWorkspace(
+      authenticator.getNonNullableWorkspace().sId
+    );
+    const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: "hello world\n",
+        stderr: "",
+      })
+    );
+
+    const executionResult = await invocation.execute(userlessAuth);
+    if (executionResult.isErr()) {
+      throw executionResult.error;
+    }
+
+    expect(execSpy.mock.calls[0]?.[2]?.envVars).toMatchObject({
+      DUST_POD_USER_IDENTITY: "",
+    });
   });
 
   it("surfaces the runner stderr when the invocation exits non-zero", async () => {
