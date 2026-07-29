@@ -33,6 +33,7 @@ export * from "./rename_workspace";
 export * from "./reset_message_rate_limit";
 export * from "./reset_provisioned_members_not_in_directory";
 export * from "./restore_conversation";
+export * from "./resync_spend_limit_counters";
 export * from "./revoke_coupon";
 export * from "./revoke_users";
 export * from "./run_reinforcement_workflow";

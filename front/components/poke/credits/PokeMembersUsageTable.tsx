@@ -133,11 +133,34 @@ function makeColumns({
     },
     {
       accessorKey: "consumedAwuCredits",
-      header: "Consumed",
+      // ES = Elasticsearch, RL = Redis rate-limiter counter, MT = Metronome.
+      // The three should agree; divergence points at a counter/metric issue.
+      header: "Consumed (ES / RL / MT)",
       enableSorting: false,
-      cell: ({ row }) => (
-        <span>{formatCredits(row.original.consumedAwuCredits)}</span>
-      ),
+      cell: ({ row }) => {
+        const {
+          consumedAwuCredits,
+          rateLimiterSpendAwuCredits,
+          metronomeConsumedAwuCredits,
+        } = row.original;
+        return (
+          <div className="flex flex-col text-xs">
+            <span>ES {formatCredits(consumedAwuCredits)}</span>
+            <span className="text-muted-foreground">
+              RL{" "}
+              {rateLimiterSpendAwuCredits !== null
+                ? formatCredits(rateLimiterSpendAwuCredits)
+                : "-"}
+            </span>
+            <span className="text-muted-foreground">
+              MT{" "}
+              {metronomeConsumedAwuCredits !== null
+                ? formatCredits(metronomeConsumedAwuCredits)
+                : "-"}
+            </span>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "spendLimitAwuCredits",

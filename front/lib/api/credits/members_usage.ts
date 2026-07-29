@@ -1,3 +1,7 @@
+import {
+  makeSpendLimitAwuCreditsRateLimitKeyForUser,
+  makeSpendLimitCycleWindowBounds,
+} from "@app/lib/api/assistant/rate_limits";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { listPerUserCreditBalanceAlertsForWorkspace } from "@app/lib/metronome/alerts/per_user_credit_balance";
@@ -47,6 +51,10 @@ import {
   resolveEffectiveSpendLimitSource,
 } from "@app/lib/spend_limits/effective";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  getFixedWindowCount,
+  setFixedWindowCount,
+} from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
@@ -63,7 +71,7 @@ import {
   toBaseSeatType,
 } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -111,6 +119,16 @@ export type MemberUsageType = {
   scheduledSeatChangeAt: string | null;
   // Per-user total spend cap in AWU credits for the billing period
   spendLimitAwuCredits: number | null;
+  // AWU credits recorded in the Redis fixed-window spend-cap counter for the
+  // current billing cycle — the value enforcement reads, shown alongside the
+  // Elasticsearch-derived `consumedAwuCredits` to compare the two. Poke-only
+  // (null otherwise, or when the billing period can't be resolved).
+  rateLimiterSpendAwuCredits: number | null;
+  // Metronome-side per-user AWU consumption for the current billing cycle (the
+  // value reconcile and the per-user cap check read). Shown next to the ES and
+  // rate-limiter figures to spot divergence. Poke-only (null otherwise, or when
+  // Metronome isn't configured).
+  metronomeConsumedAwuCredits: number | null;
   // Where `spendLimitAwuCredits` comes from: a user-specific `override`, the
   // seat-type `default`, or `none` (no cap configured / unlimited).
   spendLimitSource: EffectiveSpendLimitSource;
@@ -915,6 +933,84 @@ export async function getEffectiveSpendCapAwuCreditsForUser(
   });
 }
 
+/**
+ * Backfills/resyncs every active member's Redis fixed-window spend-cap counter
+ * for the current billing cycle from the authoritative Elasticsearch usage,
+ * overwriting the counter (SET) so it matches ES. Use after enabling the cap or
+ * to repair drift (the counter otherwise only accrues from live messages and
+ * starts at 0 mid-cycle). Returns the number of users whose counter was written.
+ */
+export async function resyncSpendLimitCountersFromEsUsage(
+  auth: Authenticator
+): Promise<Result<{ updatedUserCount: number }, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const periodResult = await getCachedMetronomeCurrentBillingPeriod(
+    workspace.sId
+  );
+  if (periodResult.isErr()) {
+    return new Err(periodResult.error);
+  }
+  if (!periodResult.value) {
+    return new Err(
+      new Error("No active Metronome billing period to resync against.")
+    );
+  }
+  const bounds = makeSpendLimitCycleWindowBounds(
+    periodResult.value.cycleStart,
+    periodResult.value.cycleEnd
+  );
+
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+  });
+  if (memberships.length === 0) {
+    return new Ok({ updatedUserCount: 0 });
+  }
+
+  const users = await UserResource.fetchByModelIds(
+    memberships.map((m) => m.userId)
+  );
+  const userByModelId = new Map(users.map((u) => [u.id, u]));
+
+  // Read the same Elasticsearch-derived consumption the members table shows as
+  // "Consumed (ES)": keyed by user sId, with the free/paid split applied per
+  // seat. This is the source of truth we overwrite the counter with.
+  const freeSeatUserIds = memberships.flatMap((m) => {
+    const u = userByModelId.get(m.userId);
+    return u && m.seatType === "free" ? [u.sId] : [];
+  });
+  const consumedByUserId = await fetchConsumedAwuCreditsByUserId({
+    workspace,
+    userIds: users.map((u) => u.sId),
+    freeSeatUserIds,
+  });
+
+  const results = await concurrentExecutor(
+    memberships,
+    async (membership) => {
+      const user = userByModelId.get(membership.userId);
+      if (!user) {
+        return false;
+      }
+      const consumed = consumedByUserId.get(user.sId) ?? 0;
+      const setResult = await setFixedWindowCount({
+        key: makeSpendLimitAwuCreditsRateLimitKeyForUser(
+          workspace,
+          user.toJSON()
+        ),
+        bounds,
+        value: Math.max(0, Math.round(consumed)),
+        logger,
+      });
+      return setResult.isOk();
+    },
+    { concurrency: 8 }
+  );
+
+  return new Ok({ updatedUserCount: results.filter(Boolean).length });
+}
+
 export type GetMemberUsageResponseBody = {
   member: MemberUsageType | null;
 };
@@ -1097,6 +1193,8 @@ export async function getMemberUsage({
         groupCapAwuCredits,
         defaultAwuCredits: effectiveDefaultAwuCredits,
       }),
+      rateLimiterSpendAwuCredits: null,
+      metronomeConsumedAwuCredits: null,
       spendLimitSource,
       spendLimitAlertId: null,
       spendLimitWarningAlertId: null,
@@ -1480,6 +1578,59 @@ export async function getMembersUsage({
       )
     : new Map<string, boolean>();
 
+  // Bulk-fetch the Redis fixed-window spend-cap counter per user (poke-only), to
+  // display beside the Elasticsearch-derived usage. The counter is bucketed on
+  // the current contract billing cycle — resolve the window once, then read each
+  // user's key.
+  const rateLimiterSpendByUserId = new Map<string, number>();
+  if (includeAlertLinks) {
+    const periodResult = await getCachedMetronomeCurrentBillingPeriod(
+      workspace.sId
+    );
+    if (periodResult.isOk() && periodResult.value) {
+      const bounds = makeSpendLimitCycleWindowBounds(
+        periodResult.value.cycleStart,
+        periodResult.value.cycleEnd
+      );
+      const entries = await concurrentExecutor(
+        users,
+        async (u) => {
+          const result = await getFixedWindowCount({
+            key: makeSpendLimitAwuCreditsRateLimitKeyForUser(
+              workspace,
+              u.toJSON()
+            ),
+            bounds,
+          });
+          return [u.sId, result.isOk() ? result.value : 0] as const;
+        },
+        { concurrency: 8 }
+      );
+      for (const [sId, value] of entries) {
+        rateLimiterSpendByUserId.set(sId, value);
+      }
+    }
+  }
+
+  // Bulk-fetch each user's Metronome-side per-user AWU consumption (poke-only),
+  // shown next to the ES and rate-limiter figures to spot divergence. Reuses the
+  // resilient wrapper (empty map when Metronome isn't configured or on error).
+  const metronomeConsumedByUserId = new Map<string, number>();
+  if (includeAlertLinks) {
+    const usage = await fetchPerUserUsageCreditsForMembersTable({
+      workspaceId: workspace.sId,
+      metronomeCustomerId: metronomeCustomerId ?? null,
+      metronomeContractId,
+      userIds: users.flatMap((u) => [u.sId, toFreeMetronomeUserId(u.sId)]),
+    });
+    for (const u of users) {
+      const membership = membershipByUserId.get(u.id);
+      const metronomeUserId =
+        membership?.seatType === "free" ? toFreeMetronomeUserId(u.sId) : u.sId;
+      metronomeConsumedByUserId.set(u.sId, usage.get(metronomeUserId) ?? 0);
+    }
+  }
+
   const membersUsage: MemberUsageType[] = users.flatMap((u) => {
     const membership = membershipByUserId.get(u.id);
     if (!membership) {
@@ -1613,6 +1764,12 @@ export async function getMembersUsage({
           groupCapAwuCredits,
           defaultAwuCredits: effectiveDefaultAwuCredits,
         }),
+        rateLimiterSpendAwuCredits: includeAlertLinks
+          ? (rateLimiterSpendByUserId.get(userId) ?? 0)
+          : null,
+        metronomeConsumedAwuCredits: includeAlertLinks
+          ? (metronomeConsumedByUserId.get(userId) ?? 0)
+          : null,
         spendLimitSource,
         spendLimitAlertId,
         spendLimitWarningAlertId,
