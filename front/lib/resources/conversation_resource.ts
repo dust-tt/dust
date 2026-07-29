@@ -1189,6 +1189,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         conversationId: this.id,
         workspaceId: this.workspaceId,
+        action: { [Op.ne]: "viewed" },
       },
       attributes: ["userId", "actionRequired"],
       include: [{ model: UserModel, attributes: ["sId"] }],
@@ -1204,23 +1205,23 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async fetchParticipationMapForUser(
     auth: Authenticator,
-    conversationIds?: number[]
+    conversationIds: number[]
   ): Promise<Map<number, UserParticipation>> {
     const user = auth.user();
 
     assert(user, "User is expected to be authenticated");
 
-    const whereClause: WhereOptions<ConversationParticipantModel> = {
-      userId: user.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    };
-
-    if (conversationIds && conversationIds.length > 0) {
-      whereClause.conversationId = { [Op.in]: conversationIds };
+    if (conversationIds.length === 0) {
+      return new Map();
     }
 
     const participations = await ConversationParticipantModel.findAll({
-      where: whereClause,
+      where: {
+        userId: user.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: { [Op.in]: conversationIds },
+        action: { [Op.ne]: "viewed" },
+      },
       attributes: ["actionRequired", "conversationId", "updatedAt"],
     });
 
@@ -1772,12 +1773,47 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
+  // Every non-silent conversation write bumps `updatedAt`; mirror the new value onto the
+  // participants' `conversationUpdatedAt` so per-user listings can order by activity without
+  // joining conversations.
+  protected override async update(
+    blob: Partial<Attributes<ConversationModel>>,
+    transaction?: Transaction
+  ): Promise<[affectedCount: number]> {
+    const result = await super.update(blob, transaction);
+
+    await ConversationParticipantModel.update(
+      { conversationUpdatedAt: this.updatedAt },
+      {
+        where: {
+          workspaceId: this.workspaceId,
+          conversationId: this.id,
+        },
+        silent: true,
+        transaction,
+      }
+    );
+
+    return result;
+  }
+
   static async listPrivateConversationsForUser(
     auth: Authenticator
   ): Promise<ConversationResource[]> {
-    // First get all participations for the user to get conversation IDs and metadata.
-    const participationMap = await this.fetchParticipationMapForUser(auth);
-    const conversationIds = Array.from(participationMap.keys());
+    const user = auth.user();
+
+    assert(user, "User is expected to be authenticated");
+
+    // The public v1 listing is deliberately unbounded: the user's whole participation history.
+    const participations = await ConversationParticipantModel.findAll({
+      where: {
+        userId: user.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        action: { [Op.ne]: "viewed" },
+      },
+      attributes: ["conversationId"],
+    });
+    const conversationIds = participations.map((p) => p.conversationId);
 
     if (conversationIds.length === 0) {
       return [];
@@ -1795,15 +1831,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     );
 
-    // Attach participation data to resources.
-    conversations.forEach((c) => {
-      const participation = participationMap.get(c.id);
-      if (participation) {
-        c.userParticipation = participation;
-      }
-    });
-
-    await this.enrichWithReadState(auth, conversations);
+    await this.enrichWithParticipationAndReadState(auth, conversations);
 
     // Sort by participation updated time descending.
     return conversations.sort(
@@ -1839,11 +1867,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       lastValue: null,
     };
 
-    const participationMap = await this.fetchParticipationMapForUser(
-      auth,
-      restrictToConversationModelIds
-    );
-    let conversationIds = Array.from(participationMap.keys());
+    const user = auth.user();
+
+    assert(user, "User is expected to be authenticated");
+
+    const participations = await ConversationParticipantModel.findAll({
+      where: {
+        userId: user.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        action: { [Op.ne]: "viewed" },
+        ...(restrictToConversationModelIds
+          ? { conversationId: { [Op.in]: restrictToConversationModelIds } }
+          : {}),
+      },
+      attributes: ["conversationId"],
+    });
+    const conversationIds = participations.map((p) => p.conversationId);
 
     if (conversationIds.length === 0) {
       return emptyResult;
@@ -1901,14 +1940,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const resultConversations = conversations.slice(0, pagination.limit);
 
-    resultConversations.forEach((c) => {
-      const participation = participationMap.get(c.id);
-      if (participation) {
-        c.userParticipation = participation;
-      }
-    });
-
-    await this.enrichWithReadState(auth, resultConversations);
+    await this.enrichWithParticipationAndReadState(auth, resultConversations);
 
     // Advance the cursor past the scanned window, unless accessible rows were
     // cut by the limit — those must reappear on the next page.
@@ -1925,6 +1957,115 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  private static async fetchPrivateConversationsPaginatedByActivity(
+    auth: Authenticator,
+    pagination: {
+      limit: number;
+      lastValue?: string;
+      orderDirection?: "asc" | "desc";
+    }
+  ): Promise<{
+    conversations: ConversationResource[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const user = auth.user();
+
+    assert(user, "User is expected to be authenticated");
+
+    const emptyResult = {
+      conversations: [],
+      hasMore: false,
+      lastValue: null,
+    };
+
+    const orderDirection = pagination.orderDirection ?? "desc";
+    const fetchLimit = pagination.limit + 1;
+
+    let cursorDate: Date | null = null;
+    if (pagination.lastValue) {
+      const timestampMs = parseInt(pagination.lastValue, 10);
+      if (!Number.isNaN(timestampMs)) {
+        cursorDate = new Date(timestampMs);
+      }
+    }
+
+    // One scan of the (workspaceId, userId, conversationUpdatedAt) index joined to
+    // conversations, with every SQL-expressible filter inside the join so the limit only counts
+    // surviving rows. baseFetchWithAuthorization still filters rows after the SQL limit (deleted
+    // space references, ACLs); as in fetchPrivateConversationsPaginated, hasMore and the cursor
+    // are derived from the scanned window, not the filtered rows.
+    const participations = await ConversationParticipantModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user.id,
+        action: { [Op.ne]: "viewed" },
+        conversationUpdatedAt: cursorDate
+          ? { [orderDirection === "desc" ? Op.lt : Op.gt]: cursorDate }
+          : // Null = not backfilled yet; never listed.
+            { [Op.ne]: null },
+      },
+      include: [
+        {
+          model: ConversationModel,
+          required: true,
+          attributes: [],
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            spaceId: { [Op.is]: null },
+            visibility: { [Op.eq]: "unlisted" },
+          },
+        },
+      ],
+      order: [
+        ["conversationUpdatedAt", orderDirection === "desc" ? "DESC" : "ASC"],
+      ],
+      limit: fetchLimit,
+      attributes: ["conversationId", "conversationUpdatedAt"],
+    });
+
+    if (participations.length === 0) {
+      return emptyResult;
+    }
+
+    const hasMore = participations.length === fetchLimit;
+    const activityByConversationId = new Map(
+      participations.map((p) => [p.conversationId, p.conversationUpdatedAt])
+    );
+
+    const conversations = await this.baseFetchWithAuthorization(
+      auth,
+      {},
+      {
+        where: { id: { [Op.in]: participations.map((p) => p.conversationId) } },
+      }
+    );
+
+    // Back to scan (activity) order.
+    const conversationById = new Map(conversations.map((c) => [c.id, c]));
+    const authorized = removeNulls(
+      participations.map((p) => conversationById.get(p.conversationId) ?? null)
+    );
+
+    const resultConversations = authorized.slice(0, pagination.limit);
+
+    await this.enrichWithParticipationAndReadState(auth, resultConversations);
+
+    // Advance the cursor past the scanned window, unless accessible rows were
+    // cut by the limit — those must reappear on the next page.
+    const lastReturned = resultConversations[resultConversations.length - 1];
+    const lastCursorDate =
+      authorized.length > pagination.limit && lastReturned
+        ? activityByConversationId.get(lastReturned.id)
+        : participations[participations.length - 1].conversationUpdatedAt;
+
+    return {
+      conversations: resultConversations,
+      hasMore,
+      lastValue: lastCursorDate ? lastCursorDate.getTime().toString() : null,
+    };
+  }
+
   static async listPrivateConversationsForUserPaginated(
     auth: Authenticator,
     pagination: {
@@ -1937,9 +2078,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     hasMore: boolean;
     lastValue: string | null;
   }> {
-    const result = await this.fetchPrivateConversationsPaginated(auth, {
-      pagination,
-    });
+    const result = await this.fetchPrivateConversationsPaginatedByActivity(
+      auth,
+      pagination
+    );
     const nextWakeupAtByConversationId =
       await this.fetchNextWakeupAtByConversationId(
         auth,
@@ -2573,6 +2715,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Update the conversation participant to set actionRequired to true.
     // Skip rows already at the target value to avoid a no-op row lock/write.
+    // "viewed" rows carry read state only and never hold actionRequired.
     const updated = await ConversationParticipantModel.update(
       { actionRequired: true },
       {
@@ -2581,6 +2724,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
           userId: user.id,
           actionRequired: { [Op.ne]: true },
+          action: { [Op.ne]: "viewed" },
         },
       }
     );
@@ -2634,15 +2778,32 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       t?: Transaction;
     }
   ): Promise<Result<number, Error>> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    // Set explicitly (instead of relying on the automatic bump) so participants mirror the
+    // exact same value.
+    const now = new Date();
+
     const updated = await ConversationModel.update(
-      {
-        id: col("id"), // no real change
-      },
+      { updatedAt: now },
       {
         where: {
           id: conversation.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId,
         },
+        silent: true,
+        transaction: t,
+      }
+    );
+
+    await ConversationParticipantModel.update(
+      { conversationUpdatedAt: now },
+      {
+        where: {
+          workspaceId,
+          conversationId: conversation.id,
+        },
+        // Participants' own `updatedAt` tracks the user's last interaction; don't bump it.
+        silent: true,
         transaction: t,
       }
     );
@@ -2697,15 +2858,47 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     if (!auth.user()) {
       return new Err(new Error("user_not_authenticated"));
     }
+    const readAt = lastReadAt ?? new Date();
+    const userId = auth.getNonNullableUser().id;
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
     const updated = await UserConversationReadsModel.upsert(
       {
         conversationId: conversation.id,
-        userId: auth.getNonNullableUser().id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        lastReadAt: lastReadAt ?? new Date(),
+        userId,
+        workspaceId,
+        lastReadAt: readAt,
       },
       { transaction }
     );
+
+    // Mirror onto the participant row; a user reading a conversation they never joined gets a
+    // "viewed" row that only carries read state. `silent` keeps `updatedAt` (the participation
+    // timestamp) untouched.
+    const [participant, created] =
+      await ConversationParticipantModel.findOrCreate({
+        where: {
+          workspaceId,
+          conversationId: conversation.id,
+          userId,
+        },
+        defaults: {
+          action: "viewed",
+          actionRequired: false,
+          conversationUpdatedAt:
+            "updated" in conversation
+              ? new Date(conversation.updated)
+              : conversation.updatedAt,
+          lastReadAt: readAt,
+        },
+        transaction,
+      });
+    if (!created) {
+      await participant.update(
+        { lastReadAt: readAt },
+        { silent: true, transaction }
+      );
+    }
 
     return new Ok(updated);
   }
@@ -2727,11 +2920,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
   ): Promise<void> {
     const workspaceId = auth.getNonNullableWorkspace().id;
+    const readAt = lastReadAt ?? new Date();
 
     const participants = await ConversationParticipantModel.findAll({
       where: {
         workspaceId,
         conversationId: conversation.id,
+        action: { [Op.ne]: "viewed" },
       },
       attributes: ["userId"],
     });
@@ -2745,9 +2940,21 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         conversationId: conversation.id,
         userId: p.userId,
         workspaceId,
-        lastReadAt: lastReadAt ?? new Date(),
+        lastReadAt: readAt,
       })),
       { updateOnDuplicate: ["lastReadAt"] }
+    );
+
+    await ConversationParticipantModel.update(
+      { lastReadAt: readAt },
+      {
+        where: {
+          workspaceId,
+          conversationId: conversation.id,
+          userId: { [Op.in]: participants.map((p) => p.userId) },
+        },
+        silent: true,
+      }
     );
   }
 
@@ -2769,6 +2976,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
+
+    await ConversationParticipantModel.update(
+      { lastReadAt: null },
+      {
+        where: {
+          conversationId: conversation.id,
+          userId: auth.getNonNullableUser().id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        silent: true,
+      }
+    );
 
     return new Ok(undefined);
   }
@@ -2887,6 +3106,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         conversationId: conversation.id,
         workspaceId: auth.getNonNullableWorkspace().id,
         userId: user.id,
+        action: { [Op.ne]: "viewed" },
       },
       transaction,
     });
@@ -2926,8 +3146,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       });
 
       if (participant) {
-        // If the action is subscribed, we do not update the participant at all.
-        if (action === "subscribed") {
+        // If the action is subscribed, we do not update the participant at all — unless the
+        // existing row is a "viewed" one, which only carries read state and always upgrades
+        // when the user becomes an actual participant.
+        const wasViewer = participant.action === "viewed";
+        if (action === "subscribed" && !wasViewer) {
           status = "none";
           return;
         }
@@ -2937,10 +3160,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           {
             action,
             updatedAt: new Date(),
+            ...(lastReadAt ? { lastReadAt } : {}),
           },
           { transaction: t }
         );
-        status = "updated";
+        status = wasViewer ? "added" : "updated";
       } else {
         await ConversationParticipantModel.create(
           {
@@ -2949,6 +3173,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             userId: user.id,
             workspaceId: auth.getNonNullableWorkspace().id,
             actionRequired: false,
+            conversationUpdatedAt:
+              "updated" in conversation
+                ? new Date(conversation.updated)
+                : conversation.updatedAt,
+            lastReadAt,
           },
           { transaction: t }
         );
@@ -4920,6 +5149,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: this.id,
+        action: { [Op.ne]: "viewed" },
       },
       order: [["createdAt", "ASC"]],
     });
@@ -4937,6 +5167,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: this.id,
+        action: { [Op.ne]: "viewed" },
       },
     });
 
@@ -4973,6 +5204,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         conversationId: conversation.id,
         workspaceId: auth.getNonNullableWorkspace().id,
+        action: { [Op.ne]: "viewed" },
       },
       attributes: ["userId", "action"],
       order: [["createdAt", "ASC"]],
@@ -5100,6 +5332,51 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }))
     );
 
+    // Mirror onto participant rows; conversations the user only follows from a space get a
+    // "viewed" row carrying the read state.
+    const now = new Date();
+    await ConversationParticipantModel.update(
+      { lastReadAt: now },
+      {
+        where: {
+          conversationId: { [Op.in]: conversationModelIds },
+          workspaceId: workspaceModelId,
+          userId: userModelId,
+        },
+        silent: true,
+      }
+    );
+
+    const existingParticipants = await ConversationParticipantModel.findAll({
+      where: {
+        conversationId: { [Op.in]: conversationModelIds },
+        workspaceId: workspaceModelId,
+        userId: userModelId,
+      },
+      attributes: ["conversationId"],
+    });
+    const conversationModelIdsWithParticipant = new Set(
+      existingParticipants.map((p) => p.conversationId)
+    );
+    const updatedAtByConversationModelId = new Map(
+      conversations.map((c) => [c.id, c.updatedAt])
+    );
+    await ConversationParticipantModel.bulkCreate(
+      conversationModelIds
+        .filter((id) => !conversationModelIdsWithParticipant.has(id))
+        .map((conversationId) => ({
+          conversationId,
+          userId: userModelId,
+          workspaceId: workspaceModelId,
+          action: "viewed" as const,
+          actionRequired: false,
+          conversationUpdatedAt:
+            updatedAtByConversationModelId.get(conversationId) ?? null,
+          lastReadAt: now,
+        })),
+      { ignoreDuplicates: true }
+    );
+
     return new Ok(undefined);
   }
 
@@ -5139,12 +5416,43 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           userId: primaryUserId,
           workspaceId,
         },
-        attributes: ["conversationId"],
+        attributes: ["conversationId", "action"],
       });
 
-    const primaryUserConversationIds = primaryUserParticipations.map(
-      (p) => p.conversationId
-    );
+    // A primary "viewed" row must not swallow an actual participation of the secondary user:
+    // drop the viewed row instead so the secondary row carries over below.
+    const primaryViewedConversationIds = primaryUserParticipations
+      .filter((p) => p.action === "viewed")
+      .map((p) => p.conversationId);
+    let droppedPrimaryViewedIds = new Set<ModelId>();
+    if (primaryViewedConversationIds.length > 0) {
+      const secondaryActualParticipations =
+        await ConversationParticipantModel.findAll({
+          where: {
+            userId: secondaryUserId,
+            workspaceId,
+            conversationId: { [Op.in]: primaryViewedConversationIds },
+            action: { [Op.ne]: "viewed" },
+          },
+          attributes: ["conversationId"],
+        });
+      droppedPrimaryViewedIds = new Set(
+        secondaryActualParticipations.map((p) => p.conversationId)
+      );
+      if (droppedPrimaryViewedIds.size > 0) {
+        await ConversationParticipantModel.destroy({
+          where: {
+            userId: primaryUserId,
+            workspaceId,
+            conversationId: [...droppedPrimaryViewedIds],
+          },
+        });
+      }
+    }
+
+    const primaryUserConversationIds = primaryUserParticipations
+      .filter((p) => !droppedPrimaryViewedIds.has(p.conversationId))
+      .map((p) => p.conversationId);
 
     // Delete secondary user's participations in conversations where primary user already participates
     if (primaryUserConversationIds.length > 0) {
