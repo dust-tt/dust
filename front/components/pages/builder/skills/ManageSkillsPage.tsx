@@ -285,18 +285,6 @@ export function ManageSkillsPage() {
     [activeSkills, archivedSkills, suggestedSkills]
   );
 
-  // Without the make-discoverable permission, an editor cannot change the availability
-  // of an already auto-discoverable skill, so downgrade actions are locked when the
-  // selection contains one.
-  const selectionHasAutoDiscoverableSkill = useMemo(
-    () =>
-      selectedSkillIds.some(
-        (skillId) =>
-          knownSkillsById.get(skillId)?.availability === "users_and_agents"
-      ),
-    [selectedSkillIds, knownSkillsById]
-  );
-
   const handleUsedBySkillSelect = useCallback(
     (skillId: string) => {
       const skill = knownSkillsById.get(skillId);
@@ -427,9 +415,6 @@ export function ManageSkillsPage() {
               selectedCount={selectedSkillIds.length}
               isUpdating={isBatchUpdating}
               canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
-              selectionHasAutoDiscoverableSkill={
-                selectionHasAutoDiscoverableSkill
-              }
               onClose={closeBatchEdition}
               onSelectAction={setPendingBatchAction}
             />
@@ -475,6 +460,7 @@ export function ManageSkillsPage() {
                   onAgentClick={setAgentId}
                   onUsedBySkillClick={handleUsedBySkillSelect}
                   showAvailability={hasSkillPublicationGovernance}
+                  canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
                   {...(isBatchEditionAvailable && isBatchEditing
                     ? { rowSelection, setRowSelection }
                     : {})}

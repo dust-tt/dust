@@ -53,7 +53,6 @@ interface SkillsBatchEditBarProps {
   selectedCount: number;
   isUpdating: boolean;
   canMakeSkillAutoDiscoverable: boolean;
-  selectionHasAutoDiscoverableSkill: boolean;
   onClose: () => void;
   onSelectAction: (action: BatchAvailabilityAction) => void;
 }
@@ -62,7 +61,6 @@ export function SkillsBatchEditBar({
   selectedCount,
   isUpdating,
   canMakeSkillAutoDiscoverable,
-  selectionHasAutoDiscoverableSkill,
   onClose,
   onSelectAction,
 }: SkillsBatchEditBarProps) {
@@ -87,25 +85,17 @@ export function SkillsBatchEditBar({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          {BATCH_AVAILABILITY_ACTIONS.map((action) => {
-            // The make-discoverable permission gates both turning skills
-            // auto-discoverable and changing an already auto-discoverable skill's
-            // availability, so downgrade actions are locked when the selection
-            // contains an auto-discoverable skill.
-            const isMakingDiscoverable =
-              action.availability === "users_and_agents";
-            const disabled =
-              !canMakeSkillAutoDiscoverable &&
-              (isMakingDiscoverable || selectionHasAutoDiscoverableSkill);
-            return (
-              <DropdownMenuItem
-                key={action.availability}
-                label={action.label}
-                onClick={() => onSelectAction(action)}
-                disabled={disabled}
-              />
-            );
-          })}
+          {BATCH_AVAILABILITY_ACTIONS.filter(
+            (action) =>
+              canMakeSkillAutoDiscoverable ||
+              action.availability !== "users_and_agents"
+          ).map((action) => (
+            <DropdownMenuItem
+              key={action.availability}
+              label={action.label}
+              onClick={() => onSelectAction(action)}
+            />
+          ))}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
