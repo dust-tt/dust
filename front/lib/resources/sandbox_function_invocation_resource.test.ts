@@ -15,7 +15,10 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
+import type {
+  SandboxFunctionInvocationOrigin,
+  SandboxFunctionUserIdentityPolicy,
+} from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -69,7 +72,8 @@ beforeEach(() => {
 });
 
 async function setupExecutionTest(
-  userIdentity: SandboxFunctionUserIdentityPolicy = "optional"
+  userIdentity: SandboxFunctionUserIdentityPolicy = "optional",
+  origin: SandboxFunctionInvocationOrigin = "delegated"
 ) {
   const { authenticator, workspace } = await createResourceTest({
     role: "admin",
@@ -106,7 +110,7 @@ async function setupExecutionTest(
   );
   const invocation = await SandboxFunctionInvocationResource.makeNew(
     authenticator,
-    { sandboxFunction, input: { message: "hello" } }
+    { sandboxFunction, input: { message: "hello" }, origin }
   );
 
   return {
@@ -690,6 +694,39 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(executionResult.error.message).toContain(
       "requires a logged-in user"
     );
+    expect(execSpy).not.toHaveBeenCalled();
+  });
+
+  it("executes an interactive invocation whose session origin was persisted", async () => {
+    const { authenticator, sandbox, invocation } = await setupExecutionTest(
+      "interactive_workspace_user_required",
+      "interactive_session"
+    );
+    vi.spyOn(authenticator, "authMethod").mockReturnValue("session");
+    const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: "hello world\n",
+        stderr: "",
+      })
+    );
+
+    const executionResult = await invocation.execute(authenticator);
+
+    expect(executionResult.isOk()).toBe(true);
+    expect(execSpy).toHaveBeenCalledOnce();
+  });
+
+  it("blocks an interactive function whose invocation origin is delegated", async () => {
+    const { authenticator, sandbox, invocation } = await setupExecutionTest(
+      "interactive_workspace_user_required"
+    );
+    vi.spyOn(authenticator, "authMethod").mockReturnValue("session");
+    const execSpy = vi.spyOn(sandbox, "exec");
+
+    const executionResult = await invocation.execute(authenticator);
+
+    expect(executionResult.isErr()).toBe(true);
     expect(execSpy).not.toHaveBeenCalled();
   });
 
