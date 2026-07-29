@@ -8,7 +8,6 @@ import {
   ConversationModel,
   ConversationParticipantModel,
   MessageModel,
-  UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
@@ -6526,17 +6525,14 @@ describe("markAsReadForAuthUser", () => {
     expect(result.isOk()).toBe(true);
     const after = new Date();
 
-    const { UserConversationReadsModel } = await import(
-      "@app/lib/models/agent/conversation"
-    );
-    const row = await UserConversationReadsModel.findOne({
+    const row = await ConversationParticipantModel.findOne({
       where: {
         conversationId: conversation.id,
         userId: auth.getNonNullableUser().id,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
-    assert(row);
+    assert(row?.lastReadAt);
     expect(row.lastReadAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
     expect(row.lastReadAt.getTime()).toBeLessThanOrEqual(after.getTime());
   });
@@ -6549,17 +6545,14 @@ describe("markAsReadForAuthUser", () => {
     });
     expect(result.isOk()).toBe(true);
 
-    const { UserConversationReadsModel } = await import(
-      "@app/lib/models/agent/conversation"
-    );
-    const row = await UserConversationReadsModel.findOne({
+    const row = await ConversationParticipantModel.findOne({
       where: {
         conversationId: conversation.id,
         userId: auth.getNonNullableUser().id,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
-    assert(row);
+    assert(row?.lastReadAt);
     expect(row.lastReadAt.getTime()).toBe(explicit.getTime());
   });
 });
@@ -6610,7 +6603,7 @@ describe("markAsReadForAllParticipants", () => {
       lastReadAt,
     });
 
-    const rows = await UserConversationReadsModel.findAll({
+    const rows = await ConversationParticipantModel.findAll({
       where: {
         conversationId: conversation.id,
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -6618,7 +6611,7 @@ describe("markAsReadForAllParticipants", () => {
     });
     expect(rows).toHaveLength(2);
     expect(
-      rows.every((row) => row.lastReadAt.getTime() === lastReadAt.getTime())
+      rows.every((row) => row.lastReadAt?.getTime() === lastReadAt.getTime())
     ).toBe(true);
   });
 
@@ -6635,14 +6628,14 @@ describe("markAsReadForAllParticipants", () => {
       lastReadAt,
     });
 
-    const row = await UserConversationReadsModel.findOne({
+    const row = await ConversationParticipantModel.findOne({
       where: {
         conversationId: conversation.id,
         userId: otherAuth.getNonNullableUser().id,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
-    assert(row);
+    assert(row?.lastReadAt);
     expect(row.lastReadAt.getTime()).toBe(lastReadAt.getTime());
   });
 });
@@ -6704,16 +6697,6 @@ describe("participant read state (lastReadAt on conversation_participants)", () 
     expect(after.lastReadAt?.getTime()).toBe(explicit.getTime());
     expect(after.action).toBe("posted");
     expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime());
-
-    const read = await UserConversationReadsModel.findOne({
-      where: {
-        conversationId: conversation.id,
-        userId: auth.getNonNullableUser().id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-    assert(read);
-    expect(read.lastReadAt.getTime()).toBe(explicit.getTime());
   });
 
   it("markAsReadForAuthUser creates a viewed row for a non-participant that never counts as participation", async () => {
