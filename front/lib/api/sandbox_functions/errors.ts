@@ -18,3 +18,18 @@ export class SandboxFunctionError extends Error {
     this.name = "SandboxFunctionError";
   }
 }
+
+export class SandboxFunctionInvocationError extends Error {
+  readonly code = "user_authentication_required";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "SandboxFunctionInvocationError";
+  }
+}
+
+export function isSandboxFunctionInvocationError(
+  error: Error
+): error is SandboxFunctionInvocationError {
+  return error instanceof SandboxFunctionInvocationError;
+}

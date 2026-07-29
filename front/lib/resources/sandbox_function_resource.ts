@@ -1,4 +1,6 @@
 import type { PokePodFunction } from "@app/lib/api/poke/projects";
+import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
+import { getAuthenticatedWorkspaceUser } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -18,7 +20,10 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import type { PostSandboxFunctionInvocationRequestBody } from "@app/types/api/sandbox_functions";
+import type {
+  PostSandboxFunctionInvocationRequestBody,
+  SandboxFunctionAuthenticationPolicy,
+} from "@app/types/api/sandbox_functions";
 import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -75,6 +80,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       file,
       slug,
       description,
+      authentication = "optional",
       inputSchema,
       outputSchema,
     }: {
@@ -82,6 +88,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       file: FileResource;
       slug: string;
       description: string;
+      authentication?: SandboxFunctionAuthenticationPolicy;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     },
@@ -120,6 +127,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         fileId: file.id,
         slug,
         description,
+        authentication,
         inputSchema,
         outputSchema,
       },
@@ -140,18 +148,25 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     {
       bundleCode,
       description,
+      authentication = this.authentication ?? "optional",
       inputSchema,
       outputSchema,
     }: {
       bundleCode: string;
       description: string;
+      authentication?: SandboxFunctionAuthenticationPolicy;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     }
   ): Promise<Result<undefined, Error>> {
     try {
       await this.file.uploadContent(auth, bundleCode);
-      await this.update({ description, inputSchema, outputSchema });
+      await this.update({
+        description,
+        authentication,
+        inputSchema,
+        outputSchema,
+      });
     } catch (error) {
       return new Err(normalizeError(error));
     }
@@ -346,10 +361,15 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     auth: Authenticator,
     body: PostSandboxFunctionInvocationRequestBody
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
-    if (this.authentication !== null) {
+    const authentication = this.authentication ?? "optional";
+    if (
+      authentication === "workspace_user_required" &&
+      (this.workspaceId !== auth.getNonNullableWorkspace().id ||
+        !(await getAuthenticatedWorkspaceUser(auth)))
+    ) {
       return new Err(
-        new Error(
-          "This Pod Function uses an authentication policy unsupported by this application version."
+        new SandboxFunctionInvocationError(
+          "This Pod Function requires a logged-in user from its workspace."
         )
       );
     }

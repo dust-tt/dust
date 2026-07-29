@@ -10,10 +10,10 @@ import {
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
-import { Authenticator } from "@app/lib/auth";
+import { getAuthenticatedWorkspaceUser } from "@app/lib/api/sandbox_functions/workspace_user";
+import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import {
@@ -176,20 +176,12 @@ async function getSandboxFunctionUserIdentity(
   invocation: SandboxFunctionInvocationResource
 ) {
   const workspace = auth.getNonNullableWorkspace();
-  const user = auth.user();
+  const user = await getAuthenticatedWorkspaceUser(auth);
   if (
     !user ||
     invocation.workspaceId !== workspace.id ||
     invocation.userId !== user.id
   ) {
-    return null;
-  }
-
-  const role = await MembershipResource.getActiveRoleForUserInWorkspace({
-    user,
-    workspace,
-  });
-  if (!Authenticator.isMember(role)) {
     return null;
   }
 

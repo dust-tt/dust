@@ -55,7 +55,8 @@ export async function publishSandboxFunction(
   if (buildResult.isErr()) {
     return buildResult;
   }
-  const { bundleCode, inputSchema, outputSchema } = buildResult.value;
+  const { bundleCode, authentication, inputSchema, outputSchema } =
+    buildResult.value;
 
   // Re-publish overwrites the existing bundle in place so its mount path (<prefix>/<slug>.ts) stays
   // stable; only a first publish creates the backing file.
@@ -68,6 +69,7 @@ export async function publishSandboxFunction(
     const updateResult = await existing.updateContent(auth, {
       bundleCode,
       description,
+      authentication,
       inputSchema,
       outputSchema,
     });
@@ -90,6 +92,7 @@ export async function publishSandboxFunction(
     file: fileResult.value,
     slug,
     description,
+    authentication,
     inputSchema,
     outputSchema,
   });

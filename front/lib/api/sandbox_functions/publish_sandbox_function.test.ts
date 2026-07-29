@@ -66,7 +66,12 @@ describe("publishSandboxFunction", () => {
   it("publishes a new function with one bundle file under the dedicated prefix", async () => {
     const { workspace, space, auth } = await setupPod();
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({ bundleCode: "export default {};", inputSchema, outputSchema })
+      new Ok({
+        bundleCode: "export default {};",
+        authentication: "workspace_user_required",
+        inputSchema,
+        outputSchema,
+      })
     );
 
     const result = await publishSandboxFunction(auth, {
@@ -83,6 +88,7 @@ describe("publishSandboxFunction", () => {
     const fn = result.value;
     expect(fn.slug).toBe("greet");
     expect(fn.description).toBe("Greet someone.");
+    expect(fn.authentication).toBe("workspace_user_required");
     expect(fn.inputSchema).toEqual(inputSchema);
     expect(fn.outputSchema).toEqual(outputSchema);
 
@@ -114,7 +120,12 @@ describe("publishSandboxFunction", () => {
     const { workspace, space, auth } = await setupPod();
 
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({ bundleCode: "v1", inputSchema, outputSchema })
+      new Ok({
+        bundleCode: "v1",
+        authentication: "workspace_user_required",
+        inputSchema,
+        outputSchema,
+      })
     );
     const first = await publishSandboxFunction(auth, {
       space,
@@ -138,7 +149,12 @@ describe("publishSandboxFunction", () => {
       required: ["text"],
     };
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({ bundleCode: "v2", inputSchema, outputSchema: newOutputSchema })
+      new Ok({
+        bundleCode: "v2",
+        authentication: "optional",
+        inputSchema,
+        outputSchema: newOutputSchema,
+      })
     );
     const second = await publishSandboxFunction(auth, {
       space,
@@ -153,6 +169,7 @@ describe("publishSandboxFunction", () => {
 
     expect(second.value.id).toBe(first.value.id);
     expect(second.value.description).toBe("v2");
+    expect(second.value.authentication).toBe("optional");
     expect(second.value.outputSchema).toEqual(newOutputSchema);
     // The bundle file is reused in place, not replaced: same row, canonical mount path retained, and
     // its version bumped by the re-upload.

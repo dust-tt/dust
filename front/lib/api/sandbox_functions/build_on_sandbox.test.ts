@@ -18,6 +18,7 @@ const okEnvelope = JSON.stringify({ ok: true });
 const validSchemaFile = JSON.stringify({
   name: "greet",
   description: "Greet someone.",
+  authentication: "workspace_user_required",
   input_schema: { type: "object", properties: { name: { type: "string" } } },
   output_schema: {
     type: "object",
@@ -78,6 +79,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
       return;
     }
     expect(result.value.bundleCode).toBe("export default {/*bundle*/};");
+    expect(result.value.authentication).toBe("workspace_user_required");
     expect(result.value.inputSchema).toEqual({
       type: "object",
       properties: { name: { type: "string" } },
@@ -199,6 +201,38 @@ describe("buildSandboxFunctionOnSandbox", () => {
       return;
     }
     expect(result.error.code).toBe("invalid_contract");
+  });
+
+  it("defaults functions built by an older sandbox image to optional authentication", async () => {
+    const { authenticator, sandbox, space } = await setup();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({ exitCode: 0, stdout: okEnvelope, stderr: "" })
+    );
+    vi.spyOn(sandbox, "readFile")
+      .mockResolvedValueOnce(new Ok(Buffer.from("bundle")))
+      .mockResolvedValueOnce(
+        new Ok(
+          Buffer.from(
+            JSON.stringify({
+              name: "greet",
+              description: null,
+              input_schema: { type: "object" },
+              output_schema: { type: "object" },
+            })
+          )
+        )
+      );
+
+    const result = await buildSandboxFunctionOnSandbox(authenticator, {
+      space,
+      srcSandboxPath: SRC,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.authentication).toBe("optional");
   });
 
   it("returns an internal error when the exec itself fails", async () => {

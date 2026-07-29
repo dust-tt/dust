@@ -1,3 +1,4 @@
+import { isSandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { getSandboxFunctionInvocationEvents } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -26,6 +27,12 @@ export async function callSandboxFunction(
     context,
   });
   if (invocationResult.isErr()) {
+    if (isSandboxFunctionInvocationError(invocationResult.error)) {
+      return new Err({
+        code: invocationResult.error.code,
+        message: invocationResult.error.message,
+      });
+    }
     return new Err({
       code: "invocation_failed",
       message: invocationResult.error.message,
