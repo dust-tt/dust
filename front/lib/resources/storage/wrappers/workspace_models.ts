@@ -252,6 +252,9 @@ export type ModelStaticWorkspaceAware<M extends WorkspaceAwareModel> =
 export type ModelStaticSoftDeletable<
   M extends SoftDeletableWorkspaceAwareModel,
 > = ModelStatic<M> & {
+  destroy(
+    options: WithHardDelete<DestroyOptions<Attributes<M>>>
+  ): Promise<number>;
   findAll(
     options: WithIncludeDeleted<
       WorkspaceTenantIsolationSecurityBypassOptions<Attributes<M>>
@@ -307,6 +310,7 @@ export class SoftDeletableWorkspaceAwareModel<
   // Delete.
 
   private static async softDelete<M extends Model>(
+    this: ModelStatic<M>,
     options: DestroyOptions<Attributes<M>>
   ): Promise<number> {
     const updateOptions: UpdateOptions<Attributes<M>> = {
@@ -325,13 +329,14 @@ export class SoftDeletableWorkspaceAwareModel<
   }
 
   public static override async destroy<M extends Model>(
+    this: ModelStatic<M>,
     options: WithHardDelete<DestroyOptions<Attributes<M>>>
   ): Promise<number> {
     if (options.hardDelete) {
       return super.destroy(options);
     }
 
-    return this.softDelete(options);
+    return SoftDeletableWorkspaceAwareModel.softDelete.call(this, options);
   }
 
   // Fetch.

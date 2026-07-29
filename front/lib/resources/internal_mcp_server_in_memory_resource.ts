@@ -234,6 +234,7 @@ export class InternalMCPServerInMemoryResource {
       editedByUserId: auth.user()?.id,
       oAuthUseCase: useCase ?? null,
       oauthScope: oauthScope ?? null,
+      isRestrictedToSkills: false,
       ...(viewName ? { name: viewName } : {}),
     });
 
