@@ -43,7 +43,7 @@ const GOVERNANCE_SETTING_METADATA: Partial<
   },
   "publish:skill": {
     label: "Manage skill availability",
-    description: "Who can make skills available across the workspace.",
+    description: "Who can make skills available across the workspace",
   },
   "make_discoverable:skill": {
     label: "Make skills auto-discoverable",
