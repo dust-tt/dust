@@ -24,23 +24,34 @@ process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
 
 export async function createSandboxTokenTestContext({
   disableComputerFeature = false,
-  useProjectSpaceForConversation = false,
+  useDifferentSpaceForConversation = false,
 }: {
   disableComputerFeature?: boolean;
-  useProjectSpaceForConversation?: boolean;
+  useDifferentSpaceForConversation?: boolean;
 } = {}) {
   const user = await UserFactory.basic();
   const workspace = await WorkspaceFactory.basic();
   await MembershipFactory.associate(workspace, user, { role: "admin" });
 
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+  let auth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
     workspace.sId
   );
   const { globalSpace } = await SpaceFactory.defaults(auth);
-  const conversationSpace = useProjectSpaceForConversation
-    ? await SpaceFactory.project(workspace, user.id)
-    : globalSpace;
+  let conversationSpace = globalSpace;
+  if (useDifferentSpaceForConversation) {
+    conversationSpace = await SpaceFactory.regular(workspace);
+    const addMemberResult = await conversationSpace.addMembers(auth, {
+      userIds: [user.sId],
+    });
+    if (addMemberResult.isErr()) {
+      throw addMemberResult.error;
+    }
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+  }
 
   if (disableComputerFeature) {
     await FeatureFlagFactory.basic(auth, "disable_computer_feature");
