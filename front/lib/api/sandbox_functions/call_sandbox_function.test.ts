@@ -180,6 +180,26 @@ describe("callSandboxFunction", () => {
     expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
   });
 
+  it("rejects an authenticator from another workspace", async () => {
+    const { fn } = await setup();
+    const { authenticator: otherWorkspaceAuth } = await createResourceTest({
+      role: "admin",
+    });
+
+    const result = await fn.invoke(otherWorkspaceAuth, {
+      input: { name: "Soupinou" },
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.message).toBe(
+      "This Pod Function belongs to another workspace."
+    );
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+  });
+
   it("rejects a workspace-user-required function without creating an invocation", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",

@@ -408,9 +408,15 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     auth: Authenticator,
     body: PostSandboxFunctionInvocationRequestBody
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
+    if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
+      return new Err(
+        new SandboxFunctionInvocationError(
+          "This Pod Function belongs to another workspace."
+        )
+      );
+    }
     const authorization = await authorizeSandboxFunctionInvocation(auth, {
       authentication: this.authentication,
-      workspaceModelId: this.workspaceId,
     });
     if (!authorization.authorized) {
       return new Err(

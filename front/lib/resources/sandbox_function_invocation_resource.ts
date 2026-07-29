@@ -322,6 +322,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
     try {
       const { sandboxFunction } = this;
+      if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
+        return new Err(
+          new SandboxFunctionInvocationError(
+            "This Pod Function belongs to another workspace."
+          )
+        );
+      }
       const persistedFunction = await SandboxFunctionModel.findOne({
         where: {
           id: this.sandboxFunctionId,
@@ -333,7 +340,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       }
       const authorization = await authorizeSandboxFunctionInvocation(auth, {
         authentication: persistedFunction.authentication,
-        workspaceModelId: this.workspaceId,
       });
       if (!authorization.authorized) {
         return new Err(
