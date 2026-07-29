@@ -529,20 +529,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   async markCreatedAsErrored(
     error: SandboxFunctionCallError
   ): Promise<boolean> {
-    const [updatedCount] = await this.model.update(
-      { status: "errored" },
-      {
-        where: {
-          id: this.id,
-          sandboxFunctionId: this.sandboxFunction.id,
-          status: "created",
-          workspaceId: this.workspaceId,
-        },
-      }
-    );
-    if (updatedCount === 0) {
+    if (this.status !== "created") {
       return false;
     }
+    await this.update({ status: "errored" });
 
     // Do not overwrite the invocation blob here. This path only records that
     // execution failed before the runner could return a structured result.
