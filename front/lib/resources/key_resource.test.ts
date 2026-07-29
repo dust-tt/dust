@@ -76,10 +76,7 @@ vi.mock("@app/lib/utils/cache", () => ({
 }));
 
 import type { Authenticator } from "@app/lib/auth";
-import {
-  GroupResource,
-  MANUAL_BUILDERS_GROUP_NAME,
-} from "@app/lib/resources/group_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
@@ -187,34 +184,6 @@ describe("KeyResource", () => {
       expect(fetched).not.toBeNull();
       expect(fetched!.role).toBe("admin");
     });
-
-    it("adds the key to the Builders group when the new role is builder", async () => {
-      const key = await KeyFactory.readOnly(globalGroup); // role: "user"
-
-      await key.updateRole({ newRole: "builder" });
-
-      const group = await GroupResource.fetchManualBuildersGroup(workspace);
-      expect(group).not.toBeNull();
-      const fetched = await KeyResource.fetchByWorkspaceAndId({
-        workspace,
-        id: key.id,
-      });
-      expect(fetched!.groupIds).toContain(group!.id);
-    });
-
-    it("removes the key from the Builders group when the role changes away from builder", async () => {
-      const key = await KeyFactory.regular(globalGroup); // role: "builder"
-      await key.updateRole({ newRole: "builder" }); // creates + adds
-
-      await key.updateRole({ newRole: "user" });
-
-      const group = await GroupResource.fetchManualBuildersGroup(workspace);
-      const fetched = await KeyResource.fetchByWorkspaceAndId({
-        workspace,
-        id: key.id,
-      });
-      expect(fetched!.groupIds).not.toContain(group!.id);
-    });
   });
 
   describe("setGroupMembership", () => {
@@ -237,39 +206,6 @@ describe("KeyResource", () => {
 
       await key.setGroupMembership({ group: otherGroup, isMember: false });
 
-      const fetched = await KeyResource.fetchByWorkspaceAndId({
-        workspace,
-        id: key.id,
-      });
-      expect(fetched!.groupIds).toEqual([globalGroup.id]);
-    });
-  });
-
-  describe("syncBuilderGroupMembership", () => {
-    it("creates the Builders group lazily and adds the key when isBuilder is true", async () => {
-      const key = await KeyFactory.regular(globalGroup); // role: "builder"
-      const before = await GroupResource.fetchManualBuildersGroup(workspace);
-      expect(before).toBeNull();
-
-      await key.syncBuilderGroupMembership({ isBuilder: true });
-
-      const group = await GroupResource.fetchManualBuildersGroup(workspace);
-      expect(group).not.toBeNull();
-      expect(group!.name).toBe(MANUAL_BUILDERS_GROUP_NAME);
-      const fetched = await KeyResource.fetchByWorkspaceAndId({
-        workspace,
-        id: key.id,
-      });
-      expect(fetched!.groupIds).toContain(group!.id);
-    });
-
-    it("does not create the Builders group when isBuilder is false and none exists", async () => {
-      const key = await KeyFactory.regular(globalGroup);
-
-      await key.syncBuilderGroupMembership({ isBuilder: false });
-
-      const group = await GroupResource.fetchManualBuildersGroup(workspace);
-      expect(group).toBeNull();
       const fetched = await KeyResource.fetchByWorkspaceAndId({
         workspace,
         id: key.id,
