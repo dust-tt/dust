@@ -48,7 +48,7 @@ export const SKILL_AVAILABILITY_DISPLAY: Record<
   SkillAvailability,
   { label: string; color: "primary" | "success" | "highlight" }
 > = {
-  editors: { label: "Editor only", color: "primary" },
+  editors: { label: "Editors only", color: "primary" },
   workspace_users: { label: "Workspace members", color: "success" },
   users_and_agents: { label: "Auto-discoverable", color: "highlight" },
 };
