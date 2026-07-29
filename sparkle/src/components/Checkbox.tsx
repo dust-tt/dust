@@ -19,6 +19,10 @@ export const checkboxStyles = cva(
   )
 );
 
+// The checked state renders a dark rounded square that fills the box's inner
+// content area; the "ring" is the box's own border showing through.
+// Concentric corners: inner radius = outer radius (rounded-md, 6px) minus the
+// 1px border the fill sits inside.
 // Keep the fill mounted and full-sized so checked controls stay still on mount
 // and the border never separates from the fill during the icon animation.
 export const checkboxIndicatorStyles = cva(
