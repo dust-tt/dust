@@ -1680,8 +1680,8 @@ describe("postUserMessage", () => {
       userMessageVersion: result.value.userMessage.version,
       userMessageOrigin: "web",
     });
-    expect(retryOutcome).toBe("already_processed");
-    expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(2);
+    expect(retryOutcome).toBe("continued");
+    expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(3);
 
     const continuedGoal = await ConversationGoalResource.fetchLatest(auth, {
       conversation: conversationResource,

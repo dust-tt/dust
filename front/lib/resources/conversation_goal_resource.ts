@@ -3,6 +3,7 @@ import {
   AgentMessageModel,
   ConversationModel,
   MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import {
   ConversationGoalModel,
@@ -15,7 +16,10 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type {
+  AgentLoopArgs,
+  AgentLoopExecutionData,
+} from "@app/types/assistant/agent_run";
 import type { GoalStatus, GoalType } from "@app/types/assistant/goal";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
@@ -25,7 +29,7 @@ import { Op } from "sequelize";
 export const DEFAULT_GOAL_MAX_TURNS = 25;
 
 export type GoalContinuationDecision =
-  | { type: "continue"; goal: GoalType }
+  | { type: "continue" | "ensure_current"; goal: GoalType }
   | {
       type:
         | "already_processed"
@@ -33,6 +37,11 @@ export type GoalContinuationDecision =
         | "not_succeeded"
         | "turn_limit_reached";
     };
+
+export type GoalTurnRecovery =
+  | { type: "already_succeeded" }
+  | { type: "restart"; agentLoopArgs: AgentLoopArgs }
+  | { type: "unavailable" };
 
 export class GoalTransitionError extends Error {
   constructor(
@@ -396,7 +405,16 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
         return { type: "not_succeeded" };
       }
       if (goalRow.lastAgentMessageId === message.agentMessage.id) {
-        return { type: "already_processed" };
+        if (goalRow.currentAgentMessageId === message.agentMessage.id) {
+          return {
+            type: "continue",
+            goal: new this(this.model, goalRow.get()).toJSON(),
+          };
+        }
+        return {
+          type: "ensure_current",
+          goal: new this(this.model, goalRow.get()).toJSON(),
+        };
       }
       if (
         goalRow.currentAgentMessageId !== message.agentMessage.id ||
@@ -431,33 +449,136 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
     });
   }
 
-  static async setCurrentAgentMessage(
+  async fetchTurnRecovery(
     auth: Authenticator,
     {
-      goalId,
-      agentMessageModelId,
+      conversation,
+    }: {
+      conversation: ConversationResource;
+    }
+  ): Promise<GoalTurnRecovery> {
+    if (
+      this.workspaceId !== auth.getNonNullableWorkspace().id ||
+      this.conversationId !== conversation.id ||
+      this.status !== "active"
+    ) {
+      return { type: "unavailable" };
+    }
+    const agentMessage = await MessageModel.findOne({
+      where: {
+        workspaceId: this.workspaceId,
+        conversationId: conversation.id,
+        branchId: this.branchId,
+        agentMessageId: this.currentAgentMessageId,
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          where: { agentConfigurationId: this.agentConfigurationId },
+        },
+      ],
+    });
+    if (agentMessage?.agentMessage?.status === "succeeded") {
+      return { type: "already_succeeded" };
+    }
+    if (
+      agentMessage?.agentMessage?.status !== "created" ||
+      !agentMessage.parentId
+    ) {
+      return { type: "unavailable" };
+    }
+    const userMessage = await MessageModel.findOne({
+      where: {
+        id: agentMessage.parentId,
+        workspaceId: this.workspaceId,
+        conversationId: conversation.id,
+        branchId: this.branchId,
+      },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+        },
+      ],
+    });
+    if (!userMessage?.userMessage) {
+      return { type: "unavailable" };
+    }
+    return {
+      type: "restart",
+      agentLoopArgs: {
+        agentMessageId: agentMessage.sId,
+        agentMessageVersion: agentMessage.version,
+        conversationId: conversation.sId,
+        conversationBranchId: this.toJSON().branchId,
+        conversationTitle: conversation.title,
+        userMessageId: userMessage.sId,
+        userMessageVersion: userMessage.version,
+        userMessageOrigin: userMessage.userMessage.userContextOrigin,
+      },
+    };
+  }
+
+  async setCurrentAgentMessage(
+    auth: Authenticator,
+    {
+      conversation,
+      branchId,
+      agentMessageId,
+      agentConfigurationId,
       transaction,
     }: {
-      goalId: string;
-      agentMessageModelId: ModelId;
+      conversation: ConversationResource;
+      branchId: string | null;
+      agentMessageId: string;
+      agentConfigurationId: string;
       transaction: Transaction;
     }
-  ): Promise<void> {
-    const goalModelId = getResourceIdFromSId(goalId);
-    if (!goalModelId) {
-      throw new Error("Invalid goal identifier");
+  ): Promise<boolean> {
+    const branchModelId = branchId ? getResourceIdFromSId(branchId) : null;
+    if (branchId && !branchModelId) {
+      return false;
     }
-    await this.model.update(
-      { currentAgentMessageId: agentMessageModelId },
+    const message = await MessageModel.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
+        branchId: branchModelId,
+        sId: agentMessageId,
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          where: { agentConfigurationId },
+        },
+      ],
+      transaction,
+    });
+    if (!message?.agentMessage) {
+      return false;
+    }
+    const [updated] = await this.model.update(
+      { currentAgentMessageId: message.agentMessage.id },
       {
         where: {
-          id: goalModelId,
+          id: this.id,
           workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversation.id,
+          branchId: branchModelId,
+          agentConfigurationId,
+          currentAgentMessageId: this.currentAgentMessageId,
+          lastAgentMessageId: this.currentAgentMessageId,
           status: "active",
         },
         transaction,
       }
     );
+    return updated === 1;
   }
 
   async delete(

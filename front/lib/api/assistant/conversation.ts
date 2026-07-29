@@ -540,7 +540,7 @@ export async function postUserMessage(
     doNotAssociateUser,
     modelSelection,
     goal,
-    continuationGoalId,
+    continuationGoal,
     awaitWorkflowLaunch,
   }: {
     conversationResource: ConversationResource;
@@ -554,7 +554,7 @@ export async function postUserMessage(
     skipDustAutoMention?: boolean;
     modelSelection?: ModelSelectionType;
     goal?: GoalCreation;
-    continuationGoalId?: string;
+    continuationGoal?: ConversationGoalResource;
     awaitWorkflowLaunch?: boolean;
   }
 ): Promise<
@@ -1115,18 +1115,23 @@ export async function postUserMessage(
         );
       }
 
-      if (continuationGoalId) {
+      if (continuationGoal) {
         const agentMessage = agentMessages[0];
-        if (!agentMessage || agentMessages.length !== 1) {
+        if (
+          !agentMessage ||
+          agentMessages.length !== 1 ||
+          !(await continuationGoal.setCurrentAgentMessage(auth, {
+            conversation: conversationResource,
+            branchId: conversation.branchId,
+            agentMessageId: agentMessage.sId,
+            agentConfigurationId: agentMessage.configuration.sId,
+            transaction: t,
+          }))
+        ) {
           throw new Error(
-            "Goal Mode invariant violated: expected one continuation agent message."
+            "Goal Mode invariant violated: failed to associate the continuation agent message."
           );
         }
-        await ConversationGoalResource.setCurrentAgentMessage(auth, {
-          goalId: continuationGoalId,
-          agentMessageModelId: agentMessage.agentMessageId,
-          transaction: t,
-        });
       }
 
       const userMessage = {
