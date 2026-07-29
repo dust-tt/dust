@@ -276,7 +276,13 @@ export function ConversationContainerVirtuoso({
             <div className="flex w-full justify-center">
               <ActivationNextSteps owner={owner} />
             </div>
-            <Page.Header title={greeting} />
+            <Page.Header
+              title={
+                <h3 className="heading-2xl font-medium text-foreground">
+                  {greeting}
+                </h3>
+              }
+            />
           </div>
           <div
             className={classNames(
