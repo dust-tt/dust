@@ -1,5 +1,4 @@
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
-import { EXTENSION_MESSAGE_SOURCE_LABEL } from "@app/lib/api/assistant/conversation/constants";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -169,22 +168,6 @@ Hello!`);
     const text = (res.content[0] as TextContent).text;
 
     expect(text).toContain("- Source: email");
-  });
-
-  it("identifies extension messages as coming from a browser extension", async () => {
-    const { conversation, userMessage } = await buildMessage({
-      content: "From the browser",
-      context: {
-        origin: "extension",
-      },
-    });
-
-    const res = renderUserMessage(conversation, userMessage);
-    expect(res.content[0].type).toBe("text");
-    const text = (res.content[0] as TextContent).text;
-
-    expect(text).toContain(`- Source: ${EXTENSION_MESSAGE_SOURCE_LABEL}`);
-    expect(text).not.toContain("- Source: extension");
   });
 
   it("includes only conversation metadata when no user metadata is available", async () => {

@@ -25,7 +25,6 @@ import {
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
-import { EXTENSION_MESSAGE_SOURCE_LABEL } from "@app/lib/api/assistant/conversation/constants";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
 import { TRUNCATED_SNIPPET_SIZE } from "@app/lib/api/files/snippet";
 import type {
@@ -112,7 +111,7 @@ function constructBranchContextSection({
 function constructPlatformSpecificContextSection(): string {
   return (
     "# PLATFORM-SPECIFIC CONTEXT\n\n" +
-    `When the current user message's \`<dust_system>\` metadata identifies its source as \`${EXTENSION_MESSAGE_SOURCE_LABEL}\`, ` +
+    "When the current user message's `<dust_system>` metadata identifies its source as `extension`, " +
     "platform-specific tools may be available to access local, visible, or current browser context. " +
     "Look for relevant tools before asking the user to paste that context.\n"
   );

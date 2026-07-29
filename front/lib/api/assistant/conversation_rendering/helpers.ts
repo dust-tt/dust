@@ -9,7 +9,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
-import { EXTENSION_MESSAGE_SOURCE_LABEL } from "@app/lib/api/assistant/conversation/constants";
 import {
   type EnabledSkill,
   renderEnabledSkillUserMessageFromInstructions,
@@ -452,8 +451,6 @@ export function renderUserMessage(
         )}`
       );
     }
-  } else if (m.context.origin === "extension") {
-    metadataItems.push(`- Source: ${EXTENSION_MESSAGE_SOURCE_LABEL}`);
   } else if (m.context.origin) {
     metadataItems.push(`- Source: ${m.context.origin}`);
     if (m.context.origin === "slack") {

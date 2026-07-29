@@ -1,4 +1,3 @@
-import { EXTENSION_MESSAGE_SOURCE_LABEL } from "@app/lib/api/assistant/conversation/constants";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import {
   globalAgentInjectsUserContext,
@@ -165,7 +164,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(prompt1).toEqual(prompt2);
   });
 
-  it("should always include stable browser extension tool guidance", () => {
+  it("should always include stable extension tool guidance", () => {
     const baseParams = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
@@ -187,7 +186,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     expect(extensionPrompt).toEqual(webPrompt);
     expect(systemPromptToText(webPrompt)).toContain(
-      `When the current user message's \`<dust_system>\` metadata identifies its source as \`${EXTENSION_MESSAGE_SOURCE_LABEL}\``
+      "When the current user message's `<dust_system>` metadata identifies its source as `extension`"
     );
   });
 
