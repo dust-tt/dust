@@ -225,6 +225,43 @@ export function VoicePicker({
     }
   }
 
+  // Keyboard equivalent of the short-press/click flow: handlePointerDown/Up
+  // only fire for pointer input, so Tab+Enter/Space would otherwise be
+  // unable to start or stop a recording at all.
+  async function handleKeyDown(
+    event: React.KeyboardEvent<HTMLButtonElement>
+  ): Promise<void> {
+    buttonProps?.onKeyDown?.(event);
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    if ((event.key !== "Enter" && event.key !== " ") || event.repeat) {
+      return;
+    }
+
+    stopEvent(event);
+
+    if (disabled) {
+      return;
+    }
+
+    setMode("click");
+    // The native click that follows this key press would otherwise re-run
+    // handleClick's stop logic a second time.
+    suppressNextClickRef.current = true;
+
+    if (status === "idle") {
+      await onRecordStart();
+      markRecordingStarted();
+      return;
+    }
+
+    if (status === "recording") {
+      await onRecordStop();
+    }
+  }
+
   const icon = shouldShowStop ? Square : Microphone01;
   const variant = shouldShowStop || isLoading ? "highlight" : "ghost-secondary";
   const label = isTranscribing
@@ -259,6 +296,7 @@ export function VoicePicker({
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
       />
     </div>
   );
