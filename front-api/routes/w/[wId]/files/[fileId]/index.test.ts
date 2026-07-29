@@ -227,11 +227,11 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
     vi.clearAllMocks();
   });
 
-  it("should allow builder to delete any file", async () => {
+  it("should allow manager to delete any file", async () => {
     const { auth, user, workspace, globalSpace } =
       await createPrivateApiMockRequest({
         method: "DELETE",
-        role: "builder",
+        role: "manager",
       });
 
     const file = await FileFactory.create(auth, user, {
@@ -307,7 +307,7 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
     });
   });
 
-  it("should deny non-builder from deleting non-conversation files", async () => {
+  it("should deny non-manager from deleting non-conversation files", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "DELETE",
       role: "user",
@@ -330,7 +330,7 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
       error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can modify files.",
+          "Only users that are `managers` for the current workspace can modify files.",
       },
     });
   });

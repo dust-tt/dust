@@ -259,8 +259,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
 
   if (
     isUploadUseCase &&
-    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
-    !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
+    !((isFileAuthor && canWriteInSpace) || auth.isManager())
   ) {
     return apiError(ctx, {
       status_code: 403,
@@ -283,14 +282,13 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
         },
       });
     }
-    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
-  } else if (!auth.isBuilder() && file.useCase !== "conversation") {
+  } else if (!auth.isManager() && file.useCase !== "conversation") {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can modify files.",
+          "Only users that are `managers` for the current workspace can modify files.",
       },
     });
   }
@@ -334,8 +332,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
 
   if (
     isUploadUseCase &&
-    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
-    !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
+    !((isFileAuthor && canWriteInSpace) || auth.isManager())
   ) {
     return apiError(ctx, {
       status_code: 403,
@@ -356,8 +353,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     }
   } else if (
     !space &&
-    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
-    !auth.isBuilder() &&
+    !auth.isManager() &&
     file.useCase !== "conversation" &&
     file.useCase !== "avatar"
   ) {
@@ -366,7 +362,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can modify files.",
+          "Only users that are `managers` for the current workspace can modify files.",
       },
     });
   }
