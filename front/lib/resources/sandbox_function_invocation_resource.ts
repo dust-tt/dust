@@ -274,6 +274,19 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   async execute(auth: Authenticator): Promise<Result<undefined, Error>> {
+    if (this.status !== "created") {
+      logger.info(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          sandboxFunctionId: this.sandboxFunction.sId,
+          invocationId: this.sId,
+          status: this.status,
+        },
+        "Skipping execution of a terminal Pod function invocation"
+      );
+      return new Ok(undefined);
+    }
+
     try {
       const { sandboxFunction } = this;
       const ensureResult = await ensurePodSandboxReady(
