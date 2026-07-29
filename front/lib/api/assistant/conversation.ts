@@ -333,7 +333,7 @@ export async function deleteOrLeaveConversation(
 
 export async function getConversationMessageType(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType,
+  conversation: ConversationWithoutContentType | ConversationResource,
   messageId: string
 ): Promise<"user_message" | "agent_message" | "content_fragment" | null> {
   if (!auth.workspace()) {
@@ -405,7 +405,7 @@ export async function getMessageConversationId(
  */
 export async function getLastUserMessageMentions(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType | ConversationResource
 ): Promise<Result<string[], Error>> {
   const owner = auth.getNonNullableWorkspace();
 

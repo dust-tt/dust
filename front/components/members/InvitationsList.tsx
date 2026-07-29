@@ -10,6 +10,7 @@ import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -43,6 +44,10 @@ export function InvitationsList({
   const sendNotification = useSendNotification();
   const { hasFeature } = useFeatureFlags();
 
+  // Managers cannot resend invitations targeting the admin role (matches the
+  // server-side escalation guard); only admins can.
+  const canManageAdminRole = isAdmin(owner);
+
   const filteredInvitations = useMemo(
     () =>
       invitations
@@ -72,6 +77,8 @@ export function InvitationsList({
       accessorKey: "inviteEmail",
       cell: (info: CellContext<RowData, string>) => {
         const isExpired = info.row.original.isExpired;
+        const canResend =
+          info.row.original.initialRole !== "admin" || canManageAdminRole;
         return (
           <DataTable.CellContent>
             <div className="flex items-center gap-2">
@@ -79,22 +86,24 @@ export function InvitationsList({
               {isExpired && (
                 <>
                   <span className="text-red-500">(expired)</span>
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    icon={Mail01}
-                    label="Resend"
-                    onClick={async (e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      await sendInvitations({
-                        owner,
-                        emails: [info.row.original.inviteEmail],
-                        invitationRole: info.row.original.initialRole,
-                        sendNotification,
-                        isNewInvitation: false,
-                      });
-                    }}
-                  />
+                  {canResend && (
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      icon={Mail01}
+                      label="Resend"
+                      onClick={async (e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        await sendInvitations({
+                          owner,
+                          emails: [info.row.original.inviteEmail],
+                          invitationRole: info.row.original.initialRole,
+                          sendNotification,
+                          isNewInvitation: false,
+                        });
+                      }}
+                    />
+                  )}
                 </>
               )}
             </div>

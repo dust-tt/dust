@@ -37,7 +37,8 @@
     { "name": "sandbox_functions", "id": 1037 },
     { "name": "user_analytics", "id": 1039 },
     { "name": "activation_recommendations", "id": 1040 },
-    { "name": "agent_templates", "id": 1041 }
+    { "name": "agent_templates", "id": 1041 },
+    { "name": "user_memory", "id": 1043 }
   ],
   "manual": [
     { "name": "github", "id": 1 },

@@ -40,21 +40,20 @@ on legacy plans*; they must continue to see the current page until they're migra
 
 Two flags declared in `front/types/shared/feature_flags.ts:267-325`, both `dust_only`. Neither
 flag is the source of truth for the Billing-page gate above; Metronome billing is default-on
-unless the global kill switch is active, and the Usage-page flag is temporary.
+unless the `legacy_billing` flag is set on the workspace, and the Usage-page flag is temporary.
 
 | Flag | What it controls |
 | --- | --- |
-| `metronome_billing` | Metronome billing is default-on. The `global_disable_metronome_billing` kill switch turns it off globally; this flag only re-enables it for an individual workspace while the kill switch is active. Also gates Metronome usage event emission (`llm_usage`, `tool_use`). |
+| `metronome_billing` | Metronome billing is default-on. The `legacy_billing` feature flag forces it off for an individual workspace. Also gates Metronome usage event emission (`llm_usage`, `tool_use`). |
 | `metronome_billing_usage_page` | Temporary gate for the new "Usage" admin page (`UsagePage`) and its sidebar entry. Used at `front/components/navigation/config.ts:268` and inside `front/components/pages/workspace/UsagePage.tsx:152, 221`. There is a follow-up task to replace it with `!isLegacyPlan(workspace.sId)` so Usage and Billing share the same credit-pricing gate. |
 
 ### Enabling locally in dev
 
 The full setup to get a Metronome-backed subscription on a dev workspace:
 
-1. **Verify the `global_disable_metronome_billing` kill switch is disabled locally** so
+1. **Verify the workspace does not have the `legacy_billing` feature flag set** so
    subscription creation goes through the Metronome path by default. You no longer need to enable
-   `metronome_billing` on the workspace in normal local dev; only use that feature flag if the
-   global kill switch is intentionally enabled and this one workspace must bypass it.
+   `metronome_billing` on the workspace in normal local dev.
 
    To see the current Usage admin page before it is migrated to `!isLegacyPlan`, enable
    `metronome_billing_usage_page`:
@@ -85,8 +84,7 @@ The full setup to get a Metronome-backed subscription on a dev workspace:
 
 If the workspace has no active Metronome contract yet, `getActiveContract(workspace.sId)` returns
 null and several endpoints (`/seats/plan`, `/metronome/contract`, etc.) return `null` or 400 —
-typically the symptom of step 3 not having been done. The `global_disable_metronome_billing` kill
-switch is managed from Poke (`front/components/poke/pages/KillPage.tsx`); provisioning helpers
+typically the symptom of step 3 not having been done. Provisioning helpers
 live at `scripts/provision_metronome_customers.ts` and `scripts/metronome_setup.ts`.
 
 ---
@@ -266,8 +264,6 @@ is to expose the Stripe hosted URL.
   Enterprise upsell, billing info, and invoices sections are the new pieces.
 - `front/components/plans/SubscriptionPlanCards.tsx` — plan cards / pricing dialogs used today.
 - `front/components/workspace/MetronomeUsageChart.tsx` — Usage page chart, not on Billing.
-- `front/components/poke/pages/KillPage.tsx` — where the `global_disable_metronome_billing`
-  kill switch is managed.
 
 ---
 
@@ -311,7 +307,7 @@ keep business logic in `lib/api/*` and HTTP shaping in handlers.
 
 ## 6. Suggested implementation order
 
-1. Verify `global_disable_metronome_billing` is disabled locally, create/upgrade a workspace,
+1. Verify the workspace lacks the `legacy_billing` flag, create/upgrade a workspace,
    and flip `metronomeContractId` in Poke so `useMetronomeContract`, `useMetronomeInvoice`, and
    `useSeatPlan` return the expected data.
 2. Add the billing-eligibility endpoint + SWR hook over the existing

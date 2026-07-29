@@ -2,8 +2,9 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { TagFactory } from "@app/tests/utils/TagFactory";
+import { Err } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 function batchUpdateTags(workspace: { sId: string }, body: unknown) {
   return honoApp.request(
@@ -17,6 +18,10 @@ function batchUpdateTags(workspace: { sId: string }, body: unknown) {
 }
 
 describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("adds and removes tags while ignoring duplicate additions", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       method: "POST",
@@ -54,5 +59,45 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
         tagToAdd.sId,
       ]);
     }
+  });
+
+  it("returns 400 when adding tags fails", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    vi.spyOn(TagResource, "addToAgents").mockResolvedValue(
+      new Err(new Error("Failed to add tags"))
+    );
+
+    const response = await batchUpdateTags(workspace, { agentIds: [] });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Failed to add tags",
+      },
+    });
+  });
+
+  it("returns 400 when removing tags fails", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    vi.spyOn(TagResource, "removeFromAgents").mockResolvedValue(
+      new Err(new Error("Failed to remove tags"))
+    );
+
+    const response = await batchUpdateTags(workspace, { agentIds: [] });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Failed to remove tags",
+      },
+    });
   });
 });

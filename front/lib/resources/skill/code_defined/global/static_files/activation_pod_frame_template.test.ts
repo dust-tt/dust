@@ -3,14 +3,17 @@ import { describe, expect, it } from "vitest";
 import { ACTIVATION_POD_FRAME_TEMPLATE } from "./activation_pod_frame_template";
 
 describe("ACTIVATION_POD_FRAME_TEMPLATE", () => {
-  it("renders the evidence surface: why-chosen signals over a candidate stack", () => {
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("const WHY_CHOSEN");
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain(
-      "function WhyChosenSection"
-    );
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("function CandidateStack");
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("const CANDIDATES");
+  it("is a single-state frame: a collapsible explainer plus recommendation tiles", () => {
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("const TILES");
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("function AboutSection");
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("function Tiles");
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("What is this pod?");
     expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("HOW_IT_WORKS");
+    // No day1/grown state machine, no tabbed dashboard.
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain("const LEVEL");
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain("function DayOneView");
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain("function GrownView");
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain("TAB_TITLES");
   });
 
   it("contains both view modes", () => {
@@ -24,22 +27,9 @@ describe("ACTIVATION_POD_FRAME_TEMPLATE", () => {
     );
   });
 
-  it("embeds the result frame opened from a result sheet", () => {
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain(
-      "fil_REPLACE_WITH_RESULT_FRAME_ID"
-    );
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("function ResultSheet");
-  });
-
-  it("uses an anonymized placeholder identity", () => {
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain('name: "User Name"');
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain('role: "Engineering"');
-  });
-
-  it("dropped the legacy tabbed / day-one design and its dead components", () => {
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain("TAB_TITLES");
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain("const LEVEL");
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain("function DayOneView");
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain("function InputCard");
+  it("uses anonymized placeholder data", () => {
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain('name: "User"');
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain('role: "Marketing"');
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain('company: "Acme"');
   });
 });

@@ -333,6 +333,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
     stage: "dust_only",
   },
+  user_memory: {
+    description:
+      "Enable the user_memory internal MCP server: agents can store and retrieve per-user memory in a user-scoped filesystem.",
+    stage: "dust_only",
+  },
+  similar_agents_check: {
+    description:
+      "Warn users about similar existing agents before they create a duplicate in the agent builder.",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

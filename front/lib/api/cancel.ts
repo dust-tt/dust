@@ -21,21 +21,19 @@ export async function terminateMessageGeneration(
     action: "cancel" | "interrupt";
   }
 ): Promise<void> {
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
-    );
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
 
-  if (conversationRes.isErr()) {
+  if (!conversation) {
     logger.warn(
-      { conversationId, error: conversationRes.error },
+      { conversationId },
       "terminateMessageGeneration: conversation not found, skipping"
     );
     return;
   }
 
-  const conversation = conversationRes.value;
   const status = action === "interrupt" ? "interrupted" : "cancelled";
   const signalFn =
     action === "interrupt" ? interruptAgentLoop : cancelAgentLoop;
@@ -89,7 +87,7 @@ export async function terminateMessageGeneration(
     }
 
     const result = await updateAgentMessageWithFinalStatus(auth, {
-      conversation,
+      conversation: conversation.toJSON(),
       agentMessage,
       status,
     });

@@ -39,6 +39,7 @@ import type { GetAgentUsageResponseBody } from "@app/types/api/assistant/agent_u
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";
 import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
 import { BatchUpdateAgentModelResponseBodySchema } from "@app/types/api/assistant/configuration";
+import type { GetSimilarAgentsResponseBody } from "@app/types/api/assistant/configuration/existing_agent_checker";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/types/api/assistant/mcp_configurations";
 import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
 import type { GetAgentSummaryResponseBody } from "@app/types/api/assistant/observability/summary";
@@ -50,6 +51,7 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import { Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -203,6 +205,30 @@ export function useAgentConfigurations({
     mutateRegardlessOfQueryParams,
     isAgentConfigurationsValidating: isValidating,
   };
+}
+
+export function useSimilarAgents({ owner }: { owner: LightWorkspaceType }) {
+  const { fetcher } = useFetcher();
+  const getSimilarAgents = useCallback(
+    async (
+      naturalDescription: string,
+      options: { signal?: AbortSignal } = {}
+    ) => {
+      const response: GetSimilarAgentsResponseBody = await fetcher(
+        `/api/w/${owner.sId}/assistant/agent_configurations/similar`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ naturalDescription }),
+          signal: options?.signal,
+        }
+      );
+      return new Ok(response.similar_agents);
+    },
+    [owner.sId, fetcher]
+  );
+
+  return { getSimilarAgents };
 }
 
 // This is the call that is required for the new conversation page to load all views on that page.

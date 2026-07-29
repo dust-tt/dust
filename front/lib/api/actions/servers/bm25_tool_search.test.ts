@@ -25,6 +25,28 @@ const QUERIES: LabeledQuery[] = [
     expected: "agent_memory.compact_memory",
   },
 
+  // --- user_memory ---
+  {
+    query: "read my personal memory",
+    expected: "user_memory.read",
+  },
+  {
+    query: "open my personal memory and show its full contents",
+    expected: "user_memory.read",
+  },
+  {
+    query: "update my personal memory by replacing a snippet of text",
+    expected: "user_memory.edit",
+  },
+  {
+    query: "delete a line of text from my personal memory",
+    expected: "user_memory.edit",
+  },
+  {
+    query: "add a new line to my personal memory",
+    expected: "user_memory.edit",
+  },
+
   // --- conversation_files ---
   {
     query: "list the files attached to this conversation",
@@ -1086,6 +1108,11 @@ const QUERIES: LabeledQuery[] = [
     query: "where do workspace messages come from - slack, api, or browser",
     expected: "workspace_analytics.get_source_breakdown",
     maxRank: 10,
+  },
+  {
+    query: "which models did the workspace use most this month",
+    expected: "workspace_analytics.get_top_models",
+    maxRank: 5,
   },
   {
     query: "how many AWU credits did the workspace consume this month",

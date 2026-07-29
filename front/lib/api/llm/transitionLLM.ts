@@ -221,35 +221,40 @@ export function toBaseMessages(
                 },
               ];
             case "reasoning": {
-              if (!c.value.reasoning) {
+              const reasoning = c.value.reasoning ?? "";
+              const { id, encryptedContent } = parseReasoningMetadata(
+                c.value.metadata
+              );
+              // Empty reasoning summaries can still carry replay state. Some
+              // reasoners emit such items on tool-use turns, so only discard
+              // an empty block when it has neither an item id nor encrypted
+              // content.
+              if (!reasoning && !id && !encryptedContent) {
                 return [];
               }
-              // OpenAI Responses stores a short reasoning item `id` (kept in
-              // `signature`) separately from the long `encrypted_content`. Every
-              // other provider stores its thinking signature under
-              // `encrypted_content`, which we carry directly in `signature`.
-              if (c.value.provider !== "openai") {
+              // Responses APIs store a short reasoning item `id` (kept in
+              // `signature`) separately from the long `encrypted_content`.
+              // Detect that wire format from the persisted id rather than the
+              // model provider: Fireworks also exposes the Responses API.
+              if (id || c.value.provider === "openai") {
                 return [
                   {
                     role: "assistant",
                     type: "reasoning",
-                    content: { value: c.value.reasoning },
-                    signature: extractEncryptedContentFromMetadata(
-                      c.value.metadata
-                    ),
+                    content: { value: reasoning },
+                    signature: id,
+                    ...(encryptedContent ? { encryptedContent } : {}),
                   },
                 ];
               }
-              const { id, encryptedContent } = parseReasoningMetadata(
-                c.value.metadata
-              );
               return [
                 {
                   role: "assistant",
                   type: "reasoning",
-                  content: { value: c.value.reasoning },
-                  signature: id,
-                  encryptedContent,
+                  content: { value: reasoning },
+                  signature: extractEncryptedContentFromMetadata(
+                    c.value.metadata
+                  ),
                 },
               ];
             }
@@ -337,10 +342,11 @@ export function withMessageCacheBreakpoints(
   return result;
 }
 
-// The new router nests reasoning replay state under `metadata.content`: OpenAI
-// uses `id` + `encryptedContent`, Anthropic/Gemini use `signature`. Persist it in
-// the legacy top-level shape (`id` / `encrypted_content`) the replay path reads,
-// matching what the old router writes.
+// The new router nests reasoning replay state under `metadata.content`:
+// Responses APIs use `id` + `encryptedContent`, while other APIs use
+// `signature`. Persist it in the legacy top-level shape (`id` /
+// `encrypted_content`) the replay path reads, matching what the old router
+// writes.
 export function reasoningContentToLegacyMetadata(
   content: Record<string, unknown> | undefined
 ): { id?: string; encrypted_content?: string } {
@@ -904,6 +910,7 @@ export class NoopStreamTransition extends StreamEndpointTransition {
           modelId: NOOP_MODEL,
           promptTokens: 0,
           completionTokens: 0,
+          reasoningTokens: null,
           cachedTokens: null,
           costMicroUsd,
           isBatch: false,

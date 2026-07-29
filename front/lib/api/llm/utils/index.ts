@@ -29,8 +29,8 @@ export function extractEncryptedContentFromMetadata(metadata: string): string {
   return encryptedContent;
 }
 
-// OpenAI Responses replays a reasoning item by its short `id` and (for ZDR
-// regions) its long `encrypted_content`.
+// Responses APIs replay a reasoning item by its short `id` and, when returned,
+// its long `encrypted_content`.
 export function parseReasoningMetadata(metadata: string): {
   id: string;
   encryptedContent: string;

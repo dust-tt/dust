@@ -89,6 +89,7 @@ import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metad
 import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
 import { USER_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/user_analytics/metadata";
+import { USER_MEMORY_SERVER } from "@app/lib/api/actions/servers/user_memory/metadata";
 import { USER_MENTIONS_SERVER } from "@app/lib/api/actions/servers/user_mentions/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
@@ -158,6 +159,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
   "user_analytics",
+  "user_memory",
   "agent_sidekick_agent_state",
   "agent_sidekick_context",
   "agent_templates",
@@ -1261,6 +1263,19 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     timeoutMs: undefined,
     metadata: SERVICENOW_SERVER,
   },
+  user_memory: {
+    id: 1043,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("user_memory");
+    },
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: USER_MEMORY_SERVER,
+  },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
   [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
@@ -1344,6 +1359,32 @@ type AutoServerKeys<T> = {
 export type AutoInternalMCPServerNameType = AutoServerKeys<
   typeof INTERNAL_MCP_SERVERS
 >;
+
+export function validateToolInputs<
+  S extends InternalMCPServerNameType,
+  T extends InternalMCPToolNameType<S>,
+>(
+  serverName: S,
+  toolName: T,
+  inputs: Record<string, unknown>
+): inputs is z.infer<
+  z.ZodObject<
+    Extract<
+      (typeof INTERNAL_MCP_SERVERS)[S]["metadata"]["tools"][number],
+      { name: T }
+    >["schema"]
+  >
+> {
+  const toolMetadata = INTERNAL_MCP_SERVERS[serverName].metadata.tools.find(
+    (tool) => tool.name === toolName
+  );
+  // The type enforces that this exists, but we return false out of retro-compatibility over tool/server name changes.
+  if (!toolMetadata) {
+    return false;
+  }
+
+  return z.object(toolMetadata.schema).safeParse(inputs).success;
+}
 
 export function isAutoInternalMCPServerName(
   name: InternalMCPServerNameType

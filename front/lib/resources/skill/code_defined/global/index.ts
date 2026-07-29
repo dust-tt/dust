@@ -1,4 +1,5 @@
 import { activationSkill } from "@app/lib/resources/skill/code_defined/global/activation";
+import { docxSkill } from "@app/lib/resources/skill/code_defined/global/docx";
 import { framesSkill } from "@app/lib/resources/skill/code_defined/global/frames";
 import { goDeepSkill } from "@app/lib/resources/skill/code_defined/global/go_deep";
 import { mentionUsersSkill } from "@app/lib/resources/skill/code_defined/global/mention_users";
@@ -14,6 +15,7 @@ import { ensureUniqueSIds } from "@app/lib/resources/skill/code_defined/shared";
 
 export const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   activationSkill,
+  docxSkill,
   framesSkill,
   goDeepSkill,
   mentionUsersSkill,

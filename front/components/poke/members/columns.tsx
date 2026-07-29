@@ -119,18 +119,22 @@ export function makeColumnsForMembers({
       },
       cell: ({ row }) => {
         const member = row.original;
-        if (member.role === "none") {
-          return <span className="py-2 pl-3 italic">revoked</span>;
-        }
+        const isRevoked = member.role === "none";
 
         if (readonly) {
-          return <span>{member.role}</span>;
+          return (
+            <span className={isRevoked ? "italic" : undefined}>
+              {isRevoked ? "revoked" : member.role}
+            </span>
+          );
         }
 
+        // Revoked members get the dropdown too: picking a role reactivates the
+        // membership in place (the plugin's update_role uses allowTerminated).
         return (
           <select
             className="rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900"
-            value={member.role}
+            value={isRevoked ? "" : member.role}
             onChange={async (e) => {
               await onUpdateMemberRole(
                 member,
@@ -138,6 +142,11 @@ export function makeColumnsForMembers({
               );
             }}
           >
+            {isRevoked && (
+              <option value="" disabled>
+                revoked
+              </option>
+            )}
             {ACTIVE_ROLES.map((role) => (
               <option key={role} value={role}>
                 {role}
@@ -159,6 +168,11 @@ export function makeColumnsForMembers({
     },
     cell: ({ row }) => {
       const member = row.original;
+
+      // Revoked members have no active seat — don't surface a seat control.
+      if (member.role === "none") {
+        return null;
+      }
 
       const seatTypes = availableSeatTypes ?? MEMBERSHIP_SEAT_TYPES;
       // Keep the member's current seat selectable even if it is no longer
@@ -221,12 +235,14 @@ export function makeColumnsForMembers({
       cell: ({ row }) => {
         const member = row.original;
 
-        // Hide the revoke button for provisioned users and users with no role.
+        // Revoked members have no revoke action; reactivation is done via the
+        // role dropdown. Hide the revoke button for provisioned users.
         return member.role !== "none" && member.origin !== "provisioned" ? (
           <IconButton
             icon={Trash01}
             size="xs"
             variant="outline"
+            tooltip="Revoke member"
             onClick={async () => {
               await onRevokeMember(member);
             }}

@@ -21,6 +21,7 @@ import { getPriceAsString } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY,
+  mutateWorkspaceInvitations,
   sendInvitations,
 } from "@app/lib/invitations";
 import { useSeatPlan } from "@app/lib/swr/credits";
@@ -340,7 +341,7 @@ export function InviteEmailButtonWithModal({
         });
         await mutate(`/api/w/${owner.sId}/members`);
       }
-      await mutate(`/api/w/${owner.sId}/invitations`);
+      await mutateWorkspaceInvitations(owner);
       setOpen(false);
     }
   }

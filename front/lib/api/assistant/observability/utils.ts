@@ -41,6 +41,9 @@ export function daysToInstantRange(
 export const NOT_API_GROUP_KEY = "__not_api__";
 export const NOT_API_GROUP_NAME = "Not API";
 
+// Model that actually ran the message, resolved at message creation.
+export const MODEL_ID_FIELD = "model.model_id";
+
 // api_key_name is only set on API-key authenticated messages. The sentinel
 // selects everything else (missing field), so a mixed selection becomes a
 // disjunction of the two.
@@ -95,6 +98,7 @@ export function buildAgentAnalyticsBaseQuery({
   userIds,
   apiKeyNames,
   contextOrigin,
+  modelIds,
   days,
   startDate,
   endDate,
@@ -106,6 +110,7 @@ export function buildAgentAnalyticsBaseQuery({
   userIds?: string[];
   apiKeyNames?: string[];
   contextOrigin?: string | string[];
+  modelIds?: string[];
   days?: number;
   startDate?: string;
   endDate?: string;
@@ -123,6 +128,7 @@ export function buildAgentAnalyticsBaseQuery({
     ...termFilter("user_id", userIds),
     ...apiKeyNamesFilter(apiKeyNames),
     ...contextOriginFilter(contextOrigin),
+    ...termFilter(MODEL_ID_FIELD, modelIds),
   ];
 
   if (startDate && endDate) {
@@ -166,6 +172,7 @@ export function buildCreditsScopeQuery(
     userIds,
     apiKeyNames,
     agentTagIds,
+    modelIds,
     extraFilters = [],
     extraMustNot = [],
   }: {
@@ -176,6 +183,7 @@ export function buildCreditsScopeQuery(
     userIds?: string[];
     apiKeyNames?: string[];
     agentTagIds?: string[];
+    modelIds?: string[];
     extraFilters?: estypes.QueryDslQueryContainer[];
     extraMustNot?: estypes.QueryDslQueryContainer[];
   }
@@ -189,6 +197,7 @@ export function buildCreditsScopeQuery(
     userIds,
     apiKeyNames,
     agentTagIds,
+    modelIds,
   });
   return {
     bool: {

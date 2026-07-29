@@ -33,7 +33,7 @@ import type {
   ContentNodeAttachmentType,
   ConversationAttachmentType,
 } from "@app/types/api/assistant/conversation/attachments";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
   ImageContent,
   TextContent,
@@ -341,7 +341,7 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
 async function getFileFromConversation(
   auth: Authenticator,
   fileId: string,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   model: ModelConfigurationType
 ): Promise<
   Result<

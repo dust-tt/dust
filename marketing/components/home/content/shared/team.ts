@@ -266,13 +266,6 @@ export const PEOPLE: Record<string, TeamMember> = {
     linkedIn: "https://www.linkedin.com/in/zeidmarouf",
     github: "https://github.com/zmarouf",
   },
-  rcs: {
-    name: "Rémy-Christophe Schermesser",
-    title: "Software Engineer",
-    image: "https://avatars.githubusercontent.com/u/16667?v=4",
-    linkedIn: "https://www.linkedin.com/in/r%C3%A9my-christophe-s-0204834/",
-    github: "https://github.com/ElPicador",
-  },
   pierre: {
     name: "Pierre Milliotte",
     title: "Software Engineer",
@@ -384,13 +377,6 @@ export const PEOPLE: Record<string, TeamMember> = {
     image: "https://ca.slack-edge.com/T050RH73H9P-U0A2T982L2V-bc6d5d8f965d-512",
     linkedIn: "https://www.linkedin.com/in/matthieumourey/",
     github: "https://github.com/matthieu-mourey",
-  },
-  karen: {
-    name: "Karen Chalco",
-    title: "Content Marketer",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U0A2CABLJBG-508e4bb95d25-512",
-    linkedIn: "https://www.linkedin.com/in/karenchalco",
-    github: "https://github.com/karenc382",
   },
   josh: {
     name: "Josh Cohen",
@@ -518,13 +504,6 @@ export const PEOPLE: Record<string, TeamMember> = {
     linkedIn: "https://www.linkedin.com/in/clementaupiais/",
     github: "https://github.com/ClementAupiais",
   },
-  thervier: {
-    name: "Thibault Hervier",
-    title: "Software Engineer",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U0AQAB1TPPB-0b1dcdfbf307-512",
-    linkedIn: "https://www.linkedin.com/in/thibault-hervier/",
-    github: "https://github.com/thervier",
-  },
   spalmer: {
     name: "Sophie Palmer",
     title: "Community Ambassadors & Events",
@@ -623,18 +602,32 @@ export const PEOPLE: Record<string, TeamMember> = {
     linkedIn: "https://www.linkedin.com/in/sylvainfriquet",
     github: "https://github.com/sfriquet",
   },
-  marc: {
-    name: "Marc Arnal",
-    title: "Solution Engineer",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U0BFGTB6405-159b10f1b9e8-512",
-    linkedIn: "https://www.linkedin.com/in/marc-arnal-b413a6ba",
-    github: "https://github.com/A-Marc",
-  },
   sandrinevaillancourt: {
     name: "Sandrine Vaillancourt",
     title: "People Operations",
     image: "https://ca.slack-edge.com/T050RH73H9P-U0BF4RCAQA3-7a46fd2065ed-512",
     linkedIn: "https://www.linkedin.com/in/sandrinevaillancourt",
+    github: "",
+  },
+  arthurvervaet: {
+    name: "Arthur Vervaet",
+    title: "Software engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0BJHCXK57V-859354745ab0-72",
+    linkedIn: "https://www.linkedin.com/in/arthur-vervaet",
+    github: "https://github.com/avervaet",
+  },
+  zachfriedland: {
+    name: "Zach Friedland",
+    title: "AI Deployment Strategist",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0BJPL0TUSE-0be6063e3260-512",
+    linkedIn: "https://www.linkedin.com/in/zach-friedland/",
+    github: "https://github.com/supersmarthealth",
+  },
+  charlottecomte: {
+    name: "Charlotte Comte",
+    title: "RevOps",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0BLGPCAJ68-f8c8f6513ce0-512",
+    linkedIn: "https://www.linkedin.com/in/charlotte-comte-a1b891b1/",
     github: "",
   },
 };

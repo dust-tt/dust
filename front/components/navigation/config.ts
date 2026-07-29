@@ -307,7 +307,7 @@ export const subNavigationAdmin = ({
         ? [
             {
               id: "governance" as const,
-              label: "Workspace & Governance",
+              label: "Settings & Governance",
               icon: Toggle01Left,
               href: `/w/${owner.sId}/governance`,
               current: isCurrent("governance"),

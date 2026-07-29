@@ -11,6 +11,8 @@ export const fireworksConfigSchema = inputConfigSchema.extend({
       effort: z.enum(FIREWORKS_SUPPORTED_REASONING_EFFORTS),
     })
     .optional(),
+  // Fireworks does not support OpenAI's hosted tool search/deferred loading.
+  toolSearchEnabled: z.literal(false).optional(),
   // Fireworks has no explicit prompt-cache key.
   cacheKey: z.undefined(),
 });

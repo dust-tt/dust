@@ -2,6 +2,7 @@ import { REDIS_CACHE_CONCURRENCY } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor, withRetry } from "@app/lib/utils/async_utils";
 import { cacheWithRedis, warmCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
@@ -20,12 +21,24 @@ type OutputContent = CallToolResult["content"][number];
 
 // Writes live under the workspace prefix `w/<wsId>/...` so they are included by the
 // workspace-relocation file transfer.
+function getActionOutputGcsPrefix(
+  auth: Authenticator,
+  actionId: ModelId
+): string {
+  const workspace = auth.getNonNullableWorkspace();
+  const actionIdString = makeSId("mcp_action", {
+    id: actionId,
+    workspaceId: workspace.id,
+  });
+  return `w/${workspace.sId}/${MCP_OUTPUT_ITEMS_PREFIX}/${actionIdString}/`;
+}
+
 function getGcsPath(
   auth: Authenticator,
   action: AgentMCPActionResource,
   itemId: ModelId
 ): string {
-  return `w/${auth.getNonNullableWorkspace().sId}/${MCP_OUTPUT_ITEMS_PREFIX}/${action.sId}/${itemId}.json`;
+  return `${getActionOutputGcsPrefix(auth, action.id)}${itemId}.json`;
 }
 
 /**
@@ -204,6 +217,9 @@ export async function batchFetchContentsFromGcs(
 /**
  * Deletes GCS files by path. Not-found errors are ignored (already deleted).
  * Returns Err if any deletion fails for other reasons.
+ *
+ * Prefer {@link deleteActionOutputsFromGcs} when deleting all outputs for
+ * one or more actions — prefix delete is far cheaper than per-object deletes.
  */
 export async function deleteContentsFromGcs(
   gcsPaths: string[]
@@ -230,4 +246,69 @@ export async function deleteContentsFromGcs(
   }
 
   return new Ok(undefined);
+}
+
+/**
+ * Deletes all GCS objects under each action's output prefix via a single
+ * `deleteFiles({ prefix })` call per action (GCS batches internally).
+ * Empty prefixes are a no-op. Failures are logged and returned as Err.
+ */
+async function deleteActionOutputPrefixesFromGcs(
+  auth: Authenticator,
+  actionIds: ModelId[]
+): Promise<Result<void, Error>> {
+  if (actionIds.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const prefixes = actionIds.map((actionId) =>
+    getActionOutputGcsPrefix(auth, actionId)
+  );
+
+  try {
+    const bucket = getPrivateUploadBucket();
+    await concurrentExecutor(
+      prefixes,
+      async (prefix) => {
+        await bucket.deleteByPrefix(prefix);
+      },
+      { concurrency: GCS_CONCURRENCY }
+    );
+  } catch (err) {
+    logger.error(
+      { err: normalizeError(err), actionCount: actionIds.length },
+      "Failed to delete MCP output prefixes from GCS"
+    );
+    return new Err(normalizeError(err));
+  }
+
+  return new Ok(undefined);
+}
+
+/**
+ * Deletes GCS outputs for the given actions: one prefix delete per action,
+ * plus per-object deletes for leftover/legacy paths outside those prefixes.
+ */
+export async function deleteActionOutputsFromGcs(
+  auth: Authenticator,
+  actionIds: ModelId[],
+  gcsPaths: string[]
+): Promise<Result<void, Error>> {
+  if (gcsPaths.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const prefixResult = await deleteActionOutputPrefixesFromGcs(auth, actionIds);
+  if (prefixResult.isErr()) {
+    return prefixResult;
+  }
+
+  const prefixes = actionIds.map((actionId) =>
+    getActionOutputGcsPrefix(auth, actionId)
+  );
+  const uncoveredPaths = gcsPaths.filter(
+    (gcsPath) => !prefixes.some((prefix) => gcsPath.startsWith(prefix))
+  );
+
+  return deleteContentsFromGcs(uncoveredPaths);
 }

@@ -78,6 +78,7 @@ import { default as statuspageServer } from "@app/lib/api/actions/servers/status
 import { default as toolsetsServer } from "@app/lib/api/actions/servers/toolsets";
 import { default as ukgReadyServer } from "@app/lib/api/actions/servers/ukg_ready";
 import { default as userAnalyticsServer } from "@app/lib/api/actions/servers/user_analytics";
+import { default as userMemoryServer } from "@app/lib/api/actions/servers/user_memory";
 import { default as userMentionsServer } from "@app/lib/api/actions/servers/user_mentions";
 import { default as valtownServer } from "@app/lib/api/actions/servers/val_town";
 import { default as vantaServer } from "@app/lib/api/actions/servers/vanta";
@@ -289,6 +290,8 @@ export async function getInternalMCPServer(
       return workdayServer(auth, toolContext);
     case "user_analytics":
       return userAnalyticsServer(auth, toolContext);
+    case "user_memory":
+      return userMemoryServer(auth, toolContext);
     case "activation_recommendations":
       return activationRecommendationsServer(auth, toolContext);
     default:

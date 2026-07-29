@@ -1,6 +1,12 @@
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 
 import type { Authenticator } from "@app/lib/auth";
+import {
+  AgentMessageModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
+import { RunResource } from "@app/lib/resources/run_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { storeAgentAnalyticsActivity } from "@app/temporal/analytics_queue/activities";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -8,6 +14,12 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import type {
+  ModelResolutionMethodType,
+  ResolvedRequestedModel,
+} from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -57,10 +69,14 @@ async function seedMessages(
     agentConfigurationId,
     agentConfigurationVersion,
     spaceModelId,
+    resolvedModel,
+    modelResolutionMethod,
   }: {
     agentConfigurationId: string;
     agentConfigurationVersion: number;
     spaceModelId?: ModelId;
+    resolvedModel?: ResolvedRequestedModel | null;
+    modelResolutionMethod?: ModelResolutionMethodType | null;
   }
 ): Promise<{
   conversationSId: string;
@@ -89,6 +105,8 @@ async function seedMessages(
     rank: 1,
     agentConfigurationId,
     agentConfigurationVersion,
+    resolvedModel,
+    modelResolutionMethod,
   });
 
   return {
@@ -239,6 +257,83 @@ describe("storeAgentAnalyticsActivity - agent_tag_ids", () => {
   });
 });
 
+describe("storeAgentAnalyticsActivity - model", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("stamps the model that actually ran the message", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const seeded = await seedMessages(auth, {
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+      resolvedModel: {
+        providerId: "anthropic",
+        modelId: CLAUDE_SONNET_4_6_MODEL_ID,
+        reasoningEffort: "medium",
+      },
+      modelResolutionMethod: "agent",
+    });
+
+    const indexed = captureIndexedDocs();
+    await runAnalytics(auth, seeded);
+
+    const doc = analyticsDoc(indexed);
+    expect(doc).toBeDefined();
+    expect(doc?.model).toEqual({
+      provider_id: "anthropic",
+      model_id: CLAUDE_SONNET_4_6_MODEL_ID,
+      reasoning_effort: "medium",
+      resolution_method: "agent",
+    });
+  });
+
+  it("stamps the concrete model a stream tier resolved to, not the stream id", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const seeded = await seedMessages(auth, {
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+      resolvedModel: {
+        providerId: "anthropic",
+        modelId: CLAUDE_SONNET_4_6_MODEL_ID,
+        reasoningEffort: "high",
+      },
+      modelResolutionMethod: "auto_complex",
+    });
+
+    const indexed = captureIndexedDocs();
+    await runAnalytics(auth, seeded);
+
+    const doc = analyticsDoc(indexed);
+    expect(doc?.model?.model_id).toBe(CLAUDE_SONNET_4_6_MODEL_ID);
+    expect(doc?.model?.resolution_method).toBe("auto_complex");
+  });
+
+  it("stamps null when the agent message has no resolved model", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const seeded = await seedMessages(auth, {
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+    });
+
+    const indexed = captureIndexedDocs();
+    await runAnalytics(auth, seeded);
+
+    const doc = analyticsDoc(indexed);
+    expect(doc).toBeDefined();
+    expect(doc?.model).toBeNull();
+  });
+});
+
 describe("storeAgentAnalyticsActivity - space_id", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -285,5 +380,65 @@ describe("storeAgentAnalyticsActivity - space_id", () => {
     const doc = analyticsDoc(indexed);
     expect(doc).toBeDefined();
     expect(doc?.space_id).toBeNull();
+  });
+});
+
+describe("storeAgentAnalyticsActivity - reasoning tokens", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("aggregates provider-reported reasoning tokens from run usages", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const workspace = auth.getNonNullableWorkspace();
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const seeded = await seedMessages(auth, {
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+    });
+    const message = await MessageModel.findOne({
+      where: {
+        sId: seeded.agentMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+    if (!message?.agentMessageId) {
+      throw new Error("Expected an agent message.");
+    }
+
+    const run = await RunResource.makeNew({
+      appId: null,
+      dustRunId: generateRandomModelSId(),
+      runType: "deploy",
+      useWorkspaceCredentials: false,
+      workspaceId: workspace.id,
+    });
+    await run.recordTokenUsage(
+      auth,
+      {
+        inputTokens: 1_000,
+        totalOutputTokens: 300,
+        reasoningTokens: 200,
+        totalTokens: 1_300,
+      },
+      GPT_5_MINI_MODEL_CONFIG.modelId
+    );
+    await AgentMessageModel.update(
+      { runIds: [run.dustRunId] },
+      {
+        where: {
+          id: message.agentMessageId,
+          workspaceId: workspace.id,
+        },
+      }
+    );
+
+    const indexed = captureIndexedDocs();
+    await runAnalytics(auth, seeded);
+
+    expect(analyticsDoc(indexed)?.tokens).toMatchObject({
+      completion: 300,
+      reasoning: 200,
+    });
   });
 });

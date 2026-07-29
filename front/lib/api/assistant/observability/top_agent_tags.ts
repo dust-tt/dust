@@ -27,8 +27,8 @@ type TopAgentTagsAggs = {
 // Ranks agent tags by message count over a time window, with the count of
 // distinct agents carrying each tag.
 // Backs the top-agent-tags analytics endpoint.
-// Either `days` or `startDate`/`endDate` bounds the window; source/agent/user
-// filters are optional.
+// Either `days` or `startDate`/`endDate` bounds the window;
+// source/agent/user/model filters are optional.
 // Since agents can have multiple tags, counts overlap and can sum to more than
 // the total message volume.
 export async function fetchTopAgentTags(
@@ -42,6 +42,7 @@ export async function fetchTopAgentTags(
     agentIds,
     userIds,
     agentTagIds,
+    modelIds,
   }: {
     days?: number;
     startDate?: string;
@@ -51,6 +52,7 @@ export async function fetchTopAgentTags(
     agentIds?: string[];
     userIds?: string[];
     agentTagIds?: string[];
+    modelIds?: string[];
   }
 ): Promise<Result<TopAgentTagRow[], ElasticsearchError>> {
   const owner = auth.getNonNullableWorkspace();
@@ -64,6 +66,7 @@ export async function fetchTopAgentTags(
     agentIds,
     userIds,
     agentTagIds,
+    modelIds,
   });
 
   const result = await searchAnalytics<never, TopAgentTagsAggs>(

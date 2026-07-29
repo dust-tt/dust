@@ -16,6 +16,7 @@ function usage(
 ): RunUsageType & { runKey: string | null } {
   return {
     completionTokens: 0,
+    reasoningTokens: null,
     promptTokens: 0,
     cachedTokens: 0,
     cacheCreationTokens: 0,

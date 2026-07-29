@@ -1,7 +1,6 @@
 import { ProfileOnboardingDialog } from "@dust-tt/front/components/onboarding/ProfileOnboardingDialog";
 import { AppAuthContextLayout } from "@dust-tt/front/components/sparkle/AppAuthContextLayout";
 import { computeIsMetronomeCheckout } from "@dust-tt/front/lib/client/subscription";
-import { useKillSwitches } from "@dust-tt/front/lib/swr/kill";
 import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 import { AuthErrorPage } from "@spa/app/components/AuthErrorPage";
 import { useAppReadyContext } from "@spa/app/contexts/AppReadyContext";
@@ -29,7 +28,6 @@ export function WorkspacePage({ children }: WorkspacePageProps) {
   const { authContext, isAuthenticated, authContextError } = useAuthContext({
     workspaceId: wId,
   });
-  const { killSwitches } = useKillSwitches();
 
   const signalAppReady = useAppReadyContext();
 
@@ -56,7 +54,6 @@ export function WorkspacePage({ children }: WorkspacePageProps) {
   // the auth context provider, which this component is about to mount.
   const isMetronomeCheckout = computeIsMetronomeCheckout({
     featureFlags: authContext.featureFlags,
-    killSwitches,
   });
 
   // Paywall enforcement: redirect when canUseProduct is false

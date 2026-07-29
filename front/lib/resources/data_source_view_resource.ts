@@ -337,31 +337,23 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     spaceIds: string[],
     { includeGlobalSpace = false }: { includeGlobalSpace?: boolean } = {}
   ) {
-    const spaceModelIds = removeNulls(spaceIds.map(getResourceIdFromSId));
+    // Resolve global space to a vaultId so we can filter with vaultId IN (...)
+    // (index-friendly) instead of joining vaults with (id IN OR kind = 'global').
+    const spaceModelIds = [
+      ...removeNulls(spaceIds.map(getResourceIdFromSId)),
+      ...(includeGlobalSpace
+        ? [(await SpaceResource.fetchWorkspaceGlobalSpace(auth)).id]
+        : []),
+    ];
 
-    if (spaceModelIds.length === 0 && !includeGlobalSpace) {
+    if (spaceModelIds.length === 0) {
       return [];
     }
 
     return this.baseFetch(auth, undefined, {
-      includes: [
-        {
-          model: SpaceResource.model,
-          as: "space",
-          attributes: [],
-          required: true,
-          where: {
-            workspaceId: auth.getNonNullableWorkspace().id,
-            deletedAt: null,
-            [Op.or]: [
-              { id: { [Op.in]: spaceModelIds } },
-              ...(includeGlobalSpace ? [{ kind: "global" }] : []),
-            ],
-          },
-        },
-      ],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: [...new Set(spaceModelIds)],
       },
     });
   }

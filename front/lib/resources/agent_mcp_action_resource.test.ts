@@ -15,6 +15,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -48,6 +49,13 @@ vi.mock("@app/lib/file_storage", () => ({
         throw new Error(`GCS file not found: ${path}`);
       }
       gcsStore.delete(path);
+    }),
+    deleteByPrefix: vi.fn(async (prefix: string) => {
+      for (const path of [...gcsStore.keys()]) {
+        if (path.startsWith(prefix)) {
+          gcsStore.delete(path);
+        }
+      }
     }),
   })),
 }));
@@ -524,6 +532,34 @@ describe("Output items with GCS storage", () => {
     expect(remainingItems).toHaveLength(0);
   });
 
+  it("should delete legacy GCS paths that are outside the action prefix", async () => {
+    const { action, outputItemRows } = await createActionWithOutputItems([
+      { type: "text", text: "canonical" },
+      { type: "text", text: "legacy" },
+    ]);
+
+    expect(gcsStore.size).toBe(2);
+
+    // Point the second item at a legacy path that is not under the action prefix.
+    const legacyPath = `mcp_output_items/${action.sId}/${outputItemRows[1].id}.json`;
+    const legacyContent = gcsStore.get(outputItemRows[1].contentGcsPath!);
+    assert(legacyContent);
+    gcsStore.delete(outputItemRows[1].contentGcsPath!);
+    gcsStore.set(legacyPath, legacyContent);
+    await outputItemRows[1].update({ contentGcsPath: legacyPath });
+
+    await AgentMCPActionResource.destroyOutputItemsByActionIds(auth, [
+      action.id,
+    ]);
+
+    expect(gcsStore.size).toBe(0);
+
+    const remainingItems = await AgentMCPActionOutputItemModel.findAll({
+      where: { workspaceId: workspace.id, agentMCPActionId: action.id },
+    });
+    expect(remainingItems).toHaveLength(0);
+  });
+
   it("should handle multiple actions independently", async () => {
     const { action: action1 } = await createActionWithOutputItems([
       { type: "text", text: "Action 1 content" },
@@ -837,5 +873,219 @@ describe("warmGcsContentCache", () => {
         },
       ])
     ).rejects.toThrow("redis down");
+  });
+});
+
+describe("listGeneratedFilesForConversation", () => {
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
+  let conversation: ConversationType;
+  let agentConfig: LightAgentConfigurationType;
+  let user: Awaited<ReturnType<typeof createResourceTest>>["user"];
+
+  const toolConfiguration: LightServerSideMCPToolConfigurationType = {
+    id: 1,
+    sId: "test-tool-config",
+    type: "mcp_configuration",
+    name: "test_tool",
+    originalName: "test_tool",
+    mcpServerName: "test_server",
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    mcpServerViewId: "test-server-view",
+    dustAppConfiguration: null,
+    internalMCPServerId: null,
+    secretName: null,
+    dustProject: null,
+    availability: "auto",
+    permission: "never_ask",
+    toolServerId: "test-server",
+    retryPolicy: "no_retry",
+  };
+
+  beforeEach(async () => {
+    gcsStore.clear();
+
+    const setup = await createResourceTest({});
+    workspace = setup.workspace;
+    auth = setup.authenticator;
+    user = setup.user;
+
+    agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Generated Files Agent",
+    });
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+  });
+
+  it("returns empty array when conversation has no agent actions", async () => {
+    const result =
+      await AgentMCPActionResource.listGeneratedFilesForConversation(auth, {
+        conversationId: conversation.id,
+      });
+
+    expect(result).toEqual([]);
+  });
+
+  it("returns FileResource-backed generated files with agent creator", async () => {
+    const file = await FileFactory.create(auth, user, {
+      contentType: "text/plain",
+      fileName: "report.txt",
+      fileSize: 42,
+      status: "ready",
+      useCase: "tool_output",
+      snippet: "hello snippet",
+    });
+
+    const { action } = await ConversationFactory.createAgentMessage(auth, {
+      workspace,
+      conversation,
+      agentConfig,
+      mcpAction: { toolConfiguration },
+    });
+    assert(action);
+
+    const outputRes = await action.createOutputItems(auth, [
+      {
+        content: { type: "text", text: "generated" },
+        fileId: file.id,
+      },
+    ]);
+    expect(outputRes.isOk()).toBe(true);
+
+    const result =
+      await AgentMCPActionResource.listGeneratedFilesForConversation(auth, {
+        conversationId: conversation.id,
+      });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      fileId: file.sId,
+      title: "report.txt",
+      contentType: "text/plain",
+      snippet: "hello snippet",
+      creator: {
+        type: "agent",
+        name: agentConfig.name,
+        pictureUrl: agentConfig.pictureUrl,
+      },
+    });
+  });
+
+  it("respects upToRank when filtering generated files", async () => {
+    const earlyFile = await FileFactory.create(auth, user, {
+      contentType: "text/plain",
+      fileName: "early.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "tool_output",
+      snippet: "early",
+    });
+    const lateFile = await FileFactory.create(auth, user, {
+      contentType: "text/plain",
+      fileName: "late.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "tool_output",
+      snippet: "late",
+    });
+
+    const earlyAgentMessage =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: agentConfig.version,
+        parentId: null,
+      });
+    const { action: earlyAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: earlyAgentMessage.agentMessageId!,
+      status: "succeeded",
+    });
+    const earlyOutputRes = await earlyAction.createOutputItems(auth, [
+      { content: { type: "text", text: "early" }, fileId: earlyFile.id },
+    ]);
+    expect(earlyOutputRes.isOk()).toBe(true);
+
+    const lateAgentMessage =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 3,
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: agentConfig.version,
+        parentId: null,
+      });
+    const { action: lateAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: lateAgentMessage.agentMessageId!,
+      status: "succeeded",
+    });
+    const lateOutputRes = await lateAction.createOutputItems(auth, [
+      { content: { type: "text", text: "late" }, fileId: lateFile.id },
+    ]);
+    expect(lateOutputRes.isOk()).toBe(true);
+
+    const all = await AgentMCPActionResource.listGeneratedFilesForConversation(
+      auth,
+      {
+        conversationId: conversation.id,
+      }
+    );
+    expect(all.map((f) => f.title).sort()).toEqual(["early.txt", "late.txt"]);
+
+    const upToRank2 =
+      await AgentMCPActionResource.listGeneratedFilesForConversation(auth, {
+        conversationId: conversation.id,
+        upToRank: 2,
+      });
+    expect(upToRank2).toHaveLength(1);
+    expect(upToRank2[0].title).toBe("early.txt");
+  });
+
+  it("skips path-only generated files without a fileId", async () => {
+    const { action } = await ConversationFactory.createAgentMessage(auth, {
+      workspace,
+      conversation,
+      agentConfig,
+      mcpAction: { toolConfiguration },
+    });
+    assert(action);
+
+    const pathOnlyContent = {
+      type: "resource" as const,
+      resource: {
+        uri: "file://conversation/out.txt",
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
+        text: "path only",
+        path: "/files/conversation/out.txt",
+        title: "out.txt",
+        contentType: "text/plain",
+      } satisfies ToolGeneratedFilePathType,
+    };
+
+    const outputRes = await action.createOutputItems(auth, [
+      { content: pathOnlyContent },
+    ]);
+    expect(outputRes.isOk()).toBe(true);
+
+    const result =
+      await AgentMCPActionResource.listGeneratedFilesForConversation(auth, {
+        conversationId: conversation.id,
+      });
+
+    expect(result).toEqual([]);
   });
 });

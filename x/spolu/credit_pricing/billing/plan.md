@@ -21,9 +21,8 @@ working state for both gate-true and gate-false workspaces.
   before the UI PR that consumes it. Per `[BACK16]/[BACK18]` keep handlers thin, put logic in
   `lib/api/billing/*` returning domain types — never `APIErrorWithStatusCode`.
 - **Don't introduce a feature flag for the page** — the gate is contract-based per the Slack
-  decision. Local dev only requires the `global_disable_metronome_billing` kill switch to be
-  disabled plus the Poke flip as documented in `overview.md`; `metronome_billing` is only a
-  per-workspace bypass when the global kill switch is active.
+  decision. Local dev only requires the workspace to lack the `legacy_billing` feature flag
+  plus the Poke flip as documented in `overview.md`.
 - **Every PR is reviewable in isolation**: include a 1-2 line `## Tests` section in the PR
   body matching the template in `AGENTS.local.md`. Use `[TEST1]/[TEST2]` factory-based
   functional tests for endpoints; add Vitest unit tests for pure helpers.

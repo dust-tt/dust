@@ -11,7 +11,11 @@ use cloud_storage::Object;
 use futures::future::try_join_all;
 use parking_lot::Mutex;
 use rayon::prelude::*;
-use rusqlite::{Connection, InterruptHandle};
+use rusqlite::{
+    config::DbConfig,
+    hooks::{AuthAction, AuthContext, Authorization},
+    Batch, Connection, InterruptHandle,
+};
 use std::{collections::HashMap, io::Write, sync::Arc};
 use tempfile::NamedTempFile;
 use thiserror::Error;
@@ -98,9 +102,29 @@ impl SqliteDatabase {
             let conn = conn.lock();
             let time_query_start = utils::now();
 
-            let mut stmt = conn
-                .prepare(&query)
+            let mut statements = Batch::new(&conn, &query);
+            let stmt = statements
+                .next()
                 .map_err(|e| SqliteDatabaseError::QueryExecutionError(anyhow::Error::new(e)))?;
+            let mut stmt = stmt.ok_or_else(|| {
+                SqliteDatabaseError::QueryExecutionError(anyhow!("Query must contain a statement"))
+            })?;
+
+            if statements
+                .next()
+                .map_err(|e| SqliteDatabaseError::QueryExecutionError(anyhow::Error::new(e)))?
+                .is_some()
+            {
+                return Err(SqliteDatabaseError::QueryExecutionError(anyhow!(
+                    "Query must contain a single statement"
+                )));
+            }
+
+            if !stmt.readonly() {
+                return Err(SqliteDatabaseError::QueryExecutionError(anyhow!(
+                    "Query must be read-only"
+                )));
+            }
 
             let column_names = stmt
                 .column_names()
@@ -212,7 +236,28 @@ async fn create_in_memory_sqlite_db(
     )
     .await?;
 
+    configure_connection_for_user_queries(&conn.lock())?;
+
     Ok((conn, temporary_files))
+}
+
+fn configure_connection_for_user_queries(conn: &Connection) -> Result<()> {
+    conn.set_db_config(DbConfig::SQLITE_DBCONFIG_DEFENSIVE, true)?;
+    conn.pragma_update(None, "query_only", true)?;
+    conn.authorizer(Some(authorize_user_query));
+    Ok(())
+}
+
+fn authorize_user_query(context: AuthContext<'_>) -> Authorization {
+    match context.action {
+        AuthAction::Select | AuthAction::Read { .. } | AuthAction::Recursive => {
+            Authorization::Allow
+        }
+        AuthAction::Function { function_name } if function_name != "load_extension" => {
+            Authorization::Allow
+        }
+        _ => Authorization::Deny,
+    }
 }
 
 async fn create_in_memory_sqlite_db_with_csv(
@@ -320,4 +365,104 @@ async fn create_in_memory_sqlite_db_with_csv(
     );
 
     Ok(Some(temporary_files))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_database() -> Result<SqliteDatabase> {
+        let conn = Connection::open_in_memory()?;
+        rusqlite::vtab::csvtab::load_module(&conn)?;
+        conn.execute_batch("CREATE TABLE data (value TEXT); INSERT INTO data VALUES ('allowed');")?;
+        configure_connection_for_user_queries(&conn)?;
+
+        let interrupt_handle = conn.get_interrupt_handle();
+        Ok(SqliteDatabase {
+            conn: Some(Arc::new(Mutex::new(conn))),
+            interrupt_handle: Some(Arc::new(tokio::sync::Mutex::new(interrupt_handle))),
+            temporary_files: None,
+        })
+    }
+
+    #[tokio::test]
+    async fn allows_read_only_queries() -> Result<()> {
+        let database = create_test_database()?;
+
+        let result = database
+            .query("SELECT upper(value) AS value FROM data", 1_000)
+            .await?;
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].value["value"], "ALLOWED");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn rejects_file_reads_through_csv_virtual_tables() -> Result<()> {
+        let database = create_test_database()?;
+        let mut target_file = NamedTempFile::new()?;
+        target_file.write_all(b"secret")?;
+        let query = format!(
+            "CREATE VIRTUAL TABLE stolen USING csv(filename='{}', header=no)",
+            target_file.path().display()
+        );
+
+        let result = database.query(&query, 1_000).await;
+
+        assert!(matches!(
+            result,
+            Err(SqliteDatabaseError::QueryExecutionError(_))
+        ));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn rejects_file_writes() -> Result<()> {
+        let database = create_test_database()?;
+        let output_directory = tempfile::tempdir()?;
+        let attached_database_path = output_directory.path().join("attached-database");
+        let vacuum_output_path = output_directory.path().join("vacuum-output");
+
+        let attach_result = database
+            .query(
+                &format!(
+                    "ATTACH DATABASE '{}' AS writable",
+                    attached_database_path.display()
+                ),
+                1_000,
+            )
+            .await;
+        let vacuum_result = database
+            .query(
+                &format!("VACUUM INTO '{}'", vacuum_output_path.display()),
+                1_000,
+            )
+            .await;
+
+        assert!(matches!(
+            attach_result,
+            Err(SqliteDatabaseError::QueryExecutionError(_))
+        ));
+        assert!(matches!(
+            vacuum_result,
+            Err(SqliteDatabaseError::QueryExecutionError(_))
+        ));
+        assert!(!attached_database_path.exists());
+        assert!(!vacuum_output_path.exists());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn rejects_multiple_statements() -> Result<()> {
+        let database = create_test_database()?;
+
+        let result = database.query("SELECT 1; SELECT 2", 1_000).await;
+
+        assert!(matches!(
+            result,
+            Err(SqliteDatabaseError::QueryExecutionError(_))
+        ));
+        Ok(())
+    }
 }

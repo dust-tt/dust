@@ -37,9 +37,11 @@ const serverToolUseBlock = {
 function reasoningMessage({
   provider,
   metadata,
+  reasoning = "let me think",
 }: {
   provider: ModelProviderIdType;
   metadata: string;
+  reasoning?: string;
 }) {
   return {
     role: "assistant" as const,
@@ -48,7 +50,7 @@ function reasoningMessage({
       {
         type: "reasoning" as const,
         value: {
-          reasoning: "let me think",
+          reasoning,
           metadata,
           tokens: 10,
           provider,
@@ -240,6 +242,23 @@ describe("toBaseMessages — reasoning signatures", () => {
       },
     ]);
   });
+
+  it("keeps a Fireworks Responses reasoning id in `signature`", () => {
+    const result = toBaseMessages(
+      reasoningMessage({
+        provider: "fireworks",
+        metadata: JSON.stringify({ id: "rs_fireworks_123" }),
+      })
+    );
+    expect(result).toEqual([
+      {
+        role: "assistant",
+        type: "reasoning",
+        content: { value: "let me think" },
+        signature: "rs_fireworks_123",
+      },
+    ]);
+  });
 });
 
 describe("OpenAI reasoning round-trip — persisted metadata to Responses input", () => {
@@ -262,6 +281,109 @@ describe("OpenAI reasoning round-trip — persisted metadata to Responses input"
         type: "reasoning",
         summary: [{ type: "summary_text", text: "let me think" }],
         encrypted_content: "gAAAA-encrypted-blob",
+      },
+    ]);
+  });
+});
+
+describe("Fireworks reasoning round-trip — persisted metadata to Responses input", () => {
+  it("replays an id-bearing reasoning item with an empty summary", () => {
+    const [baseMessage] = toBaseMessages(
+      reasoningMessage({
+        provider: "fireworks",
+        metadata: JSON.stringify({ id: "rs_fireworks_empty" }),
+        reasoning: "",
+      })
+    );
+    if (baseMessage.type !== "reasoning") {
+      throw new Error("Expected a reasoning BaseMessage.");
+    }
+
+    expect(assistantReasoningMessageToInputItems(baseMessage)).toEqual([
+      {
+        id: "rs_fireworks_empty",
+        type: "reasoning",
+        summary: [],
+      },
+    ]);
+  });
+
+  it("preserves interleaved reasoning ids and tool calls in wire order", () => {
+    const message: ModelMessageTypeMultiActionsWithoutContentFragment = {
+      role: "assistant",
+      name: "agent",
+      contents: [
+        {
+          type: "reasoning",
+          value: {
+            reasoning: "first thought",
+            metadata: JSON.stringify({ id: "rs_fireworks_1" }),
+            tokens: 10,
+            provider: "fireworks",
+          },
+        },
+        {
+          type: "function_call",
+          value: {
+            id: "call_1",
+            name: "first_tool",
+            arguments: "{}",
+          },
+        },
+        {
+          type: "reasoning",
+          value: {
+            reasoning: "second thought",
+            metadata: JSON.stringify({ id: "rs_fireworks_2" }),
+            tokens: 10,
+            provider: "fireworks",
+          },
+        },
+        {
+          type: "function_call",
+          value: {
+            id: "call_2",
+            name: "second_tool",
+            arguments: "{}",
+          },
+        },
+      ],
+    };
+
+    expect(toBaseMessages(message)).toEqual([
+      {
+        role: "assistant",
+        type: "reasoning",
+        content: { value: "first thought" },
+        signature: "rs_fireworks_1",
+      },
+      {
+        role: "assistant",
+        type: "tool_call_request",
+        content: {
+          callId: "call_1",
+          toolName: "first_tool",
+          arguments: "{}",
+          namespace: undefined,
+        },
+        signature: undefined,
+      },
+      {
+        role: "assistant",
+        type: "reasoning",
+        content: { value: "second thought" },
+        signature: "rs_fireworks_2",
+      },
+      {
+        role: "assistant",
+        type: "tool_call_request",
+        content: {
+          callId: "call_2",
+          toolName: "second_tool",
+          arguments: "{}",
+          namespace: undefined,
+        },
+        signature: undefined,
       },
     ]);
   });

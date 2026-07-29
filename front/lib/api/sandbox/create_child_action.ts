@@ -116,9 +116,10 @@ export async function createSandboxChildAction(
     return new Err(new Error("Agent message not found."));
   }
 
-  // Using the fetchConversationWithoutContent method as we need the read and action required states
+  // Using the fetchConversationWithParticipantState method as we need the read and action required states
   const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: need actionRequired/lastReadAt
+    await ConversationResource.fetchConversationWithParticipantState(
       auth,
       conversationId
     );

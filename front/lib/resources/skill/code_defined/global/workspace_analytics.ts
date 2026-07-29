@@ -29,17 +29,21 @@ export const workspaceAnalyticsSkill = {
     "get_top_*) once per day or in parallel per period — it is slower and " +
     "unnecessary, the timeseries tools already bucket over time.\n" +
     "- Use get_credit_usage for a single window's total credits or to " +
-    "attribute spend to the top agents or users, not for per-day trends.\n" +
-    "- For a credit trend split by agent or user (e.g. 'how did each agent's " +
-    "spend evolve'), set breakdownBy on get_credit_timeseries — one call " +
-    "returns the top groups plus an 'other' series. Do not make one filtered " +
-    "call per agent or user.\n" +
+    "attribute spend to the top agents, users or models, not for per-day " +
+    "trends.\n" +
+    "- For a credit trend split by agent, user or model (e.g. 'how did each " +
+    "agent's spend evolve'), set breakdownBy on get_credit_timeseries — one " +
+    "call returns the top groups plus an 'other' series. Do not make one " +
+    "filtered call per agent, user or model.\n" +
+    "- To scope any tool to specific models, call get_top_models first to get " +
+    "the exact model ids in use, then pass them as modelIds — never guess a " +
+    "model id from its display name.\n" +
     "- Chart timeseries results so the admin can see the trend.\n" +
     "- Credit figures are estimates; when reporting them, tell the admin they " +
     "are approximate and point to the workspace Usage page for exact billed " +
     "amounts.",
   mcpServers: [{ name: "workspace_analytics" }],
-  version: 2,
+  version: 3,
   icon: "ActionPieChartIcon",
   isRestricted: async (auth: Authenticator) => {
     if (!auth.isAdmin()) {

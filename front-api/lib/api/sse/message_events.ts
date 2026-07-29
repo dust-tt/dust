@@ -3,6 +3,7 @@ import type { MessageStreamEvent } from "@app/lib/api/assistant/pubsub";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationError } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { streamEvents } from "@front-api/lib/api/sse/stream_events";
 import { apiError } from "@front-api/middlewares/utils";
@@ -31,16 +32,16 @@ export async function streamMessageEventsForRoute(
   }: { conversationId: string; messageId: string; lastEventId: string | null },
   opts: MessageEventsOptions
 ) {
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return apiErrorForConversation(
+      ctx,
+      new ConversationError("conversation_not_found")
     );
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(ctx, conversationRes.error);
   }
-
-  const conversation = conversationRes.value;
 
   const messageType = await getConversationMessageType(
     auth,

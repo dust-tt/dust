@@ -28,7 +28,7 @@ type TopAgentsAggs = {
 // Ranks agents by message count over a time window, with unique-user counts and
 // name/picture resolution. Backs both the top-agents analytics endpoint and the
 // workspace_analytics get_top_agents tool. Either `days` or `startDate`/`endDate`
-// bounds the window; the source/agent/user filters are optional.
+// bounds the window; the source/agent/user/model filters are optional.
 export async function fetchTopAgents(
   auth: Authenticator,
   {
@@ -40,6 +40,7 @@ export async function fetchTopAgents(
     agentIds,
     userIds,
     agentTagIds,
+    modelIds,
   }: {
     days?: number;
     startDate?: string;
@@ -49,6 +50,7 @@ export async function fetchTopAgents(
     agentIds?: string[];
     userIds?: string[];
     agentTagIds?: string[];
+    modelIds?: string[];
   }
 ): Promise<Result<WorkspaceTopAgentRow[], ElasticsearchError>> {
   const owner = auth.getNonNullableWorkspace();
@@ -62,6 +64,7 @@ export async function fetchTopAgents(
     agentIds,
     userIds,
     agentTagIds,
+    modelIds,
   });
 
   const result = await searchAnalytics<never, TopAgentsAggs>(
