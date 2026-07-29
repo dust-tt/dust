@@ -51,7 +51,7 @@ app.get(
     const views = await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
       auth,
       queryValidation.data.spaceIds,
-      { where: { isRestrictedToSkills: false } }
+      { isRestrictedToSkills: false }
     );
 
     const serverViews = views

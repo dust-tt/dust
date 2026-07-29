@@ -671,6 +671,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     spaces: SpaceResource[],
     options?: ResourceFindOptions<MCPServerViewModel> & {
       includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
+      isRestrictedToSkills?: boolean;
     }
   ): Promise<MCPServerViewResource[]> {
     // Filter out spaces that the user does not have read or administrate access to
@@ -680,7 +681,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     if (accessibleSpaces.length === 0) {
       return [];
     }
-    const { includeHeavyAttributes, ...findOptions } = options ?? {};
+    const { includeHeavyAttributes, isRestrictedToSkills, ...findOptions } =
+      options ?? {};
     return this.baseFetch(
       auth,
       {
@@ -692,7 +694,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         },
         order: [["id", "ASC"]],
       },
-      { includeHeavyAttributes }
+      { includeHeavyAttributes, isRestrictedToSkills }
     );
   }
 
@@ -702,11 +704,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     {
       includeGlobalSpace = false,
       includeHeavyAttributes,
-      where,
+      isRestrictedToSkills,
     }: {
       includeGlobalSpace?: boolean;
       includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
-      where?: ResourceFindOptions<MCPServerViewModel>["where"];
+      isRestrictedToSkills?: boolean;
     } = {}
   ): Promise<MCPServerViewResource[]> {
     const spaceModelIds = removeNulls(spaceIds.map(getResourceIdFromSId));
@@ -718,7 +720,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     const views = await this.baseFetch(
       auth,
       {
-        where,
         includes: [
           {
             model: SpaceResource.model,
@@ -737,7 +738,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         ],
         order: [["id", "ASC"]],
       },
-      { includeHeavyAttributes }
+      { includeHeavyAttributes, isRestrictedToSkills }
     );
 
     // Permission parity with listBySpaces: the canReadOrAdministrate pre-filter on fetched
@@ -750,6 +751,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     space: SpaceResource,
     options?: ResourceFindOptions<MCPServerViewModel> & {
       includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
+      isRestrictedToSkills?: boolean;
     }
   ): Promise<MCPServerViewResource[]> {
     return this.listBySpaces(auth, [space], options);
@@ -796,18 +798,18 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     {
       includeGlobalSpace = false,
       includeHeavyAttributes,
-      where,
+      isRestrictedToSkills,
     }: {
       includeGlobalSpace?: boolean;
       includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
-      where?: ResourceFindOptions<MCPServerViewModel>["where"];
+      isRestrictedToSkills?: boolean;
     } = {}
   ): Promise<MCPServerViewResource[]> {
     await this.unsafeEnsureAutoViewsForWorkspace(auth);
     return this.listBySpaceIds(auth, spaceIds, {
       includeGlobalSpace,
       includeHeavyAttributes,
-      where,
+      isRestrictedToSkills,
     });
   }
 
@@ -815,6 +817,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     options?: ResourceFindOptions<MCPServerViewModel> & {
       includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
+      isRestrictedToSkills?: boolean;
     }
   ): Promise<MCPServerViewResource[]> {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);

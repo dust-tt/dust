@@ -79,9 +79,7 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
         "lastError",
         "sharedSecret",
       ],
-      where: includeRestrictedToSkills
-        ? undefined
-        : { isRestrictedToSkills: false },
+      isRestrictedToSkills: includeRestrictedToSkills ? undefined : false,
     }
   );
 

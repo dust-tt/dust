@@ -32,7 +32,7 @@ app.get("/", async (ctx): HandlerResult<GetMCPServersResponseBody> => {
   const systemMCPServerViews = await MCPServerViewResource.listForSystemSpace(
     auth,
     {
-      where: { isRestrictedToSkills: true },
+      isRestrictedToSkills: true,
     }
   );
   const restrictedServerIds = new Set(

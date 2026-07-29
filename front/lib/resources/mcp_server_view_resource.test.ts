@@ -448,7 +448,7 @@ describe("MCPServerViewResource", () => {
       const directlyAvailableViews = await MCPServerViewResource.listBySpaceIds(
         adminAuth,
         [globalSpace.sId],
-        { where: { isRestrictedToSkills: false } }
+        { isRestrictedToSkills: false }
       );
       expect(directlyAvailableViews.map((view) => view.sId)).toEqual([
         availableView.sId,
