@@ -1474,7 +1474,7 @@ export class Authenticator {
 
   /**
    * Determines whether the caller holds `verb` on a single resource permission target. `verb` is a
-   * grant verb (`PermissionType` ⊆ `GrantVerb`, plus type-level capabilities like "create").
+   * grant verb (instance verbs like read/write/admin, or type-level capabilities like "create").
    * Handles both instance targets and type-wide targets: a `GroupResourcePermission` with
    * `resourceId` omitted resolves to the type-wide (-1) grant.
    *
