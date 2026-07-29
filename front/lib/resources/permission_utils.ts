@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { ResourcePermission } from "@app/types/resource_permissions";
+import type { AccessRule } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
@@ -39,17 +39,17 @@ export function createSpaceIdToGroupsMap(
 }
 
 /**
- * Creates ResourcePermission objects from space ids using a pre-built space-to-groups mapping.
+ * Creates AccessRule objects from space ids using a pre-built space-to-groups mapping.
  * This is the optimized version that avoids rebuilding the map on each call.
  *
  * @param spaceIdToGroupsMap - Pre-built mapping from space ids to group IDs
  * @param requestedSpaceIds - Array of space ids that need permission resolution
- * @returns Array of ResourcePermission objects for use with Authenticator permission methods
+ * @returns Array of AccessRule objects for use with Authenticator permission methods
  */
 export function createResourcePermissionsFromSpacesWithMap(
   spaceIdToGroupsMap: Map<ModelId, string[]>,
   requestedSpaceIds: ModelId[]
-): ResourcePermission[] {
+): AccessRule[] {
   const resolvedGroupIds: string[][] = [];
 
   for (const spaceId of requestedSpaceIds) {

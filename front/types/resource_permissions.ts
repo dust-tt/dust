@@ -4,13 +4,13 @@ import type { RoleType } from "./user";
 
 /**
  * Legacy: permissions assigned to a specific group, listed inline on a resource's permission
- * config. Being migrated to the `group_permissions` table (see `GroupResourcePermission`); prefer
+ * config. Being migrated to the `group_permissions` table (see `GrantedAccessRule`); prefer
  * that path for new code.
  *
  * @property id - Unique identifier for the group (ModelId type)
  * @property permissions - Grant verbs granted to the group
  */
-export type LegacyGroupPermission = {
+export type InlineGroupGrant = {
   id: ModelId;
   permissions: GrantVerb[];
 };
@@ -21,7 +21,7 @@ export type LegacyGroupPermission = {
  * @property role - The type of role (RoleType)
  * @property permissions - Grant verbs granted to the role
  */
-export type RolePermission = {
+export type RoleGrant = {
   role: RoleType;
   permissions: GrantVerb[];
 };
@@ -30,13 +30,13 @@ export type RolePermission = {
  * Legacy: group-based permissions for a resource, managed through inline group assignments.
  * Superseded by the `group_permissions` governance-grant channel.
  */
-export type LegacyGroupResourcePermissions = {
-  groups: LegacyGroupPermission[];
+export type LegacyGroupAccessRule = {
+  groups: InlineGroupGrant[];
 };
 
 /**
  * Legacy: role-based grants plus inline group grants for a resource, with no `group_permissions`
- * table involvement. Being migrated to `GroupResourcePermission`.
+ * table involvement. Being migrated to `GrantedAccessRule`.
  *
  * @property groups - Legacy inline group-based grants: a caller in a listed group gets its
  *   permissions
@@ -44,9 +44,9 @@ export type LegacyGroupResourcePermissions = {
  * @property workspaceId - The resource's workspace; role and legacy-group checks only apply when it
  *   matches the caller's workspace
  */
-export type LegacyCombinedResourcePermissions = {
-  groups: LegacyGroupPermission[];
-  roles: RolePermission[];
+export type LegacyAccessRule = {
+  groups: InlineGroupGrant[];
+  roles: RoleGrant[];
   workspaceId: ModelId;
 };
 
@@ -64,8 +64,8 @@ export type LegacyCombinedResourcePermissions = {
  * @property workspaceId - The resource's workspace; the role and governance-grant checks only apply
  *   when it matches the caller's workspace
  */
-export type GroupResourcePermission = {
-  roles: RolePermission[];
+export type GrantedAccessRule = {
+  roles: RoleGrant[];
   resourceType: ConcreteResourceType;
   resourceId?: number;
   workspaceId: ModelId;
@@ -73,14 +73,14 @@ export type GroupResourcePermission = {
 
 /**
  * Represents the complete permission configuration for a resource. One of:
- * - Legacy inline group-based permissions only (`LegacyGroupResourcePermissions`)
- * - Legacy roles + inline groups (`LegacyCombinedResourcePermissions`)
- * - Roles + the group_permissions table (`GroupResourcePermission`)
+ * - Legacy inline group-based permissions only (`LegacyGroupAccessRule`)
+ * - Legacy roles + inline groups (`LegacyAccessRule`)
+ * - Roles + the group_permissions table (`GrantedAccessRule`)
  */
-export type ResourcePermission =
-  | LegacyGroupResourcePermissions
-  | LegacyCombinedResourcePermissions
-  | GroupResourcePermission;
+export type AccessRule =
+  | LegacyGroupAccessRule
+  | LegacyAccessRule
+  | GrantedAccessRule;
 
 /**
  * Type guard to determine if a permission configuration includes role-based access control.
@@ -88,10 +88,8 @@ export type ResourcePermission =
  * @param resourcePermission - The resource permission configuration to check
  * @returns True if the configuration includes role-based permissions
  */
-export function hasRolePermissions(
-  resourcePermission: ResourcePermission
-): resourcePermission is
-  | LegacyCombinedResourcePermissions
-  | GroupResourcePermission {
+export function hasRoleGrants(
+  resourcePermission: AccessRule
+): resourcePermission is LegacyAccessRule | GrantedAccessRule {
   return "roles" in resourcePermission;
 }

@@ -35,7 +35,7 @@ import {
   isRegularManualGroupKind,
   isSkillEditorGroupKind,
 } from "@app/types/groups";
-import type { ResourcePermission } from "@app/types/resource_permissions";
+import type { AccessRule } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -2571,10 +2571,10 @@ export class GroupResource extends BaseResource<GroupModel> {
    * NOT inherited, i.e., if you set a permission for role "user", an "admin"
    * will NOT have it
    *
-   * @returns Array of ResourcePermission objects defining the default access
+   * @returns Array of AccessRule objects defining the default access
    * configuration
    */
-  requestedPermissions(): ResourcePermission[] {
+  requestedPermissions(): AccessRule[] {
     if (this.kind === "agent_editors" || this.kind === "skill_editors") {
       return [
         {
