@@ -10,11 +10,11 @@ import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
 import {
   exceedsUserMemoryLimit,
-  MAX_USER_MEMORY_CHARS,
   MEMORY_CONTENT_TYPE,
   userMemoryPath,
 } from "@app/lib/api/user_memory";
 import type { Authenticator } from "@app/lib/auth";
+import { MAX_USER_MEMORY_CONTENT_LENGTH } from "@app/types/api/me/memory";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -131,7 +131,7 @@ const handlers: ToolHandlers<typeof USER_MEMORY_TOOLS_METADATA> = {
     if (exceedsUserMemoryLimit(nextContent)) {
       return new Err(
         new MCPError(
-          `Memory would exceed the ${MAX_USER_MEMORY_CHARS} character limit. Shorten the content first.`,
+          `Memory would exceed the ${MAX_USER_MEMORY_CONTENT_LENGTH} character limit. Shorten the content first.`,
           { tracked: false }
         )
       );

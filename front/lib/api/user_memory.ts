@@ -2,20 +2,20 @@ import type { DustFileSystemError } from "@app/lib/api/file_system/dust_file_sys
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { userScopedPath } from "@app/lib/api/file_system/types";
 import type { Authenticator } from "@app/lib/auth";
+import { MAX_USER_MEMORY_CONTENT_LENGTH } from "@app/types/api/me/memory";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 
 const MEMORY_FILE_NAME = "MEMORY.md";
 
 export const MEMORY_CONTENT_TYPE = "text/markdown";
-export const MAX_USER_MEMORY_CHARS = 2_000;
 
 export function userMemoryPath(userId: string): string {
   return userScopedPath(userId, MEMORY_FILE_NAME);
 }
 
 export function exceedsUserMemoryLimit(content: string): boolean {
-  return content.length > MAX_USER_MEMORY_CHARS;
+  return content.length > MAX_USER_MEMORY_CONTENT_LENGTH;
 }
 
 export async function getUserMemory(
