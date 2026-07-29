@@ -20,6 +20,7 @@ import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import {
+  computeRunKey,
   intelligenceAwuFromRunUsagesGroupedByRunKey,
   toolAwuFromAction,
 } from "@app/lib/metronome/events";
@@ -151,6 +152,7 @@ export async function storeAgentAnalyticsActivity(
     userMessageModel: userUserMessageRow,
     conversationRow,
     contextOrigin: userUserMessageRow.userContextOrigin,
+    dustRunIds: agentLoopArgs.dustRunIds,
   });
 }
 
@@ -166,6 +168,7 @@ export async function storeAgentAnalytics(
     userMessageModel: UserMessageModel;
     conversationRow: ConversationModel;
     contextOrigin: UserMessageOrigin | null;
+    dustRunIds?: string[];
   }
 ): Promise<void> {
   const {
@@ -175,10 +178,25 @@ export async function storeAgentAnalytics(
     userMessageModel,
     conversationRow,
     contextOrigin,
+    dustRunIds,
   } = params;
   const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
     agentAgentMessageRow.id,
   ]);
+
+  // Tag this execution's runs with their runKey before reading usages, so the
+  // per-execution ceiling in `intelligenceAwuFromRunUsagesGroupedByRunKey`
+  // matches the billed amount. Without this, an analytics index that runs
+  // before the credit path has tagged the runs collapses every execution into
+  // one `LEGACY_RUN_KEY` group and single-ceils the message — under-counting
+  // `llm_awu` on multi-execution (interrupt/resume) messages. Idempotent: same
+  // `dustRunIds` → same runKey as the credit/emit paths.
+  if (dustRunIds && dustRunIds.length > 0) {
+    await RunResource.setRunKeyForDustRunIds(auth, {
+      dustRunIds,
+      runKey: computeRunKey(dustRunIds),
+    });
+  }
 
   // Seat type at index time, to stamp `is_free_seat`. Mirrors Metronome's
   // free-seat user-id split: free-seat usage is dropped from a user's consumed
