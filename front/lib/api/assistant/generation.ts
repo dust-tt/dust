@@ -120,13 +120,11 @@ function constructPlatformSpecificContextSection(): string {
 function constructToolsSection({
   hasAvailableActions,
   modelInfo,
-  agentConfiguration,
   conversation,
   serverToolsAndInstructions,
 }: {
   hasAvailableActions: boolean;
   modelInfo: AgentLoopExecutionData["modelInfo"];
-  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
   conversation?: ConversationWithoutContentType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
 }): string {
@@ -424,7 +422,6 @@ export function constructPromptMultiActions(
   const toolsSection = constructToolsSection({
     hasAvailableActions,
     modelInfo,
-    agentConfiguration,
     conversation,
     serverToolsAndInstructions,
   });
