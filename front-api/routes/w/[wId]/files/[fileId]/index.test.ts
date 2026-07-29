@@ -374,7 +374,7 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
     });
   });
 
-  it("should reject deleting a file attached to a skill", async () => {
+  it("should reject deleting a file referenced by skill history", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "DELETE",
       role: "user",
@@ -387,16 +387,23 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
       status: "ready",
       useCase: "skill_attachment",
     });
-    await skill.updateSkill(auth, {
+    const skillUpdate = {
       agentFacingDescription: skill.agentFacingDescription,
       attachedKnowledge: [],
-      fileAttachments: [file],
       icon: skill.icon,
       instructions: skill.instructions,
       mcpServerViews: [],
       name: skill.name,
       requestedSpaceIds: skill.requestedSpaceIds,
       userFacingDescription: skill.userFacingDescription,
+    };
+    await skill.updateSkill(auth, {
+      ...skillUpdate,
+      fileAttachments: [file],
+    });
+    await skill.updateSkill(auth, {
+      ...skillUpdate,
+      fileAttachments: [],
     });
 
     const response = await honoApp.request(fileUrl(workspace, file.sId), {
