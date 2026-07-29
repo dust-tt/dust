@@ -440,7 +440,7 @@ export function ManageSkillsPage() {
                 {isAdmin &&
                   hasSkillPublicationGovernance &&
                   activeTab === "active" && (
-                    <div className="ml-auto flex flex-row items-center gap-2 self-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    <div className="ml-auto flex flex-row items-center gap-2 self-center text-sm text-muted-foreground">
                       <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
                         <Checkbox
                           checked={bypassEditorVisibility}
@@ -451,7 +451,7 @@ export function ManageSkillsPage() {
                         Show hidden skills
                       </label>
                       <Tooltip
-                        label="Also displays skills you are not an editor of but can access as an admin."
+                        label="Shows skills you can access as an admin, even if you’re not an editor"
                         trigger={
                           <InfoCircle className="h-4 w-4 text-muted-foreground" />
                         }
