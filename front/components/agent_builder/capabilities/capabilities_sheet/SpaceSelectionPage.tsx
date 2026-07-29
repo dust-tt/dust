@@ -86,7 +86,8 @@ export function SpaceSelectionSheet({
         <SheetHeader>
           <SheetTitle>Data and access</SheetTitle>
           <SheetDescription>
-            Adding spaces or pods will make the data from each of them available to {entityName}.
+            Adding spaces or pods will make the data from each of them available
+            to {entityName}.
           </SheetDescription>
           <SearchInput
             name="space"

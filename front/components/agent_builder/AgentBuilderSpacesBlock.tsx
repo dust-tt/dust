@@ -172,11 +172,11 @@ export function AgentBuilderSpacesBlock({
     <div className="space-y-3">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="heading-lg text-foreground">
-            Data and access
-          </h2>
+          <h2 className="heading-lg text-foreground">Data and access</h2>
           <p className="text-sm text-muted-foreground">
-           Adding spaces or pods will make the data from each of them available to the agent. Only members of all the spaces and pods listed will have access to the agent.
+            Adding spaces or pods will make the data from each of them available
+            to the agent. Only members of all the spaces and pods listed will
+            have access to the agent.
           </p>
         </div>
         <Button
