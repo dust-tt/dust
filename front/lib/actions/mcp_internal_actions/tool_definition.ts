@@ -16,12 +16,12 @@ import type {
 } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape, z } from "zod";
 
-export type MCPToolHandlerExtra = RequestHandlerExtra<
+export type BaseToolHandlerExtra = RequestHandlerExtra<
   ServerRequest,
   ServerNotification
 >;
 
-export type ToolHandlerExtra = MCPToolHandlerExtra & {
+export type ToolHandlerExtra = BaseToolHandlerExtra & {
   auth: Authenticator;
   runContext: ToolRunContext;
 };
@@ -46,7 +46,7 @@ export type ToolHandlers<
 export type ClientToolHandlers<
   ToolsList extends readonly ToolMeta[],
   ToolNames extends string = ToolsList[number]["name"],
-> = ToolHandlers<ToolsList, ToolNames, MCPToolHandlerExtra>;
+> = ToolHandlers<ToolsList, ToolNames, BaseToolHandlerExtra>;
 
 export interface ToolDefinition<
   TName extends string = string,
