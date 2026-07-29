@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
-import { batchWriteContentsToGcs } from "@app/lib/resources/agent_mcp_action/output_storage";
+import { batchRewriteContentsToGcs } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -144,9 +144,11 @@ makeScript(
               // Re-write content from DB to the new GCS path. The DB column is NOT NULL during the
               // migration period, so it's available even for items that already have a
               // (legacy-prefix) GCS object.
-              const writeResult = await batchWriteContentsToGcs(auth, action, [
-                { itemId: item.id, content: item.content },
-              ]);
+              const writeResult = await batchRewriteContentsToGcs(
+                auth,
+                action,
+                [{ itemId: item.id, content: item.content }]
+              );
               if (writeResult.isErr()) {
                 scriptLogger.error(
                   {
@@ -160,7 +162,7 @@ makeScript(
                 return;
               }
 
-              const newPath = writeResult.value.get(item.id);
+              const newPath = writeResult.value[0];
               if (!newPath) {
                 scriptLogger.error(
                   { workspaceId: workspaceId, itemId: item.id },

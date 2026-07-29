@@ -99,8 +99,6 @@ const OUTPUT_ITEMS_BATCH_SIZE = 32;
 
 const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
 
-const CONCURRENCY_UPDATE_OUTPUT_ITEMS = 16;
-
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -1023,7 +1021,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
-   * Creates output items in DB and writes their content to GCS.
+   * Writes output content to GCS and creates its DB rows.
    * Content is also written to DB to ease rollback during the migration period.
    */
   async createOutputItems(
@@ -1033,72 +1031,74 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       fileId?: ModelId;
     }>
   ): Promise<Result<ToolOutputItemType[], Error>> {
-    const outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
-      contents.map((c) => {
-        const { generatedFilePath, generatedFileContentType } =
-          isToolGeneratedFilePath(c.content)
-            ? {
-                generatedFilePath: c.content.resource.path,
-                generatedFileContentType: c.content.resource.contentType,
-              }
-            : { generatedFilePath: null, generatedFileContentType: null };
-
-        return {
-          agentMCPActionId: this.id,
-          // Write content to DB (kept during migration period to ease rollback).
-          content: c.content,
-          citations: getCitationsFromToolOutput([c.content]),
-          fileId: c.fileId,
-          workspaceId: this.workspaceId,
-          generatedFilePath,
-          generatedFileContentType,
-        };
-      })
-    );
-
+    // Write GCS first: the helper retries and cleans up partial batches, and DB insertion only
+    // starts once every object has been persisted.
     const gcsResult = await batchWriteContentsToGcs(
       auth,
       this,
-      outputItems.map((item) => ({
-        itemId: item.id,
-        content: item.content,
-      }))
+      contents.map(({ content }) => content)
     );
 
-    // GCS write is retried internally. If it still fails we surface the error rather than leaving
-    // rows with no `contentGcsPath`. There is no acceptable degraded state.
     if (gcsResult.isErr()) {
       return new Err(gcsResult.error);
     }
 
-    await warmGcsContentCache(
-      auth,
-      removeNulls(
-        outputItems.map((item) => {
-          const gcsPath = gcsResult.value.get(item.id);
-          return gcsPath
-            ? { itemId: item.id, gcsPath, content: item.content }
-            : null;
-        })
-      )
-    );
+    let outputItems: AgentMCPActionOutputItemModel[];
+    try {
+      outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
+        contents.map((c, index) => {
+          const contentGcsPath = gcsResult.value[index];
+          assert(contentGcsPath, "GCS path not found for output item.");
 
-    // Update DB rows with their GCS paths.
-    // TODO(2026-02-25 PERF): Optimize by writing items only once.
-    await concurrentExecutor(
-      outputItems,
-      async (item) => {
-        const gcsPath = gcsResult.value.get(item.id);
-        if (gcsPath) {
-          await AgentMCPActionOutputItemModel.update(
-            { contentGcsPath: gcsPath },
-            { where: { id: item.id, workspaceId: this.workspaceId } }
-          );
-          item.contentGcsPath = gcsPath;
-        }
-      },
-      { concurrency: CONCURRENCY_UPDATE_OUTPUT_ITEMS }
-    );
+          const { generatedFilePath, generatedFileContentType } =
+            isToolGeneratedFilePath(c.content)
+              ? {
+                  generatedFilePath: c.content.resource.path,
+                  generatedFileContentType: c.content.resource.contentType,
+                }
+              : { generatedFilePath: null, generatedFileContentType: null };
+
+          return {
+            agentMCPActionId: this.id,
+            // Write content to DB (kept during migration period to ease rollback).
+            content: c.content,
+            contentGcsPath,
+            citations: getCitationsFromToolOutput([c.content]),
+            fileId: c.fileId,
+            workspaceId: this.workspaceId,
+            generatedFilePath,
+            generatedFileContentType,
+          };
+        })
+      );
+    } catch (err) {
+      // A DB error can be ambiguous after commit, so keep the GCS objects rather than risk
+      // deleting content referenced by committed rows. Action-prefix cleanup removes orphans.
+      return new Err(normalizeError(err));
+    }
+
+    try {
+      await warmGcsContentCache(
+        auth,
+        removeNulls(
+          outputItems.map((item) =>
+            item.contentGcsPath
+              ? {
+                  itemId: item.id,
+                  gcsPath: item.contentGcsPath,
+                  content: item.content,
+                }
+              : null
+          )
+        )
+      );
+    } catch (err) {
+      // Cache warming is best-effort and must not turn a successful persistence into a retry.
+      logger.warn(
+        { err: normalizeError(err), actionId: this.sId },
+        "Failed to warm MCP output content cache"
+      );
+    }
 
     // Return the stored contents in the generic tool output item shape.
     return new Ok(
@@ -1283,10 +1283,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const gcsPaths = removeNulls(gcsItems.map((item) => item.contentGcsPath));
 
-    if (gcsPaths.length > 0) {
-      // Results intentionally unused — failures must not block DB cleanup.
-      await deleteActionOutputsFromGcs(auth, actionIds, gcsPaths);
-    }
+    // Results intentionally unused. Failures must not block DB cleanup. Prefixes are deleted even
+    // without persisted paths to clean objects orphaned between the GCS and DB writes.
+    await deleteActionOutputsFromGcs(auth, actionIds, gcsPaths);
 
     // Delete all output items from DB.
     await AgentMCPActionOutputItemModel.destroy({
