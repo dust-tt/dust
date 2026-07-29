@@ -3635,6 +3635,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       // Delete files from cloud storage outside the transaction (I/O with GCS).
       for (const file of filesToDelete) {
+        if (await file.isReferencedBySkill()) {
+          continue;
+        }
         const res = await file.delete(auth);
         if (res.isErr()) {
           return res;
