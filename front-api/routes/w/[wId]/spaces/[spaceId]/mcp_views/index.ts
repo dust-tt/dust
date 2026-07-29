@@ -134,7 +134,6 @@ app.get(
 
     const serverViews = (
       await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space, {
-        where: { isRestrictedToSkills: false },
         includeHeavyAttributes: [
           "authorization",
           "cachedTools",

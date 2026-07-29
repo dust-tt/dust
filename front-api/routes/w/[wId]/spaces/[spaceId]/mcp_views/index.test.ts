@@ -12,34 +12,6 @@ import { honoApp } from "@front-api/app";
 import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
 import { describe, expect, it } from "vitest";
 
-describe("GET /api/w/:wId/spaces/:spaceId/mcp_views", () => {
-  it("excludes skills-only views for admins", async () => {
-    const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
-      role: "admin",
-    });
-    const server = await RemoteMCPServerFactory.create(workspace);
-    const view = await MCPServerViewFactory.create(
-      workspace,
-      server.sId,
-      globalSpace
-    );
-    const restrictionResult = await view.updateIsRestrictedToSkills(auth, true);
-    expect(restrictionResult.isOk()).toBe(true);
-
-    const response = await honoApp.request(
-      `/api/w/${workspace.sId}/spaces/${globalSpace.sId}/mcp_views?availability=all`
-    );
-
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(
-      body.serverViews.some(
-        (serverView: { sId: string }) => serverView.sId === view.sId
-      )
-    ).toBe(false);
-  });
-});
-
 describe("GET /api/w/:wId/spaces/:spaceId/mcp_views/not_activated", () => {
   it("returns activable MCP server views", async () => {
     const { workspace, globalGroup, globalSpace } =
