@@ -8671,7 +8671,7 @@
       },
       "delete": {
         "summary": "Delete a file",
-        "description": "Delete a file from the workspace.",
+        "description": "Delete a file from the workspace. Files referenced by a skill or its version history cannot be deleted.",
         "tags": [
           "Private Files"
         ],
@@ -8703,6 +8703,9 @@
         "responses": {
           "204": {
             "description": "File deleted"
+          },
+          "400": {
+            "description": "File is referenced by a skill or its version history"
           },
           "403": {
             "description": "Permission denied"

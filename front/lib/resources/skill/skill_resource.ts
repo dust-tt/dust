@@ -3881,23 +3881,33 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await editorGroup.delete(auth);
     }
 
-    // Delete file attachments and their underlying files.
+    // Delete file references before their underlying files.
     const fileAttachments = await SkillFileAttachmentModel.findAll({
       where: { workspaceId },
     });
-    if (fileAttachments.length > 0) {
-      const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
-        auth,
-        fileAttachments.map((a) => a.fileId)
-      );
-      await SkillFileAttachmentModel.destroy({
-        where: { workspaceId },
-      });
-      for (const file of filesToDelete) {
-        const res = await file.delete(auth);
-        if (res.isErr()) {
-          throw res.error;
-        }
+    const skillVersions = await SkillVersionModel.findAll({
+      attributes: ["fileAttachmentIds"],
+      where: { workspaceId },
+    });
+    const fileIds = uniq([
+      ...fileAttachments.map((attachment) => attachment.fileId),
+      ...skillVersions.flatMap((version) => version.fileAttachmentIds),
+    ]);
+    const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
+      auth,
+      fileIds
+    );
+
+    await SkillVersionModel.destroy({
+      where: { workspaceId },
+    });
+    await SkillFileAttachmentModel.destroy({
+      where: { workspaceId },
+    });
+    for (const file of filesToDelete) {
+      const res = await file.delete(auth);
+      if (res.isErr()) {
+        throw res.error;
       }
     }
 
@@ -3910,10 +3920,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     await SkillSuggestionModel.destroy({
-      where: { workspaceId },
-    });
-
-    await SkillVersionModel.destroy({
       where: { workspaceId },
     });
 

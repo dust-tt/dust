@@ -8,6 +8,7 @@ import {
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -20,6 +21,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
@@ -2231,6 +2233,45 @@ describe("SkillResource", () => {
   });
 
   describe("deleteAllForWorkspace", () => {
+    it("deletes files referenced only by skill history", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator);
+      const file = await FileFactory.create(
+        testContext.authenticator,
+        testContext.user,
+        {
+          contentType: "text/plain",
+          fileName: "historical.txt",
+          fileSize: 100,
+          status: "created",
+          useCase: "skill_attachment",
+        }
+      );
+      const skillUpdate = {
+        agentFacingDescription: skill.agentFacingDescription,
+        attachedKnowledge: [],
+        icon: skill.icon,
+        instructions: skill.instructions,
+        mcpServerViews: [],
+        name: skill.name,
+        requestedSpaceIds: skill.requestedSpaceIds,
+        userFacingDescription: skill.userFacingDescription,
+      };
+      await skill.updateSkill(testContext.authenticator, {
+        ...skillUpdate,
+        fileAttachments: [file],
+      });
+      await skill.updateSkill(testContext.authenticator, {
+        ...skillUpdate,
+        fileAttachments: [],
+      });
+
+      await SkillResource.deleteAllForWorkspace(testContext.authenticator);
+
+      expect(
+        await FileResource.fetchById(testContext.authenticator, file.sId)
+      ).toBeNull();
+    });
+
     it("should only delete skills from the authenticated workspace", async () => {
       // Create a skill in workspace1.
       const skill1 = await SkillFactory.create(testContext.authenticator, {

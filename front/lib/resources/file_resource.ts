@@ -46,6 +46,10 @@ import {
   getPublicUploadBucket,
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
+import {
+  SkillFileAttachmentModel,
+  SkillVersionModel,
+} from "@app/lib/models/skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -62,6 +66,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { copyContent } from "@app/lib/utils/files";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -501,64 +506,119 @@ export class FileResource extends BaseResource<FileModel> {
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     try {
-      if (this.isReady) {
-        await maybeDeleteCoreArtifactsForIndexedFile(auth, this);
-
-        // Delete mount file copies if set.
-        await this.deleteMountFileCopies();
-
-        await this.getBucketForVersion("original")
-          .file(this.getCloudStoragePath(auth, "original"))
-          .delete();
-
-        // Delete the processed file if it exists.
-        await this.getBucketForVersion("processed")
-          .file(this.getCloudStoragePath(auth, "processed"))
-          .delete({ ignoreNotFound: true });
-        // Delete the public file if it exists.
-        await this.getBucketForVersion("public")
-          .file(this.getCloudStoragePath(auth, "public"))
-          .delete({ ignoreNotFound: true });
-
-        // Delete sharing grants and access snapshots before shareable file (FK constraint).
-        const shareableFile = await FileResource.shareableFileModel.findOne({
-          where: { fileId: this.id, workspaceId: this.workspaceId },
+      return await withTransaction(async (transaction) => {
+        const lockedFile = await this.model.findOne({
+          attributes: ["id"],
+          where: {
+            id: this.id,
+            workspaceId: this.workspaceId,
+          },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
         });
-        if (shareableFile) {
-          await SharingGrantModel.destroy({
-            where: {
-              shareableFileId: shareableFile.id,
-              workspaceId: this.workspaceId,
-            },
+        assert(lockedFile, "File not found.");
+
+        if (await this.isReferencedBySkill(transaction)) {
+          return new Err(
+            new Error("File is referenced by a skill or its version history.")
+          );
+        }
+
+        if (this.isReady) {
+          await maybeDeleteCoreArtifactsForIndexedFile(auth, this);
+
+          // Delete mount file copies if set.
+          await this.deleteMountFileCopies();
+
+          await this.getBucketForVersion("original")
+            .file(this.getCloudStoragePath(auth, "original"))
+            .delete();
+
+          // Delete the processed file if it exists.
+          await this.getBucketForVersion("processed")
+            .file(this.getCloudStoragePath(auth, "processed"))
+            .delete({ ignoreNotFound: true });
+          // Delete the public file if it exists.
+          await this.getBucketForVersion("public")
+            .file(this.getCloudStoragePath(auth, "public"))
+            .delete({ ignoreNotFound: true });
+
+          // Delete sharing grants and access snapshots before shareable file (FK constraint).
+          const shareableFile = await FileResource.shareableFileModel.findOne({
+            where: { fileId: this.id, workspaceId: this.workspaceId },
+            transaction,
           });
-          await FileResource.authorizedFileAccessModel.destroy({
+          if (shareableFile) {
+            await SharingGrantModel.destroy({
+              where: {
+                shareableFileId: shareableFile.id,
+                workspaceId: this.workspaceId,
+              },
+              transaction,
+            });
+            await FileResource.authorizedFileAccessModel.destroy({
+              where: {
+                shareableFileId: shareableFile.id,
+                workspaceId: this.workspaceId,
+              },
+              transaction,
+            });
+          }
+
+          // Delete the shareable file record.
+          await FileResource.shareableFileModel.destroy({
             where: {
-              shareableFileId: shareableFile.id,
+              fileId: this.id,
               workspaceId: this.workspaceId,
             },
+            transaction,
           });
         }
 
-        // Delete the shareable file record.
-        await FileResource.shareableFileModel.destroy({
+        await this.model.destroy({
           where: {
-            fileId: this.id,
+            id: this.id,
             workspaceId: this.workspaceId,
           },
+          transaction,
         });
-      }
 
-      await this.model.destroy({
-        where: {
-          id: this.id,
-          workspaceId: this.workspaceId,
-        },
+        return new Ok(undefined);
       });
-
-      return new Ok(undefined);
     } catch (error) {
       return new Err(normalizeError(error));
     }
+  }
+
+  async isReferencedBySkill(transaction?: Transaction): Promise<boolean> {
+    if (this.useCase !== "skill_attachment") {
+      return false;
+    }
+
+    const attachment = await SkillFileAttachmentModel.findOne({
+      attributes: ["id"],
+      where: {
+        fileId: this.id,
+        workspaceId: this.workspaceId,
+      },
+      transaction,
+    });
+    if (attachment) {
+      return true;
+    }
+
+    // File deletion is infrequent, and the workspace-leading index bounds this scan.
+    const where: WhereOptions<SkillVersionModel> = {
+      fileAttachmentIds: { [Op.contains]: [this.id] },
+      workspaceId: this.workspaceId,
+    };
+    const version = await SkillVersionModel.findOne({
+      attributes: ["id"],
+      where,
+      transaction,
+    });
+
+    return version !== null;
   }
 
   get sId(): string {
