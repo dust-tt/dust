@@ -30,6 +30,18 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
     }
   });
 
+  it("returns server views when the agent and conversation use different spaces", async () => {
+    const { token, workspace } = await createSandboxTokenTestContext({
+      useProjectSpaceForConversation: true,
+    });
+
+    const response = await getSandboxActions(workspace, token);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.serverViews.length).toBeGreaterThan(0);
+  });
+
   it("returns 403 when Computer is disabled", async () => {
     const { token, workspace } = await createSandboxTokenTestContext({
       disableComputerFeature: true,
