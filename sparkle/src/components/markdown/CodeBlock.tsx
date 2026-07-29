@@ -4,7 +4,7 @@ import { cva } from "class-variance-authority";
 import React, { Suspense } from "react";
 import colors from "tailwindcss/colors";
 
-const violet = colors.violet;
+const { violet } = colors;
 
 const SyntaxHighlighter = safeLazy(
   () => import("react-syntax-highlighter/dist/esm/default-highlight")
