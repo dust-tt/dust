@@ -32,14 +32,14 @@ export type ToolHandlers<
   ToolsList extends readonly ToolMeta[],
   // Keep tool names as a separate generic so that generic consumers don't widen them to strings.
   ToolNames extends string = ToolsList[number]["name"],
-  HandlerExtra = ToolHandlerExtra,
+  THandlerExtra = ToolHandlerExtra,
 > = {
   [ToolName in ToolNames]: (
     // Type the params with the type inferred from the zod schema (z.ZodObject because it's a zod shape, not a schema).
     params: z.infer<
       z.ZodObject<Extract<ToolsList[number], { name: ToolName }>["schema"]>
     >,
-    extra: HandlerExtra
+    extra: THandlerExtra
   ) => Promise<ToolHandlerResult>;
 };
 
@@ -51,7 +51,7 @@ export type ClientToolHandlers<
 export interface ToolDefinition<
   TName extends string = string,
   TSchema extends ZodRawShape = ZodRawShape,
-  HandlerExtra = ToolHandlerExtra,
+  THandlerExtra = ToolHandlerExtra,
 > {
   name: TName;
   enableAlerting?: boolean;
@@ -69,7 +69,7 @@ export interface ToolDefinition<
   >;
   handler(
     params: z.infer<z.ZodObject<TSchema>>,
-    extra: HandlerExtra
+    extra: THandlerExtra
   ): Promise<ToolHandlerResult>;
 }
 
@@ -82,11 +82,11 @@ export function buildTools<
   const TName extends string,
   const T extends readonly ToolMeta<TName>[],
   // Internal tools always receive auth and runContext, while client-side tools do not.
-  HandlerExtra = ToolHandlerExtra,
+  THandlerExtra = ToolHandlerExtra,
 >(
   metadata: T,
-  handlers: ToolHandlers<T, TName, HandlerExtra>
-): ToolDefinition<TName, ZodRawShape, HandlerExtra>[] {
+  handlers: ToolHandlers<T, TName, THandlerExtra>
+): ToolDefinition<TName, ZodRawShape, THandlerExtra>[] {
   return metadata.map((tool) => ({
     ...tool,
     handler: handlers[tool.name],
