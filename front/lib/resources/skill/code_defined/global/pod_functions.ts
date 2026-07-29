@@ -135,6 +135,21 @@ tool, so \`fetch()\` calls from inside it only reach domains on the pod's egress
 workspace's \`DST_*\` (plain config) and \`DSEC_*\` (HTTPS secret placeholder) environment variables
 are available under the same substitution rules as the Computer.
 
+#### Performance rules
+
+Design the function contract around the Frame interaction, not individual database tables:
+
+- make reads idempotent and side-effect-free, and return one bounded screen snapshot instead of
+  creating waterfalls or N+1 calls;
+- project only fields the Frame renders, apply explicit limits or pagination, and add indexes for
+  columns used by filters and ordering;
+- make mutations return the updated entity or screen snapshot so the Frame can update its cache
+  without another function call;
+- do not shell out to \`dsbx tools\` from a hot read path when the same data can be stored or queried
+  directly;
+- keep write operations safe against duplicate interaction, using a stable idempotency key when a
+  repeated request would otherwise create duplicate data.
+
 
 #### Calling other tools from a function
 
@@ -190,7 +205,8 @@ const { data, error, isLoading, isValidating, mutate } = usePodFunction(
 
 Use \`usePodFunctionMutation\` for writes and other side effects. Mutations only run when
 \`trigger\` is called. They are not deduplicated and do not guess which cached queries they affect.
-Revalidate the affected read explicitly after the mutation succeeds.
+Prefer mutation functions whose output matches the affected read snapshot, then write that result
+to the query cache without revalidating.
 
 \`\`\`tsx
 import { usePodFunction, usePodFunctionMutation } from "@dust/react-hooks"
@@ -199,10 +215,20 @@ const comments = usePodFunction("<podId>/list-comments", { threadId })
 const addComment = usePodFunctionMutation("<podId>/post-comment")
 
 async function handleAddComment(body: string) {
-  await addComment.trigger({ threadId, body })
-  await comments.mutate()
+  const updatedComments = await addComment.trigger({ threadId, body })
+  await comments.mutate(updatedComments, { revalidate: false })
 }
 \`\`\`
+
+For immediate feedback, apply an optimistic cache update before triggering the mutation and replace
+it with the authoritative mutation result afterward. Roll the optimistic value back if the mutation
+fails. Only call \`mutate()\` without data when the mutation cannot return the affected state; do not
+make a blocking mutation-then-refetch sequence the default.
+
+Do not call \`callFunction\` from an effect for data that can use these hooks. Do not poll every
+second. Prefer event-driven invalidation; when polling is unavoidable, use an interval of at least
+5–10 seconds, pause while the document is hidden, add jitter/backoff, and never start a new request
+while the previous one is still running.
 
 Call mutation handlers from a button or another supported in-Frame interaction. Do not model this
 as HTML form submission because forms cannot run inside the Frame iframe.
@@ -225,7 +251,7 @@ The existing imperative \`callFunction\` remains available unchanged for explici
 takes \`<podId>/<slug>\` or a function id. Pod functions are only reachable from authenticated Pod
 Frames, not from public or shared Frames.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 4,
+  version: 5,
   icon: "PuzzleIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
