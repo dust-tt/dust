@@ -610,15 +610,14 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   private async writeDataToGcs(): Promise<Result<undefined, Error>> {
-    const writeResult = await withRetry(() =>
-      getPrivateUploadBucket()
-        .file(this.gcsPath)
-        .save(Buffer.from(JSON.stringify(this.data), "utf-8"), {
-          contentType: "application/json",
-        })
-    );
-    if (writeResult.isErr()) {
-      return writeResult;
+    try {
+      await getPrivateUploadBucket().uploadBufferToBucket({
+        buffer: Buffer.from(JSON.stringify(this.data), "utf-8"),
+        contentType: "application/json",
+        filePath: this.gcsPath,
+      });
+    } catch (err) {
+      return new Err(normalizeError(err));
     }
     return new Ok(undefined);
   }

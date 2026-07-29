@@ -313,6 +313,11 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toBe(
       JSON.stringify({ version: 2, input: { message: "hello" } })
     );
+    expect(fileStorageMock.saveFileCalls).toContainEqual({
+      filePath: invocation.gcsPath,
+      content: expect.any(Buffer),
+      contentType: "application/json",
+    });
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,

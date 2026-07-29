@@ -26,6 +26,11 @@ vi.mock("@app/lib/file_storage", () => ({
     delete: vi.fn(async (path: string) => {
       gcsStore.delete(path);
     }),
+    uploadBufferToBucket: vi.fn(
+      async ({ buffer, filePath }: { buffer: Buffer; filePath: string }) => {
+        gcsStore.set(filePath, buffer);
+      }
+    ),
   })),
 }));
 
