@@ -3,6 +3,7 @@ import {
   FILES_CAT_ACTION_NAME,
   FILES_SERVER_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
+import type { Interaction } from "@app/lib/api/assistant/conversation/interactions";
 import type {
   InteractionWithTokens,
   MessageWithTokens,
@@ -17,7 +18,11 @@ import type {
   ConversationWindowResult,
 } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import logger from "@app/logger/logger";
-import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
+import type {
+  Content,
+  ImageContent,
+  ModelMessageTypeMultiActions,
+} from "@app/types/assistant/generation";
 import { isImageContent } from "@app/types/assistant/generation";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -66,14 +71,143 @@ type ConversationImagePruningOptions = {
 };
 
 type ConversationImagePruningResult = {
-  messages: ModelMessageTypeMultiActions[];
+  interactions: Interaction<ModelMessageTypeMultiActions>[];
   stats: ConversationImagePruningStats;
+};
+
+type ToolImageReference = {
+  content: Content[];
+  contentIndex: number;
+  image: ImageContent;
 };
 
 const FILES_CAT_TOOL_NAME = getPrefixedToolName(
   FILES_SERVER_NAME,
   FILES_CAT_ACTION_NAME
 );
+
+export class ConversationImagePruningState {
+  private interactions: Interaction<ModelMessageTypeMultiActions>[] = [];
+  private toolImages: ToolImageReference[] = [];
+  private nextToolImageIndex = 0;
+  private retainedImageCount = 0;
+  private totalImageCount = 0;
+  private nonToolImageCount = 0;
+  private prunedImageCount = 0;
+
+  private constructor(
+    private readonly options: ConversationImagePruningOptions
+  ) {}
+
+  static empty(
+    options: ConversationImagePruningOptions
+  ): ConversationImagePruningState {
+    return new ConversationImagePruningState(options);
+  }
+
+  append(interaction: Interaction<ModelMessageTypeMultiActions>): void {
+    if (interaction.messages.length === 0) {
+      return;
+    }
+
+    if (this.options.maxInputImages === undefined) {
+      this.interactions.push(interaction);
+      return;
+    }
+
+    const messages = interaction.messages.map((message) => {
+      const toolContent =
+        message.role === "function" && Array.isArray(message.content)
+          ? [...message.content]
+          : undefined;
+
+      if (!("content" in message) || !Array.isArray(message.content)) {
+        return message;
+      }
+
+      for (const [contentIndex, content] of message.content.entries()) {
+        if (!isImageContent(content)) {
+          continue;
+        }
+
+        this.totalImageCount += 1;
+        this.retainedImageCount += 1;
+
+        if (toolContent) {
+          this.toolImages.push({
+            content: toolContent,
+            contentIndex,
+            image: content,
+          });
+        } else {
+          this.nonToolImageCount += 1;
+        }
+      }
+
+      this.pruneToLimit();
+
+      return message.role === "function" && toolContent
+        ? { ...message, content: toolContent }
+        : message;
+    });
+    this.interactions.push({ messages });
+  }
+
+  result(): ConversationImagePruningResult {
+    const { maxInputImages, logDetails } = this.options;
+
+    if (
+      maxInputImages !== undefined &&
+      this.nonToolImageCount >= maxInputImages
+    ) {
+      logger.warn(
+        {
+          ...logDetails,
+          imageCountLimit: maxInputImages,
+          nonToolImageCount: this.nonToolImageCount,
+          totalImageCount: this.totalImageCount,
+        },
+        "Conversation contains images that cannot be pruned to the model input limit."
+      );
+    }
+
+    return {
+      interactions: this.interactions,
+      stats: {
+        imageCountLimit: maxInputImages,
+        prunedImageCount: this.prunedImageCount,
+        nonToolImageCount: this.nonToolImageCount,
+      },
+    };
+  }
+
+  private pruneToLimit(): void {
+    const { maxInputImages } = this.options;
+    if (maxInputImages === undefined) {
+      return;
+    }
+
+    while (
+      this.retainedImageCount > maxInputImages &&
+      this.nextToolImageIndex < this.toolImages.length
+    ) {
+      const { content, contentIndex, image } =
+        this.toolImages[this.nextToolImageIndex];
+      content[contentIndex] = {
+        type: "text",
+        text:
+          `[This image preview is no longer displayed because the conversation exceeds the ${maxInputImages}-image limit.` +
+          (image.file_path
+            ? ` Use \`${FILES_CAT_TOOL_NAME}\` with path \`${image.file_path}\` to display it again.]`
+            : " Re-run the tool to display it again.]"),
+      };
+      this.retainedImageCount -= 1;
+      this.prunedImageCount += 1;
+
+      this.nextToolImageIndex += 1;
+    }
+  }
+}
 
 function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
   if (message.role === "function") {
@@ -120,83 +254,6 @@ export class CheckpointedConversationWindowState {
       logDetails: Record<string, unknown>;
     }
   ) {}
-
-  static pruneOldestToolResultImages(
-    messages: ModelMessageTypeMultiActions[],
-    { maxInputImages, logDetails }: ConversationImagePruningOptions
-  ): ConversationImagePruningResult {
-    if (maxInputImages === undefined) {
-      return {
-        messages,
-        stats: { prunedImageCount: 0, nonToolImageCount: 0 },
-      };
-    }
-
-    const imageCounts = messages.reduce(
-      (counts, message) => {
-        const count =
-          "content" in message && Array.isArray(message.content)
-            ? message.content.filter(isImageContent).length
-            : 0;
-
-        return {
-          total: counts.total + count,
-          nonTool: counts.nonTool + (message.role === "function" ? 0 : count),
-        };
-      },
-      { total: 0, nonTool: 0 }
-    );
-    const stats = {
-      imageCountLimit: maxInputImages,
-      prunedImageCount: 0,
-      nonToolImageCount: imageCounts.nonTool,
-    };
-
-    if (imageCounts.nonTool >= maxInputImages) {
-      logger.warn(
-        {
-          ...logDetails,
-          imageCountLimit: maxInputImages,
-          nonToolImageCount: imageCounts.nonTool,
-          totalImageCount: imageCounts.total,
-        },
-        "Conversation contains images that cannot be pruned to the model input limit."
-      );
-    }
-
-    let imagesToPrune = imageCounts.total - maxInputImages;
-    if (imagesToPrune <= 0) {
-      return { messages, stats };
-    }
-
-    const prunedMessages = messages.map((message) =>
-      message.role === "function" && Array.isArray(message.content)
-        ? {
-            ...message,
-            content: message.content.flatMap((content) => {
-              if (isImageContent(content) && imagesToPrune > 0) {
-                imagesToPrune -= 1;
-                stats.prunedImageCount += 1;
-                return [
-                  {
-                    type: "text" as const,
-                    text:
-                      `[This image preview is no longer displayed because the conversation exceeds the ${maxInputImages}-image limit.` +
-                      (content.file_path
-                        ? ` Use \`${FILES_CAT_TOOL_NAME}\` with path \`${content.file_path}\` to display it again.]`
-                        : " Re-run the tool to display it again.]"),
-                  },
-                ];
-              }
-
-              return [content];
-            }),
-          }
-        : message
-    );
-
-    return { messages: prunedMessages, stats };
-  }
 
   static empty(options: {
     pruningBudget: number;

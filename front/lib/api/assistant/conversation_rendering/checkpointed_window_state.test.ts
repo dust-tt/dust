@@ -1,9 +1,14 @@
 import {
   CheckpointedConversationWindowState,
+  ConversationImagePruningState,
   MINIMUM_PRUNING_BATCH_TOKENS,
 } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import type { InteractionWithTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
-import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
+import type {
+  ImageContent,
+  ModelMessageTypeMultiActions,
+} from "@app/types/assistant/generation";
+import { isImageContent } from "@app/types/assistant/generation";
 import { describe, expect, it } from "vitest";
 
 function withTokens<T extends ModelMessageTypeMultiActions>(
@@ -78,6 +83,102 @@ function makeState({
     logDetails: {},
   });
 }
+
+function image(url: string, filePath?: string): ImageContent {
+  const content: ImageContent = {
+    type: "image_url",
+    image_url: { url },
+  };
+  if (filePath) {
+    content.file_path = filePath;
+  }
+  return content;
+}
+
+function functionImageMessage(
+  name: string,
+  url: string,
+  filePath?: string
+): ModelMessageTypeMultiActions {
+  return {
+    role: "function",
+    name,
+    function_call_id: `${name}_call`,
+    content: [image(url, filePath)],
+  };
+}
+
+function imagePruningResultMessages(state: ConversationImagePruningState) {
+  return state
+    .result()
+    .interactions.flatMap((interaction) => interaction.messages);
+}
+
+describe("ConversationImagePruningState", () => {
+  it("prunes the oldest tool images as interactions are appended", () => {
+    const state = ConversationImagePruningState.empty({
+      maxInputImages: 2,
+      logDetails: {},
+    });
+    const firstInteraction = {
+      messages: [
+        functionImageMessage("first", "first", "conversation/first.png"),
+        functionImageMessage("second", "second", "conversation/second.png"),
+      ],
+    };
+
+    state.append(firstInteraction);
+    expect(
+      imagePruningResultMessages(state).flatMap((message) =>
+        "content" in message && Array.isArray(message.content)
+          ? message.content.filter(isImageContent)
+          : []
+      )
+    ).toHaveLength(2);
+
+    state.append({
+      messages: [
+        {
+          role: "user",
+          name: "user",
+          content: [image("user-upload")],
+        },
+      ],
+    });
+    state.append({
+      messages: [
+        functionImageMessage("third", "third", "conversation/third.png"),
+      ],
+    });
+
+    const result = state.result();
+    const [first, second, user, third] = result.interactions.flatMap(
+      (item) => item.messages
+    );
+    expect(first.content).toEqual([
+      {
+        type: "text",
+        text: expect.stringMatching(/files__cat.*conversation\/first\.png/),
+      },
+    ]);
+    expect(second.content).toEqual([
+      {
+        type: "text",
+        text: expect.stringMatching(/files__cat.*conversation\/second\.png/),
+      },
+    ]);
+    expect(user.content).toEqual([image("user-upload")]);
+    expect(third.content).toEqual([image("third", "conversation/third.png")]);
+    expect(result.stats).toEqual({
+      imageCountLimit: 2,
+      prunedImageCount: 2,
+      nonToolImageCount: 1,
+    });
+    expect(firstInteraction.messages[0].content).toEqual([
+      image("first", "conversation/first.png"),
+    ]);
+  });
+});
 
 describe("CheckpointedConversationWindowState", () => {
   it("preserves interaction boundaries and message data when no pruning is needed", () => {

@@ -1,5 +1,8 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
-import { CheckpointedConversationWindowState } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
+import {
+  CheckpointedConversationWindowState,
+  ConversationImagePruningState,
+} from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import type { ConversationRenderingMetricsCaller } from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import {
   emitConversationRenderingError,
@@ -135,20 +138,28 @@ export async function renderConversationForModel(
     agentConfiguration,
     enabledSkills,
   });
+  const imagePruningState = ConversationImagePruningState.empty({
+    maxInputImages: model.maxInputImages,
+    logDetails: {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
+      modelId: model.modelId,
+      providerId: model.providerId,
+    },
+  });
+  const renderedInteractions = groupMessagesIntoInteractions([
+    ...leadingMessages,
+    ...renderedMessages,
+  ]);
+  for (const interaction of renderedInteractions) {
+    imagePruningState.append(interaction);
+  }
   // Apply model input limits before tokenization so replacement text is counted.
-  const { messages, stats: imagePruningStats } =
-    CheckpointedConversationWindowState.pruneOldestToolResultImages(
-      [...leadingMessages, ...renderedMessages],
-      {
-        maxInputImages: model.maxInputImages,
-        logDetails: {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          modelId: model.modelId,
-          providerId: model.providerId,
-        },
-      }
-    );
+  const { interactions: imagePrunedInteractions, stats: imagePruningStats } =
+    imagePruningState.result();
+  const messages = imagePrunedInteractions.flatMap(
+    (interaction) => interaction.messages
+  );
   const renderAllMessagesMs = Date.now() - stepStart;
   stepStart = Date.now();
 
