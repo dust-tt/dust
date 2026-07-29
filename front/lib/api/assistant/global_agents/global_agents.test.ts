@@ -1,8 +1,13 @@
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import { Authenticator } from "@app/lib/auth";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { CLAUDE_SONNET_5_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import {
+  CLAUDE_OPUS_5_MODEL_ID,
+  CLAUDE_SONNET_5_MODEL_ID,
+} from "@app/types/assistant/models/anthropic";
 import {
   GPT_5_6_LUNA_MODEL_ID,
   GPT_5_6_SOL_MODEL_ID,
@@ -352,6 +357,90 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
       {
         sId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH,
         modelId: GPT_5_6_LUNA_MODEL_ID,
+        reasoningEffort: "high",
+      },
+    ]);
+  });
+});
+
+describe("getGlobalAgents Deep Dive model routing", () => {
+  it("falls back to Sol for Deep Dive while using Sol for planning and Luna high for tasks", async () => {
+    const workspace = await WorkspaceFactory.enterprise({
+      whiteListedProviders: ["openai"],
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [
+        GLOBAL_AGENTS_SID.DEEP_DIVE,
+        GLOBAL_AGENTS_SID.DUST_TASK,
+        GLOBAL_AGENTS_SID.DUST_PLANNING,
+      ],
+      "light"
+    );
+
+    expect(
+      agents.map((agent) => ({
+        sId: agent.sId,
+        modelId: agent.model.modelId,
+        reasoningEffort: agent.model.reasoningEffort,
+      }))
+    ).toEqual([
+      {
+        sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
+        modelId: GPT_5_6_SOL_MODEL_ID,
+        reasoningEffort: "light",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_TASK,
+        modelId: GPT_5_6_LUNA_MODEL_ID,
+        reasoningEffort: "high",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_PLANNING,
+        modelId: GPT_5_6_SOL_MODEL_ID,
+        reasoningEffort: "high",
+      },
+    ]);
+  });
+
+  it("falls back to Sonnet 5 for tasks and Opus 5 for planning", async () => {
+    const workspace = await WorkspaceFactory.enterprise({
+      whiteListedProviders: ["anthropic"],
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [
+        GLOBAL_AGENTS_SID.DEEP_DIVE,
+        GLOBAL_AGENTS_SID.DUST_TASK,
+        GLOBAL_AGENTS_SID.DUST_PLANNING,
+      ],
+      "light"
+    );
+
+    expect(
+      agents.map((agent) => ({
+        sId: agent.sId,
+        modelId: agent.model.modelId,
+        reasoningEffort: agent.model.reasoningEffort,
+      }))
+    ).toEqual([
+      {
+        sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
+        modelId: CLAUDE_OPUS_5_MODEL_ID,
+        reasoningEffort: "light",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_TASK,
+        modelId: CLAUDE_SONNET_5_MODEL_ID,
+        reasoningEffort: "light",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_PLANNING,
+        modelId: CLAUDE_OPUS_5_MODEL_ID,
         reasoningEffort: "high",
       },
     ]);
