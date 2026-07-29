@@ -174,7 +174,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       conversationModelId: ModelId;
       agentMessageModelId: ModelId;
       records: AgentMessageConsumptionItemRecord[];
-      transaction: Transaction;
+      transaction?: Transaction;
     }
   ): Promise<void> {
     const workspaceModelId = auth.getNonNullableWorkspace().id;
@@ -279,19 +279,19 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       return [];
     }
 
+    const itemKeys = records.map((record) => this.itemKey(record));
+    if (new Set(itemKeys).size !== itemKeys.length) {
+      throw new Error("Consumption items contain duplicate identities");
+    }
+
+    await this.validateOwnership(auth, {
+      conversationModelId,
+      agentMessageModelId,
+      records,
+      transaction,
+    });
+
     return withTransaction(async (currentTransaction) => {
-      const itemKeys = records.map((record) => this.itemKey(record));
-      if (new Set(itemKeys).size !== itemKeys.length) {
-        throw new Error("Consumption items contain duplicate identities");
-      }
-
-      await this.validateOwnership(auth, {
-        conversationModelId,
-        agentMessageModelId,
-        records,
-        transaction: currentTransaction,
-      });
-
       const workspaceModelId = auth.getNonNullableWorkspace().id;
       const completedAt = new Date();
       await this.model.bulkCreate(
