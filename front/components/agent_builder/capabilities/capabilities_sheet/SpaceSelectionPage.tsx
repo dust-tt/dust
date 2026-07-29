@@ -84,10 +84,9 @@ export function SpaceSelectionSheet({
     >
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Visibility control and available data</SheetTitle>
+          <SheetTitle>Data and access</SheetTitle>
           <SheetDescription>
-            Add a space or pod to restrict usage to its members and make all its
-            data available to this {entityName}.
+            Adding spaces or pods will make the data from each of them available to {entityName}.
           </SheetDescription>
           <SearchInput
             name="space"
