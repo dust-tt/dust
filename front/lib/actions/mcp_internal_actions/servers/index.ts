@@ -29,6 +29,7 @@ import { default as freshserviceServer } from "@app/lib/api/actions/servers/fres
 import { default as frontServer } from "@app/lib/api/actions/servers/front";
 import { default as githubServer } from "@app/lib/api/actions/servers/github";
 import { default as gmailServer } from "@app/lib/api/actions/servers/gmail";
+import { default as goalModeServer } from "@app/lib/api/actions/servers/goal_mode";
 import { default as gongServer } from "@app/lib/api/actions/servers/gong";
 import { default as calendarServer } from "@app/lib/api/actions/servers/google_calendar";
 import { default as driveServer } from "@app/lib/api/actions/servers/google_drive";
@@ -286,6 +287,8 @@ export async function getInternalMCPServer(
       return wakeupsServer(auth, toolContext);
     case "plan_mode":
       return planModeServer(auth, toolContext);
+    case "goal_mode":
+      return goalModeServer(auth, toolContext);
     case "workday":
       return workdayServer(auth, toolContext);
     case "user_analytics":

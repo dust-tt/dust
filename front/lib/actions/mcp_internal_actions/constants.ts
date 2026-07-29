@@ -34,6 +34,7 @@ import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/m
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GMAIL_SERVER } from "@app/lib/api/actions/servers/gmail/metadata";
+import { GOAL_MODE_SERVER } from "@app/lib/api/actions/servers/goal_mode/metadata";
 import { GONG_SERVER } from "@app/lib/api/actions/servers/gong/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
@@ -238,6 +239,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "ask_user_question",
   "wakeups",
   "plan_mode",
+  "goal_mode",
   "workspace_analytics",
   "activation_recommendations",
 ] as const;
@@ -1165,6 +1167,17 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: PLAN_MODE_SERVER,
+  },
+  goal_mode: {
+    id: 1044,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => !featureFlags.includes("goal_mode"),
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: GOAL_MODE_SERVER,
   },
   files: {
     id: 1033,

@@ -1801,9 +1801,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...(await GlobalSkillsRegistry.findAll(auth)),
     ]) {
       switch (
-        def.getAutoEnabledOrEquippedForAgentLoop?.({
+        await def.getAutoEnabledOrEquippedForAgentLoop?.({
           agentConfiguration,
           conversation,
+          agentLoopData,
+          auth,
         })
       ) {
         case "enabled":
