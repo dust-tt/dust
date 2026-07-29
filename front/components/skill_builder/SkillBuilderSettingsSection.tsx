@@ -151,6 +151,11 @@ export function SkillBuilderSettingsSection({
                   variant="outline"
                   isSelect
                   disabled={!canUpdateAvailability || isAvailabilityLocked}
+                  tooltip={
+                    isAvailabilityLocked
+                      ? "You don’t have permission to change the availability of an auto-discoverable skill"
+                      : undefined
+                  }
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
@@ -165,12 +170,13 @@ export function SkillBuilderSettingsSection({
                       onClick={() => {
                         onChange(option.value);
                       }}
-                      description={
+                      description={option.description}
+                      disabled={isOptionDisabled}
+                      tooltip={
                         isOptionDisabled
                           ? "You don’t have permission to make skills auto-discoverable"
-                          : option.description
+                          : undefined
                       }
-                      disabled={isOptionDisabled}
                     />
                   );
                 })}

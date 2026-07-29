@@ -91,18 +91,24 @@ export function SkillsBatchEditBar({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {BATCH_AVAILABILITY_ACTIONS.filter(
-            (action) =>
-              canMakeSkillAutoDiscoverable ||
-              action.availability !== "users_and_agents"
-          ).map((action) => (
-            <DropdownMenuItem
-              key={action.availability}
-              label={action.label}
-              description={action.description}
-              onClick={() => onSelectAction(action)}
-            />
-          ))}
+          {BATCH_AVAILABILITY_ACTIONS.map((action) => {
+            const isActionDisabled =
+              action.availability === "users_and_agents" &&
+              !canMakeSkillAutoDiscoverable;
+            return (
+              <DropdownMenuItem
+                key={action.availability}
+                label={action.label}
+                description={
+                  isActionDisabled
+                    ? "You don’t have permission to make skills auto-discoverable"
+                    : action.description
+                }
+                disabled={isActionDisabled}
+                onClick={() => onSelectAction(action)}
+              />
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
