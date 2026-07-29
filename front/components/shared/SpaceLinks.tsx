@@ -10,11 +10,6 @@ interface SpaceLinksProps {
   spaces: SpaceType[];
 }
 
-/**
- * Renders a comma-separated, bolded list of links to the given spaces (pods and
- * regular spaces route differently). Shared by the messages that explain which
- * spaces gate access to an entity.
- */
 export function SpaceLinks({ owner, spaces }: SpaceLinksProps) {
   return (
     <strong>
