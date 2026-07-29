@@ -9,7 +9,7 @@ import { Tooltip } from "./Tooltip";
 export const checkboxStyles = cva(
   cn(
     "h-4 w-4 rounded-md relative shrink-0 peer border transition duration-100 ease-out motion-reduce:transition-none",
-    // transition-none removes interpolation but not the transform itself.
+    // Disabling the transition would make the press scale instantaneous, so disable the scale too.
     "active:scale-95 motion-reduce:active:scale-100",
     "border-border-form bg-background",
     "data-[state=checked]:border-border-form-active",
