@@ -22,6 +22,12 @@ export function formatFairUseTimeframe(
       return "per month";
     case "lifetime":
       return "";
+    case "calendar_day":
+      return "per day";
+    case "calendar_week":
+      return "per week";
+    case "calendar_month":
+      return "per month";
     default:
       assertNeverAndIgnore(timeframe);
       return "";

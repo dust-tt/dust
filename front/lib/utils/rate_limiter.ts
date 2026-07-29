@@ -1,9 +1,9 @@
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type {
-  MaxAwuCreditsTimeframeType,
-  MaxMessagesTimeframeType,
-} from "@app/types/plan";
+  CalendarAwuCreditsTimeframeType,
+  RollingAwuCreditsTimeframeType,
+} from "@app/types/rate_limiter";
 import type { LoggerInterface } from "@app/types/shared/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -24,8 +24,8 @@ const FIXED_WINDOW_EXPIRE_GRACE_MS = 60_000;
 // the absolute UTC end of that window. The label is appended to the Redis key
 // so each window is a distinct key that naturally expires; `windowEndMs` drives
 // `PEXPIREAT`. Callers resolve these bounds however they like — pure calendar
-// math or an external anchor such as a billing contract — keeping this counter
-// agnostic of window semantics.
+// math (`computeCalendarWindowBounds`) or an external anchor such as a billing
+// contract — keeping this counter agnostic of window semantics.
 export type FixedWindowBounds = { label: string; windowEndMs: number };
 
 const makeRateLimiterKey = (key: string) => `${RATE_LIMITER_PREFIX}:${key}`;
@@ -240,7 +240,10 @@ export async function getRateLimiterCount({
 }
 
 export function getTimeframeSecondsFromLiteral(
-  timeframeLiteral: MaxMessagesTimeframeType | MaxAwuCreditsTimeframeType
+  // Message timeframes ("day" / "lifetime") are a subset of the rolling AWU
+  // timeframes, so this covers both. Fixed (calendar) windows have no
+  // trailing-seconds meaning and are handled by the fixed-window counter.
+  timeframeLiteral: RollingAwuCreditsTimeframeType
 ): number {
   switch (timeframeLiteral) {
     case "day":
@@ -255,7 +258,49 @@ export function getTimeframeSecondsFromLiteral(
       return 60 * 60 * 24 * 30; // 30 days.
 
     default:
-      assertNever(timeframeLiteral);
+      return assertNever(timeframeLiteral);
+  }
+}
+
+// Start-of-window and end-of-window (exclusive) in UTC for a calendar
+// timeframe.
+export function computeCalendarWindowBounds(
+  timeframe: CalendarAwuCreditsTimeframeType,
+  now: Date
+): FixedWindowBounds {
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const day = now.getUTCDate();
+
+  const pad = (n: number) => n.toString().padStart(2, "0");
+
+  switch (timeframe) {
+    case "calendar_day": {
+      const label = `${year}-${pad(month + 1)}-${pad(day)}`;
+      const windowEndMs = Date.UTC(year, month, day + 1);
+      return { label, windowEndMs };
+    }
+    case "calendar_week": {
+      // ISO week: Monday-based. getUTCDay() returns 0 (Sun)..6 (Sat).
+      const dayOfWeek = now.getUTCDay();
+      const daysSinceMonday = (dayOfWeek + 6) % 7;
+      const mondayMs = Date.UTC(year, month, day - daysSinceMonday);
+      const monday = new Date(mondayMs);
+      const label = `${monday.getUTCFullYear()}-${pad(monday.getUTCMonth() + 1)}-${pad(monday.getUTCDate())}-w`;
+      const windowEndMs = Date.UTC(
+        monday.getUTCFullYear(),
+        monday.getUTCMonth(),
+        monday.getUTCDate() + 7
+      );
+      return { label, windowEndMs };
+    }
+    case "calendar_month": {
+      const label = `${year}-${pad(month + 1)}`;
+      const windowEndMs = Date.UTC(year, month + 1, 1);
+      return { label, windowEndMs };
+    }
+    default:
+      assertNever(timeframe);
   }
 }
 

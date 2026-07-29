@@ -1,4 +1,8 @@
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
+import {
+  CALENDAR_AWU_CREDITS_TIMEFRAMES,
+  ROLLING_AWU_CREDITS_TIMEFRAMES,
+} from "@app/types/rate_limiter";
 import { z } from "zod";
 
 export const MAX_MESSAGE_TIMEFRAMES = ["day", "lifetime"] as const;
@@ -10,11 +14,20 @@ export function isMaxMessagesTimeframeType(
   return (MAX_MESSAGE_TIMEFRAMES as unknown as string[]).includes(value);
 }
 
+// Fixed-window timeframes a plan's fair-use limit can use. For plans this is the
+// calendar (clock-boundary) set; the contract-billing-cycle window is specific
+// to the per-user spend cap and is not offered here.
+export const FIXED_AWU_CREDITS_TIMEFRAMES = [
+  ...CALENDAR_AWU_CREDITS_TIMEFRAMES,
+] as const;
+export type FixedAwuCreditsTimeframeType =
+  (typeof FIXED_AWU_CREDITS_TIMEFRAMES)[number];
+
+// The full set of timeframes a plan's fair-use limit can be configured with:
+// rolling windows plus the fixed (calendar) windows.
 export const MAX_AWU_CREDITS_TIMEFRAMES = [
-  "day",
-  "week",
-  "month",
-  "lifetime",
+  ...ROLLING_AWU_CREDITS_TIMEFRAMES,
+  ...FIXED_AWU_CREDITS_TIMEFRAMES,
 ] as const;
 export type MaxAwuCreditsTimeframeType =
   (typeof MAX_AWU_CREDITS_TIMEFRAMES)[number];

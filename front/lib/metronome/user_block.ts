@@ -20,15 +20,14 @@
 // DB transaction commit via `invalidateCacheAfterCommit`, and cache misses fall
 // back to DB and repopulate the relevant keys.
 //
-import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
+import {
+  getFairUseAwuCreditsCount,
+  makeFairUseAwuCreditsRateLimitKeyForUser,
+} from "@app/lib/api/assistant/rate_limits";
 import { runOnRedis } from "@app/lib/api/redis";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import {
-  getRateLimiterCount,
-  getTimeframeSecondsFromLiteral,
-} from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
@@ -252,9 +251,9 @@ export async function getFairUseAwuCreditsStatus({
     };
   }
 
-  const result = await getRateLimiterCount({
+  const result = await getFairUseAwuCreditsCount({
     key: makeFairUseAwuCreditsRateLimitKeyForUser(workspace, user, timeframe),
-    timeframeSeconds: getTimeframeSecondsFromLiteral(timeframe),
+    timeframe,
   });
 
   if (result.isErr()) {
