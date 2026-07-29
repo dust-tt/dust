@@ -333,7 +333,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       }
       const authorization = await authorizeSandboxFunctionInvocation(auth, {
         authentication: persistedFunction.authentication,
-        workspaceId: this.workspaceId,
+        workspaceModelId: this.workspaceId,
       });
       if (!authorization.authorized) {
         return new Err(

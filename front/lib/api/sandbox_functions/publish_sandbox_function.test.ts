@@ -27,6 +27,13 @@ vi.mock(
   }
 );
 
+vi.mock("@app/lib/lock", () => ({
+  executeWithLock: async (
+    _lockName: string,
+    callback: () => Promise<unknown>
+  ) => callback(),
+}));
+
 const inputSchema: JSONSchema = {
   type: "object",
   properties: { name: { type: "string" } },

@@ -2,6 +2,7 @@ import type { PokePodFunction } from "@app/lib/api/poke/projects";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
+import { executeWithLock } from "@app/lib/lock";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -20,7 +21,6 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionAuthenticationPolicy,
@@ -38,6 +38,8 @@ import type { Attributes, Transaction } from "sequelize";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxFunctionResource
   extends ReadonlyAttributesType<SandboxFunctionModel> {}
+
+const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
 
 function authenticationPolicyStrength(
   authentication: SandboxFunctionAuthenticationPolicy
@@ -176,47 +178,44 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
   ): Promise<Result<undefined, Error>> {
     try {
-      return await withTransaction(async (transaction) => {
-        const lockedFunction = await this.model.findOne({
-          where: {
-            id: this.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-          transaction,
-          lock: transaction.LOCK.UPDATE,
-        });
-        if (!lockedFunction) {
-          return new Err(new Error("The Pod Function no longer exists."));
-        }
+      return await executeWithLock(
+        `sandbox_function:publish:${this.sId}`,
+        async () => {
+          const currentFunction = await this.model.findOne({
+            where: {
+              id: this.id,
+              workspaceId: auth.getNonNullableWorkspace().id,
+            },
+          });
+          if (!currentFunction) {
+            return new Err(new Error("The Pod Function no longer exists."));
+          }
 
-        try {
           const currentAuthentication =
-            lockedFunction.authentication ?? "optional";
+            currentFunction.authentication ?? "optional";
           if (
             authenticationPolicyStrength(authentication) >
             authenticationPolicyStrength(currentAuthentication)
           ) {
-            await this.update({ authentication }, transaction);
+            // Commit a stricter policy before exposing its bundle. If the
+            // upload fails, the old bundle remains callable only under the
+            // stricter policy.
+            await this.update({ authentication });
           }
 
           await this.file.uploadContent(auth, bundleCode);
-          await this.update(
-            {
-              description,
-              authentication,
-              inputSchema,
-              outputSchema,
-            },
-            transaction
-          );
-        } catch (error) {
-          // Resolving with Err commits any restrictive policy written before
-          // the bundle upload, keeping a partial re-publish fail-closed.
-          return new Err(normalizeError(error));
-        }
+          await this.update({
+            description,
+            authentication,
+            inputSchema,
+            outputSchema,
+          });
 
-        return new Ok(undefined);
-      });
+          return new Ok(undefined);
+        },
+        30_000,
+        { lockTtlMs: SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS }
+      );
     } catch (error) {
       return new Err(normalizeError(error));
     }
@@ -411,7 +410,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
     const authorization = await authorizeSandboxFunctionInvocation(auth, {
       authentication: this.authentication,
-      workspaceId: this.workspaceId,
+      workspaceModelId: this.workspaceId,
     });
     if (!authorization.authorized) {
       return new Err(
