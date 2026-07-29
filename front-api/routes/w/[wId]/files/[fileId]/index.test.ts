@@ -1,7 +1,11 @@
+import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Err } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -335,6 +339,91 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
 describe("POST /api/w/:wId/files/:fileId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("should allow a non-builder skill editor to upload an attachment", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+    const skill = await SkillFactory.create(auth);
+    const file = await FileFactory.create(auth, user, {
+      contentType: "text/plain",
+      fileName: "template.txt",
+      fileSize: 1024,
+      status: "created",
+      useCase: "skill_attachment",
+      useCaseMetadata: { skillId: skill.sId },
+    });
+
+    const response = await honoApp.request(fileUrl(workspace, file.sId), {
+      method: "POST",
+    });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("should deny a builder who is not a skill editor", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "builder",
+    });
+    const skill = await SkillFactory.create(auth, {
+      addCurrentUserAsEditor: false,
+    });
+    const file = await FileFactory.create(auth, user, {
+      contentType: "text/plain",
+      fileName: "template.txt",
+      fileSize: 1024,
+      status: "created",
+      useCase: "skill_attachment",
+      useCaseMetadata: { skillId: skill.sId },
+    });
+
+    const response = await honoApp.request(fileUrl(workspace, file.sId), {
+      method: "POST",
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "Only skill editors can modify files attached to a skill.",
+      },
+    });
+  });
+
+  it("should allow a skill creator to upload before the skill exists", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const creatorsGroup = await GroupFactory.regularAuto(
+      workspace,
+      "Skill creators"
+    );
+    await GroupFactory.withMembers(adminAuth, creatorsGroup, [user]);
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group: creatorsGroup,
+      grantType: "create",
+      resourceType: "skill",
+    });
+    const file = await FileFactory.create(auth, user, {
+      contentType: "text/plain",
+      fileName: "template.txt",
+      fileSize: 1024,
+      status: "created",
+      useCase: "skill_attachment",
+    });
+
+    const response = await honoApp.request(fileUrl(workspace, file.sId), {
+      method: "POST",
+    });
+
+    expect(response.status).toBe(200);
   });
 
   it("should allow builder to upload any file", async () => {
