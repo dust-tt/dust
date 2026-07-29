@@ -1651,15 +1651,11 @@ describe("postUserMessage", () => {
     expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
 
     const firstAgentMessage = result.value.agentMessages[0];
-    await AgentMessageModel.update(
-      { status: "succeeded" },
-      {
-        where: {
-          id: firstAgentMessage.agentMessageId,
-          workspaceId: workspace.id,
-        },
-      }
-    );
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: firstAgentMessage.agentMessageId,
+      status: "succeeded",
+    });
 
     const outcome = await continueActiveGoal(auth, {
       agentMessageId: firstAgentMessage.sId,

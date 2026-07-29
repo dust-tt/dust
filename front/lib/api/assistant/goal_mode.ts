@@ -4,6 +4,7 @@ import { ConversationGoalResource } from "@app/lib/resources/conversation_goal_r
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { GoalType } from "@app/types/assistant/goal";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type GoalContinuationOutcome =
   | "continued"
@@ -75,6 +76,8 @@ export async function continueActiveGoal(
       return "paused";
     case "continue":
       break;
+    default:
+      return assertNever(decision);
   }
 
   const conversation = await ConversationResource.fetchById(
