@@ -3,7 +3,7 @@ import type {
   PendingInvitationOption,
 } from "@app/types/membership_invitation";
 import { MEMBERSHIP_SEAT_TYPES } from "@app/types/memberships";
-import { ActiveRoleSchema } from "@app/types/user";
+import { AssignableRoleSchema } from "@app/types/user";
 import { z } from "zod";
 
 export type GetWorkspaceInvitationsResponseBody = {
@@ -21,7 +21,7 @@ export type GetPendingInvitationsResponseBody = {
 export const PostInvitationRequestBodySchema = z.array(
   z.object({
     email: z.string(),
-    role: ActiveRoleSchema,
+    role: AssignableRoleSchema,
     seatType: z.enum(MEMBERSHIP_SEAT_TYPES).nullish(),
   })
 );
@@ -42,5 +42,5 @@ export type PostMemberInvitationsResponseBody = {
 
 export const PostMemberInvitationBodySchema = z.object({
   status: z.enum(["revoked", "pending"]),
-  initialRole: ActiveRoleSchema,
+  initialRole: AssignableRoleSchema,
 });
