@@ -16,6 +16,9 @@ export type WorkspaceSegmentationType = "interesting" | null;
 
 export const ROLES = ["admin", "manager", "builder", "user", "none"] as const;
 export const ACTIVE_ROLES = ["admin", "manager", "builder", "user"] as const;
+// Roles that can be explicitly assigned (invitations, role updates). Excludes the deprecated
+// `builder` role, which is granted only through the `dust-builders` provisioning group.
+export const ASSIGNABLE_ROLES = ["admin", "manager", "user"] as const;
 export const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
 
 export const MANAGER_ROLE_NAME = "manager";

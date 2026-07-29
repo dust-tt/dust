@@ -5,11 +5,11 @@ import {
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { isEmailValid } from "@app/lib/utils";
-import type { MembershipRoleType } from "@app/types/memberships";
-import { MEMBERSHIP_ROLE_TYPES } from "@app/types/memberships";
+import { isMembershipRoleType } from "@app/types/memberships";
 import { mapToEnumValues } from "@app/types/poke/plugins";
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+import { ASSIGNABLE_ROLES } from "@app/types/user";
 
 export const inviteUser = createPlugin({
   manifest: {
@@ -28,7 +28,9 @@ export const inviteUser = createPlugin({
         type: "enum",
         label: "Role",
         description: "Role of the user to invite",
-        values: mapToEnumValues(MEMBERSHIP_ROLE_TYPES, (role) => ({
+        // The deprecated `builder` role can no longer be assigned; it is granted only through the
+        // `dust-builders` provisioning group.
+        values: mapToEnumValues(ASSIGNABLE_ROLES, (role) => ({
           label: role,
           value: role,
         })),
@@ -79,15 +81,19 @@ export const inviteUser = createPlugin({
       );
     }
 
+    // The deprecated `builder` role can no longer be assigned; it is granted only through the
+    // `dust-builders` provisioning group.
+    const role = args.role[0];
+    if (!role || !isMembershipRoleType(role) || role === "builder") {
+      return new Err(new Error("Please select a valid role."));
+    }
+
     const invitationRes = await handleMembershipInvitations(auth, {
       owner: auth.getNonNullableWorkspace(),
       user: auth.getNonNullableUser().toJSON(),
       subscription,
       force: args.force,
-      invitationRequests: emails.map((email) => ({
-        email,
-        role: args.role[0] as MembershipRoleType,
-      })),
+      invitationRequests: emails.map((email) => ({ email, role })),
     });
 
     if (invitationRes.isErr()) {
