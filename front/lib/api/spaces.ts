@@ -155,6 +155,36 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
         { concurrency: 4 }
       );
 
+      const webhookSourceViews = await WebhookSourcesViewResource.listBySpace(
+        auth,
+        space
+      );
+      for (const webhookSourceView of webhookSourceViews) {
+        // Delete triggers referencing this webhook source view first.
+        const triggers = await TriggerResource.listByWebhookSourceViewId(
+          auth,
+          webhookSourceView.id
+        );
+        await concurrentExecutor(
+          triggers,
+          async (trigger) => {
+            const res = await trigger.delete(auth, { transaction: t });
+            if (res.isErr()) {
+              throw res.error;
+            }
+          },
+          { concurrency: 4 }
+        );
+
+        const res = await webhookSourceView.delete(auth, {
+          hardDelete: false,
+          transaction: t,
+        });
+        if (res.isErr()) {
+          throw res.error;
+        }
+      }
+
       // Get MCP server views and data source views from the space being deleted.
       const mcpServerViews = await MCPServerViewResource.listBySpace(
         auth,
