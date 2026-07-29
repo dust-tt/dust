@@ -1,6 +1,7 @@
 import { AGENTS_PER_LLM_CALL } from "@app/lib/api/assistant/existing_agent_checker";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,6 +20,7 @@ async function setup(role: "builder" | "user" | "admin" = "builder") {
     user.sId,
     workspace.sId
   );
+  await FeatureFlagFactory.basic(auth, "similar_agents_check");
   return { workspace, auth };
 }
 
@@ -94,8 +96,14 @@ describe("POST /api/w/:wId/assistant/agent_configurations/similar", () => {
     expect(await response.json()).toEqual({ similar_agents: [] });
   });
 
-  it("returns empty similar agents without calling the LLM when the workspace has no agents", async () => {
+  it("returns empty similar agents when the workspace has no custom agents", async () => {
     const { workspace } = await setup();
+
+    // The workspace still has global agents (e.g. "Dust"), so the LLM is
+    // called against those; it's mocked here to report no duplicates.
+    vi.mocked(runMultiActionsAgent).mockResolvedValue(
+      mockSimilarAgentsResponse([])
+    );
 
     const response = await post(workspace, {
       naturalDescription: "Answer questions about our HR policies",
@@ -103,7 +111,6 @@ describe("POST /api/w/:wId/assistant/agent_configurations/similar", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ similar_agents: [] });
-    expect(runMultiActionsAgent).not.toHaveBeenCalled();
   });
 
   it("batches agents into multiple LLM calls and merges deduplicated results", async () => {
