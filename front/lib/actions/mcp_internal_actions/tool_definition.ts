@@ -30,9 +30,9 @@ export type ToolHandlerResult = Result<CallToolResult["content"], MCPError>;
 
 export type ToolHandlers<
   ToolsList extends readonly ToolMeta[],
-  HandlerExtra = ToolHandlerExtra,
   // Keep tool names as a separate generic so that generic consumers don't widen them to strings.
   ToolNames extends string = ToolsList[number]["name"],
+  HandlerExtra = ToolHandlerExtra,
 > = {
   [ToolName in ToolNames]: (
     // Type the params with the type inferred from the zod schema (z.ZodObject because it's a zod shape, not a schema).
@@ -46,7 +46,7 @@ export type ToolHandlers<
 export type ClientToolHandlers<
   ToolsList extends readonly ToolMeta[],
   ToolNames extends string = ToolsList[number]["name"],
-> = ToolHandlers<ToolsList, MCPToolHandlerExtra, ToolNames>;
+> = ToolHandlers<ToolsList, ToolNames, MCPToolHandlerExtra>;
 
 export interface ToolDefinition<
   TName extends string = string,
@@ -85,7 +85,7 @@ export function buildTools<
   HandlerExtra = ToolHandlerExtra,
 >(
   metadata: T,
-  handlers: ToolHandlers<T, HandlerExtra, TName>
+  handlers: ToolHandlers<T, TName, HandlerExtra>
 ): ToolDefinition<TName, ZodRawShape, HandlerExtra>[] {
   return metadata.map((tool) => ({
     ...tool,
