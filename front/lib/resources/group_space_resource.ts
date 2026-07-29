@@ -7,7 +7,7 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { LegacyCombinedResourcePermissions } from "@app/types/resource_permissions";
+import type { LegacyAccessRule } from "@app/types/resource_permissions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType } from "@app/types/user";
@@ -31,7 +31,7 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     super(GroupSpaceModel, blob);
   }
 
-  abstract requestedPermissions(): Promise<LegacyCombinedResourcePermissions[]>;
+  abstract requestedPermissions(): Promise<LegacyAccessRule[]>;
   abstract canAddMember(auth: Authenticator, userId: string): Promise<boolean>;
   abstract canRemoveMember(
     auth: Authenticator,
