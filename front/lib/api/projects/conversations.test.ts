@@ -8,7 +8,6 @@ import { DustError } from "@app/lib/error";
 import {
   AgentMessageModel,
   MessageModel,
-  UserConversationReadsModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -494,10 +493,8 @@ describe("moveConversationToProject", () => {
     // Manually set user2's lastReadAt to be before oldUpdatedAt (simulating an old read)
     // This simulates a user who read the conversation a long time ago
     const oldReadTime = new Date(oldUpdatedAt.getTime() - 10000); // 10 seconds before
-    await UserConversationReadsModel.upsert({
-      conversationId: conversation.id,
-      userId: user2.id,
-      workspaceId: workspace.id,
+    await ConversationResource.markAsReadForAuthUser(auth2, {
+      conversation,
       lastReadAt: oldReadTime,
     });
 
@@ -1177,10 +1174,8 @@ describe("moveConversationOutOfProject", () => {
 
     // Manually set user2's lastReadAt to be before oldUpdatedAt (simulating an old read).
     const oldReadTime = new Date(oldUpdatedAt.getTime() - 10000); // 10 seconds before
-    await UserConversationReadsModel.upsert({
-      conversationId: conversation.id,
-      userId: user2.id,
-      workspaceId: workspace.id,
+    await ConversationResource.markAsReadForAuthUser(auth2, {
+      conversation,
       lastReadAt: oldReadTime,
     });
 
@@ -1429,11 +1424,8 @@ describe("toPodConversationListItem", () => {
       messageTime
     );
 
-    const user = auth.getNonNullableUser();
-    await UserConversationReadsModel.upsert({
-      conversationId: conversationType.id,
-      userId: user.id,
-      workspaceId: workspace.id,
+    await ConversationResource.markAsReadForAuthUser(auth, {
+      conversation: conversationType,
       lastReadAt: new Date("2024-06-01T10:00:00Z"),
     });
 
