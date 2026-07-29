@@ -176,6 +176,11 @@ export const AUDIT_ACTIONS = [
   "audit_log.export_configured",
   // Billing & Subscriptions.
   "subscription.changed",
+  // Superuser management.
+  "superuser.drift_repaired",
+  "superuser.granted",
+  "superuser.revoked",
+  "superuser.roles_updated",
   // Coupons.
   "coupon.redeemed",
   "coupon.revoked",

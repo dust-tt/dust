@@ -203,6 +203,13 @@ export class FileStorage {
     );
   }
 
+  async uploadRawContentToBucketWithPrecondition(
+    upload: RawContentUpload,
+    saveOptions: RawContentSaveOptions
+  ) {
+    await this.saveRawContentToBucket(upload, saveOptions);
+  }
+
   private async saveRawContentToBucket(
     { content, contentType, filePath }: RawContentUpload,
     saveOptions?: RawContentSaveOptions

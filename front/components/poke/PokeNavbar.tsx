@@ -11,7 +11,8 @@ import {
 } from "@app/components/poke/shadcn/ui/command";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
-import { usePokeRegion } from "@app/lib/swr/poke";
+import { hasPokeRole } from "@app/lib/poke/roles";
+import { usePokeAuthContext, usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import { usePokeSearchAllRegions } from "@app/poke/swr/search";
 import type { PokeItemBase } from "@app/types/poke";
@@ -54,6 +55,10 @@ function getPokeItemChipColor(
 }
 
 function PokeNavbar({ regionUrls, showRegionPicker = false }: PokeNavbarProps) {
+  const { authContext } = usePokeAuthContext();
+  const showSuperusers =
+    authContext && hasPokeRole(authContext.pokeRoles, ["admin"]);
+
   return (
     <nav
       className={classNames(
@@ -83,6 +88,13 @@ function PokeNavbar({ regionUrls, showRegionPicker = false }: PokeNavbarProps) {
             variant="ghost"
             label="Agent Feedback"
           />
+          {showSuperusers && (
+            <Button
+              href="/poke/superusers"
+              variant="ghost"
+              label="Superusers"
+            />
+          )}
         </div>
       </div>
       <div className="items-right flex items-center gap-4">

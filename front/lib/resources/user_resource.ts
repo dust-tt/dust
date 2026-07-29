@@ -564,6 +564,12 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async setDustSuperUser(isDustSuperUser: boolean) {
+    return this.update({
+      isDustSuperUser,
+    });
+  }
+
   async updateInfo(
     username: string,
     firstName: string,
