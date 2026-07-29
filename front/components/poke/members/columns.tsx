@@ -6,7 +6,7 @@ import type {
 } from "@app/types/memberships";
 import { MEMBERSHIP_SEAT_TYPES } from "@app/types/memberships";
 import type { ActiveRoleType, RoleType } from "@app/types/user";
-import { ACTIVE_ROLES } from "@app/types/user";
+import { ASSIGNABLE_ROLES } from "@app/types/user";
 import { IconButton, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -147,7 +147,14 @@ export function makeColumnsForMembers({
                 revoked
               </option>
             )}
-            {ACTIVE_ROLES.map((role) => (
+            {member.role === "builder" && (
+              // `builder` is deprecated and no longer assignable, but legacy
+              // builders still need to display their current role.
+              <option value="builder" disabled>
+                builder
+              </option>
+            )}
+            {ASSIGNABLE_ROLES.map((role) => (
               <option key={role} value={role}>
                 {role}
               </option>
