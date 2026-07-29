@@ -7,6 +7,7 @@ import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuil
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
 import { SkillEditorsSheetWithButton } from "@app/components/skill_builder/SkillEditorsSheetWithButton";
 import { useSkillSpaceRestrictions } from "@app/components/skill_builder/useSkillSpaceRestrictions";
+import { SpaceRestrictionMessage } from "@app/components/shared/SpaceRestrictionMessage";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
@@ -201,33 +202,43 @@ export function SkillBuilderSettingsSection({
           </div>
         )}
       </div>
-      {!showWorkspaceWideEffectsMessage && (
-        <SkillBuilderAvailabilityMessage
-          availability={availability}
-          owner={owner}
-          restrictedSpaces={nonGlobalSpacesWithRestrictions}
-        />
-      )}
+      {isSkillPublicationEnabled ? (
+        <>
+          {!showWorkspaceWideEffectsMessage && (
+            <SkillBuilderAvailabilityMessage
+              availability={availability}
+              owner={owner}
+              restrictedSpaces={nonGlobalSpacesWithRestrictions}
+            />
+          )}
 
-      {showWorkspaceWideEffectsMessage && (
-        <ContentMessage
-          icon={InfoCircle}
-          title="This skill has workspace-wide effects"
-          size="lg"
-        >
-          <p>
-            Any agent with Discover Skills, including Dust, can use your skill
-            automatically. See other auto-discoverable skills in{" "}
-            <Hoverable
-              href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
-              target="_blank"
-              className="inline-flex items-center gap-1 underline"
+          {showWorkspaceWideEffectsMessage && (
+            <ContentMessage
+              icon={InfoCircle}
+              title="This skill has workspace-wide effects"
+              size="lg"
             >
-              Manage Skills page
-              <Icon visual={LinkExternal01} size="xs" />
-            </Hoverable>
-          </p>
-        </ContentMessage>
+              <p>
+                Any agent with Discover Skills, including Dust, can use your
+                skill automatically. See other auto-discoverable skills in{" "}
+                <Hoverable
+                  href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
+                  target="_blank"
+                  className="inline-flex items-center gap-1 underline"
+                >
+                  Manage Skills page
+                  <Icon visual={LinkExternal01} size="xs" />
+                </Hoverable>
+              </p>
+            </ContentMessage>
+          )}
+        </>
+      ) : (
+        <SpaceRestrictionMessage
+          entityName="skill"
+          owner={owner}
+          spaces={nonGlobalSpacesWithRestrictions}
+        />
       )}
 
       {hasSelfImprovingSkills && (
