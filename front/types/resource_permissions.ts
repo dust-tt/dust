@@ -9,8 +9,8 @@ export type PermissionType = (typeof SUPPORTED_OPERATIONS)[number];
 
 /**
  * Legacy: permissions assigned to a specific group, listed inline on a resource's permission
- * config. Being migrated to the `group_permissions` table (see `CombinedResourcePermissions`'s
- * governance-grant channel); prefer that path for new code.
+ * config. Being migrated to the `group_permissions` table (see `GroupResourcePermission`); prefer
+ * that path for new code.
  *
  * @property id - Unique identifier for the group (ModelId type)
  * @property permissions - Array of permissions granted to the group
@@ -40,40 +40,52 @@ export type LegacyGroupResourcePermissions = {
 };
 
 /**
- * Defines combined group, role, and governance-grant-based permissions for a resource.
- *
- * When `resourceType` is set, the resource is also checked against the caller's `group_permissions`
- * grants (resolved at auth construction — see `Authenticator.resolvePermissions`): the caller
- * passes if they hold the requested permission, used directly as a grant verb since
- * `PermissionType` ⊆ `GrantVerb`, on this `(resourceType, resourceId)`. `resourceId` defaults to
- * the type-wide grant when omitted, and a type-wide grant also satisfies an instance requirement
- * (see `PermissionSet.has`).
+ * Legacy: role-based grants plus inline group grants for a resource, with no `group_permissions`
+ * table involvement. Being migrated to `GroupResourcePermission`.
  *
  * @property groups - Legacy inline group-based grants: a caller in a listed group gets its
- *   permissions (being migrated to the governance-grant channel below)
+ *   permissions
+ * @property roles - Role-based grants: a caller whose workspace role matches gets its permissions
+ * @property workspaceId - The resource's workspace; role and legacy-group checks only apply when it
+ *   matches the caller's workspace
+ */
+export type LegacyCombinedResourcePermissions = {
+  groups: LegacyGroupPermission[];
+  roles: RolePermission[];
+  workspaceId: ModelId;
+};
+
+/**
+ * Role-based grants plus the `group_permissions` table (the governance-grant channel). The resource
+ * is identified by `(resourceType, resourceId)`; a caller passes if their role grants the requested
+ * permission, or if they hold it as a grant verb (`PermissionType` ⊆ `GrantVerb`) on that resource
+ * — grants are resolved at auth construction (see `Authenticator.resolvePermissions`). `resourceId`
+ * omitted means the type-wide (-1) grant, and a type-wide grant satisfies an instance requirement
+ * (see `PermissionSet.has`).
+ *
  * @property roles - Role-based grants: a caller whose workspace role matches gets its permissions
  * @property resourceType - The governance resource domain to check (e.g. "space")
  * @property resourceId - The resource's model id; omitted means the type-wide (-1) grant
- * @property workspaceId - The resource's workspace; role and governance-grant checks only apply
+ * @property workspaceId - The resource's workspace; the role and governance-grant checks only apply
  *   when it matches the caller's workspace
  */
-export type CombinedResourcePermissions = {
-  groups: LegacyGroupPermission[];
+export type GroupResourcePermission = {
   roles: RolePermission[];
-  resourceType?: ConcreteResourceType;
+  resourceType: ConcreteResourceType;
   resourceId?: number;
   workspaceId: ModelId;
 };
 
 /**
- * Represents the complete permission configuration for a resource.
- * Can be either:
- * - Group-based permissions only
- * - Both group and role-based permissions combined
+ * Represents the complete permission configuration for a resource. One of:
+ * - Legacy inline group-based permissions only (`LegacyGroupResourcePermissions`)
+ * - Legacy roles + inline groups (`LegacyCombinedResourcePermissions`)
+ * - Roles + the group_permissions table (`GroupResourcePermission`)
  */
 export type ResourcePermission =
   | LegacyGroupResourcePermissions
-  | CombinedResourcePermissions;
+  | LegacyCombinedResourcePermissions
+  | GroupResourcePermission;
 
 /**
  * Type guard to determine if a permission configuration includes role-based access control.
@@ -83,6 +95,8 @@ export type ResourcePermission =
  */
 export function hasRolePermissions(
   resourcePermission: ResourcePermission
-): resourcePermission is CombinedResourcePermissions {
+): resourcePermission is
+  | LegacyCombinedResourcePermissions
+  | GroupResourcePermission {
   return "roles" in resourcePermission;
 }
