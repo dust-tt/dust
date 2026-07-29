@@ -220,10 +220,6 @@ it with the authoritative mutation result afterward. Roll the optimistic value b
 fails. Only call \`mutate()\` without data when the mutation cannot return the affected state; do not
 make a blocking mutation-then-refetch sequence the default.
 
-Do not poll every second. Prefer event-driven invalidation; when polling is unavoidable, use an
-interval of at least 5–10 seconds, pause while the document is hidden, add jitter/backoff, and never
-start a new request while the previous one is still running.
-
 Call mutation handlers from a button or another supported in-Frame interaction. Do not model this
 as HTML form submission because forms cannot run inside the Frame iframe.
 
@@ -241,7 +237,8 @@ fall back to a generic message for the rest. The ones worth branching on are \`i
 \`invalid_output\` for schema mismatches, \`threw\` when the function threw, \`http_error\` when the
 function's own request failed, \`sandbox_function_not_found\`, and \`not_supported\`.
 
-Pod functions are only reachable from authenticated Pod Frames, not from public or shared Frames.`,
+Pod functions in shared Frames are available to authenticated members of the Pod's workspace;
+anonymous viewers cannot call them.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
   version: 5,
   icon: "PuzzleIcon",
