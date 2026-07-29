@@ -143,7 +143,7 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/tools", () => {
       expect(relationship[0].enabled).toBe(true);
     });
 
-    it("should ignore a skills-only tool", async () => {
+    it("should reject a skills-only tool", async () => {
       const { workspace, conversation, auth, globalSpace } =
         await setupTest("admin");
 
@@ -169,8 +169,12 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/tools", () => {
         mcp_server_view_id: mcpServerView.sId,
       });
 
-      expect(response.status).toBe(200);
-      expect((await response.json()).success).toBe(true);
+      expect(response.status).toBe(403);
+      const body = await response.json();
+      expect(body.error.type).toBe("invalid_request_error");
+      expect(body.error.message).toBe(
+        "This MCP server is restricted to skills and cannot be added directly to a conversation."
+      );
 
       const relationships = await ConversationResource.fetchMCPServerViews(
         auth,
