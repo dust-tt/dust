@@ -16,7 +16,7 @@ import type {
   ValueFilter,
   Where,
 } from "@app/lib/llms/types/filter";
-import { FIREWORKS_MODEL_PREFIX } from "@app/lib/model_constructors/stream/clients/fireworks";
+import { FIREWORKS_MODEL_PREFIX } from "@app/lib/model_constructors/providers/fireworks/constants";
 import {
   GOOGLE_AI_STUDIO_HOST,
   type Host,

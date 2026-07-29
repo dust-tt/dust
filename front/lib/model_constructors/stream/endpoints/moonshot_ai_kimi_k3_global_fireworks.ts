@@ -5,7 +5,7 @@ import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stre
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
 import { MOONSHOT_AI_LAB } from "@app/lib/model_constructors/types/labs";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
-import type { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
+import type { ResponseCreateParamsStreaming } from "openai/resources/responses/responses";
 
 export class MoonshotAiKimiK3GlobalFireworksStream extends WithMoonshotAiKimiK3Config(
   FireworksResponsesStream
@@ -13,7 +13,7 @@ export class MoonshotAiKimiK3GlobalFireworksStream extends WithMoonshotAiKimiK3C
   override buildRequestPayload(
     payload: Payload,
     config: FireworksInputConfig
-  ): ResponseCreateParamsNonStreaming {
+  ): ResponseCreateParamsStreaming {
     return {
       ...super.buildRequestPayload(payload, config),
       // Fireworks accepts this typed Responses extension even though it is not

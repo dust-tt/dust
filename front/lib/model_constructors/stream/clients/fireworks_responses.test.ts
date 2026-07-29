@@ -82,6 +82,7 @@ describe("FireworksResponsesStream", () => {
       model: "accounts/fireworks/models/kimi-k3",
       service_tier: "priority",
       store: false,
+      stream: true,
       input: [
         {
           role: "developer",
@@ -116,7 +117,7 @@ describe("FireworksResponsesStream", () => {
     });
   });
 
-  it("forces a function using the Fireworks-compatible tool choice", () => {
+  it("forces a function while keeping the complete tool list stable", () => {
     const endpoint = new MoonshotAiKimiK3GlobalFireworksStream({
       FIREWORKS_API_KEY: "test",
     });
@@ -128,13 +129,27 @@ describe("FireworksResponsesStream", () => {
       })
     );
 
-    expect(payload.tool_choice).toBe("required");
+    expect(payload.tool_choice).toEqual({
+      type: "allowed_tools",
+      mode: "required",
+      tools: [{ type: "function", name: "calculator" }],
+    });
     expect(payload.tools).toEqual([
       expect.objectContaining({ type: "function", name: "calculator" }),
+      expect.objectContaining({ type: "function", name: "get_weather" }),
     ]);
   });
 
-  it("does not send OpenAI hosted tool search fields to Fireworks", () => {
+  it("rejects OpenAI hosted tool search", () => {
+    expect(() =>
+      MoonshotAiKimiK3GlobalFireworksStream.configSchema.parse({
+        tools: TOOLS,
+        toolSearchEnabled: true,
+      })
+    ).toThrow();
+  });
+
+  it("does not add deferred-loading fields when tool search is disabled", () => {
     const endpoint = new MoonshotAiKimiK3GlobalFireworksStream({
       FIREWORKS_API_KEY: "test",
     });
@@ -142,7 +157,7 @@ describe("FireworksResponsesStream", () => {
       { conversation: { system: [], messages: [] } },
       MoonshotAiKimiK3GlobalFireworksStream.configSchema.parse({
         tools: TOOLS.map((tool) => ({ ...tool, eager: false })),
-        toolSearchEnabled: true,
+        toolSearchEnabled: false,
       })
     );
 

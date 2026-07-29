@@ -1,14 +1,14 @@
 import {
+  FIREWORKS_BASE_URL,
+  FIREWORKS_MODEL_PREFIX,
+} from "@app/lib/model_constructors/providers/fireworks/constants";
+import {
   type FireworksInputConfig,
   fireworksConfigSchema,
 } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
 import { WithOpenAIResponsesInputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/input";
 import { WithOpenAIResponsesOutputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/output";
 import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
-import {
-  FIREWORKS_BASE_URL,
-  FIREWORKS_MODEL_PREFIX,
-} from "@app/lib/model_constructors/stream/clients/fireworks";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { FIREWORKS_HOST } from "@app/lib/model_constructors/types/hosts";
@@ -16,7 +16,6 @@ import type { Payload } from "@app/lib/model_constructors/types/input/messages";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import OpenAI from "openai";
 import type {
-  ResponseCreateParamsNonStreaming,
   ResponseCreateParamsStreaming,
   ResponseStreamEvent,
 } from "openai/resources/responses/responses";
@@ -26,7 +25,7 @@ import type {
 export abstract class FireworksResponsesStream extends WithOpenAIResponsesInputConverter(
   WithOpenAIResponsesOutputConverter(
     StreamEndpoint<
-      ResponseCreateParamsNonStreaming,
+      ResponseCreateParamsStreaming,
       ResponseStreamEvent,
       FireworksInputConfig
     >
@@ -49,20 +48,16 @@ export abstract class FireworksResponsesStream extends WithOpenAIResponsesInputC
   override buildRequestPayload(
     payload: Payload,
     config: FireworksInputConfig
-  ): ResponseCreateParamsNonStreaming {
-    // Fireworks implements Responses function tools, but not OpenAI's hosted
-    // tool search/deferred-loading extension.
-    const request = super.buildRequestPayload(payload, {
-      ...config,
-      toolSearchEnabled: false,
-    });
+  ): ResponseCreateParamsStreaming {
+    const request = super.buildRequestPayload(payload, config);
     const forceTool = config.forceTool;
-    const forcedTools =
-      forceTool === undefined
-        ? []
-        : (request.tools ?? []).filter(
-            (tool) => tool.type === "function" && tool.name === forceTool
-          );
+    const forcedToolName =
+      forceTool !== undefined &&
+      (request.tools ?? []).some(
+        (tool) => tool.type === "function" && tool.name === forceTool
+      )
+        ? forceTool
+        : undefined;
 
     return {
       ...request,
@@ -71,26 +66,26 @@ export abstract class FireworksResponsesStream extends WithOpenAIResponsesInputC
       // item ids and function calls, so provider-side response storage is not
       // needed.
       store: false,
+      stream: true,
       // Fireworks does not accept OpenAI's named function tool-choice object.
-      // Restricting the request to that function and requiring a tool call has
-      // the same forced-tool semantics.
-      ...(forcedTools.length > 0
+      // Keep the complete tool list stable for prompt caching and constrain the
+      // required call with the Responses API's allowed-tools choice instead.
+      ...(forcedToolName !== undefined
         ? {
-            tools: forcedTools,
-            tool_choice: "required" as const,
+            tool_choice: {
+              type: "allowed_tools" as const,
+              mode: "required" as const,
+              tools: [{ type: "function", name: forcedToolName }],
+            },
           }
         : {}),
     };
   }
 
   async *streamRaw(
-    input: ResponseCreateParamsNonStreaming
+    input: ResponseCreateParamsStreaming
   ): AsyncGenerator<ResponseStreamEvent> {
-    const streamingInput: ResponseCreateParamsStreaming = {
-      ...input,
-      stream: true,
-    };
-    const stream = await this.client.responses.create(streamingInput);
+    const stream = await this.client.responses.create(input);
 
     for await (const event of stream) {
       yield event;
