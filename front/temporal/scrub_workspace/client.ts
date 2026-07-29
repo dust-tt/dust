@@ -151,7 +151,9 @@ export async function launchDowngradeFreeEndedWorkspacesWorkflow(): Promise<
     workflowId: DOWNGRADE_FREE_ENDED_WORKSPACES_WORKFLOW_ID,
     signal: runScrubFreeEndedWorkspacesSignal,
     signalArgs: undefined,
-    cronSchedule: "0 18 * * 1-5", // Every weekday at 6pm.
+    // Scrub children email on start, so this is also the send window: weekday
+    // 15:00-17:00 UTC is EU afternoon and US morning year-round, DST included.
+    cronSchedule: "0 15-17 * * 1-5",
   });
 
   return new Ok(undefined);
