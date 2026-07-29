@@ -20,6 +20,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import {
@@ -39,6 +40,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { GroupSpaceKind, SpaceKind, SpaceType } from "@app/types/space";
 import assert from "assert";
+import uniq from "lodash/uniq";
 import type {
   Attributes,
   CreationAttributes,
@@ -367,6 +369,43 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       // TODO(projects): we might want to filter early on the groups membership to avoid fetching all spaces and then filtering.
       return spaces.filter((s) => s.isMember(auth));
     });
+  }
+
+  static async listWorkspacePodsAsMember(auth: Authenticator) {
+    // Fast path, lookup to pods spaces, we lookup the vault ids of the pods spaces and fetch the spaces by model ids.
+    const raw = await GroupSpaceModel.findAll({
+      attributes: ["vaultId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        kind: { [Op.in]: ["member", "project_editor"] },
+        groupId: { [Op.in]: auth.groupModelIds() },
+      },
+    });
+
+    const podVaultIds = uniq(raw.map((v) => v.vaultId));
+
+    // Then we fetch the spaces by model ids.
+    const allSpaces = await this.baseFetch(auth, {
+      where: {
+        id: { [Op.in]: podVaultIds },
+        kind: "project",
+      },
+    });
+
+    // To be on the safe side.
+    const filteredSpaces = allSpaces.filter((s) => s.isMember(auth));
+    if (filteredSpaces.length !== allSpaces.length) {
+      logger.error(
+        {
+          spaceNotMember: allSpaces
+            .filter((s) => !s.isMember(auth))
+            .map((s) => s.sId),
+        },
+        "The user is not a member of some pod spaces. Action: check how we get the podVaultIds"
+      );
+    }
+
+    return filteredSpaces;
   }
 
   static async listProjectSpaces(

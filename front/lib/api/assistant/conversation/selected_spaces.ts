@@ -67,7 +67,7 @@ export async function listSelectableSpaces(
   }
 
   const [spaces, selectedSpaces] = await Promise.all([
-    SpaceResource.listWorkspaceSpacesAsMember(auth),
+    SpaceResource.listWorkspaceSpacesAsMember(auth, { kinds: ["regular"] }),
     ConversationSelectedSpaceResource.listActiveSpacesByConversation(auth, {
       conversation,
     }),

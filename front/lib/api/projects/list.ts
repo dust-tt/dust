@@ -176,7 +176,7 @@ export async function listNonArchivedMemberSpacesWithMetadata(
   nonArchivedSpaces: SpaceResource[];
   metadataMap: Map<number, ProjectMetadataResource>;
 }> {
-  const memberSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+  const memberSpaces = await SpaceResource.listWorkspacePodsAsMember(auth);
   const metadatas = await ProjectMetadataResource.fetchBySpaceModelIds(
     auth,
     memberSpaces.map((s) => s.id)
