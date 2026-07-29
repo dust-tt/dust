@@ -1,8 +1,5 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
-import {
-  CheckpointedConversationWindowState,
-  pruneOldestToolResultImages,
-} from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
+import { CheckpointedConversationWindowState } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import type { ConversationRenderingMetricsCaller } from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import {
   emitConversationRenderingError,
@@ -139,18 +136,19 @@ export async function renderConversationForModel(
     enabledSkills,
   });
   // Apply model input limits before tokenization so replacement text is counted.
-  const { messages, stats: imagePruningStats } = pruneOldestToolResultImages(
-    [...leadingMessages, ...renderedMessages],
-    {
-      maxInputImages: model.maxInputImages,
-      logDetails: {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        modelId: model.modelId,
-        providerId: model.providerId,
-      },
-    }
-  );
+  const { messages, stats: imagePruningStats } =
+    CheckpointedConversationWindowState.pruneOldestToolResultImages(
+      [...leadingMessages, ...renderedMessages],
+      {
+        maxInputImages: model.maxInputImages,
+        logDetails: {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          modelId: model.modelId,
+          providerId: model.providerId,
+        },
+      }
+    );
   const renderAllMessagesMs = Date.now() - stepStart;
   stepStart = Date.now();
 

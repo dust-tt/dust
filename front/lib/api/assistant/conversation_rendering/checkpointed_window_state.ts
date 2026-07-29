@@ -1,3 +1,8 @@
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  FILES_CAT_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import type {
   InteractionWithTokens,
   MessageWithTokens,
@@ -55,19 +60,25 @@ export type ConversationImagePruningStats = {
   nonToolImageCount: number;
 };
 
-export function pruneOldestToolResultImages(
-  messages: ModelMessageTypeMultiActions[],
-  {
-    maxInputImages,
-    logDetails,
-  }: {
-    maxInputImages?: number;
-    logDetails: Record<string, unknown>;
-  }
-): {
+type ConversationImagePruningOptions = {
+  maxInputImages?: number;
+  logDetails: Record<string, unknown>;
+};
+
+type ConversationImagePruningResult = {
   messages: ModelMessageTypeMultiActions[];
   stats: ConversationImagePruningStats;
-} {
+};
+
+const FILES_CAT_TOOL_NAME = getPrefixedToolName(
+  FILES_SERVER_NAME,
+  FILES_CAT_ACTION_NAME
+);
+
+function pruneOldestToolResultImages(
+  messages: ModelMessageTypeMultiActions[],
+  { maxInputImages, logDetails }: ConversationImagePruningOptions
+): ConversationImagePruningResult {
   if (maxInputImages === undefined) {
     return {
       messages,
@@ -126,7 +137,7 @@ export function pruneOldestToolResultImages(
                   text:
                     `[This image preview is no longer displayed because the conversation exceeds the ${maxInputImages}-image limit.` +
                     (content.file_path
-                      ? ` Use \`files__cat\` with path \`${content.file_path}\` to display it again.]`
+                      ? ` Use \`${FILES_CAT_TOOL_NAME}\` with path \`${content.file_path}\` to display it again.]`
                       : " Re-run the tool to display it again.]"),
                 },
               ];
@@ -186,6 +197,13 @@ export class CheckpointedConversationWindowState {
       logDetails: Record<string, unknown>;
     }
   ) {}
+
+  static pruneOldestToolResultImages(
+    messages: ModelMessageTypeMultiActions[],
+    options: ConversationImagePruningOptions
+  ): ConversationImagePruningResult {
+    return pruneOldestToolResultImages(messages, options);
+  }
 
   static empty(options: {
     pruningBudget: number;

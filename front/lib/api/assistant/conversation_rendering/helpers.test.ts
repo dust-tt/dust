@@ -293,7 +293,13 @@ The following skills are available for use with the skill_management__enable_ski
 });
 
 describe("vision image rendering in getSteps", () => {
-  const buildVisionTest = async (gcsPathOverride?: string) => {
+  const buildVisionTest = async ({
+    useCanonicalPath = false,
+    pathOverride,
+  }: {
+    useCanonicalPath?: boolean;
+    pathOverride?: string;
+  } = {}) => {
     const { authenticator, conversationsSpace } = await createResourceTest({
       role: "admin",
     });
@@ -318,9 +324,10 @@ describe("vision image rendering in getSteps", () => {
       throw new Error("Expected a supported model configuration.");
     }
 
-    const gcsPath =
-      gcsPathOverride ??
-      `w/${workspaceId}/conversations/${conversationId}/files/photo.png`;
+    const gcsPath = useCanonicalPath
+      ? `conversation-${conversationId}/photo.png`
+      : (pathOverride ??
+        `w/${workspaceId}/conversations/${conversationId}/files/photo.png`);
 
     const visionResource = {
       uri: "dust://files/conversation/photo.png",
@@ -375,6 +382,33 @@ describe("vision image rendering in getSteps", () => {
     }
   });
 
+  it("preserves canonical file paths on image_url blocks", async () => {
+    const { auth, message, model, workspaceId, conversationId } =
+      await buildVisionTest({ useCanonicalPath: true });
+    const canonicalPath = `conversation-${conversationId}/photo.png`;
+
+    const steps = await getSteps(auth, {
+      model,
+      message,
+      workspaceId,
+      conversationId,
+      enabledSkillById: new Map(),
+      onMissingAction: "skip",
+    });
+
+    const result = steps[0].actions[0].result;
+    expect(Array.isArray(result.content)).toBe(true);
+    if (Array.isArray(result.content)) {
+      expect(result.content).toEqual([
+        {
+          type: "image_url",
+          image_url: { url: "https://signed-url.test" },
+          file_path: canonicalPath,
+        },
+      ]);
+    }
+  });
+
   it("falls back to JSON when the model does not support vision, flattened and without the resource wrapper or mimeType", async () => {
     const { auth, message, model, workspaceId, conversationId } =
       await buildVisionTest();
@@ -409,7 +443,7 @@ describe("vision image rendering in getSteps", () => {
   it("renders [Image unavailable] when the path does not belong to the conversation", async () => {
     const foreignGcsPath = `w/other-workspace/conversations/other-conv/files/photo.png`;
     const { auth, message, model, workspaceId, conversationId } =
-      await buildVisionTest(foreignGcsPath);
+      await buildVisionTest({ pathOverride: foreignGcsPath });
 
     const steps = await getSteps(auth, {
       model,
