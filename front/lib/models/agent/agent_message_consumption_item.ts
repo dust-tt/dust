@@ -11,7 +11,7 @@ import {
   AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES,
   type AgentMessageConsumptionItemType,
 } from "@app/types/assistant/agent_message_consumption";
-import { assertNever } from "@dust-tt/client";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { Op } from "sequelize";
 
