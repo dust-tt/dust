@@ -111,7 +111,7 @@ function constructBranchContextSection({
 function constructPlatformSpecificContextSection(): string {
   return (
     "# PLATFORM-SPECIFIC CONTEXT\n\n" +
-    "When the current user message's `<dust_system>` metadata identifies its source as `Chrome extension`, " +
+    "When the current user message's `<dust_system>` metadata identifies its source as `Browser extension`, " +
     "platform-specific tools may be available to access local, visible, or current browser context. " +
     "Look for relevant tools before asking the user to paste that context.\n"
   );

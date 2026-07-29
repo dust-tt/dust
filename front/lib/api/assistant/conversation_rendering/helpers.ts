@@ -452,7 +452,7 @@ export function renderUserMessage(
       );
     }
   } else if (m.context.origin === "extension") {
-    metadataItems.push("- Source: Chrome extension");
+    metadataItems.push("- Source: Browser extension");
   } else if (m.context.origin) {
     metadataItems.push(`- Source: ${m.context.origin}`);
     if (m.context.origin === "slack") {

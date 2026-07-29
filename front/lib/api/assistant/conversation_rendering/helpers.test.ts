@@ -170,7 +170,7 @@ Hello!`);
     expect(text).toContain("- Source: email");
   });
 
-  it("identifies extension messages as coming from the Chrome extension", async () => {
+  it("identifies extension messages as coming from a browser extension", async () => {
     const { conversation, userMessage } = await buildMessage({
       content: "From the browser",
       context: {
@@ -182,7 +182,7 @@ Hello!`);
     expect(res.content[0].type).toBe("text");
     const text = (res.content[0] as TextContent).text;
 
-    expect(text).toContain("- Source: Chrome extension");
+    expect(text).toContain("- Source: Browser extension");
     expect(text).not.toContain("- Source: extension");
   });
 

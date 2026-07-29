@@ -164,7 +164,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(prompt1).toEqual(prompt2);
   });
 
-  it("should always include stable Chrome extension tool guidance", () => {
+  it("should always include stable browser extension tool guidance", () => {
     const baseParams = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
@@ -186,7 +186,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     expect(extensionPrompt).toEqual(webPrompt);
     expect(systemPromptToText(webPrompt)).toContain(
-      "When the current user message's `<dust_system>` metadata identifies its source as `Chrome extension`"
+      "When the current user message's `<dust_system>` metadata identifies its source as `Browser extension`"
     );
   });
 
