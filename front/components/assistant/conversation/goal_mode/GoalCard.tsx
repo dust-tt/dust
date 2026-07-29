@@ -1,8 +1,13 @@
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useConversationGoal } from "@app/lib/swr/conversation_goals";
 import type { GoalType } from "@app/types/assistant/goal";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { ContentMessageInline, Target04 } from "@dust-tt/sparkle";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  ContentMessageAction,
+  ContentMessageInline,
+  PauseCircle,
+  Target04,
+} from "@dust-tt/sparkle";
 import React from "react";
 
 interface GoalCardProps {
@@ -23,8 +28,7 @@ function getStatusLabel(goal: GoalType): string | null {
     case "cancelled":
       return null;
     default:
-      assertNeverAndIgnore(goal.status);
-      return null;
+      return assertNever(goal.status);
   }
 }
 
@@ -34,8 +38,9 @@ export const GoalCard = React.memo(function GoalCard({
   workspaceId,
 }: GoalCardProps) {
   const { hasFeature } = useFeatureFlags();
-  const { goal } = useConversationGoal({
-    conversationId: hasFeature("goal_mode") ? conversationId : null,
+  const isGoalModeEnabled = hasFeature("goal_mode");
+  const { goal, canManage, isPausing, pauseGoal } = useConversationGoal({
+    conversationId: isGoalModeEnabled ? conversationId : null,
     workspaceId,
     branchId,
   });
@@ -43,6 +48,8 @@ export const GoalCard = React.memo(function GoalCard({
   if (!goal || !statusLabel) {
     return null;
   }
+
+  const isRunning = goal.status === "active";
 
   return (
     <ContentMessageInline
@@ -56,6 +63,17 @@ export const GoalCard = React.memo(function GoalCard({
           {goal.reason ? `${statusLabel} · ${goal.reason}` : statusLabel}
         </span>
       </div>
+      {canManage && isRunning && (
+        <ContentMessageAction
+          icon={PauseCircle}
+          variant="ghost"
+          size="xs"
+          tooltip="Pause future goal turns"
+          isLoading={isPausing}
+          disabled={isPausing}
+          onClick={() => void pauseGoal()}
+        />
+      )}
     </ContentMessageInline>
   );
 });

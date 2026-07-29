@@ -49,6 +49,7 @@ export class GoalTransitionError extends Error {
     readonly type:
       | "goal_not_found"
       | "goal_conflict"
+      | "forbidden"
       | "invalid_transition"
       | "wrong_agent"
   ) {
@@ -624,6 +625,68 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
       }
       await goal.update({ status: "paused", reason }, { transaction });
       return true;
+    });
+  }
+
+  static async pauseByUser(
+    auth: Authenticator,
+    {
+      conversation,
+      branchId,
+    }: {
+      conversation: ConversationResource;
+      branchId: string | null;
+    }
+  ): Promise<Result<ConversationGoalResource, GoalTransitionError>> {
+    return withTransaction(async (transaction) => {
+      const row = await this.model.findOne({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversation.id,
+          branchId: branchId ? getResourceIdFromSId(branchId) : null,
+        },
+        order: [
+          ["createdAt", "DESC"],
+          ["id", "DESC"],
+        ],
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!row) {
+        return new Err(new GoalTransitionError("goal_not_found"));
+      }
+
+      const goal = new this(this.model, row.get());
+      if (goal.createdByUserId !== auth.getNonNullableUser().id) {
+        return new Err(new GoalTransitionError("forbidden"));
+      }
+
+      if (goal.status === "paused") {
+        return new Ok(goal);
+      }
+      if (goal.status !== "active") {
+        return new Err(new GoalTransitionError("invalid_transition"));
+      }
+
+      const [, rows] = await this.model.update(
+        {
+          status: "paused",
+          reason: "paused_by_user",
+        },
+        {
+          where: {
+            id: goal.id,
+            workspaceId: goal.workspaceId,
+            status: goal.status,
+          },
+          returning: true,
+          transaction,
+        }
+      );
+      const updated = rows[0];
+      return updated
+        ? new Ok(new this(this.model, updated.get()))
+        : new Err(new GoalTransitionError("goal_conflict"));
     });
   }
 

@@ -1,11 +1,15 @@
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
-import { ConversationGoalResource } from "@app/lib/resources/conversation_goal_resource";
+import {
+  ConversationGoalResource,
+  type GoalTransitionError,
+} from "@app/lib/resources/conversation_goal_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { GoalType } from "@app/types/assistant/goal";
+import type { Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -246,4 +250,20 @@ export async function continueActiveGoal(
   return decision.type === "ensure_current"
     ? ensureCurrentGoalTurn(auth, { conversation, goal: decision.goal })
     : startActiveGoalTurn(auth, { conversation, goal: decision.goal });
+}
+
+export function pauseGoalByUser(
+  auth: Authenticator,
+  {
+    conversation,
+    branchId,
+  }: {
+    conversation: ConversationResource;
+    branchId: string | null;
+  }
+): Promise<Result<ConversationGoalResource, GoalTransitionError>> {
+  return ConversationGoalResource.pauseByUser(auth, {
+    conversation,
+    branchId,
+  });
 }

@@ -10,7 +10,12 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/temporal/agent_loop/client", () => ({
+  launchAgentLoopWorkflow: vi.fn(),
+  launchCompactionWorkflow: vi.fn(),
+}));
 
 async function setupTest(enableGoalMode: boolean) {
   const { workspace, auth, user } = await createPrivateApiMockRequest({
@@ -39,6 +44,21 @@ function getGoal(
   );
 }
 
+function patchGoal(
+  workspaceId: string,
+  conversationId: string,
+  branchId?: string
+) {
+  return honoApp.request(
+    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/goal`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "pause", branchId }),
+    }
+  );
+}
+
 describe("conversation goal API", () => {
   it("is gated by the Goal Mode feature flag", async () => {
     const { workspace, conversation } = await setupTest(false);
@@ -46,7 +66,7 @@ describe("conversation goal API", () => {
     expect(response.status).toBe(403);
   });
 
-  it("returns the latest goal", async () => {
+  it("returns and updates the latest goal", async () => {
     const { workspace, conversation, agent, auth } = await setupTest(true);
     const message = await ConversationFactory.createAgentMessageWithRank({
       workspace,
@@ -78,10 +98,28 @@ describe("conversation goal API", () => {
 
     const response = await getGoal(workspace.sId, conversation.sId);
     expect(response.status).toBe(200);
-    expect((await response.json()).goal).toMatchObject({
-      objective: "Finish the release",
-      status: "active",
+    expect(await response.json()).toMatchObject({
+      canManage: true,
+      goal: {
+        objective: "Finish the release",
+        status: "active",
+      },
     });
+
+    const paused = await patchGoal(workspace.sId, conversation.sId);
+    expect(paused.status).toBe(200);
+    expect((await paused.json()).goal).toMatchObject({
+      status: "paused",
+      reason: "paused_by_user",
+    });
+
+    await createPrivateApiMockRequest({
+      role: "admin",
+      workspace,
+    });
+    const nonOwnerView = await getGoal(workspace.sId, conversation.sId);
+    expect((await nonOwnerView.json()).canManage).toBe(false);
+    expect((await patchGoal(workspace.sId, conversation.sId)).status).toBe(403);
   });
 
   it("returns a branch goal and rejects a branch from another conversation", async () => {
@@ -130,6 +168,9 @@ describe("conversation goal API", () => {
     const response = await getGoal(workspace.sId, conversation.sId, branch.sId);
     expect(response.status).toBe(200);
     expect((await response.json()).goal.objective).toBe("Finish the branch");
+    const paused = await patchGoal(workspace.sId, conversation.sId, branch.sId);
+    expect(paused.status).toBe(200);
+    expect((await paused.json()).goal.status).toBe("paused");
 
     const otherConversation = await ConversationFactory.create(auth, {
       agentConfigurationId: agent.sId,

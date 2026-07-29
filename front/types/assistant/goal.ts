@@ -32,3 +32,17 @@ export type GoalType = {
   updatedAt: number;
   terminalAt: number | null;
 };
+
+export const GoalSchema: z.ZodType<GoalType> = z.object({
+  sId: z.string(),
+  objective: z.string(),
+  status: GoalStatusSchema,
+  agentConfigurationId: z.string(),
+  branchId: z.string().nullable(),
+  turnCount: z.number(),
+  maxTurns: z.number(),
+  reason: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  terminalAt: z.number().nullable(),
+});

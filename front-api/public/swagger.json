@@ -6683,6 +6683,10 @@
               "application/json": {
                 "schema": {
                   "type": "object",
+                  "required": [
+                    "goal",
+                    "canManage"
+                  ],
                   "properties": {
                     "goal": {
                       "type": "object",
@@ -6692,6 +6696,9 @@
                           "$ref": "#/components/schemas/PrivateGoal"
                         }
                       ]
+                    },
+                    "canManage": {
+                      "type": "boolean"
                     }
                   }
                 }
@@ -6700,6 +6707,94 @@
           },
           "403": {
             "description": "Goal Mode is not enabled for the workspace."
+          }
+        }
+      },
+      "patch": {
+        "summary": "Pause a conversation goal",
+        "description": "Pause automatic continuation for the latest active Goal Mode goal on a conversation branch.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "pause"
+                    ]
+                  },
+                  "branchId": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated goal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "goal",
+                    "canManage"
+                  ],
+                  "properties": {
+                    "goal": {
+                      "$ref": "#/components/schemas/PrivateGoal"
+                    },
+                    "canManage": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Goal Mode is disabled or the caller does not own the goal."
+          },
+          "404": {
+            "description": "Conversation, branch, or goal not found."
+          },
+          "409": {
+            "description": "Invalid or conflicting goal transition."
           }
         }
       }

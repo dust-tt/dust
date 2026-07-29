@@ -50,6 +50,10 @@ const handlers: ToolHandlers<typeof GOAL_MODE_TOOLS_METADATA> = {
               "The goal changed concurrently. Re-read the goal state before retrying."
             )
           );
+        case "forbidden":
+          return new Err(
+            new MCPError("Only the user who created this goal can manage it.")
+          );
         default:
           return assertNever(result.error.type);
       }
