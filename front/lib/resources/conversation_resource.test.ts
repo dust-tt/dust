@@ -3431,6 +3431,65 @@ describe("listSpaceUnreadConversationsForUser", () => {
     expect(allConversationIds).toContain(conversationIds[0]);
     expect(allConversationIds).not.toContain(subConversation.sId);
   });
+
+  it("hydrates nextWakeupAt on unread space conversations", async () => {
+    vi.spyOn(
+      wakeUpTemporalClient,
+      "launchOrScheduleWakeUpTemporalWorkflow"
+    ).mockResolvedValue(new Ok(undefined));
+
+    const agentConfiguration =
+      await AgentConfigurationFactory.createTestAgent(adminAuth);
+    const conversationResource = await ConversationResource.fetchById(
+      userAuth,
+      conversationIds[0]
+    );
+    assert(conversationResource, "Conversation not found");
+    const conversation = conversationResource.toJSON();
+
+    const scheduledFireAt = new Date("2030-01-01T12:00:00.000Z");
+    const cancelledFireAt = new Date("2029-01-01T12:00:00.000Z");
+
+    const cancelledWakeUpResult = await WakeUpResource.makeNew(
+      adminAuth,
+      {
+        scheduleType: "one_shot",
+        fireAt: cancelledFireAt,
+        cronExpression: null,
+        cronTimezone: null,
+        reason: "Cancelled wake-up",
+      },
+      conversation,
+      agentConfiguration
+    );
+    assert(cancelledWakeUpResult.isOk(), "Failed to create cancelled wake-up.");
+    await cancelledWakeUpResult.value.markCancelled(adminAuth);
+
+    const scheduledWakeUpResult = await WakeUpResource.makeNew(
+      adminAuth,
+      {
+        scheduleType: "one_shot",
+        fireAt: scheduledFireAt,
+        cronExpression: null,
+        cronTimezone: null,
+        reason: "Scheduled wake-up",
+      },
+      conversation,
+      agentConfiguration
+    );
+    assert(scheduledWakeUpResult.isOk(), "Failed to create scheduled wake-up.");
+
+    const userConversations =
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
+        userAuth,
+        spaceModelIds
+      );
+    const item = userConversations.unreadConversations.find(
+      (c) => c.sId === conversationIds[0]
+    );
+
+    expect(item?.toJSON().nextWakeupAt).toBe(scheduledFireAt.getTime());
+  });
 });
 
 describe("Space Handling", () => {
