@@ -1,4 +1,5 @@
 import type { AuthenticatorType } from "@app/lib/auth";
+import { computeRunKey } from "@app/lib/metronome/events";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
@@ -96,7 +97,7 @@ export async function launchTrackProgrammaticUsageWorkflow({
 }): Promise<Result<undefined, Error>> {
   const { workspaceId } = authType;
 
-  const { agentMessageId, conversationId } = agentLoopArgs;
+  const { agentMessageId, conversationId, dustRunIds } = agentLoopArgs;
 
   const client = await getTemporalClientForFrontNamespace();
 
@@ -104,6 +105,7 @@ export async function launchTrackProgrammaticUsageWorkflow({
     agentMessageId,
     conversationId,
     workspaceId,
+    runKey: dustRunIds?.length ? computeRunKey(dustRunIds) : "legacy",
   });
 
   try {
@@ -145,7 +147,7 @@ export async function launchEmitMetronomeUsageEventsWorkflow({
   agentLoopArgs: AgentLoopArgs;
 }): Promise<Result<undefined, Error>> {
   const { workspaceId } = authType;
-  const { agentMessageId, conversationId } = agentLoopArgs;
+  const { agentMessageId, conversationId, dustRunIds } = agentLoopArgs;
 
   const client = await getTemporalClientForFrontNamespace();
 
@@ -153,6 +155,7 @@ export async function launchEmitMetronomeUsageEventsWorkflow({
     agentMessageId,
     conversationId,
     workspaceId,
+    runKey: dustRunIds?.length ? computeRunKey(dustRunIds) : "legacy",
   });
 
   try {
