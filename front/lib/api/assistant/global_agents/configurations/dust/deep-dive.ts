@@ -34,6 +34,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import {
@@ -391,11 +392,19 @@ function getDeepDiveFallbackModelConfig(
   return (
     getEnabledModelConfig(
       auth,
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+      "light",
+      featureFlags,
+      excludeProviders
+    ) ??
+    getEnabledModelConfig(
+      auth,
       GPT_5_6_SOL_MODEL_CONFIG,
       "light",
       featureFlags,
       excludeProviders
-    ) ?? getLargeModelFallback(auth, featureFlags, excludeProviders)
+    ) ??
+    getLargeModelFallback(auth, featureFlags, excludeProviders)
   );
 }
 
