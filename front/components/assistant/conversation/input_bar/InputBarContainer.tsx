@@ -141,26 +141,6 @@ const EMPTY_SPACE_IDS: string[] = [];
 const EMPTY_SELECTABLE_SPACES: SelectableConversationSpaceType[] = [];
 const acceptSelectedSpaceIds = async (spaceIds: string[]) => spaceIds;
 
-// Stable references: BubbleMenu's internal effect re-dispatches an editor
-// transaction whenever `appendTo`/`options` change identity, which would
-// re-render this component and recreate them, causing an infinite loop
-// (React error #185, "Maximum update depth exceeded") if these were inline
-// literals on the JSX below.
-//
-// `strategy: "fixed"` must NOT be set here: verified via a real Tiptap
-// BubbleMenu reproduction (sparkle/playground) that it computes the wrong
-// position (renders far above the selection) even in total isolation,
-// unrelated to this app's page structure. The default "absolute" strategy,
-// combined with appendTo=body, is the pattern already proven to work
-// elsewhere in this codebase's own BubbleMenu usage.
-function appendBubbleMenuToBody() {
-  return document.body;
-}
-const BUBBLE_MENU_OPTIONS = {
-  placement: "top" as const,
-  offset: 8,
-};
-
 export const INPUT_BAR_ACTIONS = [
   "capabilities",
   "attachment",
@@ -1739,15 +1719,7 @@ const InputBarContainer = ({
           </div>
           <BubbleMenu
             editor={editor ?? undefined}
-            className={cn("z-50 inline-flex", isMobile && "hidden")}
-            // Default appendTo is the editor's parent element, which sits
-            // inside the composer's `overflow-hidden` rounded card — Floating
-            // UI's clipping-boundary detection then sees that ancestor and
-            // can push the menu far from the selection to "stay visible"
-            // within it. Escape to the body instead, so placement is
-            // consistent regardless of where the composer sits on the page.
-            appendTo={appendBubbleMenuToBody}
-            options={BUBBLE_MENU_OPTIONS}
+            className={cn("flex", isMobile && "hidden")}
           >
             {editor && (
               <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
