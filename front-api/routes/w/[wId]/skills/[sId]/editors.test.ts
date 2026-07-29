@@ -21,7 +21,7 @@ async function setup() {
     workspace: workspaceResource,
     subscription: null,
     authMethod: "internal",
-    permissions: PermissionSet.all(),
+    permissions: PermissionSet.empty(),
   });
   return { workspace, user, auth };
 }

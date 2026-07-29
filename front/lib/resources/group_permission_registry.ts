@@ -222,7 +222,6 @@ type GrantRow = Pick<
 // JSON-serializable form of a PermissionSet, embedded in a serialized Authenticator so it can be
 // restored without re-querying `group_permissions`. Preserves the raw bitmask map exactly.
 export interface PermissionSetJSON {
-  isAdminAll: boolean;
   // resourceType -> resourceId -> verb bitmask. resourceId keys become strings after a JSON
   // round-trip; `fromJSON` coerces them back to numbers.
   grants: Partial<Record<ConcreteResourceType, Record<number, number>>>;
@@ -233,22 +232,20 @@ export interface PermissionSetJSON {
  * (resourceType, resourceId): resourceId is WHOLE_TYPE_RESOURCE_ID (-1) for type-wide capabilities
  * (e.g. "create" on "agent") or a resource's model id for instance grants (e.g. "write" on a
  * specific space). A type-wide grant satisfies an instance check on any id of that type.
+ *
+ * This holds only the caller's grants — it knows nothing about roles. Admin-by-default access to
+ * workspace-wide capabilities is applied by the Authenticator (see `hasWorkspacePermission`), not
+ * here.
  */
 export class PermissionSet {
   private constructor(
     // resourceType -> resourceId -> verb bitmask. resourceId WHOLE_TYPE_RESOURCE_ID (-1) is the
     // type-wide entry. Values are bitmasks (see VERB_BIT), not Sets, to keep the footprint small.
-    private readonly grants: Map<ConcreteResourceType, Map<number, number>>,
-    // Admins hold every capability on every resource/instance by default.
-    private readonly isAdminAll: boolean
+    private readonly grants: Map<ConcreteResourceType, Map<number, number>>
   ) {}
 
   static empty(): PermissionSet {
-    return new PermissionSet(new Map(), false);
-  }
-
-  static all(): PermissionSet {
-    return new PermissionSet(new Map(), true);
+    return new PermissionSet(new Map());
   }
 
   // Rebuilds a set from its serialized form (see toJSON) — no DB access.
@@ -268,7 +265,7 @@ export class PermissionSet {
       }
       map.set(resourceType, byId);
     }
-    return new PermissionSet(map, json.isAdminAll);
+    return new PermissionSet(map);
   }
 
   static fromGrants(grants: readonly GrantRow[]): PermissionSet {
@@ -311,7 +308,7 @@ export class PermissionSet {
       }
     }
 
-    return new PermissionSet(map, false);
+    return new PermissionSet(map);
   }
 
   // Whether the caller holds `verb` on the given resource instance. A type-wide (-1) grant on the
@@ -321,11 +318,6 @@ export class PermissionSet {
     resourceId: number,
     verb: GrantVerb
   ): boolean {
-    // Admins hold every *type-wide* capability by default, but not implicit *instance* grants
-    // (e.g. write on a specific restricted space) — instance access stays role/group-based.
-    if (this.isAdminAll) {
-      return resourceId === WHOLE_TYPE_RESOURCE_ID;
-    }
     const byId = this.grants.get(resourceType);
     if (!byId) {
       return false;
@@ -342,7 +334,7 @@ export class PermissionSet {
   }
 
   // Serializes the full grant map (bitmasks intact) for embedding in a serialized Authenticator,
-  // so `fromJSON` can restore it without hitting the DB. Round-trips exactly (incl. the admin flag).
+  // so `fromJSON` can restore it without hitting the DB. Round-trips exactly.
   toJSON(): PermissionSetJSON {
     const grants: Partial<
       Record<ConcreteResourceType, Record<number, number>>
@@ -354,26 +346,14 @@ export class PermissionSet {
       }
       grants[resourceType] = record;
     }
-    return { isAdminAll: this.isAdminAll, grants };
+    return { grants };
   }
 
-  // The type-wide (-1) capabilities the caller holds, as the flat per-resource-type record consumed
-  // by the auth context and the Workspace & Governance page. Admins, who hold everything
-  // implicitly, are materialized as every type-level verb on every resource type.
+  // The type-wide (-1) capabilities the caller's grants confer, as the flat per-resource-type record
+  // consumed by the auth context and the Workspace & Governance page. This reflects grants only;
+  // admin-by-default access is layered on by the Authenticator (see `getWorkspacePermissions`).
   toTypeWideWorkspacePermissions(): WorkspacePermissions {
     const result = emptyWorkspacePermissions();
-
-    if (this.isAdminAll) {
-      for (const resourceType of GROUP_PERMISSION_RESOURCE_TYPES) {
-        if (isConcreteResourceType(resourceType)) {
-          result[resourceType] = allVerbsForResourceAtLevel(
-            resourceType,
-            "type"
-          );
-        }
-      }
-      return result;
-    }
 
     for (const [resourceType, byId] of this.grants) {
       const typeWideMask = byId.get(WHOLE_TYPE_RESOURCE_ID);
@@ -387,9 +367,6 @@ export class PermissionSet {
   // Human-readable dump for debugging: decodes every bitmask back to verbs. resourceId -1 is
   // rendered as "*" (type-wide). Not for production paths — inspection only.
   toString(): string {
-    if (this.isAdminAll) {
-      return "PermissionSet(admin: all)";
-    }
     const parts: string[] = [];
     for (const [resourceType, byId] of this.grants) {
       const entries = [...byId.entries()].map(([resourceId, mask]) => {
