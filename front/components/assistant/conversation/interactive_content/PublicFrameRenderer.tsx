@@ -82,10 +82,11 @@ export function PublicFrameRenderer({
   const [cookies] = useCookies([DUST_HAS_SESSION]);
   const hasSession = hasSessionIndicator(cookies[DUST_HAS_SESSION]);
 
-  const { user } = useUser({
+  const { user, isUserLoading } = useUser({
     revalidateOnFocus: false,
     revalidateIfStale: false,
     disabled: !hasSession,
+    redirectOnUnauthenticated: false,
   });
   const publicUserIdentity = getPublicFrameUserIdentity(
     user,
@@ -93,7 +94,10 @@ export function PublicFrameRenderer({
     workspaceId
   );
 
-  if (isFrameLoading) {
+  if (
+    isFrameLoading ||
+    (isAuthenticatedMember && hasSession && isUserLoading)
+  ) {
     return (
       <CenteredState>
         <Spinner size="sm" />
