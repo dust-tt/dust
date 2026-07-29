@@ -275,7 +275,7 @@ export function VoicePicker({
     <div className="flex items-center">
       <div
         className={cn(
-          "duration-600 flex items-center justify-end gap-2 overflow-hidden transition-[padding] ease-in-out motion-reduce:transition-none",
+          "flex items-center justify-end gap-2 overflow-hidden",
           compact ? "px-1" : "px-2",
           isRecording ? "opacity-100" : "hidden"
         )}
