@@ -674,7 +674,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
   ): GCSMountTarget["mountProfile"] {
     switch (mount.kind) {
       case "pod_sandbox_functions":
-        return "workload";
+        return "pod_sandbox_functions";
 
       case "pod_state":
         return "pod_state_replica";
