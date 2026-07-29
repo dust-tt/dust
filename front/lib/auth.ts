@@ -19,6 +19,7 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import {
+  allWorkspacePermissions,
   grantTypesForVerb,
   PermissionSet,
   type PermissionSetJSON,
@@ -1224,8 +1225,8 @@ export class Authenticator {
 
   /**
    * Whether the caller holds a workspace-level capability, asked as a type-level verb (e.g.
-   * "create" on "agent"). Reads the capabilities resolved at construction, which fold in
-   * admin-by-default access and "*" wildcard grants.
+   * "create" on "agent"). Admins hold every workspace capability by default; everyone else derives
+   * it from the grants resolved at construction (which fold in "*" wildcard grants).
    */
   async hasWorkspacePermission(
     verb: GrantVerb,
@@ -1243,25 +1244,36 @@ export class Authenticator {
       return false;
     }
 
+    // Admins hold every workspace-wide capability by default (this is where role-based access is
+    // layered on top of the grant set; the PermissionSet itself holds only grants).
+    if (this.isAdmin()) {
+      return true;
+    }
+
     return this._permissions.hasTypeWide(resourceType, verb);
   }
 
   /**
-   * The caller's governance grants, serialized to the wire shape consumed by the `/permissions`
-   * endpoint. Resolved at construction (see `resolvePermissions`).
+   * The caller's workspace capabilities, as the wire shape consumed by the `/permissions` endpoint.
+   * Admins hold every capability by default; everyone else derives them from the grants resolved at
+   * construction.
    */
   async getWorkspacePermissions(): Promise<WorkspacePermissions> {
+    if (this.isAdmin()) {
+      return allWorkspacePermissions();
+    }
     return this._permissions.toTypeWideWorkspacePermissions();
   }
 
   /**
-   * Resolves the grant set a caller holds, before an Authenticator exists. Admins hold every
-   * capability by default; other callers derive them from the grants on their groups. Cheap for
-   * admins and for callers with no groups (no query).
+   * Resolves the grant set a caller holds, before an Authenticator exists. Returns only the grants
+   * on the caller's groups — no role logic. Admin-by-default access to workspace-wide capabilities
+   * is layered on by `hasWorkspacePermission` / `getWorkspacePermissions`, so being an admin does
+   * NOT confer access to a specific instance unless a grant grants it. Cheap for callers with no
+   * groups (no query).
    */
   static async resolvePermissions({
     workspace,
-    role,
     groupModelIds,
   }: {
     workspace?: WorkspaceResource | null;
@@ -1270,9 +1282,6 @@ export class Authenticator {
   }): Promise<PermissionSet> {
     if (!workspace) {
       return PermissionSet.empty();
-    }
-    if (role === "admin") {
-      return PermissionSet.all();
     }
 
     const grants = await GroupPermissionResource.listForGroups(
