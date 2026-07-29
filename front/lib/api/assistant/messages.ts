@@ -439,7 +439,6 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     async () =>
       AgentStepContentResource.fetchByAgentMessages(auth, {
         agentMessageIds,
-        latestVersionsOnly: true,
         textContentOnly,
       }),
     async () =>

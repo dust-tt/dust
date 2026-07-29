@@ -501,7 +501,6 @@ async function withContentView(
     auth,
     {
       agentMessageIds: [agentMessage.agentMessageId],
-      latestVersionsOnly: true,
     }
   );
   const contents = stepContents.map((sc) => ({

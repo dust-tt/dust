@@ -1,6 +1,12 @@
+import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import {
+  AGENT_STEP_CONTENT_CACHE_TTL_MS,
+  agentStepContentCacheKey,
+  agentStepContentHashField,
+} from "@app/lib/resources/agent_step_content/cache";
 import {
   AgentStepContentResource,
   FETCH_BY_AGENT_MESSAGES_CHUNK_SIZE,
@@ -9,7 +15,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentTextContentType } from "@app/types/assistant/agent_message_content";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 function makeTextContent(value: string): AgentTextContentType {
   return {
@@ -102,7 +108,6 @@ describe("AgentStepContentResource.fetchByAgentMessages", () => {
       authenticator,
       {
         agentMessageIds: agentMessages.map((message) => message.id),
-        latestVersionsOnly: true,
       }
     );
 
@@ -116,5 +121,169 @@ describe("AgentStepContentResource.fetchByAgentMessages", () => {
     );
     expect(latestVersion?.version).toBe(1);
     expect(latestVersion?.value).toEqual(makeTextContent("new version"));
+  });
+});
+
+describe("AgentStepContentResource Redis cache", () => {
+  let authenticator: Authenticator;
+  let workspaceId: number;
+  let agentMessage: AgentMessageModel;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    authenticator = setup.authenticator;
+    workspaceId = setup.workspace.id;
+
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        name: "Step Content Cache Agent",
+      }
+    );
+    const [message] = await createAgentMessages(authenticator, {
+      count: 1,
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+    });
+    agentMessage = message;
+  });
+
+  it("warms Redis on createNewVersion and serves fetchByAgentMessages from cache", async () => {
+    const created = await AgentStepContentResource.createNewVersion({
+      workspaceId,
+      agentMessageId: agentMessage.id,
+      step: 0,
+      index: 0,
+      type: "text_content",
+      value: makeTextContent("from create"),
+    });
+
+    const redis = await getRedisCacheClient({
+      origin: "agent_step_content_cache",
+    });
+    const key = agentStepContentCacheKey({
+      workspaceId,
+      agentMessageId: agentMessage.id,
+    });
+    const field = agentStepContentHashField({ step: 0, index: 0 });
+
+    // Inspect the hash written by createNewVersion.
+    const hash = await redis.hGetAll(key);
+    expect(hash[field]).toBeDefined();
+    expect(JSON.parse(hash[field]).id).toBe(created.id);
+    expect(JSON.parse(hash[field]).value).toEqual(
+      makeTextContent("from create")
+    );
+
+    // Spy on full-row PG fetch: cache hit should skip loading `value` from PG.
+    const findAllSpy = vi.spyOn(AgentStepContentModel, "findAll");
+
+    const fetched = await AgentStepContentResource.fetchByAgentMessages(
+      authenticator,
+      { agentMessageIds: [agentMessage.id] }
+    );
+
+    expect(fetched).toHaveLength(1);
+    expect(fetched[0].id).toBe(created.id);
+    expect(fetched[0].value).toEqual(makeTextContent("from create"));
+
+    // Metadata query excludes `value`; no subsequent full-row findAll.
+    const findAllCalls = findAllSpy.mock.calls;
+    expect(findAllCalls.length).toBeGreaterThanOrEqual(1);
+    for (const [options] of findAllCalls) {
+      const attrs = options?.attributes;
+      expect(attrs).toBeDefined();
+      if (Array.isArray(attrs)) {
+        expect(attrs).not.toContain("value");
+      }
+    }
+
+    findAllSpy.mockRestore();
+  });
+
+  it("falls back to Postgres when the Redis hash is incomplete", async () => {
+    const created = await AgentStepContentResource.createNewVersion({
+      workspaceId,
+      agentMessageId: agentMessage.id,
+      step: 0,
+      index: 0,
+      type: "text_content",
+      value: makeTextContent("cached"),
+    });
+
+    // Second row inserted without warming Redis (bulkCreate bypasses createNewVersion).
+    await AgentStepContentModel.create({
+      workspaceId,
+      agentMessageId: agentMessage.id,
+      step: 0,
+      index: 1,
+      version: 0,
+      type: "text_content",
+      value: makeTextContent("only in pg"),
+    });
+
+    const fetched = await AgentStepContentResource.fetchByAgentMessages(
+      authenticator,
+      { agentMessageIds: [agentMessage.id] }
+    );
+
+    expect(fetched).toHaveLength(2);
+    expect(
+      fetched.map((c) => (c.value as AgentTextContentType).value).toSorted()
+    ).toEqual(["cached", "only in pg"]);
+    expect(fetched.map((c) => c.id).includes(created.id)).toBe(true);
+  });
+
+  it("overwrites the hash field when creating a new version of the same step/index", async () => {
+    await AgentStepContentResource.createNewVersion({
+      workspaceId,
+      agentMessageId: agentMessage.id,
+      step: 0,
+      index: 0,
+      type: "text_content",
+      value: makeTextContent("v0"),
+    });
+
+    const v1 = await AgentStepContentResource.createNewVersion({
+      workspaceId,
+      agentMessageId: agentMessage.id,
+      step: 0,
+      index: 0,
+      type: "text_content",
+      value: makeTextContent("v1"),
+    });
+
+    const fetched = await AgentStepContentResource.fetchByAgentMessages(
+      authenticator,
+      { agentMessageIds: [agentMessage.id] }
+    );
+
+    expect(fetched).toHaveLength(1);
+    expect(fetched[0].id).toBe(v1.id);
+    expect(fetched[0].version).toBe(1);
+    expect(fetched[0].value).toEqual(makeTextContent("v1"));
+  });
+
+  it("refreshes TTL on warm", async () => {
+    await AgentStepContentResource.createNewVersion({
+      workspaceId,
+      agentMessageId: agentMessage.id,
+      step: 0,
+      index: 0,
+      type: "text_content",
+      value: makeTextContent("ttl"),
+    });
+
+    const redis = await getRedisCacheClient({
+      origin: "agent_step_content_cache",
+    });
+    // multi().pExpire is invoked during warm; assert the mock was used with the TTL.
+    expect(redis.pExpire).toHaveBeenCalledWith(
+      agentStepContentCacheKey({
+        workspaceId,
+        agentMessageId: agentMessage.id,
+      }),
+      AGENT_STEP_CONTENT_CACHE_TTL_MS
+    );
   });
 });
