@@ -156,7 +156,8 @@ export function SkillBuilderSettingsSection({
               <DropdownMenuContent align="start">
                 {AVAILABILITY_OPTIONS.map((option) => {
                   const isOptionDisabled =
-                    option.value === "users_and_agents" && !canMakeSkillAutoDiscoverable;
+                    option.value === "users_and_agents" &&
+                    !canMakeSkillAutoDiscoverable;
                   return (
                     <DropdownMenuItem
                       key={option.label}
