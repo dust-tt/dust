@@ -42,7 +42,7 @@ const SHARING_POLICY_OPTIONS: {
 ];
 
 const LABEL = "Frame sharing";
-const DESCRIPTION = "Whether frames are shareable outside the workspace.";
+const DESCRIPTION = "Whether frames are shareable outside the workspace";
 
 interface InteractiveContentSharingToggleProps {
   owner: WorkspaceType;
