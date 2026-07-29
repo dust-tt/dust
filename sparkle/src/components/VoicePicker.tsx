@@ -347,7 +347,7 @@ function computeTooltip(
   isTranscribing: boolean
 ): string {
   if (isTranscribing) {
-    return "Transcribing...";
+    return "Transcribing…";
   }
   if (mode === "hold" && isRecording) {
     return "Release to stop";
