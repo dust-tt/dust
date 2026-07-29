@@ -8,6 +8,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -625,6 +626,26 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(execSpy.mock.calls[0]?.[2]?.envVars).toMatchObject({
       DUST_POD_USER_IDENTITY: "",
     });
+  });
+
+  it("fails closed when a newer application persisted an unknown policy", async () => {
+    const { authenticator, sandbox, sandboxFunction, invocation } =
+      await setupExecutionTest();
+    await SandboxFunctionModel.update(
+      { authentication: "future_policy" },
+      {
+        where: {
+          id: sandboxFunction.id,
+          workspaceId: sandboxFunction.workspaceId,
+        },
+      }
+    );
+    const execSpy = vi.spyOn(sandbox, "exec");
+
+    const executionResult = await invocation.execute(authenticator);
+
+    expect(executionResult.isErr()).toBe(true);
+    expect(execSpy).not.toHaveBeenCalled();
   });
 
   it("surfaces the runner stderr when the invocation exits non-zero", async () => {

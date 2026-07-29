@@ -346,6 +346,14 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     auth: Authenticator,
     body: PostSandboxFunctionInvocationRequestBody
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
+    if (this.authentication !== null) {
+      return new Err(
+        new Error(
+          "This Pod Function uses an authentication policy unsupported by this application version."
+        )
+      );
+    }
+
     return SandboxFunctionInvocationResource.createAndStartExecution(auth, {
       sandboxFunction: this,
       body,
