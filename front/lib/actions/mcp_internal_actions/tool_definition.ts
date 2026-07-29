@@ -16,10 +16,12 @@ import type {
 } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape, z } from "zod";
 
-export type ToolHandlerExtra = RequestHandlerExtra<
+export type MCPToolHandlerExtra = RequestHandlerExtra<
   ServerRequest,
   ServerNotification
-> & {
+>;
+
+export type ToolHandlerExtra = MCPToolHandlerExtra & {
   auth: Authenticator;
   runContext: ToolRunContext;
 };
@@ -28,7 +30,7 @@ export type ToolHandlerResult = Result<CallToolResult["content"], MCPError>;
 
 export type ToolHandlers<
   ToolsList extends readonly ToolMeta[],
-  HandlerExtraArgs extends unknown[] = [extra: ToolHandlerExtra],
+  HandlerExtra = ToolHandlerExtra,
   // Keep tool names as a separate generic so that generic consumers don't widen them to strings.
   ToolNames extends string = ToolsList[number]["name"],
 > = {
@@ -37,14 +39,14 @@ export type ToolHandlers<
     params: z.infer<
       z.ZodObject<Extract<ToolsList[number], { name: ToolName }>["schema"]>
     >,
-    ...extra: HandlerExtraArgs
+    extra: HandlerExtra
   ) => Promise<ToolHandlerResult>;
 };
 
 export interface ToolDefinition<
   TName extends string = string,
   TSchema extends ZodRawShape = ZodRawShape,
-  HandlerExtraArgs extends unknown[] = [extra: ToolHandlerExtra],
+  HandlerExtra = ToolHandlerExtra,
 > {
   name: TName;
   enableAlerting?: boolean;
@@ -62,7 +64,7 @@ export interface ToolDefinition<
   >;
   handler(
     params: z.infer<z.ZodObject<TSchema>>,
-    ...extra: HandlerExtraArgs
+    extra: HandlerExtra
   ): Promise<ToolHandlerResult>;
 }
 
@@ -74,11 +76,11 @@ export type ToolMeta<
 export function buildTools<
   const TName extends string,
   const T extends readonly ToolMeta<TName>[],
-  HandlerExtraArgs extends unknown[] = [extra: ToolHandlerExtra],
+  HandlerExtra = ToolHandlerExtra,
 >(
   metadata: T,
-  handlers: ToolHandlers<T, HandlerExtraArgs, TName>
-): ToolDefinition<TName, ZodRawShape, HandlerExtraArgs>[] {
+  handlers: ToolHandlers<T, HandlerExtra, TName>
+): ToolDefinition<TName, ZodRawShape, HandlerExtra>[] {
   return metadata.map((tool) => ({
     ...tool,
     handler: handlers[tool.name],
