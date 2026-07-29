@@ -2,13 +2,15 @@ import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import {
   getSmallWhitelistedModel,
-  getWhitelistedProviders,
+  selectEnabledModel,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
-import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
-import { GEMINI_3_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { GPT_5_6_LUNA_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import type {
+  ModelConfigurationType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -36,8 +38,8 @@ export async function summarizeWithLLM({
 }): Promise<Result<string, Error>> {
   const toSummarize = content.slice(0, MAX_CHARACTERS_TO_SUMMARIZE);
 
-  const model = getFastModelConfigForSummarization(auth);
-  if (!model) {
+  const modelConfig = getModelConfigForWebSummarization(auth);
+  if (!modelConfig) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate summary")
     );
@@ -61,9 +63,10 @@ export async function summarizeWithLLM({
   const res = await runMultiActionsAgent(
     auth,
     {
-      providerId: model.providerId,
-      modelId: model.modelId,
+      providerId: modelConfig.modelConfiguration.providerId,
+      modelId: modelConfig.modelConfiguration.modelId,
       functionCall: null, // No function call needed, just text generation
+      reasoningEffort: modelConfig.reasoningEffort,
       temperature: 0.3,
       useCache: false,
     },
@@ -96,18 +99,25 @@ export async function summarizeWithLLM({
   return new Ok(summary);
 }
 
-function getFastModelConfigForSummarization(
-  auth: Authenticator
-): ModelConfigurationType | null {
-  const providers = getWhitelistedProviders(auth);
-
-  if (providers.has("anthropic")) {
-    return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
+export function getModelConfigForWebSummarization(auth: Authenticator): {
+  modelConfiguration: ModelConfigurationType;
+  reasoningEffort: ReasoningEffort;
+} | null {
+  const luna = selectEnabledModel(auth, [GPT_5_6_LUNA_MODEL_CONFIG], {
+    featureFlags: [],
+  });
+  if (luna) {
+    return {
+      modelConfiguration: luna,
+      reasoningEffort: "medium",
+    };
   }
 
-  if (providers.has("google_ai_studio")) {
-    return GEMINI_3_5_FLASH_MODEL_CONFIG;
-  }
-
-  return getSmallWhitelistedModel(auth);
+  const smallModel = getSmallWhitelistedModel(auth);
+  return smallModel
+    ? {
+        modelConfiguration: smallModel,
+        reasoningEffort: smallModel.defaultReasoningEffort,
+      }
+    : null;
 }
