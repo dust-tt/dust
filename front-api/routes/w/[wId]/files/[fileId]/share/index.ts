@@ -1,3 +1,8 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import {
   buildShareFileResponse,
@@ -103,6 +108,23 @@ app.post(
     }
 
     await file.setShareScope(auth, shareScope);
+
+    void emitAuditLogEvent({
+      auth,
+      action: "frame.share_scope_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("frame", {
+          sId: file.sId,
+          name: file.fileName ?? file.sId,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        frame_name: file.fileName ?? file.sId,
+        share_scope: shareScope,
+      },
+    });
 
     const allowlistResult = await ensureAuthorizedFileAccessForShare(
       auth,

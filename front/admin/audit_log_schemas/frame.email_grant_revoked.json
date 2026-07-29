@@ -1,0 +1,12 @@
+{
+  "action": "frame.email_grant_revoked",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "frame" }
+  ],
+  "metadata": {
+    "frame_name": "string",
+    "grant_id": "string",
+    "actor_type": "string"
+  }
+}
