@@ -1,6 +1,5 @@
 import {
   buildTools,
-  type MCPToolHandlerExtra,
   type ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
@@ -40,10 +39,7 @@ export function registerAllTools(
   captureService: CaptureService | null,
   workspaceId: string
 ): void {
-  const handlers: ToolHandlers<
-    typeof CHROME_TOOLS_METADATA,
-    MCPToolHandlerExtra
-  > = {
+  const handlers = {
     [ATTACH_TABS_TEXT_TOOL_NAME]: (params) =>
       attachTabsTextTool({ ...params, captureService }),
     [TAKE_SCREENSHOT_OR_ATTACH_FILE_TOOL_NAME]: (params) =>
@@ -59,7 +55,7 @@ export function registerAllTools(
     [OPEN_BROWSER_TAB_TOOL_NAME]: (params) => openBrowserTab(params),
     [RELOAD_BROWSER_TAB_TOOL_NAME]: (params) => reloadBrowserTabTool(params),
     [INTERACT_WITH_PAGE_TOOL_NAME]: (params) => interactWithPageTool(params),
-  };
+  } satisfies ToolHandlers<typeof CHROME_TOOLS_METADATA>;
 
   const tools = buildTools(CHROME_TOOLS_METADATA, handlers);
 
@@ -79,8 +75,8 @@ export function registerAllTools(
           },
         },
       },
-      async (params, extra) => {
-        const result = await tool.handler(params, extra);
+      async (params) => {
+        const result = await tool.handler(params);
         if (result.isErr()) {
           return {
             isError: true,
