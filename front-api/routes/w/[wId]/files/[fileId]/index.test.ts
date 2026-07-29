@@ -105,6 +105,45 @@ describe("GET /api/w/:wId/files/:fileId", () => {
     });
   });
 
+  it("should return 404 when user cannot read an attached skill", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const skill = await SkillFactory.create(auth, {
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    const file = await FileFactory.create(auth, user, {
+      contentType: "text/plain",
+      fileName: "restricted.txt",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "skill_attachment",
+    });
+    await skill.updateSkill(auth, {
+      agentFacingDescription: skill.agentFacingDescription,
+      attachedKnowledge: [],
+      fileAttachments: [file],
+      icon: skill.icon,
+      instructions: skill.instructions,
+      mcpServerViews: [],
+      name: skill.name,
+      requestedSpaceIds: skill.requestedSpaceIds,
+      userFacingDescription: skill.userFacingDescription,
+    });
+
+    const response = await honoApp.request(fileUrl(workspace, file.sId));
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  });
+
   it("should redirect to signed URL for download action", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "GET",

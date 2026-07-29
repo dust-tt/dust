@@ -34,25 +34,50 @@ describe("GET /api/w/:wId/skills/:sId/files/:fileId/content", () => {
     expect(response.headers.get("Content-Type")).toBe("text/x-python");
   });
 
-  it("streams skill attachment content for a readable skill", async () => {
-    const { auth, workspace, user } = await createPrivateApiMockRequest({
+  it("streams historical attachment content for a readable skill", async () => {
+    const {
+      auth: editorAuth,
+      workspace,
+      user,
+    } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
     });
-    const skill = await SkillFactory.create(auth, {
-      addCurrentUserAsEditor: false,
-    });
+    const skill = await SkillFactory.create(editorAuth);
 
-    expect(skill.canWrite(auth)).toBe(false);
-
-    const file = await FileFactory.create(auth, user, {
+    const file = await FileFactory.create(editorAuth, user, {
       contentType: "text/yaml",
       fileName: "config.yaml",
       fileSize: 11,
       status: "ready",
       useCase: "skill_attachment",
-      useCaseMetadata: { skillId: skill.sId },
     });
+    const skillUpdate = {
+      agentFacingDescription: skill.agentFacingDescription,
+      attachedKnowledge: [],
+      icon: skill.icon,
+      instructions: skill.instructions,
+      mcpServerViews: [],
+      name: skill.name,
+      requestedSpaceIds: skill.requestedSpaceIds,
+      userFacingDescription: skill.userFacingDescription,
+    };
+    await skill.updateSkill(editorAuth, {
+      ...skillUpdate,
+      fileAttachments: [file],
+    });
+    await skill.updateSkill(editorAuth, {
+      ...skillUpdate,
+      fileAttachments: [],
+    });
+
+    const { auth: readerAuth } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+      workspace,
+    });
+
+    expect(skill.canWrite(readerAuth)).toBe(false);
 
     const response = await get(workspace, skill.sId, file.sId);
 
