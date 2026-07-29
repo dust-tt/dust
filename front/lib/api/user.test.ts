@@ -336,12 +336,12 @@ describe("determineUserRoleFromGroups", () => {
     expect(role).toBe("admin");
   });
 
-  it("returns 'builder' when the user is in the dust-builders group", async () => {
+  it("does not grant a role for the dust-builders group (builder deprecated)", async () => {
     await addUserToRoleGroup(BUILDER_GROUP_NAME);
 
     const role = await determineUserRoleFromGroups(workspace, user);
 
-    expect(role).toBe("builder");
+    expect(role).toBe("user");
   });
 
   it("grants 'manager' from the dust-managers group", async () => {
@@ -352,17 +352,16 @@ describe("determineUserRoleFromGroups", () => {
     expect(role).toBe("manager");
   });
 
-  it("prioritizes 'admin' over 'manager' and 'builder'", async () => {
+  it("prioritizes 'admin' over 'manager'", async () => {
     await addUserToRoleGroup(ADMIN_GROUP_NAME);
     await addUserToRoleGroup(MANAGER_GROUP_NAME);
-    await addUserToRoleGroup(BUILDER_GROUP_NAME);
 
     const role = await determineUserRoleFromGroups(workspace, user);
 
     expect(role).toBe("admin");
   });
 
-  it("prioritizes 'manager' over 'builder'", async () => {
+  it("grants 'manager' even when also in the dust-builders group", async () => {
     await addUserToRoleGroup(MANAGER_GROUP_NAME);
     await addUserToRoleGroup(BUILDER_GROUP_NAME);
 

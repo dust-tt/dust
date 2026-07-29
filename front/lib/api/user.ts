@@ -2,7 +2,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import {
   ADMIN_GROUP_NAME,
-  BUILDER_GROUP_NAME,
   GroupResource,
   MANAGER_GROUP_NAME,
 } from "@app/lib/resources/group_resource";
@@ -303,7 +302,6 @@ export async function determineUserRoleFromGroups(
   });
 
   let atLeastManager = false;
-  let atLeastBuilder = false;
 
   for (const group of userGroups) {
     if (group.name === ADMIN_GROUP_NAME) {
@@ -312,17 +310,12 @@ export async function determineUserRoleFromGroups(
     if (group.name === MANAGER_GROUP_NAME) {
       atLeastManager = true;
     }
-    if (group.name === BUILDER_GROUP_NAME) {
-      atLeastBuilder = true;
-    }
   }
   // If we're here, the user is not in the admin group. Role precedence is
-  // admin > manager > builder > user.
+  // admin > manager > user. The `dust-builders` group no longer grants a role: it is mirrored
+  // into the manual "Builders" group instead (see handleRoleAssignmentForGroup).
   if (atLeastManager) {
     return "manager";
-  }
-  if (atLeastBuilder) {
-    return "builder";
   }
 
   // Did not find any group granting a role, so the user should be a regular user.
