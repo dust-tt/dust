@@ -313,6 +313,78 @@
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/PrivateReaction'
+ *     PrivateAgentMessageConsumptionAttribution:
+ *       type: object
+ *       nullable: true
+ *       description: Versioned, cache-naive estimated explanation of an agent message's billed credits. This data does not calculate or replace the billed total.
+ *       required:
+ *         - attributionVersion
+ *         - grossAttributedCreditAmountMicro
+ *         - items
+ *       properties:
+ *         attributionVersion:
+ *           type: integer
+ *           minimum: 1
+ *         grossAttributedCreditAmountMicro:
+ *           type: integer
+ *           minimum: 0
+ *           description: Sum of gross item attribution in millionths of a credit, before cache effects.
+ *         items:
+ *           type: array
+ *           items:
+ *             type: object
+ *             required:
+ *               - itemType
+ *               - inputTokensCount
+ *               - outputTokensCount
+ *               - grossAttributedCreditAmountMicro
+ *               - directCreditAmountMicro
+ *               - tool
+ *             properties:
+ *               itemType:
+ *                 type: string
+ *                 enum: [system, input, output, reasoning, tool]
+ *               inputTokensCount:
+ *                 type: integer
+ *                 nullable: true
+ *                 minimum: 0
+ *                 description: Token footprint on the model input boundary. For a tool item, this is the estimated footprint of the result produced by the tool execution.
+ *               outputTokensCount:
+ *                 type: integer
+ *                 nullable: true
+ *                 minimum: 0
+ *                 description: Token footprint on the model output boundary. For a tool item, this is the estimated footprint of emitting the tool name and parameters.
+ *               grossAttributedCreditAmountMicro:
+ *                 type: integer
+ *                 minimum: 0
+ *                 description: Cache-naive attribution converted to millionths of a credit, including direct tool credits.
+ *               directCreditAmountMicro:
+ *                 type: integer
+ *                 nullable: true
+ *                 minimum: 0
+ *                 description: Exact direct execution charge in millionths of a credit when the tool had one.
+ *               tool:
+ *                 type: object
+ *                 nullable: true
+ *                 required:
+ *                   - actionId
+ *                   - displayName
+ *                   - functionCallName
+ *                   - internalMCPServerName
+ *                   - toolName
+ *                 properties:
+ *                   actionId:
+ *                     type: string
+ *                   displayName:
+ *                     type: string
+ *                   functionCallName:
+ *                     type: string
+ *                   internalMCPServerName:
+ *                     type: string
+ *                     nullable: true
+ *                   toolName:
+ *                     type: string
+ *                     nullable: true
  *     PrivateAgentMessage:
  *       type: object
  *       description: An agent message in a conversation.
@@ -408,6 +480,8 @@
  *           type: number
  *           nullable: true
  *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
+ *         consumptionAttribution:
+ *           $ref: '#/components/schemas/PrivateAgentMessageConsumptionAttribution'
  *         resolvedModel:
  *           type: object
  *           nullable: true

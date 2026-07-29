@@ -730,6 +730,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     { agentMessageId }: { agentMessageId: string }
   ): Promise<{
+    conversationModelId: ModelId;
     agentMessageModelId: ModelId;
     status: AgentMessageStatus;
     runIds: string[] | null;
@@ -762,6 +763,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     return {
+      conversationModelId: messageRow.conversationId,
       agentMessageModelId: agentMessage.id,
       status: agentMessage.status,
       runIds: agentMessage.runIds,

@@ -16,6 +16,7 @@ import {
   RUN_MODEL_MAX_RETRIES,
   TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
 } from "@app/temporal/agent_loop/config";
+import { continueAfterRecordingModelStep } from "@app/temporal/agent_loop/lib/model_step_state";
 import {
   isRunModelLLMUnresponsiveError,
   isTerminalRunModelTimeout,
@@ -31,6 +32,7 @@ import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import type {
   AgentLoopArgs,
   AgentLoopArgsWithTiming,
+  AgentMessageConsumptionEvidence,
 } from "@app/types/assistant/agent_run";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type { SupportedModel } from "@app/types/assistant/models/types";
@@ -234,6 +236,7 @@ export async function agentLoopWorkflow({
   let creditStopRequested = false;
 
   const runIds: string[] = [];
+  const consumptionAttributionEvidence: AgentMessageConsumptionEvidence[] = [];
 
   try {
     const { agentMessageId, conversationId } = agentLoopArgs;
@@ -257,7 +260,7 @@ export async function agentLoopWorkflow({
 
         const stepStartTime = Date.now();
 
-        const { runId, shouldContinue } = await executeStepIteration({
+        const { shouldContinue } = await executeStepIteration({
           authType,
           agentLoopArgs: {
             ...agentLoopArgs,
@@ -266,12 +269,18 @@ export async function agentLoopWorkflow({
           currentStep,
           runIds,
           startStep,
+          recordModelStep: ({
+            runId,
+            consumptionAttributionEvidence: stepConsumptionEvidence,
+          }) => {
+            if (runId) {
+              runIds.push(runId);
+            }
+            if (stepConsumptionEvidence) {
+              consumptionAttributionEvidence.push(stepConsumptionEvidence);
+            }
+          },
         });
-
-        // Update state with results.
-        if (runId) {
-          runIds.push(runId);
-        }
 
         metrics.logStepCompletion(
           agentMessageId,
@@ -339,6 +348,7 @@ export async function agentLoopWorkflow({
         ...agentLoopArgs,
         dustRunIds: runIds,
         startStep,
+        consumptionAttributionEvidence,
       };
 
       await CancellationScope.nonCancellable(async () => {
@@ -376,6 +386,7 @@ export async function agentLoopWorkflow({
       ...agentLoopArgs,
       dustRunIds: runIds,
       startStep,
+      consumptionAttributionEvidence,
     };
 
     if (cancelRequested || interruptRequested) {
@@ -415,14 +426,18 @@ async function executeStepIteration({
   agentLoopArgs,
   runIds,
   startStep,
+  recordModelStep,
 }: {
   authType: AuthenticatorType;
   currentStep: number;
   agentLoopArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   startStep: number;
+  recordModelStep: (result: {
+    runId: string | null;
+    consumptionAttributionEvidence: AgentMessageConsumptionEvidence | null;
+  }) => void;
 }): Promise<{
-  runId: string | null;
   shouldContinue: boolean;
 }> {
   const result = await runModelAndCreateActionsActivity({
@@ -436,75 +451,80 @@ async function executeStepIteration({
   if (!result) {
     // Error occurred — no runId to capture.
     return {
-      runId: null,
       shouldContinue: false,
     };
   }
 
-  const { runId, actionBlobs } = result;
+  const { runId, consumptionAttributionEvidence = null } = result;
 
-  // Generation completed or the loop unpaused and no new tools were generated.
-  if (actionBlobs.length === 0) {
-    return {
-      runId,
-      // If runId is null that means we unpaused the loop with no new tools (eg: they were all
-      // denied) and no LLM call, so we need to continue as the agent loop is not finished.
-      shouldContinue: runId === null,
-    };
-  }
+  return continueAfterRecordingModelStep({
+    modelResult: { runId, consumptionAttributionEvidence },
+    recordModelStep,
+    continueStep: async () => {
+      const { actionBlobs } = result;
 
-  // If at least one action needs approval, we break out of the loop and will resume once all
-  // actions have been approved.
-  const needsApproval = actionBlobs.some((a) => a.needsApproval);
-  if (needsApproval) {
-    return {
-      runId,
-      shouldContinue: false,
-    };
-  }
+      // Generation completed or the loop unpaused and no new tools were generated.
+      if (actionBlobs.length === 0) {
+        return {
+          // If runId is null that means we unpaused the loop with no new tools (eg: they were all
+          // denied) and no LLM call, so we need to continue as the agent loop is not finished.
+          shouldContinue: runId === null,
+        };
+      }
 
-  // Execute tools and collect any deferred events.
-  const toolResults = await Promise.all(
-    actionBlobs.map(({ actionId, retryPolicy }) =>
-      retryPolicy === "no_retry"
-        ? runToolActivity(authType, {
-            actionId,
-            runAgentArgs: agentLoopArgs,
-            step: currentStep,
-            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-          })
-        : runRetryableToolActivity(authType, {
-            actionId,
-            runAgentArgs: agentLoopArgs,
-            step: currentStep,
-            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-          })
-    )
-  );
+      // If at least one action needs approval, we break out of the loop and will resume once all
+      // actions have been approved.
+      const needsApproval = actionBlobs.some((a) => a.needsApproval);
+      if (needsApproval) {
+        return {
+          shouldContinue: false,
+        };
+      }
 
-  // Collect all deferred events from tool executions.
-  const allDeferredEvents = toolResults.flatMap(
-    (result) => result.deferredEvents
-  );
+      // Execute tools and collect any deferred events.
+      const toolResults = await Promise.all(
+        actionBlobs.map(({ actionId, retryPolicy }) =>
+          retryPolicy === "no_retry"
+            ? runToolActivity(authType, {
+                actionId,
+                runAgentArgs: agentLoopArgs,
+                step: currentStep,
+                runIds: [...runIds],
+              })
+            : runRetryableToolActivity(authType, {
+                actionId,
+                runAgentArgs: agentLoopArgs,
+                step: currentStep,
+                runIds: [...runIds],
+              })
+        )
+      );
 
-  // If there are deferred events, publish them after all tools have completed.
-  if (allDeferredEvents.length > 0) {
-    const shouldPauseWorkflow =
-      await publishDeferredEventsActivity(allDeferredEvents);
+      // Collect all deferred events from tool executions.
+      const allDeferredEvents = toolResults.flatMap(
+        (toolResult) => toolResult.deferredEvents
+      );
 
-    if (shouldPauseWorkflow) {
-      // Break the loop - workflow will be restarted externally once required action is completed.
+      // If there are deferred events, publish them after all tools have completed.
+      if (allDeferredEvents.length > 0) {
+        const shouldPauseWorkflow =
+          await publishDeferredEventsActivity(allDeferredEvents);
+
+        if (shouldPauseWorkflow) {
+          // Break the loop - workflow will be restarted externally once required action is completed.
+          return {
+            shouldContinue: false,
+          };
+        }
+      }
+
       return {
-        runId,
-        shouldContinue: false,
+        shouldContinue: !toolResults.some(
+          (toolResult) => toolResult.shouldPauseAgentLoop
+        ),
       };
-    }
-  }
-
-  return {
-    runId,
-    shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
-  };
+    },
+  });
 }
 
 export async function runSandboxChildToolWorkflow({

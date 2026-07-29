@@ -1,4 +1,4 @@
-import { computeAndStoreAgentMessageCredits } from "@app/lib/api/assistant/credit_cost";
+import { computeAndStoreAgentMessageCreditsWithBreakdown } from "@app/lib/api/assistant/credit_cost";
 import {
   sendEmailReplyOnCompletion,
   sendEmailReplyOnError,
@@ -25,18 +25,36 @@ import {
 } from "@app/temporal/agent_loop/activities/usage_tracking";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
+async function launchAnalyticsAfterCredits(
+  auth: Authenticator,
+  agentLoopArgs: AgentLoopArgs,
+  creditsPromise: ReturnType<
+    typeof computeAndStoreAgentMessageCreditsWithBreakdown
+  >
+): Promise<void> {
+  const { directToolCreditAmounts } = await creditsPromise;
+  await launchAgentMessageAnalytics(auth, {
+    ...agentLoopArgs,
+    directToolCreditAmounts,
+  });
+}
+
 export async function finalizeSuccessfulAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  const creditsPromise = computeAndStoreAgentMessageCreditsWithBreakdown(
+    auth,
+    agentLoopArgs
+  );
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
-    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAnalyticsAfterCredits(auth, agentLoopArgs, creditsPromise),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
+    creditsPromise,
     conversationUnreadNotification(auth, agentLoopArgs),
     activationNewConversationNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),
@@ -57,13 +75,17 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
   await finalizeGracefulStop(authType, agentLoopArgs);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  const creditsPromise = computeAndStoreAgentMessageCreditsWithBreakdown(
+    auth,
+    agentLoopArgs
+  );
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
-    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAnalyticsAfterCredits(auth, agentLoopArgs, creditsPromise),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
+    creditsPromise,
     conversationUnreadNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),
   ]);
@@ -84,13 +106,17 @@ export async function finalizeInterruptedAgentLoopActivity(
   await finalizeInterruption(authType, agentLoopArgs);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  const creditsPromise = computeAndStoreAgentMessageCreditsWithBreakdown(
+    auth,
+    agentLoopArgs
+  );
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
-    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAnalyticsAfterCredits(auth, agentLoopArgs, creditsPromise),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
+    creditsPromise,
     conversationUnreadNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),
   ]);
@@ -103,13 +129,17 @@ export async function finalizeCancelledAgentLoopActivity(
   await finalizeCancellation(authType, agentLoopArgs);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  const creditsPromise = computeAndStoreAgentMessageCreditsWithBreakdown(
+    auth,
+    agentLoopArgs
+  );
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
-    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAnalyticsAfterCredits(auth, agentLoopArgs, creditsPromise),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
+    creditsPromise,
     sendEmailReplyOnError(
       auth,
       agentLoopArgs,
@@ -125,15 +155,16 @@ export async function finalizeCreditStoppedAgentLoopActivity(
   await finalizeCreditStop(authType, agentLoopArgs);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  const creditsPromise = computeAndStoreAgentMessageCreditsWithBreakdown(auth, {
+    agentMessageId: agentLoopArgs.agentMessageId,
+  });
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
-    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAnalyticsAfterCredits(auth, agentLoopArgs, creditsPromise),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    computeAndStoreAgentMessageCredits(auth, {
-      agentMessageId: agentLoopArgs.agentMessageId,
-    }),
+    creditsPromise,
     sendEmailReplyOnError(auth, agentLoopArgs, creditsExhaustedMessage(auth)),
   ]);
 }
@@ -146,13 +177,17 @@ export async function finalizeErroredAgentLoopActivity(
   await notifyWorkflowError(authType, agentLoopArgs, error);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  const creditsPromise = computeAndStoreAgentMessageCreditsWithBreakdown(
+    auth,
+    agentLoopArgs
+  );
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
-    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAnalyticsAfterCredits(auth, agentLoopArgs, creditsPromise),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
+    creditsPromise,
     sendEmailReplyOnError(
       auth,
       agentLoopArgs,

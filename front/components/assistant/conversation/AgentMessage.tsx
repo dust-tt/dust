@@ -8,6 +8,7 @@ import { AttachmentCitation } from "@app/components/assistant/conversation/attac
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { CreditCostSubmenu } from "@app/components/assistant/conversation/CreditCostSubmenu";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -27,10 +28,6 @@ import {
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import { useAutoOpenSidePanel } from "@app/components/assistant/conversation/useAutoOpenSidePanel";
-import {
-  CREDIT_COST_ITEM_CLASS_NAME,
-  useCreditCostMenuItem,
-} from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
 import { getActionCardPlugin } from "@app/components/markdown/ActionCardDirective";
 import {
@@ -304,11 +301,13 @@ export function AgentMessage({
   const needsCostFetch =
     hasCompletedRunThisSession ||
     agentMessage.costCredits == null ||
+    agentMessage.consumptionAttribution === undefined ||
     (hasMessageSpawnedSubAgent(agentMessage) &&
       agentMessage.subAgentCostCredits == null);
   const {
     message: refreshedMessage,
     isMessageLoading,
+    isValidating: isMessageValidating,
     mutateMessage,
   } = useConversationMessage({
     conversationId,
@@ -320,15 +319,20 @@ export function AgentMessage({
   });
   const refreshedAgentMessage =
     refreshedMessage?.type === "agent_message" ? refreshedMessage : null;
-  const creditCostItem = useCreditCostMenuItem({
-    credits: refreshedAgentMessage?.costCredits ?? agentMessage.costCredits,
-    subAgentCredits:
-      refreshedAgentMessage?.subAgentCostCredits ??
-      agentMessage.subAgentCostCredits,
-  });
+  const displayedCostCredits =
+    refreshedAgentMessage?.costCredits ?? agentMessage.costCredits;
+  const displayedSubAgentCostCredits =
+    refreshedAgentMessage?.subAgentCostCredits ??
+    agentMessage.subAgentCostCredits;
+  const displayedConsumptionAttribution = isMessageValidating
+    ? undefined
+    : refreshedAgentMessage
+      ? refreshedAgentMessage.consumptionAttribution
+      : agentMessage.consumptionAttribution;
   // Keep the cost section visible while the fetch is in flight (showing a
   // loader) rather than popping it in once it resolves.
-  const isCreditCostLoading = needsCostFetch && isMessageLoading;
+  const isCreditCostLoading =
+    needsCostFetch && (isMessageLoading || isMessageValidating);
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -980,20 +984,16 @@ export function AgentMessage({
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {(creditCostItem || isCreditCostLoading) && (
+            {(displayedCostCredits ||
+              displayedSubAgentCostCredits ||
+              isCreditCostLoading) && (
               <>
-                {creditCostItem ? (
-                  <DropdownMenuItem {...creditCostItem} />
-                ) : (
-                  <DropdownMenuItem
-                    label="Credit cost"
-                    endComponent={
-                      <div className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />
-                    }
-                    className={CREDIT_COST_ITEM_CLASS_NAME}
-                    onSelect={(e) => e.preventDefault()}
-                  />
-                )}
+                <CreditCostSubmenu
+                  credits={displayedCostCredits}
+                  subAgentCredits={displayedSubAgentCostCredits}
+                  attribution={displayedConsumptionAttribution}
+                  isLoading={isCreditCostLoading}
+                />
                 <DropdownMenuSeparator />
               </>
             )}

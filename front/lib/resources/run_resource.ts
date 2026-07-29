@@ -201,7 +201,11 @@ export class RunResource extends BaseResource<RunModel> {
       runs: RunResource[];
     }
   ): Promise<
-    (RunUsageType & { runModelId: ModelId; runKey: string | null })[]
+    (RunUsageType & {
+      runUsageModelId: ModelId;
+      runModelId: ModelId;
+      runKey: string | null;
+    })[]
   > {
     const runModelIds = runs.map((run) => run.id);
     if (runModelIds.length === 0) {
@@ -223,6 +227,7 @@ export class RunResource extends BaseResource<RunModel> {
     });
 
     return usages.map((usage) => ({
+      runUsageModelId: usage.id,
       runModelId: usage.runId,
       runKey: runKeyByModelId.get(usage.runId) ?? null,
       completionTokens: usage.completionTokens,
@@ -253,6 +258,34 @@ export class RunResource extends BaseResource<RunModel> {
     }
 
     return new this(this.model, run.get());
+  }
+
+  static async fetchRunUsageByModelId(
+    auth: Authenticator,
+    { runUsageModelId }: { runUsageModelId: ModelId }
+  ): Promise<(RunUsageType & { runUsageModelId: ModelId }) | null> {
+    const usage = await RunUsageModel.findOne({
+      where: {
+        id: runUsageModelId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    if (!usage) {
+      return null;
+    }
+
+    return {
+      runUsageModelId: usage.id,
+      completionTokens: usage.completionTokens,
+      reasoningTokens: usage.reasoningTokens,
+      modelId: usage.modelId as ModelIdType,
+      promptTokens: usage.promptTokens,
+      providerId: usage.providerId as ModelProviderIdType,
+      cachedTokens: usage.cachedTokens,
+      cacheCreationTokens: usage.cacheCreationTokens,
+      costMicroUsd: usage.costMicroUsd,
+      isBatch: usage.isBatch,
+    };
   }
 
   static async countByAppAndRunType(
@@ -470,7 +503,9 @@ export class RunResource extends BaseResource<RunModel> {
       runs: [this],
     });
 
-    return usages.map(({ runModelId, ...usage }) => usage);
+    return usages.map(
+      ({ runModelId, runUsageModelId: _runUsageModelId, ...usage }) => usage
+    );
   }
 }
 

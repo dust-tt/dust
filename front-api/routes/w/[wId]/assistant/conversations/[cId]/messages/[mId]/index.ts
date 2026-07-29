@@ -1,9 +1,11 @@
+import { getAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution";
 import {
   softDeleteAgentMessage,
   softDeleteUserMessageAndReplies,
 } from "@app/lib/api/assistant/conversation";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
 import type {
   LightMessageType,
   MessageType,
@@ -179,8 +181,39 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
       return ctx.json({
         message: renderedMessages.value[0] as LightMessageType,
       });
-    case "full":
-      return ctx.json({ message: renderedMessages.value[0] as MessageType });
+    case "full": {
+      const message = renderedMessages.value[0] as MessageType;
+      if (!isAgentMessageType(message)) {
+        return ctx.json({ message });
+      }
+
+      const attributionResult = await getAgentMessageConsumptionAttribution(
+        auth,
+        {
+          agentMessageId: message.sId,
+        }
+      );
+      if (attributionResult.isErr()) {
+        logger.error(
+          {
+            agentMessageId: message.sId,
+            conversationId: cId,
+            error: attributionResult.error,
+            workspaceId: auth.getNonNullableWorkspace().sId,
+          },
+          "Failed to read agent message consumption attribution"
+        );
+      }
+
+      return ctx.json({
+        message: {
+          ...message,
+          consumptionAttribution: attributionResult.isOk()
+            ? attributionResult.value
+            : null,
+        },
+      });
+    }
     default:
       assertNever(viewType);
   }

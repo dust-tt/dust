@@ -24,6 +24,7 @@ import { getMaxActionsPerStep } from "@app/types/assistant/agent";
 import type {
   AgentLoopArgsWithTiming,
   AgentLoopExecutionData,
+  AgentMessageConsumptionEvidence,
 } from "@app/types/assistant/agent_run";
 import {
   getAgentLoopData,
@@ -36,6 +37,7 @@ import { Context } from "@temporalio/activity";
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
   runId: string | null;
+  consumptionAttributionEvidence?: AgentMessageConsumptionEvidence | null;
 };
 
 const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
@@ -214,8 +216,22 @@ async function _runModelAndCreateActionsActivity({
   const featureFlags = await getFeatureFlags(auth);
   if (featureFlags.includes("run_tools_from_prompt")) {
     const result = await handlePromptCommand(auth, runAgentData, step, runIds);
+    if (result === null) {
+      return null;
+    }
     if (result !== "not_a_command") {
-      return result;
+      return {
+        ...result,
+        consumptionAttributionEvidence:
+          result.actionBlobs.length > 0
+            ? {
+                dustRunId: null,
+                actionModelIds: result.actionBlobs.map(
+                  (action) => action.actionId
+                ),
+              }
+            : null,
+      };
     }
   }
 
@@ -231,6 +247,7 @@ async function _runModelAndCreateActionsActivity({
       return {
         actionBlobs: existingData.actionBlobs,
         runId: null,
+        consumptionAttributionEvidence: null,
       };
     }
   }
@@ -264,7 +281,11 @@ async function _runModelAndCreateActionsActivity({
   // Generation completed (text response, no tool calls) — runModel returns
   // { actions: [], runId } so we still capture the runId for tracking.
   if (actions.length === 0) {
-    return { runId, actionBlobs: [] };
+    return {
+      runId,
+      actionBlobs: [],
+      consumptionAttributionEvidence: null,
+    };
   }
 
   // Enforce a limit on actions per step, reducing by depth (8/8/4/2)
@@ -304,6 +325,14 @@ async function _runModelAndCreateActionsActivity({
   return {
     runId,
     actionBlobs: createResult.actionBlobs,
+    consumptionAttributionEvidence: runId
+      ? {
+          dustRunId: runId,
+          actionModelIds: createResult.actionBlobs.map(
+            (action) => action.actionId
+          ),
+        }
+      : null,
   };
 }
 

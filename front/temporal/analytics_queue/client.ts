@@ -1,4 +1,5 @@
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
+import { computeRunKey } from "@app/lib/metronome/events";
 import {
   AgentMessageModel,
   MessageModel,
@@ -56,7 +57,13 @@ export async function launchStoreAgentAnalyticsWorkflow({
 }): Promise<Result<undefined, Error>> {
   const { workspaceId } = authType;
 
-  const { agentMessageId, conversationId } = agentLoopArgs;
+  const {
+    agentMessageId,
+    agentMessageVersion,
+    conversationId,
+    dustRunIds,
+    startStep,
+  } = agentLoopArgs;
 
   const client = await getTemporalClientForFrontNamespace();
 
@@ -64,6 +71,7 @@ export async function launchStoreAgentAnalyticsWorkflow({
     agentMessageId,
     conversationId,
     workspaceId,
+    executionKey: `${agentMessageVersion}-${startStep ?? 0}-${computeRunKey(dustRunIds ?? [])}`,
   });
 
   try {

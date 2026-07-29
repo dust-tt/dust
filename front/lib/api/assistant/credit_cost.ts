@@ -10,6 +10,7 @@ import {
   computeRunKey,
   getToolBillingInfo,
   intelligenceAwuFromRunUsagesGroupedByRunKey,
+  toolAwuFromAction,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -51,6 +52,16 @@ export interface AgentMessageCreditsBreakdown {
   totalAwu: number;
   byTool: AgentMessageCreditsToolBreakdown[];
 }
+
+export interface StoredAgentMessageCredits {
+  costCredits: number | null;
+  directToolCreditAmounts: {
+    actionModelId: number;
+    directCreditAmountMicro: number | null;
+  }[];
+}
+
+const CREDIT_AMOUNT_MICRO_PER_CREDIT = 1_000_000;
 
 /**
  * Fetches the stored analytics document for each message, keyed by messageId. Returns an empty
@@ -188,7 +199,8 @@ export function computeAgentMessageCredits({
 
 /**
  * Compute the agent message credit cost once at the end of the agentic loop and persist it on the
- * agent message. Returns the computed value (or null when there is nothing to track).
+ * agent message. Returns the computed value and the exact per-action direct credit amounts used by
+ * attribution.
  *
  * Called from the finalize activities (alongside the Metronome usage events it is derived from),
  * not from the hot terminal-event path, so publishing the terminal events stays lightweight. The
@@ -204,13 +216,13 @@ export function computeAgentMessageCredits({
  * Metronome events. Tagging is idempotent (same runIds → same runKey), so it stays overwrite-safe
  * across Temporal retries.
  */
-export async function computeAndStoreAgentMessageCredits(
+export async function computeAndStoreAgentMessageCreditsWithBreakdown(
   auth: Authenticator,
   {
     agentMessageId,
     dustRunIds,
   }: { agentMessageId: string; dustRunIds?: string[] }
-): Promise<number | null> {
+): Promise<StoredAgentMessageCredits> {
   const creditContext =
     await ConversationResource.fetchAgentMessageCreditContext(auth, {
       agentMessageId,
@@ -221,14 +233,14 @@ export async function computeAndStoreAgentMessageCredits(
       { workspaceId: auth.getNonNullableWorkspace().sId, agentMessageId },
       "[Credits] Agent message not found while computing costCredits."
     );
-    return null;
+    return { costCredits: null, directToolCreditAmounts: [] };
   }
 
   const { agentMessageModelId, status, runIds, triggeringUserMessageOrigin } =
     creditContext;
 
   if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(status)) {
-    return null;
+    return { costCredits: null, directToolCreditAmounts: [] };
   }
 
   // Tag this execution's runs with their runKey before recomputing, so the
@@ -256,6 +268,24 @@ export async function computeAndStoreAgentMessageCredits(
     })),
     contextOrigin: triggeringUserMessageOrigin,
   });
+  const directToolCreditAmounts = actions
+    .filter((action) => isToolExecutionStatusFinal(action.status))
+    .map((action) => {
+      const directCredits = toolAwuFromAction(
+        {
+          toolName: getToolNameFromFunctionCallName(action.functionCallName),
+          internalMCPServerName: action.metadata.internalMCPServerName,
+        },
+        triggeringUserMessageOrigin
+      );
+      return {
+        actionModelId: action.id,
+        directCreditAmountMicro:
+          directCredits > 0
+            ? directCredits * CREDIT_AMOUNT_MICRO_PER_CREDIT
+            : null,
+      };
+    });
 
   await ConversationResource.updateAgentMessageCostCredits(auth, {
     agentMessageModelId,
@@ -291,7 +321,18 @@ export async function computeAndStoreAgentMessageCredits(
     });
   }
 
-  return costCredits;
+  return { costCredits, directToolCreditAmounts };
+}
+
+export async function computeAndStoreAgentMessageCredits(
+  auth: Authenticator,
+  args: { agentMessageId: string; dustRunIds?: string[] }
+): Promise<number | null> {
+  const result = await computeAndStoreAgentMessageCreditsWithBreakdown(
+    auth,
+    args
+  );
+  return result.costCredits;
 }
 
 async function fetchRunUsagesForAgentMessage(

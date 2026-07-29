@@ -31,6 +31,7 @@ import {
 } from "@app/types/assistant/conversation";
 import { NOOP_MODEL_ID } from "@app/types/assistant/models/noop";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
 import { isGlobalAgentId } from "./assistant";
@@ -131,6 +132,19 @@ export type AgentLoopArgs = {
   // The step at which this agent loop execution started. Used to filter MCP actions
   // to only those from this execution (step >= startStep).
   startStep?: number;
+
+  consumptionAttributionEvidence?: AgentMessageConsumptionEvidence[];
+  directToolCreditAmounts?: AgentMessageDirectToolCreditAmount[];
+};
+
+export type AgentMessageConsumptionEvidence = {
+  dustRunId: string | null;
+  actionModelIds: ModelId[];
+};
+
+export type AgentMessageDirectToolCreditAmount = {
+  actionModelId: ModelId;
+  directCreditAmountMicro: number | null;
 };
 
 export type AgentMessageRef = {

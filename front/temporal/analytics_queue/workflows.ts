@@ -10,9 +10,20 @@ const { storeAgentAnalyticsActivity, storeAgentMessageFeedbackActivity } =
   proxyActivities<typeof activities>({
     startToCloseTimeout: "5 minutes",
     retry: {
-      // Analytics is best effort, only retry twice.
+      // These background projections are best effort and retry twice.
       maximumAttempts: 2,
       initialInterval: "30 seconds",
+      backoffCoefficient: 2,
+    },
+  });
+
+const { materializeAgentMessageConsumptionAttributionActivity } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "5 minutes",
+    retry: {
+      maximumAttempts: 10,
+      initialInterval: "30 seconds",
+      maximumInterval: "30 minutes",
       backoffCoefficient: 2,
     },
   });
@@ -25,9 +36,16 @@ export async function storeAgentAnalyticsWorkflow(
     agentLoopArgs: AgentLoopArgs;
   }
 ): Promise<void> {
-  await storeAgentAnalyticsActivity(authType, {
-    agentLoopArgs,
-  });
+  const attributionPromise =
+    materializeAgentMessageConsumptionAttributionActivity(authType, {
+      agentMessageId: agentLoopArgs.agentMessageId,
+      evidence: agentLoopArgs.consumptionAttributionEvidence,
+      directToolCreditAmounts: agentLoopArgs.directToolCreditAmounts,
+    }).catch(() => undefined);
+  await Promise.all([
+    storeAgentAnalyticsActivity(authType, { agentLoopArgs }),
+    attributionPromise,
+  ]);
 }
 
 export async function storeAgentMessageFeedbackWorkflow(

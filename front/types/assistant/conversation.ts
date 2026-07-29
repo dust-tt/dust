@@ -3,6 +3,7 @@ import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_int
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AgentMessageConsumptionAttribution } from "@app/types/assistant/agent_message_consumption";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 import moment from "moment";
 import type { ContentFragmentType } from "../content_fragment";
@@ -333,6 +334,8 @@ export type BaseAgentMessageType = {
   // `null` everywhere else (e.g. conversation list rendering). Optional during
   // rollout. See [BACK12].
   subAgentCostCredits?: number | null;
+  // Available on single-message reads when the active attribution version is complete.
+  consumptionAttribution?: AgentMessageConsumptionAttribution | null;
 };
 
 // `step` is the agent-loop step a given activity step was produced in. It lets
