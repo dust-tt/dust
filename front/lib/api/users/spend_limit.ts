@@ -1,7 +1,12 @@
 import {
+  makeSpendLimitAwuCreditsRateLimitKeyForUser,
+  makeSpendLimitCycleWindowBounds,
+} from "@app/lib/api/assistant/rate_limits";
+import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { getEffectiveSpendCapAwuCreditsForUser } from "@app/lib/api/credits/members_usage";
 import { reconcileUser } from "@app/lib/api/metronome/reconcile_credit_state";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
@@ -12,9 +17,16 @@ import {
   upsertMetronomePerUserCapAlert,
   upsertMetronomePerUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
+import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import {
+  addFixedWindowCount,
+  type FixedWindowBounds,
+  getFixedWindowCount,
+} from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
   GetUserSpendLimitResponse,
@@ -25,6 +37,7 @@ import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export const MIN_USER_SPEND_LIMIT_AWU_CREDITS = 0;
 export const MAX_USER_SPEND_LIMIT_AWU_CREDITS = 1_000_000;
@@ -326,4 +339,106 @@ export async function setUserSpendLimit(
   });
 
   return new Ok({ limit });
+}
+
+// Fixed-window bounds for the current Metronome contract billing cycle (the
+// window the per-user spend cap is bucketed on). `null` when no billing period
+// can be resolved — callers treat that as a no-op (fail-open, matching the rest
+// of the rate-limiter callers).
+async function resolveSpendLimitCycleBounds(
+  workspace: LightWorkspaceType
+): Promise<FixedWindowBounds | null> {
+  const periodResult = await getCachedMetronomeCurrentBillingPeriod(
+    workspace.sId
+  );
+  if (periodResult.isErr() || !periodResult.value) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        err: periodResult.isErr() ? periodResult.error : undefined,
+      },
+      "[SpendLimitRateCap] Could not resolve contract billing period; skipping fixed-window cap"
+    );
+    return null;
+  }
+  const { cycleStart, cycleEnd } = periodResult.value;
+  return makeSpendLimitCycleWindowBounds(cycleStart, cycleEnd);
+}
+
+/**
+ * Synchronous, Metronome-independent enforcement of the per-user spend cap, read
+ * at message-send time from the Redis fixed-window counter over the current
+ * contract billing cycle. The threshold is the user's *effective* cap resolved
+ * the standard way (per-user override > group cap > seat-type/workspace
+ * default, each incl. the seat allowance) — the same resolution the usage table
+ * uses. Runs alongside the Metronome per-user cap (`isUserBlocked`) as a faster,
+ * independent backup. Returns `false` (does not block) when there is no cap, the
+ * billing period can't be resolved, or on a Redis read error (fail-open).
+ */
+export async function isUserSpendLimitRateCapReached(
+  auth: Authenticator,
+  { user }: { user: UserResource }
+): Promise<boolean> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const threshold = await getEffectiveSpendCapAwuCreditsForUser(auth, { user });
+  if (threshold === null) {
+    return false;
+  }
+
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return false;
+  }
+
+  const countResult = await getFixedWindowCount({
+    key: makeSpendLimitAwuCreditsRateLimitKeyForUser(workspace, user.toJSON()),
+    bounds,
+  });
+  if (countResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        userId: user.sId,
+        err: countResult.error,
+      },
+      "[SpendLimitRateCap] Failed to read fixed-window count; allowing message"
+    );
+    return false;
+  }
+
+  return countResult.value >= threshold;
+}
+
+/**
+ * Adds `incrementBy` AWU credits to the per-user fixed-window spend-cap counter
+ * for the current contract billing cycle. Records for every user (all users are
+ * capped; the cap is resolved at enforcement/read time, not here). `incrementBy`
+ * is the newly-accrued delta for a message (not its running total — the caller
+ * diffs against the previously-recorded amount so repeated finalizes don't
+ * over-count). No-op when the billing period can't be resolved.
+ */
+export async function recordUserSpendLimitUsage(
+  auth: Authenticator,
+  { user, incrementBy }: { user: UserResource; incrementBy: number }
+): Promise<void> {
+  // Only whole positive credits are recordable (the counter is an integer
+  // INCRBY); skip anything else rather than letting it reach the counter.
+  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
+    return;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return;
+  }
+
+  await addFixedWindowCount({
+    key: makeSpendLimitAwuCreditsRateLimitKeyForUser(workspace, user.toJSON()),
+    bounds,
+    incrementBy,
+    logger,
+  });
 }

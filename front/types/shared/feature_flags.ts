@@ -325,6 +325,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Warn users about similar existing agents before they create a duplicate in the agent builder.",
     stage: "dust_only",
   },
+  enforce_user_spend_limit_rate_cap: {
+    description:
+      "Enable the per-user spend-cap backup: record per-user AWU usage into the Redis fixed-window counter and enforce it at message send (blocks with user_cap_reached). When off, usage is neither recorded nor enforced.",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
