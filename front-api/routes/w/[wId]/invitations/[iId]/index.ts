@@ -3,7 +3,6 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { getFeatureFlags } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import type { PostMemberInvitationsResponseBody } from "@app/types/api/invitation";
 import { PostMemberInvitationBodySchema } from "@app/types/api/invitation";
@@ -61,20 +60,6 @@ app.post(
           message: "You do not have permission to manage admin invitations.",
         },
       });
-    }
-
-    if (body.initialRole === "manager") {
-      const featureFlags = await getFeatureFlags(auth);
-      if (!featureFlags.includes("admin_governance")) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "You cannot assign the manager role as the feature is not enabled for this workspace.",
-          },
-        });
-      }
     }
 
     await invitation.updateStatus(body.status);

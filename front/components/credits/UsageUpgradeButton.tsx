@@ -1,4 +1,3 @@
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRequestUpgrade } from "@app/lib/swr/upgrade_requests";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -33,8 +32,6 @@ export function UsageUpgradeButton({
   isManager = false,
   onManagerNavigate,
 }: UsageUpgradeButtonProps) {
-  const { hasFeature } = useFeatureFlags();
-  const isAdminGovernanceEnabled = hasFeature("admin_governance");
   const { doRequestUpgrade } = useRequestUpgrade({ workspaceId: owner.sId });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -125,10 +122,9 @@ export function UsageUpgradeButton({
           </DialogHeader>
           <DialogContainer>
             <p className="text-sm text-muted-foreground">
-              Your workspace{" "}
-              {isAdminGovernanceEnabled ? "admins and managers" : "admins"} will
-              be notified that you'd like your usage limit increased. They'll
-              review your request and get back to you.
+              Your workspace admins and managers will be notified that you'd
+              like your usage limit increased. They'll review your request and
+              get back to you.
             </p>
           </DialogContainer>
           <DialogFooter

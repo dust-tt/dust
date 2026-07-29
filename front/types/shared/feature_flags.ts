@@ -285,11 +285,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
     stage: "dust_only",
   },
-  admin_governance: {
-    description:
-      "Access to admin governance features, including assigning the manager role from the UI",
-    stage: "dust_only",
-  },
   admin_governance_skill_publication: {
     description:
       "Admin Governance: govern skill publication. Shows the skill state (availability) dropdown in the UI, defaults new skills to unpublished (editors-only), and allows unpublishing a skill.",

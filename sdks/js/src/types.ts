@@ -801,7 +801,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "browser_extension_mcp_tools"
   | "sensitivity_labels"
   | "use_vertex_for_supported_models"
-  | "admin_governance"
   | "admin_governance_skill_publication"
   | "live_speech_to_text"
   | "workspace_default_agent"

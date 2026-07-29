@@ -1,5 +1,4 @@
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   useDefaultUserSpendLimit,
   useUpdateDefaultUserSpendLimit,
@@ -29,8 +28,6 @@ export function UsageSettingsCard({
   readOnly,
   hasPool,
 }: UsageSettingsCardProps) {
-  const { hasFeature } = useFeatureFlags();
-  const isAdminGovernanceEnabled = hasFeature("admin_governance");
   const { defaultUserSpendLimit, isDefaultUserSpendLimitLoading } =
     useDefaultUserSpendLimit({ workspaceId });
   const { doUpdateDefaultUserSpendLimit } = useUpdateDefaultUserSpendLimit({
@@ -131,7 +128,7 @@ export function UsageSettingsCard({
         </LockedSection>
         <SettingsList.Row
           title="Upgrade request"
-          description={`Allow members who reach their limit to request an upgrade. Workspace ${isAdminGovernanceEnabled ? "admins and managers" : "admins"} review requests on the this page.`}
+          description="Allow members who reach their limit to request an upgrade. Workspace admins and managers review requests on the this page."
           action={
             <SliderToggle
               selected={usageSettings.allowUpgradeRequest}

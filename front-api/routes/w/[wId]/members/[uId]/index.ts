@@ -209,17 +209,6 @@ app.post(
         });
       }
 
-      if (role === "manager" && !featureFlags.includes("admin_governance")) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "You cannot assign the manager role as the feature is not enabled for your workspace.",
-          },
-        });
-      }
-
       // Check if this is an admin trying to change their own role and they are the sole admin
       const currentUser = auth.user();
       if (currentUser && currentUser.id === user.id && auth.isAdmin()) {

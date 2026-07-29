@@ -2,7 +2,6 @@ import { ManageUsersPanel } from "@app/components/assistant/conversation/space/M
 import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { Button, Users01 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useController } from "react-hook-form";
@@ -19,7 +18,6 @@ export function SkillEditorsSheetWithButton({
   onAddSelfAsEditor,
 }: SkillEditorsSheetWithButtonProps) {
   const { owner } = useSkillBuilderContext();
-  const { hasFeature } = useFeatureFlags();
   const [isOpen, setIsOpen] = useState(false);
 
   const {
@@ -59,9 +57,6 @@ export function SkillEditorsSheetWithButton({
         mode="editors-only"
         editors={editors || []}
         onEditorsChange={onChange}
-        // `builder` is deprecated under admin governance; keep restricting
-        // editors to builders only while the feature flag is off.
-        buildersOnly={!hasFeature("admin_governance")}
       />
     </>
   );
