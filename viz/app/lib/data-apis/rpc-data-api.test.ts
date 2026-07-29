@@ -1,9 +1,41 @@
 import { CacheDataAPI } from "@viz/app/lib/data-apis/cache-data-api";
 import { RPCDataAPI } from "@viz/app/lib/data-apis/rpc-data-api";
 import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 describe("sandbox function data APIs", () => {
+  it("loads workspace-scoped identity over RPC", async () => {
+    const sendMessage = vi.fn().mockResolvedValue({
+      isAuthenticated: true,
+      isWorkspaceMember: true,
+      user: {
+        sId: "usr_123",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        fullName: "Ada Lovelace",
+        image: null,
+      },
+    });
+    const api = new RPCDataAPI(sendMessage);
+
+    await expect(api.getUserIdentity()).resolves.toMatchObject({
+      isAuthenticated: true,
+      isWorkspaceMember: true,
+      user: { sId: "usr_123" },
+    });
+    expect(sendMessage).toHaveBeenCalledWith("getUserIdentity", null);
+  });
+
+  it("returns no identity from the public cache", async () => {
+    const api = new CacheDataAPI();
+
+    await expect(api.getUserIdentity()).resolves.toEqual({
+      isAuthenticated: false,
+      isWorkspaceMember: false,
+      user: null,
+    });
+  });
+
   it("rejects RPC calls with a typed sandbox function error", async () => {
     const api = new RPCDataAPI(async () => {
       throw {

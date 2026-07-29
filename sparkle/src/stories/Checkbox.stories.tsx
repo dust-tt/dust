@@ -141,8 +141,16 @@ export const Interactive: Story = {
   tags: ["ai-generated", "needs-work"],
   play: async ({ canvas, userEvent }) => {
     const checkbox = canvas.getByRole("checkbox");
+    const indicator = checkbox.querySelector('[data-state="unchecked"]');
+
     await expect(checkbox).toHaveAttribute("aria-checked", "false");
+    await expect(indicator).not.toBeNull();
+
     await userEvent.click(checkbox);
+
     await expect(checkbox).toHaveAttribute("aria-checked", "true");
+    await expect(checkbox.querySelector('[data-state="checked"]')).toBe(
+      indicator
+    );
   },
 };

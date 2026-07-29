@@ -82,10 +82,10 @@ describe("PATCH /api/w/:wId/files/:fileId/rename", () => {
     expect((await response.json()).error.type).toBe("invalid_request_error");
   });
 
-  it("should allow builder to rename any file", async () => {
+  it("should allow manager to rename any file", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
-      role: "builder",
+      role: "manager",
     });
 
     const file = await FileFactory.create(auth, user, {
@@ -104,7 +104,7 @@ describe("PATCH /api/w/:wId/files/:fileId/rename", () => {
     expect((await response.json()).file.fileName).toBe("new-name.pdf");
   });
 
-  it("should deny non-builder from renaming non-project files", async () => {
+  it("should deny non-manager from renaming non-project files", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "user",
@@ -127,7 +127,7 @@ describe("PATCH /api/w/:wId/files/:fileId/rename", () => {
       error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can modify files.",
+          "Only users that are `managers` for the current workspace can modify files.",
       },
     });
   });
@@ -196,7 +196,7 @@ describe("PATCH /api/w/:wId/files/:fileId/rename", () => {
   it("should trim whitespace from fileName", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
-      role: "builder",
+      role: "manager",
     });
 
     const file = await FileFactory.create(auth, user, {

@@ -5,7 +5,7 @@ import { SliderToggle } from "@dust-tt/sparkle";
 
 const LABEL = "Workspace Analyst";
 const DESCRIPTION =
-  "Whether workspace admins get the Analyst agent and analytics tools to explore how the workspace is used.";
+  "Whether workspace admins get the Analyst agent and analytics tools to explore how the workspace is used";
 
 interface WorkspaceAnalyticsToggleProps {
   owner: WorkspaceType;

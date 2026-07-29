@@ -166,6 +166,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   // User-specific fields (populated when conversations are listed for a user).
   private userParticipation?: UserParticipation;
   private userLastReadAt: Date | null = null;
+  private nextWakeupAt: number | null = null;
   private _forkingData?: ConversationForkingDataType;
 
   constructor(
@@ -1343,6 +1344,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Map();
     }
     await this.enrichWithParticipationAndReadState(auth, conversations);
+    await this.enrichWithNextWakeupAt(auth, conversations);
     return new Map(conversations.map((c) => [c.sId, c.toListItem()]));
   }
 
@@ -1940,17 +1942,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const result = await this.fetchPrivateConversationsPaginated(auth, {
       pagination,
     });
-    const nextWakeupAtByConversationId =
-      await this.fetchNextWakeupAtByConversationId(
-        auth,
-        result.conversations.map((c) => c.id)
-      );
+    await this.enrichWithNextWakeupAt(auth, result.conversations);
 
     return {
-      conversations: result.conversations.map((c) => ({
-        ...c.toListItem(),
-        nextWakeupAt: nextWakeupAtByConversationId.get(c.id) ?? null,
-      })),
+      conversations: result.conversations.map((c) => c.toListItem()),
       hasMore: result.hasMore,
       lastValue: result.lastValue,
     };
@@ -1961,18 +1956,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    * depends on `ConversationResource` to reuse the established conversation ES reindexing path.
    * This is all to avoid import cycles.
    */
-  private static async fetchNextWakeupAtByConversationId(
+  private static async enrichWithNextWakeupAt(
     auth: Authenticator,
-    conversationIds: ModelId[]
-  ): Promise<Map<ModelId, number>> {
-    if (conversationIds.length === 0) {
-      return new Map();
+    conversations: ConversationResource[]
+  ): Promise<void> {
+    if (conversations.length === 0) {
+      return;
     }
 
     const wakeUps = await WakeUpModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        conversationId: { [Op.in]: conversationIds },
+        conversationId: { [Op.in]: conversations.map((c) => c.id) },
         status: ACTIVE_WAKE_UP_STATUSES,
       },
       order: [
@@ -2015,7 +2010,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     }
 
-    return nextWakeupAtByConversationId;
+    for (const conversation of conversations) {
+      conversation.nextWakeupAt =
+        nextWakeupAtByConversationId.get(conversation.id) ?? null;
+    }
   }
 
   static async listSpaceUnreadConversationsAndActivityForUser(
@@ -2082,6 +2080,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         !participantConversationIds.has(c.id) &&
         (c.userLastReadAt === null || c.updatedAt > c.userLastReadAt)
     );
+
+    // Hydrate next wake-up only for conversations returned to the summary (sidebar inbox).
+    await this.enrichWithNextWakeupAt(auth, [
+      ...unreadConversations,
+      ...nonParticipantUnreadConversations,
+    ]);
 
     const lastUserActivityBySpace = new Map<number, Date>();
 
@@ -5176,7 +5180,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       hasError: this.hasError,
       lastReadMs: this.userLastReadAt?.getTime() ?? null,
       metadata: this.metadata ?? {},
-      nextWakeupAt: null,
+      nextWakeupAt: this.nextWakeupAt,
       requestedSpaceIds: this.getRequestedSpaceIdsFromModel(),
       sId: this.sId,
       spaceId: this.space?.sId ?? null,

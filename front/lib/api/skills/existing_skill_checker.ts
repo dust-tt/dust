@@ -195,9 +195,11 @@ export async function getSimilarSkills(
     );
   }
 
-  // Retrieve all existing custom skills.
+  // Retrieve all existing published custom skills: unpublished (editors-only) skills
+  // should not prevent someone else from creating a similar skill.
   const allSkills: SkillResource[] = await SkillResource.listByWorkspace(auth, {
     onlyCustom: true,
+    availability: ["workspace_users", "users_and_agents"],
   });
 
   const skills = inputs.excludeSkillId

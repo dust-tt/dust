@@ -40,7 +40,7 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
         oauth={{ provider: "slack", useCase: "bot", extraConfig: {} }}
         connectorProvider="slack_bot"
         name="Slack Bot"
-        description="Whether the Dust Bot can be used in Slack."
+        description="Whether the Dust Bot can be used in Slack"
         documentationUrl="https://docs.dust.tt/docs/slack"
       />
       <BotToggle
@@ -54,7 +54,7 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
         }}
         connectorProvider="microsoft_bot"
         name="Microsoft Teams Bot"
-        description="Whether the Dust Bot can be used in Microsoft Teams."
+        description="Whether the Dust Bot can be used in Microsoft Teams"
         documentationUrl="https://docs.dust.tt/docs/dust-in-teams"
       />
       {isDiscordBotAvailable && (
@@ -69,7 +69,7 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
           }}
           connectorProvider="discord_bot"
           name="Discord Bot"
-          description="Whether the Dust Bot can be used in Discord."
+          description="Whether the Dust Bot can be used in Discord"
         />
       )}
     </>

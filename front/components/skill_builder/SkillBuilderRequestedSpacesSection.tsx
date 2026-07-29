@@ -124,11 +124,12 @@ export function SkillBuilderRequestedSpacesSection({
       <div className="flex items-start justify-between">
         <div>
           <h3 className="heading-lg font-semibold text-foreground">
-            Visibility control and available data
+            Data and access
           </h3>
           <p className="text-sm text-muted-foreground">
-            Add a space or pod to restrict usage to its members and make its
-            data available to this skill.
+            Adding spaces or pods will make the data from each of them available
+            to the skill. Only members of all the spaces and pods listed will
+            have access to the skill.
           </p>
         </div>
         <Button

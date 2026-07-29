@@ -5,6 +5,10 @@ import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePublicFrame } from "@app/lib/swr/frames";
 import { useUser } from "@app/lib/swr/user";
+import type {
+  ScopedWorkspaceUserIdentity,
+  WorkspaceUserIdentity,
+} from "@app/types/assistant/visualization";
 import { Spinner } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
@@ -19,6 +23,35 @@ interface PublicFrameRendererProps {
   shareToken: string;
   workspaceId: string;
   vizUrl: string;
+}
+
+interface PublicFrameViewer extends WorkspaceUserIdentity {
+  workspaces: { sId: string }[];
+}
+
+export function getPublicFrameUserIdentity(
+  user: PublicFrameViewer | null,
+  isAuthenticatedMember: boolean,
+  workspaceId: string
+): ScopedWorkspaceUserIdentity | undefined {
+  if (
+    !isAuthenticatedMember ||
+    !user ||
+    !user.workspaces.some((workspace) => workspace.sId === workspaceId)
+  ) {
+    return undefined;
+  }
+
+  return {
+    workspaceId,
+    user: {
+      sId: user.sId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: user.fullName,
+      image: user.image,
+    },
+  };
 }
 
 export function PublicFrameRenderer({
@@ -49,13 +82,22 @@ export function PublicFrameRenderer({
   const [cookies] = useCookies([DUST_HAS_SESSION]);
   const hasSession = hasSessionIndicator(cookies[DUST_HAS_SESSION]);
 
-  const { user } = useUser({
+  const { user, isUserLoading } = useUser({
     revalidateOnFocus: false,
     revalidateIfStale: false,
     disabled: !hasSession,
+    redirectOnUnauthenticated: false,
   });
+  const publicUserIdentity = getPublicFrameUserIdentity(
+    user,
+    isAuthenticatedMember,
+    workspaceId
+  );
 
-  if (isFrameLoading) {
+  if (
+    isFrameLoading ||
+    (isAuthenticatedMember && hasSession && isUserLoading)
+  ) {
     return (
       <CenteredState>
         <Spinner size="sm" />
@@ -100,6 +142,7 @@ export function PublicFrameRenderer({
             }}
             key={`viz-${fileId}`}
             frameAccess={access}
+            publicUserIdentity={publicUserIdentity}
             isInDrawer
           />
         </div>

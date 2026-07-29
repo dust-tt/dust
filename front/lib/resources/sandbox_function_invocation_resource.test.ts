@@ -4,13 +4,17 @@ import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -103,6 +107,7 @@ async function setupExecutionTest() {
 
   return {
     authenticator,
+    workspace,
     space,
     sandboxFunction,
     sandbox,
@@ -500,6 +505,15 @@ describe("SandboxFunctionInvocationResource", () => {
       DUST_POD_DATABASE_MAX_SIZE_BYTES: "1073741824",
       DUST_SANDBOX_TOKEN: "sbt-function-token",
     });
+    expect(
+      JSON.parse(opts?.envVars?.DUST_POD_USER_IDENTITY ?? "")
+    ).toMatchObject({
+      workspaceId: authenticator.getNonNullableWorkspace().sId,
+      user: {
+        sId: authenticator.getNonNullableUser().sId,
+        fullName: authenticator.getNonNullableUser().fullName(),
+      },
+    });
     expect(opts?.user).toBe("agent-proxied");
     expect(opts?.workingDirectory).toBe("/home/agent");
     expect(typeof opts?.stdin).toBe("string");
@@ -538,6 +552,99 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(result.isOk()).toBe(true);
     expect(ensurePodSandboxReady).not.toHaveBeenCalled();
     expect(generateSandboxFunctionInvocationToken).not.toHaveBeenCalled();
+    expect(execSpy).not.toHaveBeenCalled();
+  });
+
+  it("clears user identity for a userless invocation", async () => {
+    const { authenticator, sandbox, invocation } = await setupExecutionTest();
+    const userlessAuth = await Authenticator.internalAdminForWorkspace(
+      authenticator.getNonNullableWorkspace().sId
+    );
+    const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: "hello world\n",
+        stderr: "",
+      })
+    );
+
+    const executionResult = await invocation.execute(userlessAuth);
+    if (executionResult.isErr()) {
+      throw executionResult.error;
+    }
+
+    expect(execSpy.mock.calls[0]?.[2]?.envVars).toMatchObject({
+      DUST_POD_USER_IDENTITY: "",
+    });
+  });
+
+  it("clears user identity when the executor differs from the invocation user", async () => {
+    const { workspace, sandbox, invocation } = await setupExecutionTest();
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    const otherUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+    const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: "hello world\n",
+        stderr: "",
+      })
+    );
+
+    const executionResult = await invocation.execute(otherUserAuth);
+    if (executionResult.isErr()) {
+      throw executionResult.error;
+    }
+
+    expect(execSpy.mock.calls[0]?.[2]?.envVars).toMatchObject({
+      DUST_POD_USER_IDENTITY: "",
+    });
+  });
+
+  it("clears user identity when the invocation user is no longer a member", async () => {
+    const { authenticator, sandbox, invocation } = await setupExecutionTest();
+    vi.spyOn(
+      MembershipResource,
+      "getActiveRoleForUserInWorkspace"
+    ).mockResolvedValueOnce("none");
+    const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: "hello world\n",
+        stderr: "",
+      })
+    );
+
+    const executionResult = await invocation.execute(authenticator);
+    if (executionResult.isErr()) {
+      throw executionResult.error;
+    }
+
+    expect(execSpy.mock.calls[0]?.[2]?.envVars).toMatchObject({
+      DUST_POD_USER_IDENTITY: "",
+    });
+  });
+
+  it("fails closed when a newer application persisted an unknown policy", async () => {
+    const { authenticator, sandbox, sandboxFunction, invocation } =
+      await setupExecutionTest();
+    await SandboxFunctionModel.update(
+      { authentication: "future_policy" },
+      {
+        where: {
+          id: sandboxFunction.id,
+          workspaceId: sandboxFunction.workspaceId,
+        },
+      }
+    );
+    const execSpy = vi.spyOn(sandbox, "exec");
+
+    const executionResult = await invocation.execute(authenticator);
+
+    expect(executionResult.isErr()).toBe(true);
     expect(execSpy).not.toHaveBeenCalled();
   });
 

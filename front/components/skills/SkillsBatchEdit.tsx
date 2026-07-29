@@ -25,10 +25,10 @@ export type BatchAvailabilityAction = {
 
 const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
   {
-    label: "Editor only",
+    label: "Editors only",
     availability: "editors",
     getDialogTitle: (count) =>
-      `Make ${count} skill${pluralize(count)} editor only`,
+      `Make ${count} skill${pluralize(count)} editors only`,
     dialogDescription: (count) =>
       count === 1
         ? "Non-editors won’t see this skill as an option in the builder. Agents and skills that already use it won’t lose access."

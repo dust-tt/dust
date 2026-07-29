@@ -14,19 +14,19 @@ const OPEN_PODS_POLICIES = [
   {
     value: "private_and_open",
     label: "Restricted and open Pods",
-    description: "Members can create either restricted or open Pods.",
+    description: "Members can create either restricted or open Pods",
     allowOpenProjects: true,
   },
   {
     value: "private_only",
     label: "Restricted Pods only",
-    description: "Members can only create restricted Pods.",
+    description: "Members can only create restricted Pods",
     allowOpenProjects: false,
   },
 ] as const;
 
 const LABEL = "Restricted and Open Pods";
-const DESCRIPTION = "Whether members are allowed to create open pods.";
+const DESCRIPTION = "Whether members are allowed to create open pods";
 
 type OpenPodPolicy = (typeof OPEN_PODS_POLICIES)[number];
 

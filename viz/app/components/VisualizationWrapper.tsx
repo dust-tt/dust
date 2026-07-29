@@ -9,6 +9,7 @@ import {
   PodFunctionHooksProvider,
   usePodFunction,
   usePodFunctionMutation,
+  useUserIdentity,
 } from "@viz/app/lib/pod-function-hooks";
 import { transformEditableText } from "@viz/app/lib/transformEditableText";
 import type {
@@ -475,6 +476,7 @@ export function VisualizationWrapper({
             useFile: (fileId: string) => useFile(fileId, api.data),
             usePodFunction,
             usePodFunctionMutation,
+            useUserIdentity,
           },
         };
 
@@ -676,6 +678,8 @@ function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
   });
 }
 
+export const USER_IDENTITY_RPC_TIMEOUT_MS = 5_000;
+
 export function makeSendCrossDocumentMessage({
   identifier,
   allowedOrigins,
@@ -689,6 +693,14 @@ export function makeSendCrossDocumentMessage({
   ) => {
     return new Promise<CommandResultMap[T]>((resolve, reject) => {
       const messageUniqueId = Math.random().toString();
+      let timeoutId: number | null = null;
+
+      const cleanup = () => {
+        window.removeEventListener("message", listener);
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId);
+        }
+      };
 
       const listener = (event: MessageEvent) => {
         if (!isOriginAllowed(event.origin, allowedOrigins)) {
@@ -700,15 +712,21 @@ export function makeSendCrossDocumentMessage({
         }
 
         if (event.data.messageUniqueId === messageUniqueId) {
+          cleanup();
           if (event.data.error) {
             reject(event.data.error);
           } else {
             resolve(event.data.result);
           }
-          window.removeEventListener("message", listener);
         }
       };
       window.addEventListener("message", listener);
+      if (command === "getUserIdentity") {
+        timeoutId = window.setTimeout(() => {
+          cleanup();
+          reject(new Error("Frame host did not provide user identity."));
+        }, USER_IDENTITY_RPC_TIMEOUT_MS);
+      }
       window.parent?.postMessage(
         {
           command,
