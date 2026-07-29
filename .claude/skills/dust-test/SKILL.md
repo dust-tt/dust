@@ -20,7 +20,7 @@ When writing tests for a file:
 4. **Use factories**: Leverage test factories to set up data efficiently
 5. **Focus on behavior**: Test what the code does, not how it does it
 
-## For Front (TypeScript/Next.js)
+## For Front and Front-api (TypeScript)
 
 ### Setup
 

@@ -167,41 +167,6 @@ export async function createActivationTrigger(
   return new Ok({ triggerId: triggerRes.value.sId });
 }
 
-// Finds the pod's activation trigger: the trigger on the pod's own view of
-// the shared Activation webhook source (see
-// `getOrCreateActivationWebhookSourceView`). Filtering on `webhookSourceViewId`
-// rather than just `kind === "webhook"` matters because a pod's space can hold
-// other, unrelated webhook triggers. There is at most one activation trigger
-// per pod, since `createActivationTrigger` provisions exactly one per pod view.
-export async function findActivationTrigger(
-  auth: Authenticator,
-  pod: SpaceResource
-): Promise<TriggerResource | null> {
-  const source = await WebhookSourceResource.fetchByName(
-    auth,
-    ACTIVATION_WEBHOOK_SOURCE_NAME
-  );
-  if (!source) {
-    return null;
-  }
-
-  // `includeDeleted` so this still resolves for archived pods: eligibility
-  // gating needs to find the trigger first to then determine the pod is dead.
-  const podViews = await WebhookSourcesViewResource.listBySpace(auth, pod, {
-    includeDeleted: true,
-  });
-  const podView = podViews.find((v) => v.webhookSourceId === source.id);
-  if (!podView) {
-    return null;
-  }
-
-  const triggers = await TriggerResource.listByWebhookSourceViewId(
-    auth,
-    podView.id
-  );
-  return triggers[0] ?? null;
-}
-
 // Fires the activation trigger for a single pod by emitting an internal webhook
 // event. Returns the sId of the pod's activation trigger, if the event matched
 // it (a pod has at most one activation trigger, via `activationTriggerFilter`).

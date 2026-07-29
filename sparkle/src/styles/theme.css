@@ -352,6 +352,8 @@
   --color-border-dark: var(--color-border-dark);
   --color-border-focus: var(--color-border-focus);
   --color-border-warning: var(--color-border-warning);
+  --color-border-form: var(--color-border-form);
+  --color-border-form-active: var(--color-border-form-active);
 
   --color-separator: var(--color-separator);
 

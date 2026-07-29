@@ -8,7 +8,8 @@ import * as React from "react";
 export const radioStyles = cva(
   cn(
     "h-5 w-5 aspect-square rounded-full border transition duration-100 ease-out motion-reduce:transition-none active:scale-95",
-    "border-border-dark",
+    "border-border-form",
+    "data-[state=checked]:border-border-form-active",
     "bg-background",
     "text-foreground",
     "flex items-center justify-center",
@@ -123,6 +124,7 @@ const RadioGroupCustomItem = React.forwardRef<
       <div
         className={cn(
           "flex w-full flex-col",
+          props.disabled && "opacity-70 [&_label]:cursor-not-allowed",
           className,
           `items-${iconPosition}`
         )}

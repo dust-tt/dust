@@ -8,6 +8,7 @@ import {
   ConversationModel,
   ConversationParticipantModel,
   MessageModel,
+  UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
@@ -378,38 +379,27 @@ describe("ConversationResource", () => {
       });
 
       const childConversationWithoutContent =
-        await ConversationResource.fetchConversationWithoutContent(
-          auth,
-          childConversation.sId
-        );
-      expect(childConversationWithoutContent.isOk()).toBe(true);
-
-      if (childConversationWithoutContent.isOk()) {
-        expect(
-          childConversationWithoutContent.value.forkingData
-        ).toBeUndefined();
-      }
+        await ConversationResource.fetchById(auth, childConversation.sId);
+      expect(childConversationWithoutContent).not.toBeNull();
+      expect(
+        childConversationWithoutContent!.toJSON().forkingData
+      ).toBeUndefined();
 
       const childConversationWithForkingData =
-        await ConversationResource.fetchConversationWithoutContent(
-          auth,
-          childConversation.sId,
-          { includeForkingData: true }
-        );
-      expect(childConversationWithForkingData.isOk()).toBe(true);
-
-      if (childConversationWithForkingData.isOk()) {
-        expect(childConversationWithForkingData.value.forkingData).toEqual({
-          forkedFrom: {
-            parentConversationId: parentConversation.sId,
-            parentConversationTitle,
-            sourceMessageId: sourceMessage.sId,
-            branchedAt: branchedAt.getTime(),
-            user: auth.getNonNullableUser().toJSON(),
-            fileCopyStatus: "pending",
-          },
+        await ConversationResource.fetchById(auth, childConversation.sId, {
+          includeForkingData: true,
         });
-      }
+      expect(childConversationWithForkingData).not.toBeNull();
+      expect(childConversationWithForkingData!.toJSON().forkingData).toEqual({
+        forkedFrom: {
+          parentConversationId: parentConversation.sId,
+          parentConversationTitle,
+          sourceMessageId: sourceMessage.sId,
+          branchedAt: branchedAt.getTime(),
+          user: auth.getNonNullableUser().toJSON(),
+          fileCopyStatus: "pending",
+        },
+      });
     });
 
     it("should expose forkedFrom title even when the parent conversation is unreadable", async () => {
@@ -2919,15 +2909,27 @@ describe("listPrivateConversationsForUser", () => {
 
   it("keeps paginating when a full page window contains a filtered-out conversation", async () => {
     const deletedSpace = await SpaceFactory.regular(workspace);
+    // Admin must be a space member (with a refreshed authenticator) before
+    // ConversationFactory.create can fetch a conversation that references it.
+    const addMembersRes = await deletedSpace.addMembers(adminAuth, {
+      userIds: [adminAuth.getNonNullableUser().sId],
+    });
+    assert(addMembersRes.isOk(), "Failed to add admin to space");
+    const adminWithSpaceAccess = await Authenticator.fromUserIdAndWorkspaceId(
+      adminAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
 
     const createParticipatingConversation = async ({
       updatedAt,
       requestedSpaceIds,
+      auth = adminAuth,
     }: {
       updatedAt: Date;
       requestedSpaceIds?: number[];
+      auth?: Authenticator;
     }) => {
-      const conversation = await ConversationFactory.create(adminAuth, {
+      const conversation = await ConversationFactory.create(auth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [new Date()],
         requestedSpaceIds,
@@ -2955,6 +2957,7 @@ describe("listPrivateConversationsForUser", () => {
     const poisoned = await createParticipatingConversation({
       updatedAt: new Date(baseMs + 3 * hourMs),
       requestedSpaceIds: [deletedSpace.id],
+      auth: adminWithSpaceAccess,
     });
     const middle = await createParticipatingConversation({
       updatedAt: new Date(baseMs + 2 * hourMs),
@@ -2963,7 +2966,7 @@ describe("listPrivateConversationsForUser", () => {
       updatedAt: new Date(baseMs + 1 * hourMs),
     });
 
-    const deleteRes = await deletedSpace.delete(adminAuth, {
+    const deleteRes = await deletedSpace.delete(adminWithSpaceAccess, {
       hardDelete: false,
     });
     assert(deleteRes.isOk(), "Failed to soft-delete space");
@@ -5848,7 +5851,7 @@ describe("markAsActionRequired", () => {
     expect(participantAfter.actionRequired).toBe(true);
   });
 
-  it("should update actionRequired even when it's already true", async () => {
+  it("should no-op when actionRequired is already true", async () => {
     const { ConversationParticipantModel } = await import(
       "@app/lib/models/agent/conversation"
     );
@@ -5885,8 +5888,8 @@ describe("markAsActionRequired", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      // Should still update 1 row (even though value is already true)
-      expect(result.value[0]).toBe(1);
+      // Already at target value: skip the write to avoid a no-op row lock.
+      expect(result.value[0]).toBe(0);
     }
 
     // Verify actionRequired remains true
@@ -6411,6 +6414,89 @@ describe("markAsReadForAuthUser", () => {
     });
     assert(row);
     expect(row.lastReadAt.getTime()).toBe(explicit.getTime());
+  });
+});
+
+describe("markAsReadForAllParticipants", () => {
+  let workspace: LightWorkspaceType;
+  let auth: Authenticator;
+  let otherAuth: Authenticator;
+  let conversation: ConversationWithoutContentType;
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+    const [agent] = await setupTestAgents(workspace, user);
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+      lastReadAt: null,
+    });
+    await ConversationResource.upsertParticipation(otherAuth, {
+      conversation,
+      action: "posted",
+      user: otherAuth.getNonNullableUser().toJSON(),
+      lastReadAt: null,
+    });
+  });
+
+  it("marks the conversation as read for every participant", async () => {
+    const lastReadAt = new Date(Date.now() + 60_000);
+    await ConversationResource.markAsReadForAllParticipants(auth, {
+      conversation,
+      lastReadAt,
+    });
+
+    const rows = await UserConversationReadsModel.findAll({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    expect(rows).toHaveLength(2);
+    expect(
+      rows.every((row) => row.lastReadAt.getTime() === lastReadAt.getTime())
+    ).toBe(true);
+  });
+
+  it("overwrites existing read entries", async () => {
+    const earlier = new Date(Date.now() - 60_000);
+    await ConversationResource.markAsReadForAuthUser(otherAuth, {
+      conversation,
+      lastReadAt: earlier,
+    });
+
+    const lastReadAt = new Date(Date.now() + 60_000);
+    await ConversationResource.markAsReadForAllParticipants(auth, {
+      conversation,
+      lastReadAt,
+    });
+
+    const row = await UserConversationReadsModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        userId: otherAuth.getNonNullableUser().id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    assert(row);
+    expect(row.lastReadAt.getTime()).toBe(lastReadAt.getTime());
   });
 });
 

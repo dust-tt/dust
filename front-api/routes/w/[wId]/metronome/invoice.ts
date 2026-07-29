@@ -16,7 +16,7 @@ import type { BillingPeriod } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
@@ -109,7 +109,11 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<GetMetronomeInvoiceResponseBody> => {
     const auth = ctx.get("auth");
 
@@ -186,7 +190,11 @@ app.get(
 /** @ignoreswagger */
 app.get(
   "/lines",
-  ensureIsAdmin(),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<GetMetronomeInvoiceLinesResponseBody> => {
     const auth = ctx.get("auth");
 

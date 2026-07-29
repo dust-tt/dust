@@ -31,7 +31,7 @@ const POD_KNOWLEDGE_POLICIES = [
 type PodKnowledgePolicy = (typeof POD_KNOWLEDGE_POLICIES)[number];
 
 const LABEL = "Pod files";
-const DESCRIPTION = "Control whether members can manually add files to Pods.";
+const DESCRIPTION = "Whether members can manually add files to Pods.";
 
 export function PodKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
   const {

@@ -157,6 +157,8 @@ export function usageToTokenUsageEvent(
   // subtract the cached portion so it is not counted twice against pricing.
   const totalInput =
     (usage?.promptTokenCount ?? 0) + (usage?.toolUsePromptTokenCount ?? 0);
+  const candidateTokens = usage?.candidatesTokenCount ?? 0;
+  const reasoning = usage?.thoughtsTokenCount;
   return {
     type: "token_usage",
     content: {
@@ -167,8 +169,10 @@ export function usageToTokenUsageEvent(
       shortCacheCreated: 0,
       cacheHit,
       standardInput: Math.max(0, totalInput - cacheHit),
-      standardOutput: usage?.candidatesTokenCount ?? 0,
-      reasoning: usage?.thoughtsTokenCount ?? 0,
+      // Gemini reports candidate and thought tokens separately, while Dust's
+      // totalOutput contract is the inclusive billed output total.
+      totalOutput: candidateTokens + (reasoning ?? 0),
+      ...(reasoning !== undefined ? { reasoning } : {}),
     },
     metadata,
   };

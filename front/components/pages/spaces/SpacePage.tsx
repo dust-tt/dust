@@ -14,7 +14,7 @@ export function SpacePage() {
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const owner = useWorkspace();
-  const { subscription, isAdmin, isBuilder } = useAuth();
+  const { subscription, isAdmin } = useAuth();
   const plan = subscription.plan;
 
   const {
@@ -75,7 +75,6 @@ export function SpacePage() {
             );
           }}
           isAdmin={isAdmin}
-          isBuilder={isBuilder}
           onButtonClick={() => setShowSpaceEditionModal(true)}
         />
         <CreateOrEditSpaceModal

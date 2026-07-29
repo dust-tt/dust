@@ -429,7 +429,7 @@ export async function ensurePodStateHealthOnSleep(
   sandbox: SandboxResource,
   opts: {
     /**
-     * Rewrites /tmp/token.json. The sync flushes LTX files through gcsfuse,
+     * Rewrites the root-owned per-mount credentials. The sync flushes LTX files through gcsfuse,
      * and a sandbox can sit idle past the CAB token's ~1h lifetime (reaper
      * backlog): without a refresh the sync would fail on every retry,
      * forever.

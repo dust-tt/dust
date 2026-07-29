@@ -67,6 +67,7 @@ export type KnownModelLLMId =
   | "claude-opus-4-6"
   | "claude-opus-4-7"
   | "claude-opus-4-8"
+  | "claude-opus-5"
   | "claude-fable-5"
   | "claude-sonnet-4-6"
   | "claude-sonnet-5"
@@ -84,6 +85,8 @@ export type KnownModelLLMId =
   | "gemini-3.1-pro-preview"
   | "gemini-3-flash-preview"
   | "gemini-3.5-flash"
+  | "gemini-3.5-flash-lite"
+  | "gemini-3.6-flash"
   | "deepseek-chat" // deepseek api
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
@@ -91,6 +94,7 @@ export type KnownModelLLMId =
   | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
   | "accounts/fireworks/models/kimi-k2p5" // fireworks
   | "accounts/fireworks/models/kimi-k2p6" // fireworks
+  | "accounts/fireworks/models/kimi-k3" // fireworks
   | "accounts/fireworks/models/minimax-m2p5" // fireworks
   | "accounts/fireworks/models/glm-5" // fireworks
   | "accounts/fireworks/models/glm-5p2" // fireworks
@@ -803,6 +807,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "workspace_default_agent"
   | "whitelabel_frames"
   | "workday_mcp"
+  | "user_memory"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

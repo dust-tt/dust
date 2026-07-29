@@ -10,11 +10,11 @@ import type {
   SandboxFunctionRunContext,
   ToolContext,
 } from "@app/lib/actions/types";
+import type { ReferenceImageFile } from "@app/lib/api/actions/servers/image_generation/imageGeneration";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
-import type { ReferenceImageFile } from "@app/lib/api/llm/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -393,13 +393,13 @@ async function processSingleImageFile(
     maxImageSize,
     supportedContentTypes,
     providerId,
-    toolContext,
+    runContext,
   }: {
     imageFileId: string;
     maxImageSize: number;
     supportedContentTypes: string[];
     providerId: ModelProviderIdType;
-    toolContext: ToolContext | undefined;
+    runContext: AgentLoopRunContext;
   }
 ): Promise<Ok<ReferenceImageFile> | Err<MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -407,7 +407,7 @@ async function processSingleImageFile(
   const refResult = await resolveConversationFileRef(
     auth,
     imageFileId,
-    toolContext
+    runContext
   );
   if (refResult.isErr()) {
     return new Err(
@@ -462,24 +462,16 @@ export async function processImageFileIds(
   auth: Authenticator,
   {
     imageFileIds,
-    toolContext,
+    runContext,
     supportedContentTypes,
     providerId,
   }: {
     imageFileIds: string[];
-    toolContext: ToolContext | undefined;
+    runContext: AgentLoopRunContext;
     supportedContentTypes: string[];
     providerId: ModelProviderIdType;
   }
 ): Promise<Ok<ReferenceImageFile[]> | Err<MCPError>> {
-  if (!toolContext?.runContext) {
-    return new Err(
-      new MCPError("No conversation context available for file access", {
-        tracked: false,
-      })
-    );
-  }
-
   const maxImageSize = MAX_FILE_SIZES.image;
 
   const results = await concurrentExecutor(
@@ -490,7 +482,7 @@ export async function processImageFileIds(
         maxImageSize,
         supportedContentTypes,
         providerId,
-        toolContext,
+        runContext,
       }),
     { concurrency: 8 }
   );

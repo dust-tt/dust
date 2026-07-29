@@ -1,11 +1,11 @@
 import { addSelectedConversationSpaces } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationError } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
 import { apiErrorForSelectedSpaces } from "./selected_spaces_errors";
 
 const ParamsSchema = z.object({
@@ -96,17 +96,19 @@ app.post(
     const { cId: conversationId } = ctx.req.valid("param");
     const { spaceIds } = ctx.req.valid("json");
 
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        conversationId
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversation) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
       );
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
     }
 
     const result = await addSelectedConversationSpaces(auth, {
-      conversation: conversationRes.value,
+      conversation: conversation.toJSON(),
       spaceIds,
       origin: "input_bar",
       auditContext: getAuditLogContext(auth),

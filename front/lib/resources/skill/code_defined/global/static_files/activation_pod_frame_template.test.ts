@@ -3,15 +3,17 @@ import { describe, expect, it } from "vitest";
 import { ACTIVATION_POD_FRAME_TEMPLATE } from "./activation_pod_frame_template";
 
 describe("ACTIVATION_POD_FRAME_TEMPLATE", () => {
-  it("is a single-column progressive frame (Day 1 + grown, no tabs)", () => {
-    // v9 renders by maturity LEVEL, not tabs.
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("const LEVEL");
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("function DayOneView");
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("function GrownView");
+  it("is a single-state frame: a collapsible explainer plus recommendation tiles", () => {
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("const TILES");
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("function AboutSection");
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("function Tiles");
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("What is this pod?");
     expect(ACTIVATION_POD_FRAME_TEMPLATE).toContain("HOW_IT_WORKS");
-    // The old tabbed dashboard is gone (it overwhelmed new users).
+    // No day1/grown state machine, no tabbed dashboard.
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain("const LEVEL");
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain("function DayOneView");
+    expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain("function GrownView");
     expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain("TAB_TITLES");
-    expect(ACTIVATION_POD_FRAME_TEMPLATE).not.toContain('"Your setup"');
   });
 
   it("contains both view modes", () => {

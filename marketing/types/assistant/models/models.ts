@@ -89,6 +89,11 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "anthropic",
   },
   {
+    modelId: "claude-opus-5",
+    displayName: "Claude Opus 5",
+    providerId: "anthropic",
+  },
+  {
     modelId: "claude-fable-5",
     displayName: "Claude Fable 5",
     providerId: "anthropic",
@@ -139,8 +144,18 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "google_ai_studio",
   },
   {
+    modelId: "gemini-3.5-flash-lite",
+    displayName: "Gemini 3.5 Flash Lite",
+    providerId: "google_ai_studio",
+  },
+  {
     modelId: "gemini-3.5-flash",
     displayName: "Gemini 3.5 Flash",
+    providerId: "google_ai_studio",
+  },
+  {
+    modelId: "gemini-3.6-flash",
+    displayName: "Gemini 3.6 Flash",
     providerId: "google_ai_studio",
   },
   {
@@ -156,6 +171,11 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
   {
     modelId: "accounts/fireworks/models/kimi-k2p6",
     displayName: "Kimi K2.6 (Fireworks)",
+    providerId: "fireworks",
+  },
+  {
+    modelId: "accounts/fireworks/models/kimi-k3",
+    displayName: "Kimi K3 (Fireworks)",
     providerId: "fireworks",
   },
   {

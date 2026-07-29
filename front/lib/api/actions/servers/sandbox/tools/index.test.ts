@@ -239,7 +239,7 @@ describe("runSandboxBashTool", () => {
         agentConfiguration: {
           sId: "agent-id",
         },
-        model: { providerId: "openai" },
+        modelInfo: { endpoint: { modelConfig: { providerId: "openai" } } },
         agentMessage: { sId: "message-id", agentMessageId: 1 },
         conversation: { sId: "conversation-id" },
         action: {
@@ -677,7 +677,7 @@ describe("runSandboxBashTool", () => {
           agentConfiguration: {
             sId: "agent-id",
           },
-          model: { providerId: "openai" },
+          modelInfo: { endpoint: { modelConfig: { providerId: "openai" } } },
           agentMessage: { sId: "message-id", agentMessageId: 1 },
           conversation: { sId: "conversation-id" },
           action: {

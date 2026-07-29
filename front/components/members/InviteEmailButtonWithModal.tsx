@@ -6,6 +6,7 @@ import {
   formatPriceCents,
   getAvailableFrequencies,
   groupSeatTypesByFrequency,
+  includedSeatsOpen,
   SeatCard,
   sortSeatTypes,
 } from "@app/components/workspace/SeatCard";
@@ -20,6 +21,7 @@ import { getPriceAsString } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY,
+  mutateWorkspaceInvitations,
   sendInvitations,
 } from "@app/lib/invitations";
 import { useSeatPlan } from "@app/lib/swr/credits";
@@ -75,10 +77,6 @@ const useGetEmailsListAndError = (
     };
   }, [inviteEmails]);
 };
-
-function includedSeatsOpen(info: SeatTypeInfo): number {
-  return Math.max(0, info.minSeats - info.assignedCount);
-}
 
 function isSeatAtCapacity(
   seatType: MembershipSeatType,
@@ -343,7 +341,7 @@ export function InviteEmailButtonWithModal({
         });
         await mutate(`/api/w/${owner.sId}/members`);
       }
-      await mutate(`/api/w/${owner.sId}/invitations`);
+      await mutateWorkspaceInvitations(owner);
       setOpen(false);
     }
   }

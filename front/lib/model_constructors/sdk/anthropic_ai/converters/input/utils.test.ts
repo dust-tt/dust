@@ -906,10 +906,11 @@ describe("forceToolNameToToolChoice", () => {
 });
 
 describe("reasoningToThinkingConfig", () => {
-  it("disables thinking when reasoning is undefined", () => {
-    expect(reasoningToThinkingConfig(undefined)).toEqual({
-      thinking: { type: "disabled" },
-    });
+  // An absent reasoning is not "no thinking": it sends no thinking config so
+  // the model applies its own default (adaptive on Fable 5 / Opus 5 / Sonnet 5,
+  // off on Opus 4.8/4.7).
+  it("sends no thinking config when reasoning is undefined", () => {
+    expect(reasoningToThinkingConfig(undefined)).toEqual({});
   });
 
   it("disables thinking when effort is 'none'", () => {

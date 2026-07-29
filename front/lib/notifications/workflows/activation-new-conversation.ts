@@ -1,5 +1,3 @@
-import { isMessageUnread } from "@app/components/assistant/conversation/utils";
-import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
@@ -8,12 +6,15 @@ import {
   getNovuClient,
   getUserNotificationDelay,
 } from "@app/lib/notifications";
-import { renderEmail } from "@app/lib/notifications/email-templates/default";
-import { getConversationDetails } from "@app/lib/notifications/helpers";
+import { hasUnreadSucceededAgentReply } from "@app/lib/notifications/conversation_fetch";
+import { renderEmail } from "@app/lib/notifications/email-templates/activation-new-conversation";
+import {
+  getActivationRecommendation,
+  getConversationDetails,
+} from "@app/lib/notifications/helpers";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isLightAgentMessageType } from "@app/types/assistant/conversation";
 import {
   ACTIVATION_NEW_CONVERSATION_TRIGGER_ID,
   NOTIFICATION_DELAY_OPTIONS,
@@ -29,8 +30,6 @@ import { z } from "zod";
 // to the target user as a dedicated, standalone email. It has no digest step, so a
 // conversation sent this way is never also bundled into the unread digest for the same activity.
 
-// For the email UI itself, right now it reuses and says something basic, will be fleshed out later.
-
 const activationNewConversationPayloadSchema = z.object({
   workspaceId: z.string(),
   conversationId: z.string(),
@@ -43,6 +42,9 @@ export type activationNewConversationPayloadType = z.infer<
 const activationNewConversationDetailsSchema = z.object({
   subject: z.string(),
   workspaceName: z.string(),
+  podName: z.string(),
+  purpose: z.string().nullable(),
+  summary: z.string().nullable(),
 });
 
 export type activationNewConversationDetailsType = z.infer<
@@ -53,7 +55,7 @@ const userNotificationDelaySchema = z.object({
   delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
 });
 
-const shouldSkipActivationNewConversation = async ({
+export const shouldSkipActivationNewConversation = async ({
   subscriberId,
   payload,
 }: {
@@ -69,21 +71,10 @@ const shouldSkipActivationNewConversation = async ({
     payload.workspaceId
   );
 
-  const conversationRes = await getLightConversation(
+  // Send only when the agent has actually finished replying and that reply is still unread for this user.
+  const hasUnreadAgentReply = await hasUnreadSucceededAgentReply(
     auth,
     payload.conversationId
-  );
-  if (conversationRes.isErr()) {
-    return true;
-  }
-  const conversation = conversationRes.value;
-
-  // Send only when the agent has actually finished replying and that reply is still unread for this user.
-  const hasUnreadAgentReply = conversation.content.some(
-    (msg) =>
-      isLightAgentMessageType(msg) &&
-      msg.status === "succeeded" &&
-      isMessageUnread(msg, conversation.lastReadMs)
   );
 
   return !hasUnreadAgentReply;
@@ -103,12 +94,27 @@ const getActivationNewConversationDetails = async ({
   if (detailsResult.isErr()) {
     // Only reached for a deleted conversation, in which case the email step is
     // already skipped, so this value is never actually delivered.
-    return { subject: "A new conversation", workspaceName: "your workspace" };
+    return {
+      subject: "A new conversation",
+      workspaceName: "your workspace",
+      podName: "your pod",
+      purpose: null,
+      summary: null,
+    };
   }
+
+  const { purpose, summary } = await getActivationRecommendation({
+    details: detailsResult.value,
+    subscriberId: subscriberId ?? "",
+    payload,
+  });
 
   return {
     subject: detailsResult.value.subject,
     workspaceName: detailsResult.value.workspaceName,
+    podName: detailsResult.value.projectName ?? "your pod",
+    purpose,
+    summary,
   };
 };
 
@@ -157,9 +163,11 @@ export const activationNewConversationWorkflow = workflow(
             id: payload.workspaceId,
             name: details.workspaceName,
           },
-          content: `There's something new waiting for you: "${details.subject}".`,
+          podName: details.podName,
+          purpose: details.purpose,
+          summary: details.summary,
           action: {
-            label: "Open conversation",
+            label: details.subject,
             url:
               config.getAppUrl() +
               getConversationRoute(payload.workspaceId, payload.conversationId),

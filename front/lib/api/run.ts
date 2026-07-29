@@ -59,6 +59,7 @@ export function extractUsageFromExecutions(
         if (token_usage) {
           const promptTokens = token_usage.prompt_tokens;
           const completionTokens = token_usage.completion_tokens;
+          const reasoningTokens = token_usage.reasoning_tokens;
           const cachedTokens = token_usage.cached_tokens;
           const cacheCreationTokens = token_usage.cache_creation_input_tokens;
 
@@ -75,6 +76,7 @@ export function extractUsageFromExecutions(
             modelId: block.model_id,
             promptTokens,
             completionTokens,
+            reasoningTokens: reasoningTokens ?? null,
             cachedTokens: cachedTokens ?? null,
             cacheCreationTokens: cacheCreationTokens ?? null,
             costMicroUsd: usageCostMicroUsd,

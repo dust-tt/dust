@@ -278,17 +278,17 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   const filesResult = await setupEnvironmentFiles(metadata, ports, settings);
   if (!filesResult.ok) return filesResult;
 
-  // Phase 1.5: Create test database (if test postgres is running)
-  await tryCreateTestDatabase(name);
-
-  // Phase 2: Setup worktree
-  const worktreeResult = await setupWorktree(
-    metadata,
-    worktreePath,
-    workspaceBranch,
-    Boolean(options.reuseExistingBranch),
-    settings
-  );
+  // Phase 2: Setup worktree and test database in parallel
+  const [worktreeResult] = await Promise.all([
+    setupWorktree(
+      metadata,
+      worktreePath,
+      workspaceBranch,
+      Boolean(options.reuseExistingBranch),
+      settings
+    ),
+    tryCreateTestDatabase(name),
+  ]);
   if (!worktreeResult.ok) return worktreeResult;
 
   // Phase 3: Start build watchers (sparkle and SDK)

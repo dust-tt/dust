@@ -5,12 +5,20 @@ import { z } from "zod";
 const CONTEXT_SIZE = 1_000_000;
 const MAX_OUTPUT_TOKENS = 64_000;
 
-// GLM-5.2 only supports none/high/maximal reasoning; `none` drops
-// reasoning_effort, high/maximal reach the model. Defaults to maximal.
+// Z.ai documents three states for GLM-5.2: thinking disabled
+// (`thinking: {type: "disabled"}`, enabled being the default), effort `high`,
+// and effort `max` — which is the documented default and what its own examples
+// use: https://docs.z.ai/guides/llm/glm-5.2
+// Our `maximal` is Z.ai's `max`.
+//
+// Confirmed live through Fireworks on 2026-07-27 with the widest
+// `inputConfigSchema`: `none` returns no reasoning content at all, high and max
+// both reason. The Fireworks gateway is looser than the model — it also takes
+// low/medium/xhigh and rejects only `minimal` — but those are not GLM-5.2
+// efforts, so the schema does not expose them.
 const configSchema = fireworksConfigSchema.extend({
   reasoning: z
     .object({ effort: z.enum(["none", "high", "maximal"]) })
-    .optional()
     .default({ effort: "maximal" }),
 });
 

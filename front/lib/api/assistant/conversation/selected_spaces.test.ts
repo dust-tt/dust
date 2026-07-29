@@ -165,15 +165,14 @@ describe("selected conversation Spaces", () => {
     readerAuth: Authenticator,
     conversationId: string
   ) {
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        readerAuth,
-        conversationId
-      );
-    if (conversationRes.isErr()) {
-      throw conversationRes.error;
+    const conversation = await ConversationResource.fetchById(
+      readerAuth,
+      conversationId
+    );
+    if (!conversation) {
+      throw new Error("Conversation not found");
     }
-    return conversationRes.value;
+    return conversation.toJSON();
   }
 
   async function otherWorkspaceMember() {

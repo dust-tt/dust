@@ -6,19 +6,7 @@ export function WithDustMistralMedium35Config<
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  // Spread the legacy model config onto the class statics (see
-  // `DustStreamEndpointConfiguration`). `Object.assign` returns
-  // `class & ModelConfigurationType`, so the fields are visible to the type
-  // checker without an unsafe cast.
-  abstract class DustMistralMedium35Config extends Base {}
-  const WithConfig = Object.assign(
-    DustMistralMedium35Config,
-    MISTRAL_MEDIUM_3_5_MODEL_CONFIG
-  );
-
-  // Declared last so these own statics shadow (take precedence over) the spread
-  // config values.
-  abstract class DustMistralMedium35 extends WithConfig {
+  abstract class DustMistralMedium35 extends Base {
     static readonly displayName = "Mistral Medium 3.5";
     static readonly description =
       "Mistral's `medium 3.5` model, multimodal and optimized for agentic and coding use cases (256k context).";
@@ -28,6 +16,12 @@ export function WithDustMistralMedium35Config<
     // Mistral rejects an explicit temperature on this model; drop it (matches
     // the legacy client's REASONING_OVERWRITES and the schema's undefined temp).
     static readonly configParsers = [dropTemperature];
+
+    // Nest the legacy model config under a single `modelConfig` static (see
+    // `DustStreamEndpointConfiguration`) so consumers can retrieve the full
+    // `ModelConfigurationType` off the endpoint without spreading its fields
+    // onto the class statics.
+    static readonly modelConfig = MISTRAL_MEDIUM_3_5_MODEL_CONFIG;
   }
 
   return DustMistralMedium35;

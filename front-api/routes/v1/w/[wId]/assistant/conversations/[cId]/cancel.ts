@@ -1,5 +1,6 @@
 import { terminateMessageGeneration } from "@app/lib/api/cancel";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationError } from "@app/types/assistant/conversation";
 import {
   CancelMessageGenerationRequestSchema,
   type CancelMessageGenerationResponseType,
@@ -78,14 +79,16 @@ app.post(
     const auth = ctx.get("auth");
     const { cId: conversationId } = ctx.req.valid("param");
 
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        conversationId
-      );
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
 
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    if (!conversation) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
+      );
     }
 
     const { messageIds } = ctx.req.valid("json");

@@ -1,10 +1,10 @@
 import { listSelectableSpaces } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationError } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
 import { apiErrorForSelectedSpaces } from "./selected_spaces_errors";
 
 const ParamsSchema = z.object({
@@ -59,17 +59,19 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId: conversationId } = ctx.req.valid("param");
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return apiErrorForConversation(
+      ctx,
+      new ConversationError("conversation_not_found")
     );
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const result = await listSelectableSpaces(auth, {
-    conversation: conversationRes.value,
+    conversation: conversation.toJSON(),
   });
   if (result.isErr()) {
     return apiErrorForSelectedSpaces(ctx, result.error);

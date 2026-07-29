@@ -119,6 +119,15 @@ app.patch(
               message: "Failed to update seat in billing system.",
             },
           });
+        case "subscription_cancellation_scheduled":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The subscription has a cancellation scheduled; seats cannot be changed until it's reactivated or has fully ended.",
+            },
+          });
         default:
           assertNever(result.error.type);
       }

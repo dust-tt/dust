@@ -1823,6 +1823,7 @@ describe("searchProjectsByNamePaginated", () => {
 // These are Sequelize model names (modelName property), not TypeScript class names
 const KNOWN_SPACE_RELATED_MODELS = [
   "activation_nudge",
+  "activation_pod",
   "agent_project_configuration",
   "app",
   "conversation_selected_spaces",

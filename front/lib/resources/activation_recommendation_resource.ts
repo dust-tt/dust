@@ -56,7 +56,13 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     blob: Pick<
       CreationAttributes<ActivationRecommendationModel>,
       "title" | "content" | "conversationId"
-    >
+    > &
+      Partial<
+        Pick<
+          CreationAttributes<ActivationRecommendationModel>,
+          "activationPodId"
+        >
+      >
   ): Promise<ActivationRecommendationResource> {
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
@@ -68,6 +74,7 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       title: blob.title,
       content: blob.content,
       conversationId: blob.conversationId ?? null,
+      activationPodId: blob.activationPodId ?? null,
     });
 
     return new this(this.model, rec.get());
@@ -96,6 +103,32 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     return new this(this.model, rec.get());
   }
 
+  // Fetches the recommendation records surfaced in a given conversation.
+  // Used to feed the actual recommendation card content into downstream
+  // generation (e.g. the activation email summary), rather than relying only
+  // on the rendered conversation messages.
+  static async fetchByConversationSId(
+    auth: Authenticator,
+    conversationSId: string
+  ): Promise<ActivationRecommendationResource[]> {
+    const recs = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: [
+        {
+          model: ConversationModel,
+          attributes: [],
+          required: true,
+          where: { sId: conversationSId },
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    return recs.map((rec) => new this(this.model, rec.get()));
+  }
+
   static async fetchByUser(
     auth: Authenticator,
     { limit = 100 }: { limit?: number } = {}
@@ -115,7 +148,11 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
 
   static async listSuggestedByUser(
     auth: Authenticator,
-    { limit = 5, sinceDaysAgo }: { limit?: number; sinceDaysAgo?: number } = {}
+    {
+      limit = 5,
+      sinceDaysAgo,
+      spaceModelId,
+    }: { limit?: number; sinceDaysAgo?: number; spaceModelId?: ModelId } = {}
   ): Promise<
     {
       resource: ActivationRecommendationResource;
@@ -141,7 +178,10 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
         {
           model: ConversationModel,
           attributes: ["sId"],
-          required: false,
+          required: spaceModelId !== undefined,
+          ...(spaceModelId !== undefined
+            ? { where: { spaceId: spaceModelId } }
+            : {}),
         },
       ],
       order: [["createdAt", "DESC"]],
@@ -152,6 +192,23 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       resource: new this(this.model, rec.get()),
       conversationSId: rec.conversation?.sId ?? null,
     }));
+  }
+
+  // Detaches all recommendations from a Pod being deleted. Recommendations
+  // are owned by the user, not the pod, so they are kept and only unlinked.
+  static async detachActivationPod(
+    auth: Authenticator,
+    activationPodId: ModelId
+  ): Promise<void> {
+    await this.model.update(
+      { activationPodId: null },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          activationPodId,
+        },
+      }
+    );
   }
 
   async updateFields(fields: {

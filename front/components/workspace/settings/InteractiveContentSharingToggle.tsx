@@ -39,13 +39,13 @@ const SHARING_POLICY_OPTIONS: {
   {
     label: "No restrictions",
     description:
-      "Members can share Frames publicly, with the workspace, or via email invite",
+      "Members can share frames publicly, with the workspace, or via email invite",
     value: "all_scopes",
   },
 ];
 
-const LABEL = "Frame access";
-const DESCRIPTION = "Control who can access frames in this workspace.";
+const LABEL = "Frame sharing";
+const DESCRIPTION = "Whether frames are shareable outside the workspace.";
 
 interface InteractiveContentSharingToggleProps {
   owner: WorkspaceType;
@@ -119,7 +119,7 @@ export function InteractiveContentSharing({
         />
       ) : (
         <ContextItem
-          title="Frame sharing policy"
+          title={LABEL}
           subElement="Control how Frames can be shared in this workspace"
           visual={<ActionFrame className="h-6 w-6" />}
           hasSeparatorIfLast={true}

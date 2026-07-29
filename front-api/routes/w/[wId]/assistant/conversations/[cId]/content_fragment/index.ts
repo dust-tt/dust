@@ -1,6 +1,7 @@
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { InternalPostContentFragmentRequestBodySchema } from "@app/types/api/assistant";
+import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -97,13 +98,14 @@ app.post(
     const user = auth.getNonNullableUser();
     const { cId } = ctx.req.valid("param");
 
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(auth, cId);
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
+    const conversation = await ConversationResource.fetchById(auth, cId);
+    if (!conversation) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
+      );
     }
 
-    const conversation = conversationRes.value;
     const contentFragmentPayload = ctx.req.valid("json");
 
     const baseContext = {
@@ -114,7 +116,7 @@ app.post(
 
     const contentFragmentRes = await postNewContentFragment(
       auth,
-      conversation,
+      conversation.toJSON(),
       contentFragmentPayload,
       {
         ...baseContext,

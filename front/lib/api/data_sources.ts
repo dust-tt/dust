@@ -267,7 +267,7 @@ export async function hardDeleteDataSource(
   auth: Authenticator,
   dataSource: DataSourceResource
 ) {
-  assert(auth.isBuilder(), "Only builders can delete data sources.");
+  assert(auth.isAdmin(), "Only admins can delete data sources.");
 
   // Delete all files in the data source's bucket.
   //
@@ -1105,7 +1105,7 @@ export async function createDataSourceWithoutProvider(
     space: SpaceResource;
     name: string;
     description: string | null;
-    conversation?: ConversationWithoutContentType;
+    conversation?: ConversationWithoutContentType | ConversationResource;
   }
 ): Promise<Result<DataSourceViewResource, DataSourceCreationError>> {
   if (name.startsWith("managed-")) {
@@ -1257,7 +1257,7 @@ export async function createDataSourceWithoutProvider(
 
 async function getOrCreateConversationDataSource(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType | ConversationResource
 ): Promise<
   Result<
     DataSourceResource,
@@ -1350,11 +1350,11 @@ export async function getOrCreateConversationDataSourceFromFile(
     });
   }
 
-  const cRes = await ConversationResource.fetchConversationWithoutContent(
+  const conversation = await ConversationResource.fetchById(
     auth,
     metadataResult.value
   );
-  if (cRes.isErr()) {
+  if (!conversation) {
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
@@ -1362,7 +1362,7 @@ export async function getOrCreateConversationDataSourceFromFile(
     });
   }
 
-  return getOrCreateConversationDataSource(auth, cRes.value);
+  return getOrCreateConversationDataSource(auth, conversation);
 }
 
 async function getAllManagedDataSources(auth: Authenticator) {

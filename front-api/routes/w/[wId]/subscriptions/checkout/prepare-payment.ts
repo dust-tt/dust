@@ -6,7 +6,7 @@ import type { GetPreparePaymentResponseBody } from "@app/types/api/checkout/prep
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/subscriptions/checkout/prepare-payment.
@@ -15,8 +15,14 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<GetPreparePaymentResponseBody> => {
+    const auth = ctx.get("auth");
+
     const setup_session_id = ctx.req.query("setup_session_id");
     if (!isString(setup_session_id)) {
       return apiError(ctx, {
@@ -31,7 +37,6 @@ app.get(
     // Prevent HTTP caching as session status can change on every call.
     ctx.header("Cache-Control", "no-store");
 
-    const auth = ctx.get("auth");
     const result = await getPreparePaymentData(auth, setup_session_id);
     if (result.isErr()) {
       return mapPreparePaymentError(ctx, result.error);

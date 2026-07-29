@@ -109,8 +109,12 @@ export interface TokenUsage {
   longCacheCreationTokens?: number;
   shortCacheCreationTokens?: number;
   cachedTokens?: number;
+  // Total input tokens including cache hits and cache creation tokens.
   inputTokens: number;
-  outputTokens: number;
+  // Total output tokens billed by the provider, including reasoning tokens.
+  // Do not add reasoningTokens to this value. reasoningTokens is a subset.
+  totalOutputTokens: number;
+  // Reasoning and thinking portion of totalOutputTokens.
   reasoningTokens?: number;
   totalTokens: number;
   // Raw input tokens after the last cache breakpoint (not from cache).

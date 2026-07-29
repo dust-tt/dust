@@ -13,7 +13,6 @@ import {
   useWorkspaceVerifiedDomains,
 } from "@app/lib/swr/workspaces";
 import {
-  ContentMessage,
   Page,
   Spinner,
   Tabs,
@@ -94,10 +93,6 @@ export function MembersPage() {
               {membersContent}
             </TabsContent>
             <TabsContent value="groups" className="flex flex-col gap-4">
-              <ContentMessage size="md">
-                This page is WIP. Do not change unless you know what you are
-                doing.
-              </ContentMessage>
               <WorkspaceGroupsList owner={owner} />
             </TabsContent>
           </Tabs>

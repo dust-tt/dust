@@ -1,7 +1,7 @@
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -21,8 +21,12 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
   validate("query", GetCouponValidateQuerySchema),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx) => {
     const auth = ctx.get("auth");
 

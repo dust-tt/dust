@@ -1,7 +1,7 @@
 import { listRecentBillingInvoices } from "@app/lib/api/billing/invoices";
 import type { GetBillingInvoicesResponseBody } from "@app/types/api/billing/invoices";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/billing/invoices.
@@ -10,7 +10,11 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<GetBillingInvoicesResponseBody> => {
     const auth = ctx.get("auth");
 

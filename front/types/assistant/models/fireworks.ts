@@ -10,6 +10,8 @@ export const FIREWORKS_KIMI_K2P5_MODEL_ID =
   "accounts/fireworks/models/kimi-k2p5" as const;
 export const FIREWORKS_KIMI_K2P6_MODEL_ID =
   "accounts/fireworks/models/kimi-k2p6" as const;
+export const FIREWORKS_KIMI_K3_MODEL_ID =
+  "accounts/fireworks/models/kimi-k3" as const;
 export const FIREWORKS_MINIMAX_M2P5_MODEL_ID =
   "accounts/fireworks/models/minimax-m2p5" as const;
 export const FIREWORKS_GLM_5_MODEL_ID =
@@ -153,10 +155,10 @@ export const FIREWORKS_KIMI_K2P6_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "Moonshot AI's flagship agentic model with 262k context and vision support (served via Fireworks).",
+    "Moonshot AI's K2.6 agentic model with 262k context and vision support (served via Fireworks).",
   shortDescription: "Kimi K2.6 with vision support.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 2048,
   supportsVision: true,
   supportedReasoningEfforts: {
@@ -171,6 +173,49 @@ export const FIREWORKS_KIMI_K2P6_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     featureFlag: "fireworks_new_model_feature",
   },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
+// Specs and pricing verified 2026-07-27 against
+// https://fireworks.ai/models/fireworks/kimi-k3 (1040k context, function
+// calling, image input) and https://platform.kimi.ai/docs/guide/kimi-k3-quickstart
+// (JSON-schema structured output, thinking always enabled).
+// US-only, like every other Fireworks-served model.
+// Dust caps usable context at 256k of the model's 1040k, leaving a 192k prompt
+// budget once the 64k generation reserve is taken out.
+export const FIREWORKS_KIMI_K3_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "fireworks",
+  modelMaker: "moonshot",
+  modelId: FIREWORKS_KIMI_K3_MODEL_ID,
+  displayName: "Kimi K3 (Fireworks)",
+  contextSize: 256_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Moonshot AI's flagship 2.8T Mixture-of-Experts model for complex coding and long-horizon agentic work, with 256k context and vision support (served via Fireworks).",
+  shortDescription: "Kimi K3 with 256k context and vision support.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  // K3 thinks on every request, so there is no `none` tier: `light` reaches
+  // Fireworks as `low`, then `medium`/`high` straight through.
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    // K3 has no native `medium`; the `mapReasoningEffortToLowHighMax` config
+    // parser folds it onto `high`.
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "light",
+  // Native thinking at `light`, so no chain-of-thought meta prompt.
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,

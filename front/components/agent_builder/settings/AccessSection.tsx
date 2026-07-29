@@ -74,6 +74,9 @@ export function AccessSection({
       )?.dataSource
     : null;
 
+  const buttonLabel =
+    editors.length <= 1 ? "Add editors" : `${editors.length} editors`;
+
   return (
     <SettingSectionContainer title="Editors & Access">
       <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
@@ -88,7 +91,7 @@ export function AccessSection({
               variant="outline"
               size="sm"
               icon={Users01}
-              label="Editors"
+              label={buttonLabel}
               onClick={() => setIsEditorsOpen(true)}
               type="button"
             />

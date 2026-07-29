@@ -75,7 +75,7 @@ async function createUserMessage(
     content,
     branchId = null,
   }: {
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType | ConversationResource;
     rank: number;
     content: string;
     branchId?: ModelId | null;
@@ -119,7 +119,7 @@ async function createAgentMessage(
     generatedFileId = null,
     branchId = null,
   }: {
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType | ConversationResource;
     rank: number;
     parentId: ModelId;
     status: "created" | "succeeded";
@@ -285,7 +285,7 @@ async function attachRunToAgentMessage(
     auth,
     {
       inputTokens: promptTokens,
-      outputTokens: 20,
+      totalOutputTokens: 20,
       totalTokens: promptTokens + 20,
     },
     model.modelId
@@ -856,7 +856,7 @@ describe("createConversationFork", () => {
     });
 
     const upsertResult = await SkillResource.upsertConversationSkills(auth, {
-      conversation: parentConversation,
+      conversation: parentConversation.toJSON(),
       skills: [enabledSkill],
       enabled: true,
     });

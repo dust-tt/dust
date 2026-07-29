@@ -1,15 +1,6 @@
-import { isMessageUnread } from "@app/components/assistant/conversation/utils";
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
-import {
-  countConversationMessages,
-  renderConversationAsText,
-} from "@app/lib/api/assistant/conversation/render_as_text";
-import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
+import type { DustError } from "@app/lib/error";
 import {
   ensureSlackNotificationsReady,
   getNovuClient,
@@ -23,6 +14,7 @@ import {
   ConversationDetailsSchema,
   type ConversationDetailsType,
   getConversationDetails,
+  getEmailSummary,
 } from "@app/lib/notifications/helpers";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -31,10 +23,7 @@ import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
-import {
-  getConversationDisplayTitle,
-  isPodConversation,
-} from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
@@ -252,243 +241,6 @@ export const shouldSkipConversation = async ({
     triggerShouldSkip,
     hasUnreadMessages,
   });
-};
-
-const FUNCTION_NAME = "write_summary";
-
-const specification: AgentActionSpecification = {
-  name: FUNCTION_NAME,
-  description: "Write a summary of the conversation",
-  inputSchema: {
-    type: "object",
-    properties: {
-      conversation_summary: {
-        type: "string",
-        description: "A short summary of the conversation.",
-      },
-    },
-    required: ["conversation_summary"],
-  },
-};
-
-const MAX_CONVERSATION_SNIPPET_LENGTH = 12_000;
-
-const generateUnreadMessagesSummary = async ({
-  subscriberId,
-  payload,
-}: {
-  subscriberId?: string;
-  payload: ConversationUnreadPayloadType;
-}): Promise<
-  Result<
-    string,
-    DustError<
-      | "conversation_not_found"
-      | "no_unread_messages_found"
-      | "no_whitelisted_model_found"
-      | "internal_error"
-      | "generation_failed"
-      | "user_not_found"
-    >
-  >
-> => {
-  if (!subscriberId) {
-    return new Ok("");
-  }
-
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    payload.workspaceId
-  );
-
-  const conversationRes = await getLightConversation(
-    auth,
-    payload.conversationId
-  );
-
-  if (conversationRes.isErr()) {
-    return new Err(
-      new DustError("conversation_not_found", "Failed to get conversation")
-    );
-  }
-
-  const conversation = conversationRes.value;
-
-  const unreadMessages = conversation.content.filter((msg) =>
-    isMessageUnread(msg, conversation.lastReadMs)
-  );
-
-  if (unreadMessages.length === 0) {
-    return new Err(
-      new DustError("no_unread_messages_found", "No unread messages")
-    );
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-
-  const model = await getSmallWhitelistedModel(auth);
-
-  if (!model) {
-    return new Err(
-      new DustError("no_whitelisted_model_found", "No whitelisted model found")
-    );
-  }
-
-  const userFullName = auth.user()?.fullName();
-
-  if (!userFullName) {
-    return new Err(
-      new DustError("user_not_found", "User not found for summary generation")
-    );
-  }
-  // Generate LLM summary
-  const prompt =
-    `# Task\n` +
-    `Write a 1-2 sentence summary of unread messages for ${userFullName} to quickly understand what happened while they were away and what action (if any) is needed from them.\n\n` +
-    `CRITICAL RULE: You are writing to ${userFullName}. NEVER write their name "${userFullName}" in the summary. Always use "you/your/yours" instead.\n\n` +
-    `# Input Format\n` +
-    `You'll receive a JSON array of UNREAD messages (not the full conversation history, only what ${userFullName} hasn't seen yet). Each message has:\n` +
-    `- "role": "user" (human) or "assistant" (AI agent)\n` +
-    `- "name": sender's display name (e.g., "Sarah Chen", "dust")\n` +
-    `- "content": message text (human messages start with <dust_system> block with sender details)\n\n` +
-    `Use "role", "name", and <dust_system> to attribute senders correctly. Use message text for what happened. Never guess.\n\n` +
-    `# Writing Rules\n` +
-    `1. **Length**: 1-2 sentences maximum\n` +
-    `2. **Second person**: Use "you/your/yours" when referring to ${userFullName} - NEVER write "${userFullName}"\n` +
-    `3. **Action-first**: If someone needs something from ${userFullName}, lead with that: "[Name] needs you to [action] [details]"\n` +
-    `4. **Outcome-first for updates**: If no action needed from ${userFullName}, lead with what's ready/decided: "Draft is ready", "Meeting scheduled"\n` +
-    `5. **No chat narration**: NEVER write "X asked", "assistant provided", "then Y replied"\n` +
-    `6. **Result phrasing**: Use neutral outcomes - "Draft is ready", "Meeting scheduled", "Sarah needs..."\n` +
-    `7. **Use names**: Refer to other participants by name, never "the user"\n` +
-    `8. **Accurate attribution**: Only include information actually in the messages\n\n` +
-    `# Examples\n\n` +
-    `## Action Needed (someone waiting on the recipient)\n` +
-    `"Sarah needs your approval on the Q1 hiring budget ($450K) by end of week to finalize headcount."\n` +
-    `"Alex needs you to choose between the three homepage designs by Tuesday for the product launch."\n` +
-    `"Jordan needs your technical review of the migration plan—specifically whether the 2-week timeline is feasible."\n\n` +
-    `## Updates (no specific action needed)\n` +
-    `"Three design mockups are ready with Sarah's feedback for the homepage redesign."\n` +
-    `"Q4 budget approved at $2.5M. Implementation timeline set for March."\n` +
-    `"David shared the customer research findings—80% want mobile-first experience."\n\n` +
-    `## Mixed (update + action)\n` +
-    `"Hiring budget spreadsheet is ready for Q1. Emily needs your review by Wednesday."\n` +
-    `"Three design mockups are ready with Sarah's feedback. She's waiting on your approval to move forward."\n\n` +
-    `# Your Task\n` +
-    `Read the UNREAD messages below and write a 1-2 sentence summary following ALL rules above.\n` +
-    `Prioritize any actions needed from the recipient first, then updates. Include key specifics.\n` +
-    `Remember: Use "you/your" - NEVER write "${userFullName}".\n` +
-    `Write in a natural, engaging tone that makes someone want to read it.`;
-
-  const renderedMessages = renderConversationAsText(conversation, {
-    includeTimestamps: true,
-    includeEmail: true,
-    includeUnread: true,
-    truncateTotalChars: MAX_CONVERSATION_SNIPPET_LENGTH,
-  });
-
-  const preamble = [
-    `Conversation: ${conversation.sId}`,
-    `Title: ${getConversationDisplayTitle(conversation)}`,
-    `Created: ${new Date(conversation.created).toISOString()}`,
-    `Updated: ${new Date(conversation.updated).toISOString()}`,
-    `Unread: ${conversation.unread}`,
-    `Action Required: ${conversation.actionRequired}`,
-    `Has Error: ${conversation.hasError}`,
-    `Message Count: ${countConversationMessages(conversation)}`,
-    `URL: /w/${owner.sId}/assistant/${conversation.sId}`,
-  ].join("\n");
-
-  const conversationSnippet = `${preamble}\n\n${renderedMessages}`;
-
-  const res = await runMultiActionsAgent(
-    auth,
-    {
-      providerId: model.providerId,
-      modelId: model.modelId,
-      functionCall: FUNCTION_NAME,
-    },
-    {
-      conversation: {
-        messages: [
-          {
-            role: "user",
-            name: userFullName,
-            content: [
-              {
-                type: "text",
-                text: `This is the content of the conversation to summarize:\n\n${conversationSnippet}`,
-              },
-            ],
-          },
-        ],
-      },
-      prompt,
-      specifications: [specification],
-      forceToolCall: FUNCTION_NAME,
-    },
-    {
-      context: {
-        operationType: "conversation_unread_summary",
-        conversationId: conversation.sId,
-        userId: auth.user()?.sId,
-        workspaceId: owner.sId,
-      },
-    }
-  );
-
-  if (res.isErr()) {
-    return new Err(new DustError("generation_failed", res.error.message));
-  }
-
-  // Extract summary from function call result.
-  if (res.value.actions?.[0]?.arguments?.conversation_summary) {
-    const summary = res.value.actions[0].arguments.conversation_summary;
-    return new Ok(stripMarkdown(summary));
-  }
-
-  return new Err(
-    new DustError("generation_failed", "No conversation summary generated")
-  );
-};
-
-export const getEmailSummary = async ({
-  details,
-  subscriberId,
-  payload,
-}: {
-  details: ConversationDetailsType;
-  subscriberId: string;
-  payload: ConversationUnreadPayloadType;
-}): Promise<string | null> => {
-  if (details.hasConversationRetentionPolicy) {
-    return "Summary not generated due to data retention policy on conversations in this workspace.";
-  }
-
-  if (details.hasAgentRetentionPolicies) {
-    return "Summary not generated due to data retention policy on agents in this conversation.";
-  }
-
-  // Generate summary of unread messages
-  const summaryResult = await generateUnreadMessagesSummary({
-    subscriberId,
-    payload,
-  });
-
-  if (summaryResult.isErr()) {
-    switch (summaryResult.error.code) {
-      case "generation_failed":
-      case "conversation_not_found":
-      case "no_unread_messages_found":
-      case "internal_error":
-      case "no_whitelisted_model_found":
-      case "user_not_found":
-        break;
-      default:
-        assertNever(summaryResult.error.code);
-    }
-    return null;
-  }
-  return summaryResult.value;
 };
 
 const getEmailSubject = (

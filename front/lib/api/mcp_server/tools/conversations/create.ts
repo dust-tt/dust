@@ -58,7 +58,7 @@ export function registerConversationsCreateTool(server: McpServer) {
         podName = pod.name;
       }
 
-      let conversation;
+      let conversation: ConversationResource | null = null;
       try {
         conversation = await createConversation(auth, {
           title,
@@ -106,7 +106,7 @@ export function registerConversationsCreateTool(server: McpServer) {
         }
 
         const messageRes = await postUserMessage(auth, {
-          conversation,
+          conversationResource: conversation,
           content: message,
           mentions,
           context: {

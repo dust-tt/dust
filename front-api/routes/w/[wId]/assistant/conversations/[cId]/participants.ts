@@ -103,18 +103,20 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId: conversationId } = ctx.req.valid("param");
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return apiErrorForConversation(
+      ctx,
+      new ConversationError("conversation_not_found")
     );
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const participantsRes = await fetchConversationParticipants(
     auth,
-    conversationRes.value
+    conversation
   );
   if (participantsRes.isErr()) {
     return apiError(ctx, {
@@ -133,16 +135,17 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId: conversationId } = ctx.req.valid("param");
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return apiErrorForConversation(
+      ctx,
+      new ConversationError("conversation_not_found")
     );
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
-  const conversation = conversationRes.value;
   const u = auth.user();
   if (!u) {
     return apiError(ctx, {

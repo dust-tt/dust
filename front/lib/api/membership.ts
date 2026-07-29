@@ -474,6 +474,22 @@ export async function revokeAndTrackMembership(
   return revokeResult;
 }
 
+// Builds an audit actor from the `author` carried by the membership mutations.
+// These functions run both in request contexts (poke) and system contexts
+// (Temporal, scripts, checkout), so they only have `author`, not an
+// Authenticator — hence audit events are emitted via `emitAuditLogEventDirect`.
+function auditActorFromAuthor(author: UserType | "no-author"): AuditLogActor {
+  if (author === "no-author") {
+    return { type: "system", id: "system" };
+  }
+  return {
+    type: "user",
+    id: author.sId,
+    name: author.fullName,
+    metadata: { email: author.email },
+  };
+}
+
 /**
  * Update a membership role with tracking and Metronome seat provisioning.
  * If the membership was revoked and is being re-activated (allowTerminated),
@@ -541,6 +557,24 @@ export async function updateMembershipRoleAndTrack({
       workspace,
       previousRole: updateRes.value.previousRole,
       role: updateRes.value.newRole,
+    });
+
+    void emitAuditLogEventDirect({
+      workspace,
+      action: "membership.role_updated",
+      actor: auditActorFromAuthor(author),
+      targets: [
+        buildAuditLogTarget("workspace", workspace),
+        buildAuditLogTarget("user", {
+          sId: user.sId,
+          name: user.fullName() ?? "unknown",
+        }),
+      ],
+      context: { location: "internal" },
+      metadata: {
+        previous_role: updateRes.value.previousRole,
+        new_role: updateRes.value.newRole,
+      },
     });
 
     // If a revoked membership was re-activated, add a Metronome seat and update usage.
@@ -724,7 +758,8 @@ export async function updateMembershipSeatAndTrack({
         | "metronome_error"
         | "free_seat_not_allowed"
         | "paid_seat_not_allowed_on_free_plan"
-        | "seat_limit_reached";
+        | "seat_limit_reached"
+        | "subscription_cancellation_scheduled";
     }
   >
 > {
@@ -738,6 +773,32 @@ export async function updateMembershipSeatAndTrack({
   }
 
   const previousSeatType = membership.seatType;
+
+  // Emit a per-member seat-change audit event. Only fires when the seat
+  // actually changed or a deferred change was scheduled (skips noops).
+  const emitSeatUpdated = (scheduledAt: Date | undefined) => {
+    if (previousSeatType === newSeatType && !scheduledAt) {
+      return;
+    }
+    void emitAuditLogEventDirect({
+      workspace,
+      action: "membership.seat_updated",
+      actor: auditActorFromAuthor(author),
+      targets: [
+        buildAuditLogTarget("workspace", workspace),
+        buildAuditLogTarget("user", {
+          sId: user.sId,
+          name: user.fullName() ?? "unknown",
+        }),
+      ],
+      context: { location: "internal" },
+      metadata: {
+        previous_seat_type: previousSeatType,
+        new_seat_type: newSeatType,
+        scheduled_seat_change_at: scheduledAt?.toISOString() ?? "",
+      },
+    });
+  };
 
   // `free` is a one-shot starter tier — only assignable when the user has
   // never held a real seat in this workspace. `none` is not a real seat:
@@ -761,10 +822,13 @@ export async function updateMembershipSeatAndTrack({
     }
   }
 
-  if (isPaidSeatType(newSeatType) && newSeatType !== previousSeatType) {
+  if (newSeatType !== previousSeatType) {
     const subscription =
       await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
-    if (subscription && isFreePlan(subscription.getPlan().code)) {
+    if (
+      isPaidSeatType(newSeatType) &&
+      isFreePlan(subscription.getPlan().code)
+    ) {
       return new Err({ type: "paid_seat_not_allowed_on_free_plan" });
     }
   }
@@ -807,6 +871,7 @@ export async function updateMembershipSeatAndTrack({
         author,
       });
     }
+    emitSeatUpdated(undefined);
     return new Ok({
       previousSeatType,
       newSeatType,
@@ -829,6 +894,7 @@ export async function updateMembershipSeatAndTrack({
         author,
       });
     }
+    emitSeatUpdated(undefined);
     return new Ok({
       previousSeatType,
       newSeatType,
@@ -948,6 +1014,7 @@ export async function updateMembershipSeatAndTrack({
     }
   }
 
+  emitSeatUpdated(scheduledSeatChangeAt);
   return new Ok({
     previousSeatType,
     newSeatType: resultingActiveSeatType,

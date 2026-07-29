@@ -9,6 +9,7 @@ import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_action
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
+import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import {
   AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,
   ANALYTICS_ALIAS_NAME,
@@ -55,6 +56,7 @@ import type {
 import type {
   AgentMessageAnalyticsData,
   AgentMessageAnalyticsFeedback,
+  AgentMessageAnalyticsModel,
   AgentMessageAnalyticsSkillUsed,
   AgentMessageAnalyticsTokens,
   AgentMessageAnalyticsToolUsed,
@@ -212,6 +214,9 @@ export async function storeAgentAnalytics(
   // NOTE: may not be stable over time, see `collectAgentTagIds` for details.
   const agentTagIds = await collectAgentTagIds(auth, agentAgentMessageRow);
 
+  // Model that actually ran the message (resolved at message creation).
+  const model = collectResolvedModel(agentAgentMessageRow);
+
   const llmAwu = intelligenceAwuFromRunUsagesGroupedByRunKey(
     runUsages,
     contextOrigin
@@ -264,6 +269,7 @@ export async function storeAgentAnalytics(
     agent_id: agentAgentMessageRow.agentConfigurationId,
     agent_version: agentAgentMessageRow.agentConfigurationVersion.toString(),
     agent_tag_ids: agentTagIds,
+    model,
     ancestor_message_ids: ancestorMessageIds,
     conversation_id: conversationRow.sId,
     space_id: spaceId,
@@ -336,7 +342,7 @@ function aggregateTokenUsage(
       return {
         prompt: acc.prompt + usage.promptTokens,
         completion: acc.completion + usage.completionTokens,
-        reasoning: acc.reasoning, // No reasoning tokens in RunUsageType yet.
+        reasoning: acc.reasoning + (usage.reasoningTokens ?? 0),
         cached: acc.cached + (usage.cachedTokens ?? 0),
         cost_micro_usd: acc.cost_micro_usd + usage.costMicroUsd,
       };
@@ -452,6 +458,26 @@ async function collectAgentTagIds(
   );
 
   return tags.map((tag) => tag.sId);
+}
+
+/**
+ * Collect the model that actually ran this message, if available.
+ */
+function collectResolvedModel(
+  agentAgentMessageRow: AgentMessageModel
+): AgentMessageAnalyticsModel | null {
+  const resolvedModel = resolvedModelFromAgentMessageRow(agentAgentMessageRow);
+
+  if (!resolvedModel) {
+    return null;
+  }
+
+  return {
+    provider_id: resolvedModel.providerId,
+    model_id: resolvedModel.modelId,
+    reasoning_effort: resolvedModel.reasoningEffort,
+    resolution_method: agentAgentMessageRow.modelResolutionMethod,
+  };
 }
 
 /**

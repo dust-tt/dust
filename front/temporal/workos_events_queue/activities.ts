@@ -35,6 +35,7 @@ import {
   ADMIN_GROUP_NAME,
   BUILDER_GROUP_NAME,
   GroupResource,
+  MANAGER_GROUP_NAME,
 } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -214,7 +215,11 @@ async function handleRoleAssignmentForGroup(
     directoryId?: string;
   }
 ) {
-  if (group.name !== ADMIN_GROUP_NAME && group.name !== BUILDER_GROUP_NAME) {
+  if (
+    group.name !== ADMIN_GROUP_NAME &&
+    group.name !== MANAGER_GROUP_NAME &&
+    group.name !== BUILDER_GROUP_NAME
+  ) {
     // Not a special group, no role assignment needed.
     return;
   }

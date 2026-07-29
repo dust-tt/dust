@@ -356,7 +356,8 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   messages: MessageModel[],
   viewType: V,
   messagesWithToolOutputContent: Set<ModelId> | null = null,
-  mentionsByMessageId: Map<ModelId, MentionModel[]>
+  mentionsByMessageId: Map<ModelId, MentionModel[]>,
+  textContentOnly: boolean = false
 ): Promise<
   Result<
     V extends "full" ? AgentMessageType[] : LightAgentMessageType[],
@@ -439,6 +440,7 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       AgentStepContentResource.fetchByAgentMessages(auth, {
         agentMessageIds,
         latestVersionsOnly: true,
+        textContentOnly,
       }),
     async () =>
       getMessagesReactions(auth, {
@@ -473,7 +475,7 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   let agentMCPActionsWithoutContent: AgentMCPActionResource[] = [];
 
   for (const action of allAgentMCPActions) {
-    // Light messages always exclude content for all actions.
+    // Light messages always exclude tool output content for all actions.
     // Otherwise, for full messages, we only include content for the actions that are in the optional outputItemContentOnlyForMessageIds.
     if (
       viewType === "light" ||
@@ -892,7 +894,8 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   conversation: ConversationResource,
   messages: MessageModel[],
   viewType: V,
-  messagesWithToolOutputContent: Set<ModelId> | null = null
+  messagesWithToolOutputContent: Set<ModelId> | null = null,
+  textContentOnly: boolean = false
 ): Promise<
   Result<
     V extends "full"
@@ -936,7 +939,8 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     messages,
     viewType,
     messagesWithToolOutputContent,
-    mentionsByMessageId
+    mentionsByMessageId,
+    textContentOnly
   );
 
   if (agentMessagesRes.isErr()) {

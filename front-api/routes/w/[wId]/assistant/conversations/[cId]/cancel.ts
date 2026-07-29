@@ -1,6 +1,7 @@
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import { terminateMessageGeneration } from "@app/lib/api/cancel";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationError } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -86,13 +87,15 @@ app.post(
     const auth = ctx.get("auth");
     const { cId: conversationId } = ctx.req.valid("param");
 
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        conversationId
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversation) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
       );
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
     }
 
     const { action, messageIds } = ctx.req.valid("json");

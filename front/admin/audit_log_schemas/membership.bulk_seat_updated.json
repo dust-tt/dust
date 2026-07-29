@@ -1,0 +1,15 @@
+{
+  "action": "membership.bulk_seat_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "new_seat_type": "string",
+    "updated_emails": "string",
+    "count": "string",
+    "source": "string",
+    "actor_type": "string"
+  }
+}

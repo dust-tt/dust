@@ -17,11 +17,14 @@ export const CLAUDE_FABLE_5 = "claude-fable-5" as const;
 export const CLAUDE_OPUS_4_6 = "claude-opus-4-6" as const;
 export const CLAUDE_OPUS_4_7 = "claude-opus-4-7" as const;
 export const CLAUDE_OPUS_4_8 = "claude-opus-4-8" as const;
+export const CLAUDE_OPUS_5 = "claude-opus-5" as const;
 export const CLAUDE_HAIKU_4_5 = "claude-haiku-4-5-20251001" as const;
 
 export const GEMINI_3_1_PRO = "gemini-3.1-pro-preview" as const;
 export const GEMINI_3_5_FLASH = "gemini-3.5-flash" as const;
+export const GEMINI_3_6_FLASH = "gemini-3.6-flash" as const;
 export const GEMINI_3_1_FLASH_LITE = "gemini-3.1-flash-lite" as const;
+export const GEMINI_3_5_FLASH_LITE = "gemini-3.5-flash-lite" as const;
 
 export const MISTRAL_LARGE = "mistral-large-latest" as const;
 export const MISTRAL_MEDIUM_3_5 = "mistral-medium-3-5" as const;
@@ -33,6 +36,7 @@ export const DEEPSEEK_V4_PRO = "deepseek-v4-pro" as const;
 export const KIMI_K2_INSTRUCT = "kimi-k2-instruct-0905" as const;
 export const KIMI_K2P5 = "kimi-k2p5" as const;
 export const KIMI_K2P6 = "kimi-k2p6" as const;
+export const KIMI_K3 = "kimi-k3" as const;
 export const MINIMAX_M2P5 = "minimax-m2p5" as const;
 export const GLM_5 = "glm-5" as const;
 export const GLM_5P2 = "glm-5p2" as const;
@@ -63,10 +67,13 @@ export const MODELS = [
   CLAUDE_OPUS_4_6,
   CLAUDE_OPUS_4_7,
   CLAUDE_OPUS_4_8,
+  CLAUDE_OPUS_5,
   CLAUDE_HAIKU_4_5,
   GEMINI_3_1_PRO,
   GEMINI_3_5_FLASH,
+  GEMINI_3_6_FLASH,
   GEMINI_3_1_FLASH_LITE,
+  GEMINI_3_5_FLASH_LITE,
   MISTRAL_LARGE,
   MISTRAL_MEDIUM_3_5,
   MISTRAL_SMALL,
@@ -76,6 +83,7 @@ export const MODELS = [
   KIMI_K2_INSTRUCT,
   KIMI_K2P5,
   KIMI_K2P6,
+  KIMI_K3,
   MINIMAX_M2P5,
   GLM_5,
   GLM_5P2,
@@ -91,6 +99,7 @@ export function isModel(value: string): value is Model {
 
 export const ORDERED_LARGE_MODELS = [
   CLAUDE_FABLE_5,
+  CLAUDE_OPUS_5,
   CLAUDE_OPUS_4_8,
   CLAUDE_OPUS_4_7,
   CLAUDE_OPUS_4_6,

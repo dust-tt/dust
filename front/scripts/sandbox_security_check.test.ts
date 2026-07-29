@@ -147,7 +147,7 @@ describe("sandbox security check assertions", () => {
   test("detects unsafe root-invoked helper ownership or modes", () => {
     expect(() =>
       assertRootInvokedHelpersSafe(
-        "/opt/bin/dsbx root:root 755 -rwxr-xr-x\n/usr/local/bin/dust-install-trust-bundle root:root 755 -rwxr-xr-x\n/opt/bin/litestream root:root 755 -rwxr-xr-x"
+        "/opt/bin/dsbx root:root 755 -rwxr-xr-x\n/usr/local/bin/dust-install-trust-bundle root:root 755 -rwxr-xr-x\n/usr/local/bin/dust-gcs-token-server.py root:root 755 -rwxr-xr-x\n/usr/local/bin/dust-gcs-write-token.sh root:root 755 -rwxr-xr-x\n/usr/local/bin/dust-gcs-token-firewall.sh root:root 755 -rwxr-xr-x\n/opt/bin/litestream root:root 755 -rwxr-xr-x"
       )
     ).not.toThrow();
     expect(() =>
@@ -164,7 +164,7 @@ describe("sandbox security check assertions", () => {
     );
     expect(() =>
       assertRootInvokedHelpersSafe(
-        "/opt/bin/dsbx root:root 755 -rwxr-xr-x\n/usr/local/bin/dust-install-trust-bundle root:root 755 -rwxr-xr-x"
+        "/opt/bin/dsbx root:root 755 -rwxr-xr-x\n/usr/local/bin/dust-install-trust-bundle root:root 755 -rwxr-xr-x\n/usr/local/bin/dust-gcs-token-server.py root:root 755 -rwxr-xr-x\n/usr/local/bin/dust-gcs-write-token.sh root:root 755 -rwxr-xr-x\n/usr/local/bin/dust-gcs-token-firewall.sh root:root 755 -rwxr-xr-x"
       )
     ).toThrow("missing root-invoked helper audit for /opt/bin/litestream");
   });

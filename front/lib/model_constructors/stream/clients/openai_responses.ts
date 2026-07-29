@@ -8,6 +8,9 @@ import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/hosts";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
 import { OPENAI_LAB } from "@app/lib/model_constructors/types/labs";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
+// Do not remove: front-api routes call into this client for the similar skill
+// and similar agent discovery features. Without an explicit version front-api can silently
+// resolve a stale, incompatible `openai` version through node_modules hoisting.
 import OpenAI from "openai";
 import type {
   ResponseCreateParamsNonStreaming,

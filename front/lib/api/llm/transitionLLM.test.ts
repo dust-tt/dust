@@ -279,7 +279,7 @@ describe("convertToOldEvent — token_usage", () => {
             shortCacheCreated: 5_000,
             cacheHit: 20_000,
             standardInput: 1_000,
-            standardOutput: 400,
+            totalOutput: 500,
             reasoning: 100,
           },
           metadata: endpointMetadata,
@@ -290,7 +290,7 @@ describe("convertToOldEvent — token_usage", () => {
       type: "token_usage",
       content: {
         inputTokens: 56_000,
-        outputTokens: 400,
+        totalOutputTokens: 500,
         reasoningTokens: 100,
         totalTokens: 56_500,
         cachedTokens: 20_000,
@@ -314,8 +314,7 @@ describe("convertToOldEvent — token_usage", () => {
             shortCacheCreated: 0,
             cacheHit: 20_000,
             standardInput: 1_000,
-            standardOutput: 400,
-            reasoning: 0,
+            totalOutput: 400,
           },
           metadata: endpointMetadata,
         },
@@ -325,8 +324,7 @@ describe("convertToOldEvent — token_usage", () => {
       type: "token_usage",
       content: {
         inputTokens: 56_000,
-        outputTokens: 400,
-        reasoningTokens: 0,
+        totalOutputTokens: 400,
         totalTokens: 56_400,
         cachedTokens: 20_000,
         cacheCreationTokens: 35_000,
@@ -334,6 +332,27 @@ describe("convertToOldEvent — token_usage", () => {
       },
       metadata: llmMetadata,
     });
+  });
+
+  it("rejects reasoning tokens that are not a subset of output tokens", () => {
+    expect(() =>
+      convertToOldEvent(
+        {
+          type: "token_usage",
+          content: {
+            cacheCreated: 0,
+            longCacheCreated: 0,
+            shortCacheCreated: 0,
+            cacheHit: 0,
+            standardInput: 0,
+            totalOutput: 100,
+            reasoning: 101,
+          },
+          metadata: endpointMetadata,
+        },
+        llmMetadata
+      )
+    ).toThrow("reasoning must be a non-negative subset of totalOutput");
   });
 });
 

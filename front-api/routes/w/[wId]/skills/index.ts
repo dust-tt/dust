@@ -4,7 +4,7 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
-import { hasFeatureFlag } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -17,19 +17,21 @@ import type {
 } from "@app/types/api/skills";
 import {
   availabilityFromIsDefault,
-  DEFAULT_SKILL_AVAILABILITY,
+  getDefaultSkillAvailability,
   SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
   type SkillAvailability,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import uniq from "lodash/uniq";
 import { z } from "zod";
 import skill from "./[sId]";
+import availability from "./availability";
 import detect from "./detect";
 import importRoute from "./import";
 import reinforcementDailySpend from "./reinforcement_daily_spend";
@@ -107,6 +109,7 @@ function resolveRequestedAvailability({
 const app = workspaceApp();
 
 // Static sub-paths must be registered before the param sub-app.
+app.route("/availability", availability);
 app.route("/detect", detect);
 app.route("/import", importRoute);
 app.route("/reinforcement_daily_spend", reinforcementDailySpend);
@@ -131,6 +134,8 @@ app.get(
     const onlyCustom = ctx.req.query("onlyCustom");
     // @deprecated Use availability instead. Kept while old clients still send it.
     const isDefault = ctx.req.query("isDefault");
+    const bypassEditorVisibility =
+      ctx.req.query("bypassEditorVisibility") === "true";
     // Repeatable: ?availability=workspace_users&availability=users_and_agents.
     const availabilityParams = ctx.req.queries("availability");
 
@@ -165,6 +170,17 @@ app.get(
           ? ["users_and_agents" as const]
           : undefined;
 
+    // Only admins may list unpublished skills they don't edit (e.g. for governance views).
+    if (bypassEditorVisibility && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only admins can bypass editor visibility.",
+        },
+      });
+    }
+
     const allSkills = await SkillResource.listByWorkspace(auth, {
       status: skillStatus,
       globalSpaceOnly: globalSpaceOnly === "true",
@@ -177,9 +193,11 @@ app.get(
 
     // Skills with editors-only availability (unpublished) are only listed for members of
     // their editor group.
-    const skills = allSkills.filter(
-      (skill) => skill.availability !== "editors" || skill.canWrite(auth)
-    );
+    const skills = bypassEditorVisibility
+      ? allSkills
+      : allSkills.filter(
+          (skill) => skill.availability !== "editors" || skill.canWrite(auth)
+        );
 
     if (withRelations === "true") {
       const usageMap = await SkillResource.batchFetchUsage(auth, skills);
@@ -258,18 +276,14 @@ app.get(
 app.post(
   "/",
   validate("json", PostSkillRequestBodySchema),
+  ensureHasWorkspacePermission(
+    "create",
+    "skill",
+    "Creating skills is restricted.",
+    "app_auth_error"
+  ),
   async (ctx): HandlerResult<PostSkillResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!(await auth.hasWorkspacePermission("create", "skill"))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message: "Creating skills is restricted.",
-        },
-      });
-    }
 
     const user = auth.getNonNullableUser();
 
@@ -286,8 +300,8 @@ app.post(
       });
     }
 
-    const hasSkillPublicationGovernance = await hasFeatureFlag(
-      auth,
+    const featureFlags = await getFeatureFlags(auth);
+    const hasSkillPublicationGovernance = featureFlags.includes(
       "admin_governance_skill_publication"
     );
 
@@ -319,12 +333,14 @@ app.post(
         status_code: 403,
         api_error: {
           type: "app_auth_error",
-          message: "You don't have permission to publish skills.",
+          message:
+            "You don't have permission to change this skill's availability.",
         },
       });
     }
 
-    const availability = requestedAvailability ?? DEFAULT_SKILL_AVAILABILITY;
+    const availability =
+      requestedAvailability ?? getDefaultSkillAvailability(featureFlags);
 
     const existingSkill = await SkillResource.fetchByName(auth, name);
 

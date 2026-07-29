@@ -10,23 +10,40 @@ const CONTEXT_SIZE = 1_000_000;
 const DEFAULT_REASONING_EFFORT = "high";
 const MAX_OUTPUT_TOKENS = 128_000;
 
-const baseConfig = anthropicBaseConfigSchema.extend({
-  temperature: z.undefined(),
+// Characterized against the live API (2026-07-27) by running both endpoint
+// suites with the widest `inputConfigSchema`. `global/anthropic` and
+// `eu/agent-platform` (Vertex) returned exactly the same 21 rejections, so one
+// schema covers both. Two constraints shape it:
+//
+//   - `temperature` accepts exactly one value: `1` (or absent, which means the
+//     same thing — 1 is the API default). Anything in [0, 1) is a 400 —
+//     "`temperature` is deprecated for this model" with thinking off,
+//     "`temperature` may only be set to 1 when thinking is enabled or in
+//     adaptive mode" with thinking on — and anything above 1 fails the
+//     `range: 0..1` check. Hence `z.literal(1)`, defaulted so callers can omit
+//     it. The Dust layer strips it anyway via the `dropTemperature` config
+//     parser, but the endpoint schema mirrors the API rather than that policy.
+//   - Effort "minimal" has no Anthropic equivalent and `assertNever`s in the
+//     converter, so it is excluded from the effort enum.
+//
+// Forcing a tool needs no special handling: Sonnet 5 accepts a forced
+// `tool_choice` alongside adaptive thinking (verified live on both endpoints).
+// That restriction belongs to *extended* thinking ("Thinking may not be enabled
+// when tool_choice forces tool use", still true on Haiku 4.5), not to adaptive.
+//
+// Sonnet 4.6 has not been characterized against the live API yet, so this stays
+// a standalone config rather than a shared Sonnet-family one.
+const configSchema = anthropicBaseConfigSchema.extend({
+  reasoning: z
+    .object({
+      effort: z.enum([
+        ...ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS,
+        "none",
+      ]),
+    })
+    .default({ effort: DEFAULT_REASONING_EFFORT }),
+  temperature: z.literal(1).optional().default(1),
 });
-
-const configSchema = z.union([
-  baseConfig.extend({
-    reasoning: z
-      .object({
-        effort: z.enum(ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS),
-      })
-      .default({ effort: DEFAULT_REASONING_EFFORT }),
-    forceTool: z.undefined(),
-  }),
-  baseConfig.extend({
-    reasoning: z.object({ effort: z.literal("none") }),
-  }),
-]);
 
 export type ClaudeSonnetFive = z.infer<typeof configSchema>;
 

@@ -15,7 +15,6 @@ export type GetWorkspaceAuthContextResponseType = {
   subscription: SubscriptionType;
   isAdmin: boolean;
   isManager: boolean;
-  isBuilder: boolean;
   featureFlags: WhitelistableFeature[];
   isEligibleForTrial?: boolean;
   vizUrl: string;

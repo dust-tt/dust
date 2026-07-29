@@ -29,6 +29,7 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { useAppRouter } from "@app/lib/platform";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
@@ -39,6 +40,7 @@ import {
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { WorkspaceType } from "@app/types/user";
 import {
   BarFooter,
   BarHeader,
@@ -62,6 +64,7 @@ interface SkillBuilderProps {
 
 export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
+  const { featureFlags } = useFeatureFlags();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
@@ -107,8 +110,9 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 
     return getDefaultSkillFormData({
       user,
+      featureFlags,
     });
-  }, [skill, user]);
+  }, [skill, user, featureFlags]);
 
   const form = useForm<SkillBuilderFormData>({
     disabled: isEditorLocked,
@@ -302,6 +306,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
             onAddSelfAsEditor={() => {
               void handleAddSelfAsEditor();
             }}
+            owner={owner}
           />
         </div>
       </ScrollArea>
@@ -369,19 +374,23 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   );
 }
 
+interface SkillBuilderSettingsOrComparisonFooterProps {
+  skill?: SkillType;
+  hasSelfImprovingSkills: boolean;
+  isEditorGateVisible: boolean;
+  isAddingSelfAsEditor: boolean;
+  onAddSelfAsEditor: () => void;
+  owner: WorkspaceType;
+}
+
 function SkillBuilderSettingsOrComparisonFooter({
   skill,
   hasSelfImprovingSkills,
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
-}: {
-  skill?: SkillType;
-  hasSelfImprovingSkills: boolean;
-  isEditorGateVisible: boolean;
-  isAddingSelfAsEditor: boolean;
-  onAddSelfAsEditor: () => void;
-}) {
+  owner,
+}: SkillBuilderSettingsOrComparisonFooterProps) {
   const { compareVersion } = useSkillVersionComparisonContext();
 
   if (compareVersion) {
@@ -395,6 +404,7 @@ function SkillBuilderSettingsOrComparisonFooter({
       isEditorGateVisible={isEditorGateVisible}
       isAddingSelfAsEditor={isAddingSelfAsEditor}
       onAddSelfAsEditor={onAddSelfAsEditor}
+      owner={owner}
     />
   );
 }

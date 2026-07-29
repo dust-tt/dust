@@ -4,7 +4,11 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolContext } from "@app/lib/actions/types";
+import {
+  type AgentLoopRunContext,
+  isAgentLoopRunContext,
+  type ToolContext,
+} from "@app/lib/actions/types";
 import {
   executeListPublicChannels,
   executePostMessage,
@@ -16,6 +20,7 @@ import { SLACK_BOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/slack_bot
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import assert from "assert";
 
 export function createSlackBotTools(
   auth: Authenticator,
@@ -35,6 +40,15 @@ export function createSlackBotTools(
       },
       { authInfo }
     ) => {
+      let attachmentRunContext: AgentLoopRunContext | undefined;
+      if (fileId) {
+        assert(
+          isAgentLoopRunContext(toolContext?.runContext),
+          "AgentLoopRunContext expected"
+        );
+        attachmentRunContext = toolContext.runContext;
+      }
+
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
@@ -49,7 +63,10 @@ export function createSlackBotTools(
           to,
           message,
           threadTs,
-          fileId,
+          fileAttachment:
+            fileId && attachmentRunContext
+              ? { fileId, runContext: attachmentRunContext }
+              : undefined,
           unfurlLinks,
           unfurlMedia,
           accessToken,

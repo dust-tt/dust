@@ -722,6 +722,7 @@ export async function deleteFolder({
   dataSourceConfig,
   internalId,
   deleteRootNode,
+  lastSeenCutoffMs,
   logger,
   reason,
 }: {
@@ -729,6 +730,7 @@ export async function deleteFolder({
   dataSourceConfig: DataSourceConfig;
   internalId: string;
   deleteRootNode?: boolean;
+  lastSeenCutoffMs?: number;
   logger: Logger;
   reason: MicrosoftFolderDeletionReason;
 }) {
@@ -738,6 +740,13 @@ export async function deleteFolder({
   );
 
   if (!folder) {
+    return false;
+  }
+
+  if (
+    lastSeenCutoffMs !== undefined &&
+    (folder.lastSeenTs?.getTime() ?? 0) >= lastSeenCutoffMs
+  ) {
     return false;
   }
 
@@ -777,11 +786,13 @@ export async function deleteFile({
   connectorId,
   dataSourceConfig,
   internalId,
+  lastSeenCutoffMs,
   logger,
 }: {
   connectorId: number;
   dataSourceConfig: DataSourceConfig;
   internalId: string;
+  lastSeenCutoffMs?: number;
   logger: Logger;
 }) {
   const file = await MicrosoftNodeResource.fetchByInternalId(
@@ -790,6 +801,13 @@ export async function deleteFile({
   );
 
   if (!file) {
+    return false;
+  }
+
+  if (
+    lastSeenCutoffMs !== undefined &&
+    (file.lastSeenTs?.getTime() ?? 0) >= lastSeenCutoffMs
+  ) {
     return false;
   }
 

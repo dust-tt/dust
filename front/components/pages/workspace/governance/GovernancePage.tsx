@@ -102,6 +102,9 @@ function groupGovernancePermissionsBySection(
 export const GovernancePage = () => {
   const { hasFeature } = useFeatureFlags();
   const hasAdminGovernanceFeature = hasFeature("admin_governance");
+  const hasSkillPublicationFeature = hasFeature(
+    "admin_governance_skill_publication"
+  );
 
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
@@ -129,6 +132,11 @@ export const GovernancePage = () => {
     isFrameCapabilityEnabled(permission.grantType, sharingPolicy)
   );
 
+  const skillPermissions = skills.filter(
+    (permission) =>
+      hasSkillPublicationFeature || permission.grantType !== "publish"
+  );
+
   const router = useAppRouter();
   const handleNavigateToGroups = () => {
     void router.push(`/w/${owner.sId}/members?tab=groups`);
@@ -150,7 +158,7 @@ export const GovernancePage = () => {
       id: "skills",
       label: "Skills",
       icon: PuzzlePiece01,
-      governancePermissions: skills,
+      governancePermissions: skillPermissions,
     },
     ...(framePermissions.length > 0 || isAdmin
       ? [
@@ -199,9 +207,6 @@ export const GovernancePage = () => {
 
   return (
     <GovernancePageLayout>
-      <ContentMessage>
-        This page is WIP. Do not change unless you know what you are doing.
-      </ContentMessage>
       {isAdmin && <WorkspaceNameEditor owner={owner} />}
       <LinkedSectionNotice
         description="Groups assigned here are managed in"

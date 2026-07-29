@@ -22,6 +22,7 @@ app.get(
     const auth = ctx.get("auth");
     const { cId: conversationId } = ctx.req.valid("param");
 
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
     const conversationRes = await getConversation(auth, conversationId);
     if (conversationRes.isErr()) {
       return apiErrorForConversation(ctx, conversationRes.error);

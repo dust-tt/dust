@@ -1,7 +1,8 @@
 import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { Spinner } from "@dust-tt/sparkle";
 
@@ -9,7 +10,8 @@ export function SpaceAppsListPage() {
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const owner = useWorkspace();
-  const { isBuilder } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
+  const canAdministrateApps = hasPermission("admin", "dust_app");
 
   const {
     spaceInfo: space,
@@ -42,7 +44,7 @@ export function SpaceAppsListPage() {
       <SpaceAppsList
         owner={owner}
         space={space}
-        isBuilder={isBuilder}
+        canAdministrateApps={canAdministrateApps}
         onSelect={(sId) => {
           void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${sId}`);
         }}

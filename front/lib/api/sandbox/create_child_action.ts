@@ -10,9 +10,9 @@ import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
@@ -23,7 +23,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -74,8 +74,12 @@ export async function createSandboxChildAction(
     return new Err(new Error("Agent configuration not found."));
   }
 
-  const conversationResult = await getConversation(auth, conversationId);
-  if (conversationResult.isErr()) {
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+
+  if (!conversationResource) {
     return new Err(new Error("Conversation not found."));
   }
 
@@ -87,17 +91,44 @@ export async function createSandboxChildAction(
     return new Err(new Error("Parent action not found."));
   }
 
-  const conversation = conversationResult.value;
+  const agentMessageRes = await conversationResource.getMessageById(
+    auth,
+    agentMessageId
+  );
 
-  const agentMessage = conversation.content
-    .flat()
-    .find(
-      (m): m is AgentMessageType =>
-        m.type === "agent_message" && m.sId === agentMessageId
-    );
-  if (!agentMessage) {
+  if (agentMessageRes.isErr()) {
     return new Err(new Error("Agent message not found."));
   }
+
+  const agentMessageRenderRes = await batchRenderMessages(
+    auth,
+    conversationResource,
+    [agentMessageRes.value],
+    "full"
+  );
+  if (agentMessageRenderRes.isErr()) {
+    return new Err(new Error("Failed to render agent message."));
+  }
+
+  const agentMessage = agentMessageRenderRes.value[0];
+
+  if (!isAgentMessageType(agentMessage)) {
+    return new Err(new Error("Agent message not found."));
+  }
+
+  // Using the fetchConversationWithParticipantState method as we need the read and action required states
+  const conversationRes =
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: need actionRequired/lastReadAt
+    await ConversationResource.fetchConversationWithParticipantState(
+      auth,
+      conversationId
+    );
+
+  if (conversationRes.isErr()) {
+    return new Err(new Error("Failed to fetch conversation."));
+  }
+
+  const conversation = conversationRes.value;
 
   // JIT servers cover tools added via the conversation input bar, skill
   // servers cover tools attached through skills. Resolve the server config

@@ -725,6 +725,7 @@ export async function createConversationFork(
     );
   }
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const childConversation = await getConversation(
     auth,
     childConversationId.value.childConversationId
@@ -747,6 +748,7 @@ export async function createConversationFork(
     });
   }
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const parentConversationWithContent = await getConversation(
     auth,
     conversationId

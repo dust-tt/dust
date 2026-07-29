@@ -101,6 +101,7 @@ export function useSkills({
   status,
   globalSpaceOnly,
   availability,
+  bypassEditorVisibility,
   swrOptions,
 }: {
   owner: LightWorkspaceType;
@@ -108,6 +109,9 @@ export function useSkills({
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
   availability?: SkillAvailability | SkillAvailability[];
+  // Admin-only: bypass the editor-visibility rule and also list unpublished
+  // (editors-only) skills the caller does not edit.
+  bypassEditorVisibility?: boolean;
   swrOptions?: SWRConfiguration;
 }): {
   skills: SkillWithoutInstructionsAndToolsType[];
@@ -131,6 +135,9 @@ export function useSkills({
     for (const value of availabilities) {
       queryParams.append("availability", value);
     }
+  }
+  if (bypassEditorVisibility) {
+    queryParams.set("bypassEditorVisibility", "true");
   }
   const queryString = queryParams.toString();
 
@@ -181,6 +188,53 @@ export function useSkillsWithRelations({
     isSkillsWithRelationsLoading: isLoading,
     mutateSkillsWithRelations: mutate,
   };
+}
+
+export function useUpdateSkillsAvailability({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const { fetcher } = useFetcher();
+  const sendNotification = useSendNotification();
+
+  const { mutateSkillsWithRelations: mutateActiveSkills } =
+    useSkillsWithRelations({
+      owner,
+      status: "active",
+      disabled: true,
+    });
+
+  const doUpdateAvailability = async (
+    skillIds: string[],
+    availability: SkillAvailability
+  ): Promise<boolean> => {
+    try {
+      await fetcher(`/api/w/${owner.sId}/skills/availability`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skillIds, availability }),
+      });
+
+      void mutateActiveSkills();
+
+      sendNotification({
+        type: "success",
+        title: "Skills updated",
+        description: `Successfully updated ${skillIds.length} skill${pluralize(skillIds.length)}.`,
+      });
+      return true;
+    } catch (err) {
+      sendNotification({
+        type: "error",
+        title: "Error updating skills",
+        description: `Error: ${isAPIErrorResponse(err) ? err.error.message : "An unexpected error occurred."}`,
+      });
+      return false;
+    }
+  };
+
+  return doUpdateAvailability;
 }
 
 export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {

@@ -7,8 +7,8 @@ import type { GetGitHubConnectionResponseBody } from "@app/lib/skill_detection";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import {
+  ensureHasWorkspacePermission,
   ensureIsAdmin,
-  ensureIsBuilder,
 } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -20,7 +20,12 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsBuilder(),
+  ensureHasWorkspacePermission(
+    "create",
+    "skill",
+    "Accessing the skill import GitHub connection is restricted.",
+    "app_auth_error"
+  ),
   async (ctx): HandlerResult<GetGitHubConnectionResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();

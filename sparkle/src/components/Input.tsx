@@ -45,14 +45,14 @@ const fieldVariants = cva(
       },
       state: {
         default: cn(
-          "border-border",
-          "focus-within:border-border-dark",
+          "border-border-form",
+          "focus-within:border-border-form-active",
           // Filled (has a value): darker border, plus a muted fill while the
           // field is not focused — matches Figma's "filled" state.
-          "has-[input:not(:placeholder-shown)]:border-border-dark",
+          "has-[input:not(:placeholder-shown)]:border-border-form-active",
           "[&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-muted"
         ),
-        error: cn("border-warning-300", "focus-within:border-warning-400"),
+        error: cn("border-warning-500", "focus-within:border-warning-600"),
         disabled: cn("cursor-not-allowed border-transparent", "bg-muted"),
       },
     },

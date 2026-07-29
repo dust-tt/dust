@@ -91,8 +91,12 @@ export type TokenUsageContent = {
   cacheCreated: number;
   cacheHit: number;
   standardInput: number;
-  standardOutput: number;
-  reasoning: number;
+  // Inclusive billed output total. Provider adapters must normalize their raw
+  // usage into this value, including reasoning and thinking tokens.
+  totalOutput: number;
+  // Optional reasoning and thinking subset of totalOutput. Never add it to
+  // totalOutput for persistence or billing.
+  reasoning?: number;
 };
 export interface TokenUsageEvent {
   type: "token_usage";

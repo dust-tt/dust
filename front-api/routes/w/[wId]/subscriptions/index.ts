@@ -18,7 +18,7 @@ import { PatchSubscriptionRequestBody } from "@app/types/api/subscription";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import {
-  ensureIsAdmin,
+  ensureHasWorkspacePermission,
   ensureIsManager,
 } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -68,10 +68,15 @@ app.get(
 
 app.post(
   "/",
-  ensureIsAdmin(),
   validate("json", PostSubscriptionRequestBody),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<PostSubscriptionResponseBody> => {
     const auth = ctx.get("auth");
+
     const body = ctx.req.valid("json");
 
     try {
@@ -110,8 +115,12 @@ app.post(
 
 app.patch(
   "/",
-  ensureIsAdmin(),
   validate("json", PatchSubscriptionRequestBody),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<PatchSubscriptionResponseBody> => {
     const auth = ctx.get("auth");
 

@@ -20,6 +20,7 @@ export const SCOPE_DIMENSION_LABEL: Record<AnalyticsScopeDimension, string> = {
   origin: "Source",
   api_key: "API Key",
   tag: "Tag",
+  model: "Model",
 };
 
 export const SCOPE_DIMENSIONS = Object.keys(

@@ -545,7 +545,6 @@ export async function notifyWorkflowError(
 ): Promise<void> {
   const auth = await AuthenticatorClass.fromJsonWithRefrehedGroups(authType);
 
-  // Use lighter fetchConversationWithoutContent
   const conversation = await ConversationResource.fetchById(
     auth,
     conversationId
@@ -659,7 +658,7 @@ export async function finalizeCancellation(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`
     );
   }
-  const { auth, agentConfiguration, model, agentMessage, conversation } =
+  const { auth, agentConfiguration, modelInfo, agentMessage, conversation } =
     runAgentDataRes.value;
 
   // get the last step of the agent message
@@ -668,7 +667,7 @@ export async function finalizeCancellation(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    getDelimitersConfiguration({ model })
+    getDelimitersConfiguration(modelInfo)
   );
 
   // Flush pending tokens from the content parser, if any.
@@ -726,7 +725,7 @@ export async function finalizeInterruption(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`
     );
   }
-  const { auth, agentConfiguration, model, agentMessage, conversation } =
+  const { auth, agentConfiguration, modelInfo, agentMessage, conversation } =
     runAgentDataRes.value;
 
   // The message may have been finalized by another path already (e.g. an orphaned activity
@@ -750,7 +749,7 @@ export async function finalizeInterruption(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    getDelimitersConfiguration({ model })
+    getDelimitersConfiguration(modelInfo)
   );
 
   for await (const tokenEvent of contentParser.flushTokens()) {

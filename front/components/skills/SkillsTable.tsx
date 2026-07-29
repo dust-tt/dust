@@ -2,31 +2,55 @@ import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useAppRouter } from "@app/lib/platform";
-import { getSkillAvatarIcon } from "@app/lib/skill";
+import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
+  SkillAvailability,
   SkillUsageType,
   SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
-import { DataTable, Edit04, Eye, Trash01 } from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import {
+  Chip,
+  createSelectionColumn,
+  DataTable,
+  Edit04,
+  Eye,
+  Trash01,
+} from "@dust-tt/sparkle";
+import type {
+  CellContext,
+  ColumnDef,
+  Row,
+  RowSelectionState,
+} from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 type RowData = {
+  sId: string;
   name: string;
   icon: string | null;
   editedBy: number | null;
   description: string;
+  availability: SkillAvailability;
   editors: UserType[] | null;
   usage: SkillUsageType;
   updatedAt: number | null;
   createdAt: number | null;
   onClick: () => void;
   menuItems: MenuItem[];
+};
+
+export const SKILL_AVAILABILITY_DISPLAY: Record<
+  SkillAvailability,
+  { label: string; color: "primary" | "success" | "highlight" }
+> = {
+  editors: { label: "Editor only", color: "primary" },
+  workspace_users: { label: "Workspace members", color: "success" },
+  users_and_agents: { label: "Auto-discoverable", color: "highlight" },
 };
 
 const nameColumn = {
@@ -55,6 +79,23 @@ const nameColumn = {
   },
   meta: {
     className: "w-40 @lg:w-full",
+  },
+};
+
+const availabilityColumn = {
+  header: "Availability",
+  accessorKey: "availability",
+  cell: (info: CellContext<RowData, SkillAvailability>) => {
+    const display = SKILL_AVAILABILITY_DISPLAY[info.getValue()];
+    return (
+      <DataTable.CellContent>
+        <Chip size="xs" color={display.color} label={display.label} />
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    // Wide enough for the longest chip label ("Workspace members").
+    className: "hidden @sm:w-44 @sm:table-cell",
   },
 };
 
@@ -131,21 +172,32 @@ const menuColumn = {
   },
 };
 
-const getTableColumns = (
-  onAgentClick: (agentId: string) => void,
-  onUsedBySkillClick: (skillId: string) => void
-) => {
+const getTableColumns = ({
+  onAgentClick,
+  onUsedBySkillClick,
+  showAvailability,
+  enableRowSelection,
+}: {
+  onAgentClick: (agentId: string) => void;
+  onUsedBySkillClick: (skillId: string) => void;
+  showAvailability: boolean;
+  enableRowSelection: boolean;
+}) => {
   /**
    * Columns order:
+   * - Selection (batch edition only)
    * - Name (always)
-   * - Editors (hidden on mobile)
+   * - Access (skill publication governance only, hidden on mobile)
    * - Used by (hidden on mobile)
+   * - Editors (hidden on mobile)
    * - Last Edited (hidden on mobile)
    * - Actions (always)
    */
 
   return [
+    ...(enableRowSelection ? [createSelectionColumn<RowData>()] : []),
     nameColumn,
+    ...(showAvailability ? [availabilityColumn] : []),
     usedByColumn(onAgentClick, onUsedBySkillClick),
     editorsColumn,
     lastEditedColumn,
@@ -161,6 +213,9 @@ type SkillsTableProps = {
   ) => void;
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
+  showAvailability?: boolean;
+  rowSelection?: RowSelectionState;
+  setRowSelection?: (selection: RowSelectionState) => void;
 };
 
 export function SkillsTable({
@@ -169,25 +224,50 @@ export function SkillsTable({
   onSkillClick,
   onAgentClick,
   onUsedBySkillClick,
+  showAvailability = false,
+  rowSelection,
+  setRowSelection,
 }: SkillsTableProps) {
   const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
   const [skillToArchive, setSkillToArchive] =
     useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
 
+  const isSelectionEnabled = rowSelection !== undefined;
+
+  // Stable columns identity: rebuilding them on every selection change makes the
+  // table re-render all rows.
+  const columns = useMemo(
+    () =>
+      getTableColumns({
+        onAgentClick,
+        onUsedBySkillClick,
+        showAvailability,
+        enableRowSelection: isSelectionEnabled,
+      }),
+    [onAgentClick, onUsedBySkillClick, showAvailability, isSelectionEnabled]
+  );
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(
     () =>
       skills.map((skill) => ({
+        sId: skill.sId,
         name: skill.name,
         icon: skill.icon,
         editedBy: skill.editedBy,
         description: skill.userFacingDescription,
+        availability: skill.availability,
         editors: skill.relations.editors,
         usage: skill.relations.usage,
         updatedAt: skill.updatedAt,
         createdAt: skill.createdAt,
         onClick: () => {
+          // During batch edition the DataTable itself toggles the row selection on
+          // click; don't open the details panel on top of it.
+          if (isSelectionEnabled) {
+            return;
+          }
           onSkillClick(skill);
         },
         menuItems:
@@ -229,7 +309,7 @@ export function SkillsTable({
             : [],
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
-    [skills, onSkillClick, onUsedBySkillClick, owner.sId]
+    [skills, onSkillClick, onUsedBySkillClick, owner.sId, isSelectionEnabled]
   );
 
   if (rows.length === 0) {
@@ -251,9 +331,20 @@ export function SkillsTable({
       <DataTable
         className="relative"
         data={rows}
-        columns={getTableColumns(onAgentClick, onUsedBySkillClick)}
+        columns={columns}
         pagination={pagination}
         setPagination={setPagination}
+        {...(rowSelection !== undefined && setRowSelection
+          ? {
+              rowSelection,
+              setRowSelection,
+              // Dust-provided (code-defined) skills have a fixed availability and
+              // cannot be batch-edited.
+              enableRowSelection: (row: Row<RowData>) =>
+                !isDustProvidedSkill(row.original),
+              getRowId: (row: RowData) => row.sId,
+            }
+          : {})}
       />
     </>
   );

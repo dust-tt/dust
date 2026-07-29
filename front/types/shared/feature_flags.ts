@@ -49,7 +49,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   dust_agent_gpt_5_6_luna_default: {
     description:
       "Use GPT 5.6 Luna (high reasoning) as the default model for the @dust agent",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   dust_agent_sonnet_5_default: {
     description: "Use Claude Sonnet 5 as the default model for the @dust agent",
@@ -331,6 +331,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   group_permissions_shadow: {
     description:
       "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
+    stage: "dust_only",
+  },
+  user_memory: {
+    description:
+      "Enable the user_memory internal MCP server: agents can store and retrieve per-user memory in a user-scoped filesystem.",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

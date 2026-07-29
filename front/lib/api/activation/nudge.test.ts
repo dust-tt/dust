@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/activation/nudge";
 import { ACTIVATION_WEBHOOK_SOURCE_NAME } from "@app/lib/api/activation/trigger";
 import { Authenticator } from "@app/lib/auth";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -21,15 +22,23 @@ import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { TriggerStatus } from "@app/types/assistant/triggers";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockIsUserBlocked } = vi.hoisted(() => ({
+  mockIsUserBlocked: vi.fn(),
+}));
+
+vi.mock("@app/lib/metronome/user_block", () => ({
+  isUserBlocked: mockIsUserBlocked,
+}));
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Wires a trigger the same way `createActivationTrigger` does in production:
-// on the pod's own view of the shared Activation webhook source. This is
-// required for `isEligibleForNudge` to find it via `findActivationTrigger`,
-// which pinpoints the trigger by `webhookSourceViewId` rather than just
-// `kind === "webhook"` (a pod's space can hold other webhook triggers).
+// Wires a trigger the same way `createActivationTrigger` does in production
+// (on the pod's own view of the shared Activation webhook source), plus the
+// ActivationPod row `join_activation_pod.ts` creates alongside it. This is
+// required for `isEligibleForNudge`, which resolves the pod's trigger via
+// `ActivationPodResource` rather than the source/view/trigger join.
 async function createPodActivationTrigger(
   auth: Authenticator,
   pod: SpaceResource,
@@ -43,12 +52,20 @@ async function createPodActivationTrigger(
     webhookSourceId: source.sId,
   });
 
-  return TriggerFactory.webhook(auth, {
+  const trigger = await TriggerFactory.webhook(auth, {
     agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
     status: options.status ?? "enabled",
     spaceId: pod.id,
     webhookSourceViewId: podView.id,
   });
+
+  await ActivationPodResource.makeNew(auth, {
+    pod,
+    user: auth.getNonNullableUser(),
+    trigger,
+  });
+
+  return trigger;
 }
 
 describe("getActivationNudgeFrequencyCapDays", () => {
@@ -92,13 +109,20 @@ describe("getActivationNudgeFrequencyCapDays", () => {
 });
 
 describe("isEligibleForNudge", () => {
+  beforeEach(() => {
+    mockIsUserBlocked.mockReset();
+    mockIsUserBlocked.mockResolvedValue(null);
+  });
+
   it("is eligible when the pod has never been nudged", async () => {
     const { authenticator, globalSpace } = await createResourceTest({
       role: "admin",
     });
     await createPodActivationTrigger(authenticator, globalSpace);
 
-    expect(await isEligibleForNudge(authenticator, globalSpace)).toBe(true);
+    expect(
+      await isEligibleForNudge(authenticator, globalSpace, { user: null })
+    ).toBe(true);
   });
 
   it("is not eligible right after a nudge, within the cap window", async () => {
@@ -114,7 +138,44 @@ describe("isEligibleForNudge", () => {
       trigger,
     });
 
-    expect(await isEligibleForNudge(authenticator, globalSpace)).toBe(false);
+    expect(
+      await isEligibleForNudge(authenticator, globalSpace, { user: null })
+    ).toBe(false);
+  });
+
+  it("is not eligible when the pod's user is blocked, even if never nudged", async () => {
+    mockIsUserBlocked.mockResolvedValue("credits_exhausted");
+    const { authenticator, user, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
+    await createPodActivationTrigger(authenticator, globalSpace);
+
+    expect(await isEligibleForNudge(authenticator, globalSpace, { user })).toBe(
+      false
+    );
+  });
+
+  it("is eligible when a user is provided but not blocked", async () => {
+    mockIsUserBlocked.mockResolvedValue(null);
+    const { authenticator, user, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
+    await createPodActivationTrigger(authenticator, globalSpace);
+
+    expect(await isEligibleForNudge(authenticator, globalSpace, { user })).toBe(
+      true
+    );
+  });
+
+  it("does not check the credit gate when no user is provided", async () => {
+    const { authenticator, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
+    await createPodActivationTrigger(authenticator, globalSpace);
+
+    await isEligibleForNudge(authenticator, globalSpace, { user: null });
+
+    expect(mockIsUserBlocked).not.toHaveBeenCalled();
   });
 
   it("is not eligible once the max unanswered nudge count is reached, even outside the cap window", async () => {
@@ -145,7 +206,9 @@ describe("isEligibleForNudge", () => {
       createdAt: new Date(Date.now() - 5 * DAY_MS),
     });
 
-    expect(await isEligibleForNudge(refreshedAuth, globalSpace)).toBe(false);
+    expect(
+      await isEligibleForNudge(refreshedAuth, globalSpace, { user: null })
+    ).toBe(false);
   });
 
   it("is eligible again once the user replies after the most recent nudge", async () => {
@@ -187,7 +250,9 @@ describe("isEligibleForNudge", () => {
       trigger.id
     );
 
-    expect(await isEligibleForNudge(refreshedAuth, globalSpace)).toBe(true);
+    expect(
+      await isEligibleForNudge(refreshedAuth, globalSpace, { user: null })
+    ).toBe(true);
   });
 
   it("is not eligible when the trigger was disabled by the user (opted out)", async () => {
@@ -198,7 +263,9 @@ describe("isEligibleForNudge", () => {
       status: "disabled",
     });
 
-    expect(await isEligibleForNudge(authenticator, globalSpace)).toBe(false);
+    expect(
+      await isEligibleForNudge(authenticator, globalSpace, { user: null })
+    ).toBe(false);
   });
 
   it("is not eligible when the pod has no activation trigger", async () => {
@@ -206,7 +273,9 @@ describe("isEligibleForNudge", () => {
       role: "admin",
     });
 
-    expect(await isEligibleForNudge(authenticator, globalSpace)).toBe(false);
+    expect(
+      await isEligibleForNudge(authenticator, globalSpace, { user: null })
+    ).toBe(false);
   });
 
   it("is not eligible when the pod is archived (dead)", async () => {
@@ -235,7 +304,9 @@ describe("isEligibleForNudge", () => {
       throw new Error("Expected the archived pod to still be fetchable.");
     }
 
-    expect(await isEligibleForNudge(authenticator, archivedPod)).toBe(false);
+    expect(
+      await isEligibleForNudge(authenticator, archivedPod, { user: null })
+    ).toBe(false);
   });
 
   it("is not eligible when the target user left the workspace (dead)", async () => {
@@ -250,7 +321,9 @@ describe("isEligibleForNudge", () => {
 
     await MembershipResource.revokeMembership({ user, workspace });
 
-    expect(await isEligibleForNudge(authenticator, globalSpace)).toBe(false);
+    expect(
+      await isEligibleForNudge(authenticator, globalSpace, { user: null })
+    ).toBe(false);
   });
 });
 

@@ -1,5 +1,3 @@
-import { getStreamLLM } from "@app/lib/api/llm";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { MAX_TOOL_CALL_ROUNDS } from "@app/tests/sidekick-evals/lib/config";
@@ -12,6 +10,7 @@ import {
   type TestCase,
   type ToolCall,
 } from "@app/tests/sidekick-evals/lib/types";
+import { getEvalStreamLLM } from "@app/tests/utils/eval_llm";
 import type {
   AgentContentItemType,
   AgentErrorContentType,
@@ -24,20 +23,11 @@ export async function executeSidekick(
   testCase: TestCase,
   agentState: MockAgentState
 ): Promise<SidekickExecutionResult> {
-  const credentials = await getLlmCredentials(auth, {
-    skipEmbeddingApiKeyRequirement: true,
-  });
-  const llm = await getStreamLLM(auth, {
-    credentials,
+  const llm = await getEvalStreamLLM(auth, {
     modelId: config.model.modelId,
-    temperature: config.model.temperature ?? null,
-    reasoningEffort: config.model.reasoningEffort ?? null,
-    bypassFeatureFlag: true,
+    temperature: config.model.temperature ?? undefined,
+    reasoningEffort: config.model.reasoningEffort ?? undefined,
   });
-
-  if (!llm) {
-    throw new Error("Failed to initialize LLM for sidekick execution");
-  }
 
   // Build initial messages from either a single user message or a conversation history.
   const messages: ModelMessageTypeMultiActionsWithoutContentFragment[] = [];

@@ -16,7 +16,6 @@ import {
   resolvePackageAliasForCurrency,
 } from "@app/lib/plans/billing_currency";
 import { CREDIT_PRICED_FREE_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -27,16 +26,11 @@ import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 // Metronome billing is enabled by default for all workspaces. The
-// `global_disable_metronome_billing` kill switch turns it off globally; the
 // `legacy_billing` feature flag forces it off for individual workspaces.
 export async function isMetronomeBillingEnabled(
   auth: Authenticator
 ): Promise<boolean> {
-  const [hasLegacyFlag, killed] = await Promise.all([
-    hasFeatureFlag(auth, "legacy_billing"),
-    KillSwitchResource.isKillSwitchEnabled("global_disable_metronome_billing"),
-  ]);
-  return !hasLegacyFlag && !killed;
+  return !(await hasFeatureFlag(auth, "legacy_billing"));
 }
 
 /**

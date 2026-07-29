@@ -59,13 +59,16 @@ app.post(
     const space = ctx.get("space");
     const owner = auth.getNonNullableWorkspace();
 
-    if (!space.canWrite(auth) || !auth.isBuilder()) {
+    if (
+      !space.canWrite(auth) ||
+      !(await auth.hasWorkspacePermission("admin", "dust_app"))
+    ) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
           message:
-            "Only the users that are `builders` for the current workspace can create an app.",
+            "You do not have permission to administrate apps in the current workspace.",
         },
       });
     }

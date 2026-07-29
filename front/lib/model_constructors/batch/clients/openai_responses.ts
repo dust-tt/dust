@@ -13,6 +13,9 @@ import { OPENAI_LAB } from "@app/lib/model_constructors/types/labs";
 import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+// Do not remove: front-api routes call into this client for the similar skill
+// and similar agent discovery features. Without an explicit version front-api can silently
+// resolve a stale, incompatible `openai` version through node_modules hoisting.
 import { OpenAI, toFile } from "openai";
 import type {
   Response as OpenAIResponse,
@@ -55,14 +58,23 @@ export abstract class OpenAIResponsesBatch extends WithOpenAIResponsesInputConve
   static readonly lab = OPENAI_LAB;
   static readonly host = OPENAI_RESPONSES_HOST;
 
-  private readonly client: OpenAI;
+  protected abstract readonly baseUrl: string;
 
-  constructor({ OPENAI_API_KEY, OPENAI_BASE_URL }: Credentials) {
+  private readonly apiKey: string | undefined;
+  private _client: OpenAI | undefined;
+
+  constructor({ OPENAI_API_KEY }: Credentials) {
     super();
-    this.client = new OpenAI({
-      apiKey: OPENAI_API_KEY,
-      baseURL: OPENAI_BASE_URL,
+    this.apiKey = OPENAI_API_KEY;
+  }
+
+  // Lazy: `baseUrl` is an abstract field, only set after subclass initializers run.
+  private get client(): OpenAI {
+    this._client ??= new OpenAI({
+      apiKey: this.apiKey,
+      baseURL: this.baseUrl,
     });
+    return this._client;
   }
 
   rawBatchOutputToEvents(result: OpenAIResponse): NonDeltaResponseEvent[] {

@@ -6,19 +6,7 @@ export function WithDustMistralLargeConfig<
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  // Spread the legacy model config onto the class statics (see
-  // `DustStreamEndpointConfiguration`). `Object.assign` returns
-  // `class & ModelConfigurationType`, so the fields are visible to the type
-  // checker without an unsafe cast.
-  abstract class DustMistralLargeConfig extends Base {}
-  const WithConfig = Object.assign(
-    DustMistralLargeConfig,
-    MISTRAL_LARGE_MODEL_CONFIG
-  );
-
-  // Declared last so these own statics shadow (take precedence over) the spread
-  // config values.
-  abstract class DustMistralLarge extends WithConfig {
+  abstract class DustMistralLarge extends Base {
     static readonly displayName = "Mistral Large";
     static readonly description = "Mistral's `large` model (256k context).";
     // Legacy product value; the model has no separate output cap.
@@ -26,6 +14,12 @@ export function WithDustMistralLargeConfig<
     static readonly byok = true;
     // Non-reasoning model: drop the reasoning effort the schema rejects.
     static readonly configParsers = [dropReasoning];
+
+    // Nest the legacy model config under a single `modelConfig` static (see
+    // `DustStreamEndpointConfiguration`) so consumers can retrieve the full
+    // `ModelConfigurationType` off the endpoint without spreading its fields
+    // onto the class statics.
+    static readonly modelConfig = MISTRAL_LARGE_MODEL_CONFIG;
   }
 
   return DustMistralLarge;

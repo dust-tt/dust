@@ -58,7 +58,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
 import type {
@@ -681,54 +680,11 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   /**
-   * Temporary workaround until we can call this method from the MessageResource.
-   * @deprecated use the destroy method.
+   * Content fragment GCS + DB cleanup lives in destroyConversation (one
+   * conversation-level GCS prefix delete, then batched DB deletes).
    */
   delete(): Promise<Result<undefined, Error>> {
     throw new Error("Method not implemented.");
-  }
-
-  async destroy(
-    {
-      conversationId,
-      messageId,
-      workspaceId,
-    }: { conversationId: string; messageId: string; workspaceId: string },
-    transaction?: Transaction
-  ): Promise<Result<undefined, Error>> {
-    try {
-      const { filePath: textFilePath } = fileAttachmentLocation({
-        conversationId,
-        workspaceId,
-        messageId,
-        contentFormat: "text",
-      });
-
-      const { filePath: rawFilePath } = fileAttachmentLocation({
-        conversationId,
-        workspaceId,
-        messageId,
-        contentFormat: "raw",
-      });
-
-      const privateUploadGcs = getPrivateUploadBucket();
-
-      // First, we delete the doc from the file storage.
-      await privateUploadGcs.delete(textFilePath, { ignoreNotFound: true });
-      await privateUploadGcs.delete(rawFilePath, { ignoreNotFound: true });
-
-      // Then, we delete the record from the DB.
-      await this.model.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-      });
-
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
   }
 
   async setSourceUrl(sourceUrl: string | null) {

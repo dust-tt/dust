@@ -27,6 +27,7 @@ describe("workspace_analytics tools", () => {
     "get_top_agents",
     "get_top_users",
     "get_top_agent_tags",
+    "get_top_models",
     "get_agent_details",
     "get_top_skills",
     "get_top_tools",

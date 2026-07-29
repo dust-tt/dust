@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -59,12 +60,27 @@ export class ActivationNudgeResource extends BaseResource<ActivationNudgeModel> 
   ): Promise<ActivationNudgeResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
+    // Best-effort link to the canonical ActivationPod, alongside the
+    // spaceId/triggerId/userId already denormalized below. Not every pod has
+    // one yet, so a lookup miss just leaves activationPodId null.
+    const activationPods = await ActivationPodResource.fetchBySpaceModelIds(
+      auth,
+      nudges.map(({ pod }) => pod.id)
+    );
+    const activationPodBySpaceId = new Map(
+      activationPods.map((activationPod) => [
+        activationPod.spaceId,
+        activationPod,
+      ])
+    );
+
     const created = await this.model.bulkCreate(
       nudges.map(({ pod, trigger }) => ({
         workspaceId,
         spaceId: pod.id,
         triggerId: trigger.id,
         userId: trigger.editor,
+        activationPodId: activationPodBySpaceId.get(pod.id)?.id ?? null,
       })),
       { returning: true }
     );
@@ -73,23 +89,29 @@ export class ActivationNudgeResource extends BaseResource<ActivationNudgeModel> 
   }
 
   // Fetches the most recent nudge recorded for a pod, if any.
-  static async fetchLatestForSpace(
+  static async fetchLatestForActivationPod(
     auth: Authenticator,
-    { pod }: { pod: SpaceResource }
+    { activationPod }: { activationPod: ActivationPodResource }
   ): Promise<ActivationNudgeResource | null> {
-    const [latest] = await this.listRecentForSpace(auth, { pod, limit: 1 });
+    const [latest] = await this.listRecentForActivationPod(auth, {
+      activationPod,
+      limit: 1,
+    });
     return latest ?? null;
   }
 
   // Fetches the `limit` most recent nudges recorded for a pod, newest first.
-  static async listRecentForSpace(
+  static async listRecentForActivationPod(
     auth: Authenticator,
-    { pod, limit }: { pod: SpaceResource; limit: number }
+    {
+      activationPod,
+      limit,
+    }: { activationPod: ActivationPodResource; limit: number }
   ): Promise<ActivationNudgeResource[]> {
     const nudges = await this.model.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        spaceId: pod.id,
+        activationPodId: activationPod.id,
       },
       order: [["createdAt", "DESC"]],
       limit,

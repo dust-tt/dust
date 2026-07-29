@@ -1,4 +1,3 @@
-import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/api/llm/utils/tool_search";
 import {
   assistantProviderPassthroughMessageToInputItems,
   assistantReasoningMessageToInputItems,
@@ -16,6 +15,7 @@ import type {
   BaseUserTextMessage,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
+import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/model_constructors/types/tool_search";
 import { describe, expect, it } from "vitest";
 
 describe("assistantTextMessageToInputItem", () => {

@@ -5,7 +5,7 @@ import {
 } from "@app/lib/api/activation/trigger";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { Authenticator } from "@app/lib/auth";
-import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -33,8 +33,8 @@ async function isActivationPod(
     return false;
   }
 
-  const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
-  return metadata?.provisioningSource === "activation";
+  const activationPod = await ActivationPodResource.fetchBySpace(auth, pod);
+  return activationPod !== null;
 }
 
 export const sendActivationNudgePlugin = createPlugin({

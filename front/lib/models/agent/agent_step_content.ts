@@ -99,6 +99,14 @@ AgentStepContentModel.init(
           type: "function_call",
         },
       },
+      {
+        concurrently: true,
+        fields: ["workspaceId", "agentMessageId"],
+        name: "agent_step_contents_workspace_id_text_content_idx",
+        where: {
+          type: "text_content",
+        },
+      },
     ],
   }
 );

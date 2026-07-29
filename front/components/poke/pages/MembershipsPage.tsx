@@ -3,6 +3,8 @@ import { MembersDataTable } from "@app/components/poke/members/table";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeMemberships } from "@app/poke/swr/memberships";
+import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
+import { MEMBERSHIP_SEAT_TYPES } from "@app/types/memberships";
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 export function MembershipsPage() {
@@ -17,6 +19,19 @@ export function MembershipsPage() {
     owner,
     disabled: false,
   });
+
+  const { data: workspaceInfo } = usePokeWorkspaceInfo({
+    owner,
+    disabled: false,
+  });
+
+  // Restrict the seat dropdown to the seats entitled by the current contract
+  // (like SwitchContractDialog). Fall back to all seat types when the contract
+  // has no seat plan (e.g. not a Metronome contract).
+  const seatPlan = workspaceInfo?.seatPlan ?? null;
+  const availableSeatTypes = seatPlan
+    ? MEMBERSHIP_SEAT_TYPES.filter((st) => st === "none" || st in seatPlan)
+    : undefined;
 
   if (isLoading) {
     return (
@@ -46,7 +61,11 @@ export function MembershipsPage() {
       </h3>
       <div className="flex-grow p-6">
         <div className="flex justify-center">
-          <MembersDataTable members={members} owner={owner} />
+          <MembersDataTable
+            availableSeatTypes={availableSeatTypes}
+            members={members}
+            owner={owner}
+          />
         </div>
         <div className="flex justify-center">
           <InvitationsDataTable

@@ -22,6 +22,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
   ChatCompletionToolChoiceOption,
+  ChatCompletionToolMessageParam,
 } from "openai/resources/chat/completions";
 import type {
   ReasoningEffort as OpenAIReasoningEffort,
@@ -119,7 +120,7 @@ export function userImageMessageToMessage(
 
 export function toolCallResultMessageToMessage(
   message: BaseToolCallResultMessage
-): ChatCompletionMessageParam {
+): ChatCompletionToolMessageParam {
   const content = message.content.parts
     .map((part) => {
       switch (part.type) {

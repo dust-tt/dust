@@ -65,4 +65,7 @@ export const apiConfig = {
   getDiscordApplicationId: (): string => {
     return EnvironmentConfig.getEnvVariable("DISCORD_APP_ID");
   },
+  getProfilerSecret: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
+  },
 };

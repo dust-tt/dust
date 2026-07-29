@@ -147,7 +147,7 @@ describe("DataSourceViewResource", () => {
   });
 
   describe("listBySpaceIds", () => {
-    it("includes global space views without fetching spaces", async () => {
+    it("includes global space views via resolved global vaultId", async () => {
       const workspace = await WorkspaceFactory.basic();
       const adminAuth = await Authenticator.internalAdminForWorkspace(
         workspace.sId
@@ -168,7 +168,6 @@ describe("DataSourceViewResource", () => {
         SpaceResource,
         "fetchWorkspaceGlobalSpace"
       );
-      const spacesFetch = vi.spyOn(SpaceResource, "fetchByIds");
 
       try {
         const views = await DataSourceViewResource.listBySpaceIds(
@@ -180,11 +179,9 @@ describe("DataSourceViewResource", () => {
         expect(views.map((v) => v.sId).sort()).toEqual(
           [globalDsv.sId, regularDsv.sId].sort()
         );
-        expect(globalSpaceFetch).not.toHaveBeenCalled();
-        expect(spacesFetch).not.toHaveBeenCalled();
+        expect(globalSpaceFetch).toHaveBeenCalled();
       } finally {
         globalSpaceFetch.mockRestore();
-        spacesFetch.mockRestore();
       }
     });
 

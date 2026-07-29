@@ -613,6 +613,9 @@ interface MembersUsageTableProps {
   isSeatBased: boolean;
   showSpendLimit: boolean;
   readOnly: boolean;
+  // Disables only the seat-assign/change/remove actions (e.g. while the
+  // subscription has a cancellation scheduled), independent of `readOnly`.
+  seatActionsDisabled?: boolean;
   onChangeSeat: (member: MemberUsageType) => void;
   onRemoveSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
@@ -648,6 +651,7 @@ export function MembersUsageTable({
   isSeatBased,
   showSpendLimit,
   readOnly,
+  seatActionsDisabled = false,
   onChangeSeat,
   onRemoveSeat,
   onEditSpendLimit,
@@ -713,7 +717,7 @@ export function MembersUsageTable({
                   {
                     kind: "item" as const,
                     label: "Assign seat",
-                    disabled: readOnly,
+                    disabled: readOnly || seatActionsDisabled,
                     onClick: () => onChangeSeat(m),
                   },
                 ]
@@ -723,7 +727,7 @@ export function MembersUsageTable({
                   {
                     kind: "item" as const,
                     label: "Change seat type",
-                    disabled: readOnly,
+                    disabled: readOnly || seatActionsDisabled,
                     onClick: () => onChangeSeat(m),
                   },
                 ]
@@ -775,7 +779,7 @@ export function MembersUsageTable({
                     kind: "item" as const,
                     label: "Remove seat",
                     variant: "warning" as const,
-                    disabled: readOnly,
+                    disabled: readOnly || seatActionsDisabled,
                     onClick: () => onRemoveSeat(m),
                   },
                 ]
@@ -796,6 +800,7 @@ export function MembersUsageTable({
       workspaceAllowedModelTiers,
       groupNameToId,
       readOnly,
+      seatActionsDisabled,
       onChangeSeat,
       onRemoveSeat,
       onEditSpendLimit,

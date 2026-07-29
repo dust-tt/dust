@@ -4,13 +4,13 @@ import type {
   MessageParam,
   TextBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
-import { stripUnreplayableToolSearchBlocks } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { Client } from "@app/lib/model_constructors/client";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import {
   ANTHROPIC_TOOL_SEARCH_INSTRUCTION,
   includesToolSearchTool,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
+import { stripUnreplayableToolSearchBlocks } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import {
   assistantProviderPassthroughMessageToBlocks,
   assistantReasoningMessageToThinkingBlocks,
@@ -117,7 +117,11 @@ export function WithAnthropicAIInputConverter<
               { type: "text", text: ANTHROPIC_TOOL_SEARCH_INSTRUCTION },
             ]
           : system,
-        thinking: thinkingConfig.thinking,
+        // Omit the key entirely when the config carries no thinking, so the
+        // model applies its own default instead of being told "disabled".
+        ...("thinking" in thinkingConfig
+          ? { thinking: thinkingConfig.thinking }
+          : {}),
         tools: anthropicTools,
         tool_choice: forceToolNameToToolChoice(
           tools,

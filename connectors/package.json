@@ -32,6 +32,7 @@
     "migration:mark:post-deploy": "node ../scripts/db/run-migrate.cjs --command mark-post-deploy --execute",
     "teams:create-app": "tsx ./scripts/create-teams-app.ts",
     "discord:register-commands": "tsx ./scripts/register-discord-commands.ts",
+    "debug:profiler": "tsx ./scripts/debug/run_profiler.ts",
     "knip": "knip"
   },
   "dependencies": {

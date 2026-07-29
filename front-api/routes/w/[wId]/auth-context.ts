@@ -77,7 +77,6 @@ app.get(
       subscription,
       isAdmin: auth.isAdmin(),
       isManager: auth.isManager(),
-      isBuilder: auth.isBuilder(),
       featureFlags,
       ...(isEligibleForTrial !== undefined && { isEligibleForTrial }),
       vizUrl: config.getVizPublicUrl(),
