@@ -41,6 +41,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
+import { ConversationGoalModel } from "@app/lib/models/agent/conversation_goal";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
@@ -273,6 +274,7 @@ export function loadAllModels() {
     SandboxOwnerModel,
     ConversationBranchModel,
     ConversationForkModel,
+    ConversationGoalModel,
     ProjectTaskModel,
     ProjectTaskConversationModel,
     ProjectTaskSourceModel,

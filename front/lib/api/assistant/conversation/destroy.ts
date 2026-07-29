@@ -22,6 +22,7 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { getContentFragmentBaseCloudStorageForWorkspace } from "@app/lib/resources/content_fragment_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
+import { ConversationGoalResource } from "@app/lib/resources/conversation_goal_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
@@ -183,6 +184,7 @@ export async function destroyConversation(
     await ConversationSelectedSpaceResource.deleteForConversation(auth, {
       conversation,
     });
+    await ConversationGoalResource.deleteForConversation(auth, conversation.id);
 
     // Clean up all branches attached to this conversation before deleting messages.
     await ConversationBranchModel.destroy({

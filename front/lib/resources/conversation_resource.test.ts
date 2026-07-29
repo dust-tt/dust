@@ -16,6 +16,7 @@ import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversati
 import { getReinforcedSkillsMetadata } from "@app/lib/reinforcement/types";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
+import { ConversationGoalResource } from "@app/lib/resources/conversation_goal_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -29,6 +30,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import * as wakeUpTemporalClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -636,7 +638,7 @@ describe("destroyConversation", () => {
     agentConfigurationId = agents[0].sId;
   });
 
-  it("scrubs the conversation's egress policy file on destroy", async () => {
+  it("scrubs the egress policy and deletes goal state on destroy", async () => {
     mockDeleteOwnerPolicy.mockResolvedValue(new Ok(undefined));
     const conversationType = await ConversationFactory.create(auth, {
       agentConfigurationId,
@@ -647,6 +649,29 @@ describe("destroyConversation", () => {
       conversationType.sId
     );
     assert(conversation, "Conversation should exist");
+    const agentMessage = conversationType.content
+      .flat()
+      .find((message) => message.type === "agent_message");
+    assert(agentMessage, "Agent message should exist");
+    await withTransaction((transaction) =>
+      ConversationGoalResource.makeNew(
+        auth,
+        {
+          objective: "Delete this conversation",
+          conversation,
+          agentConfigurationId,
+          currentAgentMessageId: agentMessage.sId,
+          maxTurns: 25,
+        },
+        transaction
+      )
+    );
+    expect(
+      await ConversationGoalResource.fetchLatest(auth, { conversation })
+    ).toMatchObject({
+      objective: "Delete this conversation",
+      status: "active",
+    });
 
     await destroyConversation(auth, { conversation });
 
@@ -654,6 +679,9 @@ describe("destroyConversation", () => {
       expect.anything(),
       conversation.sId
     );
+    expect(
+      await ConversationGoalResource.fetchLatest(auth, { conversation })
+    ).toBeNull();
   });
 
   it("aborts the destroy when the egress policy scrub fails", async () => {
@@ -7204,6 +7232,7 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "agent_suggestion",
   "conversation_branch",
   "conversation_fork",
+  "conversation_goal",
   "conversation_mcp_server_view",
   "conversation_participant",
   "conversation_selected_spaces",
