@@ -15,6 +15,7 @@ import {
   getConversation,
   getLightConversation,
 } from "@app/lib/api/assistant/conversation/fetch";
+import { continueActiveGoal } from "@app/lib/api/assistant/goal_mode";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/events";
 import * as attachmentsModule from "@app/lib/api/files/attachments";
@@ -1648,6 +1649,58 @@ describe("postUserMessage", () => {
     });
     expect(result.value.agentMessages).toHaveLength(1);
     expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+
+    const firstAgentMessage = result.value.agentMessages[0];
+    await AgentMessageModel.update(
+      { status: "succeeded" },
+      {
+        where: {
+          id: firstAgentMessage.agentMessageId,
+          workspaceId: workspace.id,
+        },
+      }
+    );
+
+    const outcome = await continueActiveGoal(auth, {
+      agentMessageId: firstAgentMessage.sId,
+      agentMessageVersion: firstAgentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      conversationBranchId: null,
+      userMessageId: result.value.userMessage.sId,
+      userMessageVersion: result.value.userMessage.version,
+      userMessageOrigin: "web",
+    });
+    expect(outcome).toBe("continued");
+    expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(2);
+
+    const retryOutcome = await continueActiveGoal(auth, {
+      agentMessageId: firstAgentMessage.sId,
+      agentMessageVersion: firstAgentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      conversationBranchId: null,
+      userMessageId: result.value.userMessage.sId,
+      userMessageVersion: result.value.userMessage.version,
+      userMessageOrigin: "web",
+    });
+    expect(retryOutcome).toBe("already_processed");
+    expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(2);
+
+    const continuedGoal = await ConversationGoalResource.fetchLatest(auth, {
+      conversation: conversationResource,
+      branchId: null,
+    });
+    expect(continuedGoal?.turnCount).toBe(2);
+    expect(
+      await UserMessageModel.count({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
+          userContextOrigin: "goal_continuation",
+        },
+      })
+    ).toBe(1);
   });
 
   it("rejects goal metadata when Goal Mode is not enabled", async () => {

@@ -127,13 +127,16 @@ export type UserMessageOrigin =
   | "reinforcement"
   // Internal anchor user message inserted at the start of an empty conversation so
   // a branch can be created before any user-visible message exists.
-  | "branch_anchor";
+  | "branch_anchor"
+  // Internal model-visible turn inserted while an active Goal Mode goal continues.
+  | "goal_continuation";
 
 export const HIDDEN_MESSAGE_ORIGINS: UserMessageOrigin[] = [
   "onboarding_conversation",
   "project_kickoff",
   "reinforced_skill_notification",
   "branch_anchor",
+  "goal_continuation",
   "wakeup",
 ];
 

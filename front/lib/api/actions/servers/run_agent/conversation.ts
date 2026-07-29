@@ -282,7 +282,9 @@ export async function getOrCreateConversation(
       fullName: `@${mainAgent.name}`,
       email: null,
       profilePictureUrl: mainAgent.pictureUrl,
-      origin: parentOrigin,
+      // Goal continuation is an internal-only origin that is not part of the
+      // public client contract used to create sub-agent conversations.
+      origin: parentOrigin === "goal_continuation" ? "web" : parentOrigin,
       selectedMCPServerViewIds: toolsetsToAdd,
     },
     agenticMessageData: {

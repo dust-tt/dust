@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
+  ConversationModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
 import {
@@ -22,6 +23,16 @@ import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 export const DEFAULT_GOAL_MAX_TURNS = 25;
+
+export type GoalContinuationDecision =
+  | { type: "continue"; goal: GoalType }
+  | {
+      type:
+        | "already_processed"
+        | "inactive"
+        | "not_succeeded"
+        | "turn_limit_reached";
+    };
 
 export class GoalTransitionError extends Error {
   constructor(
@@ -321,6 +332,132 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
         ? new Ok(new this(this.model, updated.get()))
         : new Err(new GoalTransitionError("goal_conflict"));
     });
+  }
+
+  static async claimContinuation(
+    auth: Authenticator,
+    {
+      conversationId,
+      conversationBranchId,
+      agentMessageId,
+    }: {
+      conversationId: string;
+      conversationBranchId: string | null;
+      agentMessageId: string;
+    }
+  ): Promise<GoalContinuationDecision> {
+    const conversation = await ConversationModel.findOne({
+      attributes: ["id"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: conversationId,
+      },
+    });
+    if (!conversation) {
+      return { type: "inactive" };
+    }
+
+    return withTransaction(async (transaction) => {
+      const goalRow = await this.model.findOne({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversation.id,
+          branchId: conversationBranchId
+            ? getResourceIdFromSId(conversationBranchId)
+            : null,
+        },
+        order: [
+          ["createdAt", "DESC"],
+          ["id", "DESC"],
+        ],
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!goalRow || goalRow.status !== "active") {
+        return { type: "inactive" };
+      }
+
+      const message = await MessageModel.findOne({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversation.id,
+          sId: agentMessageId,
+        },
+        include: [
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: true,
+          },
+        ],
+        transaction,
+      });
+      if (message?.agentMessage?.status !== "succeeded") {
+        return { type: "not_succeeded" };
+      }
+      if (goalRow.lastAgentMessageId === message.agentMessage.id) {
+        return { type: "already_processed" };
+      }
+      if (
+        goalRow.currentAgentMessageId !== message.agentMessage.id ||
+        goalRow.agentConfigurationId !==
+          message.agentMessage.agentConfigurationId
+      ) {
+        return { type: "inactive" };
+      }
+      if (goalRow.turnCount >= goalRow.maxTurns) {
+        await goalRow.update(
+          {
+            status: "paused",
+            reason: "turn_limit_reached",
+            lastAgentMessageId: message.agentMessage.id,
+          },
+          { transaction }
+        );
+        return { type: "turn_limit_reached" };
+      }
+
+      await goalRow.update(
+        {
+          lastAgentMessageId: message.agentMessage.id,
+          turnCount: goalRow.turnCount + 1,
+        },
+        { transaction }
+      );
+      return {
+        type: "continue",
+        goal: new this(this.model, goalRow.get()).toJSON(),
+      };
+    });
+  }
+
+  static async setCurrentAgentMessage(
+    auth: Authenticator,
+    {
+      goalId,
+      agentMessageModelId,
+      transaction,
+    }: {
+      goalId: string;
+      agentMessageModelId: ModelId;
+      transaction: Transaction;
+    }
+  ): Promise<void> {
+    const goalModelId = getResourceIdFromSId(goalId);
+    if (!goalModelId) {
+      throw new Error("Invalid goal identifier");
+    }
+    await this.model.update(
+      { currentAgentMessageId: agentMessageModelId },
+      {
+        where: {
+          id: goalModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: "active",
+        },
+        transaction,
+      }
+    );
   }
 
   async delete(

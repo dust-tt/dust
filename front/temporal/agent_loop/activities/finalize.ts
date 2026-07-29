@@ -3,6 +3,7 @@ import {
   sendEmailReplyOnCompletion,
   sendEmailReplyOnError,
 } from "@app/lib/api/assistant/email/email_reply";
+import { continueActiveGoal } from "@app/lib/api/assistant/goal_mode";
 import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
 import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities/analytics";
 import {
@@ -37,6 +38,18 @@ export async function finalizeSuccessfulAgentLoopActivity(
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
+  ]);
+
+  const goalOutcome = await continueActiveGoal(auth, agentLoopArgs);
+  if (
+    goalOutcome === "continued" ||
+    goalOutcome === "already_processed" ||
+    goalOutcome === "not_succeeded"
+  ) {
+    return;
+  }
+
+  await Promise.all([
     conversationUnreadNotification(auth, agentLoopArgs),
     activationNewConversationNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),

@@ -97,6 +97,7 @@ describe("conversation-unread workflow business logic", () => {
     reinforced_skill_notification: false,
     reinforcement: false,
     branch_anchor: false,
+    goal_continuation: false,
   };
   describe("shouldSendNotificationForAgentAnswer", () => {
     it.each(

@@ -18,11 +18,15 @@ export const runAgentLoopWorkflow = async ({
   agentMessages,
   conversation,
   userMessage,
+  awaitLaunch = false,
 }: {
   auth: Authenticator;
   agentMessages: AgentMessageType[];
   conversation: ConversationWithoutContentType;
   userMessage: UserMessageTypeWithoutMentions;
+  // Durable callers such as Goal Mode wait until the deterministic Temporal
+  // workflow has been started before acknowledging the handoff.
+  awaitLaunch?: boolean;
 }) => {
   await concurrentExecutor(
     agentMessages,
@@ -42,7 +46,7 @@ export const runAgentLoopWorkflow = async ({
         isRunningAgentLoop: true,
       });
 
-      void launchAgentLoopWorkflow({
+      const launch = launchAgentLoopWorkflow({
         auth,
         agentLoopArgs: {
           agentMessageId: agentMessage.sId,
@@ -56,6 +60,11 @@ export const runAgentLoopWorkflow = async ({
         },
         startStep: 0,
       });
+      if (awaitLaunch) {
+        await launch;
+      } else {
+        void launch;
+      }
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );

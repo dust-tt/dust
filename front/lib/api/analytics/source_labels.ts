@@ -2,7 +2,7 @@ import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 
 export type AnalyticsVisibleOrigin = Exclude<
   UserMessageOrigin,
-  "reinforced_skill_notification" | "branch_anchor"
+  "reinforced_skill_notification" | "branch_anchor" | "goal_continuation"
 >;
 
 export const SOURCE_ORIGIN_LABELS: Record<AnalyticsVisibleOrigin, string> = {

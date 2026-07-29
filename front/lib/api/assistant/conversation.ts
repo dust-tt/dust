@@ -515,6 +515,7 @@ export function isUserMessageContextValid(
     case "reinforced_skill_notification":
     case "reinforcement":
     case "branch_anchor":
+    case "goal_continuation":
     case "web":
       return false;
     default:
@@ -539,6 +540,8 @@ export async function postUserMessage(
     doNotAssociateUser,
     modelSelection,
     goal,
+    continuationGoalId,
+    awaitWorkflowLaunch,
   }: {
     conversationResource: ConversationResource;
     branchId?: string | null;
@@ -551,6 +554,8 @@ export async function postUserMessage(
     skipDustAutoMention?: boolean;
     modelSelection?: ModelSelectionType;
     goal?: GoalCreation;
+    continuationGoalId?: string;
+    awaitWorkflowLaunch?: boolean;
   }
 ): Promise<
   Result<
@@ -1110,6 +1115,20 @@ export async function postUserMessage(
         );
       }
 
+      if (continuationGoalId) {
+        const agentMessage = agentMessages[0];
+        if (!agentMessage || agentMessages.length !== 1) {
+          throw new Error(
+            "Goal Mode invariant violated: expected one continuation agent message."
+          );
+        }
+        await ConversationGoalResource.setCurrentAgentMessage(auth, {
+          goalId: continuationGoalId,
+          agentMessageModelId: agentMessage.agentMessageId,
+          transaction: t,
+        });
+      }
+
       const userMessage = {
         ...userMessageWithoutMentions,
         richMentions: richMentions,
@@ -1142,10 +1161,12 @@ export async function postUserMessage(
     await ensureConversationTitle(auth, { conversation });
   }
 
-  await triggerConversationUnreadNotifications(auth, {
-    conversationId: conversation.sId,
-    messageId: userMessage.sId,
-  });
+  if (context.origin !== "goal_continuation") {
+    await triggerConversationUnreadNotifications(auth, {
+      conversationId: conversation.sId,
+      messageId: userMessage.sId,
+    });
+  }
 
   void ServerSideTracking.trackUserMessage({
     userMessage,
@@ -1199,6 +1220,7 @@ export async function postUserMessage(
       agentMessages,
       conversation,
       userMessage,
+      awaitLaunch: awaitWorkflowLaunch,
     });
   } else if (runningAgentMessage && userMessage.visibility === "pending") {
     // Pending path: signal the running agent loop to gracefully stop.

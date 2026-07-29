@@ -126,7 +126,18 @@ export function addBackwardCompatibleConversationFields(
       } else if (
         isArrayOf<MessageType, UserMessageType>(c, isUserMessageType)
       ) {
-        return c.map((m) => m);
+        return c.map((m) => ({
+          ...m,
+          context: {
+            ...m.context,
+            // Synthetic Goal Mode turns are internal. Keep the existing public
+            // SDK origin union stable when serializing a conversation.
+            origin:
+              m.context.origin === "goal_continuation"
+                ? ("web" as const)
+                : m.context.origin,
+          },
+        }));
       } else if (
         isArrayOf<MessageType, ContentFragmentType>(c, isContentFragmentType)
       ) {

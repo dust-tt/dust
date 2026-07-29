@@ -401,6 +401,7 @@ const USER_MESSAGE_ORIGINS = [
   "reinforced_skill_notification",
   "reinforcement",
   "branch_anchor",
+  "goal_continuation",
 ] as const;
 
 const UserMessageOriginEnumSchema = z.enum(USER_MESSAGE_ORIGINS);
