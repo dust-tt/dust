@@ -190,12 +190,8 @@ describe("usePodFunction", () => {
     expect(result.current.mutate).toBe(mutate);
   });
 
-  it("shows cached data while revalidating when a query remounts", async () => {
-    const remountRequest = deferred<unknown>();
-    const callFunction = vi
-      .fn()
-      .mockResolvedValueOnce([{ id: 1 }])
-      .mockReturnValueOnce(remountRequest.promise);
+  it("serves cached data without revalidating when a query remounts immediately", async () => {
+    const callFunction = vi.fn().mockResolvedValue([{ id: 1 }]);
     const { result, rerender } = renderHook(
       ({ slug }: { slug: string | null }) =>
         usePodFunction(slug, { threadId: "thread-1" }),
@@ -210,14 +206,9 @@ describe("usePodFunction", () => {
     rerender({ slug: null });
     rerender({ slug: "vlt_123/list-comments" });
 
-    await waitFor(() => expect(callFunction).toHaveBeenCalledTimes(2));
     expect(result.current.data).toEqual([{ id: 1 }]);
-    expect(result.current.isValidating).toBe(true);
-
-    remountRequest.resolve([{ id: 1 }, { id: 2 }]);
-    await waitFor(() =>
-      expect(result.current.data).toEqual([{ id: 1 }, { id: 2 }])
-    );
+    expect(result.current.isValidating).toBe(false);
+    expect(callFunction).toHaveBeenCalledTimes(1);
   });
 
   it("normalizes function failures without retrying", async () => {
@@ -370,13 +361,12 @@ describe("usePodFunctionMutation", () => {
     expect(callFunction).not.toHaveBeenCalled();
   });
 
-  it("supports explicit query revalidation after a successful write", async () => {
-    const comments = [[{ id: 1 }], [{ id: 1 }, { id: 2 }]];
+  it("updates query data from a mutation result without revalidating", async () => {
     const callFunction = vi.fn(async (functionId: string) => {
       if (functionId.endsWith("/post-comment")) {
-        return { id: 2 };
+        return [{ id: 1 }, { id: 2 }];
       }
-      return comments.shift();
+      return [{ id: 1 }];
     });
     const { result } = renderHook(
       () => ({
@@ -390,12 +380,15 @@ describe("usePodFunctionMutation", () => {
 
     await waitFor(() => expect(result.current.list.data).toEqual([{ id: 1 }]));
     await act(async () => {
-      await result.current.post.trigger({
+      const updatedComments = await result.current.post.trigger({
         threadId: "thread-1",
         body: "Second",
       });
-      await result.current.list.mutate();
+      await result.current.list.mutate(updatedComments, {
+        revalidate: false,
+      });
     });
     expect(result.current.list.data).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(callFunction).toHaveBeenCalledTimes(2);
   });
 });

@@ -13,7 +13,7 @@ import {
   useRef,
   useState,
 } from "react";
-import useSWR, { SWRConfig } from "swr";
+import useSWR, { type KeyedMutator, SWRConfig } from "swr";
 import useSWRMutation from "swr/mutation";
 
 interface PodFunctionContextValue {
@@ -29,7 +29,7 @@ export interface UsePodFunctionResult {
   error: Error | undefined;
   isLoading: boolean;
   isValidating: boolean;
-  mutate: () => Promise<unknown>;
+  mutate: KeyedMutator<unknown>;
 }
 
 export interface UsePodFunctionMutationResult {
@@ -42,6 +42,7 @@ export interface UsePodFunctionMutationResult {
 
 type PodFunctionQueryKey = readonly ["pod-function", string, unknown];
 type PodFunctionMutationKey = readonly ["pod-function-mutation", string];
+const POD_FUNCTION_QUERY_DEDUPING_INTERVAL_MS = 2_000;
 
 const PodFunctionContext = createContext<PodFunctionContextValue | null>(null);
 
@@ -112,7 +113,7 @@ export function usePodFunction(
       }
     },
     {
-      dedupingInterval: 0,
+      dedupingInterval: POD_FUNCTION_QUERY_DEDUPING_INTERVAL_MS,
       errorRetryCount: 0,
       keepPreviousData: true,
       refreshInterval: 0,
