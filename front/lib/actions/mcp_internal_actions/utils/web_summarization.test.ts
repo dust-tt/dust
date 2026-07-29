@@ -1,6 +1,6 @@
 import { getModelConfigForWebSummarization } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
 import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { GPT_5_6_LUNA_MODEL_ID } from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
@@ -11,14 +11,17 @@ describe("getModelConfigForWebSummarization", () => {
       whiteListedProviders: ["openai"],
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const featureFlags = await getFeatureFlags(auth);
 
-    expect(getModelConfigForWebSummarization(auth)).toMatchObject({
-      modelConfiguration: {
-        providerId: "openai",
-        modelId: GPT_5_6_LUNA_MODEL_ID,
-      },
-      reasoningEffort: "light",
-    });
+    expect(getModelConfigForWebSummarization(auth, featureFlags)).toMatchObject(
+      {
+        modelConfiguration: {
+          providerId: "openai",
+          modelId: GPT_5_6_LUNA_MODEL_ID,
+        },
+        reasoningEffort: "light",
+      }
+    );
   });
 
   it("falls back to the preferred available small model", async () => {
@@ -26,10 +29,13 @@ describe("getModelConfigForWebSummarization", () => {
       whiteListedProviders: ["anthropic"],
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const smallModel = getSmallWhitelistedModel(auth);
+    const featureFlags = await getFeatureFlags(auth);
+    const smallModel = getSmallWhitelistedModel(auth, new Set(), {
+      featureFlags,
+    });
 
     expect(smallModel).not.toBeNull();
-    expect(getModelConfigForWebSummarization(auth)).toEqual({
+    expect(getModelConfigForWebSummarization(auth, featureFlags)).toEqual({
       modelConfiguration: smallModel,
       reasoningEffort: smallModel?.defaultReasoningEffort,
     });
