@@ -48,7 +48,7 @@ const GOVERNANCE_SETTING_METADATA: Partial<
   "make_discoverable:skill": {
     label: "Make skills auto-discoverable",
     description:
-      "Who can make skills auto-discoverable by @Dust and agents with the Discover Skills tool.",
+      "Who can make skills auto-discoverable by @Dust and agents with Discover Skills.",
   },
   "invite:frame": {
     label: "Invite people by email",

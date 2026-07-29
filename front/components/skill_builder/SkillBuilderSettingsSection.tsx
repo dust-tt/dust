@@ -99,6 +99,12 @@ export function SkillBuilderSettingsSection({
   const isAvailabilityLocked =
     isAutoDiscoverableOn && !canMakeSkillAutoDiscoverable;
 
+  const availabilityTooltip = !canUpdateAvailability
+    ? "You don’t have permission to change this skill’s availability"
+    : isAvailabilityLocked
+      ? "You don’t have permission to change the availability of an auto-discoverable skill"
+      : undefined;
+
   return (
     <div className="space-y-4">
       <div className="space-y-1">
@@ -151,11 +157,7 @@ export function SkillBuilderSettingsSection({
                   variant="outline"
                   isSelect
                   disabled={!canUpdateAvailability || isAvailabilityLocked}
-                  tooltip={
-                    isAvailabilityLocked
-                      ? "You don’t have permission to change the availability of an auto-discoverable skill"
-                      : undefined
-                  }
+                  tooltip={availabilityTooltip}
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
@@ -191,8 +193,8 @@ export function SkillBuilderSettingsSection({
           title="This skill has workspace-wide effects"
         >
           <p>
-            Any agent with the Discover Skills tool, including Dust, can use
-            your skill automatically. See other auto-discoverable skills in{" "}
+            Any agent with Discover Skills, including Dust, can use your skill
+            automatically. See other auto-discoverable skills in{" "}
             <Hoverable
               href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
               target="_blank"

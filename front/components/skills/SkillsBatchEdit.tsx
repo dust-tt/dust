@@ -51,7 +51,7 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     availability: "users_and_agents",
     getDialogTitle: () => `This affects your entire workspace`,
     dialogDescription: (count) =>
-      `Any agent with the Discover Skills tool, including Dust, can use ${count === 1 ? "this skill" : "these skills"} automatically.`,
+      `Any agent with Discover Skills, including Dust, can use ${count === 1 ? "this skill" : "these skills"} automatically.`,
   },
 ];
 
