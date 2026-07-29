@@ -24,7 +24,7 @@ import type {
 } from "@app/lib/model_constructors/types/input/messages";
 import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/model_constructors/types/tool_search";
 import type {
-  ResponseCreateParamsNonStreaming,
+  ResponseCreateParams,
   ResponseInputItem,
 } from "openai/resources/responses/responses";
 
@@ -62,10 +62,12 @@ export function WithOpenAIResponsesInputConverter<
       return systemMessagesToInputItems(system, this);
     }
 
+    // Returns the union (not `NonStreaming`) so streaming clients can override
+    // this and add `stream` while still calling `super`.
     buildRequestPayload(
       payload: Payload,
       config: InputConfig
-    ): ResponseCreateParamsNonStreaming {
+    ): ResponseCreateParams {
       const { conversation } = payload;
       const {
         tools = [],

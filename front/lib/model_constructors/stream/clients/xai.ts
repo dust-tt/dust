@@ -42,7 +42,10 @@ export abstract class XaiStream extends WithOpenAIResponsesInputConverter(
     payload: Payload,
     config: InputConfig
   ): ResponseCreateParamsNonStreaming {
-    const request = super.buildRequestPayload(payload, config);
+    const { stream: _stream, ...request } = super.buildRequestPayload(
+      payload,
+      config
+    );
     if (request.tools && request.tools.length > 0) {
       return request;
     }
