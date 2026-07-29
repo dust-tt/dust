@@ -922,6 +922,45 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  static async fetchFileSkills(
+    auth: Authenticator,
+    file: FileResource
+  ): Promise<{ isReferenced: boolean; skills: SkillResource[] }> {
+    const workspace = auth.getNonNullableWorkspace();
+    // The unique workspace/file index bounds this lookup to one attachment.
+    const attachment = await SkillFileAttachmentModel.findOne({
+      attributes: ["skillConfigurationId"],
+      where: {
+        fileId: file.id,
+        workspaceId: workspace.id,
+      },
+    });
+
+    if (attachment) {
+      const skills = await this.fetchByModelIds(auth, [
+        attachment.skillConfigurationId,
+      ]);
+      return { isReferenced: true, skills };
+    }
+
+    // This fallback is only used for detached files. The workspace-leading index bounds the scan.
+    const where: WhereOptions<SkillVersionModel> = {
+      fileAttachmentIds: { [Op.contains]: [file.id] },
+      workspaceId: workspace.id,
+    };
+    const versions = await SkillVersionModel.findAll({
+      attributes: ["skillConfigurationId"],
+      group: ["skillConfigurationId"],
+      where,
+    });
+
+    const skillIds = uniq(
+      versions.map((version) => version.skillConfigurationId)
+    );
+    const skills = await this.fetchByModelIds(auth, skillIds);
+    return { isReferenced: skillIds.length > 0, skills };
+  }
+
   static async fetchById(
     auth: Authenticator,
     sId: string

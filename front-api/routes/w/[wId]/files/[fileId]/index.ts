@@ -77,7 +77,7 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  * /api/w/{wId}/files/{fileId}:
  *   get:
  *     summary: Get or download a file
- *     description: View or download a file. Use query parameters `version` (original, processed, public) and `action` (view, download).
+ *     description: View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download).
  *     tags:
  *       - Private Files
  *     parameters:
@@ -211,6 +211,16 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const accessCheck = await checkFileAccess(ctx, file);
   if (accessCheck) {
     return accessCheck;
+  }
+
+  if (
+    file.useCase === "skill_attachment" &&
+    !(await canReadSkillFile(auth, file))
+  ) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
+    });
   }
 
   const action = getSecureFileAction(ctx.req.query("action"), file);
@@ -507,6 +517,14 @@ async function canWriteSkillFile(
   auth: Authenticator,
   file: FileResource
 ): Promise<boolean> {
+  const { isReferenced, skills } = await SkillResource.fetchFileSkills(
+    auth,
+    file
+  );
+  if (isReferenced) {
+    return skills.some((skill) => skill.canWrite(auth));
+  }
+
   const skillId = file.useCaseMetadata?.skillId;
   if (skillId) {
     const skill = await SkillResource.fetchById(auth, skillId);
@@ -515,6 +533,24 @@ async function canWriteSkillFile(
 
   const isFileAuthor = file.userId === auth.user()?.id;
   return isFileAuthor && (await auth.hasWorkspacePermission("create", "skill"));
+}
+
+async function canReadSkillFile(
+  auth: Authenticator,
+  file: FileResource
+): Promise<boolean> {
+  const { isReferenced, skills } = await SkillResource.fetchFileSkills(
+    auth,
+    file
+  );
+  if (isReferenced) {
+    return skills.length > 0;
+  }
+
+  const skillId = file.useCaseMetadata?.skillId;
+  return skillId
+    ? (await SkillResource.fetchById(auth, skillId)) !== null
+    : false;
 }
 
 async function getSpaceForFile(
