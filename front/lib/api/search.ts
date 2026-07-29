@@ -135,9 +135,16 @@ export async function handleSearch(
     spacesToSearch
   );
 
-  // If we don't have any data source views, we return an empty result without
-  // failing, allowing the caller to still use other search sources
-  if (!allDatasourceViews.length) {
+  const filteredDatasourceViews = dataSourceViewIdsBySpaceId
+    ? allDatasourceViews.filter((dsv) =>
+        dataSourceViewIdsBySpaceId[dsv.space.sId]?.includes(dsv.sId)
+      )
+    : allDatasourceViews;
+
+  // If we don't have any data source views (none in the workspace,
+  // or none after filtering), we return an empty result without
+  // failing, allowing the caller to still use other search sources.
+  if (!filteredDatasourceViews.length) {
     return new Ok({
       nodes: [],
       resultsCount: 0,
@@ -145,12 +152,6 @@ export async function handleSearch(
       nextPageCursor: null,
     });
   }
-
-  const filteredDatasourceViews = dataSourceViewIdsBySpaceId
-    ? allDatasourceViews.filter((dsv) =>
-        dataSourceViewIdsBySpaceId[dsv.space.sId]?.includes(dsv.sId)
-      )
-    : allDatasourceViews;
 
   const excludedNodeMimeTypes = [
     ...(nodeIds || searchSourceUrls ? [] : NON_SEARCHABLE_NODES_MIME_TYPES),
