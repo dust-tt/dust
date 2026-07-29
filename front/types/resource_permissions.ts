@@ -1,4 +1,4 @@
-import type { ConcreteResourceType } from "./group_permissions";
+import type { ConcreteResourceType, GrantVerb } from "./group_permissions";
 import type { ModelId } from "./shared/model_id";
 import type { RoleType } from "./user";
 
@@ -13,22 +13,22 @@ export type PermissionType = (typeof SUPPORTED_OPERATIONS)[number];
  * that path for new code.
  *
  * @property id - Unique identifier for the group (ModelId type)
- * @property permissions - Array of permissions granted to the group
+ * @property permissions - Grant verbs granted to the group
  */
 export type LegacyGroupPermission = {
   id: ModelId;
-  permissions: PermissionType[];
+  permissions: GrantVerb[];
 };
 
 /**
  * Represents permissions assigned to a specific role.
  *
  * @property role - The type of role (RoleType)
- * @property permissions - Array of permissions granted to the role
+ * @property permissions - Grant verbs granted to the role
  */
 export type RolePermission = {
   role: RoleType;
-  permissions: PermissionType[];
+  permissions: GrantVerb[];
 };
 
 /**

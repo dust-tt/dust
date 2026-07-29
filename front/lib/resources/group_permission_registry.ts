@@ -329,10 +329,6 @@ export class PermissionSet {
     );
   }
 
-  hasTypeWide(resourceType: ConcreteResourceType, verb: GrantVerb): boolean {
-    return this.has(resourceType, WHOLE_TYPE_RESOURCE_ID, verb);
-  }
-
   // Serializes the full grant map (bitmasks intact) for embedding in a serialized Authenticator,
   // so `fromJSON` can restore it without hitting the DB. Round-trips exactly.
   toJSON(): PermissionSetJSON {
