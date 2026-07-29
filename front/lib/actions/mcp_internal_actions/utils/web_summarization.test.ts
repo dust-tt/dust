@@ -6,7 +6,7 @@ import { GPT_5_6_LUNA_MODEL_ID } from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
 
 describe("getModelConfigForWebSummarization", () => {
-  it("uses GPT 5.6 Luna with medium reasoning when OpenAI is available", async () => {
+  it("uses GPT 5.6 Luna with light reasoning when OpenAI is available", async () => {
     const workspace = await WorkspaceFactory.basic({
       whiteListedProviders: ["openai"],
     });
@@ -17,7 +17,7 @@ describe("getModelConfigForWebSummarization", () => {
         providerId: "openai",
         modelId: GPT_5_6_LUNA_MODEL_ID,
       },
-      reasoningEffort: "medium",
+      reasoningEffort: "light",
     });
   });
 
