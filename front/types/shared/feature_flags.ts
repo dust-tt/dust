@@ -97,19 +97,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Disable all Computer sandbox features for this workspace",
     stage: "on_demand",
   },
-  disallow_agent_creation_to_users: {
-    description:
-      "Prevent users from creating agents, allowing only admins and builders",
-    stage: "on_demand",
-  },
-  restrict_agents_publishing: {
-    description: "Restrict publishing agents to builders and admins",
-    stage: "on_demand",
-  },
-  restrict_agents_publishing_to_admins: {
-    description: "Restrict publishing agents to admins only",
-    stage: "on_demand",
-  },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
