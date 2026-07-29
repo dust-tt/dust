@@ -49,7 +49,7 @@ const AVAILABILITY_OPTIONS: {
     label: "Auto-discoverable",
     value: "users_and_agents",
     description:
-      "Available to workspace members and agents with Discover Skills tool",
+      "Available to workspace members and agents with Discover Skills",
   },
 ];
 
@@ -177,10 +177,11 @@ export function SkillBuilderSettingsSection({
       {isSkillPublicationEnabled && isAutoDiscoverableOn && (
         <ContentMessage
           icon={InfoCircle}
-          title="Agents with the Discover Skills tool can use this skill automatically"
+          title="This skill has workspace-wide effects"
         >
           <p>
-            You can see other auto-discoverable skills in{" "}
+            Any agent with the Discover Skills tool, including Dust, can use
+            your skill automatically. See other auto-discoverable skills in{" "}
             <Hoverable
               href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
               target="_blank"

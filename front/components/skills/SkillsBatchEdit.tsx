@@ -17,9 +17,11 @@ import {
 
 export type BatchAvailabilityAction = {
   label: string;
+  // Matches the availability option descriptions shown in the skill builder.
+  description?: string;
   availability: SkillAvailability;
   getDialogTitle: (count: number) => string;
-  dialogDescription: string;
+  dialogDescription: (count: number) => string;
 };
 
 const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
@@ -28,24 +30,29 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     availability: "editors",
     getDialogTitle: (count) =>
       `Make ${count} skill${pluralize(count)} editor only`,
-    dialogDescription:
-      "Non-editors won’t see these skills as options in the builder. Agents and skills that already use them won’t lose access.",
+    dialogDescription: (count) =>
+      count === 1
+        ? "Non-editors won’t see this skill as an option in the builder. Agents and skills that already use it won’t lose access."
+        : "Non-editors won’t see these skills as options in the builder. Agents and skills that already use them won’t lose access.",
   },
   {
     label: "Workspace members",
     availability: "workspace_users",
     getDialogTitle: (count) =>
       `Make ${count} skill${pluralize(count)} available to workspace members`,
-    dialogDescription:
-      "Every workspace member can add them to agents, other skills and use them directly.",
+    dialogDescription: (count) =>
+      count === 1
+        ? "Every workspace member can add it to agents, other skills and use it directly."
+        : "Every workspace member can add them to agents, other skills and use them directly.",
   },
   {
     label: "Auto-discoverable",
+    description:
+      "Available to workspace members and agents with Discover Skills",
     availability: "users_and_agents",
-    getDialogTitle: (count) =>
-      `Make ${count} skill${pluralize(count)} auto-discoverable`,
-    dialogDescription:
-      "Auto-discoverable skills are available to workspace members and can be automatically activated by agents with Discover Skills tools enabled.",
+    getDialogTitle: () => `This affects your entire workspace`,
+    dialogDescription: (count) =>
+      `Any agent with the Discover Skills tool, including Dust, can use ${count === 1 ? "this skill" : "these skills"} automatically.`,
   },
 ];
 
@@ -84,7 +91,7 @@ export function SkillsBatchEditBar({
             disabled={selectedCount === 0 || isUpdating}
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
+        <DropdownMenuContent align="end">
           {BATCH_AVAILABILITY_ACTIONS.filter(
             (action) =>
               canMakeSkillAutoDiscoverable ||
@@ -93,6 +100,7 @@ export function SkillsBatchEditBar({
             <DropdownMenuItem
               key={action.availability}
               label={action.label}
+              description={action.description}
               onClick={() => onSelectAction(action)}
             />
           ))}
@@ -131,7 +139,7 @@ export function BatchAvailabilityDialog({
           <DialogTitle>{action.getDialogTitle(selectedCount)}</DialogTitle>
         </DialogHeader>
         <DialogContainer className="text-sm">
-          {action.dialogDescription}
+          {action.dialogDescription(selectedCount)}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
