@@ -164,6 +164,32 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(prompt1).toEqual(prompt2);
   });
 
+  it("should always include stable Chrome extension tool guidance", () => {
+    const baseParams = {
+      userMessage: userMessage1,
+      agentConfiguration: withoutModel(agentConfig1),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
+      hasAvailableActions: true,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const webPrompt = constructPromptMultiActions(authenticator1, baseParams);
+    const extensionPrompt = constructPromptMultiActions(authenticator1, {
+      ...baseParams,
+      userMessage: {
+        ...userMessage1,
+        context: { ...userMessage1.context, origin: "extension" },
+      },
+    });
+
+    expect(extensionPrompt).toEqual(webPrompt);
+    expect(systemPromptToText(webPrompt)).toContain(
+      "When the current user message's `<dust_system>` metadata identifies its source as `Chrome extension`"
+    );
+  });
+
   it("should generate identical system prompts when only the model changes", () => {
     // Two models whose configs inject no model-specific prompt text: the model
     // identity must not leak into the system prompt.

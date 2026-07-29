@@ -451,6 +451,8 @@ export function renderUserMessage(
         )}`
       );
     }
+  } else if (m.context.origin === "extension") {
+    metadataItems.push("- Source: Chrome extension");
   } else if (m.context.origin) {
     metadataItems.push(`- Source: ${m.context.origin}`);
     if (m.context.origin === "slack") {

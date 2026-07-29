@@ -170,6 +170,22 @@ Hello!`);
     expect(text).toContain("- Source: email");
   });
 
+  it("identifies extension messages as coming from the Chrome extension", async () => {
+    const { conversation, userMessage } = await buildMessage({
+      content: "From the browser",
+      context: {
+        origin: "extension",
+      },
+    });
+
+    const res = renderUserMessage(conversation, userMessage);
+    expect(res.content[0].type).toBe("text");
+    const text = (res.content[0] as TextContent).text;
+
+    expect(text).toContain("- Source: Chrome extension");
+    expect(text).not.toContain("- Source: extension");
+  });
+
   it("includes only conversation metadata when no user metadata is available", async () => {
     const { conversation, userMessage } = await buildMessage({
       content: "Just text",
