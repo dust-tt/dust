@@ -436,6 +436,7 @@ export class ConversationFactory {
       conversation,
       agentConfig,
       mcpAction,
+      branchId,
     }: {
       workspace: WorkspaceType;
       conversation:
@@ -446,6 +447,7 @@ export class ConversationFactory {
       mcpAction?: {
         toolConfiguration: LightServerSideMCPToolConfigurationType;
       };
+      branchId?: ModelId;
     }
   ): Promise<{
     messageRow: MessageModel;
@@ -468,6 +470,7 @@ export class ConversationFactory {
       parentId: null,
       agentMessageId: agentMessageRow.id,
       workspaceId: workspace.id,
+      branchId,
     });
 
     const agentMessage: AgentMessageType = {

@@ -88,14 +88,14 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
     {
       objective,
       conversation,
-      branchId,
+      branchId = null,
       agentConfigurationId,
       currentAgentMessageId,
       maxTurns,
     }: {
       objective: string;
       conversation: ConversationResource;
-      branchId: string | null;
+      branchId?: string | null;
       agentConfigurationId: string;
       currentAgentMessageId: string;
       maxTurns: number;

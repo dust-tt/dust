@@ -38,7 +38,8 @@
     { "name": "user_analytics", "id": 1039 },
     { "name": "activation_recommendations", "id": 1040 },
     { "name": "agent_templates", "id": 1041 },
-    { "name": "user_memory", "id": 1043 }
+    { "name": "user_memory", "id": 1043 },
+    { "name": "goal_mode", "id": 1044 }
   ],
   "manual": [
     { "name": "github", "id": 1 },

@@ -1,4 +1,8 @@
+import { UPDATE_GOAL_TOOL_NAME } from "@app/lib/api/actions/servers/goal_mode/metadata";
+import { TOOLS } from "@app/lib/api/actions/servers/goal_mode/tools";
+import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationGoalResource } from "@app/lib/resources/conversation_goal_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { goalModeSkill } from "@app/lib/resources/skill/code_defined/system/goal_mode";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -41,34 +45,66 @@ describe("goalModeSkill", () => {
     if (!userMessage || !agentMessage) {
       throw new Error("Expected one user and agent message");
     }
+    const conversationResource = await ConversationResource.fetchById(
+      setup.authenticator,
+      conversation.sId
+    );
+    if (!conversationResource) {
+      throw new Error("Expected conversation resource");
+    }
+    const { model, ...agentConfiguration } = agent;
+    const branch = await ConversationBranchResource.makeNew(
+      setup.authenticator,
+      {
+        state: "open",
+        previousMessageId: agentMessage.id,
+        conversationId: conversation.id,
+        userId: setup.user.id,
+      }
+    );
+    const branchTurn = await ConversationFactory.createAgentMessage(
+      setup.authenticator,
+      {
+        workspace: setup.workspace,
+        conversation,
+        agentConfig: agent,
+        branchId: branch.id,
+      }
+    );
+    const branchAgentMessage = branchTurn.agentMessage;
 
     await withTransaction((transaction) =>
       ConversationGoalResource.makeNew(
         setup.authenticator,
         {
           objective: "Complete the release",
-          conversationId: conversation.id,
-          branchId: null,
-          createdByUserId: setup.user.id,
+          conversation: conversationResource,
+          branchId: branch.sId,
           agentConfigurationId: agent.sId,
-          currentAgentMessageId: agentMessage.agentMessageId,
+          currentAgentMessageId: branchAgentMessage.sId,
           maxTurns: 25,
         },
         transaction
       )
     );
 
-    const { model, ...agentConfiguration } = agent;
     const agentLoopData = {
       agentConfiguration,
       modelInfo: {
         endpoint: getTestStreamEndpoint(model.modelId),
         ...model,
       },
-      agentMessage,
-      conversation,
+      agentMessage: branchAgentMessage,
+      conversation: { ...conversation, branchId: branch.sId },
       userMessage,
     };
+
+    expect(
+      await ConversationGoalResource.fetchLatest(setup.authenticator, {
+        conversation: conversationResource,
+        branchId: null,
+      })
+    ).toBeNull();
 
     expect(
       await goalModeSkill.getAutoEnabledOrEquippedForAgentLoop({
@@ -86,9 +122,20 @@ describe("goalModeSkill", () => {
         agentLoopData,
       }
     );
-    expect(instructions).toContain("<active_goal>\nComplete the release");
-    expect(instructions).toContain("This is turn 1 of at most 25");
+    expect(instructions).not.toContain("Complete the release");
     expect(instructions).toContain("update_goal");
+
+    const updateGoalTool = TOOLS.find(
+      (tool) => tool.name === UPDATE_GOAL_TOOL_NAME
+    );
+    if (!updateGoalTool) {
+      throw new Error("Expected update_goal tool");
+    }
+    const blocked = await updateGoalTool.handler({ status: "blocked" }, {
+      auth: setup.authenticator,
+      runContext: { contextType: "agent_loop", ...agentLoopData },
+    } as unknown as Parameters<typeof updateGoalTool.handler>[1]);
+    expect(blocked.isErr()).toBe(true);
 
     const completed = await ConversationGoalResource.updateFromAgent(
       setup.authenticator,
@@ -100,21 +147,11 @@ describe("goalModeSkill", () => {
     );
     expect(completed.isOk()).toBe(true);
     if (completed.isOk()) {
-      expect(completed.value).toMatchObject({
+      expect(completed.value.toJSON()).toMatchObject({
         status: "completed",
         reason: "Release checks passed",
       });
     }
-    expect(
-      (
-        await ConversationGoalResource.updateFromAgent(setup.authenticator, {
-          agentLoopData,
-          status: "complete",
-          reason: "Release checks passed",
-        })
-      ).isOk()
-    ).toBe(true);
-
     expect(
       await goalModeSkill.getAutoEnabledOrEquippedForAgentLoop({
         agentConfiguration,

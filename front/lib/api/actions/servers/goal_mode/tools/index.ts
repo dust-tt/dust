@@ -5,11 +5,17 @@ import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { GOAL_MODE_TOOLS_METADATA } from "@app/lib/api/actions/servers/goal_mode/metadata";
 import { ConversationGoalResource } from "@app/lib/resources/conversation_goal_resource";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 
 const handlers: ToolHandlers<typeof GOAL_MODE_TOOLS_METADATA> = {
   update_goal: async ({ status, reason }, { auth, runContext }) => {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+    if (status === "blocked" && !reason) {
+      return new Err(
+        new MCPError("A blocked goal requires a concrete blocker in `reason`.")
+      );
+    }
 
     const result = await ConversationGoalResource.updateFromAgent(auth, {
       agentLoopData: {
@@ -33,7 +39,6 @@ const handlers: ToolHandlers<typeof GOAL_MODE_TOOLS_METADATA> = {
             )
           );
         case "wrong_agent":
-        case "forbidden":
           return new Err(
             new MCPError(
               "Only the root agent assigned to the active goal can update it."
@@ -45,6 +50,8 @@ const handlers: ToolHandlers<typeof GOAL_MODE_TOOLS_METADATA> = {
               "The goal changed concurrently. Re-read the goal state before retrying."
             )
           );
+        default:
+          return assertNever(result.error.type);
       }
     }
 

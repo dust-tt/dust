@@ -30,12 +30,6 @@ export const goalModeSkill = {
     return `
 You are running in Goal Mode. The user has deliberately asked you to keep working across autonomous turns until the goal is fully achieved.
 
-<active_goal>
-${goal.objective}
-</active_goal>
-
-This is turn ${goal.turnCount} of at most ${goal.maxTurns}.
-
 - Work concretely toward the whole active goal. Inspect prior progress before acting, avoid repeating completed work, and verify material results.
 - An ordinary final response does not end Goal Mode. If you do not call \`${UPDATE_GOAL_TOOL_NAME}\`, the runtime will start another turn so you can continue.
 - Call \`${UPDATE_GOAL_TOOL_NAME}\` with \`status: "complete"\` only when every part of the objective is achieved and the relevant verification is finished. Partial progress, a plausible plan, or running out of work for this turn is not completion.
