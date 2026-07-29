@@ -43,6 +43,11 @@ export type ToolHandlers<
   ) => Promise<ToolHandlerResult>;
 };
 
+export type ClientToolHandlers<
+  ToolsList extends readonly ToolMeta[],
+  ToolNames extends string = ToolsList[number]["name"],
+> = ToolHandlers<ToolsList, MCPToolHandlerExtra, ToolNames>;
+
 export interface ToolDefinition<
   TName extends string = string,
   TSchema extends ZodRawShape = ZodRawShape,

@@ -1,7 +1,6 @@
 import {
   buildTools,
-  type MCPToolHandlerExtra,
-  type ToolHandlers,
+  type ClientToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 import type { CaptureService } from "@extension/shared/services/capture";
@@ -40,10 +39,7 @@ export function registerAllTools(
   captureService: CaptureService | null,
   workspaceId: string
 ): void {
-  const handlers: ToolHandlers<
-    typeof CHROME_TOOLS_METADATA,
-    MCPToolHandlerExtra
-  > = {
+  const handlers: ClientToolHandlers<typeof CHROME_TOOLS_METADATA> = {
     [ATTACH_TABS_TEXT_TOOL_NAME]: (params) =>
       attachTabsTextTool({ ...params, captureService }),
     [TAKE_SCREENSHOT_OR_ATTACH_FILE_TOOL_NAME]: (params) =>
