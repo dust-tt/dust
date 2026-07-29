@@ -235,8 +235,7 @@ app.patch(
       });
     }
 
-    // The make-discoverable permission gates every transition involving the
-    // auto-discoverable state: without it, a user can neither make a skill
+    // without make skill discoverable permission, a user can neither make a skill
     // auto-discoverable nor change an already auto-discoverable skill's availability.
     const involvesAutoDiscoverable =
       requestedAvailability === "users_and_agents" ||

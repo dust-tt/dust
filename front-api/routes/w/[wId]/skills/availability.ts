@@ -102,17 +102,17 @@ app.patch(
     }
 
     // Changing an already auto-discoverable skill's availability also requires the
-    // make-discoverable permission, mirroring the check for turning it on above.
+    // make-discoverable permission.
     if (availability !== "users_and_agents" && !canMakeDiscoverable) {
-      const autoDiscoverableSkillIds = skills
+      const autoDiscoverableSkillNames = skills
         .filter((skill) => skill.availability === "users_and_agents")
-        .map((skill) => skill.sId);
-      if (autoDiscoverableSkillIds.length > 0) {
+        .map((skill) => skill.name);
+      if (autoDiscoverableSkillNames.length > 0) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "app_auth_error",
-            message: `You don't have permission to change the availability of auto-discoverable skills: ${autoDiscoverableSkillIds.join(", ")}.`,
+            message: `You don't have permission to change the availability of auto-discoverable skills: ${autoDiscoverableSkillNames.join(", ")}.`,
           },
         });
       }
