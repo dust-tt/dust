@@ -135,18 +135,6 @@ tool, so \`fetch()\` calls from inside it only reach domains on the pod's egress
 workspace's \`DST_*\` (plain config) and \`DSEC_*\` (HTTPS secret placeholder) environment variables
 are available under the same substitution rules as the Computer.
 
-#### Performance rules
-
-Design the function contract around the Frame interaction, not individual database tables:
-
-- make reads idempotent and side-effect-free, and return one bounded screen snapshot instead of
-  creating waterfalls or N+1 calls;
-- make mutations return the updated entity or screen snapshot so the Frame can update its cache
-  without another function call;
-- keep write operations safe against duplicate interaction, using a stable idempotency key when a
-  repeated request would otherwise create duplicate data.
-
-
 #### Calling other tools from a function
 
 \`dsbx\` is available inside a function's own process, the same way it is in the conversation's
@@ -185,6 +173,17 @@ A Frame calls published functions through the injected \`@dust/react-hooks\` mod
 \`call\` tool. Always pass the fully qualified \`<podId>/<slug>\` reference reported by
 \`${toolName("get")}\`. Never pass a bare slug or infer the function from the Frame's current Pod.
 This keeps the reference stable if the Frame is moved.
+
+##### Designing functions for a Frame
+
+Design the function contract around the Frame interaction, not individual database tables:
+
+- make reads idempotent and side-effect-free, and return one bounded screen snapshot instead of
+  creating waterfalls or N+1 calls;
+- make mutations return the updated entity or screen snapshot so the Frame can update its cache
+  without another function call;
+- keep write operations safe against duplicate interaction, using a stable idempotency key when a
+  repeated request would otherwise create duplicate data.
 
 Use \`usePodFunction\` for idempotent reads. It caches identical calls, deduplicates calls already
 in flight, and keeps previous data visible while revalidating. Pass \`null\` as the reference to
