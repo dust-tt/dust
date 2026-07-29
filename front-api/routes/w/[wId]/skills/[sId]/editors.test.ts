@@ -105,7 +105,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     expect(data.editors.map((e: { sId: string }) => e.sId)).toContain(user.sId);
   });
 
-  it("rejects adding regular user as editor", async () => {
+  it("allows adding regular user as editor", async () => {
     const { workspace, auth } = await setup();
 
     const skill = await SkillFactory.create(auth);
@@ -117,12 +117,15 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
       addEditorIds: [regularUser.sId],
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.error.type).toBe("workspace_auth_error");
+    expect(data.editors).toHaveLength(2); // admin + regular user
+    expect(data.editors.map((e: { sId: string }) => e.sId)).toContain(
+      regularUser.sId
+    );
   });
 
-  it("rejects mixed batch (builder + user)", async () => {
+  it("allows mixed batch (builder + user)", async () => {
     const { workspace, auth } = await setup();
 
     const skill = await SkillFactory.create(auth);
@@ -139,9 +142,15 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
       addEditorIds: [builderUser.sId, regularUser.sId],
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.error.type).toBe("workspace_auth_error");
+    expect(data.editors).toHaveLength(3); // admin + builder + regular user
+    expect(data.editors.map((e: { sId: string }) => e.sId)).toContain(
+      builderUser.sId
+    );
+    expect(data.editors.map((e: { sId: string }) => e.sId)).toContain(
+      regularUser.sId
+    );
   });
 
   it("allows removing any editor regardless of role", async () => {
