@@ -24,13 +24,13 @@ export async function authorizeSandboxFunctionInvocation(
   auth: Authenticator,
   {
     authentication,
-    workspaceId,
+    workspaceModelId,
   }: {
     authentication: SandboxFunctionAuthenticationPolicy | null;
-    workspaceId: number;
+    workspaceModelId: number;
   }
 ): Promise<{ authorized: boolean; user: UserResource | null }> {
-  if (auth.getNonNullableWorkspace().id !== workspaceId) {
+  if (auth.getNonNullableWorkspace().id !== workspaceModelId) {
     return { authorized: false, user: null };
   }
 

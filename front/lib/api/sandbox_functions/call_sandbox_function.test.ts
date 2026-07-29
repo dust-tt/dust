@@ -175,7 +175,7 @@ describe("callSandboxFunction", () => {
     if (result.isOk()) {
       return;
     }
-    expect(result.error.code).toBe("invocation_failed");
+    expect(result.error.code).toBe("user_authentication_required");
     expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
     expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
   });
@@ -207,23 +207,6 @@ describe("callSandboxFunction", () => {
       message:
         "This Pod Function requires a logged-in user from its workspace.",
     });
-    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
-    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
-  });
-
-  it("rejects an authentication policy unknown to this application version", async () => {
-    const { auth, fn } = await setup();
-    Object.assign(fn, { authentication: "newer_required_policy" });
-
-    const result = await callSandboxFunction(auth, fn, {
-      name: "Soupinou",
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      return;
-    }
-    expect(result.error.code).toBe("user_authentication_required");
     expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
     expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
   });

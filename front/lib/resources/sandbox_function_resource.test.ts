@@ -15,6 +15,16 @@ import { sandboxFunctionContentType } from "@app/types/files";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const executeWithLockMock = vi.hoisted(() =>
+  vi.fn(async (_lockName: string, callback: () => Promise<unknown>) =>
+    callback()
+  )
+);
+
+vi.mock("@app/lib/lock", () => ({
+  executeWithLock: executeWithLockMock,
+}));
+
 const inputSchema: JSONSchema = {
   type: "object",
   properties: {
@@ -32,6 +42,7 @@ const outputSchema: JSONSchema = {
 };
 
 beforeEach(() => {
+  vi.clearAllMocks();
   fileStorageMock.reset();
 });
 
@@ -460,7 +471,6 @@ describe("SandboxFunctionResource", () => {
         outputSchema,
       }
     );
-    const lockSpy = vi.spyOn(SandboxFunctionModel, "findOne");
     vi.spyOn(sandboxFunction.file, "uploadContent").mockRejectedValueOnce(
       new Error("upload failed")
     );
@@ -474,11 +484,11 @@ describe("SandboxFunctionResource", () => {
     });
 
     expect(result.isErr()).toBe(true);
-    expect(lockSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        lock: expect.anything(),
-        transaction: expect.anything(),
-      })
+    expect(executeWithLockMock).toHaveBeenCalledWith(
+      `sandbox_function:publish:${sandboxFunction.sId}`,
+      expect.any(Function),
+      30_000,
+      { lockTtlMs: 300_000 }
     );
     const fetched = await SandboxFunctionResource.fetchById(
       authenticator,

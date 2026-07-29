@@ -636,8 +636,11 @@ describe("SandboxFunctionInvocationResource", () => {
     const { authenticator, sandbox, sandboxFunction, invocation } =
       await setupExecutionTest();
     await SandboxFunctionModel.update(
-      { authentication: "future_policy" },
       {
+        authentication: "future_policy" as SandboxFunctionAuthenticationPolicy,
+      },
+      {
+        validate: false,
         where: {
           id: sandboxFunction.id,
           workspaceId: sandboxFunction.workspaceId,
