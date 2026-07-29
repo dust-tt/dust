@@ -51,10 +51,6 @@ CREATE UNIQUE INDEX CONCURRENTLY agent_message_consumption_items_message_version
 
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
-CREATE INDEX CONCURRENTLY agent_message_consumption_items_conversation_message ON public.agent_message_consumption_items USING btree ("workspaceId", "conversationId", "agentMessageId");
-
-SET SESSION statement_timeout = 1200000;
-SET SESSION lock_timeout = 3000;
 CREATE INDEX CONCURRENTLY agent_message_consumption_items_conversation_id ON public.agent_message_consumption_items USING btree ("conversationId");
 
 SET SESSION statement_timeout = 1200000;
@@ -104,19 +100,3 @@ ALTER TABLE "public"."agent_message_consumption_items" ADD CONSTRAINT "agent_mes
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
 ALTER TABLE "public"."agent_message_consumption_items" VALIDATE CONSTRAINT "agent_message_consumption_items_agentMessageId_fkey";
-
-SET SESSION statement_timeout = 3000;
-SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."agent_message_consumption_items" ADD CONSTRAINT "agent_message_consumption_items_runUsageId_fkey" FOREIGN KEY ("runUsageId") REFERENCES run_usages(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
-
-SET SESSION statement_timeout = 3000;
-SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."agent_message_consumption_items" VALIDATE CONSTRAINT "agent_message_consumption_items_runUsageId_fkey";
-
-SET SESSION statement_timeout = 3000;
-SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."agent_message_consumption_items" ADD CONSTRAINT "agent_message_consumption_items_agentMCPActionId_fkey" FOREIGN KEY ("agentMCPActionId") REFERENCES agent_mcp_actions(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
-
-SET SESSION statement_timeout = 3000;
-SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."agent_message_consumption_items" VALIDATE CONSTRAINT "agent_message_consumption_items_agentMCPActionId_fkey";

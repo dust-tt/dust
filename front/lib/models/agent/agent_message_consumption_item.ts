@@ -183,11 +183,6 @@ AgentMessageConsumptionItemModel.init(
       },
       {
         concurrently: true,
-        fields: ["workspaceId", "conversationId", "agentMessageId"],
-        name: "agent_message_consumption_items_conversation_message",
-      },
-      {
-        concurrently: true,
         fields: ["conversationId"],
       },
       {
@@ -238,23 +233,5 @@ AgentMessageModel.hasMany(AgentMessageConsumptionItemModel, {
 });
 AgentMessageConsumptionItemModel.belongsTo(AgentMessageModel, {
   foreignKey: { name: "agentMessageId", allowNull: false },
-  onDelete: "RESTRICT",
-});
-
-RunUsageModel.hasMany(AgentMessageConsumptionItemModel, {
-  foreignKey: { name: "runUsageId", allowNull: true },
-  onDelete: "RESTRICT",
-});
-AgentMessageConsumptionItemModel.belongsTo(RunUsageModel, {
-  foreignKey: { name: "runUsageId", allowNull: true },
-  onDelete: "RESTRICT",
-});
-
-AgentMCPActionModel.hasMany(AgentMessageConsumptionItemModel, {
-  foreignKey: { name: "agentMCPActionId", allowNull: true },
-  onDelete: "RESTRICT",
-});
-AgentMessageConsumptionItemModel.belongsTo(AgentMCPActionModel, {
-  foreignKey: { name: "agentMCPActionId", allowNull: true },
   onDelete: "RESTRICT",
 });
