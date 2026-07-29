@@ -1,4 +1,4 @@
-import { getFrameUserIdentity } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { getFrameRuntimeAccess } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import type { ScopedWorkspaceUserIdentity } from "@app/types/assistant/visualization";
 import { describe, expect, it } from "vitest";
 
@@ -15,28 +15,41 @@ const scopedUserIdentity: ScopedWorkspaceUserIdentity = {
   user,
 };
 
-describe("getFrameUserIdentity", () => {
-  it("returns an identity scoped to the Frame workspace", () => {
-    expect(getFrameUserIdentity("w_current", scopedUserIdentity)).toEqual({
-      isAuthenticated: true,
-      isWorkspaceMember: true,
-      user,
+describe("getFrameRuntimeAccess", () => {
+  it("enables access with an identity scoped to the Frame workspace", () => {
+    expect(
+      getFrameRuntimeAccess("w_current", true, scopedUserIdentity)
+    ).toEqual({
+      canInvokeFunctions: true,
+      userIdentity: {
+        isAuthenticated: true,
+        isWorkspaceMember: true,
+        user,
+      },
     });
   });
 
-  it("does not return identity for another workspace", () => {
-    expect(getFrameUserIdentity("w_other", scopedUserIdentity)).toEqual({
-      isAuthenticated: false,
-      isWorkspaceMember: false,
-      user: null,
+  it("fails closed for an identity from another workspace", () => {
+    expect(getFrameRuntimeAccess("w_other", true, scopedUserIdentity)).toEqual({
+      canInvokeFunctions: false,
+      userIdentity: {
+        isAuthenticated: false,
+        isWorkspaceMember: false,
+        user: null,
+      },
     });
   });
 
-  it("keeps a missing identity unauthenticated", () => {
-    expect(getFrameUserIdentity("w_current")).toEqual({
-      isAuthenticated: false,
-      isWorkspaceMember: false,
-      user: null,
+  it("keeps function calls disabled when the caller capability is false", () => {
+    expect(
+      getFrameRuntimeAccess("w_current", false, scopedUserIdentity)
+    ).toEqual({
+      canInvokeFunctions: false,
+      userIdentity: {
+        isAuthenticated: true,
+        isWorkspaceMember: true,
+        user,
+      },
     });
   });
 });

@@ -76,22 +76,30 @@ type ProtectedVisualization = BaseVisualization & {
 
 export type Visualization = PublicVisualization | ProtectedVisualization;
 
-export function getFrameUserIdentity(
+export function getFrameRuntimeAccess(
   workspaceId: string,
+  canInvokeFunctions: boolean,
   scopedUserIdentity?: ScopedWorkspaceUserIdentity
-): UserIdentityState {
-  if (scopedUserIdentity?.workspaceId === workspaceId) {
-    return {
-      isAuthenticated: true,
-      isWorkspaceMember: true,
-      user: scopedUserIdentity.user,
-    };
-  }
+): {
+  canInvokeFunctions: boolean;
+  userIdentity: UserIdentityState;
+} {
+  const userIdentity: UserIdentityState =
+    scopedUserIdentity?.workspaceId === workspaceId
+      ? {
+          isAuthenticated: true,
+          isWorkspaceMember: true,
+          user: scopedUserIdentity.user,
+        }
+      : {
+          isAuthenticated: false,
+          isWorkspaceMember: false,
+          user: null,
+        };
 
   return {
-    isAuthenticated: false,
-    isWorkspaceMember: false,
-    user: null,
+    canInvokeFunctions: canInvokeFunctions && userIdentity.isWorkspaceMember,
+    userIdentity,
   };
 }
 
@@ -653,9 +661,13 @@ export const VisualizationActionIframe = forwardRef<
     workspaceId,
   } = props;
 
-  const userIdentity = useMemo<UserIdentityState>(() => {
-    return getFrameUserIdentity(workspaceId, scopedUserIdentity);
-  }, [scopedUserIdentity, workspaceId]);
+  const runtimeAccess = useMemo(() => {
+    return getFrameRuntimeAccess(
+      workspaceId,
+      canInvokeFunctions,
+      scopedUserIdentity
+    );
+  }, [canInvokeFunctions, scopedUserIdentity, workspaceId]);
 
   const isPublic = visualization.accessToken !== undefined;
 
@@ -709,7 +721,7 @@ export const VisualizationActionIframe = forwardRef<
       Result<SandboxFunctionInvocationType, SandboxFunctionCallError>
     > => {
       try {
-        if (!canInvokeFunctions) {
+        if (!runtimeAccess.canInvokeFunctions) {
           return new Err({
             code: "not_supported",
             message: "Function calls are not available in this Frame.",
@@ -758,7 +770,7 @@ export const VisualizationActionIframe = forwardRef<
         });
       }
     },
-    [canInvokeFunctions, workspaceId]
+    [runtimeAccess.canInvokeFunctions, workspaceId]
   );
 
   useVisualizationDataHandler({
@@ -771,7 +783,7 @@ export const VisualizationActionIframe = forwardRef<
     setErrorMessage,
     visualization,
     vizIframeRef,
-    userIdentity,
+    userIdentity: runtimeAccess.userIdentity,
     waitForSandboxFunctionInvocationResult,
     workspaceId,
   });

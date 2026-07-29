@@ -39,10 +39,11 @@ export function getAuthenticatedFrameUserIdentity(
   };
 }
 
-type AuthenticatedVisualizationActionIframeProps = Omit<
-  VisualizationActionIframeProps,
-  "canInvokeFunctions" | "scopedUserIdentity"
->;
+interface AuthenticatedVisualizationActionIframeProps
+  extends Omit<
+    VisualizationActionIframeProps,
+    "canInvokeFunctions" | "scopedUserIdentity"
+  > {}
 
 export const AuthenticatedVisualizationActionIframe = forwardRef<
   HTMLIFrameElement,
