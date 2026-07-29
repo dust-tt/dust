@@ -15,6 +15,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { SandboxFunctionAuthenticationPolicy } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -67,7 +68,9 @@ beforeEach(() => {
   fileStorageMock.reset();
 });
 
-async function setupExecutionTest() {
+async function setupExecutionTest(
+  authentication: SandboxFunctionAuthenticationPolicy = "optional"
+) {
   const { authenticator, workspace } = await createResourceTest({
     role: "admin",
   });
@@ -85,6 +88,7 @@ async function setupExecutionTest() {
     file,
     slug: "add-comment",
     description: "Add a comment.",
+    authentication,
     inputSchema,
     outputSchema,
   });
@@ -640,11 +644,34 @@ describe("SandboxFunctionInvocationResource", () => {
         },
       }
     );
+
     const execSpy = vi.spyOn(sandbox, "exec");
 
     const executionResult = await invocation.execute(authenticator);
 
     expect(executionResult.isErr()).toBe(true);
+    expect(execSpy).not.toHaveBeenCalled();
+  });
+
+  it("blocks a required invocation when membership is revoked before execution", async () => {
+    const { authenticator, sandbox, invocation } = await setupExecutionTest(
+      "workspace_user_required"
+    );
+    vi.spyOn(
+      MembershipResource,
+      "getActiveRoleForUserInWorkspace"
+    ).mockResolvedValueOnce("none");
+    const execSpy = vi.spyOn(sandbox, "exec");
+
+    const executionResult = await invocation.execute(authenticator);
+
+    expect(executionResult.isErr()).toBe(true);
+    if (executionResult.isOk()) {
+      return;
+    }
+    expect(executionResult.error.message).toContain(
+      "requires a logged-in user"
+    );
     expect(execSpy).not.toHaveBeenCalled();
   });
 

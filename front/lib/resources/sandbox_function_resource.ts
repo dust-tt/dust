@@ -1,6 +1,6 @@
 import type { PokePodFunction } from "@app/lib/api/poke/projects";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
-import { getAuthenticatedWorkspaceUser } from "@app/lib/api/sandbox_functions/workspace_user";
+import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -20,6 +20,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionAuthenticationPolicy,
@@ -28,6 +29,7 @@ import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -36,6 +38,20 @@ import type { Attributes, Transaction } from "sequelize";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxFunctionResource
   extends ReadonlyAttributesType<SandboxFunctionModel> {}
+
+function authenticationPolicyStrength(
+  authentication: SandboxFunctionAuthenticationPolicy
+): number {
+  switch (authentication) {
+    case "optional":
+      return 0;
+    case "workspace_user_required":
+      return 1;
+    default:
+      assertNeverAndIgnore(authentication);
+      return Number.MAX_SAFE_INTEGER;
+  }
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> {
@@ -160,18 +176,50 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
   ): Promise<Result<undefined, Error>> {
     try {
-      await this.file.uploadContent(auth, bundleCode);
-      await this.update({
-        description,
-        authentication,
-        inputSchema,
-        outputSchema,
+      return await withTransaction(async (transaction) => {
+        const lockedFunction = await this.model.findOne({
+          where: {
+            id: this.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+        if (!lockedFunction) {
+          return new Err(new Error("The Pod Function no longer exists."));
+        }
+
+        try {
+          const currentAuthentication =
+            lockedFunction.authentication ?? "optional";
+          if (
+            authenticationPolicyStrength(authentication) >
+            authenticationPolicyStrength(currentAuthentication)
+          ) {
+            await this.update({ authentication }, transaction);
+          }
+
+          await this.file.uploadContent(auth, bundleCode);
+          await this.update(
+            {
+              description,
+              authentication,
+              inputSchema,
+              outputSchema,
+            },
+            transaction
+          );
+        } catch (error) {
+          // Resolving with Err commits any restrictive policy written before
+          // the bundle upload, keeping a partial re-publish fail-closed.
+          return new Err(normalizeError(error));
+        }
+
+        return new Ok(undefined);
       });
     } catch (error) {
       return new Err(normalizeError(error));
     }
-
-    return new Ok(undefined);
   }
 
   private static async baseFetch(
@@ -361,12 +409,11 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     auth: Authenticator,
     body: PostSandboxFunctionInvocationRequestBody
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
-    const authentication = this.authentication ?? "optional";
-    if (
-      authentication === "workspace_user_required" &&
-      (this.workspaceId !== auth.getNonNullableWorkspace().id ||
-        !(await getAuthenticatedWorkspaceUser(auth)))
-    ) {
+    const authorization = await authorizeSandboxFunctionInvocation(auth, {
+      authentication: this.authentication,
+      workspaceId: this.workspaceId,
+    });
+    if (!authorization.authorized) {
       return new Err(
         new SandboxFunctionInvocationError(
           "This Pod Function requires a logged-in user from its workspace."

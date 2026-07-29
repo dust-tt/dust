@@ -47,10 +47,7 @@ const jsonSchemaValue = z.custom<JSONSchema>(
 const functionSchemaFileSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
-  // Old sandbox images omit this field during a rolling deploy.
-  authentication: z
-    .enum(SANDBOX_FUNCTION_AUTHENTICATION_POLICIES)
-    .default("optional"),
+  authentication: z.enum(SANDBOX_FUNCTION_AUTHENTICATION_POLICIES),
   input_schema: jsonSchemaValue.nullable(),
   output_schema: jsonSchemaValue.nullable(),
 });
