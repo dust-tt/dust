@@ -102,6 +102,10 @@ app.post(
       });
     }
 
+    if (action === "add" && mcpServerView.isRestrictedToSkills) {
+      return ctx.json({ success: true });
+    }
+
     const upsertResult = await ConversationResource.upsertMCPServerViews(auth, {
       conversation,
       mcpServerViews: [mcpServerView],

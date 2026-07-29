@@ -47,15 +47,12 @@ export async function createOrUpgradeAgentConfiguration({
   agentConfigurationId?: string;
   authorId?: ModelId;
 }): Promise<Result<AgentConfigurationType, Error>> {
-  const mcpServerViews = await MCPServerViewResource.fetchByIds(
+  const skillsOnlyViews = await MCPServerViewResource.fetchByIds(
     auth,
-    assistant.actions.map((action) => action.mcpServerViewId)
+    assistant.actions.map((action) => action.mcpServerViewId),
+    { isRestrictedToSkills: true }
   );
-  const skillsOnlyViewIds = new Set(
-    mcpServerViews
-      .filter((view) => view.isRestrictedToSkills)
-      .map((view) => view.sId)
-  );
+  const skillsOnlyViewIds = new Set(skillsOnlyViews.map((view) => view.sId));
   const actions = assistant.actions.filter(
     (action) => !skillsOnlyViewIds.has(action.mcpServerViewId)
   );
