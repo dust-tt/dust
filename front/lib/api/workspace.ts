@@ -44,7 +44,7 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@app/types/user";
-import { ACTIVE_ROLES, isBuilder } from "@app/types/user";
+import { ACTIVE_ROLES } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -303,7 +303,6 @@ export async function searchMembers(
     searchTerm?: string;
     searchEmails?: string[];
     groupKind?: Exclude<GroupKind, "system">;
-    buildersOnly?: boolean;
   },
   paginationParams: SearchMembersPaginationParams
 ): Promise<{ members: UserTypeWithWorkspace[]; total: number }> {
@@ -384,14 +383,9 @@ export async function searchMembers(
     { concurrency: 5 }
   );
 
-  let filteredUsers = usersWithWorkspace;
-  if (options.buildersOnly) {
-    filteredUsers = usersWithWorkspace.filter((u) => isBuilder(u.workspace));
-  }
-
   return {
-    members: filteredUsers,
-    total: options.buildersOnly ? filteredUsers.length : total,
+    members: usersWithWorkspace,
+    total,
   };
 }
 
