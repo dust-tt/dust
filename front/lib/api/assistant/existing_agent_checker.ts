@@ -3,6 +3,7 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -15,7 +16,7 @@ import uniq from "lodash/uniq";
 // agents are checked in batches of this size, one LLM call per batch.
 export const AGENTS_PER_LLM_CALL = 100;
 const MAX_CONCURRENT_LLM_CALLS = 4;
-const MAX_DESCRIPTION_LENGTH = 500;
+const MAX_INSTRUCTIONS_LENGTH_CHARS = 5000;
 
 const SET_SIMILAR_AGENTS_FUNCTION_NAME = "set_similar_agents";
 
@@ -98,11 +99,11 @@ Output: set_similar_agents({ "similar_agents_array": [] })
 Reasoning: Both concern HR policies but actions don't overlap.
 `;
 
-function truncateDescription(description: string): string {
-  if (description.length > MAX_DESCRIPTION_LENGTH) {
-    return description.slice(0, MAX_DESCRIPTION_LENGTH);
+function truncateInstructions(instructions: string): string {
+  if (instructions.length > MAX_INSTRUCTIONS_LENGTH_CHARS) {
+    return instructions.slice(0, MAX_INSTRUCTIONS_LENGTH_CHARS);
   }
-  return description;
+  return instructions;
 }
 
 async function findSimilarAgentsInBatch(
@@ -122,7 +123,7 @@ async function findSimilarAgentsInBatch(
   const existingAgents = agents
     .map(
       (a) => `Agent ID ${a.sId}:
-"${truncateDescription(a.description)}"`
+"${truncateInstructions(a.instructions ?? "")}"`
     )
     .join("\n---\n");
   const inputText = `Input description:"${naturalDescription}"
@@ -188,6 +189,10 @@ export async function getSimilarAgents(
     naturalDescription: string;
   }
 ): Promise<Result<{ similar_agents: string[] }, Error>> {
+  if (!(await hasFeatureFlag(auth, "similar_agents_check"))) {
+    return new Ok({ similar_agents: [] });
+  }
+
   const model = await getSmallWhitelistedModel(auth);
   if (!model) {
     return new Err(
@@ -196,7 +201,9 @@ export async function getSimilarAgents(
   }
 
   // Retrieve agents visible to the user in the workspace (same set as the
-  // "manage agents" list), excluding agents without a description to compare against.
+  // "manage agents" list). Only agents with a description filled in are
+  // considered "documented" enough to be worth comparing against, even
+  // though the instructions (not the description) are what gets compared.
   const allAgents = await getAgentConfigurationsForView({
     auth,
     agentsGetView: "list",

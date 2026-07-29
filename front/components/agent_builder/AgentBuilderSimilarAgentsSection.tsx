@@ -1,6 +1,7 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { LinkWrapper } from "@app/lib/platform";
 import {
   useAgentConfigurations,
@@ -70,7 +71,9 @@ export function AgentBuilderSimilarAgentsSection({
   agentConfigurationId,
 }: AgentBuilderSimilarAgentsSectionProps) {
   const { owner } = useAgentBuilderContext();
+  const { hasFeature } = useFeatureFlags();
   const isCreatingNew = !agentConfigurationId;
+  const isSimilarAgentsCheckEnabled = hasFeature("similar_agents_check");
 
   const description = useWatch<
     AgentBuilderFormData,
@@ -80,7 +83,7 @@ export function AgentBuilderSimilarAgentsSection({
   const { getSimilarAgents } = useSimilarAgents({ owner });
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: isCreatingNew ? "list" : null,
+    agentsGetView: isCreatingNew && isSimilarAgentsCheckEnabled ? "list" : null,
   });
 
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -128,7 +131,7 @@ export function AgentBuilderSimilarAgentsSection({
   });
 
   useEffect(() => {
-    if (!isCreatingNew) {
+    if (!isCreatingNew || !isSimilarAgentsCheckEnabled) {
       return;
     }
 
@@ -144,9 +147,14 @@ export function AgentBuilderSimilarAgentsSection({
     }
 
     triggerSimilarAgentsFetch(naturalDescription);
-  }, [description, isCreatingNew, triggerSimilarAgentsFetch]);
+  }, [
+    description,
+    isCreatingNew,
+    isSimilarAgentsCheckEnabled,
+    triggerSimilarAgentsFetch,
+  ]);
 
-  if (!isCreatingNew) {
+  if (!isCreatingNew || !isSimilarAgentsCheckEnabled) {
     return null;
   }
 
