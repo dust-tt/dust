@@ -526,34 +526,17 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return new Ok(invocation);
   }
 
-  static async markCreatedAsErrored(
-    auth: Authenticator,
-    {
-      error,
-      sandboxFunctionId,
-      invocationId,
-    }: {
-      error: SandboxFunctionCallError;
-      sandboxFunctionId: string;
-      invocationId: string;
-    }
+  async markCreatedAsErrored(
+    error: SandboxFunctionCallError
   ): Promise<boolean> {
-    if (!isResourceSId("sandbox_function_invocation", invocationId)) {
-      return false;
-    }
-
-    const invocationModelId = getResourceIdFromSId(invocationId);
-    if (invocationModelId === null) {
-      return false;
-    }
-
     const [updatedCount] = await this.model.update(
       { status: "errored" },
       {
         where: {
-          id: invocationModelId,
+          id: this.id,
+          sandboxFunctionId: this.sandboxFunction.id,
           status: "created",
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId: this.workspaceId,
         },
       }
     );
@@ -561,17 +544,17 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return false;
     }
 
-    // Do not load or overwrite the invocation blob here. This path is the
-    // fallback for failures that can happen before a newer blob can be parsed.
+    // Do not overwrite the invocation blob here. This path only records that
+    // execution failed before the runner could return a structured result.
     await publishSandboxFunctionInvocationEvent(
       {
         type: "sandbox_function_invocation_error",
         created: Date.now(),
-        invocationId,
-        functionId: sandboxFunctionId,
+        invocationId: this.sId,
+        functionId: this.sandboxFunction.sId,
         error,
       },
-      { invocationId }
+      { invocationId: this.sId }
     );
 
     return true;
