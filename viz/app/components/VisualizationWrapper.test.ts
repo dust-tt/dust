@@ -1,9 +1,16 @@
 // @vitest-environment jsdom
 
-import { makeSendCrossDocumentMessage } from "@viz/app/components/VisualizationWrapper";
-import { describe, expect, it, vi } from "vitest";
+import {
+  makeSendCrossDocumentMessage,
+  USER_IDENTITY_RPC_TIMEOUT_MS,
+} from "@viz/app/components/VisualizationWrapper";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const ALLOWED_ORIGIN = "https://app.dust.tt";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function hasMessageUniqueId(
   value: unknown
@@ -29,6 +36,7 @@ describe("makeSendCrossDocumentMessage", () => {
             messageUniqueId: message.messageUniqueId,
             result: {
               isAuthenticated: true,
+              isWorkspaceMember: true,
               user: {
                 sId: "usr_123",
                 firstName: "Ada",
@@ -48,6 +56,7 @@ describe("makeSendCrossDocumentMessage", () => {
 
     await expect(sendMessage("getUserIdentity", null)).resolves.toMatchObject({
       isAuthenticated: true,
+      isWorkspaceMember: true,
       user: { sId: "usr_123" },
     });
   });
@@ -78,6 +87,27 @@ describe("makeSendCrossDocumentMessage", () => {
         input: { name: "Dust" },
       })
     ).resolves.toEqual({ greeting: "Hello" });
+  });
+
+  it("fails closed when an older Frame host does not answer identity requests", async () => {
+    vi.useFakeTimers();
+    const removeEventListenerSpy = vi.spyOn(window, "removeEventListener");
+    vi.spyOn(window, "postMessage").mockImplementation(() => undefined);
+    const sendMessage = makeSendCrossDocumentMessage({
+      identifier: "frame",
+      allowedOrigins: [ALLOWED_ORIGIN],
+    });
+
+    const expectation = expect(
+      sendMessage("getUserIdentity", null)
+    ).rejects.toThrow("Frame host did not provide user identity.");
+    await vi.advanceTimersByTimeAsync(USER_IDENTITY_RPC_TIMEOUT_MS);
+
+    await expectation;
+    expect(removeEventListenerSpy).toHaveBeenCalledWith(
+      "message",
+      expect.any(Function)
+    );
   });
 
   it("rejects with the structured error sent by the parent", async () => {
