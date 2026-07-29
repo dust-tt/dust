@@ -32,7 +32,7 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
 
   it("returns server views when the agent and conversation use different spaces", async () => {
     const { token, workspace } = await createSandboxTokenTestContext({
-      useDifferentSpaceForConversation: true,
+      usePodSpaceForConversation: true,
     });
 
     const response = await getSandboxActions(workspace, token);
