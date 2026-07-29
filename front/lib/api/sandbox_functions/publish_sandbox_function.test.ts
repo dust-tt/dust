@@ -75,7 +75,7 @@ describe("publishSandboxFunction", () => {
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
       new Ok({
         bundleCode: "export default {};",
-        userIdentity: "workspace_user_required",
+        userIdentity: "interactive_workspace_user_required",
         inputSchema,
         outputSchema,
       })
@@ -95,7 +95,7 @@ describe("publishSandboxFunction", () => {
     const fn = result.value;
     expect(fn.slug).toBe("greet");
     expect(fn.description).toBe("Greet someone.");
-    expect(fn.userIdentity).toBe("workspace_user_required");
+    expect(fn.userIdentity).toBe("interactive_workspace_user_required");
     expect(fn.inputSchema).toEqual(inputSchema);
     expect(fn.outputSchema).toEqual(outputSchema);
 

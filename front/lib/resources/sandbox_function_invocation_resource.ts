@@ -38,6 +38,7 @@ import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionCallError,
   SandboxFunctionInvocationContext,
+  SandboxFunctionInvocationOrigin,
   SandboxFunctionInvocationStatus,
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
@@ -340,12 +341,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       }
       const authorization = await authorizeSandboxFunctionInvocation(auth, {
         userIdentity: persistedFunction.userIdentity,
+        origin: this.origin ?? "delegated",
       });
       if (!authorization.authorized) {
         return new Err(
-          new SandboxFunctionInvocationError(
-            "This Pod Function requires a logged-in user from its workspace."
-          )
+          new SandboxFunctionInvocationError(authorization.errorMessage)
         );
       }
 
@@ -517,10 +517,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       sandboxFunction,
       input,
       context,
+      origin = "delegated",
     }: {
       sandboxFunction: SandboxFunctionResource;
       input: unknown;
       context?: SandboxFunctionInvocationContext;
+      origin?: SandboxFunctionInvocationOrigin;
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionInvocationResource> {
@@ -532,6 +534,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           // Null when the invocation has no human origin (e.g. public API key runs, slack/email
           // bot messages). Scheduled triggers carry their editor's user, so they are not null.
           userId: auth.user()?.id ?? null,
+          origin,
           status: "created",
           // The final path contains the database-generated invocation sId. This placeholder is
           // replaced in the same transaction before the row becomes visible.
@@ -564,15 +567,18 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     {
       sandboxFunction,
       body,
+      origin = "delegated",
     }: {
       sandboxFunction: SandboxFunctionResource;
       body: PostSandboxFunctionInvocationRequestBody;
+      origin?: SandboxFunctionInvocationOrigin;
     }
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
     const invocation = await this.makeNew(auth, {
       sandboxFunction,
       input: body.input,
       context: body.context,
+      origin,
     });
     await publishSandboxFunctionInvocationEvent(
       {

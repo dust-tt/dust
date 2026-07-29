@@ -29,7 +29,7 @@ describe("getFunctionSchema", () => {
     const s = await getFunctionSchema(fx("greet.ts"));
     expect(s.name).toBe("greet");
     expect(s.description).toBe("Greet a user by name");
-    expect(s.userIdentity).toBe("workspace_user_required");
+    expect(s.userIdentity).toBe("interactive_workspace_user_required");
     expect(s.input_schema).toMatchObject({ required: ["name"] });
     expect(s.output_schema).toMatchObject({ required: ["greeting"] });
   });

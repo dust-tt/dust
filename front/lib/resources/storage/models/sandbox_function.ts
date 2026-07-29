@@ -9,11 +9,13 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type {
+  SandboxFunctionInvocationOrigin,
   SandboxFunctionInvocationStatus,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
 import {
   isValidSandboxFunctionSlug,
+  SANDBOX_FUNCTION_INVOCATION_ORIGINS,
   SANDBOX_FUNCTION_INVOCATION_STATUSES,
   SANDBOX_FUNCTION_USER_IDENTITY_POLICIES,
 } from "@app/types/api/sandbox_functions";
@@ -62,6 +64,7 @@ export class SandboxFunctionInvocationModel extends WorkspaceAwareModel<SandboxF
   declare sandboxFunctionId: ForeignKey<SandboxFunctionModel["id"]>;
   // Human who triggered the invocation. Null for non-human origins (API key, scheduled/bot runs).
   declare userId: ForeignKey<UserModel["id"]> | null;
+  declare origin: SandboxFunctionInvocationOrigin | null;
   declare status: SandboxFunctionInvocationStatus;
   declare gcsPath: string;
 
@@ -190,6 +193,13 @@ SandboxFunctionInvocationModel.init(
     userId: {
       type: DataTypes.BIGINT,
       allowNull: true,
+    },
+    origin: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      validate: {
+        isIn: [SANDBOX_FUNCTION_INVOCATION_ORIGINS],
+      },
     },
     status: {
       type: DataTypes.STRING(64),

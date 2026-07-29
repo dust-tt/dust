@@ -16,6 +16,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -92,7 +93,7 @@ async function setupSandboxFunction({
 }: {
   addCallerToSpace?: boolean;
   withSandboxFunctionsFeatureFlag?: boolean;
-  userIdentity?: "optional" | "workspace_user_required";
+  userIdentity?: SandboxFunctionUserIdentityPolicy;
 } = {}) {
   const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
     role: "admin",
@@ -307,6 +308,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
         invocation: expect.objectContaining({
           sId: invocation.sId,
           context: { timezone: "Europe/Paris" },
+          origin: "interactive_session",
         }),
       }
     );
@@ -332,6 +334,38 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
 
     expect(response.status).toBe(201);
     expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  it("allows a workspace member's live session to invoke an interactive function", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction({
+      userIdentity: "interactive_workspace_user_required",
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  it("records an OAuth invocation as delegated", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction();
+    vi.spyOn(Authenticator.prototype, "authMethod").mockReturnValue("oauth");
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        invocation: expect.objectContaining({ origin: "delegated" }),
+      })
+    );
   });
 
   it("returns a typed authentication error when the function rejects the caller", async () => {
