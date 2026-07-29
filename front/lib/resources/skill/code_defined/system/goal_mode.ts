@@ -41,6 +41,7 @@ You are running in Goal Mode. The user has deliberately asked you to keep workin
   mcpServers: [{ name: GOAL_MODE_SERVER_NAME }],
   version: 1,
   icon: "ActionCheckCircleIcon",
+  isUserSelectable: false,
   isRestricted: async (auth: Authenticator) => {
     const featureFlags = await getFeatureFlags(auth);
     return !featureFlags.includes("goal_mode");

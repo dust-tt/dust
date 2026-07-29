@@ -258,6 +258,7 @@ export function CapabilitiesPicker({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
+    userSelectableOnly: true,
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
 

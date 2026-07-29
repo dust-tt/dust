@@ -38,6 +38,9 @@ interface BaseSkillDefinition<
   // Defaults to false: code-defined skill instructions are hidden by default and
   // opted in per skill (e.g. docs/pptx/xlsx). System skills stay hidden.
   readonly exposeInstructions?: boolean;
+  // Defaults to true. Internal runtime skills can opt out of capability pickers
+  // while remaining available for contextual auto-enablement.
+  readonly isUserSelectable?: boolean;
   readonly isRestricted?: (auth: Authenticator) => Promise<boolean>;
   // Optional callback to auto-add a code-defined skill for an agent loop
   // (subject to isRestricted), without adding it to the agent configuration.

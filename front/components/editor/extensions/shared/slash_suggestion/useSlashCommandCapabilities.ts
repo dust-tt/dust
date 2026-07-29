@@ -76,6 +76,7 @@ export function useInputBarSlashCommandCapabilities({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
+    userSelectableOnly: true,
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
   // The JIT views endpoint only returns views whose tools can be enabled directly in a
@@ -128,6 +129,7 @@ export function useSkillBuilderSlashCommandCapabilities({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
+    userSelectableOnly: true,
   });
   const { serverViews, isLoading: isServerViewsLoading } =
     useMCPServerViewsFromSpaces(owner, spaces);

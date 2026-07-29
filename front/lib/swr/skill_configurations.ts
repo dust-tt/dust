@@ -101,6 +101,7 @@ export function useSkills({
   status,
   globalSpaceOnly,
   availability,
+  userSelectableOnly,
   bypassEditorVisibility,
   swrOptions,
 }: {
@@ -109,6 +110,7 @@ export function useSkills({
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
   availability?: SkillAvailability | SkillAvailability[];
+  userSelectableOnly?: boolean;
   // Admin-only: bypass the editor-visibility rule and also list unpublished
   // (editors-only) skills the caller does not edit.
   bypassEditorVisibility?: boolean;
@@ -135,6 +137,9 @@ export function useSkills({
     for (const value of availabilities) {
       queryParams.append("availability", value);
     }
+  }
+  if (userSelectableOnly) {
+    queryParams.set("userSelectableOnly", "true");
   }
   if (bypassEditorVisibility) {
     queryParams.set("bypassEditorVisibility", "true");

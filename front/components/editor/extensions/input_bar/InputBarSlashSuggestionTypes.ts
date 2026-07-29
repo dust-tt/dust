@@ -25,6 +25,7 @@ export const INPUT_BAR_SLASH_COMMAND_ORDER: InputBarSlashCommandId[] = [
 // Static command offered by the input bar `/` dropdown, as opposed to workspace capabilities
 // (skills and tools) which are fetched.
 export interface InputBarSlashCommand {
+  acceptsArguments?: boolean;
   description: string;
   icon: React.ComponentType;
   id: InputBarRunCommandId;
@@ -33,6 +34,7 @@ export interface InputBarSlashCommand {
 
 export const INPUT_BAR_SLASH_COMMANDS: InputBarSlashCommand[] = [
   {
+    acceptsArguments: true,
     description: "Keep working autonomously until an objective is complete",
     icon: Target04,
     id: "goal",
@@ -76,6 +78,20 @@ export function getAvailableInputBarSlashCommands({
 
     return true;
   });
+}
+
+export function isInputBarSlashCommandArgumentQuery({
+  commands,
+  query,
+}: {
+  commands: InputBarSlashCommand[];
+  query: string;
+}) {
+  const commandName = query.match(/^(\S+)\s/)?.[1]?.toLowerCase();
+
+  return commands.some(
+    (command) => command.acceptsArguments && command.id === commandName
+  );
 }
 
 export type InputBarSlashCommandSkill = SkillWithoutInstructionsAndToolsType;

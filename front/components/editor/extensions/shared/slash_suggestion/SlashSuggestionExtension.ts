@@ -31,8 +31,10 @@ export interface SlashSuggestionShouldShowContext<
 > {
   editor: Editor;
   options: Options;
+  query: string;
   range: Range;
   storage: Storage;
+  text: string;
   transaction: Transaction;
 }
 
@@ -186,11 +188,13 @@ export function createSlashSuggestionExtension<
             ),
           ...(shouldShow
             ? {
-                shouldShow: ({ editor, range, transaction }) =>
+                shouldShow: ({ editor, query, range, text, transaction }) =>
                   Boolean(
                     shouldShow({
                       editor,
+                      query,
                       range,
+                      text,
                       transaction,
                       options: extensionOptions,
                       storage: extensionStorage,

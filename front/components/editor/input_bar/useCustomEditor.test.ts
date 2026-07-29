@@ -2,6 +2,7 @@ import {
   InputBarSlashSuggestionExtension,
   inputBarSlashSuggestionPluginKey,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
+import { INPUT_BAR_SLASH_COMMANDS } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { buildEditorExtensions } from "@app/components/editor/input_bar/useCustomEditor";
 import type { WorkspaceType } from "@app/types/user";
 import { Editor } from "@tiptap/react";
@@ -35,7 +36,7 @@ describe("buildEditorExtensions", () => {
           onNodeSelectRef: { current: undefined },
           onSelectRef: { current: undefined },
           selectedMCPServerViewIdsRef: { current: new Set<string>() },
-          slashCommandsRef: { current: [] },
+          slashCommandsRef: { current: INPUT_BAR_SLASH_COMMANDS },
           includeAttachKnowledgeRef: { current: false },
           spaceIdRef: { current: null },
         }),
@@ -243,6 +244,24 @@ describe("buildEditorExtensions", () => {
         .setMeta("uiEvent", "paste")
     );
 
+    expect(
+      inputBarSlashSuggestionPluginKey.getState(editor.state)?.active
+    ).toBe(false);
+  });
+
+  it("closes slash suggestions when goal arguments start", () => {
+    editor.destroy();
+    editor = createSlashSuggestionEditor();
+    editor.isFocused = true;
+    editor.storage.inputBarSlashSuggestion.hasBeenFocused = true;
+
+    editor.commands.insertContent("/goal");
+    expect(
+      inputBarSlashSuggestionPluginKey.getState(editor.state)?.active
+    ).toBe(true);
+
+    editor.commands.insertContent(" Ship and verify the feature");
+    expect(editor.getText()).toBe("/goal Ship and verify the feature");
     expect(
       inputBarSlashSuggestionPluginKey.getState(editor.state)?.active
     ).toBe(false);

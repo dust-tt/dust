@@ -321,6 +321,25 @@ describe("GET /api/w/:wId/skills", () => {
     expect(customOnlySIds).toContain(customSkill.sId);
   });
 
+  it("excludes internal runtime skills from user-selectable results", async () => {
+    const { workspace, auth } = await setupTest();
+    await FeatureFlagFactory.basic(auth, "goal_mode");
+
+    const allSkillIds = (await (await getSkills(workspace)).json()).skills.map(
+      (skill: SkillWithoutInstructionsAndToolsType) => skill.sId
+    );
+    expect(allSkillIds).toContain("goal_mode");
+
+    const response = await getSkills(workspace, {
+      userSelectableOnly: "true",
+    });
+    expect(response.status).toBe(200);
+    const selectableSkillIds = (await response.json()).skills.map(
+      (skill: SkillWithoutInstructionsAndToolsType) => skill.sId
+    );
+    expect(selectableSkillIds).not.toContain("goal_mode");
+  });
+
   it("should return suggested skills when status=suggested", async () => {
     const { workspace, user } = await setupTest();
 

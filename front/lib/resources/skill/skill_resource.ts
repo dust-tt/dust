@@ -389,6 +389,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return SystemSkillsRegistry.isSystemSkill(this.sId);
   }
 
+  get isUserSelectable(): boolean {
+    if (!this.globalSId) {
+      return true;
+    }
+
+    return this.isSystemSkill
+      ? SystemSkillsRegistry.isUserSelectable(this.globalSId)
+      : GlobalSkillsRegistry.isUserSelectable(this.globalSId);
+  }
+
   get inheritsAgentConfigurationDataSources(): boolean {
     if (!this.globalSId) {
       return false;

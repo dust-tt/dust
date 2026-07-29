@@ -1,5 +1,8 @@
 import { InputBarSlashSuggestionDropdown } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionDropdown";
-import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import {
+  isInputBarSlashCommandArgumentQuery,
+  type InputBarSlashCommand,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
 import {
@@ -75,8 +78,13 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     (editor.isFocused || isActive) &&
     storage.dismissedTriggerStart !== range.from &&
     isAllowedSlashQuery(state, range),
-  shouldShow: ({ transaction }) =>
-    !transaction.getMeta("paste") && transaction.getMeta("uiEvent") !== "paste",
+  shouldShow: ({ options, query, transaction }) =>
+    !transaction.getMeta("paste") &&
+    transaction.getMeta("uiEvent") !== "paste" &&
+    !isInputBarSlashCommandArgumentQuery({
+      commands: options.slashCommandsRef.current ?? [],
+      query,
+    }),
   items: () => [],
   command: ({ editor, range, props, options, storage }) => {
     storage.dismissedTriggerStart = null;

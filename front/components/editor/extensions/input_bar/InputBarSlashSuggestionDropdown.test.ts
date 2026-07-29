@@ -10,6 +10,7 @@ import {
   getAvailableInputBarSlashCommands,
   INPUT_BAR_SLASH_COMMANDS,
   type InputBarSlashCommand,
+  isInputBarSlashCommandArgumentQuery,
 } from "./InputBarSlashSuggestionTypes";
 
 const ALL_COMMANDS = getAvailableInputBarSlashCommands({
@@ -55,6 +56,35 @@ describe("getAvailableInputBarSlashCommands", () => {
         hasGoalMode: true,
       }).map((command) => command.id)
     ).toEqual(["goal"]);
+  });
+});
+
+describe("isInputBarSlashCommandArgumentQuery", () => {
+  it("identifies text after an argument-taking command", () => {
+    expect(
+      isInputBarSlashCommandArgumentQuery({
+        commands: ALL_COMMANDS,
+        query: "goal Ship and verify the feature",
+      })
+    ).toBe(true);
+  });
+
+  it("keeps suggestions open until the command argument starts", () => {
+    expect(
+      isInputBarSlashCommandArgumentQuery({
+        commands: ALL_COMMANDS,
+        query: "goal",
+      })
+    ).toBe(false);
+  });
+
+  it("keeps multi-word capability searches open", () => {
+    expect(
+      isInputBarSlashCommandArgumentQuery({
+        commands: ALL_COMMANDS,
+        query: "create a",
+      })
+    ).toBe(false);
   });
 });
 

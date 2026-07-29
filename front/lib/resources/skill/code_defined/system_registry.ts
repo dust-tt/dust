@@ -45,6 +45,10 @@ export class SystemSkillsRegistry {
     return this.getByIdInternal(sId) !== undefined;
   }
 
+  static isUserSelectable(sId: string): boolean {
+    return this.getByIdInternal(sId)?.isUserSelectable ?? true;
+  }
+
   static doesSkillInheritAgentConfigurationDataSources(sId: string): boolean {
     return (
       this.getByIdInternal(sId)?.inheritAgentConfigurationDataSources ?? false

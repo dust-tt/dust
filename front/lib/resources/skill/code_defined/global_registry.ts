@@ -55,6 +55,10 @@ export class GlobalSkillsRegistry {
     });
   }
 
+  static isUserSelectable(sId: string): boolean {
+    return this.getByIdInternal(sId)?.isUserSelectable ?? true;
+  }
+
   static doesSkillInheritAgentConfigurationDataSources(sId: string): boolean {
     return (
       this.getByIdInternal(sId)?.inheritAgentConfigurationDataSources ?? false

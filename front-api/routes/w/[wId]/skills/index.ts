@@ -132,6 +132,7 @@ app.get(
     const status = ctx.req.query("status");
     const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
     const onlyCustom = ctx.req.query("onlyCustom");
+    const userSelectableOnly = ctx.req.query("userSelectableOnly") === "true";
     // @deprecated Use availability instead. Kept while old clients still send it.
     const isDefault = ctx.req.query("isDefault");
     const bypassEditorVisibility =
@@ -193,9 +194,12 @@ app.get(
 
     // Skills with editors-only availability (unpublished) are only listed for members of
     // their editor group.
+    const visibleSkills = userSelectableOnly
+      ? allSkills.filter((skill) => skill.isUserSelectable)
+      : allSkills;
     const skills = bypassEditorVisibility
-      ? allSkills
-      : allSkills.filter(
+      ? visibleSkills
+      : visibleSkills.filter(
           (skill) => skill.availability !== "editors" || skill.canWrite(auth)
         );
 
