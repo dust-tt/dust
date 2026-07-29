@@ -242,9 +242,7 @@ fall back to a generic message for the rest. The ones worth branching on are \`i
 \`invalid_output\` for schema mismatches, \`threw\` when the function threw, \`http_error\` when the
 function's own request failed, \`sandbox_function_not_found\`, and \`not_supported\`.
 
-The existing imperative \`callFunction\` remains available unchanged for explicit calls and also
-takes \`<podId>/<slug>\` or a function id. Pod functions are only reachable from authenticated Pod
-Frames, not from public or shared Frames.`,
+Pod functions are only reachable from authenticated Pod Frames, not from public or shared Frames.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
   version: 5,
   icon: "PuzzleIcon",
