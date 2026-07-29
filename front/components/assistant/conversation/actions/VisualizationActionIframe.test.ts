@@ -1,7 +1,8 @@
 import {
   type FrameAccess,
-  getConversationFrameUserIdentity,
+  getFrameUserIdentity,
 } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import type { ScopedWorkspaceUserIdentity } from "@app/types/assistant/visualization";
 import { describe, expect, it } from "vitest";
 
 const authContext = {
@@ -17,16 +18,18 @@ const authContext = {
 
 function getIdentity(
   workspaceId: string,
-  frameAccess: FrameAccess = "conversation"
+  frameAccess: FrameAccess = "conversation",
+  publicUserIdentity?: ScopedWorkspaceUserIdentity
 ) {
-  return getConversationFrameUserIdentity(
+  return getFrameUserIdentity(
     authContext,
     frameAccess,
-    workspaceId
+    workspaceId,
+    publicUserIdentity
   );
 }
 
-describe("getConversationFrameUserIdentity", () => {
+describe("getFrameUserIdentity", () => {
   it("returns identity for the Frame workspace", () => {
     expect(getIdentity("w_current")).toEqual({
       isAuthenticated: true,
@@ -43,8 +46,26 @@ describe("getConversationFrameUserIdentity", () => {
     });
   });
 
-  it("keeps public Frames unauthenticated", () => {
-    expect(getIdentity("w_current", "public-member")).toEqual({
+  it("returns an explicitly scoped public member identity", () => {
+    expect(
+      getIdentity("w_current", "public-member", {
+        workspaceId: "w_current",
+        user: authContext.user,
+      })
+    ).toEqual({
+      isAuthenticated: true,
+      isWorkspaceMember: true,
+      user: authContext.user,
+    });
+  });
+
+  it("rejects a public identity scoped to another workspace", () => {
+    expect(
+      getIdentity("w_current", "public-member", {
+        workspaceId: "w_other",
+        user: authContext.user,
+      })
+    ).toEqual({
       isAuthenticated: false,
       isWorkspaceMember: false,
       user: null,
@@ -53,7 +74,7 @@ describe("getConversationFrameUserIdentity", () => {
 
   it("does not return identity for a non-member session", () => {
     expect(
-      getConversationFrameUserIdentity(
+      getFrameUserIdentity(
         {
           ...authContext,
           workspace: { ...authContext.workspace, role: "none" },
@@ -61,6 +82,19 @@ describe("getConversationFrameUserIdentity", () => {
         "conversation",
         "w_current"
       )
+    ).toEqual({
+      isAuthenticated: false,
+      isWorkspaceMember: false,
+      user: null,
+    });
+  });
+
+  it("keeps anonymous public Frames unauthenticated", () => {
+    expect(
+      getIdentity("w_current", "public-anonymous", {
+        workspaceId: "w_current",
+        user: authContext.user,
+      })
     ).toEqual({
       isAuthenticated: false,
       isWorkspaceMember: false,

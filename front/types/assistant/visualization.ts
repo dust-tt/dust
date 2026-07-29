@@ -43,6 +43,11 @@ export type UserIdentityState =
       user: null;
     };
 
+export interface ScopedWorkspaceUserIdentity {
+  workspaceId: string;
+  user: WorkspaceUserIdentity;
+}
+
 const SetContentHeightParamsSchema = z.object({
   height: z.number(),
 });
