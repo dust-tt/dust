@@ -168,6 +168,11 @@ export class ConversationParticipantModel extends WorkspaceAwareModel<Conversati
   // Null only for rows not yet backfilled (scripts/backfill_participant_conversation_updated_at.ts).
   declare conversationUpdatedAt: Date | null;
 
+  // When the user last opened the conversation. Replaces user_conversation_reads: rows with
+  // action "viewed" exist only to carry this value. Null means never read (or not yet
+  // backfilled from user_conversation_reads, scripts/backfill_participant_last_read_at.ts).
+  declare lastReadAt: Date | null;
+
   declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
 
@@ -196,6 +201,10 @@ ConversationParticipantModel.init(
       defaultValue: false,
     },
     conversationUpdatedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastReadAt: {
       type: DataTypes.DATE,
       allowNull: true,
     },
