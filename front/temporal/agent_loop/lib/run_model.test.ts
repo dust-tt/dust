@@ -1,7 +1,6 @@
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp_schemas";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
 import {
   buildBaseSpecifications,
   buildSpecificationsWithReplayPlaceholders,
@@ -48,7 +47,7 @@ function assistantMessageWithToolSearchResult(
       {
         type: "provider_passthrough",
         value: {
-          provider: ANTHROPIC_PROVIDER_ID,
+          provider: "anthropic",
           block: {
             type: "tool_search_tool_result",
             tool_use_id: "srvtoolu_test",
@@ -59,6 +58,36 @@ function assistantMessageWithToolSearchResult(
                 tool_name: name,
               })),
             },
+          },
+        },
+      },
+    ],
+  };
+}
+
+function assistantMessageWithOpenAIToolSearchOutput(
+  toolNames: string[]
+): ModelMessageTypeMultiActionsWithoutContentFragment {
+  return {
+    role: "assistant",
+    name: "agent",
+    contents: [
+      {
+        type: "provider_passthrough",
+        value: {
+          provider: "openai",
+          block: {
+            type: "tool_search_output",
+            id: "tool_search_output_test",
+            call_id: null,
+            execution: "server",
+            status: "completed",
+            tools: toolNames.map((name) => ({
+              type: "function",
+              name,
+              parameters: { type: "object", properties: {} },
+              strict: false,
+            })),
           },
         },
       },
@@ -518,6 +547,41 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     expect(missingReplayedToolNames).toEqual(["removed_tool"]);
     expect(specifications.map((s) => s.name)).toEqual([
       "get_weather",
+      "removed_tool",
+    ]);
+  });
+
+  it("does not append placeholders for tools carried by OpenAI tool search output", () => {
+    const baseSpecifications = [makeSpecification("get_weather")];
+    const conversation = makeConversation([
+      assistantMessageWithOpenAIToolSearchOutput([
+        "get_weather",
+        "removed_tool",
+      ]),
+    ]);
+
+    const { specifications, missingReplayedToolNames } =
+      buildSpecificationsWithReplayPlaceholders(baseSpecifications, {
+        modelConversation: conversation,
+      });
+
+    expect(missingReplayedToolNames).toEqual([]);
+    expect(specifications).toEqual(baseSpecifications);
+  });
+
+  it("appends a placeholder after an OpenAI loaded tool was called", () => {
+    const conversation = makeConversation([
+      assistantMessageWithOpenAIToolSearchOutput(["removed_tool"]),
+      assistantMessageWithFunctionCalls(["removed_tool"]),
+    ]);
+
+    const { specifications, missingReplayedToolNames } =
+      buildSpecificationsWithReplayPlaceholders([], {
+        modelConversation: conversation,
+      });
+
+    expect(missingReplayedToolNames).toEqual(["removed_tool"]);
+    expect(specifications.map((specification) => specification.name)).toEqual([
       "removed_tool",
     ]);
   });

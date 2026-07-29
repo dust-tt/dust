@@ -10,6 +10,7 @@ import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import {
   Button,
+  Chip,
   cn,
   Dialog,
   DialogContainer,
@@ -21,6 +22,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   File04,
   SliderToggle,
@@ -129,18 +132,26 @@ export function AdvancedSettings() {
           <Button label="Advanced" variant="outline" size="sm" isSelect />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
+          <DropdownMenuLabel label="Model selection" />
           {autoModel && (
-            <DropdownMenuItem
-              label="Auto"
-              description="Select the best model for the task."
-              onClick={handleAutoModelSelection}
-              endComponent={
+            <DropdownMenuItem onClick={handleAutoModelSelection}>
+              <div className="flex w-full items-center gap-x-2.5">
+                <div className="flex grow flex-col">
+                  <span className="flex items-center gap-2">
+                    Auto
+                    <Chip size="xs" color="highlight" label="Recommended" />
+                  </span>
+                  <span className="whitespace-normal text-xs font-normal text-muted-foreground">
+                    Switches model depending on current availability for
+                    balanced performance.
+                  </span>
+                </div>
                 <SliderToggle
                   selected={isAutoModelSelected}
                   onClick={handleAutoModelSelection}
                 />
-              }
-            ></DropdownMenuItem>
+              </div>
+            </DropdownMenuItem>
           )}
 
           {!isAutoModelSelected && (
@@ -151,15 +162,18 @@ export function AdvancedSettings() {
           )}
 
           {supportsResponseFormat && (
-            <DropdownMenuItem
-              label="Structured Response Format"
-              onSelect={() => {
-                setTimeout(() => {
-                  setTempResponseFormat(responseFormatField.value ?? null);
-                  setIsResponseFormatDialogOpen(true);
-                }, 0);
-              }}
-            />
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                label="Structured response format"
+                onSelect={() => {
+                  setTimeout(() => {
+                    setTempResponseFormat(responseFormatField.value ?? null);
+                    setIsResponseFormatDialogOpen(true);
+                  }, 0);
+                }}
+              />
+            </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>

@@ -4,6 +4,7 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -15,19 +16,23 @@ import type {
   PostSkillResponseBody,
 } from "@app/types/api/skills";
 import {
+  availabilityFromIsDefault,
+  getDefaultSkillAvailability,
+  SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
+  type SkillAvailability,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
-import { isBuilder } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import uniq from "lodash/uniq";
 import { z } from "zod";
 import skill from "./[sId]";
+import availability from "./availability";
 import detect from "./detect";
-import githubConnection from "./github-connection";
 import importRoute from "./import";
 import reinforcementDailySpend from "./reinforcement_daily_spend";
 import reinforcementSpend from "./reinforcement_spend";
@@ -35,6 +40,10 @@ import similar from "./similar";
 
 const SkillStatusSchema = z
   .enum(["active", "archived", "suggested"])
+  .optional();
+
+const SkillAvailabilitiesSchema = z
+  .array(z.enum(SKILL_AVAILABILITIES))
   .optional();
 
 // Request body schema for POST.
@@ -54,7 +63,9 @@ const PostSkillRequestBodySchema = z.intersection(
     instructionsHtml: z.string().nullable(),
     additionalRequestedSpaceIds: z.array(z.string()).optional(),
     fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
+    // @deprecated Use availability instead. Kept while old clients still send it.
     isDefault: z.boolean().optional(),
+    availability: z.enum(SKILL_AVAILABILITIES).optional(),
     reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
   }),
   z.union([
@@ -76,12 +87,30 @@ const PostSkillRequestBodySchema = z.intersection(
   ])
 );
 
+// isDefault is a deprecated alias; an explicit availability takes priority over it. Returns
+// undefined when the caller did not request any availability.
+function resolveRequestedAvailability({
+  availability,
+  isDefault,
+}: {
+  availability?: SkillAvailability;
+  isDefault?: boolean;
+}): SkillAvailability | undefined {
+  if (availability !== undefined) {
+    return availability;
+  }
+  if (isDefault !== undefined) {
+    return availabilityFromIsDefault(isDefault);
+  }
+  return undefined;
+}
+
 // Mounted at /api/w/:wId/skills.
 const app = workspaceApp();
 
 // Static sub-paths must be registered before the param sub-app.
+app.route("/availability", availability);
 app.route("/detect", detect);
-app.route("/github-connection", githubConnection);
 app.route("/import", importRoute);
 app.route("/reinforcement_daily_spend", reinforcementDailySpend);
 app.route("/reinforcement_spend", reinforcementSpend);
@@ -103,7 +132,12 @@ app.get(
     const status = ctx.req.query("status");
     const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
     const onlyCustom = ctx.req.query("onlyCustom");
+    // @deprecated Use availability instead. Kept while old clients still send it.
     const isDefault = ctx.req.query("isDefault");
+    const bypassEditorVisibility =
+      ctx.req.query("bypassEditorVisibility") === "true";
+    // Repeatable: ?availability=workspace_users&availability=users_and_agents.
+    const availabilityParams = ctx.req.queries("availability");
 
     const statusValidation = SkillStatusSchema.safeParse(status);
     if (!statusValidation.success) {
@@ -117,15 +151,53 @@ app.get(
     }
     const skillStatus = statusValidation.data;
 
-    const skills = await SkillResource.listByWorkspace(auth, {
+    const availabilityValidation =
+      SkillAvailabilitiesSchema.safeParse(availabilityParams);
+    if (!availabilityValidation.success) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid availability: ${availabilityParams}. Expected "editors", "workspace_users", or "users_and_agents".`,
+        },
+      });
+    }
+    // An explicit availability takes priority over the deprecated isDefault alias.
+    const availability =
+      availabilityValidation.data && availabilityValidation.data.length > 0
+        ? availabilityValidation.data
+        : isDefault === "true"
+          ? ["users_and_agents" as const]
+          : undefined;
+
+    // Only admins may list unpublished skills they don't edit (e.g. for governance views).
+    if (bypassEditorVisibility && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only admins can bypass editor visibility.",
+        },
+      });
+    }
+
+    const allSkills = await SkillResource.listByWorkspace(auth, {
       status: skillStatus,
       globalSpaceOnly: globalSpaceOnly === "true",
       onlyCustom: onlyCustom === "true",
-      isDefault: isDefault === "true" ? true : undefined,
+      availability,
       withInstructions: false,
       withTools: false,
       withFileAttachments: false,
     });
+
+    // Skills with editors-only availability (unpublished) are only listed for members of
+    // their editor group.
+    const skills = bypassEditorVisibility
+      ? allSkills
+      : allSkills.filter(
+          (skill) => skill.availability !== "editors" || skill.canWrite(auth)
+        );
 
     if (withRelations === "true") {
       const usageMap = await SkillResource.batchFetchUsage(auth, skills);
@@ -204,19 +276,14 @@ app.get(
 app.post(
   "/",
   validate("json", PostSkillRequestBodySchema),
+  ensureHasWorkspacePermission(
+    "create",
+    "skill",
+    "Creating skills is restricted.",
+    "app_auth_error"
+  ),
   async (ctx): HandlerResult<PostSkillResponseBody> => {
     const auth = ctx.get("auth");
-    const owner = auth.getNonNullableWorkspace();
-
-    if (!isBuilder(owner)) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message: "User is not a builder.",
-        },
-      });
-    }
 
     const user = auth.getNonNullableUser();
 
@@ -233,6 +300,48 @@ app.post(
       });
     }
 
+    const featureFlags = await getFeatureFlags(auth);
+    const hasSkillPublicationGovernance = featureFlags.includes(
+      "admin_governance_skill_publication"
+    );
+
+    // Without skill publication governance, keep the previous behavior: only the two
+    // legacy availability values are accepted.
+    if (!hasSkillPublicationGovernance && body.availability === "editors") {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            'Availability "editors" requires skill publication governance to be enabled.',
+        },
+      });
+    }
+
+    const requestedAvailability = resolveRequestedAvailability(body);
+
+    // With skill publication governance, explicitly creating a skill already published
+    // (anything other than editors-only) requires the workspace-level permission to publish
+    // skills. The default availability is exempt so plain creation keeps working.
+    if (
+      hasSkillPublicationGovernance &&
+      requestedAvailability !== undefined &&
+      requestedAvailability !== "editors" &&
+      !(await auth.hasWorkspacePermission("publish", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "You don't have permission to change this skill's availability.",
+        },
+      });
+    }
+
+    const availability =
+      requestedAvailability ?? getDefaultSkillAvailability(featureFlags);
+
     const existingSkill = await SkillResource.fetchByName(auth, name);
 
     if (existingSkill) {
@@ -245,11 +354,21 @@ app.post(
       });
     }
 
-    // Validate all MCP server views exist before creating anything.
+    // Validate all MCP server views exist before creating anything. The views end up on the
+    // created skill, whose serialized response includes their tools — fetch the heavy attributes.
     const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
     const mcpServerViews = await MCPServerViewResource.fetchByIds(
       auth,
-      mcpServerViewIds
+      mcpServerViewIds,
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
     );
 
     if (mcpServerViewIds.length !== mcpServerViews.length) {
@@ -386,7 +505,7 @@ app.post(
         icon,
         source: body.source ?? "web_app",
         sourceMetadata: body.sourceMetadata ?? null,
-        isDefault: body.isDefault ?? false,
+        availability,
         reinforcement: body.reinforcement ?? "on",
       },
       {

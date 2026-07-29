@@ -3,7 +3,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const MEMBERSHIP_ROLE_TYPES = [
   "admin",
-  "business_admin",
+  "manager",
   "builder",
   "user",
 ] as const;

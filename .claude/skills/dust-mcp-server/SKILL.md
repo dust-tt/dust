@@ -11,11 +11,11 @@ This runbook provides step-by-step instructions for creating new internal MCP se
 
 For a minimal new server (no OAuth, no external API yet — just the skeleton to register and test):
 
-1. Create `front/lib/api/actions/servers/{provider}/metadata.ts` with `createToolsRecord`
+1. Create `front/lib/api/actions/servers/{provider}/metadata.ts` with a literal metadata array
 2. Create `front/lib/api/actions/servers/{provider}/tools/index.ts` with stub handlers
 3. Create `front/lib/api/actions/servers/{provider}/index.ts` with `createServer`
 4. Register in `constants.ts` and `servers/index.ts`
-5. Add the server to `SERVERS` in `bm25_tool_search_utils.test.ts`
+5. Add the server to `SERVER_SOURCES` in `bm25_tool_search_utils.test.ts`
 6. Add at least one BM25 query case to `bm25_tool_search.test.ts`
 
 See the **BM25 Tests** section below for the test setup. This gives you a runnable skeleton
@@ -27,9 +27,9 @@ with type-checked tool descriptions before writing any real API calls.
 
 ```text
 front/lib/api/actions/servers/{provider}/
-├── metadata.ts           # Tool metadata and server info using createToolsRecord
-├── tools/index.ts        # Tool handlers with exhaustive Record type
-├── index.ts              # Server creation and tool registration
+├── metadata.ts           # Tool metadata array and server info
+├── tools/index.ts        # Schema-inferred handlers and built tools
+├── index.ts              # Provider-local server creation and registration
 ├── client.ts             # API client (optional)
 └── helpers.ts            # Helper functions (optional)
 ```
@@ -51,6 +51,7 @@ front/lib/api/actions/servers/{provider}/
 - Do not forget to add the server to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES` array
 - Server IDs must be stable and unique; never change them once deployed
 - Tool stakes must be configured appropriately (`never_ask`, `low`, `medium`, `high`)
+- Every internal tool must define `displayLabels`, `toolCostCategory`, and `freeUsage`
 - Tool descriptions should start with a bare infinitive/base verb like `List`, `Get`, `Search`,
   `Create`, or `Update`
 - Always implement proper error handling with `Result` types
@@ -105,54 +106,61 @@ Document the operations you want to expose:
 Create `front/lib/api/actions/servers/{provider}/metadata.ts`:
 
 ```typescript
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { z } from "zod";
 
-export const YOUR_PROVIDER_TOOLS_METADATA = createToolsRecord({
-  list_items: {
+export const YOUR_PROVIDER_SERVER_NAME = "your_provider" as const;
+
+export const YOUR_PROVIDER_TOOLS_METADATA = [
+  {
+    name: "list_items",
     description: "List all items accessible to the user.",
     schema: {
       pageToken: z.string().optional().describe("Page token for pagination."),
       maxResults: z.number().optional().describe("Maximum results to return."),
     },
     stake: "never_ask",
+    toolCostCategory: "advanced",
+    freeUsage: false,
     displayLabels: {
       running: "Listing Items",
       done: "List items",
     },
   },
-  get_item: {
+  {
+    name: "get_item",
     description: "Get a single item by ID.",
     schema: {
       itemId: z.string().describe("The ID of the item to retrieve."),
     },
     stake: "never_ask",
+    toolCostCategory: "advanced",
+    freeUsage: false,
     displayLabels: {
       running: "Retrieving item",
       done: "Retrieve item",
     },
   },
-  create_item: {
+  {
+    name: "create_item",
     description: "Create a new item.",
     schema: {
       name: z.string().describe("Name of the item."),
       description: z.string().optional().describe("Description of the item."),
     },
     stake: "low",
+    toolCostCategory: "advanced",
+    freeUsage: false,
     displayLabels: {
       running: "Creating item",
       done: "Create item",
     },
   },
-});
+] as const;
 
 export const YOUR_PROVIDER_SERVER = {
   serverInfo: {
-    name: "your_provider",
+    name: YOUR_PROVIDER_SERVER_NAME,
     version: "1.0.0",
     description: "Short description of what this integration does.",
     authorization: {
@@ -163,20 +171,15 @@ export const YOUR_PROVIDER_SERVER = {
     documentationUrl: "https://docs.dust.tt/docs/your-provider",
     instructions: null,
   },
-  tools: Object.values(YOUR_PROVIDER_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    stake: t.stake,
-  })),
+  tools: YOUR_PROVIDER_TOOLS_METADATA,
 } as const satisfies ServerMetadata;
 ```
 
 Key points:
 
-- `createToolsRecord` automatically adds the `name` property from the object key
-- tool keys become the source of truth
+- Use `snake_case` for the tool names
+- Internal tools must include `displayLabels`; unlike remote MCP tools, these labels are required
+- Set `toolCostCategory` and `freeUsage` deliberately, following a comparable existing server
 - tool descriptions start with a bare infinitive/base verb such as `List`, `Get`, `Search`,
   `Create`, `Update`, or `Retrieve`; avoid noun phrases, articles, gerunds, and third-person
   verbs because descriptions are part of the BM25 tool-search corpus (see **BM25-Friendly
@@ -186,7 +189,7 @@ Key points:
 ### BM25-Friendly Descriptions (MCP3 rule)
 
 Tool names and descriptions both drive BM25 retrieval. **Names are the strongest signal** — they
-must be consistent and follow the `verbNoun` convention (e.g., `listWarehouses`, `getWorkbook`).
+must be consistent and follow the `verb_noun` convention (e.g., `list_warehouses`, `get_workbook`).
 Descriptions are the secondary signal: write each one as if answering "what user intent does this
 tool serve?"
 
@@ -300,9 +303,15 @@ export const TOOLS = buildTools(YOUR_PROVIDER_TOOLS_METADATA, handlers);
 
 Key points:
 
-- `ToolHandlers<T>` enforces exhaustive implementation
+- `ToolHandlers<typeof YOUR_PROVIDER_TOOLS_METADATA>` enforces one handler per metadata name and
+  infers each handler's parameters from that tool's Zod schema
 - `buildTools` combines metadata and handlers into `ToolDefinition[]`
-- each handler receives typed params inferred from the schema
+- Keep the metadata tuple intact. Annotating it as `ToolMeta[]` widens names and schemas and loses
+  per-handler parameter inference
+- Generic helpers around `buildTools` must preserve tool names as their own generic instead of
+  widening them to `string`; prefer calling `buildTools` directly unless a helper adds real value
+- Keep the handler map local unless production code genuinely reuses it; do not export it only to
+  make tests bypass the built tool or server surface
 - access the OAuth token via `extra.authInfo?.token`
 
 ### 3. Create `index.ts`
@@ -314,19 +323,20 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
+import { YOUR_PROVIDER_SERVER_NAME } from "@app/lib/api/actions/servers/your_provider/metadata";
 import { TOOLS } from "@app/lib/api/actions/servers/your_provider/tools";
 import type { Authenticator } from "@app/lib/auth";
 
 function createServer(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContext
 ): McpServer {
-  const server = makeInternalMCPServer("your_provider");
+  const server = makeInternalMCPServer(YOUR_PROVIDER_SERVER_NAME);
 
   for (const tool of TOOLS) {
-    registerTool(auth, agentLoopContext, server, tool, {
-      monitoringName: "your_provider",
+    registerTool(auth, toolContext, server, tool, {
+      monitoringName: YOUR_PROVIDER_SERVER_NAME,
     });
   }
 
@@ -367,6 +377,8 @@ Important properties:
 - `allowMultipleInstances`: `true` for OAuth-based integrations
 - `isRestricted`: feature-flag or plan gating function, if needed
 - `isPreview`: `true` for beta or preview integrations
+- `INTERNAL_MCP_SERVERS` is wrapped by `ensureUniqueToolNames`; preserving the metadata tuple lets
+  it reject duplicate tool names within a server at compile time
 
 ### 5. Register in `servers/index.ts`
 
@@ -374,7 +386,7 @@ Edit `front/lib/actions/mcp_internal_actions/servers/index.ts`:
 
 ```typescript
 case "your_provider":
-  return yourProviderServer(auth, agentLoopContext);
+  return yourProviderServer(auth, toolContext);
 ```
 
 ## Optional: `client.ts` and `helpers.ts`
@@ -501,13 +513,14 @@ description quality is sufficient for tool-search retrieval.
 
 ### 1. Register the server in `bm25_tool_search_utils.test.ts`
 
-Add an import and a `SERVERS` entry:
+Add an import and a `SERVER_SOURCES` entry. `SERVERS` is derived from this array and performs the
+Zod-to-JSON-Schema conversion used by the BM25 test corpus:
 
 ```typescript
 // At the top with the other imports:
 import { YOUR_PROVIDER_SERVER } from "@app/lib/api/actions/servers/your_provider/metadata";
 
-// In the SERVERS array:
+// In the SERVER_SOURCES array:
 { name: "your_provider", tools: YOUR_PROVIDER_SERVER.tools },
 ```
 
@@ -535,7 +548,8 @@ Add entries to the `QUERIES` array. Each entry needs:
 ### 3. Run the tests
 
 ```bash
-npm run test -- front/lib/api/actions/servers/bm25_tool_search.test.ts
+cd front
+NODE_ENV=test npm test -- --reporter verbose ./lib/api/actions/servers/bm25_tool_search.test.ts
 ```
 
 If a case fails with "Expected tool to have a non-zero score but it was not found", the query
@@ -546,9 +560,10 @@ token, or rephrase the query to use a term that's actually in the description.
 
 Before marking implementation complete:
 
-- `metadata.ts` exists and uses `createToolsRecord`
+- every tool defines `stake`, `toolCostCategory`, `freeUsage`, and `displayLabels`
 - tool descriptions start with a bare infinitive/base verb
 - `tools/index.ts` exists and uses `ToolHandlers<typeof METADATA>`
+- `buildTools(METADATA, handlers)` builds the runtime tool definitions
 - `index.ts` default-exports the server factory
 - the server is in `AVAILABLE_INTERNAL_MCP_SERVER_NAMES`
 - the server config is in `INTERNAL_MCP_SERVERS`
@@ -558,10 +573,10 @@ Before marking implementation complete:
 - the icon is present in `PLATFORM_LOGOS` in `sparkle/src/logo/platforms/registry.ts`
 - the engineer has been told marketing needs a redeploy for the icon to appear publicly
 - feature gating is configured if needed
-- server added to `SERVERS` in `bm25_tool_search_utils.test.ts`
+- server added to `SERVER_SOURCES` in `bm25_tool_search_utils.test.ts`
 - at least one query case per tool added to `bm25_tool_search.test.ts`
-- `npm run test -- front/lib/api/actions/servers/bm25_tool_search.test.ts` passes
-- `npx tsgo --noEmit` passes
+- `cd front && NODE_ENV=test npm test -- --reporter verbose ./lib/api/actions/servers/bm25_tool_search.test.ts` passes
+- `cd front && npx tsgo --noEmit` passes
 - `npm run format:changed` passes from the repo root
 - manual testing is complete
 
@@ -589,8 +604,7 @@ Before marking implementation complete:
 ### Type errors
 
 - ensure the server name was added to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES`
-- run `npx tsgo --noEmit`
-- if handler typing fails, re-check the metadata/handler mapping
+- run `cd front && npx tsgo --noEmit`
 
 ## Reference Implementations
 

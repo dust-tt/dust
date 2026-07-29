@@ -6,7 +6,7 @@ import type { MessageParam } from "@anthropic-ai/sdk/resources/messages/messages
 import {
   parseAnthropicToolSearchBlock,
   stripUnreplayableToolSearchBlocks,
-} from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import type { MessageBlockConverters } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import {
   assistantProviderPassthroughMessageToBlocks,
@@ -64,10 +64,10 @@ import { describe, expect, it } from "vitest";
  */
 
 const metadata: EndpointMetadata = {
-  providerId: "anthropic",
-  api: "anthropic",
+  lab: "anthropic",
+  host: "anthropic",
   region: "us",
-  modelId: "claude-opus-4-8",
+  model: "claude-opus-4-8",
 };
 
 const outputConverters: OutputEventConverters = {

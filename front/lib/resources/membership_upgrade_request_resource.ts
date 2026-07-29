@@ -163,7 +163,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
   static async listPendingByWorkspace(
     auth: Authenticator
   ): Promise<MembershipUpgradeRequestResource[]> {
-    if (!auth.isBusinessAdmin()) {
+    if (!auth.isManager()) {
       return [];
     }
     return this.baseFetch(auth, {
@@ -173,12 +173,12 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
   }
 
   // Fetching an arbitrary request by id is a business-admin operation (a
-  // business admin or full admin resolves it from the usage page).
+  // manager or full admin resolves it from the usage page).
   static async fetchById(
     auth: Authenticator,
     membershipUpgradeRequestId: string
   ): Promise<MembershipUpgradeRequestResource | null> {
-    if (!auth.isBusinessAdmin()) {
+    if (!auth.isManager()) {
       return null;
     }
     const modelId = getResourceIdFromSId(membershipUpgradeRequestId);

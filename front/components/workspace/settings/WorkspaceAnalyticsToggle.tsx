@@ -4,6 +4,10 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import { BarChart01, ContextItem, SliderToggle } from "@dust-tt/sparkle";
 
+const LABEL = "Workspace Analyst";
+const DESCRIPTION =
+  "Whether workspace admins get the Analyst agent and analytics tools to explore how the workspace is used.";
+
 interface WorkspaceAnalyticsToggleProps {
   owner: WorkspaceType;
 }
@@ -15,15 +19,11 @@ export function WorkspaceAnalyticsToggle({
     useWorkspaceAnalyticsToggle({ owner });
   const { hasFeature } = useFeatureFlags();
 
-  const label = "Workspace Analyst";
-  const description =
-    "Give workspace admins the Analyst agent and analytics tools to explore how the workspace is being used";
-
   if (hasFeature("admin_governance")) {
     return (
       <GovernanceSettingRowLayout
-        label={label}
-        description={description}
+        label={LABEL}
+        description={DESCRIPTION}
         action={
           <SliderToggle
             selected={isEnabled}
@@ -37,8 +37,8 @@ export function WorkspaceAnalyticsToggle({
 
   return (
     <ContextItem
-      title={label}
-      subElement={description}
+      title={LABEL}
+      subElement="Give workspace admins the Analyst agent and analytics tools to explore how the workspace is being used"
       visual={<BarChart01 className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={

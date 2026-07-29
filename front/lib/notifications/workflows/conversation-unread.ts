@@ -1,19 +1,6 @@
-import { isMessageUnread } from "@app/components/assistant/conversation/utils";
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
-import {
-  countConversationMessages,
-  renderConversationAsText,
-} from "@app/lib/api/assistant/conversation/render_as_text";
-import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
-import {
-  getAgentsDataRetention,
-  getConversationsDataRetention,
-} from "@app/lib/data_retention";
-import { DustError } from "@app/lib/error";
+import type { DustError } from "@app/lib/error";
 import {
   ensureSlackNotificationsReady,
   getNovuClient,
@@ -21,6 +8,14 @@ import {
   type NotificationAllowedTags,
 } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
+import {
+  type ConversationDetailsPayload,
+  ConversationDetailsPayloadSchema,
+  ConversationDetailsSchema,
+  type ConversationDetailsType,
+  getConversationDetails,
+  getEmailSummary,
+} from "@app/lib/notifications/helpers";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
@@ -28,17 +23,7 @@ import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
-import {
-  ConversationError,
-  getConversationDisplayTitle,
-  isCompactionMessageType,
-  isLightAgentMessageType,
-  isPodConversation,
-  isUserMessageType,
-  isVisibleMessage,
-} from "@app/types/assistant/conversation";
-import { isRichUserMention } from "@app/types/assistant/mentions";
-import { isContentFragmentType } from "@app/types/content_fragment";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
@@ -54,10 +39,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import {
-  decodeHtmlEntities,
-  stripMarkdown,
-} from "@app/types/shared/utils/markdown";
+import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { UserType } from "@app/types/user";
 import { workflow } from "@novu/framework";
@@ -65,18 +47,8 @@ import assert from "assert";
 import { Op } from "sequelize";
 import z from "zod";
 
-// When isNewProjectConversation is true, messageId is not required (the first
-// message is resolved from conversation content). Otherwise messageId is required.
-const ConversationUnreadPayloadSchema = z.object({
-  workspaceId: z.string(),
-  conversationId: z.string(),
-  messageId: z.string().optional(),
-  isNewProjectConversation: z.boolean().optional(),
-});
-
-export type ConversationUnreadPayloadType = z.infer<
-  typeof ConversationUnreadPayloadSchema
->;
+// The unread workflow operates on the shared conversation-details payload.
+export type ConversationUnreadPayloadType = ConversationDetailsPayload;
 
 export const shouldSendNotificationForAgentAnswer = (
   userMessageOrigin?: UserMessageOrigin | null
@@ -120,28 +92,6 @@ export const shouldSendNotificationForAgentAnswer = (
   }
 };
 
-const ConversationDetailsSchema = z.object({
-  subject: z.string(),
-  author: z.string(),
-  authorIsAgent: z.boolean(),
-  authorUserId: z.string().optional(),
-  isFromTrigger: z.boolean(),
-  isFromEmailAgentConversation: z.boolean(),
-  isFromSlackAgentConversation: z.boolean(),
-  workspaceName: z.string(),
-  mentionedUserIds: z.array(z.string()),
-  hasUnreadMessages: z.boolean(),
-  hasUnreadMentions: z.boolean(),
-  hasConversationRetentionPolicy: z.boolean(),
-  hasAgentRetentionPolicies: z.boolean(),
-  newMessageContent: z.string().nullable(),
-  // Fields for new project conversation notifications.
-  isNewProjectConversation: z.boolean().optional(),
-  projectName: z.string().optional(),
-});
-
-export type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
-
 // Wrapper for workflow step that may fail when conversation is deleted.
 const ConversationDetailsResultSchema = z.discriminatedUnion("success", [
   z.object({
@@ -156,202 +106,6 @@ const ConversationDetailsResultSchema = z.discriminatedUnion("success", [
 const UserNotificationDelaySchema = z.object({
   delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
 });
-
-const getConversationDetails = async ({
-  payload,
-  auth: providedAuth,
-  subscriberId,
-}: { payload: ConversationUnreadPayloadType } & (
-  | { auth: Authenticator; subscriberId?: never }
-  | { auth?: never; subscriberId: string }
-)): Promise<Result<ConversationDetailsType, ConversationError>> => {
-  if (!payload.isNewProjectConversation && !payload.messageId) {
-    throw new Error(
-      "messageId is required when isNewProjectConversation is false"
-    );
-  }
-
-  // Get or create auth from the discriminated union.
-  let auth: Authenticator;
-  if (providedAuth) {
-    auth = providedAuth;
-  } else {
-    // subscriberId may be empty when previewing the workflow step.
-    if (!subscriberId) {
-      return new Ok({
-        subject: "Deleted conversation",
-        author: "Deleted conversation",
-        authorIsAgent: false,
-        isFromTrigger: false,
-        isFromEmailAgentConversation: false,
-        isFromSlackAgentConversation: false,
-        workspaceName: "Deleted conversation",
-        mentionedUserIds: [],
-        avatarUrl: undefined,
-        hasUnreadMessages: false,
-        hasUnreadMentions: false,
-        hasConversationRetentionPolicy: false,
-        hasAgentRetentionPolicies: false,
-        newMessageContent: null,
-        isNewProjectConversation: false,
-      });
-    }
-    auth = await Authenticator.fromUserIdAndWorkspaceId(
-      subscriberId,
-      payload.workspaceId
-    );
-  }
-
-  const conversationRes = await getLightConversation(
-    auth,
-    payload.conversationId
-  );
-
-  if (conversationRes.isErr()) {
-    // Check if the conversation was deleted (expected during workflow delay).
-    const deletedConversation = await ConversationResource.fetchById(
-      auth,
-      payload.conversationId,
-      { includeDeleted: true }
-    );
-    if (deletedConversation) {
-      return new Err(new ConversationError("conversation_not_found"));
-    }
-    // Conversation never existed - unexpected.
-    throw new Error(`Conversation not found: ${payload.conversationId}`);
-  }
-
-  const conversation = conversationRes.value;
-
-  const workspaceName = auth.getNonNullableWorkspace().name;
-  // Decode HTML entities in conversation title (e.g. from email subjects
-  // that may contain &amp;, &lt;, etc.) so notification subjects/bodies
-  // display clean text.
-  const subject = decodeHtmlEntities(getConversationDisplayTitle(conversation));
-  const isFromTrigger = !!conversation.triggerId;
-
-  // Retrieve the message that triggered the notification.
-  // For new project conversations, use the first visible message
-  const message = !payload.isNewProjectConversation
-    ? conversation.content.find((msg) => msg.sId === payload.messageId)
-    : conversation.content.find(isVisibleMessage);
-  if (!message) {
-    // Message doesn't exist at all - could be true if it's in a branch.
-    return new Err(new ConversationError("message_not_found"));
-  }
-  if (message.visibility === "deleted") {
-    // Message was deleted during workflow delay - expected.
-    return new Err(new ConversationError("message_not_found"));
-  }
-
-  let author: string;
-  let authorIsAgent: boolean;
-  let authorUserId: string | undefined;
-  let mentionedUserIds: string[] = [];
-  const messageContent =
-    message.type === "agent_message" || message.type === "user_message"
-      ? message.content
-      : "";
-  const parentUserMessage = isLightAgentMessageType(message)
-    ? conversation.content
-        .flat()
-        .find((msg) => msg.sId === message.parentMessageId)
-    : undefined;
-  const isFromEmailAgentConversation =
-    (isUserMessageType(message) && message.context.origin === "email") ||
-    (parentUserMessage !== undefined &&
-      isUserMessageType(parentUserMessage) &&
-      parentUserMessage.context.origin === "email");
-
-  const isFromSlackAgentConversation =
-    (isUserMessageType(message) && message.context.origin === "slack") ||
-    (parentUserMessage !== undefined &&
-      isUserMessageType(parentUserMessage) &&
-      parentUserMessage.context.origin === "slack");
-
-  if (isCompactionMessageType(message)) {
-    // Compaction messages don't trigger notifications.
-    return new Err(new ConversationError("message_not_found"));
-  } else if (isContentFragmentType(message)) {
-    // Content fragments don't have author info.
-    author = "Someone else";
-    authorIsAgent = false;
-  } else if (isUserMessageType(message)) {
-    author =
-      message.user?.fullName ?? message.context.fullName ?? "Someone else";
-    authorUserId = message.user?.sId ?? undefined;
-    authorIsAgent = false;
-
-    // Extract approved user mentions from the rendered message.
-    mentionedUserIds = message.richMentions
-      .filter((m) => isRichUserMention(m) && m.status === "approved")
-      .map((m) => m.id);
-  } else if (isLightAgentMessageType(message)) {
-    author = message.configuration.name
-      ? `@${message.configuration.name}`
-      : "An agent";
-    authorIsAgent = true;
-  } else {
-    assertNever(message);
-  }
-
-  const unreadMessages = conversation.content.filter((msg) =>
-    isMessageUnread(msg, conversation.lastReadMs)
-  );
-
-  const hasUnreadMessages = unreadMessages.length > 0;
-
-  const hasUnreadMentions = unreadMessages.some((msg) => {
-    if (isContentFragmentType(msg) || isCompactionMessageType(msg)) {
-      return false;
-    }
-    return msg.richMentions.some(
-      (m) => isRichUserMention(m) && m.id === subscriberId
-    );
-  });
-
-  const conversationsRetention = await getConversationsDataRetention(auth);
-  const hasConversationRetentionPolicy = conversationsRetention !== null;
-
-  const agentsRetention = await getAgentsDataRetention(auth);
-  const hasAgentRetentionPolicies = conversation.content.some((msg) => {
-    if (msg.type !== "agent_message") {
-      return false;
-    }
-
-    return msg.configuration.sId in agentsRetention;
-  });
-
-  // Fetch project-specific details when this is a new project conversation notification.
-  let projectName: string | undefined;
-  const isNewProjectConversation = !!payload.isNewProjectConversation;
-
-  if (isNewProjectConversation && isPodConversation(conversation)) {
-    const project = await SpaceResource.fetchById(auth, conversation.spaceId);
-    if (project) {
-      projectName = project.name;
-    }
-  }
-
-  return new Ok({
-    subject,
-    author,
-    authorIsAgent,
-    authorUserId,
-    isFromTrigger,
-    isFromEmailAgentConversation,
-    isFromSlackAgentConversation,
-    workspaceName,
-    mentionedUserIds,
-    hasUnreadMessages,
-    hasUnreadMentions,
-    hasConversationRetentionPolicy,
-    hasAgentRetentionPolicies,
-    newMessageContent: messageContent,
-    isNewProjectConversation,
-    projectName,
-  });
-};
 
 const shouldSkipUnreadConversation = async ({
   subscriberId,
@@ -487,243 +241,6 @@ export const shouldSkipConversation = async ({
     triggerShouldSkip,
     hasUnreadMessages,
   });
-};
-
-const FUNCTION_NAME = "write_summary";
-
-const specification: AgentActionSpecification = {
-  name: FUNCTION_NAME,
-  description: "Write a summary of the conversation",
-  inputSchema: {
-    type: "object",
-    properties: {
-      conversation_summary: {
-        type: "string",
-        description: "A short summary of the conversation.",
-      },
-    },
-    required: ["conversation_summary"],
-  },
-};
-
-const MAX_CONVERSATION_SNIPPET_LENGTH = 12_000;
-
-const generateUnreadMessagesSummary = async ({
-  subscriberId,
-  payload,
-}: {
-  subscriberId?: string;
-  payload: ConversationUnreadPayloadType;
-}): Promise<
-  Result<
-    string,
-    DustError<
-      | "conversation_not_found"
-      | "no_unread_messages_found"
-      | "no_whitelisted_model_found"
-      | "internal_error"
-      | "generation_failed"
-      | "user_not_found"
-    >
-  >
-> => {
-  if (!subscriberId) {
-    return new Ok("");
-  }
-
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    payload.workspaceId
-  );
-
-  const conversationRes = await getLightConversation(
-    auth,
-    payload.conversationId
-  );
-
-  if (conversationRes.isErr()) {
-    return new Err(
-      new DustError("conversation_not_found", "Failed to get conversation")
-    );
-  }
-
-  const conversation = conversationRes.value;
-
-  const unreadMessages = conversation.content.filter((msg) =>
-    isMessageUnread(msg, conversation.lastReadMs)
-  );
-
-  if (unreadMessages.length === 0) {
-    return new Err(
-      new DustError("no_unread_messages_found", "No unread messages")
-    );
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-
-  const model = await getSmallWhitelistedModel(auth);
-
-  if (!model) {
-    return new Err(
-      new DustError("no_whitelisted_model_found", "No whitelisted model found")
-    );
-  }
-
-  const userFullName = auth.user()?.fullName();
-
-  if (!userFullName) {
-    return new Err(
-      new DustError("user_not_found", "User not found for summary generation")
-    );
-  }
-  // Generate LLM summary
-  const prompt =
-    `# Task\n` +
-    `Write a 1-2 sentence summary of unread messages for ${userFullName} to quickly understand what happened while they were away and what action (if any) is needed from them.\n\n` +
-    `CRITICAL RULE: You are writing to ${userFullName}. NEVER write their name "${userFullName}" in the summary. Always use "you/your/yours" instead.\n\n` +
-    `# Input Format\n` +
-    `You'll receive a JSON array of UNREAD messages (not the full conversation history, only what ${userFullName} hasn't seen yet). Each message has:\n` +
-    `- "role": "user" (human) or "assistant" (AI agent)\n` +
-    `- "name": sender's display name (e.g., "Sarah Chen", "dust")\n` +
-    `- "content": message text (human messages start with <dust_system> block with sender details)\n\n` +
-    `Use "role", "name", and <dust_system> to attribute senders correctly. Use message text for what happened. Never guess.\n\n` +
-    `# Writing Rules\n` +
-    `1. **Length**: 1-2 sentences maximum\n` +
-    `2. **Second person**: Use "you/your/yours" when referring to ${userFullName} - NEVER write "${userFullName}"\n` +
-    `3. **Action-first**: If someone needs something from ${userFullName}, lead with that: "[Name] needs you to [action] [details]"\n` +
-    `4. **Outcome-first for updates**: If no action needed from ${userFullName}, lead with what's ready/decided: "Draft is ready", "Meeting scheduled"\n` +
-    `5. **No chat narration**: NEVER write "X asked", "assistant provided", "then Y replied"\n` +
-    `6. **Result phrasing**: Use neutral outcomes - "Draft is ready", "Meeting scheduled", "Sarah needs..."\n` +
-    `7. **Use names**: Refer to other participants by name, never "the user"\n` +
-    `8. **Accurate attribution**: Only include information actually in the messages\n\n` +
-    `# Examples\n\n` +
-    `## Action Needed (someone waiting on the recipient)\n` +
-    `"Sarah needs your approval on the Q1 hiring budget ($450K) by end of week to finalize headcount."\n` +
-    `"Alex needs you to choose between the three homepage designs by Tuesday for the product launch."\n` +
-    `"Jordan needs your technical review of the migration plan—specifically whether the 2-week timeline is feasible."\n\n` +
-    `## Updates (no specific action needed)\n` +
-    `"Three design mockups are ready with Sarah's feedback for the homepage redesign."\n` +
-    `"Q4 budget approved at $2.5M. Implementation timeline set for March."\n` +
-    `"David shared the customer research findings—80% want mobile-first experience."\n\n` +
-    `## Mixed (update + action)\n` +
-    `"Hiring budget spreadsheet is ready for Q1. Emily needs your review by Wednesday."\n` +
-    `"Three design mockups are ready with Sarah's feedback. She's waiting on your approval to move forward."\n\n` +
-    `# Your Task\n` +
-    `Read the UNREAD messages below and write a 1-2 sentence summary following ALL rules above.\n` +
-    `Prioritize any actions needed from the recipient first, then updates. Include key specifics.\n` +
-    `Remember: Use "you/your" - NEVER write "${userFullName}".\n` +
-    `Write in a natural, engaging tone that makes someone want to read it.`;
-
-  const renderedMessages = renderConversationAsText(conversation, {
-    includeTimestamps: true,
-    includeEmail: true,
-    includeUnread: true,
-    truncateTotalChars: MAX_CONVERSATION_SNIPPET_LENGTH,
-  });
-
-  const preamble = [
-    `Conversation: ${conversation.sId}`,
-    `Title: ${getConversationDisplayTitle(conversation)}`,
-    `Created: ${new Date(conversation.created).toISOString()}`,
-    `Updated: ${new Date(conversation.updated).toISOString()}`,
-    `Unread: ${conversation.unread}`,
-    `Action Required: ${conversation.actionRequired}`,
-    `Has Error: ${conversation.hasError}`,
-    `Message Count: ${countConversationMessages(conversation)}`,
-    `URL: /w/${owner.sId}/assistant/${conversation.sId}`,
-  ].join("\n");
-
-  const conversationSnippet = `${preamble}\n\n${renderedMessages}`;
-
-  const res = await runMultiActionsAgent(
-    auth,
-    {
-      providerId: model.providerId,
-      modelId: model.modelId,
-      functionCall: FUNCTION_NAME,
-    },
-    {
-      conversation: {
-        messages: [
-          {
-            role: "user",
-            name: userFullName,
-            content: [
-              {
-                type: "text",
-                text: `This is the content of the conversation to summarize:\n\n${conversationSnippet}`,
-              },
-            ],
-          },
-        ],
-      },
-      prompt,
-      specifications: [specification],
-      forceToolCall: FUNCTION_NAME,
-    },
-    {
-      context: {
-        operationType: "conversation_unread_summary",
-        conversationId: conversation.sId,
-        userId: auth.user()?.sId,
-        workspaceId: owner.sId,
-      },
-    }
-  );
-
-  if (res.isErr()) {
-    return new Err(new DustError("generation_failed", res.error.message));
-  }
-
-  // Extract summary from function call result.
-  if (res.value.actions?.[0]?.arguments?.conversation_summary) {
-    const summary = res.value.actions[0].arguments.conversation_summary;
-    return new Ok(stripMarkdown(summary));
-  }
-
-  return new Err(
-    new DustError("generation_failed", "No conversation summary generated")
-  );
-};
-
-export const getEmailSummary = async ({
-  details,
-  subscriberId,
-  payload,
-}: {
-  details: ConversationDetailsType;
-  subscriberId: string;
-  payload: ConversationUnreadPayloadType;
-}): Promise<string | null> => {
-  if (details.hasConversationRetentionPolicy) {
-    return "Summary not generated due to data retention policy on conversations in this workspace.";
-  }
-
-  if (details.hasAgentRetentionPolicies) {
-    return "Summary not generated due to data retention policy on agents in this conversation.";
-  }
-
-  // Generate summary of unread messages
-  const summaryResult = await generateUnreadMessagesSummary({
-    subscriberId,
-    payload,
-  });
-
-  if (summaryResult.isErr()) {
-    switch (summaryResult.error.code) {
-      case "generation_failed":
-      case "conversation_not_found":
-      case "no_unread_messages_found":
-      case "internal_error":
-      case "no_whitelisted_model_found":
-      case "user_not_found":
-        break;
-      default:
-        assertNever(summaryResult.error.code);
-    }
-    return null;
-  }
-  return summaryResult.value;
 };
 
 const getEmailSubject = (
@@ -1081,7 +598,7 @@ export const conversationUnreadWorkflow = workflow(
     );
   },
   {
-    payloadSchema: ConversationUnreadPayloadSchema,
+    payloadSchema: ConversationDetailsPayloadSchema,
     tags: ["conversations"] as NotificationAllowedTags,
   }
 );

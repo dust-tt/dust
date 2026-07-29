@@ -14,7 +14,7 @@ export type ResolveAuthenticationOutcome = "completed" | "denied";
 
 export class SandboxFunctionActionAuthenticationError extends Error {
   constructor(
-    readonly type: "action_not_found" | "action_not_blocked",
+    readonly type: "action_not_found" | "action_not_blocked" | "unauthorized",
     message: string
   ) {
     super(message);
@@ -69,6 +69,19 @@ export async function resolveSandboxFunctionActionAuthentication(
     );
   }
 
+  // Only the initiating user may resolve authentication. Strict equality also rejects a null
+  // initiating user (userless origins): a userless invocation can still reach a personal-auth block
+  // via a stake-gated personal_actions tool, and we will not run a personal-OAuth tool under
+  // whichever member happens to resolve it.
+  if (invocation.userId !== auth.user()?.id) {
+    return new Err(
+      new SandboxFunctionActionAuthenticationError(
+        "unauthorized",
+        "Only the user who initiated the invocation can resolve its authentication."
+      )
+    );
+  }
+
   if (action.status !== "blocked_authentication_required") {
     return new Err(
       new SandboxFunctionActionAuthenticationError(
@@ -78,10 +91,6 @@ export async function resolveSandboxFunctionActionAuthentication(
     );
   }
 
-  // TODO(2026-07-16 SECURITY): enforce resolver == initiating user here. The invocation does not
-  // yet persist an initiating user; a follow-up adds a userId to the invocation model, then this
-  // gates via canCurrentUserRespondToParentUserMessage so the tool cannot re-run under another
-  // member's personal connection.
   const [updatedCount] = await action.updateStatusFromExpected(auth, {
     status: outcome === "completed" ? "running" : "denied",
     expectedStatus: "blocked_authentication_required",

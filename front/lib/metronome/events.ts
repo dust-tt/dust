@@ -3,12 +3,12 @@ import {
   type InternalMCPServerNameType,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { InternalMCPToolType } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
 
+import { getMetronomeIngestAlias } from "./client";
 import {
   toFreeMetronomeUserId,
   USAGE_TYPE_FREE,
@@ -80,9 +80,7 @@ export function getToolBillingInfo(
     return { toolCostCategory: "advanced", freeUsage: false };
   }
   const metadata = getInternalMCPServerMetadata(serverName);
-  const tool = (metadata.tools as InternalMCPToolType[]).find(
-    (t) => t.name === toolName
-  );
+  const tool = metadata.tools.find((t) => t.name === toolName);
   // Unknown tool on a known internal server — default to advanced, not free.
   if (!tool) {
     return { toolCostCategory: "advanced", freeUsage: false };
@@ -344,7 +342,7 @@ export function buildLlmUsageEvents({
 
   return [...groups.values()].map((group) => ({
     transaction_id: `llm3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${group.providerId}-${group.modelId}`,
-    customer_id: workspaceId,
+    customer_id: getMetronomeIngestAlias(workspaceId),
     event_type: "llm_usage_v3",
     timestamp,
     properties: {
@@ -471,7 +469,7 @@ export function buildToolUseEvents({
       transaction_id: truncateTransactionId(
         `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
       ),
-      customer_id: workspaceId,
+      customer_id: getMetronomeIngestAlias(workspaceId),
       event_type: "tool_use_v3",
       timestamp,
       properties: {

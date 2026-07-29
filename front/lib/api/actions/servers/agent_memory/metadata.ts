@@ -1,8 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const AGENT_MEMORY_SERVER_NAME = "agent_memory" as const;
 export const AGENT_MEMORY_RETRIEVE_TOOL_NAME = "retrieve";
@@ -11,8 +8,9 @@ export const AGENT_MEMORY_ERASE_TOOL_NAME = "erase_entries";
 export const AGENT_MEMORY_EDIT_TOOL_NAME = "edit_entries";
 export const AGENT_MEMORY_COMPACT_TOOL_NAME = "compact_memory";
 
-export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
-  [AGENT_MEMORY_RETRIEVE_TOOL_NAME]: {
+export const AGENT_MEMORY_TOOLS_METADATA = [
+  {
+    name: AGENT_MEMORY_RETRIEVE_TOOL_NAME,
     description:
       "Read and recall the current user's saved agent memory: what the agent remembers about them, including preferences, facts, notes, and prior context.",
     schema: {},
@@ -24,7 +22,8 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [AGENT_MEMORY_RECORD_TOOL_NAME]: {
+  {
+    name: AGENT_MEMORY_RECORD_TOOL_NAME,
     description:
       "Save or remember new user memory entries, such as preferences, facts, instructions, or notes to use later.",
     schema: {
@@ -42,7 +41,8 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [AGENT_MEMORY_ERASE_TOOL_NAME]: {
+  {
+    name: AGENT_MEMORY_ERASE_TOOL_NAME,
     description:
       "Forget, delete, or remove existing memory entries, obsolete facts, preferences, or outdated memories.",
     schema: {
@@ -60,7 +60,8 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [AGENT_MEMORY_EDIT_TOOL_NAME]: {
+  {
+    name: AGENT_MEMORY_EDIT_TOOL_NAME,
     description:
       "Change, update, correct, or rewrite existing memory entries by displayed index. Use when a saved memory should say something different.",
     schema: {
@@ -85,7 +86,8 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [AGENT_MEMORY_COMPACT_TOOL_NAME]: {
+  {
+    name: AGENT_MEMORY_COMPACT_TOOL_NAME,
     description:
       "Compact, deduplicate, and summarize memory by merging duplicate memories or shortening long memory entries.",
     schema: {
@@ -114,7 +116,7 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const;
 
 export const AGENT_MEMORY_SERVER = {
   serverInfo: {
@@ -125,13 +127,5 @@ export const AGENT_MEMORY_SERVER = {
     icon: "ActionLightbulbIcon",
     documentationUrl: null,
   },
-  tools: Object.values(AGENT_MEMORY_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: AGENT_MEMORY_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

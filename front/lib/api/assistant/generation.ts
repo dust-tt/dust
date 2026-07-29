@@ -52,13 +52,13 @@ import moment from "moment-timezone";
 function constructContextSection({
   userMessage,
   agentConfiguration,
-  model,
+  modelInfo,
   owner,
   disableFormattingPrompt,
 }: {
   userMessage: UserMessageType;
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
-  model: AgentLoopExecutionData["model"];
+  modelInfo: AgentLoopExecutionData["modelInfo"];
   owner: WorkspaceType | null;
   disableFormattingPrompt: boolean;
 }): string {
@@ -67,13 +67,13 @@ function constructContextSection({
   let context = "# CONTEXT\n\n";
   context += `assistant: @${agentConfiguration.name}\n`;
   context += `current_date: ${d.format("YYYY-MM-DD (ddd)")}\n`;
-  context += `model_id: ${model.modelId}\n`;
   if (owner) {
     context += `workspace: ${owner.name}\n`;
   }
 
-  if (model.formattingMetaPrompt && !disableFormattingPrompt) {
-    context += `# RESPONSE FORMAT\n${model.formattingMetaPrompt}\n`;
+  const { modelConfig } = modelInfo.endpoint;
+  if (modelConfig.formattingMetaPrompt && !disableFormattingPrompt) {
+    context += `# RESPONSE FORMAT\n${modelConfig.formattingMetaPrompt}\n`;
   }
 
   return context;
@@ -141,27 +141,28 @@ function constructPlatformSpecificContextSection({
 
 function constructToolsSection({
   hasAvailableActions,
-  model,
+  modelInfo,
   agentConfiguration,
   conversation,
   serverToolsAndInstructions,
 }: {
   hasAvailableActions: boolean;
-  model: AgentLoopExecutionData["model"];
+  modelInfo: AgentLoopExecutionData["modelInfo"];
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
   conversation?: ConversationWithoutContentType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
 }): string {
   let toolsSection = "# TOOLS\n";
 
+  const { modelConfig } = modelInfo.endpoint;
   toolsSection += "\n## TOOL USE DIRECTIVES\n";
-  if (hasAvailableActions && model.toolUseMetaPrompt) {
-    toolsSection += `${model.toolUseMetaPrompt}\\n`;
+  if (hasAvailableActions && modelConfig.toolUseMetaPrompt) {
+    toolsSection += `${modelConfig.toolUseMetaPrompt}\\n`;
   }
   if (
     hasAvailableActions &&
-    model.reasoningEffort === "light" &&
-    !model.useNativeLightReasoning
+    modelInfo.reasoningEffort === "light" &&
+    !modelConfig.useNativeLightReasoning
   ) {
     toolsSection += `${CHAIN_OF_THOUGHT_META_PROMPT}\n`;
   }
@@ -382,7 +383,7 @@ export function constructPromptMultiActions(
     userMessage,
     agentConfiguration,
     fallbackPrompt,
-    model,
+    modelInfo,
     hasAvailableActions,
     conversation,
     serverToolsAndInstructions,
@@ -394,11 +395,12 @@ export function constructPromptMultiActions(
     isNewFileExplorer = false,
     hasSandboxTools = false,
     disableFormattingPrompt = false,
+    hasSelectedSpacesOutsideAgentScope = false,
   }: {
     userMessage: AgentLoopExecutionData["userMessage"];
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     fallbackPrompt?: string;
-    model: AgentLoopExecutionData["model"];
+    modelInfo: AgentLoopExecutionData["modelInfo"];
     hasAvailableActions: boolean;
     conversation?: ConversationWithoutContentType;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
@@ -410,6 +412,7 @@ export function constructPromptMultiActions(
     isNewFileExplorer?: boolean;
     hasSandboxTools?: boolean;
     disableFormattingPrompt?: boolean;
+    hasSelectedSpacesOutsideAgentScope?: boolean;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -431,7 +434,7 @@ export function constructPromptMultiActions(
 
   const contextSection = constructContextSection({
     agentConfiguration,
-    model,
+    modelInfo,
     owner,
     userMessage,
     disableFormattingPrompt,
@@ -445,7 +448,7 @@ export function constructPromptMultiActions(
 
   const toolsSection = constructToolsSection({
     hasAvailableActions,
-    model,
+    modelInfo,
     agentConfiguration,
     conversation,
     serverToolsAndInstructions,
@@ -463,17 +466,20 @@ export function constructPromptMultiActions(
     // Structured form with 3 cache tiers, ordered from most stable to most volatile.
     //
     // Instructions (long cache): stable per agent config, covering agent instructions, skills,
-    // format docs, and guidelines.
+    // format docs, and guidelines. Code-defined system skills can derive their instructions from
+    // the effective Space IDs. For example, Discover Tools lists toolsets in that scope. When a
+    // conversation adds Spaces beyond the agent's configured scope, the skill instructions can
+    // change without the agent configuration changing and must stay out of this tier.
     //
-    // Shared context (short cache): workspace-scoped data shared across users, covering the tools
-    // section (directives + server listing), date, toolsets, and workspace info. A cache breakpoint
-    // here lets different users in the same workspace share this prefix.
+    // Shared context (short cache): workspace-scoped data shared across users, covering tool-use
+    // directives, date, toolsets, and workspace info. A cache breakpoint here lets different
+    // users in the same workspace share this prefix.
     //
-    // Ephemeral context (no breakpoint): per-call data, covering branch lineage,
-    // platform-specific context, and user profile.
+    // Ephemeral context (no breakpoint): per-call data, covering selected-space-scoped skill
+    // instructions, branch lineage, platform-specific context, and user profile.
     const fullInstructions = [
       instructionsContent,
-      skillsSection,
+      ...(hasSelectedSpacesOutsideAgentScope ? [] : [skillsSection]),
       attachmentsSection,
       pastedContentSection,
       guidelinesSection,
@@ -481,10 +487,8 @@ export function constructPromptMultiActions(
       .filter((s) => s.trim() !== "")
       .join("\n");
 
-    // The tools section (directives + available-servers overview) lives in the shared-context
-    // (5min) tier rather than the instructions (1h) tier: its per-server listing and instructions
-    // change whenever a (conditional) JIT server is added mid-run, so keeping it out of the
-    // instructions block lets that block stay cache-stable across server additions.
+    // The tools section lives in the shared-context (5min) tier rather than the instructions (1h)
+    // tier because conversation state can change its directives between runs.
     const sharedContext: SystemPromptContext[] = [
       { role: "context" as const, content: toolsSection },
       { role: "context" as const, content: contextSection },
@@ -493,6 +497,11 @@ export function constructPromptMultiActions(
     ].filter((s) => s.content.trim() !== "");
 
     const ephemeralContext: SystemPromptContext[] = [
+      ...(hasSelectedSpacesOutsideAgentScope
+        ? ([
+            { role: "context" as const, content: skillsSection },
+          ] satisfies SystemPromptContext[])
+        : []),
       { role: "context" as const, content: branchContextSection },
       { role: "context" as const, content: platformSpecificContextSection },
       { role: "context" as const, content: userContext ?? "" },

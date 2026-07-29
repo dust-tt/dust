@@ -93,7 +93,16 @@ app.patch(
 
     const updatedSystemView = await MCPServerViewResource.fetchById(
       auth,
-      viewId
+      viewId,
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
     );
 
     if (!updatedSystemView) {

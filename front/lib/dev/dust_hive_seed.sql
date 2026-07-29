@@ -115,8 +115,8 @@ inserted_conversations_space AS (
 
 -- Step 5a: Link system group to system space
 link_system AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "vaultId", "createdAt", "updatedAt")
-  SELECT sg."workspaceId", sg.id, ss.id, NOW(), NOW()
+  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
+  SELECT sg."workspaceId", sg.id, 'system', ss.id, NOW(), NOW()
   FROM inserted_system_group sg
   CROSS JOIN inserted_system_space ss
   RETURNING "vaultId"
@@ -124,8 +124,8 @@ link_system AS (
 
 -- Step 5b: Link global group to global space
 link_global AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "vaultId", "createdAt", "updatedAt")
-  SELECT gg."workspaceId", gg.id, gs.id, NOW(), NOW()
+  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
+  SELECT gg."workspaceId", gg.id, 'global', gs.id, NOW(), NOW()
   FROM inserted_global_group gg
   CROSS JOIN inserted_global_space gs
   RETURNING "vaultId"
@@ -133,11 +133,32 @@ link_global AS (
 
 -- Step 5c: Link global group to conversations space
 link_conversations AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "vaultId", "createdAt", "updatedAt")
-  SELECT gg."workspaceId", gg.id, cs.id, NOW(), NOW()
+  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
+  SELECT gg."workspaceId", gg.id, 'global', cs.id, NOW(), NOW()
   FROM inserted_global_group gg
   CROSS JOIN inserted_conversations_space cs
   RETURNING "vaultId"
+),
+
+-- Step 5d: Seed default governance capabilities (type-wide -1 grants on the global group).
+-- Mirrors seedWorkspaceCapabilities (front/lib/api/permissions/governance_seeding.ts), which
+-- workspace provisioning runs but this raw-SQL seed bypasses. A fresh workspace has no feature
+-- flags and no Builders group, so every "everyone" capability resolves to the global group;
+-- "create skill" resolves to admins_only (no row). Keep in sync with CAPABILITY_SEEDERS.
+inserted_group_permissions AS (
+  INSERT INTO group_permissions (
+    "workspaceId", "groupId", "grantType", "resourceType", "resourceId", "createdAt", "updatedAt"
+  )
+  SELECT gg."workspaceId", gg.id, capability.grant_type, capability.resource_type, -1, NOW(), NOW()
+  FROM inserted_global_group gg
+  CROSS JOIN (
+    VALUES
+      ('create', 'agent'),
+      ('publish', 'agent'),
+      ('invite', 'frame'),
+      ('publish', 'frame')
+  ) AS capability(grant_type, resource_type)
+  RETURNING id
 ),
 
 -- Step 6: Create membership

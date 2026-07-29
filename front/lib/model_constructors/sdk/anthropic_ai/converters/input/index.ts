@@ -1,16 +1,16 @@
 import type {
+  Model as HostModel,
   MessageCreateParamsNonStreaming,
   MessageParam,
-  Model,
   TextBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
-import { stripUnreplayableToolSearchBlocks } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { Client } from "@app/lib/model_constructors/client";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import {
+  ANTHROPIC_TOOL_SEARCH_INSTRUCTION,
   includesToolSearchTool,
-  TOOL_SEARCH_INSTRUCTION,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
+import { stripUnreplayableToolSearchBlocks } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import {
   assistantProviderPassthroughMessageToBlocks,
   assistantReasoningMessageToThinkingBlocks,
@@ -32,7 +32,7 @@ import type {
   Payload,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
-import type { ModelId } from "@app/lib/model_constructors/types/model_ids";
+import type { Model } from "@app/lib/model_constructors/types/models";
 
 type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 
@@ -58,7 +58,7 @@ export function WithAnthropicAIInputConverter<
     assistantProviderPassthroughMessageToBlocks =
       assistantProviderPassthroughMessageToBlocks;
     reasoningToThinkingConfig = reasoningToThinkingConfig;
-    modelIdToApiModelId = (modelId: ModelId): Model => modelId;
+    modelToHostModel = (modelId: Model): HostModel => modelId;
 
     conversationToMessages(
       conversation: Payload["conversation"]
@@ -108,13 +108,20 @@ export function WithAnthropicAIInputConverter<
       });
 
       return {
-        model: this.modelIdToApiModelId(this.constructor.modelId),
+        model: this.modelToHostModel(this.constructor.model),
         max_tokens: this.constructor.maxOutputTokens,
         messages,
         system: includesToolSearchTool(anthropicTools)
-          ? [...system, { type: "text", text: TOOL_SEARCH_INSTRUCTION }]
+          ? [
+              ...system,
+              { type: "text", text: ANTHROPIC_TOOL_SEARCH_INSTRUCTION },
+            ]
           : system,
-        thinking: thinkingConfig.thinking,
+        // Omit the key entirely when the config carries no thinking, so the
+        // model applies its own default instead of being told "disabled".
+        ...("thinking" in thinkingConfig
+          ? { thinking: thinkingConfig.thinking }
+          : {}),
         tools: anthropicTools,
         tool_choice: forceToolNameToToolChoice(
           tools,

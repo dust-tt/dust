@@ -8,6 +8,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   isAgentLoopRunContext,
+  isSandboxFunctionRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
 import {
@@ -43,10 +44,7 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import {
-  getConversation,
-  getLightConversation,
-} from "@app/lib/api/assistant/conversation/fetch";
+import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
 import { DustFileSystem, SCOPED_PREFIX_POD } from "@app/lib/api/file_system";
 import {
@@ -1159,7 +1157,10 @@ export function createProjectManagerTools(
             origin = userMessage.context.origin ?? origin;
             timezone = userMessage.context.timezone ?? timezone;
           }
-          // TODO(spolu): extract user timezone from sandbox function once available
+        }
+        if (isSandboxFunctionRunContext(toolContext?.runContext)) {
+          timezone =
+            toolContext.runContext.invocation.context?.timezone ?? timezone;
         }
 
         // Get agent configuration name & profile picture URL
@@ -1191,7 +1192,7 @@ export function createProjectManagerTools(
         }
 
         // Create conversation in the project space
-        const conversation = await createConversation(auth, {
+        const conversationResource = await createConversation(auth, {
           title: params.title,
           visibility: "unlisted",
           spaceId: pod.id,
@@ -1199,7 +1200,7 @@ export function createProjectManagerTools(
 
         // Post user message
         const messageRes = await postUserMessage(auth, {
-          conversation,
+          conversationResource,
           content: params.message,
           mentions,
           context: {
@@ -1231,7 +1232,7 @@ export function createProjectManagerTools(
 
         const conversationUrl = getConversationRoute(
           owner.sId,
-          conversation.sId,
+          conversationResource.sId,
           undefined,
           config.getAppUrl()
         );
@@ -1239,7 +1240,7 @@ export function createProjectManagerTools(
         return new Ok(
           makeSuccessResponse({
             success: true,
-            conversationId: conversation.sId,
+            conversationId: conversationResource.sId,
             conversationUrl,
             userMessageId: messageRes.value.userMessage.sId,
             message: `Conversation created successfully in Pod "${pod.name}"`,
@@ -1307,6 +1308,7 @@ export function createProjectManagerTools(
           if (includeMessages) {
             const conversationResults = await concurrentExecutor(
               resourcePage,
+              // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
               async (c) => getLightConversation(auth, c.sId, false),
               { concurrency: 10 }
             );
@@ -1365,6 +1367,7 @@ export function createProjectManagerTools(
         if (includeMessages) {
           const conversationResults = await concurrentExecutor(
             pageResources,
+            // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
             async (c) => getLightConversation(auth, c.sId, false),
             { concurrency: 10 }
           );
@@ -1425,12 +1428,11 @@ export function createProjectManagerTools(
           );
         }
 
-        const conversationRes = await getConversation(
+        const conversationResource = await ConversationResource.fetchById(
           auth,
-          conversationId,
-          false
+          conversationId
         );
-        if (conversationRes.isErr()) {
+        if (!conversationResource) {
           return new Err(
             new MCPError(`Conversation not found: ${conversationId}`, {
               tracked: false,
@@ -1438,7 +1440,8 @@ export function createProjectManagerTools(
           );
         }
 
-        const conversation = conversationRes.value;
+        const conversation = conversationResource.toJSON();
+
         if (conversation.spaceId !== pod.sId) {
           return new Err(
             new MCPError("Conversation is not in this Pod", {
@@ -1488,7 +1491,7 @@ export function createProjectManagerTools(
         }
 
         const messageRes = await postUserMessage(auth, {
-          conversation,
+          conversationResource,
           content: params.message,
           mentions,
           context: {
@@ -1556,12 +1559,12 @@ export function createProjectManagerTools(
           );
         }
 
-        const conversationRes = await getConversation(
+        const conversationResource = await ConversationResource.fetchById(
           auth,
-          conversationId,
-          false
+          conversationId
         );
-        if (conversationRes.isErr()) {
+
+        if (!conversationResource) {
           return new Err(
             new MCPError(`Conversation not found: ${conversationId}`, {
               tracked: false,
@@ -1569,7 +1572,8 @@ export function createProjectManagerTools(
           );
         }
 
-        const conversation = conversationRes.value;
+        const conversation = conversationResource.toJSON();
+
         const conversationUrl = getConversationRoute(
           owner.sId,
           conversation.sId,

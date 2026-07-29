@@ -289,6 +289,7 @@ export function FilePreviewDialog({
                 onMarkdownViewModeChange={
                   canEditMarkdown ? setMarkdownViewMode : undefined
                 }
+                owner={owner}
                 processedContent={processedContent}
               />
             )}
@@ -326,6 +327,7 @@ export function FilePreviewDialog({
                 onMarkdownViewModeChange={
                   canEditMarkdown ? setMarkdownViewMode : undefined
                 }
+                owner={owner}
                 processedContent={processedContent}
               />
             )}

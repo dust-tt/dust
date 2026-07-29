@@ -10,12 +10,14 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import {
   createAgentMessages,
+  createCompactionMessage,
   createUserMessage,
 } from "@app/lib/api/assistant/conversation/messages";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   AgentMessageModel,
+  CompactionMessageModel,
   MentionModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -135,6 +137,7 @@ describe("createAgentMessages", () => {
       await ConversationFactory.getMessage(auth, agentMessages[0].id);
     expect(agentMessageInDb).not.toBeNull();
     expect(agentMessageInDb?.status).toBe("created");
+    expect(agentMessageInDb?.conversationId).toBe(conversation.id);
 
     expect(messageInDb).not.toBeNull();
     expect(messageInDb?.rank).toBe(1);
@@ -1035,7 +1038,7 @@ describe("createAgentMessages", () => {
       ];
 
       const { agentMessages, richMentions } = await createAgentMessages(auth, {
-        conversation: spaceConversation,
+        conversation: spaceConversation.toJSON(),
         metadata: {
           type: "create",
           mentions,
@@ -1181,7 +1184,7 @@ describe("createAgentMessages", () => {
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
-          conversation: spaceConversation,
+          conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
             mentions,
@@ -1313,7 +1316,7 @@ describe("createAgentMessages", () => {
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
-          conversation: spaceConversation,
+          conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
             mentions,
@@ -1436,7 +1439,7 @@ describe("createAgentMessages", () => {
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
-          conversation: spaceConversation,
+          conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
             mentions,
@@ -1500,7 +1503,7 @@ describe("createAgentMessages", () => {
       const globalGroup = globalGroupRes.value;
 
       // Add global group directly to make it open (if not already there)
-      const existingGroupIds = openSpace.groups.map((g) => g.sId);
+      const existingGroupIds = openSpace.groups.map((g) => g.groupSId);
       const hasGlobalGroup = existingGroupIds.includes(globalGroup.sId);
 
       // If global group is not already there, associate it directly
@@ -1585,7 +1588,7 @@ describe("createAgentMessages", () => {
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
-          conversation: spaceConversation,
+          conversation: spaceConversation.toJSON(),
           metadata: {
             type: "create",
             mentions,
@@ -1697,6 +1700,7 @@ describe("createUserMessage", () => {
 
     expect(userMessageInDb).not.toBeNull();
     expect(userMessageInDb?.content).toBe(content);
+    expect(userMessageInDb?.conversationId).toBe(conversation.id);
     expect(userMessageInDb?.userId).toBe(user.id);
     expect(userMessageInDb?.userContextUsername).toBe(context.username);
     expect(userMessageInDb?.userContextTimezone).toBe(context.timezone);
@@ -1747,6 +1751,7 @@ describe("createUserMessage", () => {
     const originMessage = await withTransaction(async (transaction) => {
       const originAgentMessage = await AgentMessageModel.create(
         {
+          conversationId: conversation.id,
           workspaceId: workspace.id,
           skipToolsValidation: false,
           agentConfigurationId: "not-a-real-agent",
@@ -1925,6 +1930,7 @@ describe("createUserMessage", () => {
     const originMessage = await withTransaction(async (transaction) => {
       const originAgentMessage = await AgentMessageModel.create(
         {
+          conversationId: conversation.id,
           workspaceId: workspace.id,
           skipToolsValidation: false,
           agentConfigurationId: "not-a-real-agent",
@@ -2458,5 +2464,39 @@ describe("createUserMessage", () => {
     const { userMessage: userMessageInDb } =
       await ConversationFactory.getMessage(auth, userMessage.id);
     expect(userMessageInDb?.userId).toBeNull();
+  });
+});
+
+describe("createCompactionMessage", () => {
+  it("should populate conversationId on the compaction message row", async () => {
+    const setup = await createResourceTest({});
+    const auth = setup.authenticator;
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test agent",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+
+    const compactionMessage = await withTransaction(async (transaction) =>
+      createCompactionMessage(auth, {
+        conversation,
+        rank: 0,
+        transaction,
+      })
+    );
+
+    const compactionMessageRow = await CompactionMessageModel.findOne({
+      where: {
+        id: compactionMessage.compactionMessageId,
+        workspaceId: setup.workspace.id,
+      },
+    });
+    expect(compactionMessageRow).not.toBeNull();
+    expect(compactionMessageRow?.conversationId).toBe(conversation.id);
   });
 });

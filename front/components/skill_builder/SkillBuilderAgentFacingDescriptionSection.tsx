@@ -32,6 +32,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
     useController<SkillBuilderFormData, typeof FIELD_NAME>({
       name: FIELD_NAME,
     });
+  const isReadOnly = descriptionField.disabled ?? false;
 
   const { getSimilarSkills } = useSimilarSkills({ owner });
   const { skills } = useSkills({ owner });
@@ -134,14 +135,14 @@ export function SkillBuilderAgentFacingDescriptionSection() {
           class: cn(
             editorVariants({
               error: !!descriptionFieldState.error,
-              disabled: isDiffMode,
+              disabled: isDiffMode || isReadOnly,
             }),
             DESCRIPTION_EDITOR_SIZE
           ),
         },
       },
     });
-  }, [editor, descriptionFieldState.error, isDiffMode]);
+  }, [editor, descriptionFieldState.error, isDiffMode, isReadOnly]);
 
   // Sync external changes to the editor content.
   useEffect(() => {
@@ -179,12 +180,12 @@ export function SkillBuilderAgentFacingDescriptionSection() {
         emitUpdate: false,
       });
       editor.commands.applyDiff(compareText, currentText);
-      editor.setEditable(false);
     } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
       editor.commands.exitDiff();
-      editor.setEditable(true);
     }
-  }, [compareVersion, editor, descriptionField.value]);
+
+    editor.setEditable(!compareVersion && !isReadOnly);
+  }, [compareVersion, editor, descriptionField.value, isReadOnly]);
 
   return (
     <section className="space-y-4">
@@ -204,6 +205,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
             icon={ReverseLeft}
             onClick={restoreDescription}
             label="Restore description"
+            disabled={isReadOnly}
           />
         )}
       </div>

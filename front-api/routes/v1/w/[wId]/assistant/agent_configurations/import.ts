@@ -1,7 +1,6 @@
 import { importAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import type { ImportAgentConfigurationFromYAMLResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 /**
@@ -137,7 +136,6 @@ const app = publicApiApp();
 
 app.post(
   "/",
-  ensureIsBuilder(),
   async (ctx): HandlerResult<ImportAgentConfigurationFromYAMLResponseType> => {
     const auth = ctx.get("auth");
 

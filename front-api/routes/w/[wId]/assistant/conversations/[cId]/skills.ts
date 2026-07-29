@@ -1,6 +1,7 @@
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
+import { ConversationError } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -24,18 +25,20 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId: conversationId } = ctx.req.valid("param");
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return apiErrorForConversation(
+      ctx,
+      new ConversationError("conversation_not_found")
     );
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const conversationSkills = await SkillResource.listEnabledByConversation(
     auth,
-    { conversation: conversationRes.value }
+    { conversation: conversation.toJSON() }
   );
 
   return ctx.json({ skills: conversationSkills.map((s) => s.toJSON(auth)) });
@@ -49,16 +52,19 @@ app.post(
     const auth = ctx.get("auth");
     const { cId: conversationId } = ctx.req.valid("param");
 
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        conversationId
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversationResource) {
+      return apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
       );
-    if (conversationRes.isErr()) {
-      return apiErrorForConversation(ctx, conversationRes.error);
     }
 
-    const conversationWithoutContent = conversationRes.value;
+    const conversation = conversationResource.toJSON();
+
     const { action, skillId } = ctx.req.valid("json");
 
     const skillRes = await SkillResource.fetchById(auth, skillId);
@@ -82,7 +88,7 @@ app.post(
     }
 
     const r = await SkillResource.upsertConversationSkills(auth, {
-      conversation: conversationWithoutContent,
+      conversation,
       skills: [skillRes],
       enabled: action === "add",
     });

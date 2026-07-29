@@ -35,7 +35,7 @@ const CreateKeyPostBodySchema = z.object({
   // Per-key credit cap in AWU credits (credit-priced plans only). null/omitted
   // = unlimited.
   monthly_cap_awu_credits: z.number().nullish(),
-  role: z.enum(["user", "builder", "admin"]).optional(),
+  role: z.enum(["user", "admin"]).optional(),
 });
 
 // Mounted at /api/w/:wId/keys.
@@ -76,7 +76,7 @@ app.post(
       role,
     } = ctx.req.valid("json");
     const trimmedName = name.trim();
-    const keyRole = role ?? "builder";
+    const keyRole = role ?? "user";
 
     if (trimmedName.length === 0) {
       return apiError(ctx, {

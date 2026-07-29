@@ -1,13 +1,15 @@
 /**
  * DustFileSystem is the single entry point for all file system operations in the Dust platform.
  *
- * Scoped path: the agent/API-visible path format, e.g. `conversation-{cId}/report.pdf` or
- * `pod-{pId}/data.csv`. Every public method accepts and returns scoped paths.
- * Legacy paths (`conversation/...`, `project/...`) are accepted for backward compat.
+ * Scoped path: the agent/API-visible path format, e.g. `conversation-{cId}/report.pdf`,
+ * `pod-{pId}/data.csv`, or `user-{uId}/MEMORY.md`. Every public method accepts and returns
+ * scoped paths. Legacy paths (`conversation/...`, `project/...`) are accepted for backward compat.
  *
  * Factories:
  *   DustFileSystem.forConversation(auth, conversation)   single conversation mount (+pod if project space)
  *   DustFileSystem.forConversations(auth, conversations) multiple conversation mounts (+pod if project space)
+ *   DustFileSystem.forPod(auth, space)                   single pod mount
+ *   DustFileSystem.forUser(auth)                         the authenticated user's own memory scope
  *   DustFileSystem.fromScopedPath(auth, scopedPath)     infers context from the path prefix
  *   DustFileSystem.forAgentLoop(auth, { conversation, scopedPaths })
  *       defaults to the agent loop conversation (+ its pod when applicable), plus any
@@ -27,6 +29,7 @@ import {
   LEGACY_PREFIX_PROJECT,
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
+  SCOPED_PREFIX_USER,
 } from "@app/lib/api/file_system/types";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { Authenticator } from "@app/lib/auth";
@@ -45,6 +48,7 @@ import { isPodConversation } from "@app/types/assistant/conversation";
 import { isSupportedImageContentType } from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
 import * as path from "path";
 import type { Readable } from "stream";
 
@@ -69,7 +73,8 @@ export function sanitizeFileSystemName(name: string): string {
 
 type ParsedScopedPrefix =
   | { kind: "conversation"; id: string }
-  | { kind: "pod"; id: string };
+  | { kind: "pod"; id: string }
+  | { kind: "user"; id: string };
 
 export function parseScopedPrefix(
   scopedPath: string
@@ -88,6 +93,12 @@ export function parseScopedPrefix(
     const id = prefix.slice(SCOPED_PREFIX_POD.length);
 
     return id ? { kind: "pod", id } : null;
+  }
+
+  if (prefix.startsWith(SCOPED_PREFIX_USER)) {
+    const id = prefix.slice(SCOPED_PREFIX_USER.length);
+
+    return id ? { kind: "user", id } : null;
   }
 
   return null;
@@ -130,12 +141,29 @@ function createPodMount(
   };
 }
 
+function createUserMount(userId: string): FileSystemMount {
+  return {
+    kind: "user",
+    id: userId,
+    scopedPrefix: `${SCOPED_PREFIX_USER}${userId}`,
+    sandboxMountPoint: null,
+    legacyPrefix: null,
+    legacySandboxMountPoint: null,
+    permissions: {
+      canRead: true,
+      canWrite: true,
+    },
+  };
+}
+
 function collectScopedPrefixesFromPaths(scopedPaths: string[]): {
   conversationIds: Set<string>;
   podIds: Set<string>;
+  userIds: Set<string>;
 } {
   const conversationIds = new Set<string>();
   const podIds = new Set<string>();
+  const userIds = new Set<string>();
 
   for (const scopedPath of scopedPaths) {
     const parsed = parseScopedPrefix(scopedPath);
@@ -151,12 +179,16 @@ function collectScopedPrefixesFromPaths(scopedPaths: string[]): {
         podIds.add(parsed.id);
         break;
 
+      case "user":
+        userIds.add(parsed.id);
+        break;
+
       default:
         assertNever(parsed);
     }
   }
 
-  return { conversationIds, podIds };
+  return { conversationIds, podIds, userIds };
 }
 
 function hasMount(mounts: FileSystemMount[], scopedPrefix: string): boolean {
@@ -293,12 +325,46 @@ export class DustFileSystem {
   }
 
   /**
+   * Build a DustFileSystem scoped to the authenticated user's own memory space.
+   *
+   * The scope is always `auth.user()` and cannot be overridden, so an agent can never
+   * read or write another user's files. Returns `Err("unauthorized")` when there is no
+   * authenticated user.
+   */
+  static async forUser(
+    auth: Authenticator
+  ): Promise<Result<DustFileSystem, DustFileSystemError>> {
+    const user = auth.user();
+    if (!user) {
+      return new Err(
+        new DustFileSystemError(
+          "unauthorized",
+          "No authenticated user for the user file system."
+        )
+      );
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const backend = new GCSFileSystemBackend(
+      owner.sId,
+      fileStorageConfig.getGcsPrivateUploadsBucket()
+    );
+
+    return new Ok(
+      new DustFileSystem(auth, [createUserMount(user.sId)], backend)
+    );
+  }
+
+  /**
    * Build a DustFileSystem for an agent loop.
    *
    * Always includes the agent loop conversation mount and, when applicable, its Pod mount
    * (same as {@link forConversation}). Additionally mounts any conversation or Pod referenced
    * in `scopedPaths` that the caller can access, so cross-scope operations (e.g. copy between
    * two conversations) can resolve both endpoints in a single filesystem instance.
+   *
+   * User-scoped paths are not supported here and trigger an assert, user filesystem is only
+   * reachable through forUser.
    */
   static async forAgentLoop(
     auth: Authenticator,
@@ -310,8 +376,13 @@ export class DustFileSystem {
       scopedPaths?: string[];
     }
   ): Promise<Result<DustFileSystem, DustFileSystemError>> {
-    const { conversationIds, podIds } =
+    const { conversationIds, podIds, userIds } =
       collectScopedPrefixesFromPaths(scopedPaths);
+
+    assert(
+      userIds.size === 0,
+      `User-scoped paths are not supported in the agent loop, access user files through DustFileSystem.forUser`
+    );
 
     const additionalConversationIds = [...conversationIds].filter(
       (conversationId) => conversationId !== conversation.sId
@@ -443,6 +514,19 @@ export class DustFileSystem {
         }
 
         return DustFileSystem.forPod(auth, space);
+      }
+
+      case "user": {
+        const user = auth.user();
+        if (!user || user.sId !== parsed.id) {
+          return new Err(
+            new DustFileSystemError(
+              "unauthorized",
+              "You do not have access to this user's file system."
+            )
+          );
+        }
+        return DustFileSystem.forUser(auth);
       }
 
       default:
@@ -981,6 +1065,14 @@ export class DustFileSystem {
     }
 
     const { mount, path: normalized } = resolved.value;
+    if (mount.sandboxMountPoint === null) {
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          `Scope is not available in the sandbox: ${scopedPath}`
+        )
+      );
+    }
     if (normalized === mount.scopedPrefix) {
       return new Err(
         new DustFileSystemError(

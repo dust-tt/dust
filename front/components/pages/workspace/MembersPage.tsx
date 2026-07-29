@@ -6,13 +6,13 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
+import { isSCIMEnabled } from "@app/lib/plans/scim";
 import {
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
   useWorkspaceVerifiedDomains,
 } from "@app/lib/swr/workspaces";
 import {
-  ContentMessage,
   Page,
   Spinner,
   Tabs,
@@ -23,7 +23,7 @@ import {
 } from "@dust-tt/sparkle";
 
 export function MembersPage() {
-  const { hasFeature } = useFeatureFlags();
+  const { featureFlags, hasFeature } = useFeatureFlags();
   const isAdminGovernanceEnabled = hasFeature("admin_governance");
 
   const owner = useWorkspace();
@@ -43,7 +43,7 @@ export function MembersPage() {
 
   const hasVerifiedDomains = verifiedDomains.length > 0;
   const isProvisioningEnabled =
-    plan.limits.users.isSCIMAllowed && hasVerifiedDomains;
+    isSCIMEnabled(plan, featureFlags) && hasVerifiedDomains;
   const isManualInvitationsEnabled =
     owner.metadata?.disableManualInvitations !== true;
 
@@ -93,10 +93,6 @@ export function MembersPage() {
               {membersContent}
             </TabsContent>
             <TabsContent value="groups" className="flex flex-col gap-4">
-              <ContentMessage size="md">
-                This page is WIP. Do not change unless you know what you are
-                doing.
-              </ContentMessage>
               <WorkspaceGroupsList owner={owner} />
             </TabsContent>
           </Tabs>

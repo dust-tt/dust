@@ -7,7 +7,7 @@ import type {
 } from "@app/types/api/invitation";
 import { PostInvitationRequestBodySchema } from "@app/types/api/invitation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
@@ -16,7 +16,7 @@ import invitationById from "./[iId]";
 // Mounted under /api/w/:wId/invitations.
 const app = workspaceApp();
 
-app.use("*", ensureIsBusinessAdmin());
+app.use("*", ensureIsManager());
 
 /** @ignoreswagger */
 app.get(
@@ -68,7 +68,7 @@ app.post(
       });
     }
 
-    if (invitationRequests.some((r) => r.role === "business_admin")) {
+    if (invitationRequests.some((r) => r.role === "manager")) {
       const featureFlags = await getFeatureFlags(auth);
       if (!featureFlags.includes("admin_governance")) {
         return apiError(ctx, {
@@ -76,7 +76,7 @@ app.post(
           api_error: {
             type: "workspace_auth_error",
             message:
-              "You cannot assign the business admin role as the feature is not enabled for this workspace.",
+              "You cannot assign the manager role as the feature is not enabled for this workspace.",
           },
         });
       }

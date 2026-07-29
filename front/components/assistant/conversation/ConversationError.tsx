@@ -78,13 +78,13 @@ export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
     <div className="flex h-dvh flex-col items-center justify-center gap-3">
       {icon && <Icon visual={icon} className="text-info-400" size="lg" />}
       <p className="heading-xl text-center text-foreground">{title}</p>
-      <p className="copy-sm text-center text-muted-foreground">
+      <div className="copy-sm text-center text-muted-foreground">
         {Array.isArray(message) ? (
           message.map((line, index) => <p key={index}>{line}</p>)
         ) : (
           <p>{message}</p>
         )}
-      </p>
+      </div>
       <LinkWrapper href="/">
         <Button variant="outline" label="Back to homepage" icon={LogIn01} />
       </LinkWrapper>

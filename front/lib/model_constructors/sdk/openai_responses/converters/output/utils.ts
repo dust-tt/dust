@@ -1,8 +1,10 @@
+import { logOpenAIToolSearchItem } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search_logging";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   ErrorEvent,
   ModelResponseEvent,
   NonDeltaResponseEvent,
+  ProviderPassthroughEvent,
   ReasoningDeltaEvent,
   ReasoningEvent,
   ResponseIdEvent,
@@ -13,7 +15,9 @@ import type {
   ToolCallEvent,
   ToolCallStartedEvent,
 } from "@app/lib/model_constructors/types/output/events";
+import type { Phase } from "@app/lib/model_constructors/types/phases";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import { OPENAI_PROVIDER_ID } from "@app/types/assistant/models/providers";
 import {
   assertNever,
   assertNeverAndIgnore,
@@ -28,6 +32,11 @@ import type {
   ResponseStreamEvent,
   ResponseUsage,
 } from "openai/resources/responses/responses";
+
+type ToolSearchOutputItem = Extract<
+  ResponseOutputItem,
+  { type: "tool_search_call" | "tool_search_output" }
+>;
 
 // Parses tool-call arguments into an object, falling back to `{}` for malformed
 // or non-object JSON.
@@ -67,7 +76,8 @@ export interface OutputEventConverters {
   accumulatedTextToTextEvent(
     metadata: EndpointMetadata,
     text: string,
-    id?: string
+    id?: string,
+    phase?: Phase
   ): TextEvent;
   accumulatedReasoningToReasoningEvent(
     metadata: EndpointMetadata,
@@ -79,8 +89,13 @@ export interface OutputEventConverters {
     metadata: EndpointMetadata,
     id: string,
     name: string,
-    argumentsJson: string
+    argumentsJson: string,
+    namespace?: string
   ): ToolCallEvent;
+  toolSearchItemToProviderPassthroughEvent(
+    metadata: EndpointMetadata,
+    item: ToolSearchOutputItem
+  ): ProviderPassthroughEvent;
   usageToTokenUsageEvent(
     metadata: EndpointMetadata,
     usage: ResponseUsage
@@ -136,14 +151,19 @@ export function argumentsDeltaToToolCallDeltaEvent(
 export function accumulatedTextToTextEvent(
   metadata: EndpointMetadata,
   text: string,
-  id?: string
+  id?: string,
+  phase?: Phase
 ): TextEvent {
+  // Thread the message item id (so the input converter can resend it) and the
+  // phase (so downstream persistence keeps it) through metadata.content.
+  const content = { ...(id ? { id } : {}), ...(phase ? { phase } : {}) };
   return {
     type: "text",
     content: { value: text },
-    // Thread the message item id through so the input converter can resend it
-    // on the next turn.
-    metadata: { ...metadata, ...(id ? { content: { id } } : {}) },
+    metadata: {
+      ...metadata,
+      ...(Object.keys(content).length ? { content } : {}),
+    },
   };
 }
 
@@ -175,11 +195,41 @@ export function functionCallToToolCallEvent(
   metadata: EndpointMetadata,
   id: string,
   name: string,
-  argumentsJson: string
+  argumentsJson: string,
+  namespace?: string
 ): ToolCallEvent {
   return {
     type: "tool_call",
-    content: { id, name, arguments: parseToolArguments(argumentsJson) },
+    content: {
+      id,
+      name,
+      arguments: parseToolArguments(argumentsJson),
+      namespace,
+    },
+    metadata,
+  };
+}
+
+export function toolSearchItemToProviderPassthroughEvent(
+  metadata: EndpointMetadata,
+  item: ToolSearchOutputItem
+): ProviderPassthroughEvent {
+  logOpenAIToolSearchItem(item, {
+    tags: [
+      `provider_id:${metadata.lab}`,
+      `api:${metadata.host}`,
+      `model_id:${metadata.model}`,
+    ],
+    logFields: {
+      providerId: metadata.lab,
+      api: metadata.host,
+      modelId: metadata.model,
+    },
+  });
+
+  return {
+    type: "provider_passthrough",
+    content: { provider: OPENAI_PROVIDER_ID, block: item },
     metadata,
   };
 }
@@ -189,20 +239,23 @@ export function usageToTokenUsageEvent(
   usage: ResponseUsage
 ): TokenUsageEvent {
   const cacheHit = usage.input_tokens_details?.cached_tokens ?? 0;
-  const reasoning = usage.output_tokens_details?.reasoning_tokens ?? 0;
+  const cacheCreated = usage.input_tokens_details?.cache_write_tokens ?? 0;
+  const reasoning = usage.output_tokens_details?.reasoning_tokens;
   return {
     type: "token_usage",
     content: {
-      // OpenAI prompt caching has no separate creation cost, nor per-TTL
-      // buckets.
-      cacheCreated: 0,
+      // OpenAI reports a flat cache write total without TTL buckets.
+      cacheCreated,
       longCacheCreated: 0,
       shortCacheCreated: 0,
       cacheHit,
-      // input_tokens includes cached; subtract to get the uncached portion.
-      standardInput: usage.input_tokens - cacheHit,
-      standardOutput: usage.output_tokens - reasoning,
-      reasoning,
+      // input_tokens includes cache reads and writes. Subtract both to get
+      // standard input.
+      standardInput: Math.max(0, usage.input_tokens - cacheHit - cacheCreated),
+      // OpenAI reports reasoning_tokens as a breakdown of the inclusive
+      // output_tokens total, not as an additional token count.
+      totalOutput: usage.output_tokens,
+      ...(reasoning !== undefined ? { reasoning } : {}),
     },
     metadata,
   };
@@ -274,7 +327,7 @@ function apiErrorToErrorEvent(
       return buildErrorEvent({
         metadata,
         type: "rate_limit_error",
-        message: `Rate limit exceeded for OpenAI/${metadata.modelId}: ${error.message}`,
+        message: `Rate limit exceeded for OpenAI/${metadata.model}: ${error.message}`,
         originalError: error,
       });
     default:
@@ -342,7 +395,8 @@ export function outputItemToEvents(
               converters.accumulatedTextToTextEvent(
                 metadata,
                 part.text,
-                item.id
+                item.id,
+                item.phase ?? undefined
               ),
             ];
           case "refusal":
@@ -378,8 +432,14 @@ export function outputItemToEvents(
           metadata,
           item.call_id,
           item.name,
-          item.arguments
+          item.arguments,
+          item.namespace
         ),
+      ];
+    case "tool_search_call":
+    case "tool_search_output":
+      return [
+        converters.toolSearchItemToProviderPassthroughEvent(metadata, item),
       ];
     // Output item types we don't surface (server tools, image gen, etc.).
     // Listed explicitly so a new Responses output item type breaks the build.
@@ -388,8 +448,6 @@ export function outputItemToEvents(
     case "web_search_call":
     case "computer_call":
     case "computer_call_output":
-    case "tool_search_call":
-    case "tool_search_output":
     case "compaction":
     case "image_generation_call":
     case "code_interpreter_call":

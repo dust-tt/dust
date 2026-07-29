@@ -3,13 +3,27 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import type { GetGovernancePermissionsResponseBody } from "@app/types/api/governance";
+import type {
+  GetGovernancePermissionsResponseBody,
+  PatchGovernancePermissionResponseBody,
+} from "@app/types/api/governance";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
 
 function getGovernancePermissions(workspace: { sId: string }) {
   return honoApp.request(`/api/w/${workspace.sId}/governance-permissions`);
+}
+
+function patchGovernancePermission(
+  workspace: { sId: string },
+  body: Record<string, unknown>
+) {
+  return honoApp.request(`/api/w/${workspace.sId}/governance-permissions`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 // A capability with no grants yet, so its default configuration is admins_only.
@@ -46,14 +60,14 @@ describe("GET /api/w/:wId/governance-permissions", () => {
       "invite:frame": adminsOnly("invite", "frame"),
       "publish:frame": adminsOnly("publish", "frame"),
       "admin:billing": adminsOnly("admin", "billing"),
-      "admin:identity": adminsOnly("admin", "identity"),
+      "admin:security": adminsOnly("admin", "security"),
     });
   });
 
-  it("returns every capability except billing and identity for a business admin", async () => {
+  it("returns every capability except billing and identity for a manager", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
-      role: "business_admin",
+      role: "manager",
     });
 
     const response = await getGovernancePermissions(workspace);
@@ -62,7 +76,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
     const { governancePermissions }: GetGovernancePermissionsResponseBody =
       await response.json();
 
-    // Business admin sees agent/skill/frame but never the admin-only billing/identity.
+    // Manager sees agent/skill/frame but never the admin-only billing/identity.
     expect(governancePermissions).toEqual({
       "create:agent": adminsOnly("create", "agent"),
       "publish:agent": adminsOnly("publish", "agent"),
@@ -120,6 +134,178 @@ describe("GET /api/w/:wId/governance-permissions", () => {
     });
 
     const response = await getGovernancePermissions(workspace);
+
+    expect(response.status).toBe(403);
+  });
+});
+
+describe("PATCH /api/w/:wId/governance-permissions", () => {
+  it("grants a capability to everyone", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+
+    const response = await patchGovernancePermission(workspace, {
+      grantType: "create",
+      resourceType: "agent",
+      configuration: { scope: "everyone" },
+    });
+
+    expect(response.status).toBe(200);
+    const { governancePermission }: PatchGovernancePermissionResponseBody =
+      await response.json();
+    expect(governancePermission).toEqual({
+      grantType: "create",
+      resourceType: "agent",
+      configuration: { scope: "everyone" },
+    });
+
+    // The change is persisted and visible on the next read.
+    const getResponse = await getGovernancePermissions(workspace);
+    const { governancePermissions }: GetGovernancePermissionsResponseBody =
+      await getResponse.json();
+    expect(governancePermissions["create:agent"]?.configuration).toEqual({
+      scope: "everyone",
+    });
+  });
+
+  it("grants a capability to specific groups", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+
+    const groupA = await GroupFactory.regularManual(workspace, "A");
+
+    const response = await patchGovernancePermission(workspace, {
+      grantType: "publish",
+      resourceType: "agent",
+      configuration: { scope: "groups", groupIds: [groupA.sId] },
+    });
+
+    expect(response.status).toBe(200);
+    const { governancePermission }: PatchGovernancePermissionResponseBody =
+      await response.json();
+    expect(governancePermission.configuration).toEqual({
+      scope: "groups",
+      groupIds: [groupA.sId],
+    });
+  });
+
+  it("rejects a groups configuration referencing a non-manageable group", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+
+    // `regular_auto` groups back spaces and are not user-managed, so they cannot be granted here.
+    const autoGroup = await GroupFactory.regularAuto(workspace, "auto");
+
+    const response = await patchGovernancePermission(workspace, {
+      grantType: "publish",
+      resourceType: "agent",
+      configuration: { scope: "groups", groupIds: [autoGroup.sId] },
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("moves a capability back to admins_only", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+
+    // Start from a non-default state so admins_only is a real transition.
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await GroupPermissionResource.setForEverybody(auth, {
+      grantType: "create",
+      resourceType: "agent",
+    });
+
+    const response = await patchGovernancePermission(workspace, {
+      grantType: "create",
+      resourceType: "agent",
+      configuration: { scope: "admins_only" },
+    });
+
+    expect(response.status).toBe(200);
+    const { governancePermission }: PatchGovernancePermissionResponseBody =
+      await response.json();
+    expect(governancePermission.configuration).toEqual({
+      scope: "admins_only",
+    });
+  });
+
+  it("lets a manager manage an agent capability", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "manager",
+    });
+
+    const response = await patchGovernancePermission(workspace, {
+      grantType: "create",
+      resourceType: "agent",
+      configuration: { scope: "everyone" },
+    });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("forbids a manager from managing billing", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "manager",
+    });
+
+    const response = await patchGovernancePermission(workspace, {
+      grantType: "admin",
+      resourceType: "billing",
+      configuration: { scope: "everyone" },
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("treats a groups configuration with no groups as admins_only", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+
+    // Start from `everyone` so persisting admins_only is a real transition.
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await GroupPermissionResource.setForEverybody(auth, {
+      grantType: "create",
+      resourceType: "agent",
+    });
+
+    const response = await patchGovernancePermission(workspace, {
+      grantType: "create",
+      resourceType: "agent",
+      configuration: { scope: "groups", groupIds: [] },
+    });
+
+    expect(response.status).toBe(200);
+    const { governancePermission }: PatchGovernancePermissionResponseBody =
+      await response.json();
+    expect(governancePermission.configuration).toEqual({
+      scope: "admins_only",
+    });
+  });
+
+  it("returns 403 for a non-business-admin user", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "user",
+    });
+
+    const response = await patchGovernancePermission(workspace, {
+      grantType: "create",
+      resourceType: "agent",
+      configuration: { scope: "everyone" },
+    });
 
     expect(response.status).toBe(403);
   });

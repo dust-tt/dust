@@ -10,11 +10,13 @@ import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
+  SkillAvailability,
   SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
   SkillStatus,
 } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import isNil from "lodash/isNil";
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
 
@@ -69,10 +71,10 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.JSONB,
     allowNull: true,
   },
-  isDefault: {
-    type: DataTypes.BOOLEAN,
+  availability: {
+    type: DataTypes.STRING,
     allowNull: false,
-    defaultValue: false,
+    defaultValue: DEFAULT_SKILL_AVAILABILITY,
   },
 } as const satisfies ModelAttributes;
 
@@ -111,7 +113,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
 
   declare source: SkillSourceType | null;
   declare sourceMetadata: SkillSourceMetadata | null;
-  declare isDefault: boolean;
+  declare availability: CreationOptional<SkillAvailability>;
   declare favoriteCount: CreationOptional<number>;
 
   declare reinforcement: CreationOptional<SkillReinforcementMode>;
@@ -169,7 +171,7 @@ SkillConfigurationModel.init(
         concurrently: true,
       },
       {
-        fields: ["workspaceId", "status", "isDefault"],
+        fields: ["workspaceId", "status", "availability"],
         concurrently: true,
       },
       {

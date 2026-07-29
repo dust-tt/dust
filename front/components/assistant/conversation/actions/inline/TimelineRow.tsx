@@ -29,7 +29,7 @@ export function TimelineRow({
       <div className="flex flex-col items-center">
         <div className="flex h-5 w-4 flex-shrink-0 items-center justify-center">
           {spinner ? (
-            <Spinner size="xs" />
+            <Spinner size="xs" type="tri" />
           ) : icon === "circle" ? (
             <div className="h-2 w-2 rounded-full border-[1.5px] border-border" />
           ) : icon ? (

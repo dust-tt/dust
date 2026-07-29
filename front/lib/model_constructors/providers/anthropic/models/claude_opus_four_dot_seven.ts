@@ -1,5 +1,5 @@
-import { makeAnthropicOpusConfigMixin } from "@app/lib/model_constructors/providers/anthropic/models/claude_opus_four_shared_config";
-import { CLAUDE_OPUS_4_7_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { withAnthropicOpusConfig } from "@app/lib/model_constructors/providers/anthropic/models/claude_opus_four_shared_config";
+import { CLAUDE_OPUS_4_7 } from "@app/lib/model_constructors/types/models";
 
 export const WithAnthropicClaudeOpusFourDotSevenConfig =
-  makeAnthropicOpusConfigMixin(CLAUDE_OPUS_4_7_MODEL_ID);
+  withAnthropicOpusConfig(CLAUDE_OPUS_4_7);

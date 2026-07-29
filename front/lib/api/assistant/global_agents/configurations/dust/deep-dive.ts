@@ -33,7 +33,7 @@ import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
-  CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
@@ -182,6 +182,7 @@ ${sandboxNote}
 Never delegate the whole request as a single sub-agent task.
 Each sub-agent task must be atomic, outcome-scoped, and self-contained. Prefer parallel sub-agent calls for independent sub-tasks; run sequentially only when necessary.
 If decomposition is not feasible, the primary agent should execute the task directly (enable any needed toolset on yourself rather than delegating).
+Never delegate creating, updating, publishing, or sharing a Frame (Interactive Content) to a sub-agent. Sub-agents may research or prepare inputs for a Frame, but the primary agent must enable the Create Frames skill, perform every Frame operation itself, and return the working Frame or share link to the user.
 
 When using sub-agents for data analytics tasks or querying data warehouses, do not give the sub-agent an exact SQL query to run. Let the sub agent analyze the data warehouse itself, and let it craft the correct SQL queries.
 
@@ -378,7 +379,9 @@ function getModelConfig(
   }
 
   // Otherwise we use whatever the default large model is, using the default reasoning effort.
-  const modelConfiguration = getLargeWhitelistedModel(auth, excludeProviders);
+  const modelConfiguration = getLargeWhitelistedModel(auth, excludeProviders, {
+    featureFlags,
+  });
   if (!modelConfiguration) {
     return null;
   }
@@ -445,12 +448,12 @@ export function _getDeepDiveGlobalAgent(
 
   const enterpriseModelConfig =
     shouldUseOpus(auth) &&
-    selectEnabledModel(auth, [CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG], {
+    selectEnabledModel(auth, [CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG], {
       featureFlags,
       excludeProviders,
     })
       ? {
-          modelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+          modelConfiguration: CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
           reasoningEffort: modelConfig?.reasoningEffort ?? ("medium" as const),
         }
       : null;

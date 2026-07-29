@@ -19,6 +19,7 @@ import type {
   AgentMessageNewEvent,
   CompactionMessageDoneEvent,
   CompactionMessageNewEvent,
+  ConversationForkPreparedEvent,
   ConversationTitleEvent,
   PlanUpdatedEvent,
   UserMessageNewEvent,
@@ -50,6 +51,7 @@ export type ConversationEvents =
   | AgentMessageDoneEvent
   | CompactionMessageNewEvent
   | CompactionMessageDoneEvent
+  | ConversationForkPreparedEvent
   | PlanUpdatedEvent
   | WakeUpUpdatedEvent;
 

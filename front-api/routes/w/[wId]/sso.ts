@@ -8,20 +8,42 @@ import {
   generateWorkOSAdminPortalUrl,
   getWorkOSOrganizationSSOConnections,
 } from "@app/lib/api/workos/organization";
+import type { GetWorkspaceResponseBody } from "@app/lib/api/workspace";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
+import { z } from "zod";
+
+const SECURITY_PERMISSION_ERROR_MESSAGE =
+  "You do not have permission to manage identity and provisioning settings.";
+
+const PostSsoEnforcementBodySchema = z.object({
+  ssoEnforced: z.boolean(),
+});
 
 // Mounted at /api/w/:wId/sso.
 const app = workspaceApp();
 
 async function checkAccess(ctx: Context) {
   const auth = ctx.get("auth");
+
+  if (!(await auth.hasWorkspacePermission("admin", "security"))) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: SECURITY_PERMISSION_ERROR_MESSAGE,
+      },
+    });
+  }
+
   const workspace = auth.getNonNullableWorkspace();
   if (!workspace.workOSOrganizationId) {
     return apiError(ctx, {
@@ -71,47 +93,42 @@ async function checkAccess(ctx: Context) {
 }
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  ensureIsAdmin(),
-  async (ctx): HandlerResult<WorkOSConnectionSyncStatus> => {
-    const result = await checkAccess(ctx);
-    if (result instanceof Response) {
-      return result;
-    }
-    const { auth, workspace, activeConnection } = result;
-
-    // TODO(audit): sso.connection_created — SSO connections are created via WorkOS admin portal.
-    // Implement once WorkOS connection.activated webhook is subscribed.
-
-    let status: "not_configured" | "configured" | "configuring" =
-      "not_configured";
-    if (activeConnection) {
-      status =
-        activeConnection.state === "active" ? "configured" : "configuring";
-    }
-
-    const { link } = await generateWorkOSAdminPortalUrl({
-      organization: workspace.workOSOrganizationId!,
-      workOSIntent: WorkOSPortalIntent.SSO,
-      returnUrl: `${ctx.req.header("origin")}/w/${auth.getNonNullableWorkspace().sId}/members`,
-    });
-
-    return ctx.json({
-      connection: activeConnection
-        ? {
-            id: activeConnection.id,
-            state: activeConnection.state,
-            type: activeConnection.type,
-          }
-        : null,
-      setupLink: link,
-      status,
-    });
+app.get("/", async (ctx): HandlerResult<WorkOSConnectionSyncStatus> => {
+  const result = await checkAccess(ctx);
+  if (result instanceof Response) {
+    return result;
   }
-);
+  const { auth, workspace, activeConnection } = result;
 
-app.delete("/", ensureIsAdmin(), async (ctx) => {
+  // TODO(audit): sso.connection_created — SSO connections are created via WorkOS admin portal.
+  // Implement once WorkOS connection.activated webhook is subscribed.
+
+  let status: "not_configured" | "configured" | "configuring" =
+    "not_configured";
+  if (activeConnection) {
+    status = activeConnection.state === "active" ? "configured" : "configuring";
+  }
+
+  const { link } = await generateWorkOSAdminPortalUrl({
+    organization: workspace.workOSOrganizationId!,
+    workOSIntent: WorkOSPortalIntent.SSO,
+    returnUrl: `${ctx.req.header("origin")}/w/${auth.getNonNullableWorkspace().sId}/members`,
+  });
+
+  return ctx.json({
+    connection: activeConnection
+      ? {
+          id: activeConnection.id,
+          state: activeConnection.state,
+          type: activeConnection.type,
+        }
+      : null,
+    setupLink: link,
+    status,
+  });
+});
+
+app.delete("/", async (ctx) => {
   const result = await checkAccess(ctx);
   if (result instanceof Response) {
     return result;
@@ -142,5 +159,52 @@ app.delete("/", ensureIsAdmin(), async (ctx) => {
 
   return ctx.body(null, 204);
 });
+
+// SSO enforcement is a workspace-level flag gated behind `admin:security`. Unlike the handlers
+// above, it does not require a configured WorkOS org / active connection (a workspace can toggle
+// enforcement independently), so it only checks the permission rather than `checkAccess`.
+/** @ignoreswagger */
+app.post(
+  "/",
+  validate("json", PostSsoEnforcementBodySchema),
+  ensureHasWorkspacePermission(
+    "admin",
+    "security",
+    SECURITY_PERMISSION_ERROR_MESSAGE
+  ),
+  async (ctx): HandlerResult<GetWorkspaceResponseBody> => {
+    const auth = ctx.get("auth");
+
+    const owner = auth.getNonNullableWorkspace();
+    const { ssoEnforced } = ctx.req.valid("json");
+
+    const workspace = await WorkspaceResource.fetchByModelId(owner.id);
+    if (!workspace) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "workspace_not_found",
+          message: "The workspace you're trying to modify was not found.",
+        },
+      });
+    }
+
+    await workspace.updateWorkspaceSettings({ ssoEnforced });
+
+    void emitAuditLogEvent({
+      auth,
+      action: "workspace.sso_enforcement_updated",
+      targets: [buildAuditLogTarget("workspace", owner)],
+      context: getAuditLogContext(auth),
+      metadata: {
+        enabled: String(ssoEnforced),
+      },
+    });
+
+    return ctx.json({
+      workspace: { ...owner, ssoEnforced: workspace.ssoEnforced },
+    });
+  }
+);
 
 export default app;

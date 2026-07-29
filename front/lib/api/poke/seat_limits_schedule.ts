@@ -1,4 +1,6 @@
+import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import type { Authenticator } from "@app/lib/auth";
+import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -72,12 +74,33 @@ export async function setSeatLimitScheduleForSeatType(
 ): Promise<Result<void, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
+  // `manage-seat-limits` is a no-op plugin (see manage_seat_limits.ts):
+  // it exists only so this endpoint can save a plugin record for the
+  // change it makes, the same way upgrade.ts/downgrade.ts do.
+  const plugin = pluginManager.getNonNullablePlugin("manage-seat-limits");
+  const pluginRun = await PluginRunResource.makeNew(
+    plugin,
+    {
+      seatType: [seatType],
+      phasesJson: JSON.stringify(
+        phases.map((phase) => ({
+          ...phase,
+          startAt: phase.startAt.toISOString(),
+        }))
+      ),
+    },
+    auth.getNonNullableUser(),
+    workspace,
+    { resourceId: workspace.sId, resourceType: "workspaces" }
+  );
+
   const saveResult = await WorkspaceSeatLimitResource.setScheduleForSeatType({
     workspace,
     seatType,
     phases,
   });
   if (saveResult.isErr()) {
+    await pluginRun.recordError(saveResult.error.message);
     return saveResult;
   }
 
@@ -85,13 +108,19 @@ export async function setSeatLimitScheduleForSeatType(
     workspaceId: workspace.sId,
   });
   if (syncResult.isErr()) {
-    return new Err(
-      new Error(
-        "Seat-limit schedule saved, but the Metronome seat sync failed to " +
-          `launch: ${syncResult.error.message}. Re-run once resolved.`
-      )
-    );
+    const errorMessage =
+      "Seat-limit schedule saved, but the Metronome seat sync failed to " +
+      `launch: ${syncResult.error.message}. Re-run once resolved.`;
+    await pluginRun.recordError(errorMessage);
+    return new Err(new Error(errorMessage));
   }
+
+  await pluginRun.recordResult({
+    display: "text",
+    value: `Seat limits for '${seatType}' scheduled (${phases.length} phase${
+      phases.length === 1 ? "" : "s"
+    }).`,
+  });
 
   return new Ok(undefined);
 }

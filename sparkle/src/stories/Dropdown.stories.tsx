@@ -859,11 +859,7 @@ export const WithTags: Story = {
                   className="w-full"
                   size="sm"
                   disabled={isLoading}
-                  icon={
-                    isLoading
-                      ? () => <Spinner size="xs" variant="color" />
-                      : undefined
-                  }
+                  icon={isLoading ? () => <Spinner size="xs" /> : undefined}
                 />
               </div>
             </DropdownMenuContent>

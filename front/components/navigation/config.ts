@@ -1,18 +1,17 @@
 import { computeIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType } from "@app/types/app";
+import type {
+  ConcreteResourceType,
+  GrantVerb,
+} from "@app/types/group_permissions";
 import { isCreditPricedPlan, type SubscriptionType } from "@app/types/plan";
 import {
   isComputerFeatureEnabled,
   type WhitelistableFeature,
 } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
-import {
-  isAdmin,
-  isBuilder,
-  isBusinessAdmin,
-  isOnlyBusinessAdmin,
-} from "@app/types/user";
+import { isAdmin, isManager } from "@app/types/user";
 import {
   BarChart01,
   Brackets,
@@ -183,7 +182,9 @@ export type SidebarNavigation = {
 
 export const getTopNavigationTabs = (
   owner: WorkspaceType,
-  spaceMenuButtonRef: React.RefObject<HTMLDivElement>
+  spaceMenuButtonRef: React.RefObject<HTMLDivElement>,
+  showAdminSection: boolean,
+  adminSectionHref: string | null
 ) => {
   const nav: TabAppLayoutNavigation[] = [];
 
@@ -213,12 +214,12 @@ export const getTopNavigationTabs = (
     ref: spaceMenuButtonRef,
   });
 
-  if (isBusinessAdmin(owner)) {
+  if (showAdminSection) {
     nav.push({
       id: "settings",
       label: "Admin",
       icon: Settings01,
-      href: `/w/${owner.sId}/members`,
+      href: adminSectionHref ?? `/w/${owner.sId}/members`,
       isCurrent: (currentRoute) =>
         matchesRoutePattern(currentRoute, [
           "/w/[wId]/members",
@@ -251,17 +252,25 @@ export const subNavigationAdmin = ({
   currentRoute,
   featureFlags,
   subscription,
+  hasPermission,
 }: {
   owner: WorkspaceType;
   currentRoute: string;
   featureFlags: WhitelistableFeature[];
   subscription: SubscriptionType;
+  hasPermission: (
+    verb: GrantVerb,
+    resourceType: ConcreteResourceType
+  ) => boolean;
 }): SidebarNavigation[] => {
   const nav: SidebarNavigation[] = [];
 
-  // Admins and business admins see the admin sidebar; builders and members do
+  const canAdminBilling = hasPermission("admin", "billing");
+  const canAdminSecurity = hasPermission("admin", "security");
+
+  // Admins and managers see the admin sidebar; builders and members do
   // not. Each item is then individually enabled/disabled based on permission.
-  if (!isAdmin(owner) && !isOnlyBusinessAdmin(owner)) {
+  if (!isManager(owner) && !canAdminBilling && !canAdminSecurity) {
     return nav;
   }
 
@@ -269,7 +278,7 @@ export const subNavigationAdmin = ({
     matchesRoutePattern(currentRoute, ADMIN_ROUTE_PATTERNS[id]);
 
   const hasAdminRole = isAdmin(owner);
-  const hasBusinessAdminRole = isBusinessAdmin(owner);
+  const hasManagerRole = isManager(owner);
   const isAdminGovernanceEnabled = featureFlags.includes("admin_governance");
 
   nav.push({
@@ -282,7 +291,7 @@ export const subNavigationAdmin = ({
         icon: Users01,
         href: `/w/${owner.sId}/members`,
         current: isCurrent("members"),
-        disabled: !hasBusinessAdminRole,
+        disabled: !hasManagerRole,
       },
       {
         id: "identity_and_provisioning",
@@ -292,17 +301,17 @@ export const subNavigationAdmin = ({
         icon: Fingerprint04,
         href: `/w/${owner.sId}/identity-and-provisioning`,
         current: isCurrent("identity_and_provisioning"),
-        disabled: !hasAdminRole,
+        disabled: !canAdminSecurity,
       },
       ...(isAdminGovernanceEnabled
         ? [
             {
               id: "governance" as const,
-              label: "Workspace & Governance",
+              label: "Settings & Governance",
               icon: Toggle01Left,
               href: `/w/${owner.sId}/governance`,
               current: isCurrent("governance"),
-              disabled: !hasBusinessAdminRole,
+              disabled: !hasManagerRole,
             },
           ]
         : [
@@ -336,7 +345,7 @@ export const subNavigationAdmin = ({
               icon: PieChart01,
               href: `/w/${owner.sId}/usage`,
               current: isCurrent("usage"),
-              disabled: !hasBusinessAdminRole,
+              disabled: !hasManagerRole,
             },
           ]
         : []),
@@ -354,7 +363,7 @@ export const subNavigationAdmin = ({
         icon: BarChart01,
         href: `/w/${owner.sId}/analytics`,
         current: isCurrent("analytics"),
-        disabled: !hasBusinessAdminRole,
+        disabled: !hasManagerRole,
       },
       isCreditPricedPlan(subscription.plan)
         ? {
@@ -363,7 +372,7 @@ export const subNavigationAdmin = ({
             icon: CreditCard01,
             href: `/w/${owner.sId}/billing`,
             current: isCurrent("billing"),
-            disabled: !hasAdminRole,
+            disabled: !canAdminBilling,
           }
         : {
             id: "subscription",
@@ -371,7 +380,7 @@ export const subNavigationAdmin = ({
             icon: CreditCard01,
             href: `/w/${owner.sId}/subscription`,
             current: isCurrent("subscription"),
-            disabled: !hasAdminRole,
+            disabled: !canAdminBilling,
           },
     ],
   });
@@ -458,10 +467,12 @@ export const subNavigationApp = ({
   owner,
   app,
   current,
+  canAdministrateApps,
 }: {
   owner: WorkspaceType;
   app: AppType;
   current: SubNavigationAppId;
+  canAdministrateApps: boolean;
 }) => {
   let nav = [
     {
@@ -480,7 +491,7 @@ export const subNavigationApp = ({
     },
   ];
 
-  if (isAdmin(owner) || isBuilder(owner)) {
+  if (canAdministrateApps) {
     nav = nav.concat([
       {
         value: "runs",

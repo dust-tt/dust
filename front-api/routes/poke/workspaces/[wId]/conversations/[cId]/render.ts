@@ -9,9 +9,9 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import { getStreamEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -45,6 +45,7 @@ export type PostRenderConversationResponseBody = {
   modelConversation: unknown;
   modelContextSizeUsed: number;
   promptTokenCountApprox: number;
+  systemPrompt: string;
   toolsTokenCountApprox: number;
 };
 
@@ -68,6 +69,7 @@ app.post(
     } = ctx.req.valid("json");
 
     const [conversationRes, agentConfiguration] = await Promise.all([
+      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
       getConversation(auth, cId, true),
       getAgentConfiguration(auth, { agentId, variant: "full" }),
     ]);
@@ -93,8 +95,11 @@ app.post(
       });
     }
 
-    const model = getSupportedModelConfig(agentConfiguration.model);
-    if (!model) {
+    const endpoint = await getStreamEndpointFromLegacyModelId(
+      auth,
+      agentConfiguration.model.modelId
+    );
+    if (!endpoint) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -103,6 +108,15 @@ app.post(
         },
       });
     }
+    const modelInfo = {
+      endpoint,
+      temperature: agentConfiguration.model.temperature,
+      reasoningEffort: agentConfiguration.model.reasoningEffort,
+      responseFormat: endpoint.modelConfig.supportsResponseFormat
+        ? agentConfiguration.model.responseFormat
+        : undefined,
+    };
+    const model = endpoint.modelConfig;
 
     const lastUserMessage = conversation.content
       .map((tuple) => tuple[0])
@@ -126,14 +140,19 @@ app.post(
       attachments,
     });
 
-    const { enabledSkills, systemSkills, equippedSkills } =
-      await SkillResource.listForAgentLoop(auth, {
-        agentConfiguration,
-        conversation,
-      });
+    const {
+      effectiveSpaceIds,
+      enabledSkills,
+      systemSkills,
+      equippedSkills,
+      hasSelectedSpacesOutsideAgentScope,
+    } = await SkillResource.listForAgentLoop(auth, {
+      agentConfiguration,
+      conversation,
+    });
 
     const { skillServers, systemSkillServers } = await getSkillServers(auth, {
-      agentConfiguration,
+      effectiveSpaceIds,
       systemSkills,
       enabledSkills,
     });
@@ -204,16 +223,14 @@ app.post(
       userMessage,
       agentConfiguration,
       fallbackPrompt,
-      model: {
-        ...agentConfiguration.model,
-        ...model,
-      },
+      modelInfo,
       hasAvailableActions: availableActions.length > 0,
       conversation,
       serverToolsAndInstructions,
       systemSkills,
       projectContext,
       isNewFileExplorer,
+      hasSelectedSpacesOutsideAgentScope,
     });
     const prompt = systemPromptToText(promptSections);
     const leadingMessages = removeNulls([
@@ -285,6 +302,7 @@ app.post(
       modelConversation,
       modelContextSizeUsed: contextSize,
       promptTokenCountApprox,
+      systemPrompt: prompt,
       toolsTokenCountApprox,
     });
   }

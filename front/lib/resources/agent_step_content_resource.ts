@@ -165,28 +165,21 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       agentMessageIds,
       transaction,
       latestVersionsOnly = false,
+      textContentOnly = false,
     }: {
       agentMessageIds: ModelId[];
       transaction?: Transaction;
       latestVersionsOnly?: boolean;
+      textContentOnly?: boolean;
     }
   ): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Check authorization - will throw if unauthorized
-    const allowedAgentMessageIds = await this.checkAgentMessageAccess(
-      auth,
-      agentMessageIds
-    );
-
-    if (allowedAgentMessageIds.length === 0) {
+    if (agentMessageIds.length === 0) {
       return [];
     }
 
-    const chunks = chunk(
-      allowedAgentMessageIds,
-      FETCH_BY_AGENT_MESSAGES_CHUNK_SIZE
-    );
+    const chunks = chunk(agentMessageIds, FETCH_BY_AGENT_MESSAGES_CHUNK_SIZE);
 
     const batchResults = await concurrentExecutor(
       chunks,
@@ -194,6 +187,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         this.model.findAll({
           where: {
             workspaceId: owner.id,
+            ...(textContentOnly ? { type: "text_content" } : {}),
             agentMessageId: {
               [Op.any]: Sequelize.literal("$agentMessageIds::bigint[]"),
             },

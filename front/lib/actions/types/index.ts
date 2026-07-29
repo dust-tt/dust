@@ -7,16 +7,13 @@ import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { FileModel } from "@app/lib/resources/storage/models/files";
-import type {
-  AgentConfigurationWithoutModelType,
-  AgentModelConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentConfigurationWithoutModelType } from "@app/types/assistant/agent";
+import type { StreamModelInfo } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageType,
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -127,7 +124,6 @@ export type StepContext = {
 
 type ActionGeneratedFileBase = {
   title: string;
-  contentType: AllSupportedFileContentType;
   snippet: string | null;
   hidden?: boolean;
   createdAt?: number;
@@ -138,14 +134,16 @@ type ActionGeneratedFileBase = {
   skipDataSourceIndexing?: boolean;
 };
 
-// File backed by a Dust FileResource.
+// File backed by a Dust FileResource: always a supported content type.
 export type ActionGeneratedDBFileType = ActionGeneratedFileBase & {
+  contentType: AllSupportedFileContentType;
   fileId: string;
   filePath?: never;
 };
 
-// File path only, no FileResource in DB.
+// File path only, no FileResource in DB. Not restricted to supported content types.
 export type ActionGeneratedFilePathType = ActionGeneratedFileBase & {
+  contentType: string;
   fileId: null;
   filePath: string;
 };
@@ -168,7 +166,7 @@ export type AgentLoopRunContext = {
   contextType: "agent_loop";
   action: AgentMCPActionResource;
   agentConfiguration: AgentConfigurationWithoutModelType;
-  model: AgentModelConfigurationType & ModelConfigurationType;
+  modelInfo: StreamModelInfo;
   agentMessage: AgentMessageType;
   conversation: ConversationType;
   stepContext: StepContext;

@@ -1,3 +1,4 @@
+import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
@@ -5,7 +6,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
 // "suggested": shown to the user, no action taken yet
 // "executed": user ran the recommended action immediately (one-off)
@@ -21,12 +22,15 @@ export class ActivationRecommendationModel extends WorkspaceAwareModel<Activatio
   declare updatedAt: CreationOptional<Date>;
 
   declare userId: ForeignKey<UserModel["id"]>;
+  // The Pod the recommendation was made in. Nullable until backfilled.
+  declare activationPodId: ForeignKey<ActivationPodModel["id"]> | null;
   declare status: ActivationRecommendationStatus;
+  declare title: string;
   declare content: string;
-  declare rationale: string;
 
   // The conversation in which the recommendation was (originally) made
   declare conversationId: ForeignKey<ConversationModel["id"]> | null;
+  declare conversation?: NonAttribute<ConversationModel>;
   // FK to the skill created as a result of this recommendation (set when status = "skill_created")
   declare createdSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   // FK to the trigger created as a result of this recommendation (set when status = "trigger_created")
@@ -49,15 +53,19 @@ ActivationRecommendationModel.init(
       type: DataTypes.BIGINT,
       allowNull: false,
     },
+    activationPodId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
     status: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    content: {
+    title: {
       type: DataTypes.STRING(4096),
       allowNull: false,
     },
-    rationale: {
+    content: {
       type: DataTypes.STRING(4096),
       allowNull: false,
     },
@@ -79,11 +87,16 @@ ActivationRecommendationModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
+        name: "activation_recommendations_workspace_user_idx",
+        fields: ["workspaceId", "userId"],
+        concurrently: true,
+      },
+      {
         fields: ["userId"],
         concurrently: true,
       },
       {
-        fields: ["workspaceId"],
+        fields: ["activationPodId"],
         concurrently: true,
       },
       {
@@ -109,6 +122,14 @@ ActivationRecommendationModel.belongsTo(UserModel, {
 UserModel.hasMany(ActivationRecommendationModel, {
   foreignKey: { name: "userId", allowNull: false },
   onDelete: "RESTRICT",
+});
+
+ActivationRecommendationModel.belongsTo(ActivationPodModel, {
+  foreignKey: { name: "activationPodId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+ActivationPodModel.hasMany(ActivationRecommendationModel, {
+  foreignKey: { name: "activationPodId", allowNull: true },
 });
 
 ActivationRecommendationModel.belongsTo(ConversationModel, {

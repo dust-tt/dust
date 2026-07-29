@@ -1,0 +1,7 @@
+{
+  "action": "workspace.sso_enforcement_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "enabled": "string"
+  }
+}

@@ -3,6 +3,7 @@ import type {
   SandboxFunctionToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
+import type { APIErrorType } from "@app/types/error";
 
 export const SANDBOX_FUNCTION_INVOCATION_STATUSES = [
   "created",
@@ -32,6 +33,38 @@ export type SandboxFunctionInvocationType = {
   createdAt: string;
 };
 
+export const SANDBOX_FUNCTION_RUNNER_ERROR_CODES = [
+  "bad_input",
+  "invalid_input",
+  "import_failed",
+  "threw",
+  "bad_return",
+  "http_error",
+  "invalid_output",
+] as const;
+
+// Codes minted by front, for failures that happen outside the runner and therefore have no
+// upstream classification to forward.
+type SandboxFunctionFrontErrorCode =
+  | "invocation_failed"
+  | "transport_error"
+  | "not_supported";
+
+// A call error code is never re-derived along the way: it is the runner's code, the `type` of the
+// API error that failed the call, or one of the front codes above when nothing upstream classified
+// the failure. Keeping the original code means a Frame error points at where it came from instead
+// of at the layer that relabelled it.
+export type SandboxFunctionCallErrorCode =
+  | (typeof SANDBOX_FUNCTION_RUNNER_ERROR_CODES)[number]
+  | SandboxFunctionFrontErrorCode
+  | APIErrorType;
+
+export type SandboxFunctionCallError = {
+  code: SandboxFunctionCallErrorCode;
+  message: string;
+  status?: number;
+};
+
 export type SandboxFunctionMCPActionType = {
   sId: string;
   createdAt: number;
@@ -58,14 +91,14 @@ export type SandboxFunctionInvocationResultEvent = {
   result: unknown;
 };
 
-// Published when the invocation failed before producing a result, so listeners settle instead of
+// Published when the invocation cannot produce a valid result, so listeners settle instead of
 // waiting forever.
 export type SandboxFunctionInvocationErrorEvent = {
   type: "sandbox_function_invocation_error";
   created: number;
   invocationId: string;
   functionId: string;
-  message: string;
+  error: SandboxFunctionCallError;
 };
 
 export type SandboxFunctionInvocationEvent =
@@ -85,8 +118,13 @@ export function isSandboxFunctionInvocationTerminalEvent(
   );
 }
 
+export type SandboxFunctionInvocationContext = {
+  timezone?: string;
+};
+
 export type PostSandboxFunctionInvocationRequestBody = {
   input?: unknown;
+  context?: SandboxFunctionInvocationContext;
 };
 
 export type PostSandboxFunctionInvocationResponseBody = {

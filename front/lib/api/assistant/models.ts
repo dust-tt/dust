@@ -22,7 +22,7 @@ import type {
   ReasoningEffort,
   ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
-import { GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG } from "@app/types/assistant/models/xai";
+import { GROK_4_5_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export function getWhitelistedProviders(
@@ -76,14 +76,15 @@ export function isProviderWhitelistedForAuth(
 
 type ModelEnablementContext = Parameters<typeof isModelEnabled>[1];
 
-function getModelEnablementContextWithoutFeatureFlag(
+function getModelEnablementContext(
   auth: Authenticator,
-  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
+  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
+  featureFlags: WhitelistableFeature[] = []
 ): ModelEnablementContext {
   const owner = auth.getNonNullableWorkspace();
 
   return {
-    featureFlags: [],
+    featureFlags,
     plan: auth.plan(),
     regionalModelsOnly: owner.regionalModelsOnly,
     region: regionConfig.getCurrentRegion(),
@@ -114,10 +115,11 @@ export function selectEnabledModel(
     excludeProviders?: ReadonlySet<ModelProviderIdType>;
   }
 ): ModelConfigurationType | null {
-  const context = {
-    ...getModelEnablementContextWithoutFeatureFlag(auth, excludeProviders),
-    featureFlags,
-  };
+  const context = getModelEnablementContext(
+    auth,
+    excludeProviders,
+    featureFlags
+  );
 
   return candidates.find((m) => isModelEnabled(m, context)) ?? null;
 }
@@ -130,7 +132,7 @@ const ORDERED_FAST_MODEL_CONFIGS: ModelConfigurationType[] = [
 export function getFastestWhitelistedModel(
   auth: Authenticator
 ): ModelConfigurationType | null {
-  const context = getModelEnablementContextWithoutFeatureFlag(auth);
+  const context = getModelEnablementContext(auth);
 
   return (
     ORDERED_FAST_MODEL_CONFIGS.find((m) => isModelEnabled(m, context)) ??
@@ -140,20 +142,24 @@ export function getFastestWhitelistedModel(
 
 export function getSmallWhitelistedModel(
   auth: Authenticator,
-  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
+  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
+  { featureFlags = [] }: { featureFlags?: WhitelistableFeature[] } = {}
 ): ModelConfigurationType | null {
   return _getSmallWhitelistedModel(
-    getModelEnablementContextWithoutFeatureFlag(auth, excludeProviders)
+    getModelEnablementContext(auth, excludeProviders, featureFlags)
   );
 }
 
 export function getLargeWhitelistedModel(
   auth: Authenticator,
   excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
-  { forBatch = false }: { forBatch?: boolean } = {}
+  {
+    forBatch = false,
+    featureFlags = [],
+  }: { forBatch?: boolean; featureFlags?: WhitelistableFeature[] } = {}
 ): ModelConfigurationType | null {
   return _getLargeWhitelistedModel(
-    getModelEnablementContextWithoutFeatureFlag(auth, excludeProviders),
+    getModelEnablementContext(auth, excludeProviders, featureFlags),
     { forBatch }
   );
 }
@@ -163,7 +169,7 @@ const ORDERED_SMALL_MODEL_CONFIGS: ModelConfigurationType[] = [
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   GEMINI_3_5_FLASH_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
-  GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
+  GROK_4_5_MODEL_CONFIG,
 ];
 
 function _getSmallWhitelistedModel(

@@ -34,7 +34,6 @@ import {
 import {
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerNameAndWorkspaceId,
-  getInternalMCPServerToolStakes,
   INTERNAL_MCP_SERVERS,
   resolveInternalMCPServerToolStakeLevel,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -170,7 +169,12 @@ export function getToolExtraFields(
       return r;
     }
     const serverName = r.value.name;
-    const defaultStakes = getInternalMCPServerToolStakes(serverName) ?? {};
+    const defaultStakes = Object.fromEntries(
+      INTERNAL_MCP_SERVERS[serverName].metadata.tools.map((t) => [
+        t.name,
+        t.stake,
+      ])
+    );
     toolsStakes = { ...defaultStakes };
     toolsRetryPolicies = INTERNAL_MCP_SERVERS[serverName].tools_retry_policies;
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
@@ -680,10 +684,11 @@ export async function* tryCallMCPTool(
     ) {
       const mcpServerView = await MCPServerViewResource.fetchById(
         auth,
-        toolConfiguration.mcpServerViewId
+        toolConfiguration.mcpServerViewId,
+        { includeHeavyAttributes: ["authorization"] }
       );
       if (mcpServerView) {
-        const authorization = mcpServerView.toJSON().server.authorization;
+        const authorization = mcpServerView.getAuthorization();
         if (authorization) {
           // Invalidate the cached access token so the next connection attempt
           // fetches a fresh token after the user re-authenticates.
@@ -1057,7 +1062,8 @@ export async function tryListMCPTools(
     isFromSkillServer: isSkillServerConfig[index],
   }));
 
-  // Pre-fetch all MCPServerViews for server-side configs to avoid N+1 queries.
+  // Pre-fetch all MCPServerViews for server-side configs to avoid N+1 queries. Only
+  // view-level fields are needed to build connection params: no heavy attributes.
   const serverSideViewIds = mcpServerActions
     .filter((config) => isServerSideMCPServerConfiguration(config))
     .map((config) => config.mcpServerViewId);
@@ -1425,14 +1431,18 @@ async function listMCPServerToolsAndServerInstructions(
         if (isRateLimited || isAuthError) {
           const remoteMCPServer = await RemoteMCPServerResource.fetchById(
             auth,
-            connectionParams.mcpServerId
+            connectionParams.mcpServerId,
+            { includeHeavyAttributes: ["cachedTools"] }
           );
-          if (remoteMCPServer?.cachedTools?.length) {
+          const cachedTools = remoteMCPServer
+            ? remoteMCPServer.getCachedTools()
+            : undefined;
+          if (cachedTools?.length) {
             logger.warn(
               {
                 workspaceId: owner.sId,
                 mcpServerId: connectionParams.mcpServerId,
-                cachedToolCount: remoteMCPServer.cachedTools.length,
+                cachedToolCount: cachedTools.length,
               },
               isRateLimited
                 ? "Remote MCP server rate limited, falling back to cached tools"
@@ -1442,7 +1452,7 @@ async function listMCPServerToolsAndServerInstructions(
               auth,
               connectionParams.mcpServerId,
               config,
-              remoteMCPServer.cachedTools
+              cachedTools
             );
             if (cachedToolsRes.isOk()) {
               return new Ok({

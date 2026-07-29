@@ -1,3 +1,5 @@
+import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
+import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { ActivationRecommendationModel } from "@app/lib/models/activation/activation_recommendation";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
@@ -281,7 +283,9 @@ export function loadAllModels() {
     WorkspaceSensitivityLabelConfigModel,
     WorkspaceSandboxEnvVarModel,
     WorkspaceSeatLimitModel,
+    ActivationPodModel,
     ActivationRecommendationModel,
+    ActivationNudgeModel,
   ];
 }
 

@@ -1,3 +1,5 @@
+import config from "@app/lib/api/config";
+import { applyContractStartSubscriptionSwap } from "@app/lib/api/metronome/process_webhook";
 import { cancelPendingContract } from "@app/lib/api/poke/cancel_pending_contract";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
@@ -53,6 +55,7 @@ import {
 } from "@app/lib/plans/stripe";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -309,12 +312,14 @@ async function resolveMetronomeCustomer({
   stripeCollectionMethod,
 }: {
   ownerLight: LightWorkspaceType;
+  // Empty when the contract is to be created with no Stripe billing
+  // provider — passed through as `undefined` so no billing config is set.
   stripeCustomerId: string;
   stripeCollectionMethod: "charge_automatically" | "send_invoice";
 }): Promise<Result<{ metronomeCustomerId: string }, SwitchContractError>> {
   const result = await ensureMetronomeCustomerForWorkspace({
     workspace: ownerLight,
-    stripeCustomerId,
+    stripeCustomerId: stripeCustomerId || undefined,
     stripeCollectionMethod,
   });
   if (result.isErr()) {
@@ -330,13 +335,17 @@ async function resolveMetronomeCustomer({
 
 async function resolveAndValidatePackage(
   body: SwitchContractBody,
-  resolvedCurrency: SupportedCurrency
+  // `null` when no Stripe customer is wired in — there's no Stripe currency
+  // to match against, so the package's own currency becomes the contract's
+  // resolved currency instead of being validated against it.
+  resolvedCurrency: SupportedCurrency | null
 ): Promise<
   Result<
     {
       pkg: MetronomePackageSummary;
       pkgSeatByType: Map<string, PackageSeatConfig>;
       packageAlias: string;
+      resolvedCurrency: SupportedCurrency;
     },
     SwitchContractError
   >
@@ -361,7 +370,11 @@ async function resolveAndValidatePackage(
       )
     );
   }
-  if (pkg.tier !== "free" && pkg.currency !== resolvedCurrency) {
+  if (
+    resolvedCurrency !== null &&
+    pkg.tier !== "free" &&
+    pkg.currency !== resolvedCurrency
+  ) {
     return new Err(
       new SwitchContractError(
         "invalid_request",
@@ -414,7 +427,12 @@ async function resolveAndValidatePackage(
       )
     );
   }
-  return new Ok({ pkg, pkgSeatByType, packageAlias });
+  return new Ok({
+    pkg,
+    pkgSeatByType,
+    packageAlias,
+    resolvedCurrency: resolvedCurrency ?? pkg.currency,
+  });
 }
 
 function resolveSwapTiming(
@@ -891,6 +909,41 @@ async function stepPendingSubscription({
   }
 }
 
+// In environments without a Metronome webhook secret configured (e.g. local
+// dev), Metronome's `contract.start` event is never delivered, so an
+// immediate switch would otherwise leave the workspace with no Subscription
+// row at all — not even a pending one, since `stepPendingSubscription` only
+// stages one for future-dated starts. Replay the same transition
+// synchronously here instead. Production/staging always have the secret
+// configured and rely exclusively on the real webhook, since it also covers
+// re-deliveries and future-dated activations.
+async function stepImmediateSubscriptionSwapWithoutWebhook({
+  workspaceId,
+  metronomeCustomerId,
+  metronomeContractId,
+  alignedStart,
+}: PostProvisionCtx): Promise<string | null> {
+  if (config.getMetronomeWebhookSecret()) {
+    return null;
+  }
+  if (alignedStart.getTime() > Date.now()) {
+    return null;
+  }
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    return `dev_subscription_swap: workspace ${workspaceId} not found`;
+  }
+  const result = await applyContractStartSubscriptionSwap({
+    workspace,
+    contractId: metronomeContractId,
+    customerId: metronomeCustomerId,
+  });
+  if (result.isErr()) {
+    return `dev_subscription_swap: ${result.error.message}`;
+  }
+  return null;
+}
+
 // If the workspace is currently Stripe-billed, schedule the Stripe sub to
 // cancel at the swap moment so the two rails don't double-bill.
 // If the contract was backdated, alignedStart is already in the past and
@@ -1045,15 +1098,19 @@ export async function switchContract({
   const creditConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-  const stripeResult = await resolveStripeCustomer(body.stripeCustomerId);
-  if (stripeResult.isErr()) {
-    return new Err(stripeResult.error);
+  const stripeCustomerId = body.stripeCustomerId.trim();
+  let stripeResolvedCurrency: SupportedCurrency | null = null;
+  if (stripeCustomerId) {
+    const stripeResult = await resolveStripeCustomer(stripeCustomerId);
+    if (stripeResult.isErr()) {
+      return new Err(stripeResult.error);
+    }
+    stripeResolvedCurrency = stripeResult.value.resolvedCurrency;
   }
-  const { resolvedCurrency } = stripeResult.value;
 
   const customerResult = await resolveMetronomeCustomer({
     ownerLight,
-    stripeCustomerId: body.stripeCustomerId,
+    stripeCustomerId,
     stripeCollectionMethod: body.stripeCollectionMethod,
   });
   if (customerResult.isErr()) {
@@ -1061,11 +1118,15 @@ export async function switchContract({
   }
   const { metronomeCustomerId } = customerResult.value;
 
-  const packageResult = await resolveAndValidatePackage(body, resolvedCurrency);
+  const packageResult = await resolveAndValidatePackage(
+    body,
+    stripeResolvedCurrency
+  );
   if (packageResult.isErr()) {
     return new Err(packageResult.error);
   }
-  const { pkg, pkgSeatByType, packageAlias } = packageResult.value;
+  const { pkg, pkgSeatByType, packageAlias, resolvedCurrency } =
+    packageResult.value;
 
   const timingResult = resolveSwapTiming(body.startingAt);
   if (timingResult.isErr()) {
@@ -1133,7 +1194,7 @@ export async function switchContract({
     packageAlias,
     startingAt: startingAtDate,
     swapAt,
-    enableStripeBilling: true,
+    enableStripeBilling: Boolean(stripeCustomerId),
     planCode: body.planCode,
     fromContractId: currentSubscription?.metronomeContractId ?? undefined,
     enableSeatSync: false,
@@ -1188,6 +1249,7 @@ export async function switchContract({
   warn(await stepSeatRemap(ctx));
   warn(await stepSeatSync(ctx));
   warn(await stepPendingSubscription(ctx));
+  warn(await stepImmediateSubscriptionSwapWithoutWebhook(ctx));
   warn(await stepStripeCancellation(ctx));
   warn(await stepScheduleContractEnd(ctx));
 

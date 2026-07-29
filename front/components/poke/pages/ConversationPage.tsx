@@ -29,6 +29,9 @@ import {
   Clipboard,
   ClipboardCheck,
   CodeBlock,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ConversationMessage,
   cn,
   DropdownMenu,
@@ -44,12 +47,7 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
-import {
-  type ComponentProps,
-  type ReactNode,
-  useEffect,
-  useState,
-} from "react";
+import { type ComponentProps, type ReactNode, useState } from "react";
 
 type ChipColor = NonNullable<ComponentProps<typeof Chip>["color"]>;
 
@@ -896,8 +894,14 @@ export function ConversationPage() {
     return lastAgentMessage?.configuration.sId ?? agents[0]?.sId ?? "";
   })();
 
-  const [selectedAgentId, setSelectedAgentId] =
-    useState<string>(defaultAgentId);
+  const [agentSelection, setAgentSelection] = useState<{
+    agentId: string;
+    conversationId: string;
+  } | null>(null);
+  const selectedAgentId =
+    agentSelection?.conversationId === conversationId
+      ? agentSelection.agentId
+      : defaultAgentId;
   const [contextSizeOverride, setContextSizeOverride] = useState<string>("");
   const [isRendering, setIsRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
@@ -906,6 +910,7 @@ export function ConversationPage() {
     modelContextSizeUsed: number;
     modelConversation: unknown;
     promptTokenCountApprox: number;
+    systemPrompt: string;
     toolsTokenCountApprox: number;
   }>(null);
   const [showRenderControls, setShowRenderControls] = useState(false);
@@ -913,14 +918,6 @@ export function ConversationPage() {
 
   const { copyTestCase, isLoading: isTestCaseLoading } =
     useCopyReinforcementTestCase({ owner, conversationId });
-
-  useEffect(() => {
-    if (!selectedAgentId) {
-      if (defaultAgentId) {
-        setSelectedAgentId(defaultAgentId);
-      }
-    }
-  }, [defaultAgentId, selectedAgentId]);
 
   async function handleRenderConversation() {
     if (!selectedAgentId) {
@@ -954,6 +951,7 @@ export function ConversationPage() {
         modelContextSizeUsed: data.modelContextSizeUsed,
         modelConversation: data.modelConversation,
         promptTokenCountApprox: data.promptTokenCountApprox,
+        systemPrompt: data.systemPrompt,
         toolsTokenCountApprox: data.toolsTokenCountApprox,
       });
     } catch (e) {
@@ -1019,111 +1017,121 @@ export function ConversationPage() {
               workspace: owner,
             }}
           />
-          <div className="flex space-x-2">
-            {langfuseUiBaseUrl && (
+          <div className="flex flex-col items-start gap-2">
+            <div className="flex flex-wrap gap-2">
+              {langfuseUiBaseUrl && (
+                <Button
+                  href={`${langfuseUiBaseUrl}/traces?filter=metadata%3BstringObject%3BconversationId%3B%3D%3B${conversationId}`}
+                  label="Langfuse Traces"
+                  variant="primary"
+                  size="xs"
+                  target="_blank"
+                />
+              )}
               <Button
-                href={`${langfuseUiBaseUrl}/traces?filter=metadata%3BstringObject%3BconversationId%3B%3D%3B${conversationId}`}
-                label="Langfuse Traces"
+                href={`http://go/trace-conversation/${conversation.sId}`}
+                label="Trace Conversation"
                 variant="primary"
                 size="xs"
                 target="_blank"
               />
-            )}
-            <Button
-              href={`http://go/trace-conversation/${conversation.sId}`}
-              label="Trace Conversation"
-              variant="primary"
-              size="xs"
-              target="_blank"
-            />
-            <Button
-              href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=%60conversationId%60%3D"${conversationId}"`}
-              label="Temporal Workflows"
-              variant="primary"
-              size="xs"
-              target="_blank"
-            />
-            <Button
-              href={getDatadogSandboxLogsUrl(conversationId)}
-              label="Sandbox Logs"
-              variant="primary"
-              size="xs"
-              target="_blank"
-            />
-            <Button
-              href={`/poke/${owner.sId}/data_sources/${conversationDataSourceId}`}
-              label="Conversation DS"
-              variant="primary"
-              size="xs"
-              target="_blank"
-              disabled={!conversationDataSourceId}
-            />
-            <Button
-              label={useMarkdown ? "Plain Text" : "Preview Markdown"}
-              variant="outline"
-              size="xs"
-              icon={useMarkdown ? DocumentTextIcon : CodeBracketIcon}
-              onClick={() => setUseMarkdown(!useMarkdown)}
-            />
-            <Button
-              label="Render Conversation"
-              variant="primary"
-              size="xs"
-              onClick={() => {
-                if (!showRenderControls) {
-                  setShowRenderControls(true);
-                  return;
-                }
-                void handleRenderConversation();
-              }}
-              disabled={isRendering}
-            />
-            <Button
-              label="Self-improving skills test"
-              variant="primary"
-              size="xs"
-              onClick={() => void copyTestCase()}
-              disabled={isTestCaseLoading}
-            />
-            {isRendering && <Spinner size="xs" />}
-            {showRenderControls && (
-              <div className="ml-2 flex items-center space-x-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      label={
-                        selectedAgentId
-                          ? `Agent: ${
-                              agents.find((a) => a.sId === selectedAgentId)
-                                ?.name ?? selectedAgentId
-                            }`
-                          : "Select Agent"
-                      }
-                      variant="outline"
-                      size="xs"
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {agents.map((a) => (
-                      <DropdownMenuItem
-                        key={a.sId}
-                        onClick={() => setSelectedAgentId(a.sId)}
-                      >
-                        {a.name} ({a.sId})
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Input
-                  placeholder="Context size override"
-                  value={contextSizeOverride}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setContextSizeOverride(e.target.value)
+              <Button
+                href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=%60conversationId%60%3D"${conversationId}"`}
+                label="Temporal Workflows"
+                variant="primary"
+                size="xs"
+                target="_blank"
+              />
+              <Button
+                href={getDatadogSandboxLogsUrl(conversationId)}
+                label="Sandbox Logs"
+                variant="primary"
+                size="xs"
+                target="_blank"
+              />
+              <Button
+                href={`/poke/${owner.sId}/data_sources/${conversationDataSourceId}`}
+                label="Conversation DS"
+                variant="primary"
+                size="xs"
+                target="_blank"
+                disabled={!conversationDataSourceId}
+              />
+              <Button
+                label={useMarkdown ? "Plain Text" : "Preview Markdown"}
+                variant="outline"
+                size="xs"
+                icon={useMarkdown ? DocumentTextIcon : CodeBracketIcon}
+                onClick={() => setUseMarkdown(!useMarkdown)}
+              />
+              <Button
+                label="Self-improving skills test"
+                variant="primary"
+                size="xs"
+                onClick={() => void copyTestCase()}
+                disabled={isTestCaseLoading}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                label="Render Conversation"
+                variant="primary"
+                size="xs"
+                onClick={() => {
+                  if (!showRenderControls) {
+                    setShowRenderControls(true);
+                    return;
                   }
-                  className="h-7 w-44"
-                />
-              </div>
-            )}
+                  void handleRenderConversation();
+                }}
+                disabled={isRendering}
+              />
+              {showRenderControls && (
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        label={
+                          selectedAgentId
+                            ? `Agent: ${
+                                agents.find((a) => a.sId === selectedAgentId)
+                                  ?.name ?? selectedAgentId
+                              }`
+                            : "Select Agent"
+                        }
+                        variant="outline"
+                        size="xs"
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {agents.map((a) => (
+                        <DropdownMenuItem
+                          key={a.sId}
+                          onClick={() =>
+                            setAgentSelection({
+                              agentId: a.sId,
+                              conversationId,
+                            })
+                          }
+                        >
+                          {a.name} ({a.sId})
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Input
+                    aria-label="Context size override"
+                    placeholder="Context size override"
+                    value={contextSizeOverride}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setContextSizeOverride(e.target.value)
+                    }
+                    className="h-7 w-44"
+                  />
+                </>
+              )}
+              {isRendering && <Spinner size="xs" />}
+            </div>
           </div>
           {(renderError !== null || renderResult !== null) && (
             <div className="mt-2 rounded-md border p-2">
@@ -1177,9 +1185,45 @@ export function ConversationPage() {
                       }}
                     />
                   </div>
-                  <CodeBlock wrapLongLines className="language-json">
-                    {JSON.stringify(renderResult.modelConversation, null, 2)}
-                  </CodeBlock>
+                  <div className="rounded-md border border-separator p-3">
+                    <Collapsible defaultOpen={false}>
+                      <CollapsibleTrigger>
+                        <h3 className="text-sm font-medium text-foreground">
+                          System prompt
+                        </h3>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2">
+                          <CodeBlock
+                            wrapLongLines
+                            className="language-text max-h-96 overflow-y-auto"
+                          >
+                            {renderResult.systemPrompt}
+                          </CodeBlock>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+                  <div className="rounded-md border border-separator p-3">
+                    <Collapsible defaultOpen={true}>
+                      <CollapsibleTrigger>
+                        <h3 className="text-sm font-medium text-foreground">
+                          Model conversation
+                        </h3>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2">
+                          <CodeBlock wrapLongLines className="language-json">
+                            {JSON.stringify(
+                              renderResult.modelConversation,
+                              null,
+                              2
+                            )}
+                          </CodeBlock>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
                 </div>
               )}
             </div>

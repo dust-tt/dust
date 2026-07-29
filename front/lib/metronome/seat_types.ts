@@ -667,23 +667,24 @@ export function getAwuAllocationForNormalizedSeatType(
 
 /**
  * Resolve the seat AWU allowance for each normalized pool-limit seat type of
- * the workspace's active contract. Returns an empty record when the workspace
- * has no active contract. Used to derive total per-user cap thresholds (pool
- * override + seat allowance) from the pool-only override persisted on
- * memberships.
+ * a contract, defaulting to the workspace's active contract. Returns an empty
+ * record when there is no contract. Used to derive total per-user cap
+ * thresholds (pool override + seat allowance) from the pool-only override
+ * persisted on memberships.
  */
 export async function getSeatAllowancesByNormalizedSeatType(
-  workspaceId: string
+  workspaceId: string,
+  contract?: CachedContract | null
 ): Promise<Partial<Record<NormalizedPoolLimitSeatType, number>>> {
-  const contract = await getActiveContract(workspaceId);
-  if (!contract) {
+  const resolvedContract = contract ?? (await getActiveContract(workspaceId));
+  if (!resolvedContract) {
     return {};
   }
   const productSeatTypes = await getProductSeatTypes();
   const allowances: Partial<Record<NormalizedPoolLimitSeatType, number>> = {};
   for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
     allowances[seatType] = getAwuAllocationForNormalizedSeatType(
-      contract,
+      resolvedContract,
       seatType,
       productSeatTypes
     );

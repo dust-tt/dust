@@ -25,6 +25,7 @@ import {
   getFolderBreadcrumbSegments,
   getScopedRelativePath,
   isFileExplorerMovableFile,
+  isFilePreviewableContentType,
 } from "@app/components/file_explorer/utils";
 import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
@@ -206,15 +207,18 @@ export function FileExplorer({
   const handleBreadcrumbNavigate = (index: number) => {
     if (index < 0) {
       setCurrentFolderPath("");
+      setActiveFilter("all");
       return;
     }
 
     const segments = getFolderBreadcrumbSegments(currentFolderPath);
     setCurrentFolderPath(segments[index]?.path ?? "");
+    setActiveFilter("all");
   };
 
   const handleFolderNavigate = (node: FileSystemTreeNode) => {
     setCurrentFolderPath(node.path);
+    setActiveFilter("all");
   };
 
   const fileDragEnabled = Boolean(onMoveFile && totalFolderCount > 0);
@@ -263,7 +267,8 @@ export function FileExplorer({
 
   // Only file entries participate in prev/next navigation.
   const fileEntriesAtLevel = filesAtLevel.filter(
-    (e): e is FileEntry => e.kind === "file"
+    (entry): entry is FileEntry =>
+      entry.kind === "file" && isFilePreviewableContentType(entry.contentType)
   );
   const previewIndex = previewFile
     ? fileEntriesAtLevel.findIndex((f) => f.path === previewFile.path)

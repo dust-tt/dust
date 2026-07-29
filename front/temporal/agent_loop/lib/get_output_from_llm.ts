@@ -300,7 +300,8 @@ export async function getOutputFromLLMStream(
       previousMessageId,
     },
     {
-      conversationId: conversation.sId,
+      workspaceId: conversation.owner.sId,
+      agentConfigurationId: agentConfiguration.sId,
     }
   );
 
@@ -480,7 +481,7 @@ export async function getOutputFromLLMStream(
 
       if (event.type === "tool_call") {
         const {
-          content: { name, id, arguments: args },
+          content: { name, id, arguments: args, namespace },
           metadata: { thoughtSignature },
         } = event;
         actions.push({
@@ -496,6 +497,7 @@ export async function getOutputFromLLMStream(
             id,
             name,
             arguments: stringifiedArgs,
+            namespace,
             metadata: thoughtSignature ? { thoughtSignature } : undefined,
           },
         });

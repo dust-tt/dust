@@ -130,14 +130,14 @@ class ConversationModel extends Model { }
 
 ### [BACK12] No breaking changes in API endpoints
 
-**Public API (`pages/api/v1/`):** Breaking changes are never allowed. External consumers depend on
-a stable contract. Schemas must be append-only: never remove fields. When adding a new field, it
-must be optional and accept `undefined` as a value even if the latest client code always sends a
-value.
+**Public API (`front-api/routes/v1/`):** Breaking changes are never allowed. External consumers
+depend on a stable contract. Schemas must be append-only: never remove fields. When adding a new
+field, it must be optional and accept `undefined` as a value even if the latest client code always
+sends a value.
 
-**Private API (`pages/api/`):** Breaking changes are acceptable only after enough time has passed
-to be confident that no old clients are still deployed. Until then, follow the same backward
-compatibility rules as the public API. When introducing a breaking change, first deploy the
+**Private API (the rest of `front-api/routes/`):** Breaking changes are acceptable only after enough
+time has passed to be confident that no old clients are still deployed. Until then, follow the same
+backward compatibility rules as the public API. When introducing a breaking change, first deploy the
 updated client code, wait for all old clients to cycle out, then clean up the old contract.
 
 Example:
@@ -231,8 +231,8 @@ to adding, removing, or modifying fields at any level of nesting.
 
 In particular, check and update the following files when modifying API schemas:
 
-- `pages/api/swagger_private_schemas.ts` for private API shared schemas
-- `pages/api/v1/w/[wId]/swagger_schemas.ts` for public API shared schemas
+- `front-api/routes/swagger_private_schemas.ts` for private API shared schemas
+- `front-api/routes/v1/w/[wId]/swagger_schemas.ts` for public API shared schemas
 - The `@swagger` annotation in the endpoint file itself
 
 Every endpoint must have either `@swagger` (with proper documentation) or `@ignoreswagger`
@@ -268,7 +268,7 @@ The Type interface is not to be used in the backend.
 
 ### [BACK16] Keep API handlers thin — business logic belongs in `lib/api/*`
 
-API handlers (under `pages/api/`) should be limited to:
+API handlers (under `front-api/routes/`) should be limited to:
 
 - Authentication and authorization checks
 - HTTP method dispatch
@@ -420,9 +420,9 @@ the logic back into the handlers and accept the duplication.
 - WorkOS SDK expects all metadata values as strings. Convert numbers and booleans with `String(value)`
 - Schema files use `"string"` as the value type (e.g., `"role": "string"`)
 
-### [AUDIT6] Always include `getAuditLogContext(auth, req)` as the `context` parameter when a `NextApiRequest` is available
+### [AUDIT6] Always pass `getAuditLogContext(auth)` as the `context` parameter
 
-- This captures the client IP from `x-forwarded-for` headers
+- The client IP comes from the `Authenticator`: the auth middlewares (`workspace_auth`, `public_api_auth`, `sandbox_auth`) resolve it from the Hono context via `auth.setClientIp(...)`, preferring forwarded headers over the socket address
 - In Temporal activities or non-HTTP contexts, omit `context` (defaults to `auth.clientIp() ?? "internal"`) or pass `{ location: "internal" }` for direct emit
 
 ### [AUDIT7] Targets always include the workspace as the first target
@@ -455,12 +455,20 @@ that the `AuditAction` union and schema files stay consistent.
 
 ## MCP
 
-### [MCP1] Single file internal servers
+### [MCP1] Internal MCP server structure
 
-If possible, internal MCP servers should fit in one file. The name of the file must match the
-name of the server. If having only one file is not possible, they should be placed into a folder
-that contains a file `index.ts` from where the `createServer` function that creates the server
-will be default exported.
+Internal MCP servers must live in `lib/api/actions/servers/<server_name>/` and separate metadata,
+tool implementation, and server wiring:
+
+- `metadata.ts` exports the literal tool metadata array and the server metadata.
+- `tools/index.ts` defines the schema-inferred `ToolHandlers<typeof TOOLS_METADATA>` and combines
+  them with the metadata using `buildTools`.
+- `index.ts` creates the MCP server, registers its tools (binding the tool handlers to the server metadata), and default
+  exports the McpServer.
+
+Keep server creation local to the provider instead of routing every server through a generic
+`createServer` helper. Additional files such as `client.ts` or `helpers.ts` can be added
+when the integration needs them.
 
 ### [MCP2] Tool output typing
 

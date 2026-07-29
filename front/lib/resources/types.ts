@@ -48,6 +48,7 @@ export type TypedIncludeable<M> = {
   [K in NonAttributeKeys<M>]: {
     model: ModelStatic<InferIncludeTypeForInclude<M>[K]>;
     as: K;
+    attributes?: FindOptions<InferIncludeTypeForInclude<M>[K]>["attributes"];
     required?: boolean;
     where?: WhereOptions<InferIncludeTypeForInclude<M>[K]>;
     include?: Includeable[];

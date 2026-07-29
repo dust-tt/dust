@@ -7,6 +7,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "get_tool_execution_modes": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "list_recommendations": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -2085,6 +2089,24 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
   },
+  "servicenow": {
+    "create_incident": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_incident": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_incidents": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_incident": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
   "skill_authoring": {
     "create_skill": {
       "freeUsage": true,
@@ -2365,6 +2387,16 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
+  "user_memory": {
+    "edit": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "read": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
   "user_mentions": {
     "get_mention_markdown": {
       "freeUsage": true,
@@ -2530,6 +2562,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "basic",
     },
+    "get_top_models": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
     "get_top_skills": {
       "freeUsage": false,
       "toolCostCategory": "basic",
@@ -2580,6 +2616,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
 {
   "activation_recommendations": {
     "create_recommendation": "never_ask",
+    "get_tool_execution_modes": "never_ask",
     "list_recommendations": "never_ask",
     "update_recommendation": "never_ask",
   },
@@ -3188,6 +3225,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "search": {
     "semantic_search": "never_ask",
   },
+  "servicenow": {
+    "create_incident": "low",
+    "get_incident": "never_ask",
+    "list_incidents": "never_ask",
+    "update_incident": "low",
+  },
   "skill_authoring": {
     "create_skill": "high",
     "get_skill": "never_ask",
@@ -3276,6 +3319,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_personal_usage": "never_ask",
     "get_workspace_activity": "never_ask",
   },
+  "user_memory": {
+    "edit": "never_ask",
+    "read": "never_ask",
+  },
   "user_mentions": {
     "get_mention_markdown": "never_ask",
     "search_available_users": "never_ask",
@@ -3327,6 +3374,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_source_breakdown": "never_ask",
     "get_top_agent_tags": "never_ask",
     "get_top_agents": "never_ask",
+    "get_top_models": "never_ask",
     "get_top_skills": "never_ask",
     "get_top_tools": "never_ask",
     "get_top_users": "never_ask",

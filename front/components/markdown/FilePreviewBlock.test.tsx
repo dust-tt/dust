@@ -16,6 +16,7 @@ const mockOwner = LightWorkspaceFactory.build({
 });
 
 const mockClientFetch = vi.fn();
+const mockWindowOpen = vi.spyOn(window, "open").mockImplementation(() => null);
 vi.mock("@app/lib/egress/client", () => ({
   clientFetch: (...args: unknown[]) => mockClientFetch(...args),
 }));
@@ -151,6 +152,29 @@ describe("getFilePreviewPlugin", () => {
     expect(
       screen.getByRole("button", { name: "Download" })
     ).toBeInTheDocument();
+  });
+
+  it("downloads binary files without opening a preview", () => {
+    const FilePreview = getFilePreviewPlugin();
+
+    render(
+      <FilePreviewProvider owner={mockOwner}>
+        <FilePreview
+          path="conversation-c1/archive.zip"
+          title="archive.zip"
+          contentType="application/zip"
+        />
+      </FilePreviewProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "archive.zip" }));
+
+    expect(mockWindowOpen).toHaveBeenCalledWith(
+      "http://fake-url/api/w/w_test_ws/files/path/conversation-c1/archive.zip?download=1",
+      "_blank"
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mockClientFetch).not.toHaveBeenCalled();
   });
 
   it("opens Frame files in the interactive content side panel", async () => {

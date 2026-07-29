@@ -12,14 +12,17 @@ import {
 } from "@app/lib/api/projects/constants";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { activationSkill } from "@app/lib/resources/skill/code_defined/global/activation";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
+import { startActivationWorkspaceSchedule } from "@app/temporal/activation_scheduler/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -42,22 +45,6 @@ function activationPodNameForCreator(
 
   const label = hasNameCollision ? creator.email : creatorFullName;
   return `${label}${ACTIVATION_POD_NAME_PREFIX}`;
-}
-
-async function markPodAsActivation(
-  auth: Authenticator,
-  pod: SpaceResource
-): Promise<Result<void, Error>> {
-  const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
-  if (!metadata) {
-    return new Err(
-      new Error("Project metadata not found for the newly created pod.")
-    );
-  }
-
-  await metadata.updateProvisioningSource("activation");
-
-  return new Ok(undefined);
 }
 
 async function setPodDefaultSkills(
@@ -326,11 +313,6 @@ export const joinActivationPodPlugin = createPlugin({
       }
     }
 
-    const activationResult = await markPodAsActivation(auth, pod);
-    if (activationResult.isErr()) {
-      return activationResult;
-    }
-
     // Star the pod for every member so it surfaces in their sidebar.
     await UserProjectPreferencesResource.setStarredForUsers(auth, {
       spaceModelId: pod.id,
@@ -383,13 +365,41 @@ export const joinActivationPodPlugin = createPlugin({
       );
     }
 
+    // Record the canonical ActivationPod row now that the pod's owner and
+    // trigger are known. This is the record `isEligibleForNudge` and the
+    // activation scheduler use to find the pod and its trigger, so it must
+    // be created for the pod to ever be nudged.
+    const activationTrigger = await TriggerResource.fetchById(
+      podMemberAuth,
+      triggerResult.value.triggerId
+    );
+    await ActivationPodResource.makeNew(auth, {
+      pod,
+      user: creator,
+      trigger: activationTrigger,
+    });
+
     // Fire the activation event so the trigger kicks off the initial conversation
     // as soon as the pod is provisioned.
-    const emitResult = await emitActivationEvent(adminAuth, pod);
+    const emitResult = await emitActivationEvent(adminAuth, pod, creator.sId);
     if (emitResult.isErr()) {
       return new Err(
         new Error(
           `Failed to emit Activation Pod event: ${emitResult.error.message}`
+        )
+      );
+    }
+
+    // Ensure the workspace has a running Activation schedule now that it has
+    // a pod to nudge: idempotent (a no-op if one already exists), so this
+    // runs unconditionally rather than only on the workspace's first pod.
+    const scheduleResult = await startActivationWorkspaceSchedule({
+      workspaceId: workspace.sId,
+    });
+    if (scheduleResult.isErr()) {
+      return new Err(
+        new Error(
+          `Failed to start the Activation Pod schedule: ${scheduleResult.error.message}`
         )
       );
     }

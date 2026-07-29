@@ -6,11 +6,15 @@ import {
   buildFileSystemTree,
   buildFolderTree,
   findTreeNodeByPath,
+  getCategoryFromContentType,
   getChildrenAtFolderPath,
   getExplorerRelativePath,
+  getFileExplorerBucket,
   getFileExplorerSearchResultTitle,
+  getFilePreviewConfig,
   getVirtualScopeRootNodes,
   isFileExplorerMovableFile,
+  isFilePreviewableContentType,
   withVirtualExplorerPath,
 } from "@app/components/file_explorer/utils";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
@@ -69,6 +73,71 @@ function makeFileEntry(contentType: string): FileEntry {
     thumbnailUrl: null,
   };
 }
+
+describe("file preview configuration", () => {
+  it.each([
+    "application/zip",
+    "application/octet-stream",
+    "application/x-tar",
+    "font/woff",
+  ])("marks %s as download-only", (contentType) => {
+    expect(getFilePreviewConfig(contentType).category).toBe("unsupported");
+    expect(isFilePreviewableContentType(contentType)).toBe(false);
+    expect(getCategoryFromContentType(contentType)).toBe("other");
+  });
+
+  it.each([
+    "text/plain; charset=utf-8",
+    "text/x-diff",
+    "application/javascript",
+    "application/json",
+    "application/problem+json",
+    "application/pdf",
+    "image/png",
+    "audio/mpeg",
+    "text/csv",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ])("keeps %s previewable", (contentType) => {
+    expect(getFilePreviewConfig(contentType).category).not.toBe("unsupported");
+    expect(isFilePreviewableContentType(contentType)).toBe(true);
+  });
+
+  it.each([
+    "text/javascript",
+    "application/javascript",
+    "text/typescript",
+  ])("classifies %s as code", (contentType) => {
+    expect(getFilePreviewConfig(contentType).category).toBe("code");
+  });
+
+  it.each([
+    "text/plain",
+    "text/x-diff",
+    "application/json",
+    "application/problem+json",
+  ])("classifies %s as text", (contentType) => {
+    expect(getFilePreviewConfig(contentType).category).toBe("text");
+  });
+
+  it("keeps code and text in separate explorer filters", () => {
+    const node: FileSystemTreeNode = {
+      name: "file",
+      path: "file",
+      isDirectory: false,
+      contentType: "text/javascript",
+      fileId: "file-1",
+      children: [],
+    };
+
+    expect(getFileExplorerBucket(node)).toBe("code");
+    expect(
+      getFileExplorerBucket({
+        ...node,
+        contentType: "text/plain",
+      })
+    ).toBe("texts");
+  });
+});
 
 describe("isFileExplorerMovableFile", () => {
   it("returns false for fileId-backed frames and slideshows", () => {

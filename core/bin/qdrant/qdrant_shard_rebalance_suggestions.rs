@@ -40,6 +40,18 @@ struct ClusterInfoResult {
     local_shards: Vec<LocalShardInfo>,
 }
 
+// Minimal structures for the /telemetry JSON response.
+#[derive(Deserialize, Debug)]
+struct MemoryTelemetry {
+    resident_bytes: u64,
+}
+
+#[derive(Deserialize, Debug)]
+struct TelemetryResult {
+    // Absent when the node build has no jemalloc stats.
+    memory: Option<MemoryTelemetry>,
+}
+
 // Generic wrapper for all Qdrant HTTP API responses
 #[derive(Deserialize)]
 struct QdrantResponse<T> {
@@ -112,9 +124,10 @@ async fn main() -> Result<()> {
 
     // Step 1: Gather cluster data.
     let (peers, shards) = gather_cluster_data(&peer_uris, &api_key).await?;
+    let memory_by_peer = gather_peer_memory(&peer_uris, &api_key).await?;
 
     // Step 2: Analyze current distribution.
-    let (_, _, ideal_points_per_peer) = analyze_cluster_distribution(&peers);
+    let (_, _, ideal_points_per_peer) = analyze_cluster_distribution(&peers, &memory_by_peer);
 
     // Step 3: Calculate suggested moves.
     let (suggested_moves, updated_peers) =
@@ -308,7 +321,39 @@ async fn gather_cluster_data(
     Ok((peers, all_shards))
 }
 
-fn analyze_cluster_distribution(peers: &[PeerLoad]) -> (u64, usize, f64) {
+// Fetch each peer's jemalloc resident memory from /telemetry. This is the qdrant process's
+// heap-resident memory, not the node's full working set (excludes OS page cache for mmapped
+// segments), so it reads lower than the Qdrant Cloud console RAM graphs.
+async fn gather_peer_memory(
+    peer_uris: &HashMap<u64, String>,
+    api_key: &str,
+) -> Result<HashMap<u64, Option<u64>>> {
+    let client = reqwest::Client::new();
+
+    let mut memory_by_peer = HashMap::new();
+    for (peer_id, peer_uri) in peer_uris {
+        let telemetry_url = format!(
+            "{}/telemetry?details_level=1",
+            peer_uri.trim_end_matches('/')
+        );
+        let telemetry = client
+            .get(&telemetry_url)
+            .header("api-key", api_key)
+            .send()
+            .await?
+            .json::<QdrantResponse<TelemetryResult>>()
+            .await?;
+
+        memory_by_peer.insert(*peer_id, telemetry.result.memory.map(|m| m.resident_bytes));
+    }
+
+    Ok(memory_by_peer)
+}
+
+fn analyze_cluster_distribution(
+    peers: &[PeerLoad],
+    memory_by_peer: &HashMap<u64, Option<u64>>,
+) -> (u64, usize, f64) {
     let total_points: u64 = peers.iter().map(|n| n.point_count).sum();
     let peer_count = peers.len();
     let ideal_points_per_peer = total_points as f64 / peer_count as f64;
@@ -317,9 +362,13 @@ fn analyze_cluster_distribution(peers: &[PeerLoad]) -> (u64, usize, f64) {
     for peer in peers {
         let diff = (peer.point_count as f64) - ideal_points_per_peer;
         let diff_pct = diff / ideal_points_per_peer * 100.0;
+        let ram_resident_gb = match memory_by_peer.get(&peer.peer_id).copied().flatten() {
+            Some(resident_bytes) => format!("{:.1}", resident_bytes as f64 / 1e9),
+            None => "n/a".to_string(),
+        };
         println!(
-            "Peer {}: {} shards, {} points, diff_from_ideal={:+.1}%",
-            peer.peer_id, peer.shard_count, peer.point_count, diff_pct
+            "Peer {}: {} shards, {} points, diff_from_ideal={:+.1}%, ram_resident_gb={}",
+            peer.peer_id, peer.shard_count, peer.point_count, diff_pct, ram_resident_gb
         );
     }
 

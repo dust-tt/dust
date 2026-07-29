@@ -1,11 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const GITHUB_TOOLS_METADATA = createToolsRecord({
-  create_issue: {
+export const GITHUB_TOOLS_METADATA = [
+  {
+    name: "create_issue",
     description:
       "Create or file a brand new issue (a bug report or feature request) on" +
       " a specified GitHub repository, optionally with assignees and labels.",
@@ -35,7 +33,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_issue: {
+  {
+    name: "update_issue",
     description:
       "Update an existing issue on a GitHub repository: its title, body," +
       " labels, assignees, milestone, and open/closed state (closing or" +
@@ -97,7 +96,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_pull_request: {
+  {
+    name: "get_pull_request",
     description:
       "Retrieve a pull request from a specified GitHub repository including" +
       " its associated description, creation time (createdAt), merge time" +
@@ -119,7 +119,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_pull_request_review: {
+  {
+    name: "create_pull_request_review",
     description:
       "Approve, request changes on, or submit a review verdict for a pull request, with optional inline line comments.",
     schema: {
@@ -167,7 +168,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_organization_projects: {
+  {
+    name: "list_organization_projects",
     description:
       "List the open projects of a GitHub organization along with their single select fields (generally used as columns)",
     schema: {
@@ -185,7 +187,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  add_issue_to_project: {
+  {
+    name: "add_issue_to_project",
     description:
       "Add an existing issue to a GitHub project, optionally setting a field value.",
     schema: {
@@ -225,7 +228,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  comment_on_issue: {
+  {
+    name: "comment_on_issue",
     description: "Add a comment to an existing GitHub issue.",
     schema: {
       owner: z
@@ -247,7 +251,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_discussion_categories: {
+  {
+    name: "list_discussion_categories",
     description:
       "List the available discussion categories in a GitHub repository. Use this to get the category ID required to create one.",
     schema: {
@@ -274,7 +279,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_discussion: {
+  {
+    name: "create_discussion",
     description:
       "Create and start a brand new single GitHub discussion thread under a chosen category.",
     schema: {
@@ -302,7 +308,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  comment_on_discussion: {
+  {
+    name: "comment_on_discussion",
     description:
       "Add a comment to an existing GitHub discussion. Optionally reply to an existing discussion comment.",
     schema: {
@@ -331,7 +338,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_discussion: {
+  {
+    name: "get_discussion",
     description:
       "Retrieve a discussion from a specified GitHub repository including its description, category, and comment count.",
     schema: {
@@ -351,7 +359,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_discussion_comments: {
+  {
+    name: "get_discussion_comments",
     description:
       "Retrieve, fetch, and list the comments posted on a specified GitHub discussion, with pagination.",
     schema: {
@@ -379,7 +388,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_discussions: {
+  {
+    name: "list_discussions",
     description:
       "List discussions in a GitHub repository: browse and enumerate the repository's discussions, returning many discussions with optional filtering.",
     schema: {
@@ -422,7 +432,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_issue: {
+  {
+    name: "get_issue",
     description:
       "Retrieve and read the full details of a single issue from a specified GitHub repository, including its description, comments, and labels.",
     schema: {
@@ -442,7 +453,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_issue_custom_fields: {
+  {
+    name: "get_issue_custom_fields",
     description:
       "Get custom fields set on an issue in GitHub project(s). If projectId is provided, returns custom fields for that specific project. If projectId is omitted, returns custom fields for all projects containing the issue.",
     schema: {
@@ -468,7 +480,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_issues: {
+  {
+    name: "list_issues",
     description:
       "List issues from a specified GitHub repository with optional filtering.",
     schema: {
@@ -511,7 +524,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  search_advanced: {
+  {
+    name: "search_advanced",
     description:
       "Search GitHub issues and pull requests using GitHub's advanced search syntax with AND/OR operators and nested filters. " +
       "Use 'is:issue' for issues, 'is:pr' for pull requests, or omit to search both. " +
@@ -541,7 +555,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_pull_requests: {
+  {
+    name: "list_pull_requests",
     description:
       "List pull requests from a specified GitHub repository with optional filtering.",
     schema: {
@@ -580,7 +595,7 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 export const GITHUB_SERVER = {
   serverInfo: {
@@ -594,13 +609,5 @@ export const GITHUB_SERVER = {
     icon: "GithubLogo",
     documentationUrl: null,
   },
-  tools: Object.values(GITHUB_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: GITHUB_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

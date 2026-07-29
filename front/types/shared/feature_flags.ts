@@ -4,6 +4,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow this workspace to configure SSO, independently of the plan's isSSOAllowed flag. Enable on demand for Business plan workspaces.",
     stage: "on_demand",
   },
+  allow_scim: {
+    description:
+      "Allow this workspace to configure SCIM user provisioning, independently of the plan's isSCIMAllowed flag. Enable on demand.",
+    stage: "on_demand",
+  },
   live_speech_to_text: {
     description:
       "Enable real-time speech-to-text in the input bar via ElevenLabs WebSocket streaming",
@@ -21,11 +26,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   anthropic_cache_diagnostics: {
     description:
       "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",
-    stage: "dust_only",
-  },
-  anthropic_tool_search: {
-    description:
-      "Defer non-default (cold) MCP tools via Anthropic's tool search tool so mid-run tool additions append inline instead of mutating the cached prefix",
     stage: "dust_only",
   },
   use_vertex_for_supported_models: {
@@ -49,7 +49,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   dust_agent_gpt_5_6_luna_default: {
     description:
       "Use GPT 5.6 Luna (high reasoning) as the default model for the @dust agent",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   dust_agent_sonnet_5_default: {
     description: "Use Claude Sonnet 5 as the default model for the @dust agent",
@@ -202,6 +202,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Databricks MCP tool",
     stage: "on_demand",
   },
+  servicenow_tool: {
+    description: "ServiceNow MCP tool",
+    stage: "on_demand",
+  },
   workday_mcp: {
     description: "Workday MCP tool",
     stage: "on_demand",
@@ -243,7 +247,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   plan_mode: {
     description:
-      "Enable the Plan Mode skill: agents maintain a live plan.md for non-trivial tasks, with an optional human-approval checkpoint.",
+      "Enable the Plan Mode skill: agents maintain a live plan.md for genuinely multi-step tasks, with an optional human-approval checkpoint.",
     stage: "dust_only",
   },
   allow_old_notion_mcp: {
@@ -273,7 +277,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   restricted_spaces_in_input_bar: {
     description:
-      "Allow users to explicitly select restricted Spaces from the conversation input bar.",
+      "Allow users to explicitly select Spaces from the conversation input bar.",
     stage: "dust_only",
   },
   disable_formatting_prompt: {
@@ -281,18 +285,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
     stage: "dust_only",
   },
-  render_search_results_as_markdown: {
-    description:
-      "Render semantic search results as Markdown instead of serialized JSON",
-    stage: "dust_only",
-  },
   admin_governance: {
     description:
-      "Access to admin governance features, including assigning the business_admin role from the UI",
+      "Access to admin governance features, including assigning the manager role from the UI",
     stage: "dust_only",
   },
-  use_new_llm_router: {
-    description: "Use the new LLM router for model selection and routing",
+  admin_governance_skill_publication: {
+    description:
+      "Admin Governance: govern skill publication. Shows the skill state (availability) dropdown in the UI, defaults new skills to unpublished (editors-only), and allows unpublishing a skill.",
     stage: "dust_only",
   },
   pod_default_agent: {
@@ -331,6 +331,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   group_permissions_shadow: {
     description:
       "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
+    stage: "dust_only",
+  },
+  user_memory: {
+    description:
+      "Enable the user_memory internal MCP server: agents can store and retrieve per-user memory in a user-scoped filesystem.",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

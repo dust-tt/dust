@@ -1,7 +1,8 @@
+import type { ToolMeta } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
-import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby";
+import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import type { ServerEntry } from "@app/lib/api/actions/servers/bm25";
-import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot";
+import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot/metadata";
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
@@ -49,6 +50,7 @@ import {
 } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
 import { SALESLOFT_SERVER } from "@app/lib/api/actions/servers/salesloft/metadata";
+import { SERVICENOW_SERVER } from "@app/lib/api/actions/servers/servicenow/metadata";
 import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
@@ -57,6 +59,7 @@ import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/m
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
+import { USER_MEMORY_SERVER } from "@app/lib/api/actions/servers/user_memory/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
 import { WAKEUPS_SERVER } from "@app/lib/api/actions/servers/wakeups/metadata";
@@ -74,14 +77,14 @@ export interface LabeledQuery {
   maxRank?: number;
 }
 
-const RUN_AGENT_SAMPLE_TOOL_SCHEMA = zodToJsonSchema(
-  z.object({
-    ...RUN_AGENT_TOOL_SCHEMA,
-    ...RUN_AGENT_CONFIGURABLE_PROPERTIES,
-  })
-) as JSONSchema7;
+const RUN_AGENT_SAMPLE_TOOL_SCHEMA = {
+  ...RUN_AGENT_TOOL_SCHEMA,
+  ...RUN_AGENT_CONFIGURABLE_PROPERTIES,
+};
 
-const RUN_AGENT_SAMPLE_TOOLS: ServerEntry["tools"] = [
+type ToolSource = Pick<ToolMeta, "name" | "description" | "schema">;
+
+const RUN_AGENT_SAMPLE_TOOLS = [
   {
     name: "run_ResearchAnalyst",
     description: getRunAgentToolDescription({
@@ -90,7 +93,7 @@ const RUN_AGENT_SAMPLE_TOOLS: ServerEntry["tools"] = [
       childAgentDescription:
         "Competitive market and customer research specialist for pricing, positioning, and source gathering.",
     }),
-    inputSchema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
+    schema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
   },
   {
     name: "run_SupportTriage",
@@ -100,7 +103,7 @@ const RUN_AGENT_SAMPLE_TOOLS: ServerEntry["tools"] = [
       childAgentDescription:
         "Customer support specialist that investigates tickets, refunds, escalations, and account issues.",
     }),
-    inputSchema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
+    schema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
   },
   {
     name: "run_CodeReviewer",
@@ -110,11 +113,14 @@ const RUN_AGENT_SAMPLE_TOOLS: ServerEntry["tools"] = [
       childAgentDescription:
         "Engineering reviewer for pull requests, regressions, implementation risks, and test coverage.",
     }),
-    inputSchema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
+    schema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
   },
-];
+] as const satisfies readonly ToolSource[];
 
-export const SERVERS: ServerEntry[] = [
+const SERVER_SOURCES: Array<{
+  name: string;
+  tools: readonly ToolSource[];
+}> = [
   { name: "agent_memory", tools: AGENT_MEMORY_SERVER.tools },
   { name: "conversation_files", tools: CONVERSATION_FILES_SERVER.tools },
   { name: "google_drive", tools: GOOGLE_DRIVE_SERVER.tools },
@@ -137,6 +143,7 @@ export const SERVERS: ServerEntry[] = [
   { name: "include_data", tools: INCLUDE_DATA_SERVER.tools },
   { name: "salesforce", tools: SALESFORCE_SERVER.tools },
   { name: "salesloft", tools: SALESLOFT_SERVER.tools },
+  { name: "servicenow", tools: SERVICENOW_SERVER.tools },
   { name: "slab", tools: SLAB_SERVER.tools },
   { name: "sound_studio", tools: SOUND_STUDIO_SERVER.tools },
   { name: "speech_generator", tools: SPEECH_GENERATOR_SERVER.tools },
@@ -194,4 +201,14 @@ export const SERVERS: ServerEntry[] = [
     name: "data_sources_file_system",
     tools: DATA_SOURCES_FILE_SYSTEM_SERVER.tools,
   },
+  { name: "user_memory", tools: USER_MEMORY_SERVER.tools },
 ];
+
+export const SERVERS: ServerEntry[] = SERVER_SOURCES.map(({ name, tools }) => ({
+  name,
+  tools: tools.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    inputSchema: zodToJsonSchema(z.object(tool.schema)) as JSONSchema7,
+  })),
+}));

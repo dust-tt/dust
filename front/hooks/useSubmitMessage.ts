@@ -36,6 +36,7 @@ export function useSubmitMessage({
       mentions: MentionType[];
       contentFragments: ContentFragmentsType;
       clientSideMCPServerIds?: string[];
+      selectedSpaceIds?: string[];
       origin?: ClientMessageOrigin;
       skipToolsValidation?: boolean;
       modelSelection?: ModelSelectionType;
@@ -53,6 +54,7 @@ export function useSubmitMessage({
         mentions,
         contentFragments,
         clientSideMCPServerIds,
+        selectedSpaceIds,
         origin: messageOrigin,
         skipToolsValidation,
         modelSelection,
@@ -128,6 +130,7 @@ export function useSubmitMessage({
                 Intl.DateTimeFormat().resolvedOptions().timeZone || "Etc/UTC",
               profilePictureUrl: user.image,
               clientSideMCPServerIds,
+              selectedSpaceIds,
               origin,
             },
             mentions,

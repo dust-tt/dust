@@ -1,4 +1,3 @@
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { PostRequestActionsAccessBodySchema } from "@app/lib/api/mcp_schemas";
@@ -74,7 +73,7 @@ app.post(
 
     const body =
       `${emailRequester} has sent you a request regarding access to ` +
-      `tools ${getMcpServerViewDisplayName(mcpServerView.toJSON())}: ` +
+      `tools ${mcpServerView.getDisplayName()}: ` +
       escape(emailMessage);
 
     const result = await sendEmailWithTemplate({

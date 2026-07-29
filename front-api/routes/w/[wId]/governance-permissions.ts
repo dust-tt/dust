@@ -1,8 +1,21 @@
-import { getWorkspaceGovernancePermissions } from "@app/lib/api/permissions/governance";
-import type { GetGovernancePermissionsResponseBody } from "@app/types/api/governance";
+import {
+  getWorkspaceGovernancePermissions,
+  setWorkspaceGovernancePermission,
+} from "@app/lib/api/permissions/governance";
+import type {
+  GetGovernancePermissionsResponseBody,
+  PatchGovernancePermissionResponseBody,
+} from "@app/types/api/governance";
+import {
+  GRANT_TYPES,
+  GROUP_PERMISSION_RESOURCE_TYPES,
+} from "@app/types/group_permissions";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
-import type { HandlerResult } from "@front-api/middlewares/utils";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 // Mounted at /api/w/:wId/governance-permissions.
 const app = workspaceApp();
@@ -10,13 +23,71 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   async (ctx): HandlerResult<GetGovernancePermissionsResponseBody> => {
     const auth = ctx.get("auth");
 
     const governancePermissions = await getWorkspaceGovernancePermissions(auth);
 
     return ctx.json({ governancePermissions });
+  }
+);
+
+const PatchGovernancePermissionRequestBodySchema = z.object({
+  grantType: z.enum([...GRANT_TYPES]),
+  resourceType: z.enum([...GROUP_PERMISSION_RESOURCE_TYPES]),
+  configuration: z.discriminatedUnion("scope", [
+    z.object({ scope: z.literal("everyone") }),
+    z.object({ scope: z.literal("admins_only") }),
+    z.object({ scope: z.literal("groups"), groupIds: z.array(z.string()) }),
+  ]),
+});
+
+/** @ignoreswagger */
+app.patch(
+  "/",
+  ensureIsManager(),
+  validate("json", PatchGovernancePermissionRequestBodySchema),
+  async (ctx): HandlerResult<PatchGovernancePermissionResponseBody> => {
+    const auth = ctx.get("auth");
+
+    const result = await setWorkspaceGovernancePermission(
+      auth,
+      ctx.req.valid("json")
+    );
+
+    if (result.isErr()) {
+      switch (result.error.code) {
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: result.error.message,
+            },
+          });
+        case "group_not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "group_not_found",
+              message: result.error.message,
+            },
+          });
+        case "invalid_id":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: result.error.message,
+            },
+          });
+        default:
+          assertNever(result.error.code);
+      }
+    }
+
+    return ctx.json({ governancePermission: result.value });
   }
 );
 

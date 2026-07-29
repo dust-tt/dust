@@ -205,6 +205,7 @@ export async function createUserMessage(
       requestedProviderId: requestedModel?.providerId ?? null,
       requestedReasoningEffort: requestedModel?.reasoningEffort ?? null,
       userId: user?.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
     },
     { transaction }
@@ -303,6 +304,7 @@ export const createAgentMessages = async (
             status: "created",
             agentConfigurationId: agentConfiguration.sId,
             agentConfigurationVersion: agentConfiguration.version,
+            conversationId: conversation.id,
             workspaceId: owner.id,
             // Copy over the values from the original agent message row.
             skipToolsValidation: metadata.agentMessageRow.skipToolsValidation,
@@ -363,6 +365,7 @@ export const createAgentMessages = async (
             status: "cancelled",
             agentConfigurationId: agentConfiguration.sId,
             agentConfigurationVersion: agentConfiguration.version,
+            conversationId: conversation.id,
             workspaceId: owner.id,
             skipToolsValidation: metadata.agentMessage.skipToolsValidation,
           },
@@ -420,7 +423,7 @@ export const createAgentMessages = async (
             }
 
             // In case of Project's conversation, we need to check if the agent configuration is
-            // using only the project spaces or public spaces/ Otherwise we reject the mention and
+            // using only the project spaces or open spaces. Otherwise we reject the mention and
             // do not create the agent message.
             if (isPodConversation(conversation)) {
               const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
@@ -483,6 +486,7 @@ export const createAgentMessages = async (
                 status: "created",
                 agentConfigurationId: configuration.sId,
                 agentConfigurationVersion: configuration.version,
+                conversationId: conversation.id,
                 workspaceId: owner.id,
                 skipToolsValidation: metadata.skipToolsValidation,
                 resolvedProviderId: resolvedModel?.providerId ?? null,
@@ -704,6 +708,7 @@ export async function createCompactionMessage(
       content: null,
       runIds: null,
       sourceConversationId: sourceConversationId ?? null,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
     },
     { transaction }

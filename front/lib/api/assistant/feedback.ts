@@ -3,6 +3,7 @@ import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conve
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -48,7 +49,7 @@ export type AgentMessageFeedbackWithMetadataType = AgentMessageFeedbackType &
 
 export async function getConversationFeedbacksForUser(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType | ConversationResource
 ) {
   const feedbacksRes =
     await AgentMessageFeedbackResource.getConversationFeedbacksForUser(

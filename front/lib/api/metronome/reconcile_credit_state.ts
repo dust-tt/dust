@@ -16,6 +16,7 @@ import {
 } from "@app/lib/metronome/live_user_credit_inputs";
 import { fetchPerApiKeyAwuUsage } from "@app/lib/metronome/per_api_key_usage";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
+import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
 import { fetchProgrammaticAwuSpend } from "@app/lib/metronome/programmatic_awu_usage";
 import {
@@ -41,6 +42,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effective";
+import { heartbeat } from "@app/lib/temporal";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
@@ -492,11 +494,13 @@ export async function reconcileWorkspaceUserCreditStates({
   metronomeCustomerId,
   metronomeContractId,
   planCode,
+  contract,
 }: {
   workspace: LightWorkspaceType;
   metronomeCustomerId: string;
   metronomeContractId: string;
   planCode: string;
+  contract?: CachedContract | null;
 }): Promise<void> {
   if (!isCreditPricedPlanPrefix(planCode)) {
     return;
@@ -513,7 +517,7 @@ export async function reconcileWorkspaceUserCreditStates({
   try {
     const [seatAllowancesResult, creditUsageConfig, membershipsResult] =
       await Promise.all([
-        getSeatAllowancesByNormalizedSeatType(workspaceId),
+        getSeatAllowancesByNormalizedSeatType(workspaceId, contract),
         CreditUsageConfigurationResource.fetchByWorkspaceModelId(workspace.id),
         MembershipResource.getActiveMemberships({ workspace }),
       ]);
@@ -681,6 +685,7 @@ export async function reconcileWorkspaceUserCreditStates({
         "[ReconcileCreditState] Failed to reconcile a user's credit state"
       );
     }
+    await heartbeat();
   }
 }
 

@@ -9,6 +9,7 @@ import {
   MessageModel,
 } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -391,7 +392,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   static async getConversationFeedbacksForUser(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType
+    conversation: ConversationWithoutContentType | ConversationResource
   ) {
     const user = auth.getNonNullableUser();
 

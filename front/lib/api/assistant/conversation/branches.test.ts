@@ -49,10 +49,16 @@ describe("mergeConversationBranch", () => {
       workspace.sId
     );
 
-    const projectGroup = projectSpace.groups.find((g) => g.isRegularAuto());
-    if (!projectGroup) {
+    const projectGroupReference = projectSpace.groups.find((group) =>
+      group.isRegularAuto()
+    );
+    if (!projectGroupReference) {
       throw new Error("Project group should exist.");
     }
+    const [projectGroup] = await projectSpace.fetchGroupResources(
+      internalAdminAuth,
+      { groupReferences: [projectGroupReference] }
+    );
 
     const addMergerToProjectRes = await projectGroup.dangerouslyAddMember(
       internalAdminAuth,
@@ -72,12 +78,16 @@ describe("mergeConversationBranch", () => {
       throw new Error(addProjectMemberToProjectRes.error.message);
     }
 
-    const restrictedGroup = restrictedSpace.groups.find((g) =>
-      g.isRegularAuto()
+    const restrictedGroupReference = restrictedSpace.groups.find((group) =>
+      group.isRegularAuto()
     );
-    if (!restrictedGroup) {
+    if (!restrictedGroupReference) {
       throw new Error("Restricted space group should exist.");
     }
+    const [restrictedGroup] = await restrictedSpace.fetchGroupResources(
+      internalAdminAuth,
+      { groupReferences: [restrictedGroupReference] }
+    );
 
     const addMergerToRestrictedRes = await restrictedGroup.dangerouslyAddMember(
       internalAdminAuth,
@@ -168,6 +178,7 @@ describe("mergeConversationBranch", () => {
 
     const branchUserMessage = await UserMessageModel.create({
       userId: mergerUser.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Branch message from restricted agent flow",
       userContextUsername: "testuser",
@@ -192,6 +203,7 @@ describe("mergeConversationBranch", () => {
     });
 
     const branchAgentMessage = await AgentMessageModel.create({
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       status: "succeeded",
       agentConfigurationId: restrictedAgent.sId,
@@ -259,6 +271,7 @@ describe("mergeConversationBranch", () => {
     // Base message in main conversation (rank 0).
     const baseUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Base",
       userContextUsername: "testuser",
@@ -292,6 +305,7 @@ describe("mergeConversationBranch", () => {
     // Branch user message (rank 1 in branch).
     const branchedUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Original user content",
       userContextUsername: "testuser",
@@ -317,6 +331,7 @@ describe("mergeConversationBranch", () => {
 
     // Branch agent message (rank 2 in branch) with multiple text fragments.
     const branchAgentMessage = await AgentMessageModel.create({
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       status: "succeeded",
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
@@ -465,6 +480,7 @@ describe("mergeConversationBranch", () => {
 
     const anchorUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "",
       userContextUsername: "testuser",
@@ -555,6 +571,7 @@ describe("mergeConversationBranch", () => {
 
     const baseUserMessage = await UserMessageModel.create({
       userId: owner.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Base",
       userContextUsername: "testuser",
@@ -612,6 +629,7 @@ describe("mergeConversationBranch", () => {
 
     const baseUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Base",
       userContextUsername: "testuser",
@@ -670,6 +688,7 @@ describe("closeConversationBranch", () => {
 
     const baseUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Base",
       userContextUsername: "testuser",
@@ -763,6 +782,7 @@ describe("closeConversationBranch", () => {
 
     const baseUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Base",
       userContextUsername: "testuser",
@@ -819,6 +839,7 @@ describe("closeConversationBranch", () => {
 
     const baseUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Base",
       userContextUsername: "testuser",

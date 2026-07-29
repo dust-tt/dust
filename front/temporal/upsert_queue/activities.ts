@@ -3,6 +3,7 @@ import { decodeBuffer } from "@app/lib/api/files/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -11,6 +12,7 @@ import mainLogger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import { Storage } from "@google-cloud/storage";
+import { ApplicationFailure } from "@temporalio/common";
 import { fromError } from "zod-validation-error";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
@@ -36,6 +38,16 @@ export async function upsertDocumentActivity(
   upsertQueueId: string,
   enqueueTimestamp: number
 ) {
+  // Retryable failure with a fixed delay: Temporal parks the workflow and re-checks every 5
+  // minutes until the switch is disabled. Enqueues keep succeeding, in-flight upserts finish.
+  if (await KillSwitchResource.isKillSwitchEnabled("pause_upsert_queue")) {
+    throw ApplicationFailure.create({
+      message: "Upsert queue is paused (pause_upsert_queue kill switch).",
+      type: "upsert_queue_paused",
+      nextRetryDelay: "5 minutes",
+    });
+  }
+
   if (!DUST_UPSERT_QUEUE_BUCKET) {
     throw new Error("DUST_UPSERT_QUEUE_BUCKET is not set");
   }

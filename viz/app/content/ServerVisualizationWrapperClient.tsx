@@ -1,11 +1,16 @@
 "use client";
 
 import { NavigationProvider } from "@viz/app/components/NavigationProvider";
-import { VisualizationWrapperWithErrorBoundary } from "@viz/app/components/VisualizationWrapper";
+import {
+  makeSendCrossDocumentMessage,
+  VisualizationWrapperWithErrorBoundary,
+} from "@viz/app/components/VisualizationWrapper";
 import {
   CacheDataAPI,
   type PreFetchedFile,
 } from "@viz/app/lib/data-apis/cache-data-api";
+import { HybridDataAPI } from "@viz/app/lib/data-apis/hybrid-data-api";
+import { RPCDataAPI } from "@viz/app/lib/data-apis/rpc-data-api";
 import type { VisualizationConfig } from "@viz/app/lib/visualization-api";
 import { useMemo } from "react";
 
@@ -16,6 +21,7 @@ const TRUSTED_NAVIGATION_DOMAINS = ["dust.tt", "eu.dust.tt"];
 interface ServerVisualizationWrapperClientProps {
   allowedOrigins: string[];
   identifier: string;
+  isAuthenticatedMember?: boolean;
   isFullHeight?: boolean;
   isPdfMode?: boolean;
   prefetchedCode?: string;
@@ -37,15 +43,32 @@ interface ServerVisualizationWrapperClientProps {
 export function ServerVisualizationWrapperClient({
   identifier,
   allowedOrigins,
+  isAuthenticatedMember = false,
   isFullHeight = false,
   isPdfMode = false,
   prefetchedCode,
   prefetchedFiles = [],
 }: ServerVisualizationWrapperClientProps) {
   const dataAPI = useMemo(() => {
-    // Create cache-based API with pre-fetched data.
-    return new CacheDataAPI(prefetchedFiles, prefetchedCode);
-  }, [prefetchedCode, prefetchedFiles]);
+    const cache = new CacheDataAPI(prefetchedFiles, prefetchedCode);
+    if (!isAuthenticatedMember) {
+      return cache;
+    }
+
+    // Authenticated member on a public frame: keep SSR reads from the cache,
+    // route callFunction over RPC.
+    const sendMessage = makeSendCrossDocumentMessage({
+      allowedOrigins,
+      identifier,
+    });
+    return new HybridDataAPI(cache, new RPCDataAPI(sendMessage));
+  }, [
+    prefetchedCode,
+    prefetchedFiles,
+    isAuthenticatedMember,
+    allowedOrigins,
+    identifier,
+  ]);
 
   const config: VisualizationConfig = {
     allowedOrigins,

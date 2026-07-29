@@ -56,6 +56,7 @@ export interface FunctionCallType {
   id: string;
   name: string;
   arguments: string; // Empty is not valid, should be at least "{}"
+  namespace?: string;
   metadata?: { thoughtSignature?: string };
 }
 

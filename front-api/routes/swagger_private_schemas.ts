@@ -1285,6 +1285,10 @@
  *         origin:
  *           type: string
  *           enum: [web, project_kickoff, extension, agent_sidekick, api, cli, cli_programmatic, email, excel, gsheet, make, n8n, powerpoint, raycast, slack, slack_workflow, teams, transcript, triggered_programmatic, triggered, wakeup, zapier, zendesk, onboarding_conversation]
+ *         selectedSpaceIds:
+ *           type: array
+ *           items:
+ *             type: string
  *     PrivateReaction:
  *       type: object
  *       description: A reaction on a message.
@@ -1318,6 +1322,7 @@
  *         - $ref: '#/components/schemas/PrivateAgentMessageDoneEvent'
  *         - $ref: '#/components/schemas/PrivateCompactionMessageNewEvent'
  *         - $ref: '#/components/schemas/PrivateCompactionMessageDoneEvent'
+ *         - $ref: '#/components/schemas/PrivateConversationForkPreparedEvent'
  *         - $ref: '#/components/schemas/PrivateConversationTitleEvent'
  *         - $ref: '#/components/schemas/PrivateWakeUpUpdatedEvent'
  *     PrivateUserMessageNewEvent:
@@ -1392,6 +1397,15 @@
  *           type: string
  *         message:
  *           $ref: '#/components/schemas/PrivateCompactionMessage'
+ *     PrivateConversationForkPreparedEvent:
+ *       type: object
+ *       required: [type, created]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [conversation_fork_prepared]
+ *         created:
+ *           type: integer
  *     PrivateConversationTitleEvent:
  *       type: object
  *       required: [type, created, title]
@@ -1465,10 +1479,10 @@
  *         functionId:
  *           type: string
  *         result:
- *           description: Result returned by the sandbox function.
+ *           description: Parsed result validated against the sandbox function output schema.
  *     PrivateSandboxFunctionInvocationErrorEvent:
  *       type: object
- *       required: [type, created, invocationId, functionId, message]
+ *       required: [type, created, invocationId, functionId, error]
  *       properties:
  *         type:
  *           type: string
@@ -1479,9 +1493,18 @@
  *           type: string
  *         functionId:
  *           type: string
- *         message:
- *           type: string
- *           description: Why the invocation failed before producing a result.
+ *         error:
+ *           type: object
+ *           required: [code, message]
+ *           properties:
+ *             code:
+ *               type: string
+ *               description: Whatever classified the failure, forwarded as-is (a runner code such as `threw` or `http_error`, or the `type` of the API error that failed the call). Open by design, branch on the codes you handle and treat the rest as generic failures.
+ *             message:
+ *               type: string
+ *             status:
+ *               type: integer
+ *           description: A structured error describing why the invocation failed.
  *     PrivateAgentMessageEvent:
  *       type: object
  *       description: Server-Sent Event for agent message streaming. Discriminated on the `type` field. Each event also includes a `step` integer.

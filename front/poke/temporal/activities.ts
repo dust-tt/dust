@@ -9,6 +9,8 @@ import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/orga
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
+import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
+import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -37,6 +39,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -243,6 +246,26 @@ export async function scrubSpaceActivity({
 
     await UserProjectPreferencesResource.deleteAllBySpace(auth, space.id);
   }
+
+  // Delete activation nudges sent for this Pod. The FK to spaces is
+  // `onDelete: "RESTRICT"`, so these rows must be removed before the space
+  // can be hard-deleted.
+  await ActivationNudgeModel.destroy({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      spaceId: space.id,
+    },
+  });
+
+  // Delete the activation pod record for this space. The FK to spaces is
+  // `onDelete: "RESTRICT"`, so this row must be removed before the space
+  // can be hard-deleted.
+  await ActivationPodModel.destroy({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      spaceId: space.id,
+    },
+  });
 
   // Detach triggers from this Pod before hard-deleting the space. The trigger
   // FK is `onDelete: "RESTRICT"`, so references must be cleared first; the
@@ -660,20 +683,21 @@ export async function deleteSpacesActivity({
     return a.createdAt.getTime() - b.createdAt.getTime();
   });
 
+  // Data sources can have views in several spaces, so soft-delete every view before deleting any
+  // data source.
+  const dataSourceViews = await DataSourceViewResource.listBySpaces(
+    auth,
+    sortedSpaces,
+    { includeDeleted: true }
+  );
+  for (const dataSourceView of dataSourceViews) {
+    await dataSourceView.delete(auth, { hardDelete: false });
+  }
+
   for (const space of sortedSpaces) {
     const res = await space.delete(auth, { hardDelete: false });
     if (res.isErr()) {
       throw res.error;
-    }
-
-    // Soft delete all the data source views of the space.
-    const dataSourceViews = await DataSourceViewResource.listBySpace(
-      auth,
-      space,
-      { includeDeleted: true }
-    );
-    for (const ds of dataSourceViews) {
-      await ds.delete(auth, { hardDelete: false });
     }
 
     // Soft delete all the data sources of the space.
@@ -776,6 +800,7 @@ export async function deleteWorkspaceActivity({
   await FileResource.deleteAllForWorkspace(auth);
   await RunResource.deleteAllForWorkspace(auth);
   await MembershipResource.deleteAllForWorkspace(auth);
+  await GroupPermissionResource.deleteAllForWorkspace(auth);
   await GroupMembershipModel.destroy({
     where: { workspaceId: workspace.id },
   });

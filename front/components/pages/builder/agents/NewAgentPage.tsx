@@ -5,16 +5,13 @@ import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
 import { NotAvailableErrorPage } from "@app/components/pages/builder/agents/NotAvailableErrorPage";
 import Custom404 from "@app/components/pages/Custom404";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSearchParam } from "@app/lib/platform";
 import {
   useAgentConfiguration,
   useAssistantTemplate,
 } from "@app/lib/swr/assistants";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import type {
   AgentConfigurationScope,
@@ -28,8 +25,8 @@ function isBuilderFlow(value: string): value is BuilderFlow {
 
 export function NewAgentPage() {
   const owner = useWorkspace();
-  const { user, isAdmin, isBuilder, providersHealth } = useAuth();
-  const { featureFlags } = useFeatureFlags();
+  const { user, isAdmin, providersHealth } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
 
   const flowParam = useSearchParam("flow");
   const flow: BuilderFlow =
@@ -39,8 +36,7 @@ export function NewAgentPage() {
   const templateId = useSearchParam("templateId");
   const conversationId = useSearchParam("conversationId");
 
-  const isRestrictedFromAgentCreation =
-    featureFlags.includes("disallow_agent_creation_to_users") && !isBuilder;
+  const canCreateAgent = hasPermission("create", "agent");
 
   const {
     agentConfiguration,
@@ -72,7 +68,7 @@ export function NewAgentPage() {
 
   const isDuplicateLoading = !!duplicateAgentId && isAgentConfigurationLoading;
 
-  if (isRestrictedFromAgentCreation) {
+  if (!canCreateAgent) {
     return <Custom404 />;
   }
 

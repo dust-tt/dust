@@ -69,10 +69,11 @@ app.get(
     }
 
     // Fetch current members of the project
+    const groups = await space.fetchGroupResources(auth);
     const memberUsers = uniqBy(
       (
         await concurrentExecutor(
-          space.groups,
+          groups,
           (group) => group.getActiveMembers(auth),
           { concurrency: 2 }
         )

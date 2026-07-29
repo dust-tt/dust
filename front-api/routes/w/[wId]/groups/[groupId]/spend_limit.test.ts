@@ -118,12 +118,12 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
       expect((await response.json()).error.type).toBe("workspace_auth_error");
     });
 
-    it("returns 403 for a business admin (admin-only write)", async () => {
+    it("returns 403 for a manager (admin-only write)", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const group = await makeProvisionedGroup(workspace);
       await createPrivateApiMockRequest({
         method: "PUT",
-        role: "business_admin",
+        role: "manager",
         workspace,
       });
 

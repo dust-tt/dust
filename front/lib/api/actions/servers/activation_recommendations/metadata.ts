@@ -1,28 +1,32 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const ACTIVATION_RECOMMENDATIONS_SERVER_NAME =
   "activation_recommendations" as const;
 
-export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = createToolsRecord({
-  create_recommendation: {
+export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
+  {
+    name: "create_recommendation",
     description:
       "Record a new activation recommendation that was shown to the user. " +
       "Call this immediately after surfacing a recommendation so it is tracked. " +
       "Returns a recommendationId to reference in update_recommendation.",
     schema: {
+      title: z
+        .string()
+        .max(60)
+        .describe(
+          "Short action label shown in the recommendations list (3-5 words, keep it tight). " +
+            "Be specific enough that the user knows exactly what they would be doing. " +
+            "Example: 'Ask about Slack decisions'."
+        ),
       content: z
         .string()
-        .max(4096)
-        .describe("The recommendation text shown to the user (1-3 sentences)."),
-      rationale: z
-        .string()
-        .max(4096)
+        .max(100)
         .describe(
-          "Internal reasoning for why this recommendation was selected."
+          "Very brief subtitle shown under the title in the recommendations list (6-8 words max). " +
+            "Explain the 'how' or 'why' in plain language. " +
+            "Example: 'Find past decisions in Slack fast'."
         ),
     },
     stake: "never_ask",
@@ -33,7 +37,8 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = createToolsRecord({
       done: "Recommendation recorded",
     },
   },
-  update_recommendation: {
+  {
+    name: "update_recommendation",
     description:
       "Update an activation recommendation's status or link created artifacts to it. " +
       "Use status 'executed' when the user accepts and runs the recommendation, " +
@@ -66,7 +71,8 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = createToolsRecord({
       done: "Recommendation updated",
     },
   },
-  list_recommendations: {
+  {
+    name: "list_recommendations",
     description:
       "List past activation recommendations for this user. " +
       "Call before generating a new recommendation to avoid repeating suggestions " +
@@ -80,7 +86,31 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = createToolsRecord({
       done: "Recommendation history fetched",
     },
   },
-});
+  {
+    name: "get_tool_execution_modes",
+    description:
+      "Get the resolved execution mode for each tool available in the current run. " +
+      "Returns one of three modes for each tool: " +
+      "'auto' — runs silently without user approval; " +
+      "'requires_approval' — pauses execution until the user approves; " +
+      "'not_connected' — the user has not connected to this server yet (OAuth required).",
+    schema: {
+      executionModes: z
+        .array(z.enum(["auto", "requires_approval", "not_connected"]))
+        .optional()
+        .describe(
+          "When set, only return tools whose execution mode is one of these values. Omit to return all tools."
+        ),
+    },
+    stake: "never_ask",
+    toolCostCategory: "basic",
+    freeUsage: true,
+    displayLabels: {
+      running: "Checking tool execution modes",
+      done: "Tool execution modes ready",
+    },
+  },
+] as const;
 
 export const ACTIVATION_RECOMMENDATIONS_SERVER = {
   serverInfo: {
@@ -92,13 +122,5 @@ export const ACTIVATION_RECOMMENDATIONS_SERVER = {
     icon: "ActionBrainIcon",
     documentationUrl: null,
   },
-  tools: Object.values(ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

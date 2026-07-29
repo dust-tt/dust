@@ -10,9 +10,9 @@ import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -20,7 +20,8 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import type { GroupType } from "@app/types/groups";
+import tracer from "@app/logger/tracer";
+import type { GroupKind, GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
   PROJECT_EDITOR_GROUP_PREFIX,
@@ -36,7 +37,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { SpaceKind, SpaceType } from "@app/types/space";
+import type { GroupSpaceKind, SpaceKind, SpaceType } from "@app/types/space";
 import assert from "assert";
 import type {
   Attributes,
@@ -51,6 +52,50 @@ import { Op, Sequelize } from "sequelize";
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SpaceResource extends ReadonlyAttributesType<SpaceModel> {}
+
+/**
+ * Lightweight representation of a group_vaults join row. It carries enough
+ * data to enforce space permissions without fetching the full group and adding
+ * a second join. This is slated to be superseded by the upcoming
+ * GroupPermission model.
+ */
+export class SpaceGroupReference {
+  constructor(
+    readonly groupId: ModelId,
+    readonly groupKind: GroupKind,
+    readonly groupSpaceKind: GroupSpaceKind,
+    readonly workspaceId: ModelId
+  ) {}
+
+  static fromGroupSpaceModel(groupSpace: GroupSpaceModel) {
+    return new SpaceGroupReference(
+      groupSpace.groupId,
+      groupSpace.groupKind,
+      groupSpace.kind,
+      groupSpace.workspaceId
+    );
+  }
+
+  get groupSId(): string {
+    return GroupResource.modelIdToSId({
+      id: this.groupId,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  isGlobal(): boolean {
+    return this.groupKind === "global";
+  }
+
+  isRegularAuto(): boolean {
+    return this.groupKind === "regular_auto";
+  }
+
+  isProvisioned(): boolean {
+    return this.groupKind === "provisioned";
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SpaceResource extends BaseResource<SpaceModel> {
   static model: ModelStaticSoftDeletable<SpaceModel> = SpaceModel;
@@ -58,7 +103,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   constructor(
     model: ModelStaticSoftDeletable<SpaceModel>,
     blob: Attributes<SpaceModel>,
-    readonly groups: GroupResource[]
+    readonly groups: SpaceGroupReference[]
   ) {
     super(SpaceModel, blob);
   }
@@ -67,7 +112,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return new SpaceResource(
       SpaceModel,
       space.get(),
-      space.groups.map((group) => new GroupResource(GroupModel, group.get()))
+      space.groupSpaces.map(SpaceGroupReference.fromGroupSpaceModel)
     );
   }
 
@@ -79,16 +124,20 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return withTransaction(async (t: Transaction) => {
       const space = await SpaceModel.create(blob, { transaction: t });
       const { members, editors = [] } = groups;
+      const groupSpaces: GroupSpaceModel[] = [];
 
       for (const memberGroup of members) {
-        await GroupSpaceModel.create(
-          {
-            groupId: memberGroup.id,
-            vaultId: space.id,
-            workspaceId: space.workspaceId,
-            kind: "member",
-          },
-          { transaction: t }
+        groupSpaces.push(
+          await GroupSpaceModel.create(
+            {
+              groupId: memberGroup.id,
+              groupKind: memberGroup.kind,
+              vaultId: space.id,
+              workspaceId: space.workspaceId,
+              kind: "member",
+            },
+            { transaction: t }
+          )
         );
       }
       if (editors.length > 0) {
@@ -97,22 +146,26 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           "Only projects can have editor groups."
         );
         for (const editorGroup of editors) {
-          await GroupSpaceModel.create(
-            {
-              groupId: editorGroup.id,
-              vaultId: space.id,
-              workspaceId: space.workspaceId,
-              kind: "project_editor",
-            },
-            { transaction: t }
+          groupSpaces.push(
+            await GroupSpaceModel.create(
+              {
+                groupId: editorGroup.id,
+                groupKind: editorGroup.kind,
+                vaultId: space.id,
+                workspaceId: space.workspaceId,
+                kind: "project_editor",
+              },
+              { transaction: t }
+            )
           );
         }
       }
 
-      return new this(SpaceModel, space.get(), [
-        ...groups.members,
-        ...(groups.editors ?? []),
-      ]);
+      return new this(
+        SpaceModel,
+        space.get(),
+        groupSpaces.map(SpaceGroupReference.fromGroupSpaceModel)
+      );
     }, transaction);
   }
 
@@ -198,6 +251,34 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
+  async fetchGroupResources(
+    auth: Authenticator,
+    {
+      groupReferences = this.groups,
+      transaction,
+    }: {
+      groupReferences?: SpaceGroupReference[];
+      transaction?: Transaction;
+    } = {}
+  ): Promise<GroupResource[]> {
+    if (groupReferences.length === 0) {
+      return [];
+    }
+
+    const groups = await GroupResource.fetchByModelIds(
+      auth,
+      groupReferences.map((group) => group.groupId),
+      { transaction }
+    );
+    const groupsById = new Map(groups.map((group) => [group.id, group]));
+
+    return groupReferences.map((group) => {
+      const resource = groupsById.get(group.groupId);
+      assert(resource, `Group ${group.groupSId} not found.`);
+      return resource;
+    });
+  }
+
   private static async baseFetch(
     auth: Authenticator,
     {
@@ -211,7 +292,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   ) {
     const includeClauses: Includeable[] = [
       {
-        model: GroupResource.model,
+        as: "groupSpaces",
+        model: GroupSpaceModel,
+        // A where on an include implies required: true;
+        // pass this required: false to keep the original behavior intact
+        required: false,
+        where: { workspaceId: auth.getNonNullableWorkspace().id },
       },
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ...(includes || []),
@@ -241,33 +327,46 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     },
     t?: Transaction
   ): Promise<SpaceResource[]> {
-    const spaces = await this.baseFetch(
-      auth,
-      {
-        includeDeleted: options?.includeDeleted,
-        where: {
-          kind: {
-            [Op.in]: [
-              "system",
-              "global",
-              "regular",
-              ...(options?.includeConversationsSpace ? ["conversations"] : []),
-              ...(options?.includeProjectSpaces ? ["project"] : []),
-            ],
+    return tracer.trace("listWorkspaceSpaces", async () => {
+      const spaces = await this.baseFetch(
+        auth,
+        {
+          includeDeleted: options?.includeDeleted,
+          where: {
+            kind: {
+              [Op.in]: [
+                "system",
+                "global",
+                "regular",
+                ...(options?.includeConversationsSpace
+                  ? ["conversations"]
+                  : []),
+                ...(options?.includeProjectSpaces ? ["project"] : []),
+              ],
+            },
           },
         },
-      },
-      t
-    );
+        t
+      );
 
-    return spaces;
+      return spaces;
+    });
   }
 
-  static async listWorkspaceSpacesAsMember(auth: Authenticator) {
-    const spaces = await this.baseFetch(auth);
+  static async listWorkspaceSpacesAsMember(
+    auth: Authenticator,
+    options?: { kinds?: SpaceKind[] }
+  ) {
+    return tracer.trace("listWorkspaceSpacesAsMember", async () => {
+      const spaces = await this.baseFetch(auth, {
+        where: options?.kinds
+          ? { kind: { [Op.in]: options.kinds } }
+          : undefined,
+      });
 
-    // TODO(projects): we might want to filter early on the groups membership to avoid fetching all spaces and then filtering.
-    return spaces.filter((s) => s.isMember(auth));
+      // TODO(projects): we might want to filter early on the groups membership to avoid fetching all spaces and then filtering.
+      return spaces.filter((s) => s.isMember(auth));
+    });
   }
 
   static async listProjectSpaces(
@@ -400,48 +499,54 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<SpaceResource> {
-    const [space] = await this.baseFetch(
-      auth,
-      { where: { kind: "system" } },
-      transaction
-    );
+    return tracer.trace("fetchWorkspaceSystemSpace", async () => {
+      const [space] = await this.baseFetch(
+        auth,
+        { where: { kind: "system" } },
+        transaction
+      );
 
-    if (!space) {
-      throw new Error("System space not found.");
-    }
+      if (!space) {
+        throw new Error("System space not found.");
+      }
 
-    return space;
+      return space;
+    });
   }
 
   static async fetchWorkspaceGlobalSpace(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<SpaceResource> {
-    const [space] = await this.baseFetch(
-      auth,
-      { where: { kind: "global" } },
-      transaction
-    );
+    return tracer.trace("fetchWorkspaceGlobalSpace", async () => {
+      const [space] = await this.baseFetch(
+        auth,
+        { where: { kind: "global" } },
+        transaction
+      );
 
-    if (!space) {
-      throw new Error("Global space not found.");
-    }
+      if (!space) {
+        throw new Error("Global space not found.");
+      }
 
-    return space;
+      return space;
+    });
   }
 
   static async fetchWorkspaceConversationsSpace(
     auth: Authenticator
   ): Promise<SpaceResource> {
-    const [space] = await this.baseFetch(auth, {
-      where: { kind: "conversations" },
+    return tracer.trace("fetchWorkspaceConversationsSpace", async () => {
+      const [space] = await this.baseFetch(auth, {
+        where: { kind: "conversations" },
+      });
+
+      if (!space) {
+        throw new Error("Conversations space not found.");
+      }
+
+      return space;
     });
-
-    if (!space) {
-      throw new Error("Conversations space not found.");
-    }
-
-    return space;
   }
 
   static async fetchById(
@@ -524,7 +629,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       },
       include: [
         {
-          model: GroupResource.model,
+          as: "groupSpaces",
+          model: GroupSpaceModel,
         },
       ],
       includeDeleted: true,
@@ -561,6 +667,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     options: { hardDelete: boolean; transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     const { hardDelete, transaction } = options;
+    // Provisioned groups are not tied to any space, we don't delete them.
+    const groupReferencesToMaybeDelete = this.groups.filter(
+      (group) => !group.isProvisioned()
+    );
+    const groupsToMaybeDelete = await this.fetchGroupResources(auth, {
+      groupReferences: groupReferencesToMaybeDelete,
+      transaction,
+    });
 
     await GroupSpaceModel.destroy({
       where: {
@@ -574,12 +688,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // When deleting a space, we delete the dangling groups as it won't be available in the UI anymore.
     // This should be changed when we separate the management of groups and spaces
     await concurrentExecutor(
-      this.groups,
+      groupsToMaybeDelete,
       async (group) => {
-        // Provisioned groups are not tied to any space, we don't delete them.
-        if (group.kind === "provisioned") {
-          return;
-        }
         // As the model allows it, ensure the group is not associated with any other space.
         const count = await GroupSpaceModel.count({
           where: {
@@ -660,6 +770,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         },
         transaction,
       });
+
+      // Pod-scoped env var rows only — workspace rows have spaceId NULL.
+      await WorkspaceSandboxEnvVarModel.destroy({
+        where: {
+          spaceId: this.id,
+          workspaceId,
+        },
+        transaction,
+      });
     }
 
     await SpaceModel.destroy({
@@ -689,21 +808,34 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     await this.update({ name: trimmedName });
-    // For regular spaces that only have a single group, update
-    // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
-    const regularGroup = this.getSpaceManualMemberGroup();
     if (this.isRegular() || this.isProject()) {
+      // For regular spaces that only have a single group, update
+      // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
+      const regularGroupReference = this.getSpaceManualMemberGroupReference();
+      const spaceEditorGroupReference =
+        this.getSpaceManualEditorGroupReference();
+      const [regularGroup, spaceEditorGroup] = await this.fetchGroupResources(
+        auth,
+        {
+          groupReferences: [
+            regularGroupReference,
+            ...(spaceEditorGroupReference && this.isProject()
+              ? [spaceEditorGroupReference]
+              : []),
+          ],
+        }
+      );
       await regularGroup.updateName(
         auth,
         `${this.isProject() ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${this.name}`
       );
-    }
-    const spaceEditorGroup = this.getSpaceManualEditorGroup();
-    if (spaceEditorGroup && this.isProject()) {
-      await spaceEditorGroup.updateName(
-        auth,
-        `${PROJECT_EDITOR_GROUP_PREFIX} ${this.name}`
-      );
+
+      if (spaceEditorGroup && this.isProject()) {
+        await spaceEditorGroup.updateName(
+          auth,
+          `${PROJECT_EDITOR_GROUP_PREFIX} ${this.name}`
+        );
+      }
     }
 
     return new Ok(undefined);
@@ -759,7 +891,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const { isRestricted } = params;
 
-    const wasRestricted = this.groups.every((g) => !g.isGlobal());
+    const wasRestricted = !this.isOpen();
 
     const groupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
     if (groupRes.isErr()) {
@@ -774,7 +906,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
       // If the space should be restricted and was not restricted before, remove the global group.
       if (!wasRestricted && isRestricted) {
-        await this.removeGroup(auth, globalGroup, t);
+        const globalGroupReference = this.groups.find((group) =>
+          group.isGlobal()
+        );
+        assert(
+          globalGroupReference,
+          "An unrestricted space must have a global group."
+        );
+        await this.removeGroup(auth, globalGroupReference, t);
       }
 
       // If the space should not be restricted and was restricted before, add the global group.
@@ -897,7 +1036,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
         // Remove existing external groups
         const existingExternalGroups = this.groups.filter(
-          (g) => g.kind === "provisioned"
+          (g) => g.groupKind === "provisioned"
         );
         for (const group of existingExternalGroups) {
           await this.removeGroup(auth, group, t);
@@ -954,12 +1093,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   private async removeGroup(
     auth: Authenticator,
-    group: GroupResource,
+    groupReference: SpaceGroupReference,
     transaction?: Transaction
   ) {
     await GroupSpaceModel.destroy({
       where: {
-        groupId: group.id,
+        groupId: groupReference.groupId,
         vaultId: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
@@ -1281,7 +1420,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return new Ok(users);
   }
 
-  private getSpaceManualMemberGroup(): GroupResource {
+  private getSpaceManualMemberGroupReference(): SpaceGroupReference {
     const regularGroups = this.groups.filter((group) => group.isRegularAuto());
     assert(
       regularGroups.length === 1,
@@ -1290,9 +1429,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return regularGroups[0];
   }
 
-  private getSpaceManualEditorGroup(): GroupResource | null {
+  private getSpaceManualEditorGroupReference(): SpaceGroupReference | null {
     const editorGroups = this.groups.filter(
-      (group) => group.kind === "space_editors"
+      (group) => group.groupKind === "space_editors"
     );
     if (editorGroups.length === 0) {
       return null;
@@ -1318,7 +1457,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           if (group.isGlobal()) {
             return true;
           }
-          if (auth.hasGroupByModelId(group.id)) {
+          if (auth.hasGroupByModelId(group.groupId)) {
             return true;
           }
         }
@@ -1329,7 +1468,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           if (group.isGlobal()) {
             continue;
           }
-          if (auth.hasGroupByModelId(group.id)) {
+          if (auth.hasGroupByModelId(group.groupId)) {
             return true;
           }
         }
@@ -1375,7 +1514,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           workspaceId: this.workspaceId,
           roles: [{ role: "admin", permissions: ["admin", "write"] }],
           groups: this.groups.map((group) => ({
-            id: group.id,
+            id: group.groupId,
             permissions: ["read", "write"],
           })),
         },
@@ -1389,10 +1528,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           workspaceId: this.workspaceId,
           roles: [
             { role: "admin", permissions: ["admin", "read", "write"] },
+            // TODO(governance): remove once manager is available for everyone
             { role: "builder", permissions: ["read", "write"] },
+            { role: "manager", permissions: ["read", "write"] },
           ],
           groups: this.groups.map((group) => ({
-            id: group.id,
+            id: group.groupId,
             permissions: ["read"],
           })),
         },
@@ -1401,7 +1542,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const groupFilter =
       this.managementMode === "manual"
-        ? (group: GroupResource) => !group.isProvisioned()
+        ? (group: SpaceGroupReference) => !group.isProvisioned()
         : () => true;
 
     // Open space.
@@ -1415,13 +1556,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           workspaceId: this.workspaceId,
           roles: [
             { role: "admin", permissions: ["admin", "read", "write"] },
+            // TODO(governance): remove once manager is available for everyone
             { role: "builder", permissions: ["read", "write"] },
+            { role: "manager", permissions: ["read", "write"] },
             { role: "user", permissions: ["read"] },
           ],
           groups: this.groups.reduce((acc, group) => {
             if (groupFilter(group)) {
               acc.push({
-                id: group.id,
+                id: group.groupId,
                 permissions: ["read"],
               });
             }
@@ -1437,21 +1580,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           workspaceId: this.workspaceId,
           roles: [
             { role: "admin", permissions: ["admin"] },
+            { role: "manager", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
             { role: "user", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
           ],
           groups: this.groups.reduce((acc, group) => {
             if (groupFilter(group)) {
-              const groupKind = group.group_vaults?.kind;
-              if (groupKind === "project_editor") {
+              if (group.groupSpaceKind === "project_editor") {
                 // Project editors get admin permissions
                 acc.push({
-                  id: group.id,
+                  id: group.groupId,
                   permissions: ["admin", "read", "write"],
                 });
               } else {
                 // Members get read permissions in restricted projects (the unrestricted case is handled by the roles above)
                 acc.push({
-                  id: group.id,
+                  id: group.groupId,
                   permissions: ["read", "write"],
                 });
               }
@@ -1470,7 +1613,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         groups: this.groups.reduce((acc, group) => {
           if (groupFilter(group)) {
             acc.push({
-              id: group.id,
+              id: group.groupId,
               permissions: ["read", "write"],
             });
           }
@@ -1577,11 +1720,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
-    const groups = [this.getSpaceManualMemberGroup()];
-    const editorGroup = this.getSpaceManualEditorGroup();
-    if (editorGroup) {
-      groups.push(editorGroup);
-    }
+    const memberGroupReference = this.getSpaceManualMemberGroupReference();
+    const editorGroupReference = this.getSpaceManualEditorGroupReference();
+    const groups = await this.fetchGroupResources(auth, {
+      groupReferences: [
+        memberGroupReference,
+        ...(editorGroupReference ? [editorGroupReference] : []),
+      ],
+      transaction,
+    });
 
     for (const group of groups) {
       await group.suspendMembers(auth, { transaction });
@@ -1595,11 +1742,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
-    const groups = [this.getSpaceManualMemberGroup()];
-    const editorGroup = this.getSpaceManualEditorGroup();
-    if (editorGroup) {
-      groups.push(editorGroup);
-    }
+    const memberGroupReference = this.getSpaceManualMemberGroupReference();
+    const editorGroupReference = this.getSpaceManualEditorGroupReference();
+    const groups = await this.fetchGroupResources(auth, {
+      groupReferences: [
+        memberGroupReference,
+        ...(editorGroupReference ? [editorGroupReference] : []),
+      ],
+      transaction,
+    });
 
     for (const group of groups) {
       await group.restoreMembers(auth, { transaction });
@@ -1623,8 +1774,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     groupsToProcess: GroupResource[];
     allGroupMemberships: GroupMembershipModel[];
   }> {
-    const groupsToProcess = this.groups.filter((g) => {
-      return g.isRegularAuto() || g.kind === "space_editors";
+    const groupReferences = this.groups.filter(
+      (group) => group.isRegularAuto() || group.groupKind === "space_editors"
+    );
+    const groupsToProcess = await this.fetchGroupResources(auth, {
+      groupReferences,
     });
 
     // Fetch all group memberships to get the startAt date (will be the joinedAt date returned for each member)
@@ -1698,16 +1852,28 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return result;
     }
 
-    // Manual groups (regular + editor) per space, plus the flat set of them all.
-    const manualGroupsBySpaceModelId = new Map<ModelId, GroupResource[]>();
-    const allGroups: GroupResource[] = [];
+    // Manual group references (regular + editor) per space.
+    const manualGroupReferencesBySpaceModelId = new Map<
+      ModelId,
+      SpaceGroupReference[]
+    >();
+    const allGroupReferences = new Map<ModelId, SpaceGroupReference>();
     for (const space of spaces) {
-      const groups = space.groups.filter(
-        (g) => g.kind === "regular_auto" || g.kind === "space_editors"
+      const groupReferences = space.groups.filter(
+        (group) =>
+          group.groupKind === "regular_auto" ||
+          group.groupKind === "space_editors"
       );
-      manualGroupsBySpaceModelId.set(space.id, groups);
-      allGroups.push(...groups);
+      manualGroupReferencesBySpaceModelId.set(space.id, groupReferences);
+      groupReferences.forEach((group) =>
+        allGroupReferences.set(group.groupId, group)
+      );
     }
+
+    const allGroups = await GroupResource.fetchByModelIds(
+      auth,
+      [...allGroupReferences.values()].map((group) => group.groupId)
+    );
 
     // Single query for the active memberships across every group.
     const userModelIdsByGroupModelId =
@@ -1725,10 +1891,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     // Reassemble the distinct member set for each space.
     for (const space of spaces) {
-      const groups = manualGroupsBySpaceModelId.get(space.id) ?? [];
+      const groups = manualGroupReferencesBySpaceModelId.get(space.id) ?? [];
       const byId = new Map<ModelId, UserResource>();
       for (const group of groups) {
-        for (const userModelId of userModelIdsByGroupModelId[group.id] ?? []) {
+        for (const userModelId of userModelIdsByGroupModelId[group.groupId] ??
+          []) {
           const user = usersByModelId.get(userModelId);
           if (user && !byId.has(user.id)) {
             byId.set(user.id, user);
@@ -1744,7 +1911,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   toJSON(): SpaceType {
     return {
       createdAt: this.createdAt.getTime(),
-      groupIds: this.groups.map((group) => group.sId),
+      groupIds: this.groups.map((group) => group.groupSId),
       isRestricted:
         this.isRegularAndRestricted() || this.isProjectAndRestricted(),
 

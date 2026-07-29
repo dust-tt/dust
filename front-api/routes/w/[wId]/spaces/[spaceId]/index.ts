@@ -249,7 +249,7 @@ app.get(
     const appsList = await AppResource.listBySpace(auth, space);
     const actions = await MCPServerViewResource.listBySpace(auth, space);
     const actionsCount = actions.filter(
-      (a) => a.toJSON().server.availability === "manual"
+      (a) => a.getServerDisplayMetadata().availability === "manual"
     ).length;
 
     const usages = await getDataSourceViewsUsageByModelIds({
@@ -308,8 +308,7 @@ app.get(
             const groupMemberships = membershipMap.get(group.id);
             return groupMembers.map((member) => ({
               ...member.toJSON(),
-              // group_vaults tells us if the group is an editor group.
-              isEditor: group.group_vaults?.kind === "project_editor",
+              isEditor: group.kind === "space_editors",
               joinedAt: groupMemberships?.get(member.id),
             }));
           },

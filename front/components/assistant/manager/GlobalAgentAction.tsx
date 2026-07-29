@@ -2,7 +2,7 @@ import { useAppRouter } from "@app/lib/platform";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -44,7 +44,7 @@ export function GlobalAgentAction({
           }}
           selected={agent.status === "active"}
           disabled={
-            !isBuilder(owner) || agent.status === "disabled_missing_datasource"
+            !isAdmin(owner) || agent.status === "disabled_missing_datasource"
           }
         />
         <div className="whitespace-normal" onClick={(e) => e.stopPropagation()}>

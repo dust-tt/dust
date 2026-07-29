@@ -9,12 +9,15 @@ import {
 } from "@app/components/assistant/conversation/input_bar/inputBarPillStyles";
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useAppRouter } from "@app/lib/platform";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationWithoutContentType,
+  SelectableConversationSpaceType,
+} from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
   RichMention,
@@ -60,7 +63,7 @@ interface InputBarButtonsProps {
   isInputDisabled: boolean;
   lastRequestedModel: ModelSelectionType | null;
   onAgentRemove: () => void;
-  onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
+  onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
   onModelSelectionChange?: (
     modelSelection: ModelSelectionType | undefined
   ) => void;
@@ -69,9 +72,12 @@ interface InputBarButtonsProps {
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   owner: WorkspaceType;
   selectedAgent: RichAgentMention | null;
-  selectedMCPServerViews: MCPServerViewType[];
+  selectedMCPServerViews: MCPServerViewLightType[];
   selectedSpaceIds: string[];
   onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
+  spaces?: SelectableConversationSpaceType[];
+  isSpacesLoading?: boolean;
+  canDeselectSelectedSpaces?: boolean;
   space: SpaceType | undefined;
   user: UserType | null;
   onAgentPickerOpenChange?: (open: boolean) => void;
@@ -107,6 +113,9 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   selectedMCPServerViews,
   selectedSpaceIds,
   onSelectedSpaceIdsChange,
+  spaces,
+  isSpacesLoading,
+  canDeselectSelectedSpaces,
   space,
   user,
   onAgentPickerOpenChange,
@@ -293,6 +302,9 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             spaceId={spaceId}
             selectedSpaceIds={selectedSpaceIds}
             onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
+            spaces={spaces}
+            isSpacesLoading={isSpacesLoading}
+            canDeselectSelectedSpaces={canDeselectSelectedSpaces}
             onOpenChange={onPlusMenuOpenChange}
             onCapabilitiesPickerOpenChange={onCapabilitiesPickerOpenChange}
             onAttachmentsPickerOpenChange={onAttachmentsPickerOpenChange}

@@ -15,6 +15,8 @@ import {
 } from "@app/lib/metronome/client";
 import {
   AWU_PRIORITY_PURCHASED_COMMIT,
+  CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_POOL,
   CURRENCY_TO_CREDIT_TYPE_ID,
   getCreditTypeAwuId,
   getProductFreeCreditId,
@@ -143,6 +145,9 @@ export async function createSeatCouponCredit({
   };
 
   if (metronomeContractId) {
+    // Seat-subscription discount, denominated in fiat (`creditTypeId` is a
+    // currency credit type, never AWU) — not part of the AWU pool balance,
+    // so it must not carry the DUST_CONTRACT_CREDIT_TYPE=pool stamp.
     const result = await addCreditToContract({
       ...sharedParams,
       metronomeContractId,
@@ -209,6 +214,9 @@ async function createPoolTopupCouponCredit({
       ...sharedParams,
       metronomeContractId,
       uniquenessKey: `coupon-credits-${redemptionId}-0`,
+      customFields: {
+        [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+      },
     });
     if (result.isErr()) {
       return new Err(result.error);
@@ -219,6 +227,9 @@ async function createPoolTopupCouponCredit({
   const result = await createMetronomeCredit({
     ...sharedParams,
     idempotencyKey: `coupon-credits-${redemptionId}-0`,
+    customFields: {
+      [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+    },
   });
 
   if (result.isErr()) {

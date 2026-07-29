@@ -60,6 +60,7 @@ describe("resolveSandboxChildBlock", () => {
       name: "Test Agent",
     });
     const agentMessage = await AgentMessageModel.create({
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       status: "created",
       agentConfigurationId: agentConfig.sId,

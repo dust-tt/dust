@@ -9,7 +9,7 @@ import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/Du
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharing } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
 import { MessagingAppToggles } from "@app/components/workspace/settings/MessagingAppToggles";
-import { OpenPodPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
+import { OpenPodPolicy } from "@app/components/workspace/settings/OpenPodsPolicy";
 import { PodKnowledgePolicy } from "@app/components/workspace/settings/PodKnowledgePolicy";
 import { PrivateConversationUrlsToggle } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
 import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
@@ -23,7 +23,10 @@ import {
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { useGovernancePermissions } from "@app/lib/swr/governance";
+import {
+  useGovernancePermissions,
+  useUpdateGovernancePermission,
+} from "@app/lib/swr/governance";
 import { useGroups } from "@app/lib/swr/groups";
 import type { GovernancePermissionsByKey } from "@app/types/api/governance";
 import type {
@@ -37,10 +40,7 @@ import {
 } from "@app/types/group_permissions";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type {
-  LightWorkspaceType,
-  WorkspaceSharingPolicy,
-} from "@app/types/user";
+import type { WorkspaceSharingPolicy } from "@app/types/user";
 import {
   ActionFrame,
   CloudArrowLeftRight,
@@ -53,12 +53,6 @@ import {
   ShapesPlus,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
-
-function useUpdateGovernancePermission(owner: LightWorkspaceType) {
-  return (input: GovernancePermission) => {
-    return true;
-  };
-}
 
 // Frame governance permissions are only relevant when the workspace sharing policy actually
 // enables the underlying capability: email invites require external email sharing, and public
@@ -108,6 +102,9 @@ function groupGovernancePermissionsBySection(
 export const GovernancePage = () => {
   const { hasFeature } = useFeatureFlags();
   const hasAdminGovernanceFeature = hasFeature("admin_governance");
+  const hasSkillPublicationFeature = hasFeature(
+    "admin_governance_skill_publication"
+  );
 
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
@@ -135,6 +132,11 @@ export const GovernancePage = () => {
     isFrameCapabilityEnabled(permission.grantType, sharingPolicy)
   );
 
+  const skillPermissions = skills.filter(
+    (permission) =>
+      hasSkillPublicationFeature || permission.grantType !== "publish"
+  );
+
   const router = useAppRouter();
   const handleNavigateToGroups = () => {
     void router.push(`/w/${owner.sId}/members?tab=groups`);
@@ -156,13 +158,13 @@ export const GovernancePage = () => {
       id: "skills",
       label: "Skills",
       icon: PuzzlePiece01,
-      governancePermissions: skills,
+      governancePermissions: skillPermissions,
     },
     ...(framePermissions.length > 0 || isAdmin
       ? [
           {
             id: "frame" as const,
-            label: "Frame sharing",
+            label: "Frames",
             icon: ActionFrame,
             governancePermissions: framePermissions,
           },
@@ -205,10 +207,7 @@ export const GovernancePage = () => {
 
   return (
     <GovernancePageLayout>
-      <ContentMessage>
-        This page is WIP. Do not change unless you know what you are doing.
-      </ContentMessage>
-      <WorkspaceNameEditor owner={owner} />
+      {isAdmin && <WorkspaceNameEditor owner={owner} />}
       <LinkedSectionNotice
         description="Groups assigned here are managed in"
         linkLabel="People → Groups"
@@ -247,10 +246,7 @@ export const GovernancePage = () => {
               <OpenPodPolicy owner={owner} />
               <PodKnowledgePolicy owner={owner} />
             </GovernanceSettingSection>
-            <GovernanceSettingSection
-              label="Feature policies"
-              icon={ShapesPlus}
-            >
+            <GovernanceSettingSection label="Features" icon={ShapesPlus}>
               <VoiceTranscriptionToggle owner={owner} />
               <EmailAgentsToggle owner={owner} />
               <PrivateConversationUrlsToggle owner={owner} />
@@ -260,7 +256,7 @@ export const GovernancePage = () => {
               <WorkspaceAnalyticsToggle owner={owner} />
             </GovernanceSettingSection>
             <GovernanceSettingSection
-              label="Messaging app policies"
+              label="Messaging apps"
               icon={CloudArrowLeftRight}
             >
               <MessagingAppToggles owner={owner} />

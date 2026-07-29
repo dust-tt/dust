@@ -12,6 +12,7 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 import view from "./[viewId]";
+import jit from "./jit";
 
 const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);
 type MCPViewsRequestAvailabilityType = z.infer<
@@ -67,7 +68,16 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
 
   const views = await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
     auth,
-    query.spaceIds
+    query.spaceIds,
+    {
+      includeHeavyAttributes: [
+        "authorization",
+        "cachedTools",
+        "customHeaders",
+        "lastError",
+        "sharedSecret",
+      ],
+    }
   );
 
   const flattenedServerViews = views
@@ -127,6 +137,7 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
   });
 });
 
+app.route("/jit", jit);
 app.route("/:viewId", view);
 
 export default app;

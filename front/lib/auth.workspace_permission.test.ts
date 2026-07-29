@@ -5,9 +5,12 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { emptyWorkspacePermissions } from "@app/types/group_permissions";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const CAPABILITY = { grantType: "create", resourceType: "agent" } as const;
+const RESOURCE_TYPE = "agent";
+const VERB = "create";
 
 describe("Authenticator.hasWorkspacePermission", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
@@ -39,23 +42,15 @@ describe("Authenticator.hasWorkspacePermission", () => {
 
   it("returns true for admins unconditionally (no grant needed)", async () => {
     expect(adminAuth.isAdmin()).toBe(true);
-    expect(
-      await adminAuth.hasWorkspacePermission(
-        CAPABILITY.grantType,
-        CAPABILITY.resourceType
-      )
-    ).toBe(true);
+    expect(await adminAuth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(
+      true
+    );
   });
 
   it("returns false for a non-admin without any grant", async () => {
     const auth = await memberAuthInGroup();
     expect(auth.isAdmin()).toBe(false);
-    expect(
-      await auth.hasWorkspacePermission(
-        CAPABILITY.grantType,
-        CAPABILITY.resourceType
-      )
-    ).toBe(false);
+    expect(await auth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(false);
   });
 
   it("returns true when one of the caller's groups holds the -1 grant", async () => {
@@ -66,12 +61,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
     });
     const auth = await memberAuthInGroup(group);
 
-    expect(
-      await auth.hasWorkspacePermission(
-        CAPABILITY.grantType,
-        CAPABILITY.resourceType
-      )
-    ).toBe(true);
+    expect(await auth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(true);
     // A different verb on the same type is not granted.
     expect(await auth.hasWorkspacePermission("publish", "agent")).toBe(false);
   });
@@ -89,12 +79,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
     });
     const auth = await memberAuthInGroup();
 
-    expect(
-      await auth.hasWorkspacePermission(
-        CAPABILITY.grantType,
-        CAPABILITY.resourceType
-      )
-    ).toBe(true);
+    expect(await auth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(true);
   });
 
   it("matches a wildcard grant against any capability", async () => {
@@ -107,7 +92,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
     const auth = await memberAuthInGroup(group);
 
     expect(await auth.hasWorkspacePermission("admin", "billing")).toBe(true);
-    expect(await auth.hasWorkspacePermission("read", "audit_log")).toBe(true);
+    expect(await auth.hasWorkspacePermission("admin", "security")).toBe(true);
   });
 
   it("rejects an invalid capability query, even for admins", async () => {
@@ -115,5 +100,84 @@ describe("Authenticator.hasWorkspacePermission", () => {
     await expect(
       adminAuth.hasWorkspacePermission("create", "billing")
     ).rejects.toThrow(/not allowed/);
+  });
+});
+
+describe("Authenticator.getWorkspacePermissions", () => {
+  let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+  let adminAuth: Authenticator;
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    await GroupFactory.defaults(workspace);
+
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      admin.sId,
+      workspace.sId
+    );
+  });
+
+  // Build a non-admin member of `group` (if given) and return their authenticator.
+  async function memberAuthInGroup(
+    group?: Awaited<ReturnType<typeof GroupFactory.regularManual>>
+  ): Promise<Authenticator> {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    if (group) {
+      await GroupFactory.withMembers(adminAuth, group, [user]);
+    }
+    return Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId);
+  }
+
+  it("returns every type-level verb for an admin", async () => {
+    // Admins hold every type-level capability by default; instance-only domains
+    // (space, models_tier) stay empty.
+    expect(await adminAuth.getWorkspacePermissions()).toEqual({
+      ...emptyWorkspacePermissions(),
+      agent: ["create", "publish"],
+      skill: ["create", "publish"],
+      frame: ["invite", "publish"],
+      billing: ["admin"],
+      security: ["admin"],
+      dust_app: ["admin"],
+    });
+  });
+
+  it("returns no permissions for a regular user without grants", async () => {
+    const auth = await memberAuthInGroup();
+
+    expect(await auth.getWorkspacePermissions()).toEqual(
+      emptyWorkspacePermissions()
+    );
+  });
+
+  it("reflects a capability granted to everyone", async () => {
+    await GroupPermissionResource.setForEverybody(adminAuth, {
+      grantType: "create",
+      resourceType: "agent",
+    });
+    const auth = await memberAuthInGroup();
+
+    expect(await auth.getWorkspacePermissions()).toEqual({
+      ...emptyWorkspacePermissions(),
+      agent: ["create"],
+    });
+  });
+
+  it("reflects a capability granted to a group the user belongs to", async () => {
+    const group = await GroupFactory.regularManual(workspace, "A");
+    await GroupPermissionResource.setGroups(
+      adminAuth,
+      { grantType: "publish", resourceType: "agent" },
+      [group]
+    );
+    const auth = await memberAuthInGroup(group);
+
+    expect(await auth.getWorkspacePermissions()).toEqual({
+      ...emptyWorkspacePermissions(),
+      agent: ["publish"],
+    });
   });
 });

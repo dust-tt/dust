@@ -177,6 +177,7 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.HELPER:
       agentConfiguration = _getHelperGlobalAgent({
         auth,
+        featureFlags,
         mcpServerViews,
       });
       break;
@@ -340,6 +341,7 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.GOOGLE_DRIVE:
@@ -347,6 +349,7 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.NOTION:
@@ -354,6 +357,7 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.GITHUB:
@@ -361,6 +365,7 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.INTERCOM:
@@ -368,6 +373,7 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST:
@@ -919,7 +925,7 @@ function getGlobalAgent({
       agentConfiguration = _getReinforcementGlobalAgent();
       break;
     case GLOBAL_AGENTS_SID.ANALYST:
-      agentConfiguration = _getAnalystGlobalAgent({ auth });
+      agentConfiguration = _getAnalystGlobalAgent({ auth, featureFlags });
       break;
     case GLOBAL_AGENTS_SID.NOOP:
       agentConfiguration = _getNoopAgent();
@@ -979,6 +985,13 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
 ];
+
+// Retired global agents remain resolvable internally (to keep past conversations running) but
+// must not be surfaced to users/integrations. `getGlobalAgents` already filters them out of list
+// views; callers that fetch a specific agent by sId should use this to gate the public response.
+export function isRetiredGlobalAgent(sId: string): boolean {
+  return isGlobalAgentId(sId) && RETIRED_GLOBAL_AGENTS_SID.includes(sId);
+}
 
 const MODEL_ONLY_GLOBAL_AGENTS_SID: readonly GLOBAL_AGENTS_SID[] = [
   GLOBAL_AGENTS_SID.GPT35_TURBO,

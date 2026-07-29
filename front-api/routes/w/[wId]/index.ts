@@ -1,8 +1,10 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { listActiveAgentsUsingNonRegionalModels } from "@app/lib/api/assistant/workspace_capabilities";
 import {
+  buildAuditActor,
   buildAuditLogTarget,
   emitAuditLogEvent,
+  emitAuditLogEventDirect,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { validateDustMcpServerAllowedRedirectUris } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
@@ -25,6 +27,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
 import { escape } from "html-escaper";
 import { z } from "zod";
+import actionRecommendations from "./action-recommendations";
 import analytics from "./analytics";
 import assistant from "./assistant";
 import auditLogs from "./audit-logs";
@@ -59,6 +62,7 @@ import metronome from "./metronome";
 import modelTiers from "./model_tiers";
 import models from "./models";
 import oauthSetup from "./oauth/[provider]/setup";
+import permissions from "./permissions";
 import pods from "./pods";
 import projectTasks from "./project_tasks";
 import providerCredentials from "./provider_credentials";
@@ -86,32 +90,13 @@ import verify from "./verify";
 import webhookSources from "./webhook_sources";
 import welcome from "./welcome";
 import workspaceAnalytics from "./workspace-analytics";
-import workspaceUsage from "./workspace-usage";
 
 const WorkspaceNameUpdateBodySchema = z.object({
   name: z.string(),
 });
 
-const WorkspaceSsoEnforceUpdateBodySchema = z.object({
-  ssoEnforced: z.boolean(),
-});
-
 const WorkspaceRegionalModelsOnlyUpdateBodySchema = z.object({
   regionalModelsOnly: z.boolean(),
-});
-
-const WorkspaceAllowedDomainUpdateBodySchema = z.object({
-  domain: z.string().optional(),
-  domainAutoJoinEnabled: z.boolean(),
-});
-
-const WorkspaceBatchDomainUpdateBodySchema = z.object({
-  domainUpdates: z.array(
-    z.object({
-      domain: z.string(),
-      domainAutoJoinEnabled: z.boolean(),
-    })
-  ),
 });
 
 const WorkspaceProvidersUpdateBodySchema = z.object({
@@ -205,6 +190,10 @@ const WorkspaceAnalyticsUpdateBodySchema = z.object({
   disableWorkspaceAnalytics: z.boolean(),
 });
 
+const WorkspacePublishedAgentsRestrictedModelsUpdateBodySchema = z.object({
+  allowRestrictedModelsForPublishedAgents: z.boolean(),
+});
+
 const WorkspaceSlackPersonalFooterRemovalUpdateBodySchema = z.object({
   slackPersonalAllowFooterRemoval: z.boolean(),
 });
@@ -215,10 +204,7 @@ const WorkspaceDefaultAgentUpdateBodySchema = z.object({
 });
 
 const PostWorkspaceRequestBodySchema = z.union([
-  WorkspaceAllowedDomainUpdateBodySchema,
-  WorkspaceBatchDomainUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
-  WorkspaceSsoEnforceUpdateBodySchema,
   WorkspaceRegionalModelsOnlyUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
   WorkspaceWorkOSUpdateBodySchema,
@@ -240,6 +226,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceSelfImprovementCapPerSkillAwuCreditsUpdateBodySchema,
   WorkspaceAuditLogsUpdateBodySchema,
   WorkspaceAnalyticsUpdateBodySchema,
+  WorkspacePublishedAgentsRestrictedModelsUpdateBodySchema,
   WorkspaceDefaultAgentUpdateBodySchema,
   WorkspaceSlackPersonalFooterRemovalUpdateBodySchema,
 ]);
@@ -356,6 +343,7 @@ app.post(
     }
 
     if ("name" in body) {
+      const previousName = owner.name;
       const newName = escape(body.name);
       const renameRes = await renameWorkspace(owner, newName);
       if (renameRes.isErr()) {
@@ -368,12 +356,17 @@ app.post(
         });
       }
       owner.name = newName;
-    } else if ("ssoEnforced" in body) {
-      await workspace.updateWorkspaceSettings({
-        ssoEnforced: body.ssoEnforced,
-      });
 
-      owner.ssoEnforced = body.ssoEnforced;
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.name_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          previous_name: previousName,
+          new_name: newName,
+        },
+      });
     } else if ("regionalModelsOnly" in body) {
       if (body.regionalModelsOnly) {
         const incompatibleAgentIds =
@@ -401,6 +394,16 @@ app.post(
       });
 
       owner.regionalModelsOnly = body.regionalModelsOnly;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.regional_models_only_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.regionalModelsOnly),
+        },
+      });
     } else if (
       "whiteListedProviders" in body &&
       "defaultEmbeddingProvider" in body
@@ -411,10 +414,40 @@ app.post(
       });
       owner.whiteListedProviders = body.whiteListedProviders;
       owner.defaultEmbeddingProvider = workspace.defaultEmbeddingProvider;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.model_provider_settings_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled_providers: body.whiteListedProviders.join(","),
+          default_embedding_provider: body.defaultEmbeddingProvider ?? "",
+        },
+      });
     } else if ("workOSOrganizationId" in body) {
+      const previousWorkOSOrganizationId = owner.workOSOrganizationId;
       await workspace.updateWorkspaceSettings({
         workOSOrganizationId: body.workOSOrganizationId,
       });
+
+      const auditWorkspace = {
+        ...owner,
+        workOSOrganizationId:
+          body.workOSOrganizationId ?? previousWorkOSOrganizationId,
+      };
+      void emitAuditLogEventDirect({
+        workspace: auditWorkspace,
+        action: "workspace.workos_organization_updated",
+        actor: buildAuditActor(auth),
+        targets: [buildAuditLogTarget("workspace", auditWorkspace)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          configured: String(body.workOSOrganizationId !== null),
+          organization_id: body.workOSOrganizationId ?? "",
+        },
+      });
+
       owner.workOSOrganizationId = body.workOSOrganizationId;
     } else if ("allowContentCreationFileSharing" in body) {
       const previousMetadata = owner.metadata ?? {};
@@ -425,6 +458,16 @@ app.post(
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
 
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.interactive_content_sharing_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.allowContentCreationFileSharing),
+        },
+      });
+
       // if public sharing is disabled, downgrade share scope of all public files
       if (!body.allowContentCreationFileSharing) {
         await FileResource.revokePublicSharingInWorkspace(auth, {
@@ -434,6 +477,16 @@ app.post(
     } else if ("sharingPolicy" in body) {
       await workspace.updateWorkspaceSettings({
         sharingPolicy: body.sharingPolicy,
+      });
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.sharing_policy_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          policy: body.sharingPolicy,
+        },
       });
 
       // If the new policy restricts public sharing, downgrade existing public frames.
@@ -450,6 +503,16 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.voice_transcription_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.allowVoiceTranscription),
+        },
+      });
     } else if ("privateConversationUrlsByDefault" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {
@@ -458,6 +521,16 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.private_conversation_urls_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.privateConversationUrlsByDefault),
+        },
+      });
     } else if ("allowEmailAgents" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {
@@ -466,6 +539,35 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.email_agents_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.allowEmailAgents),
+        },
+      });
+    } else if ("allowRestrictedModelsForPublishedAgents" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        allowRestrictedModelsForPublishedAgents:
+          body.allowRestrictedModelsForPublishedAgents,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.published_agents_restricted_models_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.allowRestrictedModelsForPublishedAgents),
+        },
+      });
     } else if ("allowReinforcement" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {
@@ -510,6 +612,16 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.extension_mcp_tools_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(!body.disableExtensionMcpTools),
+        },
+      });
     } else if ("dustMcpServerSettings" in body) {
       const { dustMcpServerSettings } = body;
 
@@ -566,6 +678,16 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.open_projects_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.allowOpenProjects),
+        },
+      });
     } else if ("allowManualProjectKnowledgeManagement" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {
@@ -575,6 +697,16 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.manual_project_knowledge_management_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.allowManualProjectKnowledgeManagement),
+        },
+      });
     } else if ("reinforcementCapMicroUsd" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {
@@ -583,6 +715,19 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.reinforcement_cap_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          cap_micro_usd: String(body.reinforcementCapMicroUsd),
+          cap_awu_credits: String(
+            previousMetadata.reinforcementCapAwuCredits ?? ""
+          ),
+        },
+      });
     } else if ("selfImprovementCapPerSkillMicroUsd" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {
@@ -592,6 +737,19 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.self_improvement_cap_per_skill_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          cap_micro_usd: String(body.selfImprovementCapPerSkillMicroUsd),
+          cap_awu_credits: String(
+            previousMetadata.selfImprovementCapPerSkillAwuCredits ?? ""
+          ),
+        },
+      });
     } else if ("reinforcementCapAwuCredits" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {
@@ -600,6 +758,19 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.reinforcement_cap_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          cap_micro_usd: String(
+            previousMetadata.reinforcementCapMicroUsd ?? ""
+          ),
+          cap_awu_credits: String(body.reinforcementCapAwuCredits),
+        },
+      });
     } else if ("selfImprovementCapPerSkillAwuCredits" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {
@@ -609,6 +780,19 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.self_improvement_cap_per_skill_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          cap_micro_usd: String(
+            previousMetadata.selfImprovementCapPerSkillMicroUsd ?? ""
+          ),
+          cap_awu_credits: String(body.selfImprovementCapPerSkillAwuCredits),
+        },
+      });
     } else if ("sandboxAllowAgentEgressRequests" in body) {
       const featureFlags = await getFeatureFlags(auth);
       if (!isComputerFeatureEnabled(featureFlags)) {
@@ -653,10 +837,16 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
-      void emitAuditLogEvent({
-        auth,
+
+      const auditWorkspace = {
+        ...owner,
+        metadata: body.disableAuditLogs ? previousMetadata : newMetadata,
+      };
+      void emitAuditLogEventDirect({
+        workspace: auditWorkspace,
         action: "workspace.audit_logs_updated",
-        targets: [buildAuditLogTarget("workspace", owner)],
+        actor: buildAuditActor(auth),
+        targets: [buildAuditLogTarget("workspace", auditWorkspace)],
         context: getAuditLogContext(auth),
         metadata: {
           enabled: String(!body.disableAuditLogs),
@@ -726,6 +916,16 @@ app.post(
         ...(owner.metadata ?? {}),
         workspaceDefaultAgentId,
       };
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.default_agent_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          agent_id: workspaceDefaultAgentId ?? "dust",
+        },
+      });
     } else if ("slackPersonalAllowFooterRemoval" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {
@@ -734,37 +934,16 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
-    } else if ("domainUpdates" in body) {
-      for (const update of body.domainUpdates) {
-        const updateResult = await workspace.updateDomainAutoJoinEnabled({
-          domainAutoJoinEnabled: update.domainAutoJoinEnabled,
-          domain: update.domain,
-        });
-        if (updateResult.isErr()) {
-          return apiError(ctx, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: updateResult.error.message,
-            },
-          });
-        }
-      }
-    } else {
-      const { domain, domainAutoJoinEnabled } = body;
-      const updateResult = await workspace.updateDomainAutoJoinEnabled({
-        domainAutoJoinEnabled,
-        domain,
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.slack_personal_footer_removal_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.slackPersonalAllowFooterRemoval),
+        },
       });
-      if (updateResult.isErr()) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: updateResult.error.message,
-          },
-        });
-      }
     }
 
     return ctx.json({ workspace: owner });
@@ -773,6 +952,7 @@ app.post(
 
 // Sub-apps using the catch-all default + the partial-subtree exception
 // targets declared above.
+app.route("/action-recommendations", actionRecommendations);
 app.route("/analytics", analytics);
 app.route("/model_tiers", modelTiers);
 app.route("/assistant", assistant);
@@ -809,6 +989,7 @@ app.route("/models", models);
 app.route("/oauth/:provider/setup", oauthSetup);
 app.route("/pods", pods);
 app.route("/usage-status", usageStatus);
+app.route("/permissions", permissions);
 app.route("/project_tasks", projectTasks);
 app.route("/provider_credentials/:providerId", providerCredential);
 app.route("/provider_credentials", providerCredentials);
@@ -830,6 +1011,5 @@ app.route("/verification", verification);
 app.route("/verified-domains", verifiedDomains);
 app.route("/webhook_sources", webhookSources);
 app.route("/workspace-analytics", workspaceAnalytics);
-app.route("/workspace-usage", workspaceUsage);
 
 export default app;

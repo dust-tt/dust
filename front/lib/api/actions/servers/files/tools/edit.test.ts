@@ -1,14 +1,11 @@
-import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolRunContext } from "@app/lib/actions/types";
 import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
 import { editHandler } from "@app/lib/api/actions/servers/files/tools/edit";
 import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
-import { createConversation } from "@app/lib/api/assistant/conversation";
-import { Authenticator } from "@app/lib/auth";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import {
+  makeExtra,
+  setupProjectConversation,
+} from "@app/tests/utils/conversation_test_factories";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import { frameContentType } from "@app/types/files";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,44 +16,6 @@ vi.mock("@app/lib/file_storage/config", () => ({
 vi.mock("@app/lib/api/config", () => ({
   default: { getApiBaseUrl: vi.fn(() => "https://dust.tt") },
 }));
-
-function makeExtra(
-  auth: Authenticator,
-  conversation: ConversationType
-): ToolHandlerExtra {
-  const runContext = {
-    contextType: "agent_loop",
-    conversation,
-  } as unknown as ToolRunContext;
-  return { auth, runContext } as unknown as ToolHandlerExtra;
-}
-
-async function setupProjectConversation(): Promise<{
-  auth: Authenticator;
-  conversation: ConversationType;
-}> {
-  const { authenticator: auth, workspace } = await createResourceTest({
-    role: "admin",
-  });
-  const user = auth.getNonNullableUser();
-
-  const space = await SpaceFactory.project(workspace, user.id);
-  const addRes = await space.addMembers(auth, { userIds: [user.sId] });
-  assert(addRes.isOk(), "Failed to add user to project space");
-
-  const projectAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    user.sId,
-    workspace.sId
-  );
-
-  const conversation = await createConversation(projectAuth, {
-    title: "Test",
-    visibility: "unlisted",
-    spaceId: space.id,
-  });
-
-  return { auth: projectAuth, conversation };
-}
 
 function mockStoredFile(content: string, contentType: string) {
   fileStorageMock.setFileMetadata(() => ({

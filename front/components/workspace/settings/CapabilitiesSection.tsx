@@ -2,7 +2,7 @@ import { AuditLogsToggle } from "@app/components/workspace/settings/AuditLogsTog
 import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharingToggle } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
-import { OpenPodPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
+import { OpenPodPolicy } from "@app/components/workspace/settings/OpenPodsPolicy";
 import { PodKnowledgePolicy } from "@app/components/workspace/settings/PodKnowledgePolicy";
 import { PrivateConversationUrlsToggle } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
 import { RestrictAgentsPublishingCapability } from "@app/components/workspace/settings/RestrictAgentsPublishingCapability";

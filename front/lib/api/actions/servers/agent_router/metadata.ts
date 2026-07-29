@@ -1,8 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const AGENT_ROUTER_SERVER_NAME = "agent_router" as const;
 export const AGENT_ROUTER_ACTION_DESCRIPTION =
@@ -10,8 +7,9 @@ export const AGENT_ROUTER_ACTION_DESCRIPTION =
 
 export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content" as const;
 
-export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
-  list_all_published_agents: {
+export const AGENT_ROUTER_TOOLS_METADATA = [
+  {
+    name: "list_all_published_agents",
     description:
       "Return a complete list of all agents accessible to the user in the workspace, " +
       "including their personal (unpublished) agents. " +
@@ -27,7 +25,8 @@ export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  suggest_agents_for_content: {
+  {
+    name: "suggest_agents_for_content",
     description:
       "Analyze a user query and return relevant specialized agents that might be better " +
       "suited to handling specific requests. The tool uses semantic matching to find agents " +
@@ -47,7 +46,7 @@ export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const;
 
 export const AGENT_ROUTER_SERVER = {
   serverInfo: {
@@ -58,13 +57,5 @@ export const AGENT_ROUTER_SERVER = {
     icon: "ActionRobotIcon",
     documentationUrl: null,
   },
-  tools: Object.values(AGENT_ROUTER_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: AGENT_ROUTER_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

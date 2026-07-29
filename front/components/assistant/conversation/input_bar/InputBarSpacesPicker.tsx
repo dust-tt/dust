@@ -1,68 +1,91 @@
-import { useSpaces } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType } from "@app/types/user";
+import { getSpaceIcon } from "@app/lib/spaces";
+import type { SelectableConversationSpaceType } from "@app/types/assistant/conversation";
 import {
   DropdownMenuCheckboxItem,
+  DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   Icon,
-  LoadingBlock,
   Planet,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-function SpacesPickerLoading({ count = 3 }: { count?: number }) {
-  return (
-    <div className="py-1">
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={`spaces-picker-loading-${i}`} className="px-1 py-1">
-          <div className="flex items-center gap-2 rounded-md p-2">
-            <LoadingBlock className="h-4 w-4 rounded-sm" />
-            <LoadingBlock className="h-4 w-[60%]" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 interface InputBarSpacesPickerProps {
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-  prefetch?: boolean;
-  selectedSpaceIds: string[];
+  buttonSize: "xs" | "sm";
+  canDeselectSelectedSpaces: boolean;
+  disabled: boolean;
+  isLoading: boolean;
+  onOpenChange?: (open: boolean) => void;
   onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
+  selectedSpaceIds: string[];
+  spaces: SelectableConversationSpaceType[];
 }
 
 export function InputBarSpacesPicker({
-  owner,
-  disabled = false,
-  prefetch = false,
-  selectedSpaceIds,
+  canDeselectSelectedSpaces,
+  disabled,
+  isLoading,
+  onOpenChange,
   onSelectedSpaceIdsChange,
+  selectedSpaceIds,
+  spaces,
 }: InputBarSpacesPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-
-  const { spaces, isSpacesLoading } = useSpaces({
-    workspaceId: owner.sId,
-    kinds: "all",
-    disabled: !isOpen && !prefetch,
-  });
 
   const selectedSpaceIdsSet = useMemo(
     () => new Set(selectedSpaceIds),
     [selectedSpaceIds]
   );
+  const [searchText, setSearchText] = useState("");
+  const filteredSpaces = useMemo(() => {
+    const normalizedSearchText = searchText.trim().toLowerCase();
+    if (!normalizedSearchText) {
+      return spaces;
+    }
+
+    return spaces.filter((space) =>
+      space.name.toLowerCase().includes(normalizedSearchText)
+    );
+  }, [searchText, spaces]);
 
   const label =
     selectedSpaceIds.length > 0
-      ? `${selectedSpaceIds.length} Space${selectedSpaceIds.length > 1 ? "s" : ""}`
+      ? `${selectedSpaceIds.length} additional Space${selectedSpaceIds.length > 1 ? "s" : ""}`
       : "Spaces";
 
+  const handleSpaceCheckedChange = (spaceId: string, checked: boolean) => {
+    if (!checked && !canDeselectSelectedSpaces) {
+      return;
+    }
+
+    if (checked) {
+      onSelectedSpaceIdsChange(
+        selectedSpaceIdsSet.has(spaceId)
+          ? selectedSpaceIds
+          : [...selectedSpaceIds, spaceId]
+      );
+      return;
+    }
+
+    onSelectedSpaceIdsChange(selectedSpaceIds.filter((id) => id !== spaceId));
+  };
+
   return (
-    <DropdownMenuSub open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenuSub
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        if (open) {
+          setSearchText("");
+        }
+        onOpenChange?.(open);
+      }}
+    >
       <DropdownMenuSubTrigger
         label={label}
         icon={
@@ -75,34 +98,57 @@ export function InputBarSpacesPicker({
           setIsOpen(true);
         }}
       />
-      <DropdownMenuSubContent className="w-64">
-        <DropdownMenuLabel>Spaces</DropdownMenuLabel>
+      <DropdownMenuSubContent
+        className="w-80"
+        dropdownHeaders={
+          <>
+            <DropdownMenuSearchbar
+              autoFocus
+              name="search-spaces"
+              placeholder="Search Spaces"
+              value={searchText}
+              onChange={setSearchText}
+              disabled={isLoading}
+            />
+            <DropdownMenuSeparator />
+          </>
+        }
+      >
+        <DropdownMenuCheckboxItem label="Agent's Spaces" checked disabled />
         <DropdownMenuSeparator />
-        {isSpacesLoading ? (
-          <SpacesPickerLoading />
+        <DropdownMenuLabel label="Additional Spaces" />
+        {isLoading ? (
+          <DropdownMenuItem
+            label="Loading"
+            disabled
+            endComponent={<Spinner size="xs" />}
+          />
         ) : spaces.length === 0 ? (
-          <div className="px-2 py-3 text-sm text-muted-foreground">
-            No Spaces available
-          </div>
+          <DropdownMenuItem label="No Spaces available" disabled />
+        ) : filteredSpaces.length === 0 ? (
+          <DropdownMenuItem label="No matching Spaces" disabled />
         ) : (
-          spaces.map((space) => {
-            const checked = selectedSpaceIdsSet.has(space.sId);
-            return (
-              <DropdownMenuCheckboxItem
-                key={space.sId}
-                label={space.name}
-                checked={checked}
-                onCheckedChange={(nextChecked) => {
-                  onSelectedSpaceIdsChange(
-                    nextChecked
-                      ? [...selectedSpaceIds, space.sId]
-                      : selectedSpaceIds.filter((id) => id !== space.sId)
-                  );
-                }}
-                onSelect={(event) => event.preventDefault()}
-              />
-            );
-          })
+          <div>
+            {filteredSpaces.map((space) => {
+              const checked = selectedSpaceIdsSet.has(space.sId);
+
+              return (
+                <DropdownMenuCheckboxItem
+                  key={space.sId}
+                  label={space.name}
+                  icon={getSpaceIcon(space)}
+                  checked={checked}
+                  disabled={checked && !canDeselectSelectedSpaces}
+                  onCheckedChange={(nextChecked) =>
+                    handleSpaceCheckedChange(space.sId, nextChecked === true)
+                  }
+                  onSelect={(event) => {
+                    event.preventDefault();
+                  }}
+                />
+              );
+            })}
+          </div>
         )}
       </DropdownMenuSubContent>
     </DropdownMenuSub>

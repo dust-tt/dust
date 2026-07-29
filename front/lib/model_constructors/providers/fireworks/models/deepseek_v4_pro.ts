@@ -1,27 +1,40 @@
 import { fireworksConfigSchema } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
-import { FIREWORKS_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/fireworks/reasoning_efforts";
-import { FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { DEEPSEEK_V4_PRO } from "@app/lib/model_constructors/types/models";
 import { z } from "zod";
 
 const CONTEXT_SIZE = 1_000_000;
 const MAX_OUTPUT_TOKENS = 64_000;
 
-// Mirrors the legacy Fireworks reasoning mapping: none/light drop
-// reasoning_effort (default chain-of-thought), only medium/high reach the model.
+// DeepSeek documents exactly three states: thinking disabled
+// (`thinking: {type: "disabled"}`), effort `high` (the default) and effort
+// `max`: https://api-docs.deepseek.com/guides/thinking_mode/
+// It also accepts low/medium/xhigh purely for compatibility — "low and medium
+// are mapped to high, and xhigh is mapped to max" — so exposing them would
+// silently rewrite the caller's choice. We expose the three real states only;
+// our `maximal` is DeepSeek's `max`.
+//
+// Confirmed live through Fireworks on 2026-07-27 with the widest
+// `inputConfigSchema`: `none` returns no reasoning content at all, high and max
+// both reason, and the gateway rejects only `minimal`.
+//
+// The legacy router only ever ran this model at `high` (its one configurable
+// effort was `none`, which omitted `reasoning_effort` and let Fireworks fall
+// back to `high`). That coercion is a Dust product choice, so it lives in the
+// llms layer as the `forceHighReasoningEffort` config parser rather than as a
+// schema transform.
 const configSchema = fireworksConfigSchema.extend({
   reasoning: z
-    .object({ effort: z.enum(FIREWORKS_SUPPORTED_REASONING_EFFORTS) })
-    .optional()
+    .object({ effort: z.enum(["none", "high", "maximal"]) })
     .default({ effort: "high" }),
 });
 
-export function WithFireworksDeepSeekV4ProConfig<
+export function WithDeepSeekDeepSeekV4ProConfig<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  abstract class FireworksDeepSeekV4Pro extends Base {
-    static readonly modelId = FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID;
+  abstract class DeepSeekDeepSeekV4Pro extends Base {
+    static readonly model = DEEPSEEK_V4_PRO;
 
     static readonly configSchema = configSchema;
 
@@ -29,5 +42,5 @@ export function WithFireworksDeepSeekV4ProConfig<
     static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
   }
 
-  return FireworksDeepSeekV4Pro;
+  return DeepSeekDeepSeekV4Pro;
 }

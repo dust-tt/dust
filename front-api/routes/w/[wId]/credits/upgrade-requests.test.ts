@@ -44,13 +44,13 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       expect((await response.json()).error.type).toBe("workspace_auth_error");
     });
 
-    it("allows a business admin to list and resolve requests", async () => {
+    it("allows a manager to list and resolve requests", async () => {
       const workspace = await creditPricedWorkspace();
       const { user: member } = await createMemberRequest(workspace);
 
       await createPrivateApiMockRequest({
         method: "GET",
-        role: "business_admin",
+        role: "manager",
         workspace,
       });
 

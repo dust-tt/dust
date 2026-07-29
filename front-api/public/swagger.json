@@ -3432,6 +3432,34 @@
                 "suggested"
               ]
             }
+          },
+          {
+            "in": "query",
+            "name": "availability",
+            "required": false,
+            "description": "Filter skills by availability. Repeatable to match several values. Unpublished (editors) skills are only returned when bypassEditorVisibility is set.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "editors",
+                  "workspace_users",
+                  "users_and_agents"
+                ]
+              }
+            },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "in": "query",
+            "name": "bypassEditorVisibility",
+            "required": false,
+            "description": "When true, also return unpublished (editors) skills. Requires an admin API key.",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -6037,134 +6065,6 @@
         }
       }
     },
-    "/api/v1/w/{wId}/workspace-usage": {
-      "get": {
-        "summary": "Get workspace usage data",
-        "deprecated": true,
-        "description": "Deprecated: this endpoint will be removed after 2026-07-22.\nUse GET /api/v1/w/{wId}/analytics/export instead.\n\nGet usage data for the workspace identified by {wId} in CSV or JSON format.\n",
-        "tags": [
-          "Workspace"
-        ],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "wId",
-            "required": true,
-            "description": "Unique string identifier for the workspace",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "start",
-            "required": true,
-            "description": "The start date in YYYY-MM or YYYY-MM-DD format",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "end",
-            "required": false,
-            "description": "The end date in YYYY-MM or YYYY-MM-DD format (required when mode is 'range')",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "mode",
-            "required": true,
-            "description": "The mode of date range selection",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "month",
-                "range"
-              ]
-            }
-          },
-          {
-            "in": "query",
-            "name": "format",
-            "required": false,
-            "description": "The output format of the data (defaults to 'csv')",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "csv",
-                "json"
-              ]
-            }
-          },
-          {
-            "in": "query",
-            "name": "table",
-            "required": true,
-            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- \"assistant_messages\": The list of messages sent by users including the mentioned agents.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace agents and their corresponding usage.\n- \"feedback\": The list of feedback given by users on the agent messages.\n- \"all\": A concatenation of all the above tables.\n",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "users",
-                "assistant_messages",
-                "builders",
-                "assistants",
-                "feedback",
-                "all"
-              ]
-            }
-          },
-          {
-            "in": "query",
-            "name": "includeInactive",
-            "required": false,
-            "description": "Include users and assistants with zero messages in the export (defaults to false)",
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The usage data in CSV or JSON format, or a ZIP of multiple CSVs if table is equal to \"all\"",
-            "content": {
-              "text/csv": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              },
-              "application/zip": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request query"
-          },
-          "403": {
-            "description": "The workspace does not have access to the usage data API"
-          },
-          "404": {
-            "description": "The workspace was not found"
-          }
-        }
-      }
-    },
     "/api/w/{wId}/assistant/agent_configurations": {
       "get": {
         "summary": "List agent configurations",
@@ -7683,6 +7583,12 @@
                         "items": {
                           "type": "string"
                         }
+                      },
+                      "selectedSpaceIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       }
                     }
                   },
@@ -7869,6 +7775,182 @@
         "responses": {
           "201": {
             "description": "Successfully added participant"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/selectable_spaces": {
+      "get": {
+        "summary": "List selectable Spaces",
+        "description": "Lists regular Spaces the user can select for a conversation, with current selection state.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Selectable Spaces for the conversation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "spaces": {
+                      "type": "array",
+                      "items": {
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/PrivateSpace"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "selected": {
+                                "type": "boolean"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/selected_spaces": {
+      "post": {
+        "summary": "Select Spaces for a conversation",
+        "description": "Appends regular Spaces to a conversation's explicit selected scope.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "mode",
+                  "spaceIds"
+                ],
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "add"
+                    ]
+                  },
+                  "spaceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Selected Spaces and effective ACL summary.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "selectedSpaces": {
+                      "type": "array",
+                      "items": {
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/PrivateSpace"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "selected": {
+                                "type": "boolean"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "effectiveAcl": {
+                      "type": "object",
+                      "properties": {
+                        "spaceIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "viewerMustHaveAll": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "description": "Unauthorized"
@@ -8135,6 +8217,12 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "selectedSpaceIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           }
                         }
                       }
@@ -8149,6 +8237,12 @@
                   "metadata": {
                     "type": "object",
                     "nullable": true
+                  },
+                  "selectedSpaceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "skipToolsValidation": {
                     "type": "boolean"
@@ -9637,9 +9731,21 @@
             "in": "query",
             "name": "kind",
             "required": false,
-            "description": "Filter by space kind (e.g. system)",
+            "description": "Filter by one or more space kinds. Repeat the parameter to include several kinds.",
+            "style": "form",
+            "explode": true,
             "schema": {
-              "type": "string"
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "global",
+                  "system",
+                  "conversations",
+                  "regular",
+                  "project"
+                ]
+              }
             }
           }
         ],
@@ -11934,6 +12040,12 @@
               "zendesk",
               "onboarding_conversation"
             ]
+          },
+          "selectedSpaceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -11990,6 +12102,9 @@
           },
           {
             "$ref": "#/components/schemas/PrivateCompactionMessageDoneEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateConversationForkPreparedEvent"
           },
           {
             "$ref": "#/components/schemas/PrivateConversationTitleEvent"
@@ -12145,6 +12260,24 @@
           }
         }
       },
+      "PrivateConversationForkPreparedEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "conversation_fork_prepared"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          }
+        }
+      },
       "PrivateConversationTitleEvent": {
         "type": "object",
         "required": [
@@ -12288,7 +12421,7 @@
             "type": "string"
           },
           "result": {
-            "description": "Result returned by the sandbox function."
+            "description": "Parsed result validated against the sandbox function output schema."
           }
         }
       },
@@ -12299,7 +12432,7 @@
           "created",
           "invocationId",
           "functionId",
-          "message"
+          "error"
         ],
         "properties": {
           "type": {
@@ -12317,9 +12450,25 @@
           "functionId": {
             "type": "string"
           },
-          "message": {
-            "type": "string",
-            "description": "Why the invocation failed before producing a result."
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Whatever classified the failure, forwarded as-is (a runner code such as `threw` or `http_error`, or the `type` of the API error that failed the call). Open by design, branch on the codes you handle and treat the rest as generic failures."
+              },
+              "message": {
+                "type": "string"
+              },
+              "status": {
+                "type": "integer"
+              }
+            },
+            "description": "A structured error describing why the invocation failed."
           }
         }
       },
@@ -13283,6 +13432,12 @@
             "description": "URL of the user's profile picture",
             "example": "https://example.com/profiles/johndoe123.jpg"
           },
+          "selectedSpaceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "agenticMessageData": {
             "type": "object",
             "properties": {
@@ -14132,7 +14287,17 @@
           },
           "isDefault": {
             "type": "boolean",
-            "description": "Whether this skill is enabled by default"
+            "deprecated": true,
+            "description": "Whether this skill is enabled by default. Deprecated, use availability instead."
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "editors",
+              "workspace_users",
+              "users_and_agents"
+            ],
+            "description": "Who the skill is available to (users_and_agents makes it discoverable by agents)"
           },
           "instructions": {
             "type": "string",

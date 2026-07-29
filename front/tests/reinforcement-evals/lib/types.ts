@@ -201,12 +201,6 @@ export type ToolCallAssertion =
       sourceSuggestionIds?: string[];
     }
   | {
-      type: "editSkillWithTool";
-      skillId: string;
-      toolId: string;
-      sourceSuggestionIds?: string[];
-    }
-  | {
       type: "editSkillWithInlineToolReference";
       skillId: string;
       toolId: string;
@@ -239,15 +233,6 @@ export function editSkillWithInstructions(
   sourceSuggestionIds?: string[]
 ): ToolCallAssertion {
   return { type: "editSkillWithInstructions", skillId, sourceSuggestionIds };
-}
-
-/** Expects an edit_skill call with a toolEdit for the given skill and tool. */
-export function editSkillWithTool(
-  skillId: string,
-  toolId: string,
-  sourceSuggestionIds?: string[]
-): ToolCallAssertion {
-  return { type: "editSkillWithTool", skillId, toolId, sourceSuggestionIds };
 }
 
 /** Expects an edit_skill call that adds/references a tool via instructionEdits. */

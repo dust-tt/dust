@@ -10,7 +10,7 @@ import { generateWorkOSAdminPortalUrl } from "@app/lib/api/workos/organization";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -28,8 +28,12 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsAdmin(),
   validate("json", PostAuditLogsRequestBodySchema),
+  ensureHasWorkspacePermission(
+    "admin",
+    "security",
+    "You do not have permission to manage identity and provisioning settings."
+  ),
   async (ctx): HandlerResult<AuditLogsPortalResponse> => {
     const auth = ctx.get("auth");
 

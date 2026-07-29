@@ -16,6 +16,7 @@ const TERMS_GROUP_BY_KEYS = [
   "user",
   "origin",
   "api_key",
+  "model",
 ] as const satisfies readonly CreditBreakdownBy[];
 
 // usage_type is derived (no stored field): User vs Programmatic, split on
@@ -102,6 +103,7 @@ export async function getAwuUsageFromAnalytics(
   const contextOrigin = filter?.origin;
   const apiKeyNames = filter?.api_key;
   const agentTagIds = filter?.tag;
+  const modelIds = filter?.model;
 
   if (!groupBy) {
     const result = await fetchCreditTimeseries(auth, {
@@ -115,6 +117,7 @@ export async function getAwuUsageFromAnalytics(
       contextOrigin,
       apiKeyNames,
       agentTagIds,
+      modelIds,
     });
     if (result.isErr()) {
       return new Err(toError(result.error));
@@ -144,6 +147,7 @@ export async function getAwuUsageFromAnalytics(
       contextOrigin,
       apiKeyNames,
       agentTagIds,
+      modelIds,
     });
     if (result.isErr()) {
       return new Err(toError(result.error));
@@ -180,6 +184,7 @@ export async function getAwuUsageFromAnalytics(
     contextOrigin,
     apiKeyNames,
     agentTagIds,
+    modelIds,
   });
   if (result.isErr()) {
     return new Err(toError(result.error));

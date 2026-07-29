@@ -6,6 +6,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
@@ -281,6 +282,36 @@ describe("/api/w/[wId]/metronome/invoice/lines", () => {
       totalCents: -1000,
       periodStartMs: new Date("2026-07-02T00:00:00.000Z").getTime(),
       periodEndMs: new Date(periodStart).getTime(),
+    });
+  });
+
+  describe("authorization", () => {
+    it("rejects a member without the billing admin permission", async () => {
+      const { workspace } = await createPrivateApiMockRequest({
+        method: "GET",
+        role: "user",
+      });
+
+      const response = await honoApp.request(invoiceLinesUrl(workspace.sId));
+
+      expect(response.status).toBe(403);
+    });
+
+    it("allows a member with the billing admin permission", async () => {
+      const { workspace, user } = await createPrivateApiMockRequest({
+        method: "GET",
+        role: "user",
+      });
+
+      await grantWorkspacePermission(workspace, user, {
+        grantType: "admin",
+        resourceType: "billing",
+      });
+
+      const response = await honoApp.request(invoiceLinesUrl(workspace.sId));
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ currency: null, lineItems: [] });
     });
   });
 });

@@ -1,22 +1,5 @@
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import config from "@app/lib/api/config";
-import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
-import {
-  isAnthropicVertexWhitelistedModelId,
-  isAnthropicWhitelistedModelId,
-} from "@app/lib/api/llm/clients/anthropic/types";
-import { FireworksLLM } from "@app/lib/api/llm/clients/fireworks";
-import { isFireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
-import { GoogleLLM } from "@app/lib/api/llm/clients/google";
-import { isGoogleVertexWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
-import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
-import { isMistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
-import { NoopLLM } from "@app/lib/api/llm/clients/noop";
-import { isNoopWhitelistedModelId } from "@app/lib/api/llm/clients/noop/types";
-import { OpenAIResponsesLLM } from "@app/lib/api/llm/clients/openai";
-import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
-import { XaiLLM } from "@app/lib/api/llm/clients/xai";
-import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import {
   BatchEndpointTransition,
@@ -24,46 +7,34 @@ import {
   StreamEndpointTransition,
 } from "@app/lib/api/llm/transitionLLM";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
-import {
-  config as multiRegionsConfig,
-  config as regionConfig,
-} from "@app/lib/api/regions/config";
+import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
-import { getBatchEndpoints } from "@app/lib/llms/batch";
-import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
-import { getStreamEndpoints } from "@app/lib/llms/stream";
+import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type {
   EndpointConfig,
   ValueFilter,
   Where,
-  WorkspaceConfig,
 } from "@app/lib/llms/types/filter";
-import { sortEndpointsByPreferredRegion } from "@app/lib/llms/utils/sort_endpoints";
+import { FIREWORKS_MODEL_PREFIX } from "@app/lib/model_constructors/stream/clients/fireworks";
 import {
-  isModelId,
-  NOOP_MODEL_ID,
-} from "@app/lib/model_constructors/types/model_ids";
-import { GOOGLE_AI_STUDIO_API } from "@app/lib/model_constructors/types/provider_apis";
+  GOOGLE_AI_STUDIO_HOST,
+  type Host,
+} from "@app/lib/model_constructors/types/hosts";
+import type { Lab } from "@app/lib/model_constructors/types/labs";
 import {
-  isProviderId,
-  type ProviderId,
-} from "@app/lib/model_constructors/types/provider_ids";
-import {
-  EUROPE,
-  GLOBAL,
-  type Region,
-} from "@app/lib/model_constructors/types/regions";
-import {
-  isCreditPricedPlanPrefix,
-  isEnterpriseOrDust,
-} from "@app/lib/plans/plan_codes";
-import logger from "@app/logger/logger";
+  isModel,
+  type Model,
+  NOOP_MODEL,
+} from "@app/lib/model_constructors/types/models";
+import { EUROPE, type Region } from "@app/lib/model_constructors/types/regions";
 import { BYOK_MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import type { ModelIdType } from "@app/types/assistant/models/types";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
-import type { RegionType } from "@app/types/region";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import compact from "lodash/compact";
 import intersection from "lodash/intersection";
 
 // EAP (Early Access Program) models are served through a dedicated Anthropic
@@ -86,225 +57,6 @@ function withEapAnthropicKey(
   return { ...credentials, ANTHROPIC_API_KEY: eapApiKey };
 }
 
-// Legacy router: dispatches to the per-provider client classes, which implement
-// both the streaming and batch surfaces on the returned instance.
-export async function getLegacyLLM(
-  auth: Authenticator,
-  {
-    credentials,
-    getTraceInput,
-    getTraceOutput,
-    modelId,
-    temperature,
-    reasoningEffort,
-    responseFormat,
-    metaData,
-    bypassFeatureFlag = false,
-    context,
-    omittedThinking,
-  }: LLMParameters
-): Promise<LLM | null> {
-  const modelConfig = getModelConfigByModelId(modelId);
-  if (!modelConfig) {
-    return null;
-  }
-
-  if (isMistralWhitelistedModelId(modelId)) {
-    return new MistralLLM(auth, {
-      credentials,
-      getTraceInput,
-      getTraceOutput,
-      modelId,
-      temperature,
-      reasoningEffort,
-      responseFormat,
-      bypassFeatureFlag,
-      context,
-    });
-  }
-
-  if (isOpenAIResponsesWhitelistedModelId(modelId)) {
-    return new OpenAIResponsesLLM(auth, {
-      credentials,
-      getTraceInput,
-      getTraceOutput,
-      modelId,
-      temperature,
-      reasoningEffort,
-      responseFormat,
-      bypassFeatureFlag,
-      context,
-    });
-  }
-
-  if (isFireworksWhitelistedModelId(modelId)) {
-    return new FireworksLLM(auth, {
-      credentials,
-      getTraceInput,
-      getTraceOutput,
-      modelId,
-      temperature,
-      reasoningEffort,
-      bypassFeatureFlag,
-      responseFormat,
-    });
-  }
-  if (isNoopWhitelistedModelId(modelId)) {
-    return new NoopLLM(auth, {
-      context,
-      credentials,
-      getTraceInput,
-      getTraceOutput,
-      modelId,
-      temperature,
-      reasoningEffort,
-      metaData,
-    });
-  }
-
-  if (isXaiWhitelistedModelId(modelId)) {
-    return new XaiLLM(auth, {
-      credentials,
-      getTraceInput,
-      getTraceOutput,
-      modelId,
-      temperature,
-      reasoningEffort,
-      responseFormat,
-      bypassFeatureFlag,
-    });
-  }
-
-  const plan = auth.getNonNullablePlan();
-
-  if (isGoogleVertexWhitelistedModelId(modelId)) {
-    return new GoogleLLM(auth, {
-      useVertex: !plan.isByok,
-      credentials,
-      getTraceInput,
-      getTraceOutput,
-      modelId,
-      temperature,
-      reasoningEffort,
-      responseFormat,
-      bypassFeatureFlag,
-      context,
-    });
-  }
-
-  const featureFlags = await getFeatureFlags(auth);
-
-  const useVertexPrerequisite =
-    !plan.isByok &&
-    regionConfig.getCurrentRegion() === "europe-west1" &&
-    (isCreditPricedPlanPrefix(plan.code) ||
-      featureFlags.includes("use_vertex_for_supported_models"));
-
-  if (isAnthropicWhitelistedModelId(modelId)) {
-    const modelConfig = getModelConfigByModelId(modelId);
-    const useEapKey = modelConfig?.useEapKey ?? false;
-
-    // Vertex serves models from regional deployments, so only route to Vertex
-    // when the model actually has quota in the current region. A model that is
-    // not regionally available (e.g. Sonnet 5 in europe-west1) must fall back to
-    // the direct Anthropic API rather than hit a non-existent regional endpoint.
-    const regionallyAvailable =
-      modelConfig?.regionalAvailability[regionConfig.getCurrentRegion()] ===
-      true;
-
-    // EAP models must hit the Anthropic API directly with the EAP key. Vertex
-    // authenticates via GCP project creds and ignores ANTHROPIC_API_KEY, so
-    // routing an EAP model through Vertex would silently drop the EAP key.
-    const useVertex =
-      !useEapKey &&
-      useVertexPrerequisite &&
-      isAnthropicVertexWhitelistedModelId(modelId) &&
-      regionallyAvailable;
-
-    const anthropicCredentials = useEapKey
-      ? withEapAnthropicKey(modelId, credentials)
-      : credentials;
-
-    return new AnthropicLLM(auth, {
-      useVertex,
-      credentials: anthropicCredentials,
-      getTraceInput,
-      getTraceOutput,
-      modelId,
-      temperature,
-      reasoningEffort,
-      responseFormat,
-      bypassFeatureFlag,
-      context,
-      omittedThinking,
-    });
-  }
-
-  return null;
-}
-
-// Resolves an LLM for the streaming surface: the new `StreamEndpoint`-backed
-// router when enabled, falling back to the legacy per-provider clients.
-export async function getStreamLLM(
-  auth: Authenticator,
-  llmParameters: LLMParameters
-): Promise<LLM | null> {
-  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
-  if (!modelConfig) {
-    return null;
-  }
-  const featureFlags = await getFeatureFlags(auth);
-
-  const streamEndpointLLM = getStreamEndpointLLM(
-    auth,
-    featureFlags,
-    llmParameters
-  );
-
-  if (featureFlags.includes("use_new_llm_router") && streamEndpointLLM) {
-    return streamEndpointLLM;
-  }
-
-  logger.info(
-    {
-      modelId: llmParameters.modelId,
-      workspaceId: auth.getNonNullableWorkspace().sId,
-    },
-    `Falling back to the old router for ${llmParameters.modelId}`
-  );
-
-  const legacyLLM = await getLegacyLLM(auth, llmParameters);
-
-  return legacyLLM;
-}
-
-// Resolves an LLM for the batch surface: the new `BatchEndpoint`-backed router
-// when enabled, falling back to the legacy per-provider clients.
-export async function getBatchLLM(
-  auth: Authenticator,
-  llmParameters: LLMParameters
-): Promise<LLM | null> {
-  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
-  if (!modelConfig) {
-    return null;
-  }
-  const featureFlags = await getFeatureFlags(auth);
-
-  const batchEndpointLLM = await getBatchEndpointLLM(
-    auth,
-    featureFlags,
-    llmParameters
-  );
-
-  if (featureFlags.includes("use_new_llm_router") && batchEndpointLLM) {
-    return batchEndpointLLM;
-  }
-
-  const legacyLLM = await getLegacyLLM(auth, llmParameters);
-
-  return legacyLLM;
-}
-
 function getRegionFilter(auth: Authenticator): ValueFilter<Region> | undefined {
   const dustRegion = multiRegionsConfig.getCurrentRegion();
 
@@ -316,104 +68,107 @@ function getRegionFilter(auth: Authenticator): ValueFilter<Region> | undefined {
   return { eq: EUROPE };
 }
 
-function getProviderIdFilter(auth: Authenticator): ValueFilter<ProviderId> {
-  const whitelistedProviderIds = [...getWhitelistedProviders(auth)].filter(
-    isProviderId
-  );
+function getWhitelistedProviderIds(auth: Authenticator): ModelProviderIdType[] {
+  const whitelistedProviderIds = [...getWhitelistedProviders(auth)];
   const byok = auth.getNonNullablePlan().isByok;
-  const providerIds = byok
+
+  return byok
     ? intersection(whitelistedProviderIds, BYOK_MODEL_PROVIDER_IDS)
     : whitelistedProviderIds;
+}
 
-  return { in: providerIds };
+const PROVIDER_ID_TO_LAB: Record<ModelProviderIdType, Lab | null> = {
+  openai: "openai",
+  anthropic: "anthropic",
+  mistral: "mistral",
+  google_ai_studio: "google",
+  deepseek: "deepseek",
+  fireworks: null,
+  xai: "xai",
+  noop: "noop",
+  auto: null,
+  auto_fast: null,
+  auto_complex: null,
+};
+
+const PROVIDER_ID_TO_HOST: Record<ModelProviderIdType, Host | null> = {
+  openai: null,
+  anthropic: null,
+  mistral: null,
+  google_ai_studio: null,
+  deepseek: null,
+  fireworks: "fireworks",
+  xai: null,
+  noop: null,
+  auto: null,
+  auto_fast: null,
+  auto_complex: null,
+};
+
+// Whitelisting is keyed on the legacy provider id, which conflates a model's
+// lab (its developer) and its serving host — e.g. "fireworks" is really a host,
+// not a lab. When "fireworks" is whitelisted we match on host so its
+// lab-attributed models (deepseek/moonshot_ai/z_ai) surface; every other
+// provider id maps to a lab. This is a known domain naming error to be fixed
+// later.
+function getLabAndHostFilter(
+  providerIds: ModelProviderIdType[]
+): Where<EndpointConfig> {
+  const whitelistedLabs = compact(
+    providerIds.map((id) => PROVIDER_ID_TO_LAB[id])
+  );
+  const labFilter: Where<EndpointConfig> = {
+    lab: { in: whitelistedLabs },
+  };
+  const whitelistedHosts = compact(
+    providerIds.map((id) => PROVIDER_ID_TO_HOST[id])
+  );
+  const hostFilter: Where<EndpointConfig> = {
+    host: { in: whitelistedHosts },
+  };
+
+  return { or: [labFilter, hostFilter] };
 }
 
 // Temporary helper while we have both systems
 export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
   const byok = auth.getNonNullablePlan().isByok;
+  const providerIds = getWhitelistedProviderIds(auth);
 
   return {
-    providerId: getProviderIdFilter(auth),
+    ...getLabAndHostFilter(providerIds),
     region: getRegionFilter(auth),
     // We route all non-byok gemini requests to agent platform.
-    ...(byok ? {} : { not: { api: { eq: GOOGLE_AI_STUDIO_API } } }),
+    ...(byok ? {} : { not: { host: { eq: GOOGLE_AI_STUDIO_HOST } } }),
   };
 }
 
-const REGION_MAPPING: Record<RegionType, Region> = {
-  "europe-west1": EUROPE,
-  "us-central1": GLOBAL,
-};
+// Maps a legacy `ModelIdType` (Fireworks ids still carry the
+// `accounts/fireworks/models/` prefix) to the bare `Model` id the router keys
+// endpoints by. Returns null for unknown ids.
+export function legacyModelIdToModel(modelId: string): Model | null {
+  const bare = modelId.startsWith(FIREWORKS_MODEL_PREFIX)
+    ? modelId.slice(FIREWORKS_MODEL_PREFIX.length)
+    : modelId;
 
-// Selects the endpoint best matching the current region for the given model,
-// shared by the stream and batch resolvers. The only thing that varies between
-// the two surfaces is which registry of endpoints we filter over.
-function selectPreferredEndpoint<T extends { region: Region }>(
-  auth: Authenticator,
-  featureFlags: WhitelistableFeature[],
-  llmParameters: LLMParameters,
-  getEndpoints: (
-    workspaceConfiguration: WorkspaceConfig,
-    inputCondition: Where<EndpointConfig>
-  ) => T[]
-): T | null {
-  // llmParameters.modelId is ModelIdType — narrow before filtering.
-  if (!isModelId(llmParameters.modelId)) {
-    return null;
-  }
-
-  const workspaceFilter = getWorkspaceFilter(auth);
-  const plan = auth.getNonNullablePlan();
-
-  const endpoints = getEndpoints(
-    {
-      featureFlags,
-      isEnterprise: isEnterpriseOrDust(plan),
-      isCreditPriced: isCreditPricedPlanPrefix(plan.code),
-    },
-    {
-      ...workspaceFilter,
-      modelId: {
-        eq: llmParameters.modelId,
-      },
-    }
-  );
-
-  const preferredRegion = REGION_MAPPING[multiRegionsConfig.getCurrentRegion()];
-
-  const sortedEndpoints = sortEndpointsByPreferredRegion(
-    endpoints,
-    preferredRegion
-  );
-
-  return sortedEndpoints[0] ?? null;
+  return isModel(bare) ? bare : null;
 }
 
-function getStreamEndpointLLM(
+export function getStreamLLM(
   auth: Authenticator,
-  featureFlags: WhitelistableFeature[],
-  llmParameters: LLMParameters
-): LLM | null {
-  const endpoint = selectPreferredEndpoint(
-    auth,
-    featureFlags,
-    llmParameters,
-    getStreamEndpoints
-  );
-
-  if (!endpoint) {
-    return null;
-  }
+  llmParameters: LLMParameters<DustStreamEndpointConstructor>
+): LLM<DustStreamEndpointConstructor> | null {
+  const endpoint = llmParameters.modelInfo.endpoint;
 
   // The noop model needs a dedicated transition to preserve its static-response
   // and simulated-credit behaviors, which the generic transition drops.
-  if (endpoint.modelId === NOOP_MODEL_ID) {
+  if (endpoint.model === NOOP_MODEL) {
     return new NoopStreamTransition(auth, llmParameters, endpoint);
   }
 
-  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
+  const modelConfig = llmParameters.modelInfo.endpoint.modelConfig;
   const credentials = modelConfig?.useEapKey
-    ? withEapAnthropicKey(llmParameters.modelId, llmParameters.credentials)
+    ? withEapAnthropicKey(modelConfig.modelId, llmParameters.credentials)
     : llmParameters.credentials;
 
   return new StreamEndpointTransition(
@@ -423,30 +178,11 @@ function getStreamEndpointLLM(
   );
 }
 
-export async function getBatchEndpointLLM(
+export async function getBatchLLM(
   auth: Authenticator,
-  featureFlags: WhitelistableFeature[],
-  llmParameters: LLMParameters
+  llmParameters: LLMParameters<DustBatchEndpointConstructor>
 ): Promise<LLM | null> {
-  const endpoint = selectPreferredEndpoint(
-    auth,
-    featureFlags,
-    llmParameters,
-    getBatchEndpoints
-  );
+  const endpoint = llmParameters.modelInfo.endpoint;
 
-  if (!endpoint) {
-    return null;
-  }
-
-  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
-  const credentials = modelConfig?.useEapKey
-    ? withEapAnthropicKey(llmParameters.modelId, llmParameters.credentials)
-    : llmParameters.credentials;
-
-  return new BatchEndpointTransition(
-    auth,
-    { ...llmParameters, credentials },
-    endpoint
-  );
+  return new BatchEndpointTransition(auth, llmParameters, endpoint);
 }

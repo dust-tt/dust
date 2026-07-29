@@ -26,6 +26,7 @@ const ParamsSchema = z.object({
   fileId: z.string(),
 });
 
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import editText from "./edit-text";
 import exportApp from "./export";
 import metadata from "./metadata";
@@ -258,6 +259,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
 
   if (
     isUploadUseCase &&
+    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
     !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
   ) {
     return apiError(ctx, {
@@ -267,6 +269,21 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
         message: "You cannot edit files in that space.",
       },
     });
+  } else if (file.useCase === "skill_attachment") {
+    const skillResource = await SkillResource.fetchById(
+      auth,
+      file.useCaseMetadata?.skillId ?? ""
+    );
+    if (!skillResource || !skillResource.canWrite(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only skill editors can modify files attached to a skill.",
+        },
+      });
+    }
+    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
   } else if (!auth.isBuilder() && file.useCase !== "conversation") {
     return apiError(ctx, {
       status_code: 403,
@@ -317,6 +334,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
 
   if (
     isUploadUseCase &&
+    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
     !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
   ) {
     return apiError(ctx, {
@@ -328,6 +346,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     });
   } else if (
     !space &&
+    // TODO(governance) - auth.isBuilder to be replaced with auth.isManager
     !auth.isBuilder() &&
     file.useCase !== "conversation" &&
     file.useCase !== "avatar"

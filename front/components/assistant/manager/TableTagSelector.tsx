@@ -1,9 +1,9 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useUpdateAgentTags } from "@app/lib/swr/tags";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
   Button,
   Check,
@@ -39,6 +39,8 @@ export const TableTagSelector = ({
   const updateAgentTags = useUpdateAgentTags({
     owner,
   });
+  const { hasPermission } = useWorkspacePermissions();
+  const canPublishAgents = hasPermission("publish", "agent");
   if (isGlobalAgentId(agentConfigurationId)) {
     return null;
   }
@@ -76,7 +78,7 @@ export const TableTagSelector = ({
             </div>
           ) : (
             tags
-              .filter((t) => isBuilder(owner) || t.kind !== "protected")
+              .filter((t) => canPublishAgents || t.kind !== "protected")
               .map((t) => {
                 const isChecked = agentTags.some((x) => x.sId === t.sId);
                 return (

@@ -14,22 +14,11 @@ import { decodeUtf8HeaderValue } from "./shared/utils/http_headers";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 
-export const ROLES = [
-  "admin",
-  "business_admin",
-  "builder",
-  "user",
-  "none",
-] as const;
-export const ACTIVE_ROLES = [
-  "admin",
-  "business_admin",
-  "builder",
-  "user",
-] as const;
+export const ROLES = ["admin", "manager", "builder", "user", "none"] as const;
+export const ACTIVE_ROLES = ["admin", "manager", "builder", "user"] as const;
 export const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
 
-export const BUSINESS_ADMIN_ROLE_NAME = "business admin";
+export const MANAGER_ROLE_NAME = "manager";
 
 function keyObject<T extends readonly string[]>(
   arr: T
@@ -95,6 +84,15 @@ export function isWorkspaceAnalyticsEnabled(
   owner: LightWorkspaceType
 ): boolean {
   return owner.metadata?.disableWorkspaceAnalytics !== true;
+}
+
+// When enabled, members can run published agents even if the agent's model
+// requires a tier above their own access. Disabled by default: such runs are
+// blocked. Admins can opt in via the workspace settings.
+export function areRestrictedModelsAllowedForPublishedAgents(
+  owner: LightWorkspaceType
+): boolean {
+  return owner.metadata?.allowRestrictedModelsForPublishedAgents === true;
 }
 
 /**
@@ -251,7 +249,7 @@ export function isAdmin(
   switch (owner.role) {
     case "admin":
       return true;
-    case "business_admin":
+    case "manager":
     case "builder":
     case "user":
     case "none":
@@ -261,15 +259,15 @@ export function isAdmin(
   }
 }
 
-export function isBusinessAdmin(
+export function isManager(
   owner: WorkspaceType | null
-): owner is WorkspaceType & { role: "business_admin" | "admin" } {
+): owner is WorkspaceType & { role: "manager" | "admin" } {
   if (!owner) {
     return false;
   }
   switch (owner.role) {
     case "admin":
-    case "business_admin":
+    case "manager":
       return true;
     case "builder":
     case "user":
@@ -282,13 +280,13 @@ export function isBusinessAdmin(
 
 export function isBuilder(
   owner: WorkspaceType | null
-): owner is WorkspaceType & { role: "builder" | "business_admin" | "admin" } {
+): owner is WorkspaceType & { role: "builder" | "manager" | "admin" } {
   if (!owner) {
     return false;
   }
   switch (owner.role) {
     case "admin":
-    case "business_admin":
+    case "manager":
     case "builder":
       return true;
     case "user":
@@ -300,14 +298,14 @@ export function isBuilder(
 }
 
 export function isUser(owner: WorkspaceType | null): owner is WorkspaceType & {
-  role: "user" | "builder" | "business_admin" | "admin";
+  role: "user" | "builder" | "manager" | "admin";
 } {
   if (!owner) {
     return false;
   }
   switch (owner.role) {
     case "admin":
-    case "business_admin":
+    case "manager":
     case "builder":
     case "user":
       return true;
@@ -345,13 +343,13 @@ export function isOnlyAdmin(
   return owner.role === "admin";
 }
 
-export function isOnlyBusinessAdmin(
+export function isOnlyManager(
   owner: WorkspaceType | null
-): owner is WorkspaceType & { role: "business_admin" } {
+): owner is WorkspaceType & { role: "manager" } {
   if (!owner) {
     return false;
   }
-  return owner.role === "business_admin";
+  return owner.role === "manager";
 }
 
 const DustUserEmailHeader = "x-api-user-email";

@@ -16,7 +16,6 @@ import type { Fetcher } from "swr";
 export type PokeCreditsData = {
   rows: PokeListCreditsResponseBody["rows"];
   excessCreditsLast30DaysMicroUsd: number;
-  hasMetronome: boolean;
 };
 
 export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {
@@ -32,7 +31,6 @@ export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {
   const creditsData: PokeCreditsData = {
     rows: data?.rows ?? emptyArray(),
     excessCreditsLast30DaysMicroUsd: data?.excessCreditsLast30DaysMicroUsd ?? 0,
-    hasMetronome: data?.hasMetronome ?? false,
   };
 
   return {
@@ -100,7 +98,7 @@ export function usePokeAwuUsageFromAnalytics({
   filter,
   disabled,
 }: PokeConditionalFetchProps & {
-  groupBy?: "usage_type" | "agent" | "user" | "origin" | "api_key";
+  groupBy?: "usage_type" | "agent" | "user" | "origin" | "api_key" | "model";
   groupByCount?: number;
   granularity?: "day" | "week" | "month";
   days?: number;

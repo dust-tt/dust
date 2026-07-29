@@ -50,7 +50,7 @@ export function SkillInfoTab({
     useSkills({
       owner,
       status: "active",
-      isDefault: true,
+      availability: "users_and_agents",
       disabled: !showDiscoverableSkills,
     });
 

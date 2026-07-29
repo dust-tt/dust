@@ -67,7 +67,13 @@ export function computeTokensCostForUsageInMicroUsd({
     inferenceRegion !== "global"
       ? REGIONAL_MODEL_PRICING[inferenceRegion][modelId]
       : undefined;
-  const pricing = regionalPricing ?? MODEL_PRICING[modelId] ?? DEFAULT_PRICING;
+  const basePricing =
+    regionalPricing ?? MODEL_PRICING[modelId] ?? DEFAULT_PRICING;
+  const pricing =
+    basePricing.long_context &&
+    promptTokens > basePricing.long_context.prompt_token_threshold
+      ? basePricing.long_context
+      : basePricing;
 
   const cachedReadTokens = cachedTokens ?? 0;
   const longCacheWriteTokens = longCacheCreationTokens ?? 0;

@@ -6,8 +6,11 @@ import {
   INPUT_BAR_PILL_SURFACE_CLASSNAME,
 } from "@app/components/assistant/conversation/input_bar/inputBarPillStyles";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { MCPServerViewLightType } from "@app/lib/api/mcp";
+import type {
+  ConversationWithoutContentType,
+  SelectableConversationSpaceType,
+} from "@app/types/assistant/conversation";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -33,8 +36,8 @@ interface InputBarPlusMenuProps {
   disabled: boolean;
   hideCapabilities: boolean;
   hideAttachments: boolean;
-  selectedMCPServerViews: MCPServerViewType[];
-  onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
+  selectedMCPServerViews: MCPServerViewLightType[];
+  onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
@@ -44,6 +47,9 @@ interface InputBarPlusMenuProps {
   spaceId?: string;
   selectedSpaceIds: string[];
   onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
+  spaces?: SelectableConversationSpaceType[];
+  isSpacesLoading?: boolean;
+  canDeselectSelectedSpaces?: boolean;
   onOpenChange?: (open: boolean) => void;
   onCapabilitiesPickerOpenChange?: (open: boolean) => void;
   onAttachmentsPickerOpenChange?: (open: boolean) => void;
@@ -67,6 +73,9 @@ export function InputBarPlusMenu({
   spaceId,
   selectedSpaceIds,
   onSelectedSpaceIdsChange,
+  spaces,
+  isSpacesLoading,
+  canDeselectSelectedSpaces,
   onOpenChange,
   onCapabilitiesPickerOpenChange,
   onAttachmentsPickerOpenChange,
@@ -107,7 +116,6 @@ export function InputBarPlusMenu({
             onOpenChange={onCapabilitiesPickerOpenChange}
             buttonSize={buttonSize}
             disabled={disabled}
-            prefetch={shouldPrefetch}
           />
         )}
         {!hideAttachments && (
@@ -132,13 +140,17 @@ export function InputBarPlusMenu({
             prefetch={shouldPrefetch}
           />
         )}
-        <InputBarSpacesPicker
-          owner={owner}
-          disabled={disabled}
-          prefetch={shouldPrefetch}
-          selectedSpaceIds={selectedSpaceIds}
-          onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
-        />
+        {spaces != null && (
+          <InputBarSpacesPicker
+            buttonSize={buttonSize}
+            canDeselectSelectedSpaces={canDeselectSelectedSpaces ?? true}
+            disabled={disabled}
+            isLoading={!!isSpacesLoading}
+            selectedSpaceIds={selectedSpaceIds}
+            onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
+            spaces={spaces}
+          />
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

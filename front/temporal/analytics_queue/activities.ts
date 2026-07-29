@@ -9,6 +9,7 @@ import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_action
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
+import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import {
   AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,
   ANALYTICS_ALIAS_NAME,
@@ -43,6 +44,7 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -54,6 +56,7 @@ import type {
 import type {
   AgentMessageAnalyticsData,
   AgentMessageAnalyticsFeedback,
+  AgentMessageAnalyticsModel,
   AgentMessageAnalyticsSkillUsed,
   AgentMessageAnalyticsTokens,
   AgentMessageAnalyticsToolUsed,
@@ -211,6 +214,9 @@ export async function storeAgentAnalytics(
   // NOTE: may not be stable over time, see `collectAgentTagIds` for details.
   const agentTagIds = await collectAgentTagIds(auth, agentAgentMessageRow);
 
+  // Model that actually ran the message (resolved at message creation).
+  const model = collectResolvedModel(agentAgentMessageRow);
+
   const llmAwu = intelligenceAwuFromRunUsagesGroupedByRunKey(
     runUsages,
     contextOrigin
@@ -249,13 +255,24 @@ export async function storeAgentAnalytics(
       apiKeyName = keyResource.name;
     }
   }
+  // Space the conversation lives in (pod usage analytics). The sId is derived
+  // from the model id, no fetch needed.
+  const spaceId = conversationRow.spaceId
+    ? SpaceResource.modelIdToSId({
+        id: conversationRow.spaceId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      })
+    : null;
+
   // Build the complete analytics document.
   const document: AgentMessageAnalyticsData = {
     agent_id: agentAgentMessageRow.agentConfigurationId,
     agent_version: agentAgentMessageRow.agentConfigurationVersion.toString(),
     agent_tag_ids: agentTagIds,
+    model,
     ancestor_message_ids: ancestorMessageIds,
     conversation_id: conversationRow.sId,
+    space_id: spaceId,
     cost,
     context_origin: contextOrigin,
     latency_ms: agentAgentMessageRow.modelInteractionDurationMs ?? 0,
@@ -325,7 +342,7 @@ function aggregateTokenUsage(
       return {
         prompt: acc.prompt + usage.promptTokens,
         completion: acc.completion + usage.completionTokens,
-        reasoning: acc.reasoning, // No reasoning tokens in RunUsageType yet.
+        reasoning: acc.reasoning + (usage.reasoningTokens ?? 0),
         cached: acc.cached + (usage.cachedTokens ?? 0),
         cost_micro_usd: acc.cost_micro_usd + usage.costMicroUsd,
       };
@@ -441,6 +458,26 @@ async function collectAgentTagIds(
   );
 
   return tags.map((tag) => tag.sId);
+}
+
+/**
+ * Collect the model that actually ran this message, if available.
+ */
+function collectResolvedModel(
+  agentAgentMessageRow: AgentMessageModel
+): AgentMessageAnalyticsModel | null {
+  const resolvedModel = resolvedModelFromAgentMessageRow(agentAgentMessageRow);
+
+  if (!resolvedModel) {
+    return null;
+  }
+
+  return {
+    provider_id: resolvedModel.providerId,
+    model_id: resolvedModel.modelId,
+    reasoning_effort: resolvedModel.reasoningEffort,
+    resolution_method: agentAgentMessageRow.modelResolutionMethod,
+  };
 }
 
 /**

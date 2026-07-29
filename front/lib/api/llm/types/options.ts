@@ -5,11 +5,11 @@ import type {
   LLMTraceCustomization,
 } from "@app/lib/api/llm/traces/types";
 import type { Region } from "@app/lib/model_constructors/types/regions";
+import type { ModelInfo } from "@app/types/assistant/agent_run";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
   ModelIdType,
   ModelProviderIdType,
-  ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { isString } from "@app/types/shared/utils/general";
@@ -100,20 +100,16 @@ export function systemPromptToText(input: SystemPromptInput): string {
     .join("\n");
 }
 
-export type LLMParameters = {
+export type LLMParameters<E> = {
   bypassFeatureFlag?: boolean;
   context?: LLMTraceContext;
   credentials: LLMCredentialsType;
-  modelId: ModelIdType;
-  reasoningEffort?: ReasoningEffort | null;
-  responseFormat?: string | null;
-  metaData?: Record<string, unknown>;
-  temperature?: number | null;
+  modelInfo: Omit<ModelInfo<E>, "temperature"> & { temperature?: number };
   omittedThinking?: boolean;
 } & LLMTraceCustomization;
 
-export type LLMParameterOverwrites = Partial<
-  Omit<LLMParameters, "modelId" | "credentials">
+export type LLMParameterOverwrites<E> = Partial<
+  Omit<LLMParameters<E>, "credentials">
 >;
 
 export type LLMClientMetadata = {
@@ -151,8 +147,8 @@ export type ExclusiveToolChoiceParameters =
 
 interface LLMStreamParametersBase {
   conversation: ModelConversationTypeMultiActions;
-  // When true, the Anthropic clients defer non-eager tools behind tool search.
-  // Other provider clients ignore it.
+  // When true, supporting provider clients defer non-eager tools behind tool
+  // search.
   toolSearchEnabled?: boolean;
   prompt: SystemPromptInput;
   specifications: AgentActionSpecification[];
@@ -170,7 +166,8 @@ export type LLMStreamParameters = LLMStreamParametersBase &
   ExclusiveToolChoiceParameters;
 
 export interface LLMStreamMetadata {
-  conversationId: string;
+  agentConfigurationId: string;
+  workspaceId: string;
 }
 
 // Omit the base fields only and re-intersect the tool-choice union: a plain

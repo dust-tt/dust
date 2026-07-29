@@ -1,3 +1,4 @@
+import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type {
   DeleteGroupResponseBody,
@@ -7,7 +8,7 @@ import type {
 import { PatchGroupBodySchema } from "@app/types/api/groups/manage";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -22,7 +23,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetGroupResponseBody> => {
     const auth = ctx.get("auth");
@@ -85,7 +86,7 @@ app.get(
 /** @ignoreswagger */
 app.patch(
   "/",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   validate("param", ParamsSchema),
   validate("json", PatchGroupBodySchema),
   async (ctx): HandlerResult<PatchGroupResponseBody> => {
@@ -191,6 +192,8 @@ app.patch(
       }
     }
 
+    emitGroupMemberAuditLogs(auth, group, updateRes.value);
+
     const members = await group.getActiveMembers(auth);
 
     return ctx.json({
@@ -203,7 +206,7 @@ app.patch(
 /** @ignoreswagger */
 app.delete(
   "/",
-  ensureIsBusinessAdmin(),
+  ensureIsManager(),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<DeleteGroupResponseBody> => {
     const auth = ctx.get("auth");

@@ -109,6 +109,8 @@ import { ConversationErrorDisplay } from "./ConversationError";
 import { findFirstUnreadMessageIndex } from "./utils";
 
 const DEFAULT_PAGE_LIMIT = 50;
+// SSE is the fast path; poll slowly in case the completion event is missed before subscription.
+const FORK_PREPARATION_POLL_INTERVAL_MS = 60_000;
 
 // A conversation must be unread and older than that to enable the suggestion of enabling notifications.
 const DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION = 60 * 60 * 1000; // 1 hour
@@ -371,6 +373,12 @@ export const ConversationViewer = ({
   } = useConversation({
     conversationId,
     workspaceId: owner.sId,
+    options: {
+      refreshInterval: (data) =>
+        data?.conversation.forkingData?.forkedFrom?.fileCopyStatus === "pending"
+          ? FORK_PREPARATION_POLL_INTERVAL_MS
+          : 0,
+    },
   });
 
   const { spaceInfo } = useSpaceInfo({
@@ -918,6 +926,14 @@ export const ConversationViewer = ({
             );
 
             break;
+          case "conversation_fork_prepared":
+            if (
+              conversation?.forkingData?.forkedFrom?.fileCopyStatus ===
+              "pending"
+            ) {
+              void mutateConversation();
+            }
+            break;
           case "agent_message_done":
             // Mark as read and do not mutate the list of convos in the sidebar to avoid useless network request.
             // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
@@ -1088,6 +1104,7 @@ export const ConversationViewer = ({
       }
     },
     [
+      conversation?.forkingData?.forkedFrom?.fileCopyStatus,
       conversationId,
       debouncedMarkAsRead,
       mutateContextUsage,
@@ -1126,6 +1143,7 @@ export const ConversationViewer = ({
       mentions: RichMention[],
       contentFragments: ContentFragmentsType,
       _selectedMCPServerViewIds?: string[],
+      selectedSpaceIds?: string[],
       modelSelection?: ModelSelectionType
     ): Promise<Result<undefined, DustError>> => {
       if (!virtuosoMessageListRef?.current) {
@@ -1154,6 +1172,7 @@ export const ConversationViewer = ({
           clientSideMCPServerIds:
             clientSideMCPServerIds ??
             agentBuilderContext?.clientSideMCPServerIds,
+          selectedSpaceIds,
           skipToolsValidation: agentBuilderContext?.skipToolsValidation,
           modelSelection,
         };

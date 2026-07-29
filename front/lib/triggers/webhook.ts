@@ -674,7 +674,7 @@ export async function processWebhookRequest(
     body: Record<string, unknown>;
     rawBody: string;
   }
-): Promise<Result<void, Error>> {
+): Promise<Result<{ triggerIds: string[] }, Error>> {
   const localLogger = logger.child({
     webhookRequestId: webhookRequest.id,
     webhookSourceId: webhookSource.id,
@@ -710,12 +710,12 @@ export async function processWebhookRequest(
   if (eventValidationResult.isErr()) {
     await webhookRequest.markAsFailed(eventValidationResult.error.message);
     localLogger.error(eventValidationResult.error.message);
-    return new Ok(undefined); // We consider event validation errors as non-retryable.
+    return new Ok({ triggerIds: [] }); // We consider event validation errors as non-retryable.
   }
 
   const { skipReason, receivedEventValue } = eventValidationResult.value;
   if (skipReason) {
-    return new Ok(undefined);
+    return new Ok({ triggerIds: [] });
   }
 
   const filteredTriggersResult = await filterTriggers({
@@ -729,14 +729,14 @@ export async function processWebhookRequest(
   if (filteredTriggersResult.isErr()) {
     await webhookRequest.markAsFailed(filteredTriggersResult.error.message);
     localLogger.error(filteredTriggersResult.error.message);
-    return new Ok(undefined); // We consider filtering errors as non-retryable.
+    return new Ok({ triggerIds: [] }); // We consider filtering errors as non-retryable.
   }
 
   const filteredTriggers = filteredTriggersResult.value;
   if (filteredTriggers.length === 0) {
     localLogger.info("No triggers matched the webhook request.");
     await webhookRequest.markAsProcessed();
-    return new Ok(undefined);
+    return new Ok({ triggerIds: [] });
   }
 
   if (filteredTriggers.some((t) => t.configuration.includePayload)) {
@@ -757,12 +757,12 @@ export async function processWebhookRequest(
   if (launchResult.isErr()) {
     await webhookRequest.markAsFailed(launchResult.error.message);
     localLogger.error(launchResult.error.message);
-    return new Ok(undefined); // We consider launch errors as non-retryable.
+    return new Ok({ triggerIds: [] }); // We consider launch errors as non-retryable.
   }
 
   await webhookRequest.markAsProcessed();
 
-  return new Ok(undefined);
+  return new Ok({ triggerIds: filteredTriggers.map((t) => t.sId) });
 }
 
 export async function fetchRecentWebhookRequestTriggersWithPayload(

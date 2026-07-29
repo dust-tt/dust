@@ -20,6 +20,7 @@ import {
   isPodTasksCreateTasksInput,
   isPodTasksUpdateTasksInput,
 } from "@app/lib/api/actions/servers/pod_tasks/types";
+import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { WAKEUPS_SERVER_NAME } from "@app/lib/api/actions/servers/wakeups/metadata";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -37,6 +38,7 @@ import { useMemo, useState } from "react";
 
 type ToolOverride = {
   title?: (inputs: Record<string, unknown>) => string;
+  approveLabel?: string;
   alwaysAllowLabel?: (inputs: Record<string, unknown>) => string;
   detailsExpanded?: boolean;
 };
@@ -61,6 +63,13 @@ const MCP_TOOL_OVERRIDES: Partial<
     add_egress_domain: {
       title: () => `Allow agent to add a domain to the Computer?`,
       detailsExpanded: true,
+    },
+  },
+  [SANDBOX_FUNCTIONS_SERVER_NAME]: {
+    publish: {
+      title: () => "Publish this function?",
+      approveLabel: "Publish",
+      alwaysAllowLabel: () => "Always allow agent to publish Pod functions",
     },
   },
   [POD_TASKS_SERVER_NAME]: {
@@ -266,7 +275,7 @@ export function ToolValidationCard({
     <ContentMessage
       title={title}
       variant="primary"
-      className="flex w-full flex-col gap-3 sm:w-80 sm:min-w-[500px]"
+      className="flex w-full flex-col gap-3 sm:w-80 sm:min-w-125"
       icon={icon}
     >
       {canCurrentUserRespond ? (
@@ -302,7 +311,7 @@ export function ToolValidationCard({
                 </span>
               </Label>
             )}
-            <div className="hidden sm:block sm:flex-grow" />
+            <div className="hidden sm:block sm:grow" />
             <div className="flex flex-row gap-3 self-end">
               <Button
                 label="Decline"
@@ -314,7 +323,7 @@ export function ToolValidationCard({
                 onClick={() => void handleValidation("rejected")}
               />
               <Button
-                label="Allow"
+                label={toolOverride?.approveLabel ?? "Allow"}
                 variant="highlight"
                 size="xs"
                 icon={Check}
@@ -326,7 +335,7 @@ export function ToolValidationCard({
           </div>
         </>
       ) : (
-        <div className="font-sm whitespace-normal break-words text-foreground">
+        <div className="font-sm whitespace-normal wrap-break-word text-foreground">
           Waiting for{" "}
           <span className="font-semibold">{triggeringUser?.fullName}</span> to
           confirm.

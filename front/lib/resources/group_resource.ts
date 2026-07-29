@@ -7,6 +7,7 @@ import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
@@ -41,7 +42,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { BUSINESS_ADMIN_ROLE_NAME } from "@app/types/user";
+import { MANAGER_ROLE_NAME } from "@app/types/user";
 import type { DirectoryGroup } from "@workos-inc/node";
 import assert from "assert";
 import type {
@@ -53,10 +54,15 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { col, fn, Op, QueryTypes } from "sequelize";
+import { col, fn, Op, QueryTypes, UniqueConstraintError } from "sequelize";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const BUILDER_GROUP_NAME = "dust-builders";
+export const MANAGER_GROUP_NAME = "dust-managers";
+// User-facing name of the manual builders group synced from the builder role (see
+// syncBuilderGroupMembership). Distinct from BUILDER_GROUP_NAME: workspaces provisioning
+// builders via SCIM keep their "dust-builders" IdP group alongside this one.
+export const MANUAL_BUILDERS_GROUP_NAME = "Builders";
 
 /**
  * ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -425,7 +431,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   /**
    * Creates a new regular_manual group. These groups are created and managed
-   * manually by workspace admins and business admins from the UI to grant
+   * manually by workspace admins and managers from the UI to grant
    * permissions to their members.
    */
   static async makeNewRegularManual(
@@ -433,7 +439,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     { name, memberIds }: { name: string; memberIds: string[] }
   ): Promise<
     Result<
-      GroupResource,
+      { group: GroupResource; addedUsers: UserType[] },
       DustError<
         | "unauthorized"
         | "name_conflict"
@@ -444,11 +450,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.isBusinessAdmin()) {
+    if (!auth.isManager()) {
       return new Err(
         new DustError(
           "unauthorized",
-          `Only workspace admins and ${BUSINESS_ADMIN_ROLE_NAME}s can create groups.`
+          `Only workspace admins and ${MANAGER_ROLE_NAME}s can create groups.`
         )
       );
     }
@@ -478,14 +484,15 @@ export class GroupResource extends BaseResource<GroupModel> {
         new DustError("user_not_found", "Some users were not found.")
       );
     }
+    const memberUsers = users.map((u) => u.toJSON());
     const addResult = await group.dangerouslyAddMembers(auth, {
-      users: users.map((u) => u.toJSON()),
+      users: memberUsers,
     });
     if (addResult.isErr()) {
       return new Err(addResult.error);
     }
 
-    return new Ok(group);
+    return new Ok({ group, addedUsers: memberUsers });
   }
 
   static async findAgentIdsForGroups(
@@ -1372,16 +1379,21 @@ export class GroupResource extends BaseResource<GroupModel> {
   ): Promise<Map<ModelId, number>> {
     const owner = auth.getNonNullableWorkspace();
     const counts = new Map<ModelId, number>();
+    if (groups.length === 0) {
+      return counts;
+    }
 
     const globalGroup = groups.find((g) => g.isGlobal());
     const regularGroups = groups.filter((g) => !g.isGlobal());
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({ workspace: owner });
+    const activeUserIds = new Set(
+      workspaceMemberships.map((membership) => membership.userId)
+    );
 
     // Global group count comes from workspace active memberships.
     if (globalGroup) {
-      const { total } = await MembershipResource.getActiveMemberships({
-        workspace: owner,
-      });
-      counts.set(globalGroup.id, total);
+      counts.set(globalGroup.id, workspaceMemberships.length);
     }
 
     // All regular group counts in one query, reusing the existing method.
@@ -1389,7 +1401,10 @@ export class GroupResource extends BaseResource<GroupModel> {
       const membershipsByGroup =
         await GroupResource.getActiveMembershipsForGroups(auth, regularGroups);
       for (const [groupId, userIds] of Object.entries(membershipsByGroup)) {
-        counts.set(Number(groupId), userIds.length);
+        counts.set(
+          Number(groupId),
+          userIds.filter((userId) => activeUserIds.has(userId)).length
+        );
       }
     }
 
@@ -1924,7 +1939,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
   ): Promise<
     Result<
-      undefined,
+      { addedUsers: UserType[]; removedUsers: UserType[] },
       DustError<
         | "unauthorized"
         | "user_not_found"
@@ -1967,7 +1982,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     }
 
-    return new Ok(undefined);
+    return new Ok({ addedUsers: usersToAdd, removedUsers: usersToRemove });
   }
 
   /**
@@ -2204,7 +2219,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     { name, memberIds }: { name?: string; memberIds?: string[] }
   ): Promise<
     Result<
-      undefined,
+      { addedUsers: UserType[]; removedUsers: UserType[] },
       DustError<
         | "unauthorized"
         | "name_conflict"
@@ -2217,11 +2232,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.isBusinessAdmin()) {
+    if (!auth.isManager()) {
       return new Err(
         new DustError(
           "unauthorized",
-          `Only workspace admins and ${BUSINESS_ADMIN_ROLE_NAME}s can update groups.`
+          `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
         )
       );
     }
@@ -2262,9 +2277,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       if (setResult.isErr()) {
         return new Err(setResult.error);
       }
+
+      return new Ok(setResult.value);
     }
 
-    return new Ok(undefined);
+    return new Ok({ addedUsers: [], removedUsers: [] });
   }
 
   async deleteRegularManualGroup(
@@ -2275,11 +2292,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       DustError<"unauthorized" | "group_not_found" | "internal_error">
     >
   > {
-    if (!auth.isBusinessAdmin()) {
+    if (!auth.isManager()) {
       return new Err(
         new DustError(
           "unauthorized",
-          `Only workspace admins and ${BUSINESS_ADMIN_ROLE_NAME}s can delete groups.`
+          `Only workspace admins and ${MANAGER_ROLE_NAME}s can delete groups.`
         )
       );
     }
@@ -2369,6 +2386,14 @@ export class GroupResource extends BaseResource<GroupModel> {
         transaction,
       });
 
+      await GroupPermissionModel.destroy({
+        where: {
+          groupId: this.id,
+          workspaceId: owner.id,
+        },
+        transaction,
+      });
+
       await this.model.destroy({
         where: {
           id: this.id,
@@ -2435,6 +2460,10 @@ export class GroupResource extends BaseResource<GroupModel> {
           roles: [
             { role: "admin", permissions: ["read", "admin"] },
             {
+              role: "manager",
+              permissions: ["read"],
+            },
+            {
               role: "user",
               permissions: ["read"],
             },
@@ -2474,7 +2503,27 @@ export class GroupResource extends BaseResource<GroupModel> {
           ],
           roles: [
             { role: "admin", permissions: ["read", "write", "admin"] },
-            { role: "business_admin", permissions: ["read", "write", "admin"] },
+            { role: "manager", permissions: ["read", "write", "admin"] },
+          ],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
+
+    // Provisioned groups are directory-synced (SCIM), so membership is not editable in-app:
+    // managers get read (e.g. to grant them governance capabilities) but not write/admin.
+    if (this.isProvisioned()) {
+      return [
+        {
+          groups: [
+            {
+              id: this.id,
+              permissions: ["read"],
+            },
+          ],
+          roles: [
+            { role: "admin", permissions: ["read", "write", "admin"] },
+            { role: "manager", permissions: ["read"] },
           ],
           workspaceId: this.workspaceId,
         },
@@ -2532,8 +2581,9 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Checks if dust-builders and dust-admins groups exist and are actively provisioned
-   * in the workspace. This indicates that role management should be restricted in the UI.
+   * Checks if dust-admins, dust-managers and dust-builders groups exist and are actively
+   * provisioned in the workspace. This indicates that role management should be restricted
+   * in the UI.
    */
   static async listRoleProvisioningGroupsForWorkspace(
     auth: Authenticator
@@ -2549,12 +2599,144 @@ export class GroupResource extends BaseResource<GroupModel> {
       where: {
         kind: "provisioned",
         name: {
-          [Op.in]: [ADMIN_GROUP_NAME, BUILDER_GROUP_NAME],
+          [Op.in]: [ADMIN_GROUP_NAME, MANAGER_GROUP_NAME, BUILDER_GROUP_NAME],
         },
       },
     });
 
     return provisionedGroups;
+  }
+
+  /**
+   * Transitional — builder role deprecation, see
+   * https://github.com/dust-tt/tasks/issues/9459.
+   *
+   * Keeps a per-workspace "Builders" group (`regular_manual`) in sync with the `builder`
+   * role so that when the role is removed, the group can be granted the builders' governance
+   * capabilities (create agents / skills) and former builders keep their rights. Until then
+   * the role is the source of truth: the group is created lazily and manual edits may be
+   * undone by the sync. Once the role is removed, the sync goes away and the group becomes
+   * fully admin-managed.
+   *
+   * The group is deliberately independent from SCIM provisioning: provisioned
+   * "dust-builders" groups proved unreliable (drifted membership, stale groups after
+   * deprovisioning). Workspaces provisioning builders get both groups — IdP changes flow
+   * through role assignment, which keeps this group in sync automatically.
+   *
+   * Idempotent ensure-state semantics: after the call, the user's active membership in the
+   * group matches `isBuilder`.
+   *
+   * Callers must invoke this after every membership write that can involve the builder role
+   * (role change, membership creation, revocation) — see the `lib/api/membership.ts`
+   * wrappers.
+   */
+  static async syncBuilderGroupMembership({
+    workspace,
+    user,
+    isBuilder,
+  }: {
+    workspace: LightWorkspaceType;
+    user: UserResource;
+    isBuilder: boolean;
+  }): Promise<void> {
+    const existingGroup =
+      await GroupResource.fetchManualBuildersGroup(workspace);
+
+    if (!existingGroup && !isBuilder) {
+      // Nothing to revoke from a group that doesn't exist yet.
+      return;
+    }
+
+    const groupId = existingGroup
+      ? existingGroup.id
+      : (await GroupResource.fetchOrCreateManualBuildersGroup(workspace)).id;
+
+    const now = new Date();
+    // Served by the (userId, groupId) index.
+    const activeMembershipWhere = {
+      groupId,
+      userId: user.id,
+      workspaceId: workspace.id,
+      status: "active",
+      startAt: { [Op.lte]: now },
+      [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+    };
+    const activeMembership = await GroupMembershipModel.findOne({
+      where: activeMembershipWhere,
+    });
+
+    if (isBuilder) {
+      if (activeMembership) {
+        return;
+      }
+      await GroupMembershipModel.create({
+        groupId,
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: now,
+        status: "active",
+      });
+    } else {
+      if (!activeMembership) {
+        return;
+      }
+      // End every matching row, not just the one fetched: concurrent adds can leave
+      // duplicate active rows.
+      await GroupMembershipModel.update(
+        { endAt: now },
+        { where: activeMembershipWhere }
+      );
+    }
+
+    await GroupResource.batchInvalidateGroupIdsCacheForUsers([
+      [{ user: { id: user.id }, workspace: { id: workspace.id } }],
+    ]);
+  }
+
+  /**
+   * Fetches the workspace's manual "Builders" group (MANUAL_BUILDERS_GROUP_NAME) if it has
+   * already been created, without creating it.
+   */
+  static async fetchManualBuildersGroup(
+    workspace: LightWorkspaceType
+  ): Promise<GroupResource | null> {
+    const existing = await GroupModel.findOne({
+      where: { workspaceId: workspace.id, name: MANUAL_BUILDERS_GROUP_NAME },
+    });
+    return existing ? new this(GroupModel, existing.get()) : null;
+  }
+
+  /**
+   * Fetches the workspace's manual "Builders" group (MANUAL_BUILDERS_GROUP_NAME), creating it
+   * empty if it doesn't exist yet. Governance capability seeding may need to grant a capability
+   * to this group before any builder-role member has ever been synced into it — normally the
+   * group is created lazily by `syncBuilderGroupMembership` on the first such sync.
+   */
+  static async fetchOrCreateManualBuildersGroup(
+    workspace: LightWorkspaceType
+  ): Promise<GroupResource> {
+    const existing = await GroupResource.fetchManualBuildersGroup(workspace);
+    if (existing) {
+      return existing;
+    }
+
+    try {
+      return await GroupResource.makeNew({
+        name: MANUAL_BUILDERS_GROUP_NAME,
+        kind: "regular_manual",
+        workspaceId: workspace.id,
+      });
+    } catch (err) {
+      // Two concurrent callers can race on the group creation (this method, or a concurrent
+      // syncBuilderGroupMembership call); the (workspaceId, name) unique index makes the loser
+      // land here. Fall through to the winner's group.
+      if (!(err instanceof UniqueConstraintError)) {
+        throw err;
+      }
+      const winner = await GroupResource.fetchManualBuildersGroup(workspace);
+      assert(winner, "Builders group missing after unique constraint error");
+      return winner;
+    }
   }
 
   /**

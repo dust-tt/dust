@@ -49,7 +49,7 @@ export function WithMistralAIInputConverter<
       // client); it uses its own default. `reasoning_effort` is only sent when
       // the model supports it — non-reasoning models drop it in their schema.
       return {
-        model: this.constructor.modelId,
+        model: this.constructor.model,
         messages: conversationToMistralAIMessages(conversation, this),
         temperature,
         tools: tools.map(toTool),

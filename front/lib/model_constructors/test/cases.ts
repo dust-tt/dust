@@ -245,6 +245,7 @@ const R_MINIMAL = { effort: "minimal" } as const;
 const R_LOW = { effort: "low" } as const;
 const R_MEDIUM = { effort: "medium" } as const;
 const R_HIGH = { effort: "high" } as const;
+const R_XHIGH = { effort: "xhigh" } as const;
 const R_MAXIMAL = { effort: "maximal" } as const;
 
 export const TEST_KEYS = [
@@ -254,6 +255,7 @@ export const TEST_KEYS = [
   "simple/no-tools/t-default/r-low",
   "simple/no-tools/t-default/r-medium",
   "simple/no-tools/t-default/r-high",
+  "simple/no-tools/t-default/r-xhigh",
   "simple/no-tools/t-default/r-maximal",
   "simple/no-tools/t-0/r-default",
   "simple/no-tools/t-0/r-none",
@@ -261,6 +263,7 @@ export const TEST_KEYS = [
   "simple/no-tools/t-0/r-low",
   "simple/no-tools/t-0/r-medium",
   "simple/no-tools/t-0/r-high",
+  "simple/no-tools/t-0/r-xhigh",
   "simple/no-tools/t-0/r-maximal",
   "simple/no-tools/t-0.1/r-default",
   "simple/no-tools/t-0.1/r-none",
@@ -268,6 +271,7 @@ export const TEST_KEYS = [
   "simple/no-tools/t-0.1/r-low",
   "simple/no-tools/t-0.1/r-medium",
   "simple/no-tools/t-0.1/r-high",
+  "simple/no-tools/t-0.1/r-xhigh",
   "simple/no-tools/t-0.1/r-maximal",
   "simple/no-tools/t-1/r-default",
   "simple/no-tools/t-1/r-none",
@@ -275,6 +279,7 @@ export const TEST_KEYS = [
   "simple/no-tools/t-1/r-low",
   "simple/no-tools/t-1/r-medium",
   "simple/no-tools/t-1/r-high",
+  "simple/no-tools/t-1/r-xhigh",
   "simple/no-tools/t-1/r-maximal",
 
   "calc/calc/t-default/r-medium",
@@ -283,9 +288,11 @@ export const TEST_KEYS = [
 
   "calc/calc/t-default/r-default/force-tool-default",
   "calc/calc/t-default/r-default/force-tool",
+  "calc/calc/t-default/r-high/force-tool",
   "calc/calc/t-default/r-none/force-tool",
 
   "reasoning/no-tools/t-default/r-none",
+  "reasoning/no-tools/t-default/r-minimal",
   "reasoning/no-tools/t-default/r-low",
 
   "output-format/json-schema/t-default/r-none",
@@ -332,6 +339,11 @@ export const TEST_CASES: Record<TestKey, TestCase> = {
     conversation: SIMPLE_CONVERSATION,
     defaultCheckers: [TEXT_CONTAINS_HI],
   },
+  "simple/no-tools/t-default/r-xhigh": {
+    config: { reasoning: R_XHIGH },
+    conversation: SIMPLE_CONVERSATION,
+    defaultCheckers: [TEXT_CONTAINS_HI],
+  },
   "simple/no-tools/t-default/r-maximal": {
     config: { reasoning: R_MAXIMAL },
     conversation: SIMPLE_CONVERSATION,
@@ -364,6 +376,11 @@ export const TEST_CASES: Record<TestKey, TestCase> = {
   },
   "simple/no-tools/t-0/r-high": {
     config: { temperature: 0, reasoning: R_HIGH },
+    conversation: SIMPLE_CONVERSATION,
+    defaultCheckers: [TEXT_CONTAINS_HI],
+  },
+  "simple/no-tools/t-0/r-xhigh": {
+    config: { temperature: 0, reasoning: R_XHIGH },
     conversation: SIMPLE_CONVERSATION,
     defaultCheckers: [TEXT_CONTAINS_HI],
   },
@@ -402,6 +419,11 @@ export const TEST_CASES: Record<TestKey, TestCase> = {
     conversation: SIMPLE_CONVERSATION,
     defaultCheckers: [TEXT_CONTAINS_HI],
   },
+  "simple/no-tools/t-0.1/r-xhigh": {
+    config: { temperature: 0.1, reasoning: R_XHIGH },
+    conversation: SIMPLE_CONVERSATION,
+    defaultCheckers: [TEXT_CONTAINS_HI],
+  },
   "simple/no-tools/t-0.1/r-maximal": {
     config: { temperature: 0.1, reasoning: R_MAXIMAL },
     conversation: SIMPLE_CONVERSATION,
@@ -434,6 +456,11 @@ export const TEST_CASES: Record<TestKey, TestCase> = {
   },
   "simple/no-tools/t-1/r-high": {
     config: { temperature: 1, reasoning: R_HIGH },
+    conversation: SIMPLE_CONVERSATION,
+    defaultCheckers: [TEXT_CONTAINS_HI],
+  },
+  "simple/no-tools/t-1/r-xhigh": {
+    config: { temperature: 1, reasoning: R_XHIGH },
     conversation: SIMPLE_CONVERSATION,
     defaultCheckers: [TEXT_CONTAINS_HI],
   },
@@ -497,6 +524,29 @@ export const TEST_CASES: Record<TestKey, TestCase> = {
       },
     ],
   },
+  // Forcing a tool with reasoning explicitly on. Distinct from the `r-default`
+  // case above on any model whose schema does not already default to `high`.
+  "calc/calc/t-default/r-high/force-tool": {
+    config: {
+      reasoning: R_HIGH,
+      tools: [
+        CALCULATOR_TOOL_SPEC,
+        {
+          ...CALCULATOR_TOOL_SPEC,
+          name: UNRELIABLE_CALCULATOR_TOOL_NAME,
+          description: UNRELIABLE_CALCULATOR_TOOL_DESCRIPTION,
+        },
+      ],
+      forceTool: UNRELIABLE_CALCULATOR_TOOL_NAME,
+    },
+    conversation: CALCULATOR_CONVERSATION,
+    defaultCheckers: [
+      {
+        type: "tool_call",
+        name: UNRELIABLE_CALCULATOR_TOOL_NAME,
+      },
+    ],
+  },
   "calc/calc/t-default/r-none/force-tool": {
     config: {
       reasoning: R_NONE,
@@ -537,11 +587,16 @@ export const TEST_CASES: Record<TestKey, TestCase> = {
     defaultCheckers: [VALID_OUTPUT_FORMAT],
   },
 
-  // -- Reasoning effort "none" or "low" --
+  // -- Reasoning efforts on a reasoning-heavy prompt --
   "reasoning/no-tools/t-default/r-none": {
     config: { reasoning: R_NONE },
     conversation: REASONING_CONVERSATION,
     defaultCheckers: [HAS_NO_REASONING],
+  },
+  "reasoning/no-tools/t-default/r-minimal": {
+    config: { reasoning: R_MINIMAL },
+    conversation: REASONING_CONVERSATION,
+    defaultCheckers: [HAS_REASONING],
   },
   "reasoning/no-tools/t-default/r-low": {
     config: { reasoning: R_LOW },

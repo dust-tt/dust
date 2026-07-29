@@ -31,7 +31,6 @@ export const GRANT_TYPES = [
   "create",
   "publish",
   "invite",
-  "read",
   "use",
   "*",
 ] as const;
@@ -44,13 +43,16 @@ export const GROUP_PERMISSION_RESOURCE_TYPES = [
   "skill",
   "frame",
   "billing",
-  "identity",
-  "audit_log",
+  "security",
   "models_tier",
+  "dust_app",
   "*",
 ] as const;
 export type GroupPermissionResourceType =
   (typeof GROUP_PERMISSION_RESOURCE_TYPES)[number];
+
+// Concrete (non-wildcard) vocabulary — everything except the "*" wildcard.
+export type ConcreteResourceType = Exclude<GroupPermissionResourceType, "*">;
 
 // `resourceId = -1` means "the type as a whole": for instance-level roles, all resources of the
 // type; for type-level roles (e.g. the `create` capability), the only sensible value. There is
@@ -68,6 +70,12 @@ export function isGroupPermissionResourceType(
   return GROUP_PERMISSION_RESOURCE_TYPES.some(
     (resourceType) => resourceType === value
   );
+}
+
+export function isConcreteResourceType(
+  resourceType: GroupPermissionResourceType
+): resourceType is ConcreteResourceType {
+  return resourceType !== "*";
 }
 
 const PERMISSION_CONFIGURATION_SCOPES = [
@@ -108,6 +116,22 @@ export type CapabilitySpec = Pick<
   "grantType" | "resourceType"
 >;
 
+// The workspace-level (type-wide) verbs a caller holds, grouped by resource type.
+export type WorkspacePermissions = Record<ConcreteResourceType, GrantVerb[]>;
+
+export function emptyWorkspacePermissions(): WorkspacePermissions {
+  return {
+    space: [],
+    agent: [],
+    skill: [],
+    frame: [],
+    billing: [],
+    security: [],
+    models_tier: [],
+    dust_app: [],
+  };
+}
+
 // Stable string key for a governance capability.
 export type CapabilityKey = `${GrantType}:${GroupPermissionResourceType}`;
 
@@ -120,7 +144,7 @@ export function capabilityKey({
 }
 
 /**
- * Catalog of the governance capabilities the Workspace & Governance page manages, grouped by the
+ * Catalog of the governance capabilities the Settings & Governance page manages, grouped by the
  * section they belong to.
  */
 export const GOVERNANCE_CAPABILITIES = {
@@ -138,6 +162,6 @@ export const GOVERNANCE_CAPABILITIES = {
   ],
   billingAndSecurity: [
     { grantType: "admin", resourceType: "billing" },
-    { grantType: "admin", resourceType: "identity" },
+    { grantType: "admin", resourceType: "security" },
   ],
 } satisfies Record<string, CapabilitySpec[]>;

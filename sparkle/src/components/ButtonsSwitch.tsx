@@ -57,6 +57,7 @@ export interface ButtonsSwitchListProps
     VariantProps<typeof listStyles> {
   size?: ButtonSize;
   disabled?: boolean;
+  value?: string;
   defaultValue?: string;
   onValueChange?: (value: string) => void;
 }
@@ -70,6 +71,7 @@ export const ButtonsSwitchList = React.forwardRef<
       className,
       children,
       size = "sm",
+      value,
       defaultValue,
       onValueChange,
       disabled,
@@ -82,14 +84,17 @@ export const ButtonsSwitchList = React.forwardRef<
       string | undefined
     >(defaultValue);
 
-    const selected = internalValue;
+    const isControlled = value !== undefined;
+    const selected = isControlled ? value : internalValue;
 
     const handleChange = React.useCallback(
       (next: string) => {
-        setInternalValue(next);
+        if (!isControlled) {
+          setInternalValue(next);
+        }
         onValueChange?.(next);
       },
-      [onValueChange]
+      [isControlled, onValueChange]
     );
 
     const context: ButtonsSwitchContextType = React.useMemo(

@@ -5,11 +5,11 @@ import type { ImportSkillsRequestBody } from "@app/types/api/skills/detection/gi
 import { ImportSkillsRequestBodySchema } from "@app/types/api/skills/detection/github/import_skills";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
+import githubConnection from "./github-connection";
 import upload from "./upload";
 
 export type { ImportSkillsRequestBody, ImportSkillsResponseBody };
@@ -17,12 +17,12 @@ export type { ImportSkillsRequestBody, ImportSkillsResponseBody };
 // Mounted at /api/w/:wId/skills/import.
 const app = workspaceApp();
 
+app.route("/github-connection", githubConnection);
 app.route("/upload", upload);
 
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsBuilder(),
   validate("json", ImportSkillsRequestBodySchema),
   async (ctx): HandlerResult<ImportSkillsResponseBody> => {
     const auth = ctx.get("auth");
@@ -75,6 +75,14 @@ app.post(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
+              message: error.message,
+            },
+          });
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "app_auth_error",
               message: error.message,
             },
           });

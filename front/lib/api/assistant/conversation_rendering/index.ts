@@ -1,8 +1,6 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
-import type {
-  ConversationPruningStats,
-  ConversationRenderingMetricsCaller,
-} from "@app/lib/api/assistant/conversation_rendering/instrumentation";
+import { CheckpointedConversationWindowState } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
+import type { ConversationRenderingMetricsCaller } from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import {
   emitConversationRenderingError,
   emitConversationRenderingMetrics,
@@ -13,7 +11,7 @@ import type {
   MessageWithTokens,
 } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import { sumInteractionTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
-import { ConversationWindowState } from "@app/lib/api/assistant/conversation_rendering/window_state";
+import type { ConversationWindowResult } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -38,12 +36,14 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-export { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering/window_state";
-
 // Fixed number of tokens assumed for image contents
 const IMAGE_CONTENT_TOKEN_COUNT = 3100;
 export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
+
+// Compaction remains available once enough previous interactions exist, independently of how
+// tool results are pruned from the model context.
+export const PREVIOUS_INTERACTIONS_TO_PRESERVE = 3;
 
 // Proactive pruning target as a fraction of contextSize, picked to sit below the customer-facing
 // compaction warning (~70%) rather than the real ceiling (68-99% depending on model), which would
@@ -52,11 +52,8 @@ export const TOKENS_MARGIN = 1024;
 export const PRUNING_TARGET_CONTEXT_UTILIZATION = 0.6;
 
 /**
- * Replays the conversation chronologically so cleanup decisions are deterministic for every
- * interaction prefix. Old tool results are pruned before interactions are dropped. Soft drops
- * preserve the latest three interactions. Hard-budget pressure can drop every previous
- * interaction. The current interaction is never dropped and its latest tool result is never
- * pruned.
+ * Replays the conversation chronologically so consumed tool results are pruned at stable
+ * checkpoints without removing complete interactions.
  */
 function pruneConversationToBudget(
   interactions: InteractionWithTokens[],
@@ -69,15 +66,8 @@ function pruneConversationToBudget(
     budgetForInteractions: number;
     logDetails: Record<string, unknown>;
   }
-): Result<
-  {
-    interactions: InteractionWithTokens[];
-    prunedContext: boolean;
-    stats: ConversationPruningStats;
-  },
-  Error
-> {
-  const state = ConversationWindowState.empty({
+): Result<ConversationWindowResult, Error> {
+  const state = CheckpointedConversationWindowState.empty({
     pruningBudget,
     budgetForInteractions,
     logDetails,

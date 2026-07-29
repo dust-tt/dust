@@ -1,5 +1,11 @@
-import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
+import {
+  fetchContentFragmentsForConversation,
+  getRelatedContentFragments,
+} from "@app/lib/api/assistant/content_fragments";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type {
   ConversationType,
   UserMessageType,
@@ -357,5 +363,111 @@ describe("getRelatedContentFragments", () => {
     expect(result).toHaveLength(1);
     expect(result[0].rank).toBe(4);
     expect(result[0].title).toBe("Fragment 3");
+  });
+});
+
+describe("fetchContentFragmentsForConversation", () => {
+  it("returns latest content fragments ordered by rank", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+
+    await ConversationFactory.createContentFragmentMessage({
+      auth,
+      workspace,
+      conversationId: conversation.id,
+      rank: 0,
+      title: "First",
+      fileName: "First",
+    });
+    await ConversationFactory.createContentFragmentMessage({
+      auth,
+      workspace,
+      conversationId: conversation.id,
+      rank: 2,
+      title: "Second",
+      fileName: "Second",
+    });
+
+    const fragments = await fetchContentFragmentsForConversation(auth, {
+      conversation,
+    });
+
+    expect(fragments).toHaveLength(2);
+    expect(fragments.map((f) => f.title)).toEqual(["First", "Second"]);
+    expect(fragments.every((f) => f.contentFragmentVersion === "latest")).toBe(
+      true
+    );
+  });
+
+  it("respects upToRank", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+
+    await ConversationFactory.createContentFragmentMessage({
+      auth,
+      workspace,
+      conversationId: conversation.id,
+      rank: 0,
+      title: "Early",
+      fileName: "Early",
+    });
+    await ConversationFactory.createContentFragmentMessage({
+      auth,
+      workspace,
+      conversationId: conversation.id,
+      rank: 3,
+      title: "Late",
+      fileName: "Late",
+    });
+
+    const fragments = await fetchContentFragmentsForConversation(auth, {
+      conversation,
+      upToRank: 2,
+    });
+
+    expect(fragments).toHaveLength(1);
+    expect(fragments[0].title).toBe("Early");
+  });
+
+  it("excludes superseded content fragments", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+
+    const message = await ConversationFactory.createContentFragmentMessage({
+      auth,
+      workspace,
+      conversationId: conversation.id,
+      rank: 0,
+      title: "Original",
+      fileName: "Original",
+    });
+
+    await ContentFragmentModel.update(
+      { version: "superseded" },
+      {
+        where: {
+          id: message.contentFragmentId!,
+          workspaceId: workspace.id,
+        },
+      }
+    );
+
+    const fragments = await fetchContentFragmentsForConversation(auth, {
+      conversation,
+    });
+
+    expect(fragments).toEqual([]);
   });
 });

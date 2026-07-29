@@ -8,8 +8,11 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { isPodConversation } from "@app/types/assistant/conversation";
 
-const toolName = (name: keyof typeof SANDBOX_FUNCTIONS_TOOLS_METADATA) =>
-  getPrefixedToolName(SANDBOX_FUNCTIONS_SERVER_NAME, name);
+function toolName(
+  name: (typeof SANDBOX_FUNCTIONS_TOOLS_METADATA)[number]["name"]
+): string {
+  return getPrefixedToolName(SANDBOX_FUNCTIONS_SERVER_NAME, name);
+}
 
 export const podFunctionsSkill = {
   sId: "pod_functions",
@@ -167,26 +170,62 @@ return inline is written to a pod file whose path it reports), and \`${toolName(
 
 #### Calling a function from a Frame
 
-A Frame calls a published function through the injected \`@dust/react-hooks\` module, not the
-\`call\` tool. Unlike \`call\`/\`get\`/\`list\`/\`publish\`, which take the bare slug because they
-already operate within the current Pod, a Frame has no implicit Pod context and must address the
-function by its fully qualified slug: \`<podId>/<slug>\`, where \`podId\` is the same id that appears
-in Pod file paths as \`pod-<podId>/...\`, with the \`pod-\` prefix dropped. Neither the bare slug nor
-the mount-path form \`pod-<podId>/<slug>\` resolves from a Frame.
+A Frame calls published functions through the injected \`@dust/react-hooks\` module, not the
+\`call\` tool. Always pass the fully qualified \`<podId>/<slug>\` reference reported by
+\`${toolName("get")}\`. Never pass a bare slug or infer the function from the Frame's current Pod.
+This keeps the reference stable if the Frame is moved.
 
-\`\`\`ts
-import { callFunction } from "@dust/react-hooks";
+Use \`usePodFunction\` for idempotent reads. It caches identical calls, deduplicates calls already
+in flight, and keeps previous data visible while revalidating. Pass \`null\` as the reference to
+disable the query.
 
-const { result, error } = await callFunction("<podId>/<slug>", input);
+\`\`\`tsx
+import { usePodFunction } from "@dust/react-hooks"
+
+const { data, error, isLoading, isValidating, mutate } = usePodFunction(
+  "<podId>/list-comments",
+  { threadId }
+)
 \`\`\`
 
-\`input\` must match the function's declared input schema (see \`get\`). Check \`error\` and render
-loading/error state, since this is a network call like any other in the Frame. \`result\` is
-currently the raw sandbox runner envelope (\`{ ok, response: { status, body, encoding, ... } }\`)
-rather than the parsed \`schema.output\`, so parse \`response.body\` yourself. Pod functions are
-only reachable from authenticated Pod Frames, not from public or shared Frames.`,
+Use \`usePodFunctionMutation\` for writes and other side effects. Mutations only run when
+\`trigger\` is called. They are not deduplicated and do not guess which cached queries they affect.
+Revalidate the affected read explicitly after the mutation succeeds.
+
+\`\`\`tsx
+import { usePodFunction, usePodFunctionMutation } from "@dust/react-hooks"
+
+const comments = usePodFunction("<podId>/list-comments", { threadId })
+const addComment = usePodFunctionMutation("<podId>/post-comment")
+
+async function handleAddComment(body: string) {
+  await addComment.trigger({ threadId, body })
+  await comments.mutate()
+}
+\`\`\`
+
+Call mutation handlers from a button or another supported in-Frame interaction. Do not model this
+as HTML form submission because forms cannot run inside the Frame iframe.
+
+Inspect each function with \`${toolName("get")}\` before writing the Frame and follow both reported
+schemas. Before success, hook \`data\` is \`undefined\`. After success, it contains the parsed JSON
+value described by \`schema.output\`. Mutation \`trigger\` accepts \`schema.input\` and resolves to
+the parsed and validated value described by \`schema.output\`.
+
+Function call failures are normalized as \`SandboxFunctionCallError\` instances, also exported by
+\`@dust/react-hooks\`. Query failures are exposed through \`error\`. Mutation failures update
+\`error\` and reject \`trigger\`. Each error carries a \`message\`, an optional HTTP \`status\`, and
+a \`code\`. Render loading and error states like for any other network call. Treat \`code\` as an
+open string because it is whatever classified the failure. Branch on the codes you handle and
+fall back to a generic message for the rest. The ones worth branching on are \`invalid_input\` and
+\`invalid_output\` for schema mismatches, \`threw\` when the function threw, \`http_error\` when the
+function's own request failed, \`sandbox_function_not_found\`, and \`not_supported\`.
+
+The existing imperative \`callFunction\` remains available unchanged for explicit calls and also
+takes \`<podId>/<slug>\` or a function id. Pod functions are only reachable from authenticated Pod
+Frames, not from public or shared Frames.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 3,
+  version: 4,
   icon: "PuzzleIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

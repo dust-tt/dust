@@ -3,8 +3,11 @@ import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetailsSheet"
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { getModelMakerLogo } from "@app/components/providers/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useAppRouter } from "@app/lib/platform";
 import { useTags } from "@app/lib/swr/tags";
 import {
@@ -19,6 +22,7 @@ import type {
   AgentUsageType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import { getModelMaker } from "@app/types/assistant/models/providers";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { TagType } from "@app/types/tag";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -36,8 +40,8 @@ import {
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
-import type { CellContext } from "@tanstack/react-table";
-import type { ReactNode } from "react";
+import type { CellContext, HeaderContext } from "@tanstack/react-table";
+import type { ComponentType, ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 type RowData = {
@@ -50,12 +54,13 @@ type RowData = {
   feedbacks: { up: number; down: number } | undefined;
   lastUpdate: string | null;
   scope: AgentConfigurationScope;
+  model: string;
+  modelIcon: ComponentType | undefined;
   onClick?: () => void;
   menuItems?: MenuItem[];
   agentTags: TagType[];
   agentTagsAsString: string;
   action?: ReactNode;
-  isSelected: boolean;
   canArchive: boolean;
 };
 
@@ -79,6 +84,7 @@ const getTableColumns = ({
    * Columns order:
    * - Select (if batch edit)
    * - Name (always)
+   * - Model (hidden on mobile)
    * - Access (hidden on mobile)
    * - Editors (hidden on mobile)
    * - Tags (always)
@@ -92,23 +98,61 @@ const getTableColumns = ({
     ...(isBatchEdit
       ? [
           {
-            header: "",
+            header: (info: HeaderContext<RowData, boolean>) => {
+              const areAllPageRowsSelected =
+                info.table.getIsAllPageRowsSelected();
+              const hasSelection = Object.values(
+                info.table.getState().rowSelection
+              ).some((isSelected) => isSelected);
+
+              return (
+                <Checkbox
+                  checked={
+                    areAllPageRowsSelected
+                      ? true
+                      : hasSelection
+                        ? "partial"
+                        : false
+                  }
+                  disabled={
+                    !info.table
+                      .getRowModel()
+                      .rows.some((row) => row.getCanSelect())
+                  }
+                  tooltip={
+                    areAllPageRowsSelected
+                      ? "Clear selection"
+                      : "Select all on page"
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      info.table.toggleAllPageRowsSelected(true);
+                    } else {
+                      // Unticking clears the whole selection across pages.
+                      info.table.resetRowSelection();
+                    }
+                  }}
+                />
+              );
+            },
             accessorKey: "select",
             cell: (info: CellContext<RowData, boolean>) => (
               <DataTable.CellContent
                 disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
               >
                 <Checkbox
-                  checked={info.row.original.isSelected}
-                  disabled={!info.row.original.canArchive}
+                  checked={info.row.getIsSelected()}
+                  disabled={!info.row.getCanSelect()}
                 />
               </DataTable.CellContent>
             ),
             meta: {
               className: "w-10",
-              tooltip: "Select",
             },
-            sortable: false,
+            enableSorting: false,
           },
         ]
       : []),
@@ -135,7 +179,22 @@ const getTableColumns = ({
         </DataTable.CellContent>
       ),
       meta: {
-        className: "w-40 @lg:w-full",
+        className: "w-32 @lg:w-full",
+      },
+    },
+    {
+      header: "Model",
+      accessorKey: "model",
+      cell: (info: CellContext<RowData, string>) => (
+        <DataTable.CellContent
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+          icon={info.row.original.modelIcon}
+        >
+          {info.getValue() || "-"}
+        </DataTable.CellContent>
+      ),
+      meta: {
+        className: "hidden @sm:w-48 @sm:table-cell",
       },
     },
     {
@@ -188,7 +247,7 @@ const getTableColumns = ({
         );
       },
       meta: {
-        className: "hidden @sm:w-32 @sm:table-cell",
+        className: "hidden @sm:w-24 @sm:table-cell",
       },
     },
     {
@@ -220,7 +279,7 @@ const getTableColumns = ({
       ),
       isFilterable: true,
       meta: {
-        className: "w-32 xl:w-60",
+        className: "w-24 xl:w-40",
         tooltip: "Tags",
       },
     },
@@ -346,6 +405,19 @@ export function AssistantsTable({
 }: AssistantsTableProps) {
   const { tags } = useTags({ owner });
   const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mutateAgentConfigurations has an unstable identity but always mutates the same SWR cache key.
+  const columns = useMemo(
+    () =>
+      getTableColumns({
+        owner,
+        tags: sortedTags,
+        isBatchEdit,
+        mutateAgentConfigurations,
+      }),
+    [owner, sortedTags, isBatchEdit]
+  );
+
+  const { isDark } = useTheme();
 
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
@@ -360,6 +432,13 @@ export function AssistantsTable({
   const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
 
+  // The selection lives in the table state (and not in the rows) so that
+  // selecting an agent does not change the rows, which would reset pagination.
+  const rowSelection = useMemo(
+    () => Object.fromEntries(selection.map((agentId) => [agentId, true])),
+    [selection]
+  );
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(
     () =>
@@ -368,6 +447,8 @@ export function AssistantsTable({
           (agentConfiguration.canEdit || isAdmin(owner)) &&
           agentConfiguration.status !== "archived" &&
           agentConfiguration.scope !== "global";
+
+        const modelConfig = getSupportedModelConfig(agentConfiguration.model);
 
         return {
           sId: agentConfiguration.sId,
@@ -384,12 +465,15 @@ export function AssistantsTable({
           feedbacks: agentConfiguration.feedbacks,
           editors: agentConfiguration.editors ?? [],
           scope: agentConfiguration.scope,
+          model: modelConfig?.displayName ?? agentConfiguration.model.modelId,
+          modelIcon: modelConfig
+            ? getModelMakerLogo(getModelMaker(modelConfig), isDark)
+            : undefined,
           agentTags: agentConfiguration.tags,
           agentTagsAsString:
             agentConfiguration.tags.length > 0
               ? agentConfiguration.tags.map((t) => t.name).join(", ")
               : "",
-          isSelected: selection.includes(agentConfiguration.sId),
           canArchive,
           action:
             agentConfiguration.scope === "global" ? (
@@ -403,19 +487,13 @@ export function AssistantsTable({
                 }
               />
             ) : undefined,
-          onClick: () => {
-            if (isBatchEdit) {
-              if (canArchive) {
-                setSelection(
-                  selection.includes(agentConfiguration.sId)
-                    ? selection.filter((s) => s !== agentConfiguration.sId)
-                    : [...selection, agentConfiguration.sId]
-                );
-              }
-            } else {
-              setDetailedAgentId(agentConfiguration.sId);
-            }
-          },
+          // In batch edit, row clicks toggle the selection, which the table
+          // handles through `enableRowSelection`.
+          onClick: isBatchEdit
+            ? undefined
+            : () => {
+                setDetailedAgentId(agentConfiguration.sId);
+              },
           menuItems:
             agentConfiguration.scope !== "global" &&
             agentConfiguration.status !== "archived"
@@ -502,9 +580,8 @@ export function AssistantsTable({
       setDetailedAgentId,
       setShowDisabledFreeWorkspacePopup,
       showDisabledFreeWorkspacePopup,
-      selection,
-      setSelection,
       isBatchEdit,
+      isDark,
     ]
   );
 
@@ -526,14 +603,21 @@ export function AssistantsTable({
           <DataTable
             className="relative"
             data={rows}
-            columns={getTableColumns({
-              owner,
-              tags: sortedTags,
-              isBatchEdit,
-              mutateAgentConfigurations,
-            })}
+            columns={columns}
             pagination={pagination}
             setPagination={setPagination}
+            getRowId={(row) => row.sId}
+            enableRowSelection={
+              isBatchEdit ? (row) => row.original.canArchive : false
+            }
+            rowSelection={rowSelection}
+            setRowSelection={(newRowSelection) => {
+              setSelection(
+                Object.keys(newRowSelection).filter(
+                  (agentId) => newRowSelection[agentId]
+                )
+              );
+            }}
           />
         )}
       </div>

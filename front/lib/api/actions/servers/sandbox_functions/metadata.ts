@@ -1,17 +1,15 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   POD_DATABASE_NAME_REGEX,
   SANDBOX_FUNCTION_SLUG_REGEX,
 } from "@app/types/api/sandbox_functions";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const SANDBOX_FUNCTIONS_SERVER_NAME = "sandbox_functions" as const;
 
-export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
-  list: {
+export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
+  {
+    name: "list",
     description:
       "List the pod functions published in the current pod, with their " +
       "slug and description. Use the get tool to retrieve a function's input " +
@@ -25,7 +23,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get: {
+  {
+    name: "get",
     description:
       "Get a pod function's input and output JSON schemas by its slug.",
     schema: {
@@ -42,7 +41,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  publish: {
+  {
+    name: "publish",
     description:
       "Publish a pod function from a TypeScript source file in the current pod. The source " +
       "must default-export a `fetch(request: Request): Promise<Response>` handler and export a " +
@@ -79,7 +79,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  call: {
+  {
+    name: "call",
     description:
       "Call a pod function published in the current pod by its slug, passing its input " +
       "payload, and get back the function's output. Use the get tool first to see the function's " +
@@ -106,7 +107,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  inspect_invocations: {
+  {
+    name: "inspect_invocations",
     description:
       "Inspect the most recent invocations of a pod function in the current pod, including " +
       "their inputs, results, and errors.",
@@ -132,7 +134,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  db_list: {
+  {
+    name: "db_list",
     description: "List the pod's SQLite databases and their sizes.",
     schema: {},
     stake: "never_ask",
@@ -143,7 +146,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  db_schema: {
+  {
+    name: "db_schema",
     description: "Get a pod database's live schema as a drizzle schema file.",
     schema: {
       database: z
@@ -159,7 +163,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  db_query: {
+  {
+    name: "db_query",
     description:
       "Run a single SQL statement against a pod database: SELECT and DML.",
     schema: {
@@ -183,7 +188,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  db_reconcile: {
+  {
+    name: "db_reconcile",
     description:
       "Apply a pod database's drizzle schema file to its live database (additive changes only).",
     schema: {
@@ -207,7 +213,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const;
 
 export const SANDBOX_FUNCTIONS_SERVER = {
   serverInfo: {
@@ -220,13 +226,5 @@ export const SANDBOX_FUNCTIONS_SERVER = {
     authorization: null,
     documentationUrl: null,
   },
-  tools: Object.values(SANDBOX_FUNCTIONS_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: SANDBOX_FUNCTIONS_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

@@ -3,6 +3,7 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useBlockedSkillSpaceRemovalConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
+import { SpaceRestrictionMessage } from "@app/components/shared/SpaceRestrictionMessage";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type {
   AttachedKnowledgeFormData,
@@ -12,7 +13,7 @@ import type {
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
-import { Button, ContentMessage, Planet } from "@dust-tt/sparkle";
+import { Button, Planet } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
@@ -41,6 +42,7 @@ export function SkillBuilderRequestedSpacesSection({
   } = useController<SkillBuilderFormData, "additionalSpaces">({
     name: "additionalSpaces",
   });
+  const isReadOnly = additionalSpacesField.disabled ?? false;
   const selectedAdditionalSpaces = additionalSpacesField.value ?? [];
 
   const { mcpServerViews, isMCPServerViewsLoading } =
@@ -233,38 +235,30 @@ export function SkillBuilderRequestedSpacesSection({
       <div className="flex items-start justify-between">
         <div>
           <h3 className="heading-lg font-semibold text-foreground">
-            Spaces and Pods
+            Visibility control and available data
           </h3>
           <p className="text-sm text-muted-foreground">
-            Choose which spaces and Pods this skill can access. The skill can
-            use their knowledge and capabilities, and only users with access to
-            all selected spaces and Pods can use it.
+            Add a space or pod to restrict usage to its members and make its
+            data available to this skill.
           </p>
         </div>
         <Button
           label="Manage"
           icon={Planet}
           variant="outline"
-          disabled={!areSpaceRequirementsReady}
+          disabled={isReadOnly || !areSpaceRequirementsReady}
           onClick={handleOpenSheet}
         />
       </div>
-      {nonGlobalSpacesWithRestrictions.length > 0 && (
-        <div className="mb-4 w-full">
-          <ContentMessage variant="golden" size="lg">
-            This skill can access knowledge and capabilities from these spaces
-            and Pods, and only users with access to all of them can use
-            it:&nbsp;
-            <strong>
-              {nonGlobalSpacesWithRestrictions
-                .map((space) => space.name)
-                .join(", ")}
-            </strong>
-            .
-          </ContentMessage>
-        </div>
-      )}
-      <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
+      <SpaceRestrictionMessage
+        entityName="skill"
+        owner={owner}
+        spaces={nonGlobalSpacesWithRestrictions}
+      />
+      <SpaceChips
+        spaces={spacesToDisplay}
+        onRemoveSpace={isReadOnly ? undefined : handleRemoveSpace}
+      />
 
       <SpaceSelectionSheet
         alreadyRequestedSpaceIds={spaceIdsUsedBySkill}
@@ -272,7 +266,7 @@ export function SkillBuilderRequestedSpacesSection({
         missingSpaceIds={missingSpaceIds}
         onClose={handleCloseSheet}
         onSave={handleSaveSpaces}
-        open={isSheetOpen}
+        open={isSheetOpen && !isReadOnly}
         selectedSpaces={draftSelectedSpaces}
         setSelectedSpaces={setDraftSelectedSpaces}
       />

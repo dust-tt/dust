@@ -221,64 +221,60 @@ const query = {
 
 ## Step 3: Create API Endpoint
 
-Create `pages/api/w/[wId]/your_feature/stats.ts`:
+Create `front-api/routes/w/[wId]/your_feature/stats.ts`, then mount it from
+`front-api/routes/w/[wId]/your_feature/index.ts`. Endpoint rules (one file per URL, mounting,
+validation, errors) are in `front-api/CODING_RULES.md`:
 
 ```typescript
-import type { NextApiRequest, NextApiResponse } from "next";
-import { withSessionAuthentication } from "@/server/auth/wrappers";
-import { Authenticator } from "@/server/auth";
-import { apiError } from "@/lib/api_errors";
-import { queryYourData } from "@/lib/api/your_feature/queries/your_query";
+import { queryYourData } from "@app/lib/api/your_feature/queries/your_query";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-): Promise<void> {
-  const auth = await Authenticator.fromSuperUserSession(req, res);
+const DEFAULT_WINDOW_DAYS = 7;
 
-  if (!auth.workspace()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "Workspace not found",
-      },
+const GetStatsQuerySchema = z.object({
+  days: z.coerce.number().int().positive().default(DEFAULT_WINDOW_DAYS),
+  entityId: z.string().optional(),
+});
+
+// Mounted at /api/w/:wId/your_feature/stats.
+const app = workspaceApp();
+
+/** @ignoreswagger */
+app.get(
+  "/",
+  validate("query", GetStatsQuerySchema),
+  async (ctx): HandlerResult<YourQueryResult> => {
+    const auth = ctx.get("auth");
+    const { days, entityId } = ctx.req.valid("query");
+
+    const result = await queryYourData({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      days,
+      entityId,
     });
-  }
 
-  switch (req.method) {
-    case "GET":
-      const days = req.query.days ? parseInt(req.query.days as string) : 7;
-      const entityId = req.query.entityId as string | undefined;
-
-      const result = await queryYourData({
-        workspaceId: auth.workspace().sId,
-        days,
-        entityId,
-      });
-
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: result.error.message,
-          },
-        });
-      }
-
-      return res.status(200).json(result.value);
-
-    default:
-      return apiError(req, res, {
-        status_code: 405,
+    if (result.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
         api_error: {
-          type: "method_not_allowed",
-          message: "Method not allowed",
+          type: "internal_server_error",
+          message: result.error.message,
         },
       });
-  }
-}
+    }
 
-export default withSessionAuthentication(handler);
+    return ctx.json(result.value);
+  }
+);
+
+export default app;
 ```
+
+`workspaceApp()` is the typed Hono factory for routes under `/w/:wId`. `workspaceAuth` is applied
+once at `front-api/routes/w/[wId]/index.ts`, so `ctx.get("auth")` is already a resolved
+`Authenticator` — no manual workspace check in the handler. Hono handles method dispatch, so there
+is no 405 branch to write.

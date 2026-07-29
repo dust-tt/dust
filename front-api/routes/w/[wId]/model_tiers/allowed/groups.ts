@@ -1,3 +1,9 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import type { GetGroupAllowedModelTiersResponseBody } from "@app/types/api/model_tiers";
 import {
@@ -41,6 +47,25 @@ app.post(
       return apiError(ctx, modelTierErrorToApiError(result.error));
     }
 
+    const groupRes = await GroupResource.fetchById(auth, body.groupId);
+    const group = groupRes.isOk()
+      ? groupRes.value
+      : { sId: body.groupId, name: body.groupId };
+    void emitAuditLogEvent({
+      auth,
+      action: "group.advanced_model_access_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("group", group),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        enabled: String(true),
+        model_id: body.tierName,
+        provider_id: "model_tier",
+      },
+    });
+
     return ctx.body(null, 201);
   }
 );
@@ -62,6 +87,25 @@ app.delete(
     if (result.isErr()) {
       return apiError(ctx, modelTierErrorToApiError(result.error));
     }
+
+    const groupRes = await GroupResource.fetchById(auth, body.groupId);
+    const group = groupRes.isOk()
+      ? groupRes.value
+      : { sId: body.groupId, name: body.groupId };
+    void emitAuditLogEvent({
+      auth,
+      action: "group.advanced_model_access_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("group", group),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        enabled: String(false),
+        model_id: "inherit",
+        provider_id: "model_tier",
+      },
+    });
 
     return ctx.body(null, 204);
   }

@@ -24,6 +24,8 @@ import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { Ok, type Result } from "@app/types/shared/result";
 
+const SANDBOX_RUNTIME_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
 export interface EnsureSandboxReadyResult {
   sandbox: SandboxResource;
   freshlyCreated: boolean;
@@ -71,6 +73,23 @@ async function ensureOwnerSandboxReady(
       const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
       cold = freshlyCreated;
 
+      const shouldRefreshRuntime =
+        freshlyCreated ||
+        wokeFromSleep ||
+        !sandbox.lastRuntimeRefreshAt ||
+        Date.now() - sandbox.lastRuntimeRefreshAt.getTime() >=
+          SANDBOX_RUNTIME_REFRESH_INTERVAL_MS;
+
+      if (freshlyCreated || wokeFromSleep) {
+        void startTelemetry(auth, sandbox, runtimeOwner).catch((err) =>
+          logger.error({ err }, "Telemetry start failed (fire-and-forget)")
+        );
+      }
+
+      if (!shouldRefreshRuntime) {
+        return new Ok({ sandbox, freshlyCreated });
+      }
+
       // Synchronous and cheap: not worth a span (it would always read ~0ms).
       const imageResult = getSandboxImage(auth);
       if (imageResult.isErr()) {
@@ -83,21 +102,17 @@ async function ensureOwnerSandboxReady(
       }
       const image = imageResult.value;
 
-      void startTelemetry(auth, sandbox, runtimeOwner).catch((err) =>
-        logger.error({ err }, "Telemetry start failed (fire-and-forget)")
-      );
-
       // Only mount on first creation. e2b preserves the FUSE mount and the
-      // token server across betaPause + connect (verified empirically), so on
-      // wake we just need a fresh GCS access token in /tmp/token.json (the
-      // running token server will hand it to gcsfuse on the next request).
+      // root-owned token server across betaPause + connect (verified empirically),
+      // so on wake we just need fresh per-mount credentials in /run/dust-gcs.
       if (freshlyCreated) {
         // The image seeds /etc/dust/ca-bundle.pem with system roots, and
         // gcsfuse runs as root to storage.googleapis.com, which the in-sandbox
         // nftables ruleset never touches: every rule is scoped to the agent uid
         // (1003) and the chains default to accept, so root egress is never
-        // dropped, even mid-setup. The dev-unrestricted branch only tears the
-        // table down (loosening egress further), so it's safe to overlap too.
+        // dropped, even mid-setup. The dev-unrestricted branch tears down the
+        // general table but recreates the dedicated GCS broker drop, so it's
+        // safe to overlap too.
         // Egress prep can therefore run alongside the GCS mount, with egress
         // errors still taking precedence.
         const [prepResult, mountResult] = await Promise.all([
@@ -177,6 +192,8 @@ async function ensureOwnerSandboxReady(
         status = "error";
         return ensureEgressResult;
       }
+
+      await sandbox.updateLastRuntimeRefreshAt(new Date());
 
       return new Ok({ sandbox, freshlyCreated });
     });

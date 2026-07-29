@@ -9,12 +9,13 @@ import {
   type PermissionConfigurationScope,
 } from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
+import { removeNulls } from "@app/types/shared/utils/general";
 import {
   ButtonsSwitch,
   ButtonsSwitchList,
   ContentMessage,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type GovernanceSettingMetadata = {
   label: string;
@@ -30,39 +31,38 @@ const GOVERNANCE_SETTING_METADATA: Partial<
 > = {
   "create:agent": {
     label: "Create agents",
-    description: "Controls who can build agents in the Agent Builder.",
+    description: "Who can create agents in the Agent Builder.",
   },
   "publish:agent": {
     label: "Publish agents",
-    description: "Controls who can publish agents to the whole workspace.",
+    description: "Who can publish agents to the whole workspace.",
   },
   "create:skill": {
     label: "Create skills",
-    description: "Controls who can build custom skills.",
+    description: "Who can create custom skills.",
   },
   "publish:skill": {
-    label: "Publish skills",
-    description: "Controls who can publish skills to the whole workspace.",
+    label: "Manage skill availability",
+    description: "Who can share skills across the workspace.",
   },
   "invite:frame": {
     label: "Invite people by email",
     description:
-      "Controls who can share frames by email with people outside your organization.",
+      "Who can share frames by email with people outside your organization.",
   },
   "publish:frame": {
     label: "Share by public link",
-    description: "Controls who can create public links to frames.",
+    description: "Who can create public links to frames.",
   },
   "admin:billing": {
-    label: "Billing access",
+    label: "Access billing features",
     description:
-      "Controls who can manage billing settings, invoices, and payment methods.",
+      "Who can manage billing settings, invoices, and payment methods.",
     isGroupsOnly: true,
   },
-  "admin:identity": {
-    label: "Security access",
-    description:
-      "Controls who can manage user access, identities, and provisioning.",
+  "admin:security": {
+    label: "Access security features",
+    description: "Who can manage user access, identities, and provisioning.",
     isGroupsOnly: true,
   },
 };
@@ -91,10 +91,37 @@ function getGovernancePermissionMetadata(
   return metadata;
 }
 
+function getGroupSelection(
+  configuration: GovernancePermissionConfiguration,
+  groups: GroupType[]
+): {
+  selectedGroups: GroupType[];
+  selectableGroups: GroupType[];
+  hasMissingGroups: boolean;
+} {
+  const orderedGroupIds =
+    configuration.scope === "groups" ? configuration.groupIds : [];
+  const selectedGroupIds = new Set(orderedGroupIds);
+  const groupsById = new Map(groups.map((g) => [g.sId, g]));
+  // Preserve selection order (newly added groups land last) instead of the `groups` array order.
+  const selectedGroups = removeNulls(
+    orderedGroupIds.map((id) => groupsById.get(id))
+  );
+  const selectableGroups = groups.filter((g) => !selectedGroupIds.has(g.sId));
+
+  return {
+    selectedGroups,
+    selectableGroups,
+    hasMissingGroups: selectedGroups.length !== selectedGroupIds.size,
+  };
+}
+
 interface GovernanceSettingRowProps {
   governancePermission: GovernancePermission;
   groups: GroupType[];
-  onChange: (permission: GovernancePermissionConfiguration) => void;
+  onChange: (
+    configuration: GovernancePermissionConfiguration
+  ) => Promise<boolean>;
 }
 
 export const GovernanceSettingRow = ({
@@ -106,18 +133,20 @@ export const GovernanceSettingRow = ({
     useState<GovernancePermissionConfiguration>(
       governancePermission.configuration
     );
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Remember the last group selection so switching away to "everyone"/"admins_only" and back to
+  // "groups" restores what the user had picked, rather than starting from an empty selection.
+  const lastGroupIdsRef = useRef<string[]>(
+    configuration.scope === "groups" ? configuration.groupIds : []
+  );
 
   const metadata = getGovernancePermissionMetadata(governancePermission);
 
-  const selectedGroupIds = new Set(
-    configuration.scope === "groups" ? configuration.groupIds : []
-  );
-  const selectedGroups = groups.filter((g) => selectedGroupIds.has(g.sId));
-  const selectableGroups = groups.filter((g) => !selectedGroupIds.has(g.sId));
+  const { selectedGroups, selectableGroups, hasMissingGroups } =
+    getGroupSelection(configuration, groups);
 
-  const hasMissingGroups = selectedGroups.length !== selectedGroupIds.size;
-
-  const handlePermissionChange = ({
+  const handlePermissionChange = async ({
     scope,
     groupIds,
   }: {
@@ -128,10 +157,33 @@ export const GovernanceSettingRow = ({
       return;
     }
 
+    // When switching back to "groups" from the scope switch, no groupIds are provided: restore the
+    // last selection the user had picked. When the selection is edited directly (groupIds passed),
+    // remember it so it survives a round-trip through "everyone"/"admins_only".
+    const nextGroupIds = groupIds ?? lastGroupIdsRef.current;
+    if (scope === "groups") {
+      lastGroupIdsRef.current = nextGroupIds;
+    }
+
     const newConfiguration: GovernancePermissionConfiguration =
-      scope === "groups" ? { scope, groupIds: groupIds ?? [] } : { scope };
+      scope === "groups" ? { scope, groupIds: nextGroupIds } : { scope };
+
+    // Apply optimistically, then persist. The optimistic update is the loading feedback (the
+    // switch moves immediately). We intentionally do NOT re-sync from the server on success: the
+    // backend normalizes an empty "groups" selection to admins_only, and snapping back would make
+    // it impossible to reach the transient "groups, no ids yet" state the user needs to open the
+    // selector and add a group.
+    const previousConfiguration = configuration;
     setConfiguration(newConfiguration);
-    onChange(newConfiguration);
+    setIsSaving(true);
+    try {
+      const ok = await onChange(newConfiguration);
+      if (!ok) {
+        setConfiguration(previousConfiguration);
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!metadata) {
@@ -161,8 +213,10 @@ export const GovernanceSettingRow = ({
         !metadata.isGroupsOnly ? (
           <ButtonsSwitchList
             size="xs"
-            defaultValue={configuration.scope}
-            onValueChange={(value) => handlePermissionChange({ scope: value })}
+            value={configuration.scope}
+            onValueChange={(value) =>
+              void handlePermissionChange({ scope: value })
+            }
           >
             {PERMISSION_SCOPE_OPTIONS.map(({ value, label }) => (
               <ButtonsSwitch key={value} value={value} label={label} />
@@ -175,8 +229,9 @@ export const GovernanceSettingRow = ({
         <GroupSelector
           selectedGroups={selectedGroups}
           selectableGroups={selectableGroups}
+          disabled={isSaving}
           onSelectionChange={(groupIds) =>
-            handlePermissionChange({ scope: "groups", groupIds })
+            void handlePermissionChange({ scope: "groups", groupIds })
           }
         />
       )}

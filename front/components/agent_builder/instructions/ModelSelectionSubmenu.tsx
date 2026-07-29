@@ -3,14 +3,23 @@ import {
   getModelKey,
   getModelsCategorization,
 } from "@app/components/agent_builder/instructions/utils";
-import { getModelProviderLogo } from "@app/components/providers/types";
+import { getModelMakerLogo } from "@app/components/providers/types";
 import { RegionalFlag } from "@app/components/shared/RegionalFlag";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
-import { getProviderDisplayName } from "@app/types/assistant/models/providers";
 import {
+  getModelMaker,
+  getModelMakerDisplayName,
+} from "@app/types/assistant/models/providers";
+import type { ModelMakerIdType } from "@app/types/assistant/models/types";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
@@ -18,8 +27,10 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
+  Icon,
 } from "@dust-tt/sparkle";
 import type React from "react";
+import { Fragment, useState } from "react";
 import { useController } from "react-hook-form";
 
 interface ModelSelectionSubmenuProps {
@@ -47,7 +58,7 @@ function ModelRadioItem({
   return (
     <DropdownMenuRadioItem
       value={modelConfig.modelId}
-      icon={getModelProviderLogo(modelConfig.providerId, isDark)}
+      icon={getModelMakerLogo(getModelMaker(modelConfig), isDark)}
       description={
         !modelConfig.isSelectable && isSelected
           ? NOT_SELECTABLE_MODEL_DESCRIPTION
@@ -55,6 +66,11 @@ function ModelRadioItem({
       }
       label={modelConfig.displayName}
       disabled={!modelConfig.isSelectable}
+      onSelect={(e) => {
+        // Keep the dropdown open after picking a model so the user can adjust
+        // reasoning effort or other settings without reopening it.
+        e.preventDefault();
+      }}
       onClick={() => {
         onModelSelection(modelConfig);
       }}
@@ -82,10 +98,18 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   const { hasFeature } = useFeatureFlags();
   const { subscription } = useAuth();
 
+  // On mobile there is no room for flyout submenus, so "Custom model" and each
+  // maker group expand inline within the same dropdown instead.
+  const isMobile = useIsMobile();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [expandedMaker, setExpandedMaker] = useState<ModelMakerIdType | null>(
+    null
+  );
+
   const showRegionalFlag =
     hasFeature("use_vertex_for_supported_models") && !subscription.plan.isByok;
 
-  const { bestGeneralModels, providerGroups } = getModelsCategorization(models);
+  const { bestGeneralModels, makerGroups } = getModelsCategorization(models);
 
   const currentModelKey = modelField.value?.modelId;
 
@@ -119,117 +143,156 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
     modelConfig.modelId === modelField.value?.modelId &&
     modelConfig.providerId === modelField.value?.providerId;
 
+  const regionalComponentFor = (modelConfig: EnabledModelConfigurationType) =>
+    modelConfig.regionalAvailability[regionInfo.name] && showRegionalFlag ? (
+      <RegionalFlag region={regionInfo.name} />
+    ) : null;
+
+  const renderRadioItem = (
+    modelConfig: EnabledModelConfigurationType,
+    isSelected: boolean
+  ) => (
+    <ModelRadioItem
+      key={getModelKey(modelConfig)}
+      modelConfig={modelConfig}
+      isDark={isDark}
+      isSelected={isSelected}
+      onModelSelection={handleModelSelection}
+      regionalComponent={regionalComponentFor(modelConfig)}
+    />
+  );
+
+  const selectedModelSection = showSelectedModelSection && selectedModel && (
+    <>
+      <DropdownMenuLabel label="Selected model" />
+      <DropdownMenuRadioGroup value={currentModelKey}>
+        {renderRadioItem(selectedModel, true)}
+      </DropdownMenuRadioGroup>
+    </>
+  );
+
+  const bestModelsSection = (
+    <>
+      <DropdownMenuLabel label="Best performing models by providers" />
+      <DropdownMenuRadioGroup value={currentModelKey}>
+        {bestGeneralModels.map((modelConfig) =>
+          renderRadioItem(modelConfig, isModelSelected(modelConfig))
+        )}
+      </DropdownMenuRadioGroup>
+    </>
+  );
+
+  const renderMakerModels = (models: {
+    recent: EnabledModelConfigurationType[];
+    older: EnabledModelConfigurationType[];
+  }) => {
+    const hasRecentModels = models.recent.length > 0;
+    const hasOlderModels = models.older.length > 0;
+    return (
+      <>
+        {hasRecentModels && (
+          <>
+            <DropdownMenuLabel label="Recent models" />
+            <DropdownMenuRadioGroup value={currentModelKey}>
+              {models.recent.map((modelConfig) =>
+                renderRadioItem(modelConfig, isModelSelected(modelConfig))
+              )}
+            </DropdownMenuRadioGroup>
+          </>
+        )}
+        {hasOlderModels && (
+          <>
+            <DropdownMenuLabel
+              label={hasRecentModels ? "Older models" : "All models"}
+            />
+            <DropdownMenuRadioGroup value={currentModelKey}>
+              {models.older.map((modelConfig) =>
+                renderRadioItem(modelConfig, isModelSelected(modelConfig))
+              )}
+            </DropdownMenuRadioGroup>
+          </>
+        )}
+      </>
+    );
+  };
+
+  const selectedModelMaker = selectedModel
+    ? getModelMaker(selectedModel)
+    : null;
+
+  if (isMobile) {
+    return (
+      <>
+        <DropdownMenuItem
+          label="Custom model"
+          endComponent={
+            <Icon visual={isExpanded ? ChevronDown : ChevronRight} size="xs" />
+          }
+          onClick={() => setIsExpanded((v) => !v)}
+          onSelect={(e) => e.preventDefault()}
+        />
+        {isExpanded && (
+          <>
+            {selectedModelSection}
+            {bestModelsSection}
+            <DropdownMenuLabel label="Other models" />
+            {Array.from(makerGroups.entries()).map(([makerId, models]) => (
+              <Fragment key={makerId}>
+                <DropdownMenuItem
+                  label={`From ${getModelMakerDisplayName(makerId)}`}
+                  endComponent={
+                    <div className="flex items-center gap-1">
+                      {selectedModelMaker === makerId && (
+                        <Icon
+                          visual={Check}
+                          size="sm"
+                          className="text-muted-foreground"
+                        />
+                      )}
+                      <Icon
+                        visual={
+                          expandedMaker === makerId ? ChevronDown : ChevronRight
+                        }
+                        size="xs"
+                      />
+                    </div>
+                  }
+                  onClick={() =>
+                    setExpandedMaker((current) =>
+                      current === makerId ? null : makerId
+                    )
+                  }
+                  onSelect={(e) => e.preventDefault()}
+                />
+                {expandedMaker === makerId && renderMakerModels(models)}
+              </Fragment>
+            ))}
+          </>
+        )}
+      </>
+    );
+  }
+
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger label="Model selection" />
+      <DropdownMenuSubTrigger label="Custom model" />
       <DropdownMenuPortal>
         <DropdownMenuSubContent className="w-80">
-          {showSelectedModelSection && selectedModel && (
-            <>
-              <DropdownMenuLabel label="Selected model" />
-              <DropdownMenuRadioGroup value={currentModelKey}>
-                <ModelRadioItem
-                  key={getModelKey(selectedModel)}
-                  modelConfig={selectedModel}
-                  isDark={isDark}
-                  isSelected={true}
-                  onModelSelection={handleModelSelection}
-                  regionalComponent={
-                    selectedModel.regionalAvailability[regionInfo.name] &&
-                    showRegionalFlag ? (
-                      <RegionalFlag region={regionInfo.name} />
-                    ) : null
-                  }
-                />
-              </DropdownMenuRadioGroup>
-            </>
-          )}
-
-          <DropdownMenuLabel label="Best performing models by providers" />
-          <DropdownMenuRadioGroup value={currentModelKey}>
-            {bestGeneralModels.map((modelConfig) => (
-              <ModelRadioItem
-                key={getModelKey(modelConfig)}
-                modelConfig={modelConfig}
-                isDark={isDark}
-                isSelected={isModelSelected(modelConfig)}
-                onModelSelection={handleModelSelection}
-                regionalComponent={
-                  modelConfig.regionalAvailability[regionInfo.name] &&
-                  showRegionalFlag ? (
-                    <RegionalFlag region={regionInfo.name} />
-                  ) : null
-                }
-              />
-            ))}
-          </DropdownMenuRadioGroup>
-
+          {selectedModelSection}
+          {bestModelsSection}
           <DropdownMenuLabel label="Other models" />
-          {Array.from(providerGroups.entries()).map(([providerId, models]) => {
-            const providerDisplayName = getProviderDisplayName(providerId);
-            const hasRecentModels = models.recent.length > 0;
-            const hasOlderModels = models.older.length > 0;
-
-            return (
-              <DropdownMenuSub key={providerId}>
-                <DropdownMenuSubTrigger label={`From ${providerDisplayName}`} />
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent className="w-80">
-                    {hasRecentModels && (
-                      <>
-                        <DropdownMenuLabel label="Recent models" />
-                        <DropdownMenuRadioGroup value={currentModelKey}>
-                          {models.recent.map((modelConfig) => (
-                            <ModelRadioItem
-                              key={getModelKey(modelConfig)}
-                              modelConfig={modelConfig}
-                              isDark={isDark}
-                              isSelected={isModelSelected(modelConfig)}
-                              onModelSelection={handleModelSelection}
-                              regionalComponent={
-                                modelConfig.regionalAvailability[
-                                  regionInfo.name
-                                ] && showRegionalFlag ? (
-                                  <RegionalFlag region={regionInfo.name} />
-                                ) : null
-                              }
-                            />
-                          ))}
-                        </DropdownMenuRadioGroup>
-                      </>
-                    )}
-                    {hasOlderModels && (
-                      <>
-                        <DropdownMenuLabel
-                          label={
-                            hasRecentModels ? "Older models" : "All models"
-                          }
-                        />
-                        <DropdownMenuRadioGroup value={currentModelKey}>
-                          {models.older.map((modelConfig) => (
-                            <ModelRadioItem
-                              key={getModelKey(modelConfig)}
-                              modelConfig={modelConfig}
-                              isDark={isDark}
-                              isSelected={isModelSelected(modelConfig)}
-                              onModelSelection={handleModelSelection}
-                              regionalComponent={
-                                modelConfig.regionalAvailability[
-                                  regionInfo.name
-                                ] && showRegionalFlag ? (
-                                  <RegionalFlag region={regionInfo.name} />
-                                ) : null
-                              }
-                            />
-                          ))}
-                        </DropdownMenuRadioGroup>
-                      </>
-                    )}
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
-            );
-          })}
+          {Array.from(makerGroups.entries()).map(([makerId, models]) => (
+            <DropdownMenuSub key={makerId}>
+              <DropdownMenuSubTrigger
+                label={`From ${getModelMakerDisplayName(makerId)}`}
+              />
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent className="w-80">
+                  {renderMakerModels(models)}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+          ))}
         </DropdownMenuSubContent>
       </DropdownMenuPortal>
     </DropdownMenuSub>

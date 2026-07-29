@@ -26,7 +26,7 @@ export class WebhookSourceFactory {
     } = {}
   ) {
     const cachedName =
-      options.name ?? "Test WebhookSource" + faker.number.int(1000);
+      options.name ?? `Test WebhookSource${faker.string.alphanumeric(8)}`;
 
     const auth = await Authenticator.internalAdminForWorkspace(
       this.workspace.sId

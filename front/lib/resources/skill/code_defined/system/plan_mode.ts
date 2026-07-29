@@ -1,4 +1,3 @@
-import { ASK_USER_QUESTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import {
   CLOSE_PLAN_TOOL_NAME,
   CREATE_PLAN_TOOL_NAME,
@@ -9,15 +8,20 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
-const ASK_USER_QUESTION_TOOL_NAME =
-  ASK_USER_QUESTION_TOOLS_METADATA.ask_user_question.name;
+const ASK_USER_QUESTION_TOOL_NAME = "ask_user_question";
 
 const PLAN_MODE_INSTRUCTIONS = `
-Plan Mode lets you maintain a live \`plan.md\` the user can follow as you work. Think of it as a shared progress view, not just an approval gate. Using it is delightful UX: the user sees what you're doing without having to ask.
+Plan Mode lets you maintain a live \`plan.md\` the user can follow as you work. Think of it as a shared progress view for substantial work, not just an approval gate. On a long task, the user sees where you are without having to ask. On a short one, it is pure overhead.
 
-**Default behavior: call \`${CREATE_PLAN_TOOL_NAME}\` at the start of any non-trivial turn.** Non-trivial includes: multi-step work, anything touching several files or systems, research that will span multiple tool calls, anything the user might plausibly want to follow along with. When in doubt, err on the side of creating a plan: the cost is one tool call, the upside is transparency.
+**If the user explicitly asks for a plan** (e.g. "use plan mode", "plan this for me", "draft a plan before you do anything"), always call \`${CREATE_PLAN_TOOL_NAME}\`, even if the task looks small to you. This overrides everything below.
 
-**Skip plan mode** for single-shot questions, quick lookups, one-tool-call answers, or pure clarification exchanges.
+**Otherwise, call \`${CREATE_PLAN_TOOL_NAME}\` only when the work is genuinely multi-step**: a change spanning several files or systems, research across several sources, or a task whose steps you will have to sequence and revisit rather than run straight through. Rule of thumb: if you expect to be done within about five tool calls, there is nothing worth planning. The test is whether the plan tells the user something they don't already know — if it would just restate their request as a checklist, don't create one.
+
+**When in doubt, skip it.** A plan the user reads only after the work is already finished is noise, not transparency: they get a card to track for nothing. Prefer doing the work and reporting the result.
+
+**Skip plan mode entirely** for questions and lookups, single edits or fixes, pure clarification exchanges, and follow-ups that just tweak something you already produced. Answer length is not the signal — a long written answer produced in one shot needs no plan.
+
+**If the work turns out bigger than you expected mid-turn, call \`${CREATE_PLAN_TOOL_NAME}\` then.** The bar is the size of the work, not when you discovered it.
 
 Exactly one active plan is allowed per conversation. If a plan already exists in this conversation (you can see it in the attachments), do NOT call \`${CREATE_PLAN_TOOL_NAME}\` again; use \`${EDIT_PLAN_TOOL_NAME}\` to iterate on the existing one.
 
@@ -26,7 +30,7 @@ Exactly one active plan is allowed per conversation. If a plan already exists in
 Clarifying questions go through \`${ASK_USER_QUESTION_TOOL_NAME}\`: use it liberally before drafting the plan and whenever ambiguity arises mid-execution.
 
 **Approval**: plan mode has no dedicated approval tool. When you need explicit sign-off before executing, you MUST request it through \`${ASK_USER_QUESTION_TOOL_NAME}\` with a question like "Approve this plan?" and options such as "Approve" and "Reject". Never ask for approval in your normal response text: a plain sentence like "Do you approve?" gives the user no clear choice, is not an approval gate, and does not pause for a decision. If you are seeking approval, the LAST thing you do in the turn is the \`${ASK_USER_QUESTION_TOOL_NAME}\` call, not a written question.
-- Request approval this way when the user explicitly asked for plan mode (e.g. "use plan mode", "plan this for me", "draft a plan before you do anything"): ask once the plan is populated and before starting execution.
+- Request approval this way when the user explicitly asked for plan mode (see above): ask once the plan is populated and before starting execution.
 - Otherwise it is optional: only ask if the stakes warrant a human checkpoint (irreversible actions, big scope, ambiguous intent). For transparency-only flows, skip approval and just keep editing the plan as you execute.
 - Only ask for approval when plan.md is ready. Do not ask with an incomplete plan.
 
@@ -51,10 +55,10 @@ export const planModeSkill = {
   userFacingDescription:
     "Let agents maintain a live plan.md the user can follow as work progresses.",
   agentFacingDescription:
-    "Create and maintain a plan.md for non-trivial tasks to give the user visibility.",
+    "Create and maintain a plan.md for genuinely multi-step tasks to give the user visibility.",
   instructions: PLAN_MODE_INSTRUCTIONS,
   mcpServers: [{ name: PLAN_MODE_SERVER_NAME }],
-  version: 1,
+  version: 2,
   icon: "ActionDocumentTextIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

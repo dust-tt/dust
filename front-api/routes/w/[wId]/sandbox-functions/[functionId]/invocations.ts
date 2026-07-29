@@ -39,6 +39,11 @@ const ResolveAuthenticationBodySchema = z
 const PostSandboxFunctionInvocationBodySchema = z
   .object({
     input: z.unknown().optional(),
+    context: z
+      .object({
+        timezone: z.string().optional(),
+      })
+      .optional(),
   })
   .strict();
 
@@ -188,6 +193,14 @@ app.post(
               message: result.error.message,
             },
           });
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "invalid_request_error",
+              message: result.error.message,
+            },
+          });
         default:
           return assertNever(result.error.type);
       }
@@ -244,6 +257,14 @@ app.post(
             status_code: 400,
             api_error: {
               type: "action_not_blocked",
+              message: result.error.message,
+            },
+          });
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "invalid_request_error",
               message: result.error.message,
             },
           });

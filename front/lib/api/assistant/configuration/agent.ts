@@ -11,11 +11,6 @@ import {
 } from "@app/lib/api/assistant/configuration/helpers";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
-import {
-  canPublishForAuth,
-  getPublishingRestrictionLevel,
-  PUBLISHING_RESTRICTIONS,
-} from "@app/lib/api/assistant/publishing_restrictions";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
   buildAuditLogTarget,
@@ -23,7 +18,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
@@ -86,7 +81,7 @@ import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_util
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
-import { isAdmin, isBuilder } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import assert from "assert";
 import type { Transaction } from "sequelize";
 import {
@@ -109,7 +104,12 @@ const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
  */
 export async function createPendingAgentConfiguration(
   auth: Authenticator
-): Promise<{ sId: string }> {
+): Promise<Result<{ sId: string }, Error>> {
+  const canCreate = await auth.hasWorkspacePermission("create", "agent");
+  if (!canCreate) {
+    return new Err(new Error("Creating agents is restricted."));
+  }
+
   const owner = auth.getNonNullableWorkspace();
   const user = auth.getNonNullableUser();
 
@@ -158,7 +158,7 @@ export async function createPendingAgentConfiguration(
     });
   });
 
-  return { sId };
+  return new Ok({ sId });
 }
 
 export async function getAgentConfigurationsWithVersion<
@@ -424,7 +424,7 @@ export async function getAgentLabelsByIds(
   auth: Authenticator,
   agentIds: string[]
 ): Promise<AgentLabel[]> {
-  if (!auth.isBusinessAdmin()) {
+  if (!auth.isManager()) {
     return [];
   }
 
@@ -566,31 +566,41 @@ export async function createAgentConfiguration(
 
   // For hidden agents, track previous editors to disable triggers when editors are removed.
   let previousEditorIds: Set<ModelId> = new Set();
+  // The scope the agent has before this write. A new agent starts hidden, so saving it
+  // visible counts as publishing.
+  let currentScope: AgentConfigurationScope = "hidden";
   if (agentConfigurationId) {
     const existingAgent = await getAgentConfiguration(auth, {
       agentId: agentConfigurationId,
       variant: "light",
     });
-    if (existingAgent && scope === "hidden") {
-      const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-        auth,
-        existingAgent
-      );
-      if (editorGroupRes.isOk()) {
-        const members = await editorGroupRes.value.getActiveMembers(auth);
-        previousEditorIds = new Set(members.map((m) => m.id));
+    if (existingAgent) {
+      currentScope = existingAgent.scope;
+      if (scope === "hidden") {
+        const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+          auth,
+          existingAgent
+        );
+        if (editorGroupRes.isOk()) {
+          const members = await editorGroupRes.value.getActiveMembers(auth);
+          previousEditorIds = new Set(members.map((m) => m.id));
+        }
       }
     }
-    if (existingAgent && existingAgent.scope !== "visible") {
-      const { canPublish, message } = await canPublishAgent(auth);
-      if (!canPublish && scope === "visible" && status === "active") {
-        return new Err(new Error(message!));
-      }
-    }
-  } else {
+  }
+
+  if (
+    needsPublishPermission({
+      currentScope,
+      newScope: scope,
+      isActive: status === "active",
+    })
+  ) {
     const { canPublish, message } = await canPublishAgent(auth);
-    if (!canPublish && scope === "visible" && status === "active") {
-      return new Err(new Error(message ?? "Publishing agents is restricted."));
+    if (!canPublish) {
+      return new Err(
+        new Error(message ?? "You don't have permission to publish agents.")
+      );
     }
   }
 
@@ -677,6 +687,16 @@ export async function createAgentConfiguration(
         userFavorite = userRelation?.favorite ?? false;
       }
 
+      // `existingAgent` is null both when no `agentConfigurationId` was given and when one was
+      // given but didn't match a real row — the latter would otherwise let a caller bypass the
+      // capability check by passing a nonexistent id and taking the "create new" branch below.
+      if (!existingAgent) {
+        const canCreate = await auth.hasWorkspacePermission("create", "agent");
+        if (!canCreate) {
+          throw new Error("Creating agents is restricted.");
+        }
+      }
+
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const sId = agentConfigurationId || generateRandomModelSId();
 
@@ -759,6 +779,11 @@ export async function createAgentConfiguration(
         );
       }
 
+      const canManageProtectedTags = await auth.hasWorkspacePermission(
+        "publish",
+        "agent"
+      );
+
       const existingTags = existingAgent
         ? await TagResource.listForAgent(auth, existingAgent.id)
         : [];
@@ -766,7 +791,7 @@ export async function createAgentConfiguration(
         .filter((t) => t.kind === "protected")
         .map((t) => t.sId);
       if (
-        !isBuilder(owner) &&
+        !canManageProtectedTags &&
         !existingReservedTags.every((reservedTagId) =>
           tags.some((tag) => tag.sId === reservedTagId)
         )
@@ -787,7 +812,7 @@ export async function createAgentConfiguration(
           const tagResource = tagResourceById.get(tag.sId);
           if (tagResource) {
             if (
-              !isBuilder(owner) &&
+              !canManageProtectedTags &&
               tagResource.kind === "protected" &&
               !existingReservedTags.includes(tagResource.sId)
             ) {
@@ -1892,12 +1917,35 @@ async function canPublishAgent(auth: Authenticator): Promise<{
   canPublish: boolean;
   message: string | null;
 }> {
-  const featureFlags = await getFeatureFlags(auth);
-  const level = getPublishingRestrictionLevel(featureFlags);
-  if (!level || canPublishForAuth(auth, level)) {
+  const canPublish = await auth.hasWorkspacePermission("publish", "agent");
+  if (canPublish) {
     return { canPublish: true, message: null };
   }
-  return { canPublish: false, message: PUBLISHING_RESTRICTIONS[level].message };
+  return {
+    canPublish: false,
+    message: "You don't have permission to publish agents.",
+  };
+}
+
+// Does changing an agent's scope publish or unpublish it? Both require the workspace "publish
+// agents" permission. Publishing means an active agent becomes visible; unpublishing means an
+// active visible agent becomes hidden. A pure edit, or any change on a non-active
+// (draft/pending/archived) agent, needs no publish permission.
+function needsPublishPermission({
+  currentScope,
+  newScope,
+  isActive,
+}: {
+  currentScope: AgentConfigurationScope;
+  newScope: AgentConfigurationScope;
+  isActive: boolean;
+}): boolean {
+  if (!isActive) {
+    return false;
+  }
+  const publishes = currentScope !== "visible" && newScope === "visible";
+  const unpublishes = currentScope === "visible" && newScope === "hidden";
+  return publishes || unpublishes;
 }
 
 export async function updateAgentConfigurationsScope(
@@ -1921,12 +1969,19 @@ export async function updateAgentConfigurationsScope(
     return new Ok(undefined);
   }
 
-  const { canPublish, message } = await canPublishAgent(auth);
-  if (scope === "visible" && !canPublish) {
-    if (
-      editableAgents.some((a) => a.scope !== "visible" && a.status === "active")
-    ) {
-      return new Err(new Error(message ?? "Publishing agents is restricted."));
+  const batchNeedsPublishPermission = editableAgents.some((a) =>
+    needsPublishPermission({
+      currentScope: a.scope,
+      newScope: scope,
+      isActive: a.status === "active",
+    })
+  );
+  if (batchNeedsPublishPermission) {
+    const { canPublish, message } = await canPublishAgent(auth);
+    if (!canPublish) {
+      return new Err(
+        new Error(message ?? "You don't have permission to publish agents.")
+      );
     }
   }
 

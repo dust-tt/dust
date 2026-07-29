@@ -121,6 +121,7 @@ export async function seedConversations(
         // Create user message
         const userMessageRow = await UserMessageModel.create({
           userId: conversationUser.id,
+          conversationId: conversation.id,
           workspaceId: workspace.id,
           content: userContent,
           userContextUsername: conversationUser.username ?? "dev-user",
@@ -146,6 +147,7 @@ export async function seedConversations(
           status: "succeeded",
           agentConfigurationId: agentId,
           agentConfigurationVersion: 0,
+          conversationId: conversation.id,
           workspaceId: workspace.id,
           skipToolsValidation: false,
         });

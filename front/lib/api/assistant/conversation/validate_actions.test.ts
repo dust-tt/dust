@@ -21,7 +21,10 @@ vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { postUserMessage } from "@app/lib/api/assistant/conversation";
+import {
+  createConversation,
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
 import { registerUserAnswer } from "@app/lib/api/assistant/conversation/answer_user_question";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
@@ -41,6 +44,7 @@ import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
+  ConversationModel,
   MentionModel,
   MessageModel,
   UserMessageModel,
@@ -142,13 +146,20 @@ describe("dismissMention", () => {
       if (!conversationRes.isOk()) {
         throw new Error("Failed to fetch conversation");
       }
-      const conversation = conversationRes.value;
 
       // Use postUserMessage to create the message with the full flow
       const user = refreshedAuth.getNonNullableUser();
       const userJson = user.toJSON();
       const postResult = await postUserMessage(refreshedAuth, {
-        conversation,
+        conversationResource: await ConversationResource.fetchById(
+          refreshedAuth,
+          restrictedConversation.sId
+        ).then((resource) => {
+          if (!resource) {
+            throw new Error("Failed to fetch conversation resource");
+          }
+          return resource;
+        }),
         content: `Hello @${mentionedUser.username}`,
         mentions: [
           {
@@ -290,13 +301,20 @@ describe("dismissMention", () => {
       if (!conversationRes1.isOk()) {
         throw new Error("Failed to fetch conversation");
       }
-      const conversation1 = conversationRes1.value;
 
       // Use postUserMessage to create the first message with the full flow
       const user = refreshedAuth.getNonNullableUser();
       const userJson = user.toJSON();
       const postResult1 = await postUserMessage(refreshedAuth, {
-        conversation: conversation1,
+        conversationResource: await ConversationResource.fetchById(
+          refreshedAuth,
+          restrictedConversation.sId
+        ).then((resource) => {
+          if (!resource) {
+            throw new Error("Failed to fetch conversation resource");
+          }
+          return resource;
+        }),
         content: `Hello @${mentionedUser.username}`,
         mentions: [
           {
@@ -330,11 +348,18 @@ describe("dismissMention", () => {
       if (!conversationRes2.isOk()) {
         throw new Error("Failed to refresh conversation");
       }
-      const conversation2 = conversationRes2.value;
 
       // Use postUserMessage to create the second message with the full flow
       const postResult2 = await postUserMessage(refreshedAuth, {
-        conversation: conversation2,
+        conversationResource: await ConversationResource.fetchById(
+          refreshedAuth,
+          restrictedConversation.sId
+        ).then((resource) => {
+          if (!resource) {
+            throw new Error("Failed to fetch conversation resource");
+          }
+          return resource;
+        }),
         content: `Hello again @${mentionedUser.username}`,
         mentions: [
           {
@@ -468,10 +493,6 @@ describe("dismissMention", () => {
       await MembershipFactory.associate(workspace, otherUser, {
         role: "user",
       });
-      const otherUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        otherUser.sId,
-        workspace.sId
-      );
 
       // Create a user who is NOT a member of the restricted space
       const mentionedUser = await UserFactory.basic();
@@ -484,21 +505,33 @@ describe("dismissMention", () => {
         userIds: [otherUser.sId],
       });
 
+      const otherUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
       // Create a conversation with requestedSpaceIds that includes the restricted space
       const restrictedSpaceModelId = getResourceIdFromSId(
         refreshedRestrictedSpace!.sId
       );
       expect(restrictedSpaceModelId).not.toBeNull();
 
-      const restrictedConversation = await ConversationFactory.create(
+      const restrictedConversationResource = await createConversation(
         otherUserAuth,
         {
-          agentConfigurationId: "test-agent",
-          messagesCreatedAt: [],
+          title: "Restricted Conversation",
           visibility: "unlisted",
-          requestedSpaceIds: [restrictedSpaceModelId!],
+          spaceId: null,
         }
       );
+      await ConversationModel.update(
+        { requestedSpaceIds: [restrictedSpaceModelId!] },
+        { where: { id: restrictedConversationResource.id } }
+      );
+      const restrictedConversation = {
+        ...restrictedConversationResource.toJSON(),
+        requestedSpaceIds: [refreshedRestrictedSpace!.sId],
+      };
 
       // Note: auth (the user trying to dismiss) doesn't have access to this conversation
       // because they're not in the restricted space, so they'll get a 404
@@ -860,6 +893,7 @@ describe("validateAction", () => {
   async function createAgentMessageWithNullUserParent() {
     const userMessageRow = await UserMessageModel.create({
       userId: null,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Message without user",
       userContextUsername: "api-user",
@@ -885,6 +919,7 @@ describe("validateAction", () => {
     });
 
     const agentMessageRow = await AgentMessageModel.create({
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       status: "created",
       agentConfigurationId: agentConfig.sId,
@@ -931,6 +966,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1102,6 +1138,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1165,6 +1202,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1217,6 +1255,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1433,6 +1472,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,
@@ -1612,6 +1652,7 @@ describe("validateAction", () => {
       );
 
       const agentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
         workspaceId: workspace.id,
         status: "created",
         agentConfigurationId: agentConfig.sId,

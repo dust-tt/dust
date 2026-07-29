@@ -18,6 +18,7 @@ const WORKSPACE_ID = "ws123";
 const BUCKET = "test-bucket";
 const CONV_ID = "conv456";
 const POD_ID = "pod789";
+const USER_ID = "user789";
 
 function makeBackend() {
   return new GCSFileSystemBackend(WORKSPACE_ID, BUCKET);
@@ -85,6 +86,31 @@ describe("GCSFileSystemBackend.list", () => {
         prefix: `w/${WORKSPACE_ID}/pods/${POD_ID}/files/`,
       })
     );
+  });
+
+  it("queries the correct GCS prefix for a user mount", async () => {
+    const backend = makeBackend();
+    await backend.list(`user-${USER_ID}/`);
+
+    expect(getAllFilesByPrefixMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prefix: `w/${WORKSPACE_ID}/users/${USER_ID}/files/`,
+      })
+    );
+  });
+
+  it("returns canonical scoped paths for a user mount", async () => {
+    const prefix = `w/${WORKSPACE_ID}/users/${USER_ID}/files/`;
+    getAllFilesByPrefixMock.mockResolvedValue({
+      files: [gcsFile({ name: `${prefix}memory.md` })],
+      pageFetchCount: 1,
+    });
+
+    const result = await makeBackend().list(`user-${USER_ID}/`);
+    assert(result.isOk());
+
+    expect(result.value[0].path).toBe(`user-${USER_ID}/memory.md`);
+    expect(result.value[0].fileName).toBe("memory.md");
   });
 
   it("excludes .processed. siblings by default", async () => {
@@ -420,6 +446,24 @@ describe("GCSFileSystemBackend.write", () => {
     expect(saveMock).toHaveBeenCalledWith(content, { contentType: "text/csv" });
   });
 
+  it("writes to the correct GCS path for a user", async () => {
+    const content = Buffer.from("# memory");
+    const bucket = vi.mocked(getPrivateUploadBucket)();
+
+    await makeBackend().write(
+      `user-${USER_ID}/memory.md`,
+      content,
+      "text/markdown"
+    );
+
+    expect(bucket.file).toHaveBeenCalledWith(
+      `w/${WORKSPACE_ID}/users/${USER_ID}/files/memory.md`
+    );
+    expect(saveMock).toHaveBeenCalledWith(content, {
+      contentType: "text/markdown",
+    });
+  });
+
   it("converts string content to a Buffer", async () => {
     await makeBackend().write(
       `conversation-${CONV_ID}/notes.txt`,
@@ -678,6 +722,19 @@ describe("GCSFileSystemBackend.getDownloadUrl", () => {
     expect(getSignedUrlMock).toHaveBeenCalledWith(
       `w/${WORKSPACE_ID}/pods/${POD_ID}/files/data.csv`,
       { expirationDelayMs: DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS }
+    );
+  });
+
+  it("uses a custom expiration when requested", async () => {
+    const expirationDelayMs = 15 * 60 * 1000;
+
+    await makeBackend().getDownloadUrl(`conversation-${CONV_ID}/report.pdf`, {
+      expiresInMs: expirationDelayMs,
+    });
+
+    expect(getSignedUrlMock).toHaveBeenCalledWith(
+      `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/report.pdf`,
+      { expirationDelayMs }
     );
   });
 

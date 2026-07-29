@@ -13,16 +13,19 @@ import datadogLogger from "@app/logger/datadogLogger";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
+  SandboxFunctionCallError,
   SandboxFunctionInvocationEvent,
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
 import type {
+  CallFunctionRequest,
   CommandResultMap,
   EditTextFn,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types/assistant/visualization";
 import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
+import { isAPIError } from "@app/types/error";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import {
   assertNever,
@@ -71,6 +74,8 @@ type ProtectedVisualization = BaseVisualization & {
 
 export type Visualization = PublicVisualization | ProtectedVisualization;
 
+export type FrameAccess = "conversation" | "public-anonymous" | "public-member";
+
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   request: { command: T } & VisualizationRPCRequest,
   response: CommandResultMap[T],
@@ -82,6 +87,38 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
       messageUniqueId: request.messageUniqueId,
       identifier: request.identifier,
       result: response,
+    },
+    { targetOrigin: "*" }
+  );
+};
+
+const sendErrorToIframe = (
+  request: CallFunctionRequest,
+  error: SandboxFunctionCallError,
+  target: MessageEventSource,
+  {
+    conversationId,
+    workspaceId,
+  }: { conversationId: string | null; workspaceId: string }
+) => {
+  // Once handed over, the error belongs to Frame code and only comes back if the Frame reports it
+  // itself, so log here to keep a trace of every failed call.
+  datadogLogger.info("Sandbox function call failed", {
+    code: error.code,
+    conversationId,
+    errorMessage: error.message,
+    fileId: request.identifier,
+    functionIdOrSlug: request.params.functionIdOrSlug,
+    status: error.status,
+    workspaceId,
+  });
+
+  target.postMessage(
+    {
+      command: "answer",
+      messageUniqueId: request.messageUniqueId,
+      identifier: request.identifier,
+      error,
     },
     { targetOrigin: "*" }
   );
@@ -103,7 +140,7 @@ interface SandboxFunctionInvocationProps {
   invocationId: string;
   onSettle: (
     invocationId: string,
-    response: CommandResultMap["callFunction"]
+    result: Result<unknown, SandboxFunctionCallError>
   ) => void;
 }
 
@@ -178,13 +215,10 @@ function SandboxFunctionInvocation({
             // NO-OP
             break;
           case "sandbox_function_invocation_result":
-            onSettle(invocationId, { result: eventPayload.data.result });
+            onSettle(invocationId, new Ok(eventPayload.data.result));
             break;
           case "sandbox_function_invocation_error":
-            onSettle(invocationId, {
-              result: null,
-              error: eventPayload.data.message,
-            });
+            onSettle(invocationId, new Err(eventPayload.data.error));
             break;
           case "tool_approve_execution":
           case "tool_personal_auth_required":
@@ -194,22 +228,28 @@ function SandboxFunctionInvocation({
             assertNeverAndIgnore(eventPayload.data);
         }
       } catch (error) {
-        onSettle(invocationId, {
-          result: null,
-          error:
-            "Failed to parse function invocation event: " +
-            normalizeError(error).message,
-        });
+        onSettle(
+          invocationId,
+          new Err({
+            code: "transport_error",
+            message:
+              "Failed to parse function invocation event: " +
+              normalizeError(error).message,
+          })
+        );
       }
     },
     [invocationId, onSettle, enqueueBlockedAction]
   );
 
   const onTerminalError = useCallback(() => {
-    onSettle(invocationId, {
-      result: null,
-      error: "Failed to listen to function invocation events.",
-    });
+    onSettle(
+      invocationId,
+      new Err({
+        code: "transport_error",
+        message: "Failed to listen to function invocation events.",
+      })
+    );
   }, [invocationId, onSettle]);
 
   useEventSource(
@@ -249,18 +289,20 @@ function SandboxFunctionInvocation({
       blockedActionCard = null;
   }
 
-  // Covers the frame while the tool is blocked on user input; positioned within the component's
-  // relative root, same layering approach as the loading spinner overlay. Cards are keyed by the
-  // delivery eventId so consecutive events of the same type never reuse local card state.
+  // Overlays the frame while the tool is blocked on user input. Cards are keyed by the delivery
+  // eventId so consecutive events of the same type never reuse local card state.
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center overflow-auto bg-panel-background p-4">
-      <div className="w-full max-w-xl">{blockedActionCard}</div>
+    <div className="absolute inset-0 z-10 flex items-center justify-center overflow-auto bg-muted-foreground/75 p-4">
+      <div className="flex w-full max-w-xl justify-center">
+        {blockedActionCard}
+      </div>
     </div>
   );
 }
 
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler({
+  conversationId,
   createSandboxFunctionInvocation,
   getFileBlob,
   onEditText,
@@ -270,11 +312,13 @@ function useVisualizationDataHandler({
   visualization,
   vizIframeRef,
   waitForSandboxFunctionInvocationResult,
+  workspaceId,
 }: {
+  conversationId: string | null;
   createSandboxFunctionInvocation: (
     functionIdOrSlug: string,
     input?: unknown
-  ) => Promise<Result<SandboxFunctionInvocationType, Error>>;
+  ) => Promise<Result<SandboxFunctionInvocationType, SandboxFunctionCallError>>;
   getFileBlob: (fileId: string) => Promise<Blob | null>;
   onEditText?: EditTextFn;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
@@ -285,7 +329,8 @@ function useVisualizationDataHandler({
   waitForSandboxFunctionInvocationResult: (params: {
     functionId: string;
     invocationId: string;
-  }) => Promise<CommandResultMap["callFunction"]>;
+  }) => Promise<Result<unknown, SandboxFunctionCallError>>;
+  workspaceId: string;
 }) {
   const sendNotification = useSendNotification();
   const { code } = visualization;
@@ -349,15 +394,10 @@ function useVisualizationDataHandler({
           );
 
           if (invocationRes.isErr()) {
-            sendResponseToIframe(
-              data,
-              {
-                result: null,
-                error:
-                  "Failed to call function: " + invocationRes.error.message,
-              },
-              event.source
-            );
+            sendErrorToIframe(data, invocationRes.error, event.source, {
+              conversationId,
+              workspaceId,
+            });
             break;
           }
 
@@ -366,7 +406,14 @@ function useVisualizationDataHandler({
             invocationId: invocationRes.value.sId,
           });
 
-          sendResponseToIframe(data, result, event.source);
+          if (result.isErr()) {
+            sendErrorToIframe(data, result.error, event.source, {
+              conversationId,
+              workspaceId,
+            });
+          } else {
+            sendResponseToIframe(data, result.value, event.source);
+          }
           break;
         }
 
@@ -434,6 +481,7 @@ function useVisualizationDataHandler({
     return () => window.removeEventListener("message", listener);
   }, [
     code,
+    conversationId,
     createSandboxFunctionInvocation,
     downloadFileFromBlob,
     getFileBlob,
@@ -445,6 +493,7 @@ function useVisualizationDataHandler({
     vizIframeRef,
     sendNotification,
     waitForSandboxFunctionInvocationResult,
+    workspaceId,
   ]);
 }
 
@@ -483,8 +532,8 @@ interface VisualizationActionIframeProps {
   conversationId: string | null;
   isEditable?: boolean;
   isInDrawer?: boolean;
-  isPublic?: boolean;
   onEditText?: EditTextFn;
+  frameAccess?: FrameAccess;
   spaceId?: string;
   visualization: Visualization;
   vizUrl: string;
@@ -512,7 +561,7 @@ export const VisualizationActionIframe = forwardRef<
   >([]);
   const invocationResolversRef = useRef<Map<
     string,
-    (response: CommandResultMap["callFunction"]) => void
+    (result: Result<unknown, SandboxFunctionCallError>) => void
   > | null>(null);
   if (invocationResolversRef.current === null) {
     invocationResolversRef.current = new Map();
@@ -527,7 +576,7 @@ export const VisualizationActionIframe = forwardRef<
       functionId: string;
       invocationId: string;
     }) =>
-      new Promise<CommandResultMap["callFunction"]>((resolve) => {
+      new Promise<Result<unknown, SandboxFunctionCallError>>((resolve) => {
         invocationResolvers.set(invocationId, resolve);
         setActiveInvocations((prev) => [...prev, { functionId, invocationId }]);
       }),
@@ -535,13 +584,16 @@ export const VisualizationActionIframe = forwardRef<
   );
 
   const settleSandboxFunctionInvocation = useCallback(
-    (invocationId: string, response: CommandResultMap["callFunction"]) => {
+    (
+      invocationId: string,
+      result: Result<unknown, SandboxFunctionCallError>
+    ) => {
       const resolve = invocationResolvers.get(invocationId);
       invocationResolvers.delete(invocationId);
       setActiveInvocations((prev) =>
         prev.filter((invocation) => invocation.invocationId !== invocationId)
       );
-      resolve?.(response);
+      resolve?.(result);
     },
     [invocationResolvers]
   );
@@ -566,12 +618,14 @@ export const VisualizationActionIframe = forwardRef<
     conversationId,
     isEditable = false,
     isInDrawer = false,
-    isPublic = false,
     onEditText,
     spaceId,
     visualization,
     workspaceId,
+    frameAccess = "conversation",
   } = props;
+
+  const isPublic = frameAccess !== "conversation";
 
   const getFileBlob = useCallback(
     async (fileId: string) => {
@@ -619,14 +673,22 @@ export const VisualizationActionIframe = forwardRef<
     async (
       functionIdOrSlug: string,
       input?: unknown
-    ): Promise<Result<SandboxFunctionInvocationType, Error>> => {
+    ): Promise<
+      Result<SandboxFunctionInvocationType, SandboxFunctionCallError>
+    > => {
       try {
-        if (isPublic) {
-          throw new Error("Pod functions are not supported in shared frames.");
+        if (frameAccess === "public-anonymous") {
+          return new Err({
+            code: "not_supported",
+            message: "Pod functions are not supported in shared frames.",
+          });
         }
 
         const body: PostSandboxFunctionInvocationRequestBody = {
           input,
+          context: {
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          },
         };
 
         const encodedFunctionIdOrSlug = encodeURIComponent(functionIdOrSlug);
@@ -643,7 +705,14 @@ export const VisualizationActionIframe = forwardRef<
 
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
-          throw new Error(error.message);
+          return new Err({
+            // Forward the API error type verbatim. Re-deriving a code here would collapse every
+            // failure but one into `invocation_failed` and drop the only classification the
+            // endpoint produced.
+            code: isAPIError(error) ? error.type : "invocation_failed",
+            message: error.message,
+            status: response.status,
+          });
         }
 
         const result: PostSandboxFunctionInvocationResponseBody =
@@ -651,13 +720,17 @@ export const VisualizationActionIframe = forwardRef<
 
         return new Ok(result.invocation);
       } catch (error) {
-        return new Err(normalizeError(error));
+        return new Err({
+          code: "transport_error",
+          message: normalizeError(error).message,
+        });
       }
     },
-    [isPublic, workspaceId]
+    [frameAccess, workspaceId]
   );
 
   useVisualizationDataHandler({
+    conversationId,
     createSandboxFunctionInvocation,
     getFileBlob,
     onEditText,
@@ -667,6 +740,7 @@ export const VisualizationActionIframe = forwardRef<
     visualization,
     vizIframeRef,
     waitForSandboxFunctionInvocationResult,
+    workspaceId,
   });
 
   const { code, complete: codeFullyGenerated } = visualization;
@@ -848,7 +922,7 @@ export const VisualizationActionIframe = forwardRef<
       </div>
       {showSpinner && (
         <div className="absolute inset-0 flex items-center justify-center bg-panel-background">
-          <Spinner size="xl" variant="color" />
+          <Spinner size="lg" />
         </div>
       )}
     </div>

@@ -4,10 +4,13 @@ import { WithOpenAIResponsesOutputConverter } from "@app/lib/model_constructors/
 import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
+import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/hosts";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
+import { OPENAI_LAB } from "@app/lib/model_constructors/types/labs";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
-import { OPENAI_RESPONSES_API } from "@app/lib/model_constructors/types/provider_apis";
-import { OPENAI_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+// Do not remove: front-api routes call into this client for the similar skill
+// and similar agent discovery features. Without an explicit version front-api can silently
+// resolve a stale, incompatible `openai` version through node_modules hoisting.
 import OpenAI from "openai";
 import type {
   ResponseCreateParamsNonStreaming,
@@ -31,8 +34,8 @@ export abstract class OpenAIResponsesStream extends WithOpenAIResponsesInputConv
     StreamEndpoint<ResponseCreateParamsNonStreaming, ResponseStreamEvent>
   )
 ) {
-  static readonly providerId = OPENAI_PROVIDER_ID;
-  static readonly api = OPENAI_RESPONSES_API;
+  static readonly lab = OPENAI_LAB;
+  static readonly host = OPENAI_RESPONSES_HOST;
 
   static readonly configSchema: z.ZodType<OpenAIInputConfig> = configSchema;
 

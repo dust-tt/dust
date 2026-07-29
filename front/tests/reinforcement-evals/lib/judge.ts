@@ -1,5 +1,3 @@
-import { getStreamLLM } from "@app/lib/api/llm";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getTestCaseInputForDisplay,
@@ -7,6 +5,7 @@ import {
   type TestCase,
   type ToolCall,
 } from "@app/tests/reinforcement-evals/lib/types";
+import { getJudgeLLM } from "@app/tests/utils/eval_llm";
 
 const JUDGE_PROMPT = `You are evaluating the quality of a Reinforced Skills analyst's suggestions.
 
@@ -53,7 +52,6 @@ IMPORTANT: You must include both REASONING: and SCORE: labels. The score MUST ap
 1. **Correct Tool Usage**: Did the analyst call edit_skill with the right fields?
    - instructionEdits for instruction improvements and tool reference changes
    - Tool reference changes must add/remove inline <tool id="..." name="..."/> tags in instructionEdits content
-   - toolEdits should not be used in final edit_skill calls
 2. **Suggestion Quality**: Are the suggestions specific, actionable, and well-reasoned?
    - Does the analysis field explain WHY the change is needed?
    - Is the suggested content appropriate and well-written?
@@ -98,18 +96,7 @@ export async function evaluateWithJudge(
   const scores: number[] = [];
   let lastReasoning = "";
 
-  const credentials = await getLlmCredentials(auth, {
-    skipEmbeddingApiKeyRequirement: true,
-  });
-  const llm = await getStreamLLM(auth, {
-    credentials,
-    modelId: "gpt-5-mini",
-    temperature: 0.2,
-    bypassFeatureFlag: true,
-  });
-  if (!llm) {
-    throw new Error("Failed to initialize LLM for judge evaluation");
-  }
+  const llm = await getJudgeLLM(auth);
 
   for (let i = 0; i < numRuns; i++) {
     const events = llm.stream({

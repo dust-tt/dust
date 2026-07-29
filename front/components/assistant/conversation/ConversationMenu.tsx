@@ -18,10 +18,11 @@ import { useMoveConversationToPod } from "@app/hooks/useMoveConversationToPod";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import config from "@app/lib/api/config";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
@@ -38,7 +39,6 @@ import {
   isPodConversation,
 } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
   ArrowRight,
   Avatar,
@@ -166,7 +166,6 @@ export function ConversationMenu({
   openDetailsInNewTab,
 }: ConversationMenuProps) {
   const { user, providersHealth } = useAuth();
-  const { featureFlags } = useFeatureFlags();
   const confirm = useContext(ConfirmContext);
 
   const clientType = useClientType();
@@ -174,13 +173,13 @@ export function ConversationMenu({
 
   const router = useAppRouter();
 
-  const isRestrictedFromAgentCreation =
-    featureFlags.includes("disallow_agent_creation_to_users") &&
-    !isBuilder(owner);
+  const { hasPermission } = useWorkspacePermissions();
+
+  const canCreateAgent = hasPermission("create", "agent");
   const canTurnIntoAgent =
     !!conversation &&
     !!user &&
-    !isRestrictedFromAgentCreation &&
+    canCreateAgent &&
     !isMobile &&
     clientType !== "extension";
   const sendNotification = useSendNotification();

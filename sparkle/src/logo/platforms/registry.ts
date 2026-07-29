@@ -63,9 +63,11 @@ import MicrosoftOutlookLogo from "./MicrosoftOutlook";
 import MicrosoftPowerpointLogo from "./MicrosoftPowerpoint";
 import MicrosoftTeamsLogo from "./MicrosoftTeams";
 import MicrosoftWordLogo from "./MicrosoftWord";
+import MinimaxLogo from "./Minimax";
 import MiroLogo from "./Miro";
 import MistralLogo from "./Mistral";
 import MondayLogo from "./Monday";
+import MoonshotLogo from "./Moonshot";
 import NaptaLogo from "./Napta";
 import NetSuiteLogo from "./NetSuite";
 import NotionLogo from "./Notion";
@@ -92,6 +94,7 @@ import UkgLogo from "./Ukg";
 import ValTownLogo from "./ValTown";
 import VantaLogo from "./Vanta";
 import VideoLogo from "./Video";
+import ZaiLogo from "./Zai";
 import ZapierLogo from "./Zapier";
 import ZendeskLogo from "./Zendesk";
 import ZendeskWhiteLogo from "./ZendeskWhite";
@@ -167,9 +170,11 @@ export const PLATFORM_LOGOS = {
   MicrosoftPowerpointLogo,
   MicrosoftTeamsLogo,
   MicrosoftWordLogo,
+  MinimaxLogo,
   MiroLogo,
   MistralLogo,
   MondayLogo,
+  MoonshotLogo,
   NaptaLogo,
   NetSuiteLogo,
   NotionLogo,
@@ -196,6 +201,7 @@ export const PLATFORM_LOGOS = {
   ValTownLogo,
   VantaLogo,
   VideoLogo,
+  ZaiLogo,
   ZapierLogo,
   ZendeskLogo,
   ZendeskWhiteLogo,

@@ -5,8 +5,8 @@ import type { Fetcher } from "swr";
 
 export const CONTEXT_USAGE_PERCENT_THRESHOLDS = {
   enable_compaction: 33,
-  show_warning: 70,
-  force_compaction: 80,
+  show_warning: 82,
+  force_compaction: 90,
 };
 
 export function useConversationContextUsage({

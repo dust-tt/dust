@@ -1,4 +1,9 @@
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import {
+  displayRole,
+  displayRoleCapitalized,
+  normalizeDisplayRole,
+  ROLES_DATA,
+} from "@app/components/members/Roles";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import type { ActiveRoleType } from "@app/types/user";
 import { ACTIVE_ROLES, isAdmin } from "@app/types/user";
@@ -26,11 +31,23 @@ export function RoleDropDown({
   const { hasFeature } = useFeatureFlags();
   const workspace = useWorkspace();
   const canManageAdminRole = isAdmin(workspace);
+  const isAdminGovernanceEnabled = hasFeature("admin_governance");
+
+  // `builder` is deprecated under admin governance: display it as a regular
+  // member.
+  const displayedRole = normalizeDisplayRole(
+    selectedRole,
+    isAdminGovernanceEnabled
+  );
 
   const availableRoles = ACTIVE_ROLES.filter((role) => {
-    // `business_admin` can only be assigned when the workspace has the
+    // `builder` can no longer be assigned once admin governance is enabled.
+    if (role === "builder" && isAdminGovernanceEnabled) {
+      return false;
+    }
+    // `manager` can only be assigned when the workspace has the
     // `admin_governance` feature flag.
-    if (role === "business_admin" && !hasFeature("admin_governance")) {
+    if (role === "manager" && !isAdminGovernanceEnabled) {
       return false;
     }
     // `admin` can only be assigned by those allowed to manage the admin role
@@ -49,11 +66,11 @@ export function RoleDropDown({
   if (isLocked) {
     return (
       <Chip
-        color={ROLES_DATA[selectedRole]["color"]}
+        color={ROLES_DATA[displayedRole]["color"]}
         size="sm"
         className="capitalize"
       >
-        {displayRole(selectedRole)}
+        {displayRole(displayedRole)}
       </Chip>
     );
   }
@@ -61,26 +78,19 @@ export function RoleDropDown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <div className="group flex cursor-pointer items-center gap-2">
-          <Chip
-            color={ROLES_DATA[selectedRole]["color"]}
-            size="sm"
-            className="capitalize"
-          >
-            {displayRole(selectedRole)}
-          </Chip>
-          <Button icon={ChevronDown} size="sm" variant="ghost" />
-        </div>
+        <Button
+          iconRight={ChevronDown}
+          size="sm"
+          label={displayRoleCapitalized(displayedRole)}
+          variant="ghost"
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         {availableRoles.map((role) => (
           <DropdownMenuItem
             key={role}
             onClick={() => onChange(role)}
-            label={
-              displayRole(role).charAt(0).toUpperCase() +
-              displayRole(role).slice(1)
-            }
+            label={displayRoleCapitalized(role)}
           />
         ))}
       </DropdownMenuContent>

@@ -26,6 +26,7 @@ import {
   isResourceSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { mcpToolsRequireConfiguration } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { MCPOAuthConnectionMetadataType } from "@app/types/api/oauth/providers/mcp";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
@@ -58,26 +59,173 @@ import { Op } from "sequelize";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
+// Unbounded columns (large JSONB/TEXT values) excluded from the base fetch. Callers opt into
+// the ones they need via `includeHeavyAttributes`, or hydrate later via `hydrateHeavyAttributes`.
+const REMOTE_MCP_SERVER_HEAVY_ATTRIBUTES = [
+  "authorization",
+  "cachedTools",
+  "customHeaders",
+  "lastError",
+  "sharedSecret",
+] as const;
+
+export type RemoteMCPServerHeavyAttributeType =
+  (typeof REMOTE_MCP_SERVER_HEAVY_ATTRIBUTES)[number];
+
+type RemoteMCPServerHeavyAttributesType = Pick<
+  Attributes<RemoteMCPServerModel>,
+  RemoteMCPServerHeavyAttributeType
+>;
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
+// Heavy attributes are not exposed directly: use their getters (`getCachedTools`, ...) after
+// listing them in `includeHeavyAttributes` at fetch time (none are fetched by default) or
+// after an explicit `hydrateHeavyAttributes`.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RemoteMCPServerResource
-  extends ReadonlyAttributesType<RemoteMCPServerModel> {}
+  extends Omit<
+    ReadonlyAttributesType<RemoteMCPServerModel>,
+    RemoteMCPServerHeavyAttributeType
+  > {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> {
   static model: ModelStatic<RemoteMCPServerModel> = RemoteMCPServerModel;
+
+  // Only the keys fetched so far are present; a key mapped to `null` is a fetched NULL, an
+  // absent key was never fetched.
+  private heavyAttributes: Partial<RemoteMCPServerHeavyAttributesType>;
 
   constructor(
     model: ModelStatic<RemoteMCPServerModel>,
     blob: Attributes<RemoteMCPServerModel>
   ) {
     super(RemoteMCPServerModel, blob);
+    // Rows fetched without a heavy attribute do not carry its key at all.
+    this.heavyAttributes = {
+      ...("authorization" in blob ? { authorization: blob.authorization } : {}),
+      ...("cachedTools" in blob ? { cachedTools: blob.cachedTools } : {}),
+      ...("customHeaders" in blob ? { customHeaders: blob.customHeaders } : {}),
+      ...("lastError" in blob ? { lastError: blob.lastError } : {}),
+      ...("sharedSecret" in blob ? { sharedSecret: blob.sharedSecret } : {}),
+    };
+  }
+
+  private static missingHeavyAttributeMessage(
+    key: RemoteMCPServerHeavyAttributeType
+  ): string {
+    return (
+      `Remote MCP server \`${key}\` was not fetched — list it in ` +
+      "`includeHeavyAttributes` or call `hydrateHeavyAttributes` first"
+    );
+  }
+
+  getAuthorization(): RemoteMCPServerHeavyAttributesType["authorization"] {
+    const { authorization } = this.heavyAttributes;
+    assert(
+      authorization !== undefined,
+      RemoteMCPServerResource.missingHeavyAttributeMessage("authorization")
+    );
+    return authorization;
+  }
+
+  getCachedTools(): RemoteMCPServerHeavyAttributesType["cachedTools"] {
+    const { cachedTools } = this.heavyAttributes;
+    assert(
+      cachedTools !== undefined,
+      RemoteMCPServerResource.missingHeavyAttributeMessage("cachedTools")
+    );
+    return cachedTools;
+  }
+
+  getCustomHeaders(): RemoteMCPServerHeavyAttributesType["customHeaders"] {
+    const { customHeaders } = this.heavyAttributes;
+    assert(
+      customHeaders !== undefined,
+      RemoteMCPServerResource.missingHeavyAttributeMessage("customHeaders")
+    );
+    return customHeaders;
+  }
+
+  getLastError(): RemoteMCPServerHeavyAttributesType["lastError"] {
+    const { lastError } = this.heavyAttributes;
+    assert(
+      lastError !== undefined,
+      RemoteMCPServerResource.missingHeavyAttributeMessage("lastError")
+    );
+    return lastError;
+  }
+
+  getSharedSecret(): RemoteMCPServerHeavyAttributesType["sharedSecret"] {
+    const { sharedSecret } = this.heavyAttributes;
+    assert(
+      sharedSecret !== undefined,
+      RemoteMCPServerResource.missingHeavyAttributeMessage("sharedSecret")
+    );
+    return sharedSecret;
+  }
+
+  static async hydrateHeavyAttributes(
+    auth: Authenticator,
+    servers: RemoteMCPServerResource[],
+    attributes: readonly RemoteMCPServerHeavyAttributeType[],
+    transaction?: Transaction
+  ): Promise<void> {
+    const requested = new Set(attributes);
+    const missing = servers.filter((s) =>
+      attributes.some((key) => !(key in s.heavyAttributes))
+    );
+    if (missing.length === 0) {
+      return;
+    }
+    const rows = await RemoteMCPServerModel.findAll({
+      where: {
+        id: { [Op.in]: missing.map((s) => s.id) },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      attributes: ["id", ...attributes],
+      transaction,
+    });
+    const rowById = new Map(rows.map((r) => [r.id, r]));
+    for (const server of missing) {
+      const row = rowById.get(server.id);
+      if (!row) {
+        // The server can be deleted between the base fetch and this one — leave its heavy
+        // attributes unset rather than failing the whole batch.
+        logger.warn(
+          { remoteMCPServerId: server.id },
+          "Remote MCP server row missing when hydrating heavy attributes"
+        );
+        continue;
+      }
+      server.heavyAttributes = {
+        ...server.heavyAttributes,
+        ...(requested.has("authorization")
+          ? { authorization: row.authorization }
+          : {}),
+        ...(requested.has("cachedTools")
+          ? { cachedTools: row.cachedTools }
+          : {}),
+        ...(requested.has("customHeaders")
+          ? { customHeaders: row.customHeaders }
+          : {}),
+        ...(requested.has("lastError") ? { lastError: row.lastError } : {}),
+        ...(requested.has("sharedSecret")
+          ? { sharedSecret: row.sharedSecret }
+          : {}),
+      };
+    }
   }
 
   static async makeNew(
     auth: Authenticator,
     blob: Omit<
       CreationAttributes<RemoteMCPServerModel>,
-      "name" | "description" | "spaceId" | "sId" | "lastSyncAt"
+      | "name"
+      | "description"
+      | "spaceId"
+      | "sId"
+      | "lastSyncAt"
+      | "cachedToolsRequireConfiguration"
     > & {
       oAuthUseCase: MCPOAuthUseCase | null;
     },
@@ -95,6 +243,9 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       sharedSecret: blob.sharedSecret,
       lastSyncAt: new Date(),
       authorization: blob.authorization,
+      cachedToolsRequireConfiguration: mcpToolsRequireConfiguration(
+        blob.cachedTools
+      ),
     };
 
     const server = await RemoteMCPServerModel.create(serverData, {
@@ -126,16 +277,30 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
 
   private static async baseFetch(
     auth: Authenticator,
-    options?: ResourceFindOptions<RemoteMCPServerModel>,
+    options?: ResourceFindOptions<RemoteMCPServerModel> & {
+      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
+    },
     transaction?: Transaction
   ) {
-    const { where, ...otherOptions } = options ?? {};
+    const {
+      where,
+      includeHeavyAttributes = [],
+      ...otherOptions
+    } = options ?? {};
+
+    const includedHeavyAttributes = new Set(includeHeavyAttributes);
+    const excludedHeavyAttributes = REMOTE_MCP_SERVER_HEAVY_ATTRIBUTES.filter(
+      (key) => !includedHeavyAttributes.has(key)
+    );
 
     const servers = await RemoteMCPServerModel.findAll({
       where: {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
+      ...(excludedHeavyAttributes.length > 0
+        ? { attributes: { exclude: excludedHeavyAttributes } }
+        : {}),
       ...otherOptions,
       transaction,
     });
@@ -147,27 +312,38 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
 
   static async fetchByIds(
     auth: Authenticator,
-    ids: string[]
+    ids: string[],
+    {
+      includeHeavyAttributes,
+    }: {
+      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
+    } = {}
   ): Promise<RemoteMCPServerResource[]> {
     return this.baseFetch(auth, {
       where: {
         id: removeNulls(ids.map(getResourceIdFromSId)),
       },
+      includeHeavyAttributes,
     });
   }
 
   static async fetchById(
     auth: Authenticator,
-    id: string
+    id: string,
+    options: {
+      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
+    } = {}
   ): Promise<RemoteMCPServerResource | null> {
-    const [server] = await this.fetchByIds(auth, [id]);
+    const [server] = await this.fetchByIds(auth, [id], options);
     return server ?? null;
   }
 
   static async findByPk(
     auth: Authenticator,
     id: number,
-    options?: ResourceFindOptions<RemoteMCPServerModel>
+    options?: ResourceFindOptions<RemoteMCPServerModel> & {
+      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
+    }
   ): Promise<RemoteMCPServerResource | null> {
     const servers = await this.baseFetch(auth, {
       where: {
@@ -181,7 +357,13 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[],
-    transaction?: Transaction
+    {
+      transaction,
+      includeHeavyAttributes,
+    }: {
+      transaction?: Transaction;
+      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
+    } = {}
   ): Promise<RemoteMCPServerResource[]> {
     if (ids.length === 0) {
       return [];
@@ -190,6 +372,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       auth,
       {
         where: { id: { [Op.in]: ids } },
+        includeHeavyAttributes,
       },
       transaction
     );
@@ -216,8 +399,15 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     return nameMap;
   }
 
-  static async listByWorkspace(auth: Authenticator) {
-    return this.baseFetch(auth);
+  static async listByWorkspace(
+    auth: Authenticator,
+    {
+      includeHeavyAttributes,
+    }: {
+      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
+    } = {}
+  ) {
+    return this.baseFetch(auth, { includeHeavyAttributes });
   }
 
   // Admin operations - don't use in non-temporal code.
@@ -368,9 +558,24 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       cachedName,
       cachedDescription,
       cachedTools,
+      ...(cachedTools
+        ? {
+            cachedToolsRequireConfiguration:
+              mcpToolsRequireConfiguration(cachedTools),
+          }
+        : {}),
       lastSyncAt,
-      lastError: clearError ? null : this.lastError,
+      ...(clearError ? { lastError: null } : {}),
     });
+
+    // The written values are now known regardless of what the original fetch included.
+    this.heavyAttributes = {
+      ...this.heavyAttributes,
+      ...(sharedSecret !== undefined ? { sharedSecret } : {}),
+      ...(customHeaders !== undefined ? { customHeaders } : {}),
+      ...(cachedTools !== undefined ? { cachedTools } : {}),
+      ...(clearError ? { lastError: null } : {}),
+    };
 
     return new Ok(undefined);
   }
@@ -419,6 +624,8 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       lastError,
       lastSyncAt,
     });
+
+    this.heavyAttributes = { ...this.heavyAttributes, lastError };
   }
 
   static async discoverOAuthMetadata({
@@ -586,6 +793,9 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     customHeaders: Record<string, string> | null;
     meta: Record<string, string> | null;
   } {
+    const sharedSecretValue = this.getSharedSecret();
+    const customHeadersValue = this.getCustomHeaders();
+
     const currentTime = new Date();
     const createdAt = new Date(this.createdAt);
     const timeDifference = Math.abs(
@@ -595,23 +805,23 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     const shouldRedact =
       differenceInMinutes > SECRET_REDACTION_COOLDOWN_IN_MINUTES;
 
-    const secret = this.sharedSecret
+    const secret = sharedSecretValue
       ? shouldRedact
-        ? redactString(this.sharedSecret, 4)
-        : this.sharedSecret
+        ? redactString(sharedSecretValue, 4)
+        : sharedSecretValue
       : null;
 
     const headers =
-      this.customHeaders && shouldRedact
+      customHeadersValue && shouldRedact
         ? Object.fromEntries(
-            Object.entries(this.customHeaders).map(([key, value]) => [
+            Object.entries(customHeadersValue).map(([key, value]) => [
               key,
               value !== null && value !== undefined
                 ? redactString(String(value), 4)
                 : value,
             ])
           )
-        : this.customHeaders;
+        : customHeadersValue;
 
     return {
       sId: this.sId,
@@ -620,16 +830,16 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       description: this.cachedDescription ?? DEFAULT_MCP_ACTION_DESCRIPTION,
       version: this.version,
       icon: this.icon,
-      tools: this.cachedTools,
+      tools: this.getCachedTools(),
 
-      authorization: this.authorization,
+      authorization: this.getAuthorization(),
       availability: "manual",
       allowMultipleInstances: true,
 
       // Remote MCP Server specifics
       url: this.url,
       lastSyncAt: this.lastSyncAt?.getTime() ?? null,
-      lastError: this.lastError,
+      lastError: this.getLastError(),
       sharedSecret: secret,
       customHeaders: headers,
       meta: this.meta,

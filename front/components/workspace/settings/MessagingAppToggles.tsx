@@ -27,6 +27,7 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
   } = useBotDataSources({ workspaceId: owner.sId });
 
   const isDiscordBotAvailable = hasFeature("discord_bot");
+  const hasAdminGovernanceFeature = hasFeature("admin_governance");
 
   if (isSystemSpaceLoading || isBotDataSourcesLoading || !systemSpace) {
     return (
@@ -45,7 +46,11 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
         oauth={{ provider: "slack", useCase: "bot", extraConfig: {} }}
         connectorProvider="slack_bot"
         name="Slack Bot"
-        description="Use Dust Agents in Slack with the Dust Slack app"
+        description={
+          hasAdminGovernanceFeature
+            ? "Whether the Dust Bot can be used in Slack."
+            : "Use Dust Agents in Slack with the Dust Slack app"
+        }
         visual={<SlackLogo className="h-6 w-6" />}
         documentationUrl="https://docs.dust.tt/docs/slack"
       />
@@ -60,7 +65,11 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
         }}
         connectorProvider="microsoft_bot"
         name="Microsoft Teams Bot"
-        description="Use Dust Agents in Teams with the Dust Microsoft Teams Bot"
+        description={
+          hasAdminGovernanceFeature
+            ? "Whether the Dust Bot can be used in Microsoft Teams."
+            : "Use Dust Agents in Teams with the Dust Microsoft Teams Bot"
+        }
         visual={<MicrosoftLogo className="h-6 w-6" />}
         documentationUrl="https://docs.dust.tt/docs/dust-in-teams"
       />
@@ -76,7 +85,11 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
           }}
           connectorProvider="discord_bot"
           name="Discord Bot"
-          description="Use Dust Agents in Discord with the Dust Discord app"
+          description={
+            hasAdminGovernanceFeature
+              ? "Whether the Dust Bot can be used in Discord."
+              : "Use Dust Agents in Discord with the Dust Discord app"
+          }
           visual={<DiscordLogo className="h-6 w-6" />}
         />
       )}

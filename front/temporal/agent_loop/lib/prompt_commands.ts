@@ -168,13 +168,11 @@ async function listAvailableTools(
       userMessage.context.clientSideMCPServerIds
     );
 
-  const { enabledSkills, systemSkills } = await SkillResource.listForAgentLoop(
-    auth,
-    runAgentData
-  );
+  const { effectiveSpaceIds, enabledSkills, systemSkills } =
+    await SkillResource.listForAgentLoop(auth, runAgentData);
 
   const { skillServers, systemSkillServers } = await getSkillServers(auth, {
-    agentConfiguration,
+    effectiveSpaceIds,
     enabledSkills,
     systemSkills,
   });
@@ -408,7 +406,7 @@ async function handleToolRunFirstStep(
 } | null> {
   const {
     agentConfiguration,
-    model,
+    modelInfo,
     conversation: originalConversation,
     userMessage,
     agentMessage: originalAgentMessage,
@@ -515,7 +513,7 @@ async function handleToolRunFirstStep(
   );
 
   const stepContexts = computeStepContexts({
-    model,
+    model: modelInfo.endpoint.modelConfig,
     stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
   });

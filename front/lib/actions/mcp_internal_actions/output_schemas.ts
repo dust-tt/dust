@@ -93,12 +93,7 @@ const ToolGeneratedFilePathSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH),
   path: z.string(),
   title: z.string(),
-  contentType: z.enum(
-    Object.keys(ALL_FILE_FORMATS) as [
-      AllSupportedFileContentType,
-      ...AllSupportedFileContentType[],
-    ]
-  ),
+  contentType: z.string(),
 });
 
 export type ToolGeneratedFilePathType = z.infer<

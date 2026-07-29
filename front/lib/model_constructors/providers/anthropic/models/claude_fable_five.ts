@@ -1,40 +1,48 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
+import { anthropicBaseConfigSchema } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
-import {
-  inputConfigSchema,
-  temperatureSchema,
-} from "@app/lib/model_constructors/types/input/configuration";
-import { CLAUDE_FABLE_5_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { CLAUDE_FABLE_5 } from "@app/lib/model_constructors/types/models";
 
 import { z } from "zod";
 
-// Kept aligned with the existing static Fable 5 model config for this rollout.
-const CONTEXT_SIZE = 250_000;
-const DEFAULT_REASONING_EFFORT = "medium";
-const MAX_OUTPUT_TOKENS = 64_000;
-const MIN_REASONING_EFFORT = "low";
+// Real model spec. The Dust product cap (250k) is applied in the llms layer.
+const CONTEXT_SIZE = 1_000_000;
+const DEFAULT_REASONING_EFFORT = "high";
+const MAX_OUTPUT_TOKENS = 128_000;
 
+// Fable 5 is the only model of its family, so this config is standalone rather
+// than a shared one.
+//
+// Characterized against the live Anthropic API (EAP key, 2026-07-27) by running
+// the endpoint suite with the widest `inputConfigSchema`. Two hard 400s:
+//
+//   - `thinking: {type: "disabled"}` — *"is not supported for this model.
+//     Thinking defaults to adaptive mode when not specified."* Unlike Opus
+//     4.7/4.8/5, Fable 5 cannot turn thinking off, so effort "none" is out and
+//     an absent reasoning must default to a real effort rather than fall
+//     through to disabled.
+//   - `temperature` 0 / 0.1 / 0.5 — *"`temperature` may only be set to 1 when
+//     thinking is enabled or in adaptive mode."* Thinking is always on here, so
+//     1 is the only value the API accepts (above 1 fails the `range: 0..1`
+//     check). Hence `z.literal(1)`, defaulted so callers can omit it. The Dust
+//     layer strips it anyway via the `dropTemperature` config parser, but the
+//     endpoint schema mirrors the API rather than that policy.
+//
+// "minimal" has no Anthropic equivalent and `assertNever`s in the converter, so
+// the schema allows low/medium/high/xhigh/maximal only.
+//
+// Forcing a tool needs no special handling: Fable 5 accepts a forced
+// `tool_choice` alongside adaptive thinking (verified live), as do Opus
+// 4.7/4.8/5. That restriction belongs to *extended* thinking, not adaptive.
 const reasoningSchema = z
-  .union([
-    z.object({
-      effort: z.enum(ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS),
-    }),
-    // Fable has adaptive thinking always on. Preserve legacy-router behavior:
-    // callers that default to "none" are clamped to the minimum native effort.
-    z
-      .object({ effort: z.literal("none") })
-      .transform((): { effort: typeof MIN_REASONING_EFFORT } => ({
-        effort: MIN_REASONING_EFFORT,
-      })),
-  ])
+  .object({
+    effort: z.enum(ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS),
+  })
   .default({ effort: DEFAULT_REASONING_EFFORT });
 
-const configSchema = inputConfigSchema.extend({
-  cacheKey: z.undefined(),
+const configSchema = anthropicBaseConfigSchema.extend({
   reasoning: reasoningSchema,
-  // Fable has adaptive thinking always on; omit explicit temperature rather
-  // than sending a value that can conflict with the thinking configuration.
-  temperature: temperatureSchema.optional().transform(() => undefined),
+  temperature: z.literal(1).optional().default(1),
 });
 
 export type ClaudeFableFive = z.infer<typeof configSchema>;
@@ -47,7 +55,7 @@ export function WithAnthropicClaudeFableFiveConfig<
   abstract class AnthropicClaudeFableFive extends Base {
     declare ["constructor"]: BaseEndpointConfiguration<ClaudeFableFive>;
 
-    static readonly modelId = CLAUDE_FABLE_5_MODEL_ID;
+    static readonly model = CLAUDE_FABLE_5;
 
     static readonly configSchema: z.ZodType<
       ClaudeFableFive,
@@ -55,8 +63,10 @@ export function WithAnthropicClaudeFableFiveConfig<
       unknown
     > = configSchema;
 
-    static readonly contextSize = CONTEXT_SIZE;
-    static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
+    // Typed as `number` (not the literal) so the Dust layer can cap it.
+    static readonly contextSize: number = CONTEXT_SIZE;
+    // Typed as `number` (not the literal) so the Dust layer can cap it.
+    static readonly maxOutputTokens: number = MAX_OUTPUT_TOKENS;
   }
 
   return AnthropicClaudeFableFive;

@@ -1,6 +1,7 @@
 import { actionSchema } from "@app/components/shared/tools_picker/types";
 import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import {
+  SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
   SkillWithoutInstructionsAndToolsSchema,
 } from "@app/types/assistant/skill_configuration";
@@ -55,7 +56,7 @@ export const skillBuilderFormSchema = z.object({
   editors: z.array(editorUserSchema),
   tools: z.array(actionSchema),
   icon: z.string().nullable(),
-  isDefault: z.boolean(),
+  availability: z.enum(SKILL_AVAILABILITIES),
   reinforcement: z.enum(SKILL_REINFORCEMENT_MODES),
   fileAttachments: z.array(fileAttachmentSchema),
   attachedKnowledge: z.array(attachedKnowledgeSchema).optional(),

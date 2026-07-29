@@ -26,6 +26,22 @@ async function setupTest() {
   return { workspace, key, agentConfig };
 }
 
+function getAgentConfiguration(
+  workspace: { sId: string },
+  key: { secret: string },
+  agentId: string
+) {
+  return honoApp.request(
+    `/api/v1/w/${workspace.sId}/assistant/agent_configurations/${agentId}`,
+    {
+      method: "GET",
+      headers: {
+        authorization: `Bearer ${key.secret}`,
+      },
+    }
+  );
+}
+
 function patchAgentConfiguration(
   workspace: { sId: string },
   key: { secret: string },
@@ -44,6 +60,16 @@ function patchAgentConfiguration(
     }
   );
 }
+
+describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
+  it("returns 404 for a retired global agent (e.g. gpt-4)", async () => {
+    const { workspace, key } = await setupTest();
+
+    const response = await getAgentConfiguration(workspace, key, "gpt-4");
+
+    expect(response.status).toBe(404);
+  });
+});
 
 describe("PATCH /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
   it("applies configuration patch fields beyond userFavorite (regression dust-tt/dust#26698)", async () => {

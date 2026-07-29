@@ -159,6 +159,15 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return res.length > 0 ? res[0] : null;
   }
 
+  static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<TriggerResource[]> {
+    return this.baseFetch(auth, {
+      where: { id: ids },
+    });
+  }
+
   static listByAgentConfigurationId(
     auth: Authenticator,
     agentConfigurationId: string
@@ -211,6 +220,17 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return this.baseFetch(auth);
   }
 
+  static async listBySpace(
+    auth: Authenticator,
+    spaceId: ModelId
+  ): Promise<TriggerResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        spaceId,
+      },
+    });
+  }
+
   static async listByWebhookSourceViewId(
     auth: Authenticator,
     webhookSourceViewId: ModelId
@@ -228,7 +248,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     user: UserResource | UserType
   ) {
     assert(
-      auth.isBusinessAdmin() || auth.user()?.id === user.id,
+      auth.isManager() || auth.user()?.id === user.id,
       "Triggers can only be listed by admins or by their editor."
     );
 

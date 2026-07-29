@@ -74,11 +74,11 @@ export async function deleteWorkspaceWorkflow({
   await deleteAgentsActivity({ workspaceId });
   await deleteRunOnDustAppsActivity({ workspaceId });
   await deleteAppsActivity({ workspaceId });
-  await deleteMembersActivity({ workspaceId });
   await deleteWorkspaceUserMetadataActivity({ workspaceId });
   await deleteTagsActivity({ workspaceId });
   await deleteWebhookSourcesActivity({ workspaceId });
   await deleteSpacesActivity({ workspaceId });
+  await deleteMembersActivity({ workspaceId });
   await deleteTranscriptsActivity({ workspaceId });
   await deletePluginRunsActivity({ workspaceId });
   await deleteWorkspaceActivity({ workspaceId });

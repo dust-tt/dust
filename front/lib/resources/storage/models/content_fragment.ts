@@ -14,6 +14,7 @@ import type {
   SupportedContentFragmentType,
 } from "@app/types/content_fragment";
 import type { ContentNodeType } from "@app/types/core/content_node";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
 export class ContentFragmentModel extends WorkspaceAwareModel<ContentFragmentModel> {
@@ -42,6 +43,11 @@ export class ContentFragmentModel extends WorkspaceAwareModel<ContentFragmentMod
   declare nodeId: string | null;
   declare nodeDataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
   declare nodeType: ContentNodeType | null;
+
+  // Denormalized from messages for conversation-scoped fetches (plain column, no FK — the value
+  // is derived from messages at write time). Permanently nullable: project-context fragments live
+  // on a space and have no owning conversation.
+  declare conversationId: CreationOptional<ModelId | null>;
 
   declare version: ContentFragmentVersion;
   declare expiredReason: ContentFragmentExpiredReason | null;
@@ -116,6 +122,10 @@ ContentFragmentModel.init(
       type: DataTypes.BIGINT,
       allowNull: true,
     },
+    conversationId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
   },
   {
     modelName: "content_fragment",
@@ -138,6 +148,7 @@ ContentFragmentModel.init(
         concurrently: true,
         name: "content_fragments_node_dsv_id",
       },
+      { fields: ["workspaceId", "conversationId"], concurrently: true },
     ],
   }
 );

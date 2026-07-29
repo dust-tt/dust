@@ -39,6 +39,7 @@ import {
 } from "./api/connector_config";
 import { getNotionWorkspaceIdHandler } from "./api/get_notion_workspace_id";
 import { getWebhookRouterEntryHandler } from "./api/get_webhook_router_config";
+import { profilerAPIHandler } from "./api/profiler";
 import { syncWebhookRouterEntryHandler } from "./api/sync_webhook_router_config";
 import { webhookFirecrawlAPIHandler } from "./api/webhooks/webhook_firecrawl";
 
@@ -56,6 +57,9 @@ export function startServer(port: number) {
   app.get("/", (_req, res) => {
     res.status(200).send("OK");
   });
+
+  // for profiling -- doesn't go through auth middleware
+  app.get("/profiler", profilerAPIHandler);
 
   app.use(
     bodyParser.json({

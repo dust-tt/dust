@@ -1,7 +1,7 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import {
-  matchesSlashCommandCapabilityQuery,
-  sortSlashCommandCapabilityMatches,
+  type CapabilitySearchIndexItem,
+  searchCapabilityIndex,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import {
@@ -11,12 +11,12 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
+import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
 import {
   useAvailableMCPServers,
-  useMCPServerViewsFromSpaces,
+  useJITMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -27,7 +27,10 @@ import {
   trackEvent,
 } from "@app/lib/tracking";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
@@ -44,22 +47,19 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  DropdownTooltipTrigger,
   Icon,
   LoadingBlock,
   ShapesPlus,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-interface CapabilityPickerItemBase {
+interface CapabilityPickerItemBase extends CapabilitySearchIndexItem {
   description?: string;
-  icon: DropdownMenuItemProps["icon"];
   id: string;
   label: string;
-  sortName: string;
 }
 
-type CapabilityPickerItem = CapabilityPickerItemBase &
+type CapabilityPickerSearchItem = CapabilityPickerItemBase &
   (
     | {
         kind: "skill";
@@ -67,13 +67,17 @@ type CapabilityPickerItem = CapabilityPickerItemBase &
       }
     | {
         kind: "tool";
-        serverView: MCPServerViewType;
+        serverView: MCPServerViewLightType;
       }
     | {
         kind: "uninstalled_tool";
         server: MCPServerType;
       }
   );
+
+type CapabilityPickerItem = CapabilityPickerSearchItem & {
+  icon: DropdownMenuItemProps["icon"];
+};
 
 function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
   return (
@@ -98,7 +102,7 @@ interface CapabilitiesPickerItemsListProps {
   items: CapabilityPickerItem[];
   onItemSelect: (item: CapabilityPickerItem) => void;
   onSkillDetails?: (skillId: string) => void;
-  onToolDetails?: (serverView: MCPServerViewType) => void;
+  onToolDetails?: (serverView: MCPServerViewLightType) => void;
 }
 
 export function CapabilitiesPickerItemsList({
@@ -108,8 +112,6 @@ export function CapabilitiesPickerItemsList({
   onSkillDetails,
   onToolDetails,
 }: CapabilitiesPickerItemsListProps) {
-  const listRef = useRef<HTMLDivElement>(null);
-
   if (items.length === 0) {
     return (
       <div className="px-2 py-4 text-center text-sm text-muted-foreground">
@@ -119,7 +121,7 @@ export function CapabilitiesPickerItemsList({
   }
 
   return (
-    <div ref={listRef}>
+    <div>
       {items.map((item) => {
         const endComponent =
           item.kind === "uninstalled_tool" ? (
@@ -143,7 +145,7 @@ export function CapabilitiesPickerItemsList({
             />
           ) : undefined;
 
-        const menuItem = (
+        return (
           <DropdownMenuItem
             key={item.id}
             icon={item.icon}
@@ -156,19 +158,6 @@ export function CapabilitiesPickerItemsList({
             onClick={() => onItemSelect(item)}
           />
         );
-
-        return item.kind === "skill" && item.description ? (
-          <DropdownTooltipTrigger
-            key={item.id}
-            description={item.description}
-            side="right"
-            sideOffset={8}
-          >
-            {menuItem}
-          </DropdownTooltipTrigger>
-        ) : (
-          menuItem
-        );
       })}
     </div>
   );
@@ -177,15 +166,14 @@ export function CapabilitiesPickerItemsList({
 interface CapabilitiesPickerProps {
   owner: WorkspaceType;
   user: UserType | null;
-  selectedMCPServerViews: MCPServerViewType[];
-  onSelect: (serverView: MCPServerViewType) => void;
+  selectedMCPServerViews: MCPServerViewLightType[];
+  onSelect: (serverView: MCPServerViewLightType) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   isLoading?: boolean;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
   onOpenChange?: (open: boolean) => void;
   type?: "dropdown" | "subdropdown";
-  prefetch?: boolean;
 }
 
 export function CapabilitiesPicker({
@@ -199,17 +187,14 @@ export function CapabilitiesPicker({
   buttonSize = "xs",
   onOpenChange,
   type = "dropdown",
-  prefetch = false,
 }: CapabilitiesPickerProps) {
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [setupSheetServer, setSetupSheetServer] =
     useState<MCPServerType | null>(null);
   const [setupSheetRemoteServerConfig, setSetupSheetRemoteServerConfig] =
     useState<DefaultRemoteMCPServerConfig | null>(null);
-  const [isSettingUpServer, setIsSettingUpServer] = useState(false);
   const [pendingServerToAdd, setPendingServerToAdd] =
     useState<MCPServerType | null>(null);
 
@@ -217,19 +202,13 @@ export function CapabilitiesPicker({
     string | null
   >(null);
   const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
-    useState<MCPServerViewType | null>(null);
+    useState<MCPServerViewLightType | null>(null);
 
-  const shouldFetchToolsData =
-    isOpen ||
-    isClosing ||
-    isSettingUpServer ||
-    !!pendingServerToAdd ||
-    prefetch;
-
+  // Load capabilities when the picker mounts so the picker and slash menu share a warm SWR cache.
   const { spaces: globalSpaces } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global"],
-    disabled: !shouldFetchToolsData,
+    swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
 
   const isAdmin = owner.role === "admin";
@@ -238,9 +217,11 @@ export function CapabilitiesPicker({
     serverViews,
     isLoading: isServerViewsLoading,
     mutateServerViews,
-  } = useMCPServerViewsFromSpaces(owner, globalSpaces, {
-    disabled: !shouldFetchToolsData,
-  });
+  } = useJITMCPServerViewsFromSpaces(
+    owner,
+    globalSpaces,
+    CAPABILITIES_SWR_OPTIONS
+  );
 
   const normalizedSearchText = searchText.trim().toLowerCase();
 
@@ -264,7 +245,6 @@ export function CapabilitiesPicker({
         });
         onSelect(newServerView);
         setPendingServerToAdd(null);
-        setIsSettingUpServer(false);
       }
     }
   }, [serverViews, pendingServerToAdd, onSelect]);
@@ -277,18 +257,19 @@ export function CapabilitiesPicker({
   const { availableMCPServers, isAvailableMCPServersLoading } =
     useAvailableMCPServers({
       owner,
-      disabled: !shouldFetchToolsData,
+      disabled: !isAdmin,
+      swrOptions: CAPABILITIES_SWR_OPTIONS,
     });
 
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
-    disabled: !shouldFetchToolsData,
+    swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
 
   const isSkillsDataReady = !isSkillsLoading;
   const isToolsDataReady =
-    !isServerViewsLoading && !isAvailableMCPServersLoading;
+    !isServerViewsLoading && (!isAdmin || !isAvailableMCPServersLoading);
 
   const shouldShowSetupSheet =
     !!setupSheetServer || !!setupSheetRemoteServerConfig;
@@ -312,7 +293,7 @@ export function CapabilitiesPicker({
     closeDropdown();
   };
 
-  const selectTool = (serverView: MCPServerViewType) => {
+  const selectTool = (serverView: MCPServerViewLightType) => {
     trackEvent({
       area: TRACKING_AREAS.TOOLS,
       object: "tool_select",
@@ -339,7 +320,6 @@ export function CapabilitiesPicker({
       setSetupSheetRemoteServerConfig(null);
     }
 
-    setIsSettingUpServer(true);
     setIsOpen(false);
   };
 
@@ -356,8 +336,8 @@ export function CapabilitiesPicker({
     }
   };
 
-  const capabilityPickerItems = (() => {
-    const items: CapabilityPickerItem[] = [];
+  const capabilityPickerIndex = useMemo(() => {
+    const items: CapabilityPickerSearchItem[] = [];
     const selectedMCPServerViewIds = new Set(
       selectedMCPServerViews.map((v) => v.sId)
     );
@@ -366,42 +346,24 @@ export function CapabilitiesPicker({
       for (const skill of skills) {
         const description = skill.userFacingDescription;
 
-        if (
-          !matchesSlashCommandCapabilityQuery({
-            description,
-            label: skill.name,
-            query: normalizedSearchText,
-          })
-        ) {
-          continue;
-        }
-
-        const SkillAvatar = getSkillAvatarIcon(skill);
-
         items.push({
           kind: "skill",
           skill,
           id: `skills-picker-${skill.sId}`,
-          icon: <SkillAvatar size="xs" />,
           label: skill.name,
           sortName: skill.name.toLowerCase(),
           description,
+          normalizedDescription: description?.toLowerCase(),
         });
       }
 
+      // The JIT views endpoint only returns views whose tools can be enabled directly in a
+      // conversation, no further filtering needed here.
       for (const serverView of serverViews) {
         const label = getMcpServerViewDisplayName(serverView);
         const description = getMcpServerViewDescription(serverView);
 
-        if (
-          !isJITMCPServerView(serverView) ||
-          selectedMCPServerViewIds.has(serverView.sId) ||
-          !matchesSlashCommandCapabilityQuery({
-            description,
-            label,
-            query: normalizedSearchText,
-          })
-        ) {
+        if (selectedMCPServerViewIds.has(serverView.sId)) {
           continue;
         }
 
@@ -409,15 +371,15 @@ export function CapabilitiesPicker({
           kind: "tool",
           serverView,
           id: `capabilities-picker-${serverView.sId}`,
-          icon: getAvatar(serverView.server, "xs"),
           label,
           sortName: label.toLowerCase(),
           description,
+          normalizedDescription: description?.toLowerCase(),
         });
       }
     }
 
-    if (isAdmin && isToolsDataReady && shouldFetchToolsData) {
+    if (isAdmin && isToolsDataReady) {
       const installedServerNames = new Set(
         serverViews.map((v) => v.server.name)
       );
@@ -428,12 +390,7 @@ export function CapabilitiesPicker({
 
         if (
           installedServerNames.has(server.name) ||
-          server.availability !== "manual" ||
-          !matchesSlashCommandCapabilityQuery({
-            description,
-            label,
-            query: normalizedSearchText,
-          })
+          server.availability !== "manual"
         ) {
           continue;
         }
@@ -442,27 +399,53 @@ export function CapabilitiesPicker({
           kind: "uninstalled_tool",
           server,
           id: `tools-to-install-${server.sId}`,
-          icon: getAvatar(server, "xs"),
           label,
           sortName: label.toLowerCase(),
+          sortGroup: 1,
           description,
+          normalizedDescription: description?.toLowerCase(),
         });
       }
     }
 
-    const installedItems = items.filter((i) => i.kind !== "uninstalled_tool");
-    const uninstalledItems = items.filter((i) => i.kind === "uninstalled_tool");
-    return [
-      ...sortSlashCommandCapabilityMatches({
-        items: installedItems,
-        normalizedQuery: normalizedSearchText,
+    return items;
+  }, [
+    availableMCPServers,
+    isAdmin,
+    isSkillsDataReady,
+    isToolsDataReady,
+    selectedMCPServerViews,
+    serverViews,
+    skills,
+  ]);
+
+  const capabilityPickerSearchResults = useMemo(
+    () =>
+      searchCapabilityIndex({
+        items: capabilityPickerIndex,
+        query: normalizedSearchText,
       }),
-      ...sortSlashCommandCapabilityMatches({
-        items: uninstalledItems,
-        normalizedQuery: normalizedSearchText,
+    [capabilityPickerIndex, normalizedSearchText]
+  );
+
+  const capabilityPickerItems = useMemo(
+    () =>
+      capabilityPickerSearchResults.map((item) => {
+        switch (item.kind) {
+          case "skill": {
+            const SkillAvatar = getSkillAvatarIcon(item.skill);
+            return { ...item, icon: <SkillAvatar size="xs" /> };
+          }
+          case "tool":
+            return { ...item, icon: getAvatar(item.serverView.server, "xs") };
+          case "uninstalled_tool":
+            return { ...item, icon: getAvatar(item.server, "xs") };
+          default:
+            return assertNever(item);
+        }
       }),
-    ];
-  })();
+    [capabilityPickerSearchResults]
+  );
 
   const hasNoVisibleItems =
     isSkillsDataReady && isToolsDataReady && capabilityPickerItems.length === 0;
@@ -482,15 +465,12 @@ export function CapabilitiesPicker({
           setIsOpen(open);
           onOpenChange?.(open);
           if (open) {
-            setIsClosing(false);
             trackEvent({
               area: TRACKING_AREAS.TOOLS,
               object: "tool_picker",
               action: TRACKING_ACTIONS.OPEN,
             });
             setSearchText("");
-          } else {
-            setIsClosing(true);
           }
         }}
       >
@@ -524,11 +504,6 @@ export function CapabilitiesPicker({
         <ContentWrapper
           className="w-80"
           {...(type === "dropdown" ? { align: "start" as const } : {})}
-          onAnimationEnd={() => {
-            if (!isOpen) {
-              setIsClosing(false);
-            }
-          }}
           dropdownHeaders={
             <>
               <DropdownMenuSearchbar
@@ -578,7 +553,8 @@ export function CapabilitiesPicker({
             const updatedData = await mutateServerViews();
 
             const newServerView = updatedData?.serverViews?.find(
-              (v: MCPServerViewType) => v.server.name === createdServer.name
+              (v: MCPServerViewLightType) =>
+                v.server.name === createdServer.name
             );
 
             if (newServerView) {
@@ -593,7 +569,6 @@ export function CapabilitiesPicker({
                 },
               });
               onSelect(newServerView);
-              setIsSettingUpServer(false);
             } else {
               setPendingServerToAdd(createdServer);
             }
@@ -608,7 +583,6 @@ export function CapabilitiesPicker({
               setSetupSheetServer(null);
               setSetupSheetRemoteServerConfig(null);
               setPendingServerToAdd(null);
-              setIsSettingUpServer(false);
             }
           }}
         />

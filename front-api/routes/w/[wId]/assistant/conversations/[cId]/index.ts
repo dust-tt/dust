@@ -41,6 +41,8 @@ import onboardingFollowup from "./onboarding-followup";
 import participants from "./participants";
 import planMode from "./plan_mode";
 import sandbox from "./sandbox";
+import selectableSpaces from "./selectable_spaces";
+import selectedSpaces from "./selected_spaces";
 import skills from "./skills";
 import suggest from "./suggest";
 import tools from "./tools";
@@ -198,22 +200,19 @@ app.get(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(auth, cId, {
-        includeForkingData: true,
-      });
+    const conversation = await ConversationResource.fetchById(auth, cId, {
+      includeForkingData: true,
+    });
 
-    if (conversationRes.isErr()) {
+    if (!conversation) {
       // Distinguish between "not found" and "access restricted" for the UI.
       const canAccess = await ConversationResource.canAccess(auth, cId);
       const error =
         canAccess === "conversation_access_restricted"
           ? new ConversationError("conversation_access_restricted")
-          : conversationRes.error;
+          : new ConversationError("conversation_not_found");
       return apiErrorForConversation(ctx, error);
     }
-
-    const conversation = conversationRes.value;
 
     void emitAuditLogEvent({
       auth,
@@ -260,7 +259,11 @@ app.patch(
     const { cId } = ctx.req.valid("param");
 
     const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(auth, cId);
+      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional ConversationWithoutContentType
+      await ConversationResource.fetchConversationWithParticipantState(
+        auth,
+        cId
+      );
     if (conversationRes.isErr()) {
       return apiErrorForConversation(ctx, conversationRes.error);
     }
@@ -428,6 +431,8 @@ app.route("/onboarding-followup", onboardingFollowup);
 app.route("/participants", participants);
 app.route("/plan_mode", planMode);
 app.route("/sandbox", sandbox);
+app.route("/selectable_spaces", selectableSpaces);
+app.route("/selected_spaces", selectedSpaces);
 app.route("/skills", skills);
 app.route("/suggest", suggest);
 app.route("/tools", tools);

@@ -16,10 +16,10 @@ import type {
   ToolResultBlockParam,
   ToolUseBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
-import { parseAnthropicToolSearchBlock } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import type { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
 import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
+import { parseAnthropicToolSearchBlock } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import type {
   OutputFormat,
   ToolChoiceInput,
@@ -39,7 +39,7 @@ import type {
   CacheOption,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
-import { ANTHROPIC_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -70,9 +70,37 @@ const IMAGE_LOAD_FAILED_TEXT = "Attachment: image could not be loaded.";
 const UNSUPPORTED_MEDIA_TYPE_TEXT =
   "Attachement: an unsupported media type was provided.";
 
-// The per-message leaf converters. Composites below take an object satisfying
-// this interface (`this`), so overriding one leaf on an endpoint changes how
-// every composite uses it.
+// This SDK client is shared across hosts and labs (direct Anthropic, Vertex,
+// Bedrock, ...). The goal is to let a specific endpoint override one small
+// conversion step (e.g. how a user text message becomes a text block) without
+// reimplementing the whole `buildRequestPayload`.
+//
+// To make that possible, conversions are split into two kinds:
+//
+//   - "leaf" converters (this interface): the smallest units, each turning one
+//     Base* message into one Anthropic block. E.g. `userTextMessageToTextBlock`,
+//     `imageUrlToImageBlock`. These are the override points.
+//
+//   - "composite" converters (defined below): higher-level converters that
+//     assemble blocks by delegating to leaves rather than doing the leaf work
+//     themselves. E.g. `userMessageToContentBlocks` switches on message type and
+//     calls `userTextMessageToTextBlock` / `imageUrlToImageBlock`.
+//
+// The link between them is that composites receive an object satisfying this
+// interface (`this` on the endpoint class — see `WithAnthropicAIInputConverter`)
+// and route every child call through it. So overriding a single leaf field on an
+// endpoint (e.g. Vertex swaps `imageUrlToImageBlock` for a base64 variant)
+// changes how every composite depending on it behaves — no need to touch the
+// composites or `buildRequestPayload`.
+//
+// This composes both ways: a composite is itself an override point. An endpoint
+// can override a composite method and still reach its children through
+// `this.<child>` (e.g. a custom `userMessageToContentBlocks` that calls
+// `this.userTextMessageToTextBlock`), so it picks up any leaf overrides too and
+// only the reassembly logic changes.
+//
+// "leaf" / "composite" naming lives only in comments; it's just a mental model
+// for how the pieces compose.
 export interface MessageBlockConverters {
   systemMessageToTextBlock(message: SystemTextMessage): TextBlockParam;
   userTextMessageToTextBlock(message: BaseUserTextMessage): TextBlockParam;
@@ -223,7 +251,7 @@ export function assistantProviderPassthroughMessageToBlocks(
   // Replay the provider's own tool-search blocks verbatim so interleaved
   // thinking signatures stay valid. Skip blocks tagged for another provider or
   // that fail to parse.
-  if (message.content.provider !== ANTHROPIC_PROVIDER_ID) {
+  if (message.content.provider !== ANTHROPIC_LAB) {
     return [];
   }
 
@@ -455,6 +483,18 @@ function effortToAnthropicEffort(
   }
 }
 
+// An absent `reasoning` and an explicit effort of "none" are different
+// requests, so they map to different payloads: "none" sends
+// `thinking: {type: "disabled"}`, while an absent `reasoning` sends no thinking
+// config at all and lets the model apply its own default. Conflating the two
+// would send "disabled" to models that reject it (Fable 5 400s on
+// `thinking.type.disabled`) and would silently turn thinking off on models
+// whose default is adaptive.
+//
+// In practice every Anthropic model schema either defaults `reasoning` to an
+// effort or pins it to "none", so the empty case is unreachable today — it
+// exists because the converter is typed against the wide `AnthropicInputConfig`
+// rather than a per-model config.
 export type ReasoningToThinkingConfig = (
   reasoning: AnthropicInputConfig["reasoning"]
 ) =>
@@ -463,14 +503,19 @@ export type ReasoningToThinkingConfig = (
       thinking: ThinkingConfigAdaptive;
     }
   | { thinking: ThinkingConfigEnabled }
-  | { thinking: ThinkingConfigDisabled };
+  | { thinking: ThinkingConfigDisabled }
+  | Record<string, never>;
 
 // Adaptive thinking; extended-thinking-only models swap in
 // `reasoningToExtendedThinkingConfig`.
 export const reasoningToThinkingConfig: ReasoningToThinkingConfig = (
   reasoning
-) => {
-  if (!reasoning || reasoning.effort === "none") {
+): ReturnType<ReasoningToThinkingConfig> => {
+  if (!reasoning) {
+    return {};
+  }
+
+  if (reasoning.effort === "none") {
     return { thinking: { type: "disabled" } };
   }
 
@@ -493,8 +538,12 @@ const EXTENDED_THINKING_BUDGET_TOKENS = {
 // Extended thinking for models without adaptive-thinking support (e.g. Haiku 4.5).
 export const reasoningToExtendedThinkingConfig: ReasoningToThinkingConfig = (
   reasoning
-) => {
-  if (!reasoning || reasoning.effort === "none") {
+): ReturnType<ReasoningToThinkingConfig> => {
+  if (!reasoning) {
+    return {};
+  }
+
+  if (reasoning.effort === "none") {
     return { thinking: { type: "disabled" } };
   }
 

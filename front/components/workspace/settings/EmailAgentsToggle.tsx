@@ -25,7 +25,7 @@ const ENABLE_EMAIL_AGENTS_CONFIRMATION_MESSAGE =
   "prompt injection.";
 
 const LABEL = "Email agents";
-const DESCRIPTION = `Allow workspace members to email agents at AGENT_NAME@${ASSISTANT_EMAIL_SUBDOMAIN}`;
+const DESCRIPTION = `Whether members can reach agents by email at AGENT_NAME@${ASSISTANT_EMAIL_SUBDOMAIN}.`;
 const DOCUMENTATION_URL = "https://docs.dust.tt/docs/email-agents";
 
 interface EmailAgentsToggleProps {

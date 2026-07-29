@@ -273,6 +273,39 @@ export class TagResource extends BaseResource<TagModel> {
     });
   }
 
+  static async addToAgents(
+    auth: Authenticator,
+    tags: TagResource[],
+    agentConfigurations: LightAgentConfigurationType[]
+  ): Promise<Result<undefined, Error>> {
+    if (
+      !auth.isAdmin() &&
+      agentConfigurations.some(
+        (agentConfiguration) => !agentConfiguration.canEdit
+      )
+    ) {
+      return new Err(
+        new Error("You are not allowed to add tags to this agent")
+      );
+    }
+
+    if (tags.length === 0 || agentConfigurations.length === 0) {
+      return new Ok(undefined);
+    }
+
+    await TagAgentModel.bulkCreate(
+      agentConfigurations.flatMap((agentConfiguration) =>
+        tags.map((tag) => ({
+          workspaceId: auth.getNonNullableWorkspace().id,
+          tagId: tag.id,
+          agentConfigurationId: agentConfiguration.id,
+        }))
+      ),
+      { ignoreDuplicates: true }
+    );
+    return new Ok(undefined);
+  }
+
   async removeFromAgent(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType
@@ -288,6 +321,38 @@ export class TagResource extends BaseResource<TagModel> {
         agentConfigurationId: agentConfiguration.id,
       },
     });
+  }
+
+  static async removeFromAgents(
+    auth: Authenticator,
+    tags: TagResource[],
+    agentConfigurations: LightAgentConfigurationType[]
+  ): Promise<Result<undefined, Error>> {
+    if (
+      !auth.isAdmin() &&
+      agentConfigurations.some(
+        (agentConfiguration) => !agentConfiguration.canEdit
+      )
+    ) {
+      return new Err(
+        new Error("You are not allowed to remove tags from this agent")
+      );
+    }
+
+    if (tags.length === 0 || agentConfigurations.length === 0) {
+      return new Ok(undefined);
+    }
+
+    await TagAgentModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        tagId: tags.map((tag) => tag.id),
+        agentConfigurationId: agentConfigurations.map(
+          (agentConfiguration) => agentConfiguration.id
+        ),
+      },
+    });
+    return new Ok(undefined);
   }
 
   async updateTag({ name, kind }: { name: string; kind: TagKind }) {

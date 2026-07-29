@@ -88,7 +88,8 @@ export const getLightConversation = async (
     branchId,
     "light",
     lastInteractionsToFetchToolOutputContentFor,
-    messagePagination
+    messagePagination,
+    true
   );
 
 // Batch size (in interactions) for extending the tool-output-content fetch window beyond the
@@ -142,7 +143,8 @@ async function _getConversation<V extends "light" | "full">(
   branchId: string | null = null,
   viewType: V = "full" as V,
   lastInteractionsToFetchToolOutputContentFor: number | null = null,
-  messagePagination?: { limit: number; lastRank: number | null }
+  messagePagination?: { limit: number; lastRank: number | null },
+  textContentOnly: boolean = false
 ): Promise<
   Result<
     (V extends "light"
@@ -221,6 +223,13 @@ async function _getConversation<V extends "light" | "full">(
     messages = paginatedMessages;
     paginationHasMore = hasMore;
   } else {
+    // The include.where lands in the LEFT JOIN ON clause (required: false keeps the OUTER join),
+    // letting the planner use the side tables' (workspaceId, conversationId) indexes instead of
+    // one PK probe per message. Relies on conversationId being backfilled on side tables.
+    const sideTableWhere = {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    };
     messages = await MessageModel.findAll({
       where,
       order: [
@@ -232,11 +241,13 @@ async function _getConversation<V extends "light" | "full">(
           model: UserMessageModel,
           as: "userMessage",
           required: false,
+          where: sideTableWhere,
         },
         {
           model: AgentMessageModel,
           as: "agentMessage",
           required: false,
+          where: sideTableWhere,
         },
         // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
         // along with messages in one query). Only once we move to a MessageResource will we be able
@@ -245,11 +256,13 @@ async function _getConversation<V extends "light" | "full">(
           model: ContentFragmentModel,
           as: "contentFragment",
           required: false,
+          where: sideTableWhere,
         },
         {
           model: CompactionMessageModel,
           as: "compactionMessage",
           required: false,
+          where: sideTableWhere,
         },
       ],
     });
@@ -297,7 +310,8 @@ async function _getConversation<V extends "light" | "full">(
     conversation,
     messages,
     viewType,
-    messagesWithToolOutputContent
+    messagesWithToolOutputContent,
+    textContentOnly
   );
 
   if (renderRes.isErr()) {

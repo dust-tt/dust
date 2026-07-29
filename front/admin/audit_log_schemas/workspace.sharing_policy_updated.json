@@ -1,0 +1,7 @@
+{
+  "action": "workspace.sharing_policy_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "policy": "string"
+  }
+}

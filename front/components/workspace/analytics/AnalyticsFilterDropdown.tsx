@@ -12,7 +12,9 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useKeys } from "@app/lib/swr/apps";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useModels } from "@app/lib/swr/models";
 import { useTags } from "@app/lib/swr/tags";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
 import {
@@ -30,7 +32,7 @@ import {
 import { useMemo, useState } from "react";
 
 const DIMENSION_FILTERS: DropdownMenuFilterOption<AnalyticsScopeDimension>[] = (
-  ["user", "agent", "origin", "api_key", "tag"] as const
+  ["user", "agent", "origin", "api_key", "tag", "model"] as const
 ).map((dimension) => ({
   value: dimension,
   label: SCOPE_DIMENSION_LABEL[dimension],
@@ -76,6 +78,11 @@ export function AnalyticsFilterDropdown({
     disabled: !isOpen || dimension !== "tag",
   });
 
+  const { models, isModelsLoading } = useModels({
+    owner,
+    disabled: !isOpen || dimension !== "model",
+  });
+
   const entities: AnalyticsEntityFilter[] = useMemo(() => {
     const search = searchText.toLowerCase();
     const matches = (name: string) => name.toLowerCase().includes(search);
@@ -103,11 +110,18 @@ export function AnalyticsFilterDropdown({
         return tags
           .filter((tag) => matches(tag.name))
           .map((tag) => ({ id: tag.sId, name: tag.name }));
+      case "model":
+        return models
+          .filter(
+            (model) =>
+              !isModelStreamId(model.modelId) && matches(model.displayName)
+          )
+          .map((model) => ({ id: model.modelId, name: model.displayName }));
       default:
         assertNeverAndIgnore(dimension);
         return [];
     }
-  }, [dimension, searchText, members, agentConfigurations, keys, tags]);
+  }, [dimension, searchText, members, agentConfigurations, keys, tags, models]);
 
   const selectedIds = useMemo(
     () => new Set((filter[dimension] ?? []).map((entity) => entity.id)),
@@ -118,7 +132,8 @@ export function AnalyticsFilterDropdown({
     (dimension === "user" && isMembersLoading) ||
     (dimension === "agent" && isAgentConfigurationsLoading) ||
     (dimension === "api_key" && isKeysLoading) ||
-    (dimension === "tag" && isTagsLoading);
+    (dimension === "tag" && isTagsLoading) ||
+    (dimension === "model" && isModelsLoading);
 
   return (
     <DropdownMenu

@@ -3,7 +3,6 @@ import {
   GC_BATCHES_PER_RUN,
   INTERVAL_BETWEEN_GC_SYNCS_MS,
   MAX_CONCURRENT_CHILD_WORKFLOWS,
-  MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES,
   MAX_SEARCH_PAGE_GARBAGE_COLLECTION_INDEX,
   PROCESS_ALL_DISCOVERED_RESOURCES,
 } from "@connectors/connectors/notion/temporal/config";
@@ -12,7 +11,6 @@ import type { ModelId } from "@connectors/types";
 import {
   continueAsNew,
   deprecatePatch,
-  patched,
   proxyActivities,
   sleep,
   workflowInfo,
@@ -84,9 +82,10 @@ export async function notionGarbageCollectionWorkflow({
   // Set (in redis) when the previous run continued-as-new in the middle of the batch-deletion
   // phase to reset the event history. Not a workflow param: branching on a new input would break
   // replay determinism for histories produced by other deploys.
-  const batchResumeState = patched("gc-batch-deletion-continue-as-new")
-    ? await getGarbageCollectionBatchResumeState({ connectorId })
-    : null;
+  deprecatePatch("gc-batch-deletion-continue-as-new");
+  const batchResumeState = await getGarbageCollectionBatchResumeState({
+    connectorId,
+  });
 
   let runTimestamp: number;
   let nbOfBatches: number;
@@ -165,7 +164,6 @@ export async function notionGarbageCollectionWorkflow({
           })
         );
 
-        deprecatePatch("reduce-gc-batches-per-run");
         if (pageIndex % GC_BATCHES_PER_RUN === 0) {
           return { isComplete: false, pageIndex };
         }
@@ -243,58 +241,33 @@ export async function notionGarbageCollectionWorkflow({
     startBatchIndex = 0;
   }
 
-  if (patched("gc-batch-deletion-continue-as-new")) {
-    // Sequential on purpose (MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES is 1) so we can check
-    // continueAsNewSuggested between batches: continue-as-new before thousands of batches fill
-    // the event history and kill the workflow.
-    for (
-      let batchIndex = startBatchIndex;
-      batchIndex < nbOfBatches;
-      batchIndex++
-    ) {
-      await garbageCollectBatch({
-        connectorId,
-        runTimestamp,
-        batchIndex,
-      });
-
-      if (
-        workflowInfo().continueAsNewSuggested &&
-        batchIndex + 1 < nbOfBatches
-      ) {
-        await setGarbageCollectionBatchResumeState({
-          connectorId,
-          resumeState: {
-            runTimestamp,
-            nbOfBatches,
-            nextBatchIndex: batchIndex + 1,
-          },
-        });
-        await continueAsNew<typeof notionGarbageCollectionWorkflow>({
-          connectorId,
-        });
-        return;
-      }
-    }
-  } else {
-    // For each chunk, run a garbage collection activity
-    const queue = new PQueue({
-      concurrency: MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES,
+  // Sequential on purpose so we can check continueAsNewSuggested between batches:
+  // continue-as-new before thousands of batches fill the event history and kill the workflow.
+  for (
+    let batchIndex = startBatchIndex;
+    batchIndex < nbOfBatches;
+    batchIndex++
+  ) {
+    await garbageCollectBatch({
+      connectorId,
+      runTimestamp,
+      batchIndex,
     });
-    const gbPromises: Promise<void>[] = [];
-    for (let batchIndex = 0; batchIndex < nbOfBatches; batchIndex++) {
-      gbPromises.push(
-        queue.add(async () =>
-          garbageCollectBatch({
-            connectorId,
-            runTimestamp,
-            batchIndex,
-          })
-        )
-      );
-    }
 
-    await Promise.all(gbPromises);
+    if (workflowInfo().continueAsNewSuggested && batchIndex + 1 < nbOfBatches) {
+      await setGarbageCollectionBatchResumeState({
+        connectorId,
+        resumeState: {
+          runTimestamp,
+          nbOfBatches,
+          nextBatchIndex: batchIndex + 1,
+        },
+      });
+      await continueAsNew<typeof notionGarbageCollectionWorkflow>({
+        connectorId,
+      });
+      return;
+    }
   }
 
   // Once done, clear all the redis keys used for garbage collection

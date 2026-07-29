@@ -226,6 +226,9 @@ app.get(
       // Only return the project URL if the user can read the project.
       projectUrl:
         canRead && spaceId ? getPodRoute(workspace.sId, spaceId) : null,
+      // Lets the frame enable member-only tools (e.g. callFunction) client-side;
+      // real authorization still happens server-side on invocation.
+      isAuthenticatedMember: !!user,
     });
   }
 );

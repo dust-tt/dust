@@ -15,6 +15,7 @@ interface WebhookTriggerOptions {
   configuration?: WebhookConfig;
   webhookSourceViewId?: ModelId | null;
   customPrompt?: string | null;
+  spaceId?: ModelId | null;
 }
 
 interface ScheduleTriggerOptions {
@@ -47,6 +48,7 @@ export class TriggerFactory {
       status: options.status ?? "disabled",
       configuration: options.configuration ?? { includePayload: true },
       webhookSourceViewId: options.webhookSourceViewId ?? null,
+      spaceId: options.spaceId ?? null,
       origin: "user",
     });
 

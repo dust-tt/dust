@@ -13,7 +13,7 @@ const req = (o: Partial<RequestInput> = {}): RequestInput => ({
 });
 
 describe("invoke", () => {
-  test("runs a handler and returns its 200 response", async () => {
+  test("runs a handler and returns its parsed output", async () => {
     const out = await invoke(
       fx("hello.ts"),
       req({ url: "http://localhost/?name=bun" })
@@ -22,15 +22,14 @@ describe("invoke", () => {
     if (!out.ok) {
       return;
     }
-    expect(out.response.status).toBe(200);
-    expect(JSON.parse(out.response.body!)).toEqual({ hello: "bun" });
+    expect(out.output).toEqual({ hello: "bun" });
   });
 
-  test("a 404 is still ok:true", async () => {
+  test("returns http_error for a non-2xx response", async () => {
     const out = await invoke(fx("notfound.ts"), req());
-    expect(out.ok).toBe(true);
-    if (out.ok) {
-      expect(out.response.status).toBe(404);
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatchObject({ code: "http_error", status: 404 });
     }
   });
 
@@ -41,15 +40,15 @@ describe("invoke", () => {
     );
     expect(out.ok).toBe(true);
     if (out.ok) {
-      expect(out.response.body).toBe("echo:POST:payload");
+      expect(out.output).toBe("echo:POST:payload");
     }
   });
 
-  test("binary response encodes as base64", async () => {
+  test("returns invalid_output for a non-JSON response", async () => {
     const out = await invoke(fx("binary.ts"), req());
-    expect(out.ok).toBe(true);
-    if (out.ok) {
-      expect(out.response.encoding).toBe("base64");
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error.code).toBe("invalid_output");
     }
   });
 
@@ -57,7 +56,7 @@ describe("invoke", () => {
     const out = await invoke(fx("throws.ts"), req());
     expect(out.ok).toBe(false);
     if (!out.ok) {
-      expect(out.error.kind).toBe("threw");
+      expect(out.error.code).toBe("threw");
     }
   });
 
@@ -65,7 +64,7 @@ describe("invoke", () => {
     const out = await invoke(fx("nope.ts"), req());
     expect(out.ok).toBe(false);
     if (!out.ok) {
-      expect(out.error.kind).toBe("import_failed");
+      expect(out.error.code).toBe("import_failed");
     }
   });
 
@@ -73,7 +72,7 @@ describe("invoke", () => {
     const out = await invoke(fx("no-fetch.ts"), req());
     expect(out.ok).toBe(false);
     if (!out.ok) {
-      expect(out.error.kind).toBe("import_failed");
+      expect(out.error.code).toBe("import_failed");
     }
   });
 
@@ -81,42 +80,48 @@ describe("invoke", () => {
     const out = await invoke(fx("bad-return.ts"), req());
     expect(out.ok).toBe(false);
     if (!out.ok) {
-      expect(out.error.kind).toBe("bad_return");
+      expect(out.error.code).toBe("bad_return");
     }
   });
 
-  test("valid body satisfies schema.input → 200", async () => {
-    const out = await invoke(
-      fx("greet.ts"),
-      req({ method: "POST", body: JSON.stringify({ name: "David" }) })
-    );
+  test("returns schema.output with defaults applied", async () => {
+    const out = await invoke(fx("default-output.ts"), req());
     expect(out.ok).toBe(true);
     if (out.ok) {
-      expect(JSON.parse(out.response.body!)).toEqual({ greeting: "Hi, David" });
+      expect(out.output).toEqual({
+        greeting: "Hi",
+        tone: "friendly",
+      });
     }
   });
 
-  test("missing required field → 400 without calling handler", async () => {
+  test("returns invalid_input for a missing required field", async () => {
     const out = await invoke(
       fx("greet.ts"),
       req({ method: "POST", body: "{}" })
     );
-    expect(out.ok).toBe(true);
+    expect(out.ok).toBe(false);
     if (!out.ok) {
-      return;
+      expect(out.error.code).toBe("invalid_input");
     }
-    expect(out.response.status).toBe(400);
-    expect(JSON.parse(out.response.body!).error).toBe("invalid input");
   });
 
-  test("non-JSON body with a schema → 400", async () => {
+  test("returns invalid_input for a non-JSON body", async () => {
     const out = await invoke(
       fx("greet.ts"),
       req({ method: "POST", body: "not json" })
     );
-    expect(out.ok).toBe(true);
-    if (out.ok) {
-      expect(out.response.status).toBe(400);
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error.code).toBe("invalid_input");
+    }
+  });
+
+  test("returns invalid_output when the response fails schema.output", async () => {
+    const out = await invoke(fx("invalid-output.ts"), req());
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error.code).toBe("invalid_output");
     }
   });
 
@@ -127,7 +132,7 @@ describe("invoke", () => {
     );
     expect(out.ok).toBe(true);
     if (out.ok) {
-      expect(out.response.body).toBe("ok");
+      expect(out.output).toBe("ok");
     }
   });
 });

@@ -8,12 +8,11 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 use qdrant_client::{
     config::QdrantConfig,
-    prelude::Payload,
     qdrant::{
-        self, shard_key, CountPointsBuilder, DeletePointsBuilder, ScrollPointsBuilder,
-        SearchPointsBuilder, SetPayloadPointsBuilder, UpsertPointsBuilder,
+        self, shard_key, vector_output, CountPointsBuilder, DeletePointsBuilder,
+        ScrollPointsBuilder, SearchPointsBuilder, SetPayloadPointsBuilder, UpsertPointsBuilder,
     },
-    Qdrant,
+    Payload, Qdrant,
 };
 use serde::{Deserialize, Serialize};
 
@@ -52,6 +51,20 @@ pub fn env_var_prefix_for_cluster(cluster: QdrantCluster) -> &'static str {
     match cluster {
         QdrantCluster::Cluster0 => "QDRANT_CLUSTER_0",
     }
+}
+
+// qdrant-client 1.17 removed `From<VectorsOutput> for Vectors`; our collections only hold single
+// unnamed vectors so we convert through the dedicated vector type.
+pub fn vectors_output_to_vectors(vectors: qdrant::VectorsOutput) -> Result<qdrant::Vectors> {
+    let vector: qdrant::Vector = match vectors
+        .get_vector()
+        .ok_or_else(|| anyhow!("expected an unnamed vector"))?
+    {
+        vector_output::Vector::Dense(v) => v.into(),
+        vector_output::Vector::Sparse(v) => v.into(),
+        vector_output::Vector::MultiDense(v) => v.into(),
+    };
+    Ok(vector.into())
 }
 
 #[derive(Clone)]
@@ -162,13 +175,16 @@ impl DustQdrantClient {
         Ok(h % SHARD_KEY_COUNT)
     }
 
-    fn shard_key(&self, internal_id: &String) -> Result<shard_key::Key> {
+    pub fn shard_key_name(&self, internal_id: &String) -> Result<String> {
         Ok(format!(
             "{}_{}",
             self.shard_key_prefix(),
             Self::shard_key_id_from_internal_id(internal_id)?
-        )
-        .into())
+        ))
+    }
+
+    fn shard_key(&self, internal_id: &String) -> Result<shard_key::Key> {
+        Ok(self.shard_key_name(internal_id)?.into())
     }
 
     // Inject the `data_source_internal_id` to the filter to ensure tenant separation. This

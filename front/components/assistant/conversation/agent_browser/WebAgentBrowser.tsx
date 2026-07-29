@@ -1,11 +1,15 @@
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
 import { ManageDropdownMenu } from "@app/components/assistant/ManageDropdownMenu";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
+import { SKILL_ICON } from "@app/lib/skill";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { getAgentBuilderRoute, setQueryParam } from "@app/lib/utils/router";
-import { isBuilder } from "@app/types/user";
+import {
+  getAgentBuilderRoute,
+  getSkillBuilderRoute,
+  setQueryParam,
+} from "@app/lib/utils/router";
 import {
   Button,
   ContactsRobot,
@@ -21,7 +25,6 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
-
 import {
   AGENTS_TABS,
   AgentBrowserSearchDropdown,
@@ -52,11 +55,14 @@ export function WebAgentBrowser({
 }: WebAgentBrowserProps) {
   const router = useAppRouter();
   const { createAgentButtonRef } = useWelcomeTourGuide();
-  const { featureFlags } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions();
 
-  const isRestrictedFromAgentCreation =
-    featureFlags.includes("disallow_agent_creation_to_users") &&
-    !isBuilder(owner);
+  const canCreateAgent = hasPermission("create", "agent");
+  const canPublishAgent = hasPermission("publish", "agent");
+  // Users who can publish agents can reach the manage agents page to discover
+  // existing agents and edit the ones they can, even without create permission.
+  const canManageAgents = canCreateAgent || canPublishAgent;
+  const canCreateSkill = hasPermission("create", "skill");
 
   const sortTypeLabel = useMemo(() => {
     switch (sortType) {
@@ -101,30 +107,33 @@ export function WebAgentBrowser({
 
         <div className="hidden sm:block">
           <div className="flex gap-2">
-            {!isRestrictedFromAgentCreation && (
+            {canCreateAgent && (
               <div ref={createAgentButtonRef}>
                 <CreateDropdown owner={owner} dataGtmLocation="homepage" />
               </div>
             )}
-            {isBuilder(owner) ? (
+            {canManageAgents && canCreateSkill ? (
               <ManageDropdownMenu owner={owner} />
-            ) : (
-              !isRestrictedFromAgentCreation && (
-                <Button
-                  href={getAgentBuilderRoute(owner.sId, "manage")}
-                  variant="primary"
-                  icon={ContactsRobot}
-                  label="Manage agents"
-                  data-gtm-label="assistantManagementButton"
-                  data-gtm-location="homepage"
-                  size="sm"
-                  onClick={withTracking(
-                    TRACKING_AREAS.BUILDER,
-                    "manage_agents"
-                  )}
-                />
-              )
-            )}
+            ) : canManageAgents ? (
+              <Button
+                href={getAgentBuilderRoute(owner.sId, "manage")}
+                variant="primary"
+                icon={ContactsRobot}
+                label="Manage agents"
+                data-gtm-label="assistantManagementButton"
+                data-gtm-location="homepage"
+                size="sm"
+                onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_agents")}
+              />
+            ) : canCreateSkill ? (
+              <Button
+                href={getSkillBuilderRoute(owner.sId, "manage")}
+                variant="primary"
+                icon={SKILL_ICON}
+                label="Manage skills"
+                size="sm"
+              />
+            ) : null}
           </div>
         </div>
       </div>

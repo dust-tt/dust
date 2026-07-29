@@ -1,9 +1,6 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const SKILL_AUTHORING_SERVER_NAME = "skill_authoring" as const;
 export const LIST_SKILLS_TOOL_NAME = "list_skills" as const;
@@ -11,8 +8,39 @@ export const GET_SKILL_TOOL_NAME = "get_skill" as const;
 export const CREATE_SKILL_TOOL_NAME = "create_skill" as const;
 export const UPDATE_SKILL_TOOL_NAME = "update_skill" as const;
 
-export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
-  [LIST_SKILLS_TOOL_NAME]: {
+export const CREATE_SKILL_DESCRIPTION =
+  "Create a new reusable Skill in this workspace: a named, reusable set of instructions an agent can later enable. v1 creates instructions-only skills.";
+
+export const CREATE_SKILL_INPUT_SCHEMA = z.object({
+  name: z.string().describe("Unique, human-readable skill name."),
+  userFacingDescription: z
+    .string()
+    .describe("Short description shown to users browsing skills."),
+  agentFacingDescription: z
+    .string()
+    .max(AGENT_FACING_DESCRIPTION_MAX_LENGTH)
+    .describe("Description used by agents to decide when to use the skill."),
+  instructions: z
+    .string()
+    .describe("The skill's instructions/playbook in markdown."),
+  icon: z
+    .string()
+    .optional()
+    .describe("Optional icon name; auto-suggested if omitted."),
+  bypassSimilarSkillCheck: z
+    .boolean()
+    .optional()
+    .describe(
+      "Bypass the similar skill check and create the skill anyway. Set to true " +
+        "only after the user explicitly confirms they want a separate skill."
+    ),
+});
+
+export type CreateSkillArgs = z.infer<typeof CREATE_SKILL_INPUT_SCHEMA>;
+
+export const SKILL_AUTHORING_TOOLS_METADATA = [
+  {
+    name: LIST_SKILLS_TOOL_NAME,
     description:
       "List active custom Skills in this workspace. Returns lightweight summaries (sId, name, agentFacingDescription, canWrite) paginated.",
     schema: {
@@ -44,7 +72,8 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [GET_SKILL_TOOL_NAME]: {
+  {
+    name: GET_SKILL_TOOL_NAME,
     description:
       "Get the full details for one custom Skill by id, including its instructions.",
     schema: {
@@ -58,35 +87,10 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [CREATE_SKILL_TOOL_NAME]: {
-    description:
-      "Create a new reusable Skill in this workspace: a named, reusable set of instructions an agent can later enable. v1 creates instructions-only skills.",
-    schema: {
-      name: z.string().describe("Unique, human-readable skill name."),
-      userFacingDescription: z
-        .string()
-        .describe("Short description shown to users browsing skills."),
-      agentFacingDescription: z
-        .string()
-        .max(AGENT_FACING_DESCRIPTION_MAX_LENGTH)
-        .describe(
-          "Description used by agents to decide when to use the skill."
-        ),
-      instructions: z
-        .string()
-        .describe("The skill's instructions/playbook in markdown."),
-      icon: z
-        .string()
-        .optional()
-        .describe("Optional icon name; auto-suggested if omitted."),
-      bypassSimilarSkillCheck: z
-        .boolean()
-        .optional()
-        .describe(
-          "Bypass the similar skill check and create the skill anyway. Set to true " +
-            "only after the user explicitly confirms they want a separate skill."
-        ),
-    },
+  {
+    name: CREATE_SKILL_TOOL_NAME,
+    description: CREATE_SKILL_DESCRIPTION,
+    schema: CREATE_SKILL_INPUT_SCHEMA.shape,
     stake: "high",
     displayLabels: {
       running: "Creating skill",
@@ -95,7 +99,8 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [UPDATE_SKILL_TOOL_NAME]: {
+  {
+    name: UPDATE_SKILL_TOOL_NAME,
     description:
       "Update an existing custom Skill by id. Provide only the fields that should change. " +
       "To change the instructions you can either replace them entirely with `instructions`, " +
@@ -161,7 +166,7 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const;
 
 export const SKILL_AUTHORING_SERVER = {
   serverInfo: {
@@ -172,13 +177,5 @@ export const SKILL_AUTHORING_SERVER = {
     icon: "ActionListCheckIcon",
     documentationUrl: null,
   },
-  tools: Object.values(SKILL_AUTHORING_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: SKILL_AUTHORING_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

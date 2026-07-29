@@ -1,6 +1,6 @@
 import {
+  ANTHROPIC_TOOL_SEARCH_INSTRUCTION,
   includesToolSearchTool,
-  TOOL_SEARCH_INSTRUCTION,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { toolSpecsToAnthropicAITools } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import type { ToolSpecification } from "@app/lib/model_constructors/types/input/configuration";
@@ -68,9 +68,9 @@ describe("includesToolSearchTool", () => {
   });
 });
 
-describe("TOOL_SEARCH_INSTRUCTION", () => {
+describe("ANTHROPIC_TOOL_SEARCH_INSTRUCTION", () => {
   it("is a non-empty hint that does not name the underlying search tool", () => {
-    expect(TOOL_SEARCH_INSTRUCTION.length).toBeGreaterThan(0);
-    expect(TOOL_SEARCH_INSTRUCTION).not.toContain("bm25");
+    expect(ANTHROPIC_TOOL_SEARCH_INSTRUCTION.length).toBeGreaterThan(0);
+    expect(ANTHROPIC_TOOL_SEARCH_INSTRUCTION).not.toContain("bm25");
   });
 });

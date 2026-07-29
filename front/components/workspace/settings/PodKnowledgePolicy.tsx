@@ -30,6 +30,9 @@ const POD_KNOWLEDGE_POLICIES = [
 
 type PodKnowledgePolicy = (typeof POD_KNOWLEDGE_POLICIES)[number];
 
+const LABEL = "Pod files";
+const DESCRIPTION = "Whether members can manually add files to Pods.";
+
 export function PodKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
   const {
     allowManualPodKnowledgeManagement,
@@ -44,14 +47,11 @@ export function PodKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
       allowManualPodKnowledgeManagement
   );
 
-  const label = "Pod files policy";
-  const description = "Control whether members can manually add files to Pods.";
-
   if (hasFeature("admin_governance")) {
     return (
       <GovernanceSettingRowLayout
-        label={label}
-        description={description}
+        label={LABEL}
+        description={DESCRIPTION}
         action={
           <PodKnowledgePolicyDropdown
             selectedPolicy={selectedPolicy}
@@ -65,8 +65,8 @@ export function PodKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
 
   return (
     <ContextItem
-      title={label}
-      subElement={description}
+      title={LABEL}
+      subElement={DESCRIPTION}
       visual={<BookOpen01 className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={

@@ -1,14 +1,11 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { InteractiveContentFileContentType } from "@app/types/files";
 import {
   frameContentType,
   frameSlideshowContentType,
   INTERACTIVE_CONTENT_FILE_FORMATS,
 } from "@app/types/files";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const INTERACTIVE_CONTENT_SERVER_NAME = "interactive_content" as const;
 
@@ -40,8 +37,9 @@ export const FRAME_RECREATE_WASTE_RATIONALE =
   "a replacement Frame loses the original's identity and share URL and wastes tokens " +
   "regenerating content that did not change";
 
-export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
-  [CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
+export const INTERACTIVE_CONTENT_TOOLS_METADATA = [
+  {
+    name: CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     description:
       "Create a new Frame: interactive content such as a dashboard, data visualization, or slideshow " +
       "presentation that users can run and interact with, beyond static viewing. Choose 'template' " +
@@ -103,7 +101,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  [EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
+  {
+    name: EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     description:
       "Edit an existing Frame: change its code, for example to fix a chart, adjust colors, or " +
       "update text and layout. Replaces a specified text segment with new text; each edit creates " +
@@ -157,7 +156,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  [REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
+  {
+    name: REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     description:
       "Revert a Frame to its previous version. " +
       "Each revert goes back one version in the file's history. ",
@@ -177,7 +177,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  [RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
+  {
+    name: RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     description:
       "Rename a Frame. Use this to change the file name of a Frame while keeping its content unchanged.",
     schema: {
@@ -201,7 +202,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
+  {
+    name: RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     description:
       "Read back the current content of an existing Frame by its file ID. " +
       "Use this to inspect a Frame you have previously created or edited, and to identify " +
@@ -222,7 +224,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  [GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME]: {
+  {
+    name: GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME,
     description:
       "Get the share URL (share link) for a Frame. Returns the share URL if the Frame is " +
       "currently shared.",
@@ -242,7 +245,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [EXPORT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
+  {
+    name: EXPORT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     description:
       "Export a Frame as a PNG screenshot or PDF document. " +
       "PNG returns a visual snapshot of the rendered frame. " +
@@ -276,7 +280,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  [PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
+  {
+    name: PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     description:
       "Publish a Frame from its source files, applying source edits to the live rendered Frame. " +
       "A Frame's source lives on the conversation file system at " +
@@ -315,7 +320,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-});
+] as const;
 
 export const INTERACTIVE_CONTENT_SERVER = {
   serverInfo: {
@@ -327,13 +332,5 @@ export const INTERACTIVE_CONTENT_SERVER = {
     icon: "ActionFrameIcon",
     documentationUrl: null,
   },
-  tools: Object.values(INTERACTIVE_CONTENT_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: INTERACTIVE_CONTENT_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

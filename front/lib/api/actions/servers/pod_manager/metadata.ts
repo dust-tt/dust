@@ -1,6 +1,5 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   IncludeInputSchema,
   SearchWithNodesInputSchema,
@@ -13,9 +12,7 @@ import {
 import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const POD_MANAGER_SERVER_NAME = "pod_manager" as const;
 export const UPDATE_MEMBERS_TOOL_NAME = "update_members" as const;
@@ -25,8 +22,9 @@ export const EDIT_INFORMATION_TOOL_NAME = "edit_information" as const;
 export const SET_PINNED_FRAME_TOOL_NAME = "set_pinned_frame" as const;
 export const MOVE_CONVERSATION_TOOL_NAME = "move_conversation" as const;
 
-export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
-  add_content_node: {
+export const POD_MANAGER_TOOLS_METADATA = [
+  {
+    name: "add_content_node",
     description:
       "Add a content node reference from Company Data to the Pod context. The node will be available to all conversations in this Pod.",
     schema: {
@@ -53,7 +51,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  remove_content_node: {
+  {
+    name: "remove_content_node",
     description:
       "Remove a content node reference from the Pod context. The node will no longer be available to conversations in this Pod. " +
       "Use nodeId with nodeDataSourceViewId from get_information attachments for this reference.",
@@ -80,7 +79,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  [EDIT_INFORMATION_TOOL_NAME]: {
+  {
+    name: EDIT_INFORMATION_TOOL_NAME,
     description:
       "Edit Pod information: title, description, and/or access. " +
       "Provide at least one field to update. Descriptions must be plain text only (no markdown, HTML, or formatting). " +
@@ -115,7 +115,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [SET_PINNED_FRAME_TOOL_NAME]: {
+  {
+    name: SET_PINNED_FRAME_TOOL_NAME,
     description:
       "Set or clear the Pod banner frame — the frame pinned to the top of the Pod. " +
       "The pinned frame must be an existing Pod file path under `pod/` (pass null to unpin).",
@@ -142,7 +143,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [UPDATE_MEMBERS_TOOL_NAME]: {
+  {
+    name: UPDATE_MEMBERS_TOOL_NAME,
     description:
       "Update membership for an existing Pod: invite, add, remove, " +
       "promote, or demote teammates as Pod members or editors by user id. " +
@@ -172,7 +174,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  get_information: {
+  {
+    name: "get_information",
     description:
       "Get metadata about the Pod: URL, title, description, access, pinned frame, " +
       "and linked Company Data content-node references attached to the " +
@@ -197,7 +200,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [LIST_MEMBERS_TOOL_NAME]: {
+  {
+    name: LIST_MEMBERS_TOOL_NAME,
     description:
       "List all people in the Pod, including members and editors. " +
       "Each entry includes user ID, name, email, and role or status " +
@@ -234,7 +238,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  list_pods: {
+  {
+    name: "list_pods",
     description:
       "List non-archived Pods. Defaults to Pods where you are a member (access='member'). " +
       "Use access='open' to list all open Pods in the workspace. " +
@@ -275,7 +280,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  create_pod: {
+  {
+    name: "create_pod",
     description:
       "Create a new Pod. By default the Pod is restricted. The creator is always added as a Pod editor. " +
       "You can optionally set access to open and add initial members or editors via membersToAdd.",
@@ -310,7 +316,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  retrieve_recent_documents: {
+  {
+    name: "retrieve_recent_documents",
     description:
       "Fetch the most recent documents from this Pod's knowledge data source and from any content nodes linked in the " +
       "Pod context, in reverse chronological order up to the retrieval limit. Respects optional time window. " +
@@ -331,7 +338,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  [SEMANTIC_SEARCH_TOOL_NAME]: {
+  {
+    name: SEMANTIC_SEARCH_TOOL_NAME,
     description:
       "Find and search for information about a topic or question across Pod " +
       "files, content nodes attached to the Pod, and Pod conversation " +
@@ -373,10 +381,11 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  create_conversation: {
+  {
+    name: "create_conversation",
     description:
       "Create or start a new Pod conversation and post a user message. " +
-      "Default for Pod work: pass an agentName so a Pod agent handles " +
+      "By default, pass an agentName so a Pod agent handles " +
       "the task inside the new conversation. Do NOT do the work yourself. " +
       "Omit agentName only when posting a simple message that requires " +
       "no intellectual work (e.g. a status update, a comment, a note) " +
@@ -412,7 +421,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  list_conversations: {
+  {
+    name: "list_conversations",
     description:
       "List conversations in the Pod updated on or after a given time (updatedSince). " +
       "Use unreadOnly=true to return only conversations with unread messages (same as narrowing unread), " +
@@ -469,7 +479,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [MOVE_CONVERSATION_TOOL_NAME]: {
+  {
+    name: MOVE_CONVERSATION_TOOL_NAME,
     description:
       "Move a conversation into a Pod or out of its Pod to the user's personal conversations. " +
       "Set destination to 'pod' to move into a Pod (requires dustPod), or 'personal' to move out of the current Pod. " +
@@ -502,7 +513,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  add_message_to_conversation: {
+  {
+    name: "add_message_to_conversation",
     description:
       "Send or post a follow-up user message to an existing conversation " +
       "in this Pod. Default for Pod work: pass an agentName so a Pod agent " +
@@ -549,7 +561,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const;
 
 export const POD_MANAGER_SERVER = {
   serverInfo: {
@@ -563,13 +575,5 @@ export const POD_MANAGER_SERVER = {
     authorization: null,
     documentationUrl: null,
   },
-  tools: Object.values(POD_MANAGER_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: POD_MANAGER_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

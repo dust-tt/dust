@@ -407,7 +407,7 @@ export async function botValidateToolExecution(
       throw new Error("Unreachable: bot cannot validate tool execution.");
     }
 
-    const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
+    const hasChatbotAccessRes = await notifyIfSlackUserIsNotAllowed(
       connector,
       slackClient,
       slackUserInfo,
@@ -418,6 +418,11 @@ export async function botValidateToolExecution(
       },
       slackConfig.whitelistedDomains
     );
+    if (hasChatbotAccessRes.isErr()) {
+      return hasChatbotAccessRes;
+    }
+
+    const hasChatbotAccess = hasChatbotAccessRes.value;
     if (!hasChatbotAccess.authorized) {
       return new Ok(undefined);
     }
@@ -882,7 +887,7 @@ async function answerMessage(
     // permissions.
     skipToolsValidation = true;
   } else {
-    const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
+    const hasChatbotAccessRes = await notifyIfSlackUserIsNotAllowed(
       connector,
       slackClient,
       slackUserInfo,
@@ -893,6 +898,11 @@ async function answerMessage(
       },
       slackConfig.whitelistedDomains
     );
+    if (hasChatbotAccessRes.isErr()) {
+      return hasChatbotAccessRes;
+    }
+
+    const hasChatbotAccess = hasChatbotAccessRes.value;
     if (!hasChatbotAccess.authorized) {
       return new Ok(undefined);
     }

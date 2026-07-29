@@ -1,13 +1,11 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const WAKEUPS_SERVER_NAME = "wakeups" as const;
 
-export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
-  schedule_wakeup: {
+export const WAKEUPS_TOOLS_METADATA = [
+  {
+    name: "schedule_wakeup",
     description:
       "Schedule a wake-up that posts a user message at a future time to re-invoke " +
       "the agent. Useful for requests to check back on something later, remind the user, poll " +
@@ -49,7 +47,8 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  list_wakeups: {
+  {
+    name: "list_wakeups",
     description:
       "List wake-ups and reminders with their status, schedule, and reason, including " +
       "pending reminders and already-fired, cancelled, or expired wake-ups. Useful for checking " +
@@ -64,7 +63,8 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  cancel_wakeup: {
+  {
+    name: "cancel_wakeup",
     description:
       "Cancel or stop a previously scheduled wake-up or reminder by ID. " +
       "Useful for requests to stop a reminder set earlier, remove a scheduled follow-up, or cancel " +
@@ -85,7 +85,7 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const;
 
 export const WAKEUPS_SERVER = {
   serverInfo: {
@@ -97,13 +97,5 @@ export const WAKEUPS_SERVER = {
     documentationUrl: null,
     displayedAs: "agent",
   },
-  tools: Object.values(WAKEUPS_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: WAKEUPS_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

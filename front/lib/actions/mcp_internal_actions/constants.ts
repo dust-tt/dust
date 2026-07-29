@@ -3,7 +3,10 @@ import {
   type MCPToolStakeLevelType,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ServerMetadata,
+  ToolMeta,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { ACTIVATION_RECOMMENDATIONS_SERVER } from "@app/lib/api/actions/servers/activation_recommendations/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
@@ -73,6 +76,7 @@ import {
 import { SANDBOX_FUNCTIONS_SERVER } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
+import { SERVICENOW_SERVER } from "@app/lib/api/actions/servers/servicenow/metadata";
 import { SKILL_AUTHORING_SERVER } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
@@ -85,6 +89,7 @@ import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metad
 import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
 import { USER_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/user_analytics/metadata";
+import { USER_MEMORY_SERVER } from "@app/lib/api/actions/servers/user_memory/metadata";
 import { USER_MENTIONS_SERVER } from "@app/lib/api/actions/servers/user_mentions/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
@@ -111,6 +116,9 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";
@@ -151,6 +159,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
   "user_analytics",
+  "user_memory",
   "agent_sidekick_agent_state",
   "agent_sidekick_context",
   "agent_templates",
@@ -199,6 +208,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "run_dust_app",
   "salesforce",
   "salesloft",
+  "servicenow",
   "slab",
   "slack",
   "slack_bot",
@@ -246,7 +256,41 @@ export const MCP_SERVER_AVAILABILITY = [
 ] as const;
 export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
 
-export const INTERNAL_MCP_SERVERS = {
+type HasUniqueNames<Tools extends readonly ToolMeta[]> = {
+  // Loop over each item in the array.
+  [I in keyof Tools]: {
+    // Only check the "name" property.
+    [Key in keyof Tools[I]]: Key extends "name"
+      ? Tools[I][Key] extends {
+          // Build an array of all the other names.
+          [J in keyof Tools]: J extends I ? never : Tools[J];
+        }[number]["name"]
+        ? // The current name (Tools[I][Key]) matches another name: we error.
+          `ERROR: Duplicate tool name detected: ${Tools[I][Key] & string}`
+        : // No match, we just fall through.
+          Tools[I][Key]
+      : // Property other than the name: we just fall through as well.
+        Tools[I][Key];
+  };
+};
+
+function ensureUniqueToolNames<
+  const T extends {
+    [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
+  },
+>(
+  servers: T & {
+    [ServerName in InternalMCPServerNameType]: {
+      metadata: {
+        tools: HasUniqueNames<T[ServerName]["metadata"]["tools"]>;
+      };
+    };
+  }
+): T {
+  return servers;
+}
+
+export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
   // Note:
   // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
 
@@ -1206,10 +1250,36 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: AGENT_TEMPLATES_SERVER,
   },
+  servicenow: {
+    id: 1042,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("servicenow_tool");
+    },
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SERVICENOW_SERVER,
+  },
+  user_memory: {
+    id: 1043,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("user_memory");
+    },
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: USER_MEMORY_SERVER,
+  },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
-  [K in InternalMCPServerNameType]: InternalMCPServerEntryBase<K>;
-};
+  [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
+});
 
 type IsRestrictedCallback = (params: {
   plan: PlanType;
@@ -1228,7 +1298,9 @@ type RuntimeToolStakeLevelCallback = (
   params: RuntimeToolStakeLevelCallbackParams
 ) => MCPToolStakeLevelType;
 
-type InternalMCPServerEntryCommon = {
+type InternalMCPServerEntry<
+  K extends InternalMCPServerNameType = InternalMCPServerNameType,
+> = {
   id: number;
   availability: MCPServerAvailability;
   allowMultipleInstances: boolean;
@@ -1244,6 +1316,9 @@ type InternalMCPServerEntryCommon = {
   sensitivityLabelProvider?: string;
   // When false, the server is hidden from direct execution contexts (e.g. sandbox CLI).
   // Defaults to true.
+  metadata: ServerMetadata & {
+    serverInfo: InternalMCPServerDefinitionType & { name: K };
+  };
 } & (
   | {
       // A restricted server is not necessarily in preview (can be restricted based on the plan for instance).
@@ -1253,26 +1328,6 @@ type InternalMCPServerEntryCommon = {
   // Non restricted server cannot be in preview
   | { isPreview: false; isRestricted: undefined }
 );
-
-type InternalMCPServerEntryWithMetadata<K extends InternalMCPServerNameType> =
-  InternalMCPServerEntryCommon & {
-    metadata: ServerMetadata<K>;
-    serverInfo?: InternalMCPServerDefinitionType & { name: K };
-  };
-
-type InternalMCPServerEntryWithoutMetadata<
-  K extends InternalMCPServerNameType,
-> = InternalMCPServerEntryCommon & {
-  metadata?: undefined;
-  serverInfo: InternalMCPServerDefinitionType & { name: K };
-};
-
-type InternalMCPServerEntryBase<K extends InternalMCPServerNameType> =
-  | InternalMCPServerEntryWithMetadata<K>
-  | InternalMCPServerEntryWithoutMetadata<K>;
-
-type InternalMCPServerEntry =
-  InternalMCPServerEntryBase<InternalMCPServerNameType>;
 
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
@@ -1304,6 +1359,32 @@ type AutoServerKeys<T> = {
 export type AutoInternalMCPServerNameType = AutoServerKeys<
   typeof INTERNAL_MCP_SERVERS
 >;
+
+export function validateToolInputs<
+  S extends InternalMCPServerNameType,
+  T extends InternalMCPToolNameType<S>,
+>(
+  serverName: S,
+  toolName: T,
+  inputs: Record<string, unknown>
+): inputs is z.infer<
+  z.ZodObject<
+    Extract<
+      (typeof INTERNAL_MCP_SERVERS)[S]["metadata"]["tools"][number],
+      { name: T }
+    >["schema"]
+  >
+> {
+  const toolMetadata = INTERNAL_MCP_SERVERS[serverName].metadata.tools.find(
+    (tool) => tool.name === toolName
+  );
+  // The type enforces that this exists, but we return false out of retro-compatibility over tool/server name changes.
+  if (!toolMetadata) {
+    return false;
+  }
+
+  return z.object(toolMetadata.schema).safeParse(inputs).success;
+}
 
 export function isAutoInternalMCPServerName(
   name: InternalMCPServerNameType
@@ -1442,16 +1523,6 @@ export function getInternalMCPServerDisplayedAs(
   return server.metadata.serverInfo.displayedAs;
 }
 
-export function getInternalMCPServerToolStakes(
-  name: InternalMCPServerNameType
-): Record<string, MCPToolStakeLevelType> {
-  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-
-  return Object.fromEntries(
-    Object.values(server.metadata.tools).map((t) => [t.name, t.stake])
-  );
-}
-
 export function getInternalMCPServerToolArgumentsRequiringApproval(
   name: InternalMCPServerNameType,
   toolName: string
@@ -1473,9 +1544,9 @@ export function resolveInternalMCPServerToolStakeLevel(
   );
 }
 
-export function getInternalMCPServerToolDisplayLabels<
-  N extends InternalMCPServerNameType,
->(name: N): Record<string, ToolDisplayLabels> | null {
+export function getInternalMCPServerToolDisplayLabels(
+  name: InternalMCPServerNameType
+): Record<string, ToolDisplayLabels> | null {
   const server = INTERNAL_MCP_SERVERS[name];
   const displayLabelsByTool: Record<string, ToolDisplayLabels> = {};
   let hasDisplayLabels = false;
@@ -1538,12 +1609,19 @@ export function matchesInternalMCPServerName(
   return false;
 }
 
-export function getInternalMCPServerMetadata<
-  N extends InternalMCPServerNameType,
->(name: N): (typeof INTERNAL_MCP_SERVERS)[N]["metadata"] {
-  const server = INTERNAL_MCP_SERVERS[name];
+export function getInternalMCPServerMetadata(name: InternalMCPServerNameType) {
+  const { serverInfo, tools }: ServerMetadata =
+    INTERNAL_MCP_SERVERS[name].metadata;
 
-  return server.metadata;
+  return {
+    serverInfo,
+    tools: tools.map(({ schema, ...tool }) => ({
+      ...tool,
+      // For the input schema we store a zod schema on the tool metadata, it's what's easier to use in the code because
+      // we can infer a type from it, but tool specifications expect a JSON schema.
+      inputSchema: zodToJsonSchema(z.object(schema)) as JSONSchema,
+    })),
+  };
 }
 
 const SENSITIVITY_LABEL_PROVIDER_BY_SERVER: Partial<

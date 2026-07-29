@@ -3,6 +3,7 @@ import {
   getWorkspaceLimitForSubmitError,
   ReachedLimitPopup,
 } from "@app/components/app/ReachedLimitPopup";
+import { ActivationNextSteps } from "@app/components/assistant/conversation/ActivationNextSteps";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -134,6 +135,7 @@ export function ConversationContainerVirtuoso({
       mentions: RichMention[],
       contentFragments: ContentFragmentsType,
       selectedMCPServerViewIds?: string[],
+      selectedSpaceIds?: string[],
       modelSelection?: ModelSelectionType
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
@@ -183,6 +185,7 @@ export function ConversationContainerVirtuoso({
           contentFragments,
           clientSideMCPServerIds,
           selectedMCPServerViewIds,
+          selectedSpaceIds,
           richMentions: mentions,
           modelSelection,
         },
@@ -267,16 +270,13 @@ export function ConversationContainerVirtuoso({
         <>
           <div
             id="agent-input-header"
-            className="flex h-fit w-full max-w-conversation flex-col justify-end gap-8 pt-4 pb-6 md:min-h-[20vh]"
+            className="flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 py-4 md:min-h-[20vh]"
             ref={startConversationRef}
           >
-            <Page.Header
-              title={
-                <h3 className="heading-2xl font-medium text-foreground">
-                  {greeting}
-                </h3>
-              }
-            />
+            <div className="flex w-full justify-center">
+              <ActivationNextSteps owner={owner} />
+            </div>
+            <Page.Header title={greeting} />
           </div>
           <div
             className={classNames(

@@ -1,8 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const COMMON_UTILITIES_SERVER_NAME = "common_utilities" as const;
 export const SET_CONVERSATION_TITLE_TOOL_NAME =
@@ -11,8 +8,9 @@ export const SET_CONVERSATION_TITLE_TOOL_NAME =
 const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
 const MAX_WAIT_DURATION_MS = 3 * 60 * 1_000;
 
-export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
-  generate_random_number: {
+export const COMMON_UTILITIES_TOOLS_METADATA = [
+  {
+    name: "generate_random_number",
     description:
       "Generate a random integer (whole number) between 1 and the provided maximum (inclusive). Pick a random number in a range.",
     schema: {
@@ -33,7 +31,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  generate_random_float: {
+  {
+    name: "generate_random_float",
     description:
       "Generate a random floating point number between 0 (inclusive) and 1 (exclusive).",
     schema: {},
@@ -45,7 +44,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  wait: {
+  {
+    name: "wait",
     description: `Pause execution for the provided number of milliseconds (maximum ${MAX_WAIT_DURATION_MS}).`,
     schema: {
       duration_ms: z
@@ -66,7 +66,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  get_current_time: {
+  {
+    name: "get_current_time",
     description:
       "Return the current date and time in multiple convenient formats.",
     schema: {
@@ -87,7 +88,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  math_operation: {
+  {
+    name: "math_operation",
     description:
       "Calculate the result of a math expression: arithmetic, percentages, and other mathematical operations.",
     schema: {
@@ -103,7 +105,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [SET_CONVERSATION_TITLE_TOOL_NAME]: {
+  {
+    name: SET_CONVERSATION_TITLE_TOOL_NAME,
     description:
       "Update the title of the current conversation. Use this to give the conversation a descriptive name that summarizes its topic.",
     schema: {
@@ -120,7 +123,7 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const;
 
 export const COMMON_UTILITIES_SERVER = {
   serverInfo: {
@@ -131,13 +134,5 @@ export const COMMON_UTILITIES_SERVER = {
     authorization: null,
     documentationUrl: null,
   },
-  tools: Object.values(COMMON_UTILITIES_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: COMMON_UTILITIES_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

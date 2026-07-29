@@ -48,7 +48,7 @@ describe("POST /api/v1/w/[wId]/sandbox/sandbox-functions/result", () => {
 
     const response = await postSandboxFunctionResult(workspace, token, {
       function: "test_function",
-      result: { hello: "world" },
+      result: { ok: true, output: { hello: "world" } },
     });
 
     expect(response.status).toBe(200);
@@ -76,11 +76,114 @@ describe("POST /api/v1/w/[wId]/sandbox/sandbox-functions/result", () => {
       await createPersistedSandboxFunctionInvocationTokenTestContext();
 
     const response = await postSandboxFunctionResult(workspace, token, {
-      result: { hello: "world" },
+      result: { ok: true, output: { hello: "world" } },
     });
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true });
+  });
+
+  it("publishes structured runner errors as invocation errors", async () => {
+    const { auth, token, workspace, sandboxFunction, invocation } =
+      await createPersistedSandboxFunctionInvocationTokenTestContext();
+
+    const response = await postSandboxFunctionResult(workspace, token, {
+      result: {
+        ok: false,
+        error: {
+          code: "invalid_output",
+          message: "Function output does not match schema.output.",
+        },
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const refetchedInvocation =
+      await SandboxFunctionInvocationResource.fetchById(auth, {
+        sandboxFunction,
+        invocationId: invocation.sId,
+      });
+    expect(refetchedInvocation?.status).toBe("errored");
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
+      {
+        type: "sandbox_function_invocation_error",
+        created: expect.any(Number),
+        invocationId: invocation.sId,
+        functionId: sandboxFunction.sId,
+        error: {
+          code: "invalid_output",
+          message: "Function output does not match schema.output.",
+        },
+      },
+      { invocationId: invocation.sId }
+    );
+  });
+
+  it("normalizes successful callbacks from the previous runner image", async () => {
+    const { auth, token, workspace, sandboxFunction, invocation } =
+      await createPersistedSandboxFunctionInvocationTokenTestContext();
+
+    const response = await postSandboxFunctionResult(workspace, token, {
+      result: {
+        ok: true,
+        response: {
+          status: 200,
+          headers: { "content-type": "application/json" },
+          body: Buffer.from(JSON.stringify({ hello: "legacy" })).toString(
+            "base64"
+          ),
+          encoding: "base64",
+        },
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const refetchedInvocation =
+      await SandboxFunctionInvocationResource.fetchById(auth, {
+        sandboxFunction,
+        invocationId: invocation.sId,
+      });
+    expect(refetchedInvocation?.status).toBe("succeeded");
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
+      {
+        type: "sandbox_function_invocation_result",
+        created: expect.any(Number),
+        invocationId: invocation.sId,
+        functionId: sandboxFunction.sId,
+        result: { hello: "legacy" },
+      },
+      { invocationId: invocation.sId }
+    );
+  });
+
+  it("fails the invocation when the runner callback is malformed", async () => {
+    const { auth, token, workspace, sandboxFunction, invocation } =
+      await createPersistedSandboxFunctionInvocationTokenTestContext();
+
+    const response = await postSandboxFunctionResult(workspace, token, {
+      result: { ok: true },
+    });
+
+    expect(response.status).toBe(200);
+    const refetchedInvocation =
+      await SandboxFunctionInvocationResource.fetchById(auth, {
+        sandboxFunction,
+        invocationId: invocation.sId,
+      });
+    expect(refetchedInvocation?.status).toBe("errored");
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
+      {
+        type: "sandbox_function_invocation_error",
+        created: expect.any(Number),
+        invocationId: invocation.sId,
+        functionId: sandboxFunction.sId,
+        error: {
+          code: "invocation_failed",
+          message: "Sandbox function returned an invalid result envelope.",
+        },
+      },
+      { invocationId: invocation.sId }
+    );
   });
 
   it("rejects sandbox action tokens", async () => {

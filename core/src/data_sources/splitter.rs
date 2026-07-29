@@ -107,7 +107,7 @@ async fn split_text(
                 return Err(e);
             }
         }
-        if current_chunk_size <= 0 {
+        if current_chunk_size == 0 {
             return Err(anyhow!("Could not tokenize the provided document"));
         }
         encoded = encoded[current_chunk_size..].to_vec();

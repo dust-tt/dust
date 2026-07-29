@@ -9,13 +9,18 @@ import {
   sendBatchCallToLlm,
   storeLlmResult,
 } from "@app/lib/api/llm/batch_llm";
+import { getStreamEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
+import type {
+  LLMParameters,
+  LLMStreamParameters,
+} from "@app/lib/api/llm/types/options";
 import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { intelligenceAwuFromRunUsages } from "@app/lib/metronome/events";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
 import { getRemainingProgrammaticUsageFromMetronome } from "@app/lib/metronome/programmatic_awu_usage";
@@ -230,9 +235,26 @@ async function runReinforcedSkillsStep({
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  const llmParameters = {
-    modelId: model.modelId,
+
+  const endpoint = await getStreamEndpointFromLegacyModelId(
+    auth,
+    model.modelId
+  );
+  if (!endpoint) {
+    logger.error(
+      { contextId, workspaceId: owner.sId, modelId: model.modelId },
+      "ReinforcedSkills: no stream endpoint available for step activity"
+    );
+    return {
+      isTerminal: true,
+      suggestionsCreated: 0,
+      approvedSourceSuggestionIds: [],
+    };
+  }
+
+  const llmParameters: LLMParameters<DustStreamEndpointConstructor> = {
     credentials,
+    modelInfo: { endpoint },
     context: {
       operationType,
       workspaceId: owner.sId,
@@ -253,6 +275,7 @@ async function runReinforcedSkillsStep({
     };
   }
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const conversationRes = await getConversation(
     auth,
     reinforcementConversationId
@@ -1060,6 +1083,62 @@ export async function checkBatchStatusActivity({
   }
 
   return llm.getBatchStatus(batchId);
+}
+
+/**
+ * Delete a batch's data on the provider once its results have been consumed.
+ * Idempotent: a batch that no longer exists is treated as already deleted, so
+ * the activity can be safely retried.
+ */
+export async function deleteBatchActivity({
+  workspaceId,
+  batchId,
+}: {
+  workspaceId: string;
+  batchId: string;
+}): Promise<void> {
+  const auth = await getAuthForWorkspace(workspaceId);
+
+  const llm = await getReinforcedSkillsLLM(
+    auth,
+    "reinforcement_analyze_conversation"
+  );
+  if (!llm) {
+    throw ApplicationFailure.nonRetryable(
+      "ReinforcedSkills: no LLM available for batch deletion"
+    );
+  }
+
+  const result = await llm.deleteBatch(batchId);
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  switch (result.value) {
+    case "deleted":
+      return;
+    case "do_not_exist":
+      logger.info(
+        { workspaceId, batchId },
+        "ReinforcedSkills: batch to delete not found, it may already be deleted"
+      );
+      return;
+    case "unsupported": {
+      const metadata = llm.getMetadata();
+      logger.warn(
+        {
+          workspaceId,
+          providerId: metadata.clientId,
+          modelId: metadata.modelId,
+          batchId,
+        },
+        "ReinforcedSkills: batch deletion not supported by provider"
+      );
+      return;
+    }
+    default:
+      assertNever(result.value);
+  }
 }
 
 export interface ConversationContinuationInfo {

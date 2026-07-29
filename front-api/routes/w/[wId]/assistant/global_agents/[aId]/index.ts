@@ -1,6 +1,6 @@
 import { upsertGlobalAgentSettings } from "@app/lib/api/assistant/global_agents/global_agents";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -25,7 +25,7 @@ const app = workspaceApp();
 app.patch(
   "/",
   validate("param", ParamsSchema),
-  ensureIsBuilder(),
+  ensureIsAdmin(),
   validate("json", PatchGlobalAgentSettingsRequestBodySchema),
   async (ctx): HandlerResult<PatchGlobalAgentSettingResponseBody> => {
     const auth = ctx.get("auth");

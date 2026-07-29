@@ -190,6 +190,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: true,
     high: true,
   },
+  "claude-opus-5": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "claude-fable-5": {
     none: false,
     light: true,
@@ -310,6 +316,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: true,
     high: true,
   },
+  "gemini-3.5-flash-lite": {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "gemini-3.1-flash-lite-preview": {
     none: true,
     light: true,
@@ -329,6 +341,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     high: true,
   },
   "gemini-3.5-flash": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  "gemini-3.6-flash": {
     none: false,
     light: true,
     medium: true,
@@ -370,6 +388,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: true,
     high: true,
   },
+  "accounts/fireworks/models/kimi-k3": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "accounts/fireworks/models/minimax-m2p5": {
     none: false,
     light: true,
@@ -384,8 +408,8 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
   },
   "accounts/fireworks/models/glm-5p2": {
     none: false,
-    light: true,
-    medium: true,
+    light: false,
+    medium: false,
     high: true,
   },
   "grok-3-latest": {
@@ -399,6 +423,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     light: false,
     medium: false,
     high: false,
+  },
+  "grok-4.5": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
   },
   "grok-4-latest": {
     none: true,
@@ -437,6 +467,18 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     high: false,
   },
   auto: {
+    none: true,
+    light: false,
+    medium: false,
+    high: false,
+  },
+  auto_fast: {
+    none: true,
+    light: false,
+    medium: false,
+    high: false,
+  },
+  auto_complex: {
     none: true,
     light: false,
     medium: false,

@@ -446,7 +446,8 @@ export async function ensureSandboxEgressOnExec(
 // (see egress-nftables.sh in the image registry) so agent-proxied traffic
 // flows direct out of the (now permissive) E2B network, instead of being
 // redirected to the local forwarder port that has no listener in this mode.
-// Idempotent: safe to call on every fresh sandbox.
+// Keep the dedicated GCS broker drop in place: that credential boundary must
+// survive dev-unrestricted mode. Idempotent: safe to call on every fresh sandbox.
 export async function teardownInSandboxEgressRedirect(
   auth: Authenticator,
   sandbox: SandboxResource
@@ -462,8 +463,9 @@ export async function teardownInSandboxEgressRedirect(
   const command = rootCommand.unsafeShell(
     "/usr/bin/systemctl disable --now dust-egress-resolver.service dust-egress-nftables.service >/dev/null 2>&1 || true; " +
       "/usr/sbin/nft delete table ip dust-egress >/dev/null 2>&1 || true; " +
-      "/usr/sbin/nft delete table ip6 dust-egress >/dev/null 2>&1 || true",
-    "dev-only teardown needs best-effort shell fallbacks"
+      "/usr/sbin/nft delete table ip6 dust-egress >/dev/null 2>&1 || true; " +
+      "/usr/local/bin/dust-gcs-token-firewall.sh",
+    "dev-only teardown needs best-effort shell fallbacks and must retain the GCS broker UID drop"
   );
 
   return runSuccessfulRootCommand(auth, sandbox, command);

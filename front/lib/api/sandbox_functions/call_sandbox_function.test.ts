@@ -115,89 +115,52 @@ afterEach(() => {
 });
 
 describe("callSandboxFunction", () => {
-  it("returns the decoded body on a successful result", async () => {
+  it("returns the parsed output on a successful result", async () => {
     const { auth, fn, invocationId } = await setup();
-    mockResult(
-      {
-        ok: true,
-        response: {
-          status: 200,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ greeting: "Hi, Soupinou" }),
-          encoding: "utf8",
-        },
-      },
-      invocationId
-    );
+    mockResult({ greeting: "Hi, Soupinou" }, invocationId);
+    const invokeSpy = vi.spyOn(fn, "invoke");
 
-    const result = await callSandboxFunction(auth, fn, { name: "Soupinou" });
+    const result = await callSandboxFunction(
+      auth,
+      fn,
+      { name: "Soupinou" },
+      { timezone: "Europe/Paris" }
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
       return;
     }
-    expect(result.value).toEqual({
-      ok: true,
-      status: 200,
-      output: JSON.stringify({ greeting: "Hi, Soupinou" }),
+    expect(result.value).toEqual({ greeting: "Hi, Soupinou" });
+    expect(invokeSpy).toHaveBeenCalledWith(auth, {
+      input: { name: "Soupinou" },
+      context: { timezone: "Europe/Paris" },
     });
   });
 
-  it("decodes a base64-encoded body", async () => {
+  it("returns a typed invocation error", async () => {
     const { auth, fn, invocationId } = await setup();
-    mockResult(
-      {
-        ok: true,
-        response: {
-          status: 200,
-          headers: {},
-          body: Buffer.from("plain text", "utf8").toString("base64"),
-          encoding: "base64",
-        },
-      },
-      invocationId
+    vi.mocked(getSandboxFunctionInvocationEvents).mockReturnValue(
+      eventStream({
+        type: "sandbox_function_invocation_error",
+        created: 0,
+        invocationId,
+        functionId: "sfn_x",
+        error: { code: "http_error", message: "boom", status: 503 },
+      })
     );
-
-    const result = await callSandboxFunction(auth, fn, undefined);
-
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      return;
-    }
-    expect(result.value).toEqual({
-      ok: true,
-      status: 200,
-      output: "plain text",
-    });
-  });
-
-  it("surfaces a function error envelope as ok: false", async () => {
-    const { auth, fn, invocationId } = await setup();
-    mockResult(
-      { ok: false, error: { kind: "threw", message: "boom" } },
-      invocationId
-    );
-
-    const result = await callSandboxFunction(auth, fn, { name: "x" });
-
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      return;
-    }
-    expect(result.value).toEqual({
-      ok: false,
-      errorKind: "threw",
-      message: "boom",
-    });
-  });
-
-  it("errors on an unexpected result envelope", async () => {
-    const { auth, fn, invocationId } = await setup();
-    mockResult({ not: "an envelope" }, invocationId);
 
     const result = await callSandboxFunction(auth, fn, { name: "x" });
 
     expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error).toEqual({
+      code: "http_error",
+      message: "boom",
+      status: 503,
+    });
   });
 
   it("errors when no result event arrives", async () => {
@@ -209,33 +172,33 @@ describe("callSandboxFunction", () => {
     const result = await callSandboxFunction(auth, fn, { name: "x" });
 
     expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error).toEqual({
+      code: "transport_error",
+      message: "Pod function did not return a result in time.",
+    });
   });
 
-  it("returns a non-2xx response as ok with its status", async () => {
-    const { auth, fn, invocationId } = await setup();
-    mockResult(
-      {
-        ok: true,
-        response: {
-          status: 400,
-          headers: {},
-          body: JSON.stringify({ error: "invalid input" }),
-          encoding: "utf8",
-        },
-      },
-      invocationId
+  it("returns a transport error when the event stream fails", async () => {
+    const { auth, fn } = await setup();
+    async function* failingEventStream() {
+      throw new Error("stream disconnected");
+    }
+    vi.mocked(getSandboxFunctionInvocationEvents).mockReturnValue(
+      failingEventStream()
     );
 
     const result = await callSandboxFunction(auth, fn, { name: "x" });
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
       return;
     }
-    expect(result.value).toEqual({
-      ok: true,
-      status: 400,
-      output: JSON.stringify({ error: "invalid input" }),
+    expect(result.error).toEqual({
+      code: "transport_error",
+      message: "Failed to receive sandbox function events: stream disconnected",
     });
   });
 
@@ -258,15 +221,7 @@ describe("callSandboxFunction", () => {
           created: 1,
           invocationId,
           functionId: "sfn_x",
-          result: {
-            ok: true,
-            response: {
-              status: 200,
-              headers: {},
-              body: JSON.stringify({ greeting: "Hi" }),
-              encoding: "utf8",
-            },
-          },
+          result: { greeting: "Hi" },
         }
       )
     );
@@ -277,11 +232,7 @@ describe("callSandboxFunction", () => {
     if (result.isErr()) {
       return;
     }
-    expect(result.value).toEqual({
-      ok: true,
-      status: 200,
-      output: JSON.stringify({ greeting: "Hi" }),
-    });
+    expect(result.value).toEqual({ greeting: "Hi" });
   });
 
   it("propagates an Err from the workflow launch", async () => {
@@ -293,5 +244,12 @@ describe("callSandboxFunction", () => {
     const result = await callSandboxFunction(auth, fn, { name: "x" });
 
     expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error).toEqual({
+      code: "invocation_failed",
+      message: "temporal unavailable",
+    });
   });
 });

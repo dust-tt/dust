@@ -4,6 +4,8 @@ import type {
   SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
+import { getDefaultSkillAvailability } from "@app/types/assistant/skill_configuration";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserType } from "@app/types/user";
 
 /**
@@ -23,7 +25,7 @@ export function transformSkillTypeToFormData(
     tools: skill.tools.map(getDefaultMCPAction),
     fileAttachments: skill.fileAttachments,
     icon: skill.icon ?? null,
-    isDefault: skill.isDefault,
+    availability: skill.availability,
     reinforcement: skill.reinforcement,
     additionalSpaces: [],
     referencedSkills:
@@ -41,8 +43,10 @@ export function transformSkillTypeToFormData(
  */
 export function getDefaultSkillFormData({
   user,
+  featureFlags,
 }: {
   user: UserType;
+  featureFlags: WhitelistableFeature[];
 }): SkillBuilderFormData {
   return {
     name: "",
@@ -54,7 +58,7 @@ export function getDefaultSkillFormData({
     tools: [],
     fileAttachments: [],
     icon: null,
-    isDefault: false,
+    availability: getDefaultSkillAvailability(featureFlags),
     reinforcement: "on",
     additionalSpaces: [],
     referencedSkills: [],

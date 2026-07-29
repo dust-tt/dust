@@ -1,15 +1,16 @@
-import { getWorkspaceFilter } from "@app/lib/api/llm";
+import { getWorkspaceFilter, legacyModelIdToModel } from "@app/lib/api/llm";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getStreamEndpoints } from "@app/lib/llms/stream";
 import type { WorkspaceConfig } from "@app/lib/llms/types/filter";
 import {
-  GEMINI_3_1_PRO_MODEL_ID,
-  GEMINI_3_5_FLASH_MODEL_ID,
-} from "@app/lib/model_constructors/types/model_ids";
+  AGENT_PLATFORM_HOST,
+  GOOGLE_AI_STUDIO_HOST,
+} from "@app/lib/model_constructors/types/hosts";
 import {
-  AGENT_PLATFORM_API,
-  GOOGLE_AI_STUDIO_API,
-} from "@app/lib/model_constructors/types/provider_apis";
+  GEMINI_3_1_PRO,
+  GEMINI_3_5_FLASH,
+  GLM_5P2,
+} from "@app/lib/model_constructors/types/models";
 import {
   isCreditPricedPlanPrefix,
   isEnterpriseOrDust,
@@ -40,18 +41,18 @@ describe("getWorkspaceFilter", () => {
 
     const flashEndpoints = getStreamEndpoints(workspaceConfig, {
       ...filter,
-      modelId: { eq: GEMINI_3_5_FLASH_MODEL_ID },
+      model: { eq: GEMINI_3_5_FLASH },
     });
     expect(flashEndpoints.length).toBeGreaterThan(0);
-    expect(flashEndpoints.every((e) => e.api === AGENT_PLATFORM_API)).toBe(
+    expect(flashEndpoints.every((e) => e.host === AGENT_PLATFORM_HOST)).toBe(
       true
     );
 
     const proEndpoints = getStreamEndpoints(workspaceConfig, {
       ...filter,
-      modelId: { eq: GEMINI_3_1_PRO_MODEL_ID },
+      model: { eq: GEMINI_3_1_PRO },
     });
-    expect(proEndpoints.every((e) => e.api !== GOOGLE_AI_STUDIO_API)).toBe(
+    expect(proEndpoints.every((e) => e.host !== GOOGLE_AI_STUDIO_HOST)).toBe(
       true
     );
   });
@@ -66,8 +67,29 @@ describe("getWorkspaceFilter", () => {
 
     const proEndpoints = getStreamEndpoints(workspaceConfig, {
       ...filter,
-      modelId: { eq: GEMINI_3_1_PRO_MODEL_ID },
+      model: { eq: GEMINI_3_1_PRO },
     });
-    expect(proEndpoints.some((e) => e.api === GOOGLE_AI_STUDIO_API)).toBe(true);
+    expect(proEndpoints.some((e) => e.host === GOOGLE_AI_STUDIO_HOST)).toBe(
+      true
+    );
+  });
+});
+
+describe("legacyModelIdToModel", () => {
+  it("strips the Fireworks prefix from legacy ids", () => {
+    expect(legacyModelIdToModel("accounts/fireworks/models/glm-5p2")).toBe(
+      GLM_5P2
+    );
+  });
+
+  it("passes through non-Fireworks ids unchanged", () => {
+    expect(legacyModelIdToModel("claude-sonnet-4-6")).toBe("claude-sonnet-4-6");
+  });
+
+  it("returns null for unknown ids", () => {
+    expect(legacyModelIdToModel("accounts/fireworks/models/not-a-model")).toBe(
+      null
+    );
+    expect(legacyModelIdToModel("bogus")).toBe(null);
   });
 });

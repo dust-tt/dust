@@ -29,6 +29,7 @@ function makeSkill(overrides: Partial<SkillType> = {}): SkillType {
     canAdministrate: true,
     canWrite: true,
     isDefault: false,
+    availability: "workspace_users",
     ...overrides,
   };
 }
@@ -55,27 +56,6 @@ function makeInstructionSuggestion(
           type: "replace",
         },
       ],
-    },
-    ...overrides,
-  } as SkillSuggestionType;
-}
-
-function makeToolSuggestion(
-  overrides: Partial<SkillSuggestionType> = {}
-): SkillSuggestionType {
-  return {
-    sId: "sug-2",
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    skillConfigurationId: "skl_abc123",
-    analysis: "Needs search capability",
-    title: null,
-    state: "pending",
-    source: "synthetic",
-    sourceConversationsCount: 0,
-    kind: "edit",
-    suggestion: {
-      toolEdits: [{ action: "add", toolId: "tool-search" }],
     },
     ...overrides,
   } as SkillSuggestionType;
@@ -139,18 +119,6 @@ describe("buildSkillAggregationPrompt", () => {
     expect(userMessage).toContain("New improved instructions.");
   });
 
-  it("formats tool suggestions with action and toolId", () => {
-    const { userMessage } = buildSkillAggregationPrompt(
-      makeSkill(),
-      [makeToolSuggestion()],
-      { pending: [], rejected: [] }
-    );
-
-    expect(userMessage).toContain('kind="edit"');
-    expect(userMessage).toContain('action="add"');
-    expect(userMessage).toContain('toolId="tool-search"');
-  });
-
   it("shows N/A when analysis is null", () => {
     const suggestion = makeInstructionSuggestion({ analysis: null });
     const { userMessage } = buildSkillAggregationPrompt(
@@ -165,7 +133,10 @@ describe("buildSkillAggregationPrompt", () => {
   it("numbers multiple suggestions sequentially", () => {
     const { userMessage } = buildSkillAggregationPrompt(
       makeSkill(),
-      [makeInstructionSuggestion(), makeToolSuggestion()],
+      [
+        makeInstructionSuggestion(),
+        makeAgentFacingDescriptionSuggestion({ sId: "sug-2" }),
+      ],
       { pending: [], rejected: [] }
     );
 
@@ -177,7 +148,7 @@ describe("buildSkillAggregationPrompt", () => {
     const { userMessage } = buildSkillAggregationPrompt(
       makeSkill(),
       [makeInstructionSuggestion()],
-      { pending: [makeToolSuggestion()], rejected: [] }
+      { pending: [makeAgentFacingDescriptionSuggestion()], rejected: [] }
     );
 
     expect(userMessage).toContain(
@@ -199,7 +170,7 @@ describe("buildSkillAggregationPrompt", () => {
     const { userMessage } = buildSkillAggregationPrompt(
       makeSkill(),
       [makeInstructionSuggestion()],
-      { pending: [], rejected: [makeToolSuggestion()] }
+      { pending: [], rejected: [makeAgentFacingDescriptionSuggestion()] }
     );
 
     expect(userMessage).toContain(
@@ -226,7 +197,6 @@ describe("buildSkillAggregationPrompt", () => {
 
     expect(systemPrompt).toContain("edit_skill");
     expect(systemPrompt).toContain("inline <tool>");
-    expect(systemPrompt).toContain('Do NOT include "toolEdits"');
   });
 
   it("formats agent-facing description edits with the new content", () => {

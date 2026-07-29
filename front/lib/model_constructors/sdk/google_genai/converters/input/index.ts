@@ -64,7 +64,7 @@ export function WithGoogleGenAIInputConverter<
       const { tools = [], temperature, reasoning, outputFormat } = config;
 
       return {
-        model: this.constructor.modelId,
+        model: this.constructor.model,
         contents: await this.conversationToContents(conversation),
         config: {
           systemInstruction: this.systemMessagesToSystemInstruction(

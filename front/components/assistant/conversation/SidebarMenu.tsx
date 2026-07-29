@@ -37,12 +37,13 @@ import { usePodsSectionCollapsed } from "@app/hooks/usePodsSectionCollapsed";
 import { useSearchPods } from "@app/hooks/useSearchPods";
 import { useStarredPodsSectionCollapsed } from "@app/hooks/useStarredPodsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { getConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
@@ -60,7 +61,6 @@ import {
 } from "@app/types/assistant/conversation";
 import type { PodType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
   ArrowRight,
   Avatar,
@@ -419,7 +419,7 @@ export function AgentSidebarMenu({
   const router = useAppRouter();
   const activeConversationId = useActiveConversationId();
   const activePodId = useActivePodId();
-  const { hasFeature } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions();
   const moveConversationToPod = useMoveConversationToPod(owner);
   const bulkMoveConversationsToPod = useBulkMoveConversationsToPod(owner);
 
@@ -496,8 +496,12 @@ export function AgentSidebarMenu({
   const { isStarredPodsSectionCollapsed, setStarredPodsSectionCollapsed } =
     useStarredPodsSectionCollapsed();
 
-  const isRestrictedFromAgentCreation =
-    hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
+  const canCreateAgent = hasPermission("create", "agent");
+  const canPublishAgent = hasPermission("publish", "agent");
+  // Users who can publish agents can reach the manage agents page to discover
+  // existing agents and edit the ones they can, even without create permission.
+  const canManageAgents = canCreateAgent || canPublishAgent;
+  const canCreateSkill = hasPermission("create", "skill");
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null
@@ -990,66 +994,68 @@ export function AgentSidebarMenu({
                         />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        {!isRestrictedFromAgentCreation && (
+                        {canManageAgents && (
                           <>
                             <DropdownMenuLabel>Agents</DropdownMenuLabel>
-                            <DropdownMenuSub>
-                              <DropdownMenuSubTrigger
-                                icon={Plus}
-                                label="New agent"
-                                disabled={noHealthyProviders}
-                              />
-                              <DropdownMenuPortal>
-                                <DropdownMenuSubContent className="pointer-events-auto">
-                                  <DropdownMenuItem
-                                    href={getAgentBuilderRoute(
-                                      owner.sId,
-                                      "new"
-                                    )}
-                                    icon={File02}
-                                    label="From scratch"
-                                    data-gtm-label="assistantCreationButton"
-                                    data-gtm-location="sidebarMenu"
-                                    onClick={withTracking(
-                                      TRACKING_AREAS.BUILDER,
-                                      "create_from_scratch"
-                                    )}
-                                  />
-                                  <DropdownMenuItem
-                                    href={getAgentBuilderRoute(
-                                      owner.sId,
-                                      "create"
-                                    )}
-                                    icon={MagicWand02}
-                                    label="From template"
-                                    data-gtm-label="assistantCreationButton"
-                                    data-gtm-location="sidebarMenu"
-                                    onClick={withTracking(
-                                      TRACKING_AREAS.BUILDER,
-                                      "create_from_template"
-                                    )}
-                                  />
-                                  <DropdownMenuItem
-                                    icon={
-                                      isUploadingYAML ? (
-                                        <Spinner size="xs" />
-                                      ) : (
-                                        Brackets
-                                      )
-                                    }
-                                    label={
-                                      isUploadingYAML
-                                        ? "Uploading..."
-                                        : "From YAML"
-                                    }
-                                    disabled={isUploadingYAML}
-                                    onClick={triggerYAMLUpload}
-                                    data-gtm-label="yamlUploadButton"
-                                    data-gtm-location="sidebarMenu"
-                                  />
-                                </DropdownMenuSubContent>
-                              </DropdownMenuPortal>
-                            </DropdownMenuSub>
+                            {canCreateAgent && (
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger
+                                  icon={Plus}
+                                  label="New agent"
+                                  disabled={noHealthyProviders}
+                                />
+                                <DropdownMenuPortal>
+                                  <DropdownMenuSubContent className="pointer-events-auto">
+                                    <DropdownMenuItem
+                                      href={getAgentBuilderRoute(
+                                        owner.sId,
+                                        "new"
+                                      )}
+                                      icon={File02}
+                                      label="From scratch"
+                                      data-gtm-label="assistantCreationButton"
+                                      data-gtm-location="sidebarMenu"
+                                      onClick={withTracking(
+                                        TRACKING_AREAS.BUILDER,
+                                        "create_from_scratch"
+                                      )}
+                                    />
+                                    <DropdownMenuItem
+                                      href={getAgentBuilderRoute(
+                                        owner.sId,
+                                        "create"
+                                      )}
+                                      icon={MagicWand02}
+                                      label="From template"
+                                      data-gtm-label="assistantCreationButton"
+                                      data-gtm-location="sidebarMenu"
+                                      onClick={withTracking(
+                                        TRACKING_AREAS.BUILDER,
+                                        "create_from_template"
+                                      )}
+                                    />
+                                    <DropdownMenuItem
+                                      icon={
+                                        isUploadingYAML ? (
+                                          <Spinner size="xs" />
+                                        ) : (
+                                          Brackets
+                                        )
+                                      }
+                                      label={
+                                        isUploadingYAML
+                                          ? "Uploading..."
+                                          : "From YAML"
+                                      }
+                                      disabled={isUploadingYAML}
+                                      onClick={triggerYAMLUpload}
+                                      data-gtm-label="yamlUploadButton"
+                                      data-gtm-location="sidebarMenu"
+                                    />
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                              </DropdownMenuSub>
+                            )}
                             {editableAgents.length > 0 && (
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger
@@ -1102,7 +1108,7 @@ export function AgentSidebarMenu({
                             />
                           </>
                         )}
-                        {isBuilder(owner) && (
+                        {canCreateSkill && (
                           <>
                             <DropdownMenuLabel>Skills</DropdownMenuLabel>
                             <DropdownMenuSub>
@@ -1515,7 +1521,11 @@ function NavigationListWithInbox({
   loadMore,
   isLoadingMore,
 }: NavigationListWithInboxProps) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // The Radix ScrollArea root never scrolls (overflow-hidden); the inner
+  // viewport does. Keep it in state so InfiniteScroll re-binds once mounted.
+  const [scrollViewport, setScrollViewport] = useState<HTMLDivElement | null>(
+    null
+  );
   const {
     readConversations,
     inboxConversations,
@@ -1556,7 +1566,7 @@ function NavigationListWithInbox({
         nextPage={loadMore}
         hasMore={hasMore}
         showLoader={isLoadingMore}
-        options={{ root: scrollContainerRef.current, rootMargin: "400px" }}
+        options={{ root: scrollViewport, rootMargin: "400px" }}
         loader={
           <div className="flex justify-center py-2">
             <Spinner size="sm" />
@@ -1568,7 +1578,7 @@ function NavigationListWithInbox({
 
   return (
     <ScrollArea
-      ref={scrollContainerRef}
+      viewportRef={setScrollViewport}
       className="dd-privacy-mask h-full w-full"
     >
       <div className="flex flex-col gap-4">

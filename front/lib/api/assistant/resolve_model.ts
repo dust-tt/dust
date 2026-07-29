@@ -1,9 +1,12 @@
 import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_preferences";
 import { selectEnabledModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
-import { getAutoModelForAuth } from "@app/lib/model_tiers/enabled_models";
+import {
+  getAutoModelForAuth,
+  getModelForStream,
+} from "@app/lib/model_tiers/enabled_models";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type {
   ModelConfigurationType,
@@ -72,22 +75,50 @@ export async function resolveModel(
     }
   );
 
-  if (enabled?.modelId === AUTO_MODEL_ID) {
-    // Alternatively, we could remove the agent config from the list of candidates and let the auto model fallback to a supported model by the workspace.
-    // However, to be future-proof, we keep do it here to allow evolution on the way the auto model is selected.
-    enabled = await getAutoModelForAuth(auth);
-    modelResolutionMethod = "auto";
+  // Effort chosen by a stream tier (Fast/Standard/Complex) for its resolved
+  // model. When set, it takes precedence over any effort carried by the
+  // (sentinel) selection.
+  let streamEffort: ReasoningEffort | undefined;
+
+  // `auto`, `auto_fast` and `auto_complex` are all streams: walk the stream's
+  // ordered candidate pool and pick the first one available to the workspace.
+  if (enabled && isModelStreamId(enabled.modelId)) {
+    const streamId = enabled.modelId;
+    const resolved = await getModelForStream(auth, streamId);
+    if (resolved) {
+      enabled = resolved.model;
+      streamEffort = resolved.reasoningEffort;
+    } else {
+      // None of the stream's candidates are available: fall back to a preferred
+      // large model supported by the workspace.
+      // FIXME(review): getAutoModelForAuth re-runs getEnabledModelsForAuth even
+      // though getModelForStream just fetched the same list — consider threading
+      // the already-fetched available models through to avoid the double query.
+      enabled = await getAutoModelForAuth(auth);
+    }
+    // FIXME(review): on the fallback branch above the model did NOT come from the
+    // stream, yet we still record modelResolutionMethod as the streamId. This
+    // mislabels analytics/telemetry (a plain fallback pick attributed to e.g.
+    // "auto_complex").
+    modelResolutionMethod = streamId;
   }
 
   // Should never happen as we should at least fallback to our selection of PREFERRED_LARGE_MODEL_CONFIGS.
   assert(enabled, "No enabled model found");
 
-  // Honor an explicit effort only if the model supports it; otherwise fall back
-  // to its default (raw API clients can send an unsupported effort).
-  const effort =
-    selection?.reasoningEffort &&
-    enabled.supportedReasoningEfforts[selection.reasoningEffort]
+  // A stream tier dictates the effort of its resolved model. Otherwise honor the
+  // selected or agent-configured effort only if the resolved model supports it
+  // (raw API clients can send an unsupported effort); fall back to its default.
+  const requestedReasoningEffort =
+    streamEffort ??
+    (selection
       ? selection.reasoningEffort
+      : configuration.model.reasoningEffort);
+
+  const effort =
+    requestedReasoningEffort &&
+    enabled.supportedReasoningEfforts[requestedReasoningEffort]
+      ? requestedReasoningEffort
       : enabled.defaultReasoningEffort;
 
   return {

@@ -4,6 +4,10 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, Lock01, SliderToggle } from "@dust-tt/sparkle";
 
+const LABEL = "Private conversation URLs by default";
+const DESCRIPTION =
+  "Whether conversation URLs are private by default, limiting access to participants.";
+
 interface PrivateConversationUrlsToggleProps {
   owner: WorkspaceType;
 }
@@ -15,15 +19,11 @@ export function PrivateConversationUrlsToggle({
     usePrivateConversationUrlsToggle({ owner });
   const { hasFeature } = useFeatureFlags();
 
-  const label = "Private conversation URLs by default";
-  const description =
-    "Restrict conversation URL access to participants only by default";
-
   if (hasFeature("admin_governance")) {
     return (
       <GovernanceSettingRowLayout
-        label={label}
-        description={description}
+        label={LABEL}
+        description={DESCRIPTION}
         action={
           <SliderToggle
             selected={isEnabled}
@@ -37,8 +37,8 @@ export function PrivateConversationUrlsToggle({
 
   return (
     <ContextItem
-      title={label}
-      subElement={description}
+      title={LABEL}
+      subElement="Restrict conversation URL access to participants only by default"
       visual={<Lock01 className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={

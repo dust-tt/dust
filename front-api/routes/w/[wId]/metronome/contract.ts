@@ -6,7 +6,7 @@ import type { ContractLifecycleError } from "@app/lib/metronome/contract_lifecyc
 import type { GetMetronomeContractResponseBody } from "@app/types/api/credits/metronome_contract";
 import { PatchMetronomeContractRequestBody } from "@app/types/api/credits/metronome_contract";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
@@ -34,7 +34,11 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<GetMetronomeContractResponseBody> => {
     const auth = ctx.get("auth");
 
@@ -54,10 +58,15 @@ app.get(
 
 app.patch(
   "/",
-  ensureIsAdmin(),
   validate("json", PatchMetronomeContractRequestBody),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<PatchMetronomeContractResponseBody> => {
     const auth = ctx.get("auth");
+
     const { action } = ctx.req.valid("json");
 
     const result = await applyContractLifecycleAction(auth, action);

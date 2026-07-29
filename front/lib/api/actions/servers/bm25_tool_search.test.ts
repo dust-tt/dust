@@ -25,6 +25,28 @@ const QUERIES: LabeledQuery[] = [
     expected: "agent_memory.compact_memory",
   },
 
+  // --- user_memory ---
+  {
+    query: "read my personal memory",
+    expected: "user_memory.read",
+  },
+  {
+    query: "open my personal memory and show its full contents",
+    expected: "user_memory.read",
+  },
+  {
+    query: "update my personal memory by replacing a snippet of text",
+    expected: "user_memory.edit",
+  },
+  {
+    query: "delete a line of text from my personal memory",
+    expected: "user_memory.edit",
+  },
+  {
+    query: "add a new line to my personal memory",
+    expected: "user_memory.edit",
+  },
+
   // --- conversation_files ---
   {
     query: "list the files attached to this conversation",
@@ -236,6 +258,10 @@ const QUERIES: LabeledQuery[] = [
   },
   {
     query: "edit the description of a jira issue",
+    expected: "jira.update_issue",
+  },
+  {
+    query: "jira update issue description",
     expected: "jira.update_issue",
   },
   {
@@ -475,6 +501,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "post a message to a slack channel as the workspace bot",
     expected: "slack_bot.post_message",
+    maxRank: 2, // showSentByFooter guardrail wording lengthens the doc, add_reaction edges it out
   },
   {
     query: "edit a message the slack bot posted",
@@ -1083,6 +1110,11 @@ const QUERIES: LabeledQuery[] = [
     maxRank: 10,
   },
   {
+    query: "which models did the workspace use most this month",
+    expected: "workspace_analytics.get_top_models",
+    maxRank: 5,
+  },
+  {
     query: "how many AWU credits did the workspace consume this month",
     expected: "workspace_analytics.get_credit_usage",
   },
@@ -1663,6 +1695,42 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "check my accrual balance",
     expected: "ukg_ready.get_accrual_balances",
+  },
+
+  // --- servicenow ---
+  {
+    query: "list open incidents in ServiceNow",
+    expected: "servicenow.list_incidents",
+  },
+  {
+    query: "show me my ServiceNow tickets",
+    expected: "servicenow.list_incidents",
+    maxRank: 2, // get_incident shares "ServiceNow"/"ticket" tokens
+  },
+  {
+    query: "get ServiceNow incident INC0010001",
+    expected: "servicenow.get_incident",
+  },
+  {
+    query: "look up a single ServiceNow ticket by number",
+    expected: "servicenow.get_incident",
+  },
+  {
+    query: "create a new incident in ServiceNow",
+    expected: "servicenow.create_incident",
+  },
+  {
+    query: "open a ServiceNow ticket for this issue",
+    expected: "servicenow.create_incident",
+    maxRank: 4, // get_incident's short, dense description outranks on shared tokens
+  },
+  {
+    query: "update the state of a ServiceNow incident",
+    expected: "servicenow.update_incident",
+  },
+  {
+    query: "resolve a ServiceNow ticket and add close notes",
+    expected: "servicenow.update_incident",
   },
 
   // --- slab ---

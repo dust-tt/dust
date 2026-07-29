@@ -89,7 +89,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   get isBuilder(): boolean {
     switch (this.role) {
       case "admin":
-      case "business_admin":
+      case "manager":
       case "builder":
         return true;
       case "user":
@@ -1088,7 +1088,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
-   * Caller of this method should call `ServerSideTracking.trackCreateMembership`.
+   * Caller of this method should call `ServerSideTracking.trackCreateMembership` and
+   * `GroupResource.syncBuilderGroupMembership` (builder role deprecation). Prefer
+   * `createAndTrackMembership` from `@app/lib/api/membership` which handles both.
    */
   static async createMembership({
     user,
@@ -1191,7 +1193,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   // Use `revokeAndTrackMembership` from `@app/lib/api/membership` instead which
-  // handles tracking and usage updates.
+  // handles tracking, usage updates and the builders group sync (builder
+  // role deprecation).
   static async revokeMembership({
     user,
     workspace,
@@ -1317,7 +1320,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
-   * Caller of this method should call `ServerSideTracking.trackUpdateMembershipRole`.
+   * Caller of this method should call `ServerSideTracking.trackUpdateMembershipRole` and
+   * `GroupResource.syncBuilderGroupMembership` (builder role deprecation). Prefer
+   * `updateMembershipRoleAndTrack` from `@app/lib/api/membership` which handles both.
    */
   static async updateMembershipRole({
     user,

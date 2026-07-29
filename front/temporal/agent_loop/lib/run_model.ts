@@ -37,11 +37,6 @@ import {
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { getStreamLLM } from "@app/lib/api/llm";
-import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
-import {
-  parseAnthropicToolSearchBlock,
-  TOOL_SEARCH_SERVER_TOOL_NAMES,
-} from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -58,6 +53,10 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
+import {
+  parseAnthropicToolSearchBlock,
+  TOOL_SEARCH_SERVER_TOOL_NAMES,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -65,7 +64,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -94,7 +92,11 @@ import {
   isTextContent,
   type ModelConversationTypeMultiActions,
 } from "@app/types/assistant/generation";
-import { isByokProviderId } from "@app/types/assistant/models/providers";
+import {
+  ANTHROPIC_PROVIDER_ID,
+  isByokProviderId,
+  OPENAI_PROVIDER_ID,
+} from "@app/types/assistant/models/providers";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -189,8 +191,10 @@ function getReplayedToolNames(
           }
           if (
             content.type === "provider_passthrough" &&
-            content.value.provider === ANTHROPIC_PROVIDER_ID
+            content.value.provider === "anthropic"
           ) {
+            // OpenAI keeps loaded definitions in the replayed tool_search_output
+            // item. Anthropic requires referenced tools in the current request.
             const block = parseAnthropicToolSearchBlock(content.value.block);
 
             if (
@@ -406,7 +410,7 @@ export async function runModel(
 
   localLogger.info("Starting multi-action loop iteration");
 
-  const model = runAgentData.model;
+  const modelInfo = runAgentData.modelInfo;
 
   async function publishAgentError(
     error: {
@@ -460,9 +464,10 @@ export async function runModel(
       auth,
       {
         agentName: agentConfiguration.name,
-        model,
-        reasoningEffort: model.reasoningEffort,
+        model: modelInfo.endpoint.modelConfig,
+        reasoningEffort: modelInfo.reasoningEffort,
         featureFlags,
+        agentScope: agentConfiguration.scope,
       }
     );
     if (accessError) {
@@ -476,6 +481,7 @@ export async function runModel(
     systemSkills,
     equippedSkills,
     serverToolsAndInstructions: mcpActions,
+    hasSelectedSpacesOutsideAgentScope,
   } = await startActiveObservation("resolve-tools", async () => {
     const attachments = await listAttachments(auth, { conversation });
     const jitServers = await getJITServers(auth, {
@@ -494,11 +500,16 @@ export async function runModel(
         clientSideMCPServerIds
       );
 
-    const { enabledSkills, systemSkills, equippedSkills } =
-      await SkillResource.listForAgentLoop(auth, runAgentData);
+    const {
+      effectiveSpaceIds,
+      enabledSkills,
+      systemSkills,
+      equippedSkills,
+      hasSelectedSpacesOutsideAgentScope,
+    } = await SkillResource.listForAgentLoop(auth, runAgentData);
 
     const { skillServers, systemSkillServers } = await getSkillServers(auth, {
-      agentConfiguration,
+      effectiveSpaceIds,
       enabledSkills,
       systemSkills,
     });
@@ -519,6 +530,7 @@ export async function runModel(
     );
 
     return {
+      hasSelectedSpacesOutsideAgentScope,
       enabledSkills,
       equippedSkills,
       systemSkills,
@@ -559,12 +571,18 @@ export async function runModel(
     isServerSideMCPServerConfigurationWithName(action, "toolsets")
   );
   if (globalAgentInjectsToolsets(agentConfiguration.sId) && hasToolsetsAction) {
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const allToolsets =
-      await MCPServerViewResource.listBySpaceEnsuringAutoViews(
-        auth,
-        globalSpace
-      );
+      await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(auth, [], {
+        includeGlobalSpace: true,
+        // isJITMCPServerView inspects tool input schemas.
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      });
     const filteredToolsets = allToolsets.filter((toolset) => {
       const mcpServerView = toolset.toJSON();
       return (
@@ -599,7 +617,7 @@ export async function runModel(
     userMessage,
     agentConfiguration,
     fallbackPrompt,
-    model,
+    modelInfo,
     hasAvailableActions: availableActions.length > 0,
     conversation,
     serverToolsAndInstructions: filteredMcpActions,
@@ -611,20 +629,20 @@ export async function runModel(
     isNewFileExplorer,
     hasSandboxTools,
     disableFormattingPrompt,
+    hasSelectedSpacesOutsideAgentScope,
   });
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),
   ]);
 
+  const modelConfig = modelInfo.endpoint.modelConfig;
+
   // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
-  // deferred behind tool search is an Anthropic-specific policy applied in the
-  // Anthropic client, gated on `toolSearchEnabled` (threaded through below).
-  // Gated on model.supportsToolSearch too: unsupported models reject the
-  // request outright if deferred tools are included, so the feature flag alone
-  // is not enough to decide this.
+  // deferred behind tool search is a provider-specific policy applied downstream.
   const toolSearchEnabled =
-    featureFlags.includes("anthropic_tool_search") &&
-    !!model.supportsToolSearch;
+    (modelConfig.providerId === ANTHROPIC_PROVIDER_ID ||
+      modelConfig.providerId === OPENAI_PROVIDER_ID) &&
+    !!modelConfig.supportsToolSearch;
   const baseSpecifications: AgentActionSpecification[] =
     buildBaseSpecifications(availableActions, agentConfiguration);
 
@@ -643,10 +661,11 @@ export async function runModel(
       tracer.trace("renderConversationForModel", async () =>
         renderConversationForModel(auth, {
           conversation,
-          model,
+          model: modelConfig,
           prompt: promptText,
           tools,
-          allowedTokenCount: model.contextSize - model.generationTokensCount,
+          allowedTokenCount:
+            modelConfig.contextSize - modelConfig.generationTokensCount,
           agentConfiguration,
           leadingMessages,
           enabledSkills,
@@ -732,7 +751,7 @@ export async function runModel(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    getDelimitersConfiguration({ model })
+    getDelimitersConfiguration(modelInfo)
   );
 
   const traceContext: LLMTraceContext = {
@@ -749,11 +768,7 @@ export async function runModel(
 
   const llm = await getStreamLLM(auth, {
     credentials,
-    modelId: model.modelId,
-    temperature: model.temperature,
-    reasoningEffort: model.reasoningEffort,
-    responseFormat: model.responseFormat,
-    metaData: model.metaData,
+    modelInfo,
     context: traceContext,
     omittedThinking: agentConfiguration.omittedThinking,
     // Custom trace input: show only the last user message instead of full conversation.
@@ -778,7 +793,7 @@ export async function runModel(
     await publishAgentError({
       code: "model_not_available",
       message:
-        `The model you selected (${model.modelId}) ` +
+        `The model you selected (${modelConfig.modelId}) ` +
         `is not available. Please edit the agent to use another model ` +
         `(advanced settings in the Instructions panel).`,
       metadata: null,
@@ -798,7 +813,7 @@ export async function runModel(
 
   localLogger.info(
     {
-      modelId: model.modelId,
+      modelId: modelConfig.modelId,
       messageCount:
         modelConversationRes.value.modelConversation.messages.length,
       toolCount: specifications.length,
@@ -845,7 +860,7 @@ export async function runModel(
     agentMessage,
     step,
     agentConfiguration,
-    model,
+    model: modelConfig,
     activityTimeoutDeadlineMs,
     publishAgentError,
     prompt,
@@ -868,12 +883,12 @@ export async function runModel(
 
         if (
           plan.isByok &&
-          isByokProviderId(model.providerId) &&
+          isByokProviderId(modelConfig.providerId) &&
           (type === "authentication_error" || type === "permission_error")
         ) {
           const invalidatedCredential =
             await ProviderCredentialResource.markAsUnhealthy(auth, {
-              providerId: model.providerId,
+              providerId: modelConfig.providerId,
             });
 
           if (invalidatedCredential) {
@@ -892,12 +907,12 @@ export async function runModel(
                 ),
                 buildAuditLogTarget("credential", {
                   sId: invalidatedCredential.sId,
-                  name: model.providerId,
+                  name: modelConfig.providerId,
                 }),
               ],
               context: { location: "internal" },
               metadata: {
-                provider_id: model.providerId,
+                provider_id: modelConfig.providerId,
                 reason: "authentication_failed",
               },
             });
@@ -905,7 +920,7 @@ export async function runModel(
         }
 
         const errorMessage =
-          plan.isByok && isByokProviderId(model.providerId)
+          plan.isByok && isByokProviderId(modelConfig.providerId)
             ? getByokUserFacingLLMErrorMessage(type, metadata)
             : getUserFacingLLMErrorMessage(type, metadata);
 
@@ -994,30 +1009,41 @@ export async function runModel(
   if (!output.actions.length) {
     // Successful generation.
     const processedContent = contentParser.getContent() ?? "";
+
+    // No tool call and no text: the model produced no answer, either because it
+    // ran out of iterations or because the turn came back empty. Surface a
+    // retryable error, since publishing a success would silently end the run.
     if (!processedContent.length) {
       localLogger.warn(
         {
-          modelId: model.modelId,
+          modelId: modelConfig.modelId,
+          isLastStep,
         },
         "No content generated by the agent."
       );
-    }
 
-    // On the last step, if the model produced no textual content, it effectively
-    // ran out of iterations without finalizing an answer. Surface a retryable
-    // empty_content error.
-    if (isLastStep && !processedContent.length) {
       await publishAgentError(
-        {
-          code: "max_step_reached",
-          message:
-            "This agent took too many steps to answer your query. " +
-            "Try narrowing down your question or breaking it into smaller parts.",
-          metadata: {
-            category: "empty_content",
-            errorTitle: "Too many steps",
-          },
-        },
+        isLastStep
+          ? {
+              code: "max_step_reached",
+              message:
+                "This agent took too many steps to answer your query. " +
+                "Try narrowing down your question or breaking it into smaller parts.",
+              metadata: {
+                category: "empty_content",
+                errorTitle: "Too many steps",
+              },
+            }
+          : {
+              code: "empty_content",
+              message:
+                "The agent stopped without producing an answer. " +
+                "This error can be safely retried.",
+              metadata: {
+                category: "empty_content",
+                errorTitle: "No answer generated",
+              },
+            },
         dustRunId
       );
       return null;
@@ -1233,7 +1259,7 @@ export async function runModel(
   agentMessage.contents.push(...newContents);
 
   const stepContexts = computeStepContexts({
-    model,
+    model: modelConfig,
     stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
   });

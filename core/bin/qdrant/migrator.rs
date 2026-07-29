@@ -1,15 +1,17 @@
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use dust::{
-    data_sources::qdrant::{QdrantClients, QdrantCluster, QdrantDataSourceConfig},
+    data_sources::qdrant::{
+        vectors_output_to_vectors, QdrantClients, QdrantCluster, QdrantDataSourceConfig,
+    },
     stores::{postgres, store::Store},
     utils,
 };
 use futures::StreamExt;
 use futures::TryStreamExt;
 use qdrant_client::{
-    prelude::Payload,
     qdrant::{self, PointId},
+    Payload,
 };
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -328,13 +330,18 @@ async fn migrate_shadow_write(
             .result
             .into_iter()
             .map(|r| {
-                qdrant::PointStruct::new(
-                    r.id.unwrap(),
-                    r.vectors.unwrap(),
+                let id =
+                    r.id.ok_or_else(|| anyhow!("expected an id on scrolled point"))?;
+                let vectors = r
+                    .vectors
+                    .ok_or_else(|| anyhow!("expected vectors on scrolled point"))?;
+                Ok(qdrant::PointStruct::new(
+                    id,
+                    vectors_output_to_vectors(vectors)?,
                     Payload::from(r.payload),
-                )
+                ))
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
 
         // Empty upserts trigger errors.
         if count > 0 {

@@ -19,6 +19,59 @@ import type {
 import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
+const GITHUB_TEAM_REVIEWER_FRAGMENT = `... on Team {
+  slug
+}`;
+
+function isTeamReviewerAccessError(error: unknown): boolean {
+  if (
+    typeof error !== "object" ||
+    error === null ||
+    !("errors" in error) ||
+    !Array.isArray(error.errors)
+  ) {
+    return false;
+  }
+
+  return (
+    error.errors.length > 0 &&
+    error.errors.every(
+      (graphQLError) =>
+        typeof graphQLError === "object" &&
+        graphQLError !== null &&
+        "type" in graphQLError &&
+        graphQLError.type === "FORBIDDEN" &&
+        "path" in graphQLError &&
+        Array.isArray(graphQLError.path) &&
+        graphQLError.path.includes("reviewRequests")
+    )
+  );
+}
+
+// GitHub App tokens without organization Members access cannot resolve Team reviewers. Retry with
+// the entire reviewRequests field skipped: requestedReviewer can require that permission even if
+// the query no longer selects Team fields.
+async function graphqlWithReviewerFallback<T>(
+  octokit: Octokit,
+  query: string,
+  variables: Record<string, unknown>
+): Promise<T> {
+  try {
+    return await octokit.graphql<T>(query, {
+      ...variables,
+      includeReviewRequests: true,
+    });
+  } catch (error) {
+    if (!isTeamReviewerAccessError(error)) {
+      throw error;
+    }
+
+    return octokit.graphql<T>(query, {
+      ...variables,
+      includeReviewRequests: false,
+    });
+  }
+}
 
 function getReviewerIdentifier(
   reviewer: { login?: string; slug?: string } | null
@@ -2140,7 +2193,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
 
       try {
         const searchQuery = `
-          query($searchQuery: String!, $first: Int!, $after: String, $before: String) {
+          query($searchQuery: String!, $first: Int!, $after: String, $before: String, $includeReviewRequests: Boolean!) {
             search(query: $searchQuery, type: ISSUE_ADVANCED, first: $first, after: $after, before: $before) {
               issueCount
               pageInfo {
@@ -2220,15 +2273,13 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                       login
                     }
                   }
-                  reviewRequests(first: 10) {
+                  reviewRequests(first: 10) @include(if: $includeReviewRequests) {
                     nodes {
                       requestedReviewer {
                         ... on User {
                           login
                         }
-                        ... on Team {
-                          slug
-                        }
+                        ${GITHUB_TEAM_REVIEWER_FRAGMENT}
                       }
                     }
                   }
@@ -2243,12 +2294,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             }
           }`;
 
-        const results = (await octokit.graphql(searchQuery, {
-          searchQuery: query,
-          first,
-          after,
-          before,
-        })) as {
+        const results = await graphqlWithReviewerFallback<{
           search: {
             issueCount: number;
             pageInfo: {
@@ -2328,14 +2374,14 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                       login: string;
                     }>;
                   };
-                  reviewRequests: {
+                  reviewRequests?: {
                     nodes: Array<{
                       requestedReviewer: {
                         login?: string;
                         slug?: string;
                       } | null;
                     }>;
-                  };
+                  } | null;
                   comments: {
                     totalCount: number;
                   };
@@ -2345,7 +2391,12 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                 }
             >;
           };
-        };
+        }>(octokit, searchQuery, {
+          searchQuery: query,
+          first,
+          after,
+          before,
+        });
 
         const formattedResults = results.search.nodes.map((node) => {
           const base = {
@@ -2377,11 +2428,13 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
               additions: node.additions,
               deletions: node.deletions,
               changedFiles: node.changedFiles,
-              reviewRequests: removeNulls(
-                node.reviewRequests.nodes.map((request) =>
-                  getReviewerIdentifier(request.requestedReviewer)
-                )
-              ),
+              reviewRequests: node.reviewRequests
+                ? removeNulls(
+                    node.reviewRequests.nodes.map((request) =>
+                      getReviewerIdentifier(request.requestedReviewer)
+                    )
+                  )
+                : [],
               reviewCount: node.reviews.totalCount,
             };
           } else {
@@ -2445,7 +2498,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
 
       try {
         const query = `
-          query($owner: String!, $repo: String!, $first: Int!, $orderBy: IssueOrder, $states: [PullRequestState!], $after: String, $before: String) {
+          query($owner: String!, $repo: String!, $first: Int!, $orderBy: IssueOrder, $states: [PullRequestState!], $after: String, $before: String, $includeReviewRequests: Boolean!) {
             repository(owner: $owner, name: $repo) {
               pullRequests(first: $first, orderBy: $orderBy, states: $states, after: $after, before: $before) {
                 pageInfo {
@@ -2481,15 +2534,13 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                       login
                     }
                   }
-                  reviewRequests(first: 10) {
+                  reviewRequests(first: 10) @include(if: $includeReviewRequests) {
                     nodes {
                       requestedReviewer {
                         ... on User {
                           login
                         }
-                        ... on Team {
-                          slug
-                        }
+                        ${GITHUB_TEAM_REVIEWER_FRAGMENT}
                       }
                     }
                   }
@@ -2515,18 +2566,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           graphqlStates = ["MERGED"];
         }
 
-        const pullRequests = (await octokit.graphql(query, {
-          owner,
-          repo,
-          before,
-          after,
-          first: perPage,
-          orderBy: {
-            field: sort,
-            direction: direction,
-          },
-          states: graphqlStates,
-        })) as {
+        const pullRequests = await graphqlWithReviewerFallback<{
           repository: {
             pullRequests: {
               pageInfo: {
@@ -2562,14 +2602,14 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                     login: string;
                   }[];
                 };
-                reviewRequests: {
+                reviewRequests?: {
                   nodes: {
                     requestedReviewer: {
                       login?: string;
                       slug?: string;
                     } | null;
                   }[];
-                };
+                } | null;
                 comments: {
                   totalCount: number;
                 };
@@ -2579,7 +2619,18 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
               }[];
             };
           };
-        };
+        }>(octokit, query, {
+          owner,
+          repo,
+          before,
+          after,
+          first: perPage,
+          orderBy: {
+            field: sort,
+            direction: direction,
+          },
+          states: graphqlStates,
+        });
 
         const formattedPullRequests =
           pullRequests.repository.pullRequests.nodes.map((pr) => ({
@@ -2601,11 +2652,13 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
               color: label.color,
             })),
             assignees: pr.assignees.nodes.map((assignee) => assignee.login),
-            reviewRequests: removeNulls(
-              pr.reviewRequests.nodes.map((request) =>
-                getReviewerIdentifier(request.requestedReviewer)
-              )
-            ),
+            reviewRequests: pr.reviewRequests
+              ? removeNulls(
+                  pr.reviewRequests.nodes.map((request) =>
+                    getReviewerIdentifier(request.requestedReviewer)
+                  )
+                )
+              : [],
             commentCount: pr.comments.totalCount,
             reviewCount: pr.reviews.totalCount,
           }));

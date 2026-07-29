@@ -9,6 +9,9 @@
     "conversation_id": {
       "type": "keyword"
     },
+    "space_id": {
+      "type": "keyword"
+    },
     "agent_id": {
       "type": "keyword"
     },
@@ -17,6 +20,23 @@
     },
     "agent_tag_ids": {
       "type": "keyword"
+    },
+    "model": {
+      "type": "object",
+      "properties": {
+        "provider_id": {
+          "type": "keyword"
+        },
+        "model_id": {
+          "type": "keyword"
+        },
+        "reasoning_effort": {
+          "type": "keyword"
+        },
+        "resolution_method": {
+          "type": "keyword"
+        }
+      }
     },
     "ancestor_message_ids": {
       "type": "keyword"

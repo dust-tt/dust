@@ -1,0 +1,7 @@
+{
+  "action": "workspace.default_agent_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "agent_id": "string"
+  }
+}

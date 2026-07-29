@@ -48,12 +48,12 @@ async function findAvailableSkillForAgentLoop({
   agentLoopData: AgentLoopExecutionData;
   skillName: string;
 }): Promise<SkillResource | null> {
-  const { enabledSkills, equippedSkills, systemSkills } =
+  const { effectiveSpaceIds, enabledSkills, equippedSkills, systemSkills } =
     await SkillResource.listForAgentLoop(auth, agentLoopData);
   const userMessageSkills = await SkillResource.fetchByIds(
     auth,
     extractSkillIdsFromConversationMessages(agentLoopData),
-    { agentLoopData, onlyActive: true }
+    { agentLoopData, effectiveSpaceIds, onlyActive: true }
   );
   const directlyAllowedSkills = [
     ...enabledSkills,
@@ -76,6 +76,7 @@ async function findAvailableSkillForAgentLoop({
   );
   const candidate = await SkillResource.fetchByName(auth, skillName, {
     agentLoopData,
+    effectiveSpaceIds,
   });
   if (!candidate) {
     return null;
@@ -102,7 +103,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
 
     const {
       agentConfiguration,
-      model,
+      modelInfo,
       agentMessage,
       conversation,
       userMessage,
@@ -110,7 +111,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
 
     const agentLoopData = {
       agentConfiguration,
-      model,
+      modelInfo,
       agentMessage,
       conversation,
       userMessage,
@@ -144,10 +145,11 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       ]);
     }
 
-    // Copy the skill's file attachments into the conversation file system so they are visible to
-    // both the files tools and the sandbox (when one exists).
+    // Copy the skill's files into the conversation file system so they are visible to both the
+    // files tools and the sandbox (when one exists). Covers both custom-skill attachments and
+    // code-defined skill files.
     let fileMessage: string | null = null;
-    if (skill.getFileAttachments().length > 0) {
+    if (skill.hasFiles()) {
       const fileLoadResult = await loadSkillFilesToConversation(auth, {
         skill,
         conversation,

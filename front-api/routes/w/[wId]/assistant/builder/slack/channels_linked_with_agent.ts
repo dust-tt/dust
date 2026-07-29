@@ -4,7 +4,7 @@ import logger from "@app/logger/logger";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
@@ -14,7 +14,11 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsBuilder(),
+  ensureHasWorkspacePermission(
+    "publish",
+    "agent",
+    "Only users who can publish agents can perform this action."
+  ),
   async (ctx): HandlerResult<GetSlackChannelsLinkedWithAgentResponseBody> => {
     const auth = ctx.get("auth");
 

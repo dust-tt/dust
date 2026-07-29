@@ -1,6 +1,9 @@
+import { SKILLS_PER_LLM_CALL } from "@app/lib/api/skills/existing_skill_checker";
+import { Authenticator } from "@app/lib/auth";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { Ok } from "@app/types/shared/result";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/assistant/call_llm", () => ({
   runMultiActionsAgent: vi.fn(),
@@ -11,8 +14,21 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { honoApp } from "@front-api/app";
 
 async function setup(role: "builder" | "user" | "admin" = "builder") {
-  const { workspace } = await createPrivateApiMockRequest({ role });
-  return { workspace };
+  const { workspace, user } = await createPrivateApiMockRequest({ role });
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
+  return { workspace, auth };
+}
+
+async function createSkills(auth: Authenticator, count: number) {
+  for (let i = 0; i < count; i++) {
+    await SkillFactory.create(auth, {
+      name: `Test Skill ${i}`,
+      agentFacingDescription: `Test skill description ${i}`,
+    });
+  }
 }
 
 function post(workspace: { sId: string }, body: unknown) {
@@ -23,20 +39,29 @@ function post(workspace: { sId: string }, body: unknown) {
   });
 }
 
+function mockSimilarSkillsResponse(similarSkillIds: string[]) {
+  return new Ok({
+    actions: [
+      {
+        name: "set_similar_skills",
+        arguments: { similar_skills_array: similarSkillIds },
+      },
+    ],
+    generation: "",
+  });
+}
+
 describe("POST /api/w/:wId/skills/similar", () => {
+  beforeEach(() => {
+    vi.mocked(runMultiActionsAgent).mockClear();
+  });
+
   it("returns similar skills when runMultiActionsAgent succeeds", async () => {
-    const { workspace } = await setup();
+    const { workspace, auth } = await setup();
+    await createSkills(auth, 3);
 
     vi.mocked(runMultiActionsAgent).mockResolvedValue(
-      new Ok({
-        actions: [
-          {
-            name: "set_similar_skills",
-            arguments: { similar_skills_array: ["abc12", "20zer", "35xyz"] },
-          },
-        ],
-        generation: "",
-      })
+      mockSimilarSkillsResponse(["abc12", "20zer", "35xyz"])
     );
 
     const response = await post(workspace, {
@@ -47,21 +72,15 @@ describe("POST /api/w/:wId/skills/similar", () => {
     expect(await response.json()).toEqual({
       similar_skills: ["abc12", "20zer", "35xyz"],
     });
+    expect(runMultiActionsAgent).toHaveBeenCalledTimes(1);
   });
 
   it("returns empty similar skills when runMultiActionsAgent succeeds with empty array", async () => {
-    const { workspace } = await setup();
+    const { workspace, auth } = await setup();
+    await createSkills(auth, 1);
 
     vi.mocked(runMultiActionsAgent).mockResolvedValue(
-      new Ok({
-        actions: [
-          {
-            name: "set_similar_skills",
-            arguments: { similar_skills_array: [] },
-          },
-        ],
-        generation: "",
-      })
+      mockSimilarSkillsResponse([])
     );
 
     const response = await post(workspace, {
@@ -70,6 +89,37 @@ describe("POST /api/w/:wId/skills/similar", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ similar_skills: [] });
+  });
+
+  it("returns empty similar skills without calling the LLM when the workspace has no custom skills", async () => {
+    const { workspace } = await setup();
+
+    const response = await post(workspace, {
+      naturalDescription: "Create GitHub issues for support",
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ similar_skills: [] });
+    expect(runMultiActionsAgent).not.toHaveBeenCalled();
+  });
+
+  it("batches skills into multiple LLM calls and merges deduplicated results", async () => {
+    const { workspace, auth } = await setup();
+    await createSkills(auth, SKILLS_PER_LLM_CALL + 1);
+
+    vi.mocked(runMultiActionsAgent)
+      .mockResolvedValueOnce(mockSimilarSkillsResponse(["abc12", "20zer"]))
+      .mockResolvedValueOnce(mockSimilarSkillsResponse(["20zer", "35xyz"]));
+
+    const response = await post(workspace, {
+      naturalDescription: "Create GitHub issues for support",
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      similar_skills: ["abc12", "20zer", "35xyz"],
+    });
+    expect(runMultiActionsAgent).toHaveBeenCalledTimes(2);
   });
 
   it("returns 400 when naturalDescription is missing", async () => {

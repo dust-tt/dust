@@ -10,9 +10,14 @@ import { UserMenu } from "@app/components/UserMenu";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import type {
+  ConcreteResourceType,
+  GrantVerb,
+} from "@app/types/group_permissions";
 import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
+import { isAdmin, isManager } from "@app/types/user";
 import {
   CollapseButton,
   cn,
@@ -27,6 +32,25 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useContext, useMemo } from "react";
+
+function getAdminSectionHref(
+  owner: WorkspaceType,
+  hasPermission: (
+    verb: GrantVerb,
+    resourceType: ConcreteResourceType
+  ) => boolean
+): string | null {
+  if (isManager(owner)) {
+    return `/w/${owner.sId}/members`;
+  }
+  if (hasPermission("admin", "billing")) {
+    return `/w/${owner.sId}/billing`;
+  }
+  if (hasPermission("admin", "security")) {
+    return `/w/${owner.sId}/identity-and-provisioning`;
+  }
+  return null;
+}
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -61,13 +85,24 @@ export const NavigationSidebar = React.forwardRef<
   }, [router.isReady, router.pathname]);
 
   const { hasFeature } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions();
+
+  const adminSectionHref = getAdminSectionHref(owner, hasPermission);
+
+  const showAdminSection = adminSectionHref !== null;
 
   const { spaceMenuButtonRef } = useWelcomeTourGuide();
 
   // TODO(2024-06-19 flav): Fix issue with AppLayout changing between pagesg
   const navs = useMemo(
-    () => getTopNavigationTabs(owner, spaceMenuButtonRef),
-    [owner, spaceMenuButtonRef]
+    () =>
+      getTopNavigationTabs(
+        owner,
+        spaceMenuButtonRef,
+        showAdminSection,
+        adminSectionHref
+      ),
+    [owner, spaceMenuButtonRef, showAdminSection, adminSectionHref]
   );
 
   const currentTab = useMemo(

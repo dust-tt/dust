@@ -1,4 +1,5 @@
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
+import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import type { GroupSpendLimit } from "@app/types/api/groups/spend_limit";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
@@ -145,7 +146,12 @@ export function GroupsUsageTable({
         ? [
             {
               id: "modelTiers",
-              header: "Models tier",
+              header: () => (
+                <span className="flex items-center gap-1">
+                  Models tier
+                  <ModelTiersInfoButton />
+                </span>
+              ),
               meta: { className: "w-64" },
               cell: (info: GroupInfo) => (
                 <GroupModelTierPickerDropdown

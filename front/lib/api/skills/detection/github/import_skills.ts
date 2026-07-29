@@ -16,12 +16,14 @@ import { suggestMCPServersForDetectedSkill } from "@app/lib/api/skills/detection
 import { validateSkillsForImport } from "@app/lib/api/skills/detection/validate_skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { getDefaultSkillAvailability } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -42,6 +44,12 @@ type ImportSkillsResult = {
   skipped: { name: string; message: string }[];
 };
 
+// Wider than GitHubSkillDetectionError (shared with the read-only detect endpoint, which never
+// produces this variant): only the actual import/creation path checks the create/skill capability.
+export type ImportSkillsFromGitHubError =
+  | GitHubSkillDetectionError
+  | { type: "unauthorized"; message: string };
+
 /**
  * Imports skills from a GitHub repository. Detects skills, fetches their
  * attachments, and creates or updates SkillResource objects.
@@ -57,7 +65,14 @@ export async function importSkillsFromGitHub(
     names: string[];
     onConflict?: "error" | "skip";
   }
-): Promise<Result<ImportSkillsResult, GitHubSkillDetectionError>> {
+): Promise<Result<ImportSkillsResult, ImportSkillsFromGitHubError>> {
+  if (!(await auth.hasWorkspacePermission("create", "skill"))) {
+    return new Err({
+      type: "unauthorized",
+      message: "Creating skills is restricted.",
+    });
+  }
+
   const accessToken = await getWorkspaceLevelGitHubAccessToken(auth);
   const clientResult = initGitHubRepoClient({ repoUrl, accessToken });
   if (clientResult.isErr()) {
@@ -102,6 +117,8 @@ export async function importSkillsFromGitHub(
       message: "No matching importable skills found.",
     });
   }
+
+  const featureFlags = await getFeatureFlags(auth);
 
   const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
 
@@ -200,7 +217,7 @@ export async function importSkillsFromGitHub(
             repoUrl,
             filePath: skill.skillMdPath,
           },
-          isDefault: false,
+          availability: getDefaultSkillAvailability(featureFlags),
         },
         {
           mcpServerViews: detectedMCPServerViews,

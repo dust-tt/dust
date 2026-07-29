@@ -15,7 +15,8 @@ import {
 } from "@app/lib/api/assistant/skills_rendering";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { getConversationFileMountSignedUrl } from "@app/lib/api/files/gcs_mount/files";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS } from "@app/lib/file_storage/signed_url_cache";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   replaceMentionsWithAt,
@@ -73,7 +74,9 @@ async function getDustFileSystemDownloadUrl(
     return fsResult;
   }
 
-  return fsResult.value.getDownloadUrl(filePath);
+  return fsResult.value.getDownloadUrl(filePath, {
+    expiresInMs: MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS,
+  });
 }
 
 /**
@@ -126,13 +129,7 @@ async function renderActionForMultiActionsModel(
   auth: Authenticator,
   action: AgentMCPActionWithOutputType,
   model: ModelConfigurationType,
-  {
-    conversationId,
-    renderSearchResultsAsMarkdown,
-  }: {
-    conversationId: string;
-    renderSearchResultsAsMarkdown: boolean;
-  }
+  { conversationId }: { conversationId: string }
 ): Promise<FunctionMessageTypeModel> {
   if (action.status === "denied") {
     return {
@@ -168,11 +165,7 @@ async function renderActionForMultiActionsModel(
   }
 
   const outputItems = removeNulls(
-    action.output?.map((content) =>
-      rewriteContentForModel(content, {
-        renderSearchResultsAsMarkdown,
-      })
-    ) ?? []
+    action.output?.map(rewriteContentForModel) ?? []
   );
 
   let output: string | Content[];
@@ -256,10 +249,6 @@ export async function getSteps(
     return [];
   }
   const actions = removeNulls(message.actions);
-  const renderSearchResultsAsMarkdown = await hasFeatureFlag(
-    auth,
-    "render_search_results_as_markdown"
-  );
 
   // We store for each step (identified by its index) the "contents" array (raw model outputs, including
   // text content, reasoning and function calls) and "actions", i.e the function results.
@@ -277,7 +266,6 @@ export async function getSteps(
       action,
       result: await renderActionForMultiActionsModel(auth, action, model, {
         conversationId,
-        renderSearchResultsAsMarkdown,
       }),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,

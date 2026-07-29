@@ -16,6 +16,7 @@ interface BaseFormFieldSectionProps<
   children: (args: {
     registerRef: (e: E | null) => void;
     registerProps: {
+      disabled?: boolean;
       name: string;
       onBlur: () => void;
       value: string;
@@ -80,6 +81,7 @@ export function BaseFormFieldSection<
         {children({
           registerRef: field.ref,
           registerProps: {
+            disabled: field.disabled,
             name: field.name,
             onBlur: field.onBlur,
             value: field.value ?? "",

@@ -205,7 +205,7 @@ export async function getMembers(
     if (!m.isRevoked()) {
       switch (m.role) {
         case "admin":
-        case "business_admin":
+        case "manager":
         case "builder":
         case "user":
           role = m.role;
@@ -803,6 +803,7 @@ export type GetWorkspaceVerifiedDomainsResponseBody = {
 
 export type GetProvisioningStatusResponseBody = {
   hasAdminGroup: boolean;
+  hasManagerGroup: boolean;
   hasBuilderGroup: boolean;
 };
 

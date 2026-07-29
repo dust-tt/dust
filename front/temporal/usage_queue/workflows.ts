@@ -33,6 +33,7 @@ const { emitMetronomeUsageEventsActivity } = proxyActivities<typeof activities>(
 
 const { syncMetronomeSeatCountActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
+  heartbeatTimeout: "1 minute",
 });
 
 const { reconcileApiKeyCreditStateActivity } = proxyActivities<

@@ -1,105 +1,64 @@
 import { getSandboxFunctionInvocationEvents } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import type {
+  SandboxFunctionCallError,
+  SandboxFunctionInvocationContext,
+} from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { z } from "zod";
-
-// The runner Output envelope dsbx POSTs back as the result event. Mirrors Output in
-// cli/dust-sandbox/functions-runner/protocol.ts.
-const responseOutputSchema = z.object({
-  status: z.number(),
-  headers: z.record(z.string()),
-  body: z.string().nullable(),
-  encoding: z.enum(["utf8", "base64"]),
-});
-const resultEnvelopeSchema = z.discriminatedUnion("ok", [
-  z.object({ ok: z.literal(true), response: responseOutputSchema }),
-  z.object({
-    ok: z.literal(false),
-    error: z.object({
-      kind: z.string(),
-      message: z.string(),
-      stack: z.string().optional(),
-    }),
-  }),
-]);
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 // Safety ceiling on waiting for the result event delivered over the invocation stream.
 const CALL_RESULT_WAIT_TIMEOUT_MS = 3 * 60 * 1_000;
 
-export type SandboxFunctionCallOutcome =
-  | { ok: true; status: number; output: string }
-  | { ok: false; errorKind: string; message: string };
-
-function decodeResponseBody(
-  body: string | null,
-  encoding: "utf8" | "base64"
-): string {
-  if (body === null) {
-    return "";
-  }
-  return encoding === "base64"
-    ? Buffer.from(body, "base64").toString("utf8")
-    : body;
-}
-
 /**
  * Invoke a sandbox function and wait for its result.
- *
- * Returns Err for infra failures (sandbox unavailable, exec failure, missing/unparseable result),
- * and Ok with `ok: false` when the function ran but returned an error envelope, so the caller can
- * surface that as a correctable tool error. Input is validated by the runner, not here.
  */
 export async function callSandboxFunction(
   auth: Authenticator,
   sandboxFunction: SandboxFunctionResource,
-  input: unknown
-): Promise<Result<SandboxFunctionCallOutcome, Error>> {
-  const invocationResult = await sandboxFunction.invoke(auth, { input });
+  input: unknown,
+  context?: SandboxFunctionInvocationContext
+): Promise<Result<unknown, SandboxFunctionCallError>> {
+  const invocationResult = await sandboxFunction.invoke(auth, {
+    input,
+    context,
+  });
   if (invocationResult.isErr()) {
-    return invocationResult;
+    return new Err({
+      code: "invocation_failed",
+      message: invocationResult.error.message,
+    });
   }
   const invocation = invocationResult.value;
   const { sId: invocationId } = invocation;
 
-  for await (const { data } of getSandboxFunctionInvocationEvents({
-    invocationId,
-    lastEventId: null,
-    signal: AbortSignal.timeout(CALL_RESULT_WAIT_TIMEOUT_MS),
-  })) {
-    // Terminal error published when the invocation failed before producing a result.
-    if (data.type === "sandbox_function_invocation_error") {
-      return new Err(new Error(data.message));
-    }
+  try {
+    for await (const { data } of getSandboxFunctionInvocationEvents({
+      invocationId,
+      lastEventId: null,
+      signal: AbortSignal.timeout(CALL_RESULT_WAIT_TIMEOUT_MS),
+    })) {
+      if (data.type === "sandbox_function_invocation_error") {
+        return new Err(data.error);
+      }
 
-    if (data.type !== "sandbox_function_invocation_result") {
-      continue;
-    }
+      if (data.type !== "sandbox_function_invocation_result") {
+        continue;
+      }
 
-    const parsed = resultEnvelopeSchema.safeParse(data.result);
-    if (!parsed.success) {
-      return new Err(
-        new Error("Pod function returned an unexpected result envelope.")
-      );
+      return new Ok(data.result);
     }
-    if (!parsed.data.ok) {
-      return new Ok({
-        ok: false,
-        errorKind: parsed.data.error.kind,
-        message: parsed.data.error.message,
-      });
-    }
-
-    // A non-2xx (e.g. the runner's 400 on invalid input) is a valid response, not a tool error;
-    // the handler surfaces the status so the model can react.
-    const { response } = parsed.data;
-    return new Ok({
-      ok: true,
-      status: response.status,
-      output: decodeResponseBody(response.body, response.encoding),
+  } catch (error) {
+    return new Err({
+      code: "transport_error",
+      message: `Failed to receive sandbox function events: ${normalizeError(error).message}`,
     });
   }
 
-  return new Err(new Error("Pod function did not return a result in time."));
+  return new Err({
+    code: "transport_error",
+    message: "Pod function did not return a result in time.",
+  });
 }

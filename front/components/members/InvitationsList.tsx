@@ -1,10 +1,16 @@
 import { EditInvitationModal } from "@app/components/members/EditInvitationModal";
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import {
+  displayRole,
+  normalizeDisplayRole,
+  ROLES_DATA,
+} from "@app/components/members/Roles";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -36,6 +42,11 @@ export function InvitationsList({
   const [selectedInvite, setSelectedInvite] =
     useState<MembershipInvitationType | null>(null);
   const sendNotification = useSendNotification();
+  const { hasFeature } = useFeatureFlags();
+
+  // Managers cannot resend invitations targeting the admin role (matches the
+  // server-side escalation guard); only admins can.
+  const canManageAdminRole = isAdmin(owner);
 
   const filteredInvitations = useMemo(
     () =>
@@ -66,6 +77,8 @@ export function InvitationsList({
       accessorKey: "inviteEmail",
       cell: (info: CellContext<RowData, string>) => {
         const isExpired = info.row.original.isExpired;
+        const canResend =
+          info.row.original.initialRole !== "admin" || canManageAdminRole;
         return (
           <DataTable.CellContent>
             <div className="flex items-center gap-2">
@@ -73,22 +86,24 @@ export function InvitationsList({
               {isExpired && (
                 <>
                   <span className="text-red-500">(expired)</span>
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    icon={Mail01}
-                    label="Resend"
-                    onClick={async (e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      await sendInvitations({
-                        owner,
-                        emails: [info.row.original.inviteEmail],
-                        invitationRole: info.row.original.initialRole,
-                        sendNotification,
-                        isNewInvitation: false,
-                      });
-                    }}
-                  />
+                  {canResend && (
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      icon={Mail01}
+                      label="Resend"
+                      onClick={async (e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        await sendInvitations({
+                          owner,
+                          emails: [info.row.original.inviteEmail],
+                          invitationRole: info.row.original.initialRole,
+                          sendNotification,
+                          isNewInvitation: false,
+                        });
+                      }}
+                    />
+                  )}
                 </>
               )}
             </div>
@@ -100,17 +115,25 @@ export function InvitationsList({
       id: "initialRole",
       header: "Role",
       accessorFn: (row: RowData) => row.initialRole,
-      cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent>
-          <Chip
-            size="xs"
-            color={ROLES_DATA[info.row.original.initialRole]["color"]}
-            className="capitalize"
-          >
-            {displayRole(info.row.original.initialRole)}
-          </Chip>
-        </DataTable.CellContent>
-      ),
+      cell: (info: CellContext<RowData, string>) => {
+        // `builder` is deprecated under admin governance: display it as a
+        // regular member.
+        const displayedRole = normalizeDisplayRole(
+          info.row.original.initialRole,
+          hasFeature("admin_governance")
+        );
+        return (
+          <DataTable.CellContent>
+            <Chip
+              size="xs"
+              color={ROLES_DATA[displayedRole]["color"]}
+              className="capitalize"
+            >
+              {displayRole(displayedRole)}
+            </Chip>
+          </DataTable.CellContent>
+        );
+      },
       meta: {
         className: "w-32",
       },

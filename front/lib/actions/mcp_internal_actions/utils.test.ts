@@ -1,8 +1,7 @@
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   buildTools,
-  createToolsRecord,
+  type ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { workspaceAdminGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -21,8 +20,9 @@ import { describe, expect, it } from "vitest";
 // Two artificial tools to exercise the guard's behaviour through the real MCP
 // stack, decoupled from any feature tool: one wraps workspaceAdminGuard, the
 // other (control) does not.
-const TEST_TOOLS_METADATA = createToolsRecord({
-  guarded_tool: {
+const TEST_TOOLS_METADATA = [
+  {
+    name: "guarded_tool",
     description: "Admin-guarded test tool.",
     schema: {},
     stake: "never_ask",
@@ -30,7 +30,8 @@ const TEST_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic" as const,
     freeUsage: false,
   },
-  open_tool: {
+  {
+    name: "open_tool",
     description: "Unguarded test tool.",
     schema: {},
     stake: "never_ask",
@@ -38,7 +39,7 @@ const TEST_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic" as const,
     freeUsage: false,
   },
-});
+] as const;
 
 const handlers: ToolHandlers<typeof TEST_TOOLS_METADATA> = {
   guarded_tool: async (_params, { auth }) => {

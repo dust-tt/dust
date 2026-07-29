@@ -1,0 +1,8 @@
+{
+  "action": "workspace.model_provider_settings_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "enabled_providers": "string",
+    "default_embedding_provider": "string"
+  }
+}

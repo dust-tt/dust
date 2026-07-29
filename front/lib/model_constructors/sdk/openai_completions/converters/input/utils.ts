@@ -22,15 +22,45 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
   ChatCompletionToolChoiceOption,
+  ChatCompletionToolMessageParam,
 } from "openai/resources/chat/completions";
 import type {
   ReasoningEffort as OpenAIReasoningEffort,
   ResponseFormatJSONSchema,
 } from "openai/resources/shared";
 
-// The per-message leaf converters. The composite below routes through an object
-// satisfying this interface (`this`), so overriding one leaf on an endpoint
-// changes how the composite uses it.
+// This SDK client is shared across hosts and labs (OpenAI, Fireworks, ...). The
+// goal is to let a specific endpoint override one small conversion step (e.g.
+// how a user text message becomes a chat-completions message) without
+// reimplementing the whole `buildRequestPayload`.
+//
+// To make that possible, conversions are split into two kinds:
+//
+//   - "leaf" converters (this interface): the smallest units, each turning one
+//     Base* message into one chat-completions message. E.g.
+//     `userTextMessageToMessage`, `userImageMessageToMessage`. These are the
+//     override points.
+//
+//   - "composite" converters (defined below): higher-level converters that
+//     assemble messages by delegating to leaves rather than doing the leaf work
+//     themselves. E.g. `userMessageToMessage` switches on message type and calls
+//     `userTextMessageToMessage` / `userImageMessageToMessage`.
+//
+// The link between them is that composites receive an object satisfying this
+// interface (`this` on the endpoint class — see
+// `WithOpenAICompletionsInputConverter`) and route every child call through it.
+// So overriding a single leaf field on an endpoint changes how every composite
+// depending on it behaves — no need to touch the composites or
+// `buildRequestPayload`.
+//
+// This composes both ways: a composite is itself an override point. An endpoint
+// can override a composite method and still reach its children through
+// `this.<child>` (e.g. a custom `userMessageToMessage` that calls
+// `this.userTextMessageToMessage`), so it picks up any leaf overrides too and
+// only the reassembly logic changes.
+//
+// "leaf" / "composite" naming lives only in comments; it's just a mental model
+// for how the pieces compose.
 export interface OpenAICompletionsMessageConverters {
   systemMessageToMessage(
     message: SystemTextMessage
@@ -90,7 +120,7 @@ export function userImageMessageToMessage(
 
 export function toolCallResultMessageToMessage(
   message: BaseToolCallResultMessage
-): ChatCompletionMessageParam {
+): ChatCompletionToolMessageParam {
   const content = message.content.parts
     .map((part) => {
       switch (part.type) {
@@ -130,7 +160,6 @@ export function assistantToolCallRequestToMessage(
 ): ChatCompletionMessageParam {
   return {
     role: "assistant",
-    content: null,
     tool_calls: [
       {
         id: message.content.callId,
@@ -246,9 +275,9 @@ export function forceToolNameToToolChoice(
 }
 
 // Maps our reasoning effort to the chat-completions `reasoning_effort` value, or
-// `undefined` to omit it. `none` is dropped (no reasoning); `maximal` has no
-// chat-completions equivalent. Fireworks models only ever send none/low/medium/
-// high, so the other branches are dead but kept for exhaustiveness.
+// `undefined` to omit it. `none` is dropped (no reasoning). Fireworks models
+// send a subset of these (e.g. GLM-5.2 uses none/high/maximal); the remaining
+// branches are kept for exhaustiveness.
 export function toReasoningEffortParam(
   effort: ReasoningEffort
 ): OpenAIReasoningEffort | undefined {

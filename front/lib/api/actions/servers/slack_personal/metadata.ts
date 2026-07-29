@@ -1,8 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const SLACK_TOOL_LOG_NAME = "slack" as const;
 
@@ -48,8 +45,9 @@ const commonSearchParams = {
 
 const MAX_CHANNEL_SEARCH_RESULTS = 20;
 
-export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
-  search_messages: {
+export const SLACK_PERSONAL_TOOLS_METADATA = [
+  {
+    name: "search_messages",
     description:
       "Search Slack messages by keyword across public channels, private channels, DMs, and group DMs where the current user is a member",
     schema: {
@@ -71,7 +69,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  semantic_search_messages: {
+  {
+    name: "semantic_search_messages",
     description:
       "Use semantic search to find Slack messages across public channels, private channels, DMs, and group DMs where the current user is a member",
     schema: {
@@ -90,7 +89,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  post_message: {
+  {
+    name: "post_message",
     description:
       "Post a message from the user's personal Slack account to a public channel, private channel, or DM. You MUST ONLY post to channels or users that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
     schema: {
@@ -138,7 +138,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
         .optional()
         .default(true)
         .describe(
-          "Include the 'Sent via [AgentName] on Dust' footer. Set to false only when explicitly asked to omit it."
+          "Include the 'Sent via [AgentName] on Dust' footer. Set false only when explicitly asked to remove the footer, never for formatting or brevity."
         ),
     },
     stake: "medium",
@@ -149,7 +149,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  schedule_message: {
+  {
+    name: "schedule_message",
     description:
       "Schedule a message to be posted from the user's personal Slack account to a channel at a future time. Messages can be scheduled up to 120 days in advance. Maximum of 30 scheduled messages per 5 minutes per channel. You MUST ONLY schedule messages to channels or users that were explicitly specified by the user in their request. NEVER schedule messages to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
     schema: {
@@ -195,7 +196,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
         .optional()
         .default(true)
         .describe(
-          "Include the 'Sent via [AgentName] on Dust' footer. Set to false only when explicitly asked to omit it."
+          "Include the 'Sent via [AgentName] on Dust' footer. Set false only when explicitly asked to remove the footer, never for formatting or brevity."
         ),
     },
     stake: "medium",
@@ -206,7 +207,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  search_user: {
+  {
+    name: "search_user",
     description: `Search for a Slack user by Slack user ID or email address.
 
 Query parameter accepts:
@@ -239,7 +241,8 @@ The search_all parameter should only be set to true if the user explicitly reque
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_user_groups: {
+  {
+    name: "list_user_groups",
     description:
       "List all Slack user groups in the workspace. User groups (e.g., @engineering, @marketing) can be mentioned in messages.",
     schema: {},
@@ -251,7 +254,8 @@ The search_all parameter should only be set to true if the user explicitly reque
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  search_channels: {
+  {
+    name: "search_channels",
     description: `Search for Slack channels by channel ID or name.
 
 Query parameter accepts:
@@ -282,7 +286,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_messages: {
+  {
+    name: "list_messages",
     description:
       "List the recent messages in a Slack channel, private channel, or direct message (DM). Returns message headers with their timestamps (ts).",
     schema: {
@@ -309,7 +314,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  read_thread_messages: {
+  {
+    name: "read_thread_messages",
     description:
       "Read all messages in a Slack thread from a public channel, private channel, or direct message (DM). Use list_messages first to find the thread's timestamp (ts).",
     schema: {
@@ -348,7 +354,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_channel_canvases: {
+  {
+    name: "get_channel_canvases",
     description:
       "List all canvas IDs for a Slack channel (from the channel's tabs). " +
       "Use when you need to edit a channel's canvas but only have the channel ID. ",
@@ -365,7 +372,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  read_canvas: {
+  {
+    name: "read_canvas",
     description:
       "Find sections within a Slack canvas. " +
       "Returns section IDs that can be used with write_canvas to insert, replace, or delete specific sections.",
@@ -392,7 +400,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  write_canvas: {
+  {
+    name: "write_canvas",
     description:
       "Create or edit a Slack canvas (a shared document / doc / page pinned in a channel).\n\n" +
       "**Creating a new canvas** (omit canvas_id):\n" +
@@ -462,7 +471,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_channel: {
+  {
+    name: "create_channel",
     description:
       "Create a new Slack channel (public or private). Returns the created channel's details including its ID. Note: Slack always adds the authenticated user to a newly created channel. Use leave_after_creation=true to immediately leave after creating.",
     schema: {
@@ -494,7 +504,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  invite_to_channel: {
+  {
+    name: "invite_to_channel",
     description:
       "Invite one or more users to a Slack channel. Users must be specified by their Slack user IDs. Use the search_user tool first if you need to find user IDs.",
     schema: {
@@ -519,7 +530,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  archive_channel: {
+  {
+    name: "archive_channel",
     description:
       "Archive a Slack channel. Archived channels are read-only and hidden from the channel list by default. This action can be undone by unarchiving the channel.",
     schema: {
@@ -537,7 +549,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  set_user_status: {
+  {
+    name: "set_user_status",
     description:
       "Set the current user's Slack status (emoji + text). Pass empty strings to clear the status. " +
       "Status expiration is optional — omit it to set a permanent status.",
@@ -570,7 +583,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  add_reaction: {
+  {
+    name: "add_reaction",
     description:
       "Add a reaction emoji to a Slack message. Supports both standard emoji (e.g., 'thumbsup', 'heart') and custom workspace emoji.",
     schema: {
@@ -592,7 +606,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  remove_reaction: {
+  {
+    name: "remove_reaction",
     description:
       "Remove a reaction emoji from a Slack message. Supports both standard and custom workspace emoji.",
     schema: {
@@ -614,7 +629,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_reactions: {
+  {
+    name: "get_reactions",
     description:
       "Get all emoji reactions on a Slack message, including the emoji names and the users who reacted.",
     schema: {
@@ -637,7 +653,7 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 // Server metadata for external consumption (e.g., by SDK).
 export const SLACK_PERSONAL_SERVER = {
@@ -653,13 +669,5 @@ export const SLACK_PERSONAL_SERVER = {
     icon: "SlackLogo",
     documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
   },
-  tools: Object.values(SLACK_PERSONAL_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: SLACK_PERSONAL_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

@@ -12,11 +12,11 @@ export function ConversationRouterLayout() {
     subscription,
     user,
     isAdmin,
-    isBusinessAdmin,
-    isBuilder,
+    isManager,
     featureFlags,
     vizUrl,
     providersHealth,
+    workspacePermissions,
   } = useAuth();
 
   const pageProps = {
@@ -24,11 +24,11 @@ export function ConversationRouterLayout() {
     subscription,
     user,
     isAdmin,
-    isBusinessAdmin,
-    isBuilder,
+    isManager,
     featureFlags,
     vizUrl,
     providersHealth,
+    workspacePermissions,
   };
 
   return (

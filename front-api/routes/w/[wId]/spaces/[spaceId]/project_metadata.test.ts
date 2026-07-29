@@ -106,7 +106,14 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const [spaceGroup] = projectSpace.groups.filter((g) => !g.isGlobal());
+    const [spaceGroup] = await projectSpace.fetchGroupResources(adminAuth, {
+      groupReferences: projectSpace.groups.filter((group) =>
+        group.isRegularAuto()
+      ),
+    });
+    if (!spaceGroup) {
+      throw new Error("Expected the project member group to exist.");
+    }
     await spaceGroup.dangerouslyAddMembers(adminAuth, {
       users: [user.toJSON()],
     });

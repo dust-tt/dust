@@ -44,16 +44,17 @@ import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-  CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
+import { AUTO_MODEL_CONFIG } from "@app/types/assistant/models/auto";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import {
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
   FIREWORKS_GLM_5_MODEL_CONFIG,
   FIREWORKS_GLM_5P2_MODEL_CONFIG,
-  FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
+  FIREWORKS_KIMI_K3_MODEL_CONFIG,
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
 } from "@app/types/assistant/models/fireworks";
 import {
@@ -311,7 +312,9 @@ function _getDustLikeGlobalAgent(
     }
 
     if (!auth.isUpgraded()) {
-      return getSmallWhitelistedModel(auth, excludeProviders);
+      return getSmallWhitelistedModel(auth, excludeProviders, {
+        featureFlags,
+      });
     }
 
     if (isPreferredModelConfigurationAvailable) {
@@ -319,7 +322,7 @@ function _getDustLikeGlobalAgent(
       return preferredModelConfiguration;
     }
 
-    return getLargeWhitelistedModel(auth, excludeProviders);
+    return getLargeWhitelistedModel(auth, excludeProviders, { featureFlags });
   })();
 
   const model: AgentModelConfigurationType = modelConfiguration
@@ -467,18 +470,25 @@ export function _getDustGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
+  let preferredModelConfiguration: ModelConfigurationType =
+    CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+  let preferredReasoningEffort: ReasoningEffort = "medium";
+
+  if (args.preferSonnet5DefaultModel) {
+    preferredModelConfiguration = CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG;
+    preferredReasoningEffort = "medium";
+  } else if (args.preferGpt56LunaDefaultModel) {
+    preferredModelConfiguration = GPT_5_6_LUNA_MODEL_CONFIG;
+    preferredReasoningEffort = "high";
+  } else if (args.featureFlags.includes("models_picker")) {
+    preferredModelConfiguration = AUTO_MODEL_CONFIG;
+    preferredReasoningEffort = "none";
+  }
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
-    preferredModelConfiguration: args.preferSonnet5DefaultModel
-      ? CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG
-      : args.preferGpt56LunaDefaultModel
-        ? GPT_5_6_LUNA_MODEL_CONFIG
-        : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort:
-      args.preferGpt56LunaDefaultModel && !args.preferSonnet5DefaultModel
-        ? "high"
-        : "medium",
+    preferredModelConfiguration,
+    preferredReasoningEffort,
   });
 }
 
@@ -527,7 +537,7 @@ export function _getDustEdgeGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_EDGE,
     name: "dust-edge",
-    preferredModelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -539,7 +549,7 @@ export function _getDustAntGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT,
     name: "dust-ant",
-    preferredModelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -551,7 +561,7 @@ export function _getDustAntMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM,
     name: "dust-ant-medium",
-    preferredModelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -563,7 +573,7 @@ export function _getDustAntHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH,
     name: "dust-ant-high",
-    preferredModelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }
@@ -658,7 +668,7 @@ export function _getDustKimiGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI,
     name: "dust-kimi",
-    preferredModelConfiguration: FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_KIMI_K3_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -670,7 +680,7 @@ export function _getDustKimiMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
     name: "dust-kimi-medium",
-    preferredModelConfiguration: FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_KIMI_K3_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -682,7 +692,7 @@ export function _getDustKimiHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI_HIGH,
     name: "dust-kimi-high",
-    preferredModelConfiguration: FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_KIMI_K3_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }
@@ -1015,7 +1025,7 @@ export function _getDustAntMediumOmittedGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
     name: "dust-ant-medium-omitted",
-    preferredModelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
     omittedThinking: true,
   });
@@ -1028,7 +1038,7 @@ export function _getDustAntHighOmittedGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
     name: "dust-ant-high-omitted",
-    preferredModelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "high",
     omittedThinking: true,
   });

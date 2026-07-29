@@ -6,6 +6,7 @@ import {
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -356,6 +357,147 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.agentFacingDescription).toBe(newDescription);
+  });
+
+  it("updates availability, giving it priority over the deprecated isDefault", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    const basePayload = {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    };
+
+    // Old clients still send only isDefault.
+    let response = await patchSkill(workspace, skill.sId, {
+      ...basePayload,
+      isDefault: true,
+    });
+    expect(response.status).toBe(200);
+    let updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.availability).toBe("users_and_agents");
+
+    // New clients send availability; it wins over a contradicting isDefault.
+    response = await patchSkill(workspace, skill.sId, {
+      ...basePayload,
+      isDefault: true,
+      availability: "workspace_users",
+    });
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.availability).toBe("workspace_users");
+    expect(data.skill.isDefault).toBe(false);
+    updatedSkill = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(updatedSkill?.availability).toBe("workspace_users");
+  });
+
+  it("rejects the editors availability when skill publication governance is off", async () => {
+    const { workspace, skill } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: skill.icon,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: skill.instructionsHtml,
+      availability: "editors",
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("denies any edit to a non-editor even with the publish permission", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      skillOwnerRole: "builder",
+      requestUserRole: "admin",
+    });
+    await FeatureFlagFactory.basic(
+      requestUserAuth,
+      "admin_governance_skill_publication"
+    );
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: "Renamed By Admin",
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: skill.icon,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: skill.instructionsHtml,
+      availability: "editors",
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("denies an availability change to an editor without the publish permission", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      skillOwnerRole: "builder",
+      requestUserRole: "builder",
+    });
+    await FeatureFlagFactory.basic(
+      requestUserAuth,
+      "admin_governance_skill_publication"
+    );
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: skill.icon,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: skill.instructionsHtml,
+      availability: "users_and_agents",
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("lets an editor without the publish permission edit when availability is unchanged", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      skillOwnerRole: "builder",
+      requestUserRole: "builder",
+    });
+    await FeatureFlagFactory.basic(
+      requestUserAuth,
+      "admin_governance_skill_publication"
+    );
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: "Renamed By Editor",
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: skill.icon,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: skill.instructionsHtml,
+    });
+
+    expect(response.status).toBe(200);
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.name).toBe("Renamed By Editor");
   });
 
   it("recomputes nested skill references from instructions", async () => {

@@ -598,7 +598,11 @@ async function isParentAlreadyInNodes({
   return false;
 }
 
-export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
+export async function markNodeAsSeen(
+  connectorId: ModelId,
+  internalId: string,
+  startSyncTs?: number
+) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -623,10 +627,16 @@ export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
     return;
   }
 
-  // if node was updated more recently than this sync, we don't need to mark it
-  if (node.lastSeenTs && node.lastSeenTs < new Date()) {
-    await node.update({ lastSeenTs: new Date() });
+  // No need to mark nodes updated more recently than this sync.
+  if (
+    startSyncTs !== undefined &&
+    node.lastSeenTs &&
+    node.lastSeenTs.getTime() > startSyncTs
+  ) {
+    return;
   }
+
+  await node.update({ lastSeenTs: new Date() });
 }
 
 // A 404 returned while listing the children of a drive/folder is ambiguous: the
@@ -2090,7 +2100,7 @@ export async function microsoftGarbageCollectionActivity({
   // during the garbage collection and the caching below prevents this from
   // being detected
   const nodesToCheck = nodes
-    .filter((n) => n.lastSeenTs ?? 0 < startGarbageCollectionTs)
+    .filter((n) => (n.lastSeenTs?.getTime() ?? 0) < startGarbageCollectionTs)
     .filter(
       (n) =>
         n.nodeType === "drive" ||
@@ -2208,6 +2218,7 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_drive_not_found",
               });
@@ -2216,6 +2227,7 @@ export async function microsoftGarbageCollectionActivity({
                 connectorId,
                 dataSourceConfig,
                 internalId: node.internalId,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_drive_removed_from_selection",
               });
@@ -2230,6 +2242,7 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_not_found",
               });
@@ -2239,6 +2252,7 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_marked_deleted",
               });
@@ -2256,6 +2270,7 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
                 reason: "gc_outside_sync_scope",
               });
@@ -2280,6 +2295,7 @@ export async function microsoftGarbageCollectionActivity({
                 connectorId,
                 internalId: node.internalId,
                 dataSourceConfig,
+                lastSeenCutoffMs: startGarbageCollectionTs,
                 logger,
               });
             }

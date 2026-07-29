@@ -53,8 +53,8 @@ export type AgentActionSpecification = {
   description: string;
   inputSchema: JSONSchema;
   // Whether this tool is loaded upfront in the cached prefix. Intrinsic,
-  // provider-agnostic property. Anthropic defers non-eager tools behind tool
-  // search when it is enabled. Other providers ignore it and send every tool.
+  // provider-agnostic property. Providers with tool search defer non-eager
+  // tools when tool search is enabled.
   eager?: boolean;
 };
 

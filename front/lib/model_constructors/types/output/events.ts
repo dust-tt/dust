@@ -1,5 +1,5 @@
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type { Lab } from "@app/lib/model_constructors/types/labs";
 
 export type ResponseIdContent = { responseId: string };
 
@@ -43,6 +43,7 @@ export type ToolCallContent = {
   id: string;
   name: string;
   arguments: Record<string, unknown>;
+  namespace?: string;
 };
 export interface ToolCallEvent {
   type: "tool_call";
@@ -66,8 +67,16 @@ export interface ReasoningEvent {
 
 // Opaque provider-specific block (e.g. an Anthropic server-tool block) captured
 // for verbatim replay. The block stays opaque to the generic pipeline.
+// Passthrough blocks only originate from labs Dust talks to directly (Anthropic
+// only today). Fireworks-hosted labs (moonshot_ai, z_ai) and the noop lab never
+// produce one. xai reuses the OpenAI Responses converter, which tags its
+// passthrough blocks under the "openai" provider, so "xai" never appears as a
+// passthrough value either. All are excluded to keep the value mappable to the
+// persisted provider vocabulary.
+export type PassthroughLab = Exclude<Lab, "moonshot_ai" | "z_ai" | "xai">;
+
 export type ProviderPassthroughContent = {
-  provider: ModelProviderIdType;
+  provider: PassthroughLab;
   block: unknown;
 };
 export interface ProviderPassthroughEvent {
@@ -82,8 +91,12 @@ export type TokenUsageContent = {
   cacheCreated: number;
   cacheHit: number;
   standardInput: number;
-  standardOutput: number;
-  reasoning: number;
+  // Inclusive billed output total. Provider adapters must normalize their raw
+  // usage into this value, including reasoning and thinking tokens.
+  totalOutput: number;
+  // Optional reasoning and thinking subset of totalOutput. Never add it to
+  // totalOutput for persistence or billing.
+  reasoning?: number;
 };
 export interface TokenUsageEvent {
   type: "token_usage";

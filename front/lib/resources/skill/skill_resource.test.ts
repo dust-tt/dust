@@ -1,9 +1,12 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
+import {
+  SkillConfigurationModel,
+  SkillDataSourceConfigurationModel,
+} from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
+import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -16,13 +19,17 @@ import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("SkillResource", () => {
@@ -44,23 +51,17 @@ describe("SkillResource", () => {
   });
 
   describe("permissions", () => {
-    it("allows builder API keys to administrate skills", async () => {
+    it("allows any API key to write and administrate skills, regardless of role", async () => {
       const skill = await SkillFactory.create(testContext.authenticator);
-      const builderKey = await KeyFactory.regular(testContext.globalGroup);
-      const readOnlyKey = await KeyFactory.readOnly(testContext.globalGroup);
+      // Keys have no editor-group assignment mechanism, so even the least-privileged key
+      // role ("user") must be allowed here — there is no role distinction left to gate on.
+      const key = await KeyFactory.readOnly(testContext.globalGroup);
 
-      const builderAuth = (
-        await Authenticator.fromKey(builderKey, testContext.workspace.sId)
-      ).workspaceAuth;
-      const readOnlyAuth = (
-        await Authenticator.fromKey(readOnlyKey, testContext.workspace.sId)
-      ).workspaceAuth;
+      const auth = (await Authenticator.fromKey(key, testContext.workspace.sId))
+        .workspaceAuth;
 
-      expect(skill.canWrite(builderAuth)).toBe(true);
-      expect(skill.canAdministrate(builderAuth)).toBe(true);
-
-      expect(skill.canWrite(readOnlyAuth)).toBe(false);
-      expect(skill.canAdministrate(readOnlyAuth)).toBe(false);
+      expect(skill.canWrite(auth)).toBe(true);
+      expect(skill.canAdministrate(auth)).toBe(true);
     });
   });
 
@@ -83,6 +84,68 @@ describe("SkillResource", () => {
 
       expect(skill.instructions).toBe("");
       expect(skill.instructionsHtml).toBeNull();
+    });
+  });
+
+  describe("favorites", () => {
+    it("stores one row per user and updates custom skill favorite counts", async () => {
+      const skillA = await SkillFactory.create(testContext.authenticator, {
+        name: "Favorite Skill A",
+      });
+      const skillB = await SkillFactory.create(testContext.authenticator, {
+        name: "Favorite Skill B",
+      });
+
+      await skillA.setFavorite(testContext.authenticator, false);
+      expect(
+        await skillA.isFavoriteForCurrentUser(testContext.authenticator)
+      ).toBe(false);
+      expect(
+        await SkillUserFavoriteModel.count({
+          where: {
+            workspaceId: testContext.workspace.id,
+            userId: testContext.user.id,
+          },
+        })
+      ).toBe(0);
+
+      await skillA.setFavorite(testContext.authenticator, true);
+      await skillA.setFavorite(testContext.authenticator, true);
+      await skillB.setFavorite(testContext.authenticator, true);
+      expect(
+        await skillA.isFavoriteForCurrentUser(testContext.authenticator)
+      ).toBe(true);
+      expect(
+        await skillB.isFavoriteForCurrentUser(testContext.authenticator)
+      ).toBe(true);
+
+      const favoriteRows = await SkillUserFavoriteModel.findAll({
+        where: {
+          workspaceId: testContext.workspace.id,
+          userId: testContext.user.id,
+        },
+      });
+      expect(favoriteRows).toHaveLength(1);
+      expect(favoriteRows[0].skillIds).toEqual([skillA.sId, skillB.sId]);
+
+      await skillA.setFavorite(testContext.authenticator, false);
+      await skillA.setFavorite(testContext.authenticator, false);
+
+      await favoriteRows[0].reload();
+      expect(favoriteRows[0].skillIds).toEqual([skillB.sId]);
+      expect(
+        await skillA.isFavoriteForCurrentUser(testContext.authenticator)
+      ).toBe(false);
+
+      const [skillAModel, skillBModel] = await SkillConfigurationModel.findAll({
+        where: {
+          id: [skillA.id, skillB.id],
+          workspaceId: testContext.workspace.id,
+        },
+        order: [["id", "ASC"]],
+      });
+      expect(skillAModel.favoriteCount).toBe(0);
+      expect(skillBModel.favoriteCount).toBe(1);
     });
   });
 
@@ -497,6 +560,60 @@ describe("SkillResource", () => {
   });
 
   describe("updateSkill", () => {
+    it("updates availability and derives the serialized isDefault from it", async () => {
+      const skillResource = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Test Skill For Availability Sync" }
+      );
+
+      expect(skillResource.availability).toBe("workspace_users");
+      expect(skillResource.toJSON(testContext.authenticator).isDefault).toBe(
+        false
+      );
+
+      await skillResource.updateSkill(testContext.authenticator, {
+        name: skillResource.name,
+        agentFacingDescription: skillResource.agentFacingDescription,
+        userFacingDescription: skillResource.userFacingDescription,
+        instructions: skillResource.instructions,
+        icon: skillResource.icon,
+        availability: "users_and_agents",
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [],
+      });
+
+      const updatedSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        skillResource.sId
+      );
+      expect(updatedSkill?.availability).toBe("users_and_agents");
+      expect(updatedSkill?.toJSON(testContext.authenticator).isDefault).toBe(
+        true
+      );
+
+      await skillResource.updateSkill(testContext.authenticator, {
+        name: skillResource.name,
+        agentFacingDescription: skillResource.agentFacingDescription,
+        userFacingDescription: skillResource.userFacingDescription,
+        instructions: skillResource.instructions,
+        icon: skillResource.icon,
+        availability: "workspace_users",
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [],
+      });
+
+      const revertedSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        skillResource.sId
+      );
+      expect(revertedSkill?.availability).toBe("workspace_users");
+      expect(revertedSkill?.toJSON(testContext.authenticator).isDefault).toBe(
+        false
+      );
+    });
+
     it("should add skill space requirements to agents using the skill", async () => {
       const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
 
@@ -1159,6 +1276,100 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("updateAvailabilities", () => {
+    it("updates the availability in bulk for a caller with the publish permission", async () => {
+      // Admins hold every workspace-level capability, including publish on skills.
+      const firstSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "First Publishable Skill",
+      });
+      const secondSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Second Publishable Skill",
+      });
+
+      await SkillResource.updateAvailabilities(
+        testContext.authenticator,
+        [firstSkill, secondSkill],
+        "editors"
+      );
+
+      for (const skill of [firstSkill, secondSkill]) {
+        const updatedSkill = await SkillResource.fetchById(
+          testContext.authenticator,
+          skill.sId
+        );
+        expect(updatedSkill?.availability).toBe("editors");
+        // The availability change counts as an edit by the acting user.
+        expect(updatedSkill?.editedBy).toBe(testContext.user.id);
+        // A version of the previous state was snapshotted.
+        const versions =
+          (await updatedSkill?.listVersions(testContext.authenticator)) ?? [];
+        expect(versions.length).toBe(1);
+        expect(versions[0]?.availability).toBe("workspace_users");
+      }
+    });
+
+    it("rejects a caller without the publish permission, even an editor", async () => {
+      const builder = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, builder, {
+        role: "builder",
+      });
+      const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        builder.sId,
+        testContext.workspace.sId
+      );
+
+      // The builder creates the skill, so they are an editor — editing rights are
+      // not sufficient to change availability.
+      const skillResource = await SkillFactory.create(builderAuth, {
+        name: "Non Publishable Skill",
+      });
+
+      await expect(
+        SkillResource.updateAvailabilities(
+          builderAuth,
+          [skillResource],
+          "users_and_agents"
+        )
+      ).rejects.toThrow("User is not authorized to update skill availability");
+    });
+
+    it("requires the publish permission to change availability through updateSkill when governance is on", async () => {
+      await FeatureFlagFactory.basic(
+        testContext.authenticator,
+        "admin_governance_skill_publication"
+      );
+
+      const builder = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, builder, {
+        role: "builder",
+      });
+      const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        builder.sId,
+        testContext.workspace.sId
+      );
+
+      const skillResource = await SkillFactory.create(builderAuth, {
+        name: "Governed Skill",
+      });
+
+      await expect(
+        skillResource.updateSkill(builderAuth, {
+          name: skillResource.name,
+          agentFacingDescription: skillResource.agentFacingDescription,
+          userFacingDescription: skillResource.userFacingDescription,
+          instructions: skillResource.instructions,
+          icon: skillResource.icon,
+          availability: "users_and_agents",
+          mcpServerViews: [],
+          attachedKnowledge: [],
+          requestedSpaceIds: [],
+        })
+      ).rejects.toThrow(
+        "User is not authorized to update this skill's availability"
+      );
+    });
+  });
+
   describe("archive and restore", () => {
     it("suspends editor group memberships when archiving and restores them when restoring", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
@@ -1207,6 +1418,34 @@ describe("SkillResource", () => {
       expect(membershipsAfterRestore.every((m) => m.status === "active")).toBe(
         true
       );
+    });
+
+    it("archives multiple skills sharing the same name without a unique constraint violation", async () => {
+      // The (workspaceId, name, status) unique constraint means only one
+      // archived skill can keep a given name. Archiving a same-named skill
+      // renames the previously archived one with a timestamped suffix; a third
+      // archive on the same day must not collide with the earlier rename
+      // target. We fake the clock so each archive lands on a distinct time of
+      // the same day.
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        const archiveSameNameSkillAt = async (isoTime: string) => {
+          vi.setSystemTime(new Date(isoTime));
+          const skill = await SkillFactory.create(testContext.authenticator, {
+            name: "Duplicate Name Skill",
+          });
+          return skill.archive(testContext.authenticator);
+        };
+
+        await archiveSameNameSkillAt("2026-07-26T12:00:00Z");
+        await archiveSameNameSkillAt("2026-07-26T12:01:00Z");
+        const { affectedCount } = await archiveSameNameSkillAt(
+          "2026-07-26T12:02:00Z"
+        );
+        expect(affectedCount).toBe(1);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("removes the skill's space requirements from agents when archiving and adds them back when restoring", async () => {
@@ -1670,10 +1909,7 @@ describe("SkillResource", () => {
       );
 
       const { model: agentModel, ...agentConfiguration } = agent;
-      const modelConfig = getSupportedModelConfig(agentModel);
-      if (!modelConfig) {
-        throw new Error("Supported model config should exist");
-      }
+      const endpoint = getTestStreamEndpoint(agentModel.modelId);
 
       const skills = await SkillResource.fetchByIds(
         testContext.authenticator,
@@ -1681,14 +1917,15 @@ describe("SkillResource", () => {
         {
           agentLoopData: {
             agentConfiguration,
-            model: {
+            modelInfo: {
+              endpoint,
               ...agentModel,
-              ...modelConfig,
             },
             agentMessage,
             conversation,
             userMessage,
           },
+          effectiveSpaceIds: agentConfiguration.requestedSpaceIds,
           onlyActive: true,
         }
       );

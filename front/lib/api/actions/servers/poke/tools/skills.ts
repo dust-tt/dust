@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/actions/servers/poke/tools/utils";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
 import { Err } from "@app/types/shared/result";
 
 type SkillHandlers = Pick<
@@ -123,7 +124,7 @@ export const skillHandlers: SkillHandlers = {
         name: s.name,
         agentFacingDescription: s.agentFacingDescription,
         status: s.status,
-        isDefault: s.isDefault,
+        isDefault: isDefaultFromAvailability(s.availability),
         updatedAt: s.updatedAt.toISOString(),
         instructionsLength: s.instructions?.length ?? 0,
       })),
@@ -171,7 +172,7 @@ export const skillHandlers: SkillHandlers = {
         agentFacingDescription: skill.agentFacingDescription,
         userFacingDescription: skill.userFacingDescription,
         status: skill.status,
-        isDefault: skill.isDefault,
+        isDefault: isDefaultFromAvailability(skill.availability),
         updatedAt: skill.updatedAt.toISOString(),
         instructions: skill.instructions,
         instructionsLength: skill.instructions?.length ?? 0,

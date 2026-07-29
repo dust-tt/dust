@@ -51,7 +51,12 @@ describe("POST /api/w/:wId/pods/:podId/tasks/seed", () => {
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const [spaceGroup] = project.groups.filter((g) => !g.isGlobal());
+    const [spaceGroup] = await project.fetchGroupResources(adminAuth, {
+      groupReferences: project.groups.filter((group) => group.isRegularAuto()),
+    });
+    if (!spaceGroup) {
+      throw new Error("Expected the project member group to exist.");
+    }
     await spaceGroup.dangerouslyAddMembers(adminAuth, {
       users: [user.toJSON()],
     });
@@ -71,7 +76,11 @@ describe("POST /api/w/:wId/pods/:podId/tasks/seed", () => {
     );
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    const memberGroup = regularSpace.groups.find((g) => g.isRegularAuto());
+    const [memberGroup] = await regularSpace.fetchGroupResources(adminAuth, {
+      groupReferences: regularSpace.groups.filter((group) =>
+        group.isRegularAuto()
+      ),
+    });
     if (memberGroup) {
       await memberGroup.dangerouslyAddMembers(adminAuth, {
         users: [user.toJSON()],

@@ -44,7 +44,7 @@ export function AgentTemplateModal({
         </SheetHeader>
         {isAssistantTemplateLoading ? (
           <div className="flex h-full items-center justify-center">
-            <Spinner variant="color" />
+            <Spinner />
           </div>
         ) : assistantTemplate ? (
           <SheetContainer>

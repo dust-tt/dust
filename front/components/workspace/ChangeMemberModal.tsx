@@ -1,7 +1,11 @@
-import { ROLES_DATA } from "@app/components/members/Roles";
+import {
+  getRoleDescription,
+  getRoleProvisioningGroupsLabel,
+} from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type {
@@ -32,6 +36,27 @@ import {
 import { useState } from "react";
 import type { KeyedMutator } from "swr";
 
+function getMemberRoleMessage({
+  hasActiveRoleProvisioningGroups,
+  isAdminGovernanceEnabled,
+  role,
+}: {
+  hasActiveRoleProvisioningGroups: boolean;
+  isAdminGovernanceEnabled: boolean;
+  role: ActiveRoleType;
+}): string {
+  if (hasActiveRoleProvisioningGroups) {
+    return `The roles are managed by your identity provider through group provisioning (${getRoleProvisioningGroupsLabel(
+      isAdminGovernanceEnabled
+    )}). Role changes must be made in your identity provider.`;
+  }
+
+  return `The role defines the rights of a member of the workspace. ${getRoleDescription(
+    role,
+    isAdminGovernanceEnabled
+  )}`;
+}
+
 export function ChangeMemberModal({
   onClose,
   member,
@@ -46,10 +71,13 @@ export function ChangeMemberModal({
   const { role = null } = member?.workspace ?? {};
 
   const sendNotification = useSendNotification();
+  const { hasFeature } = useFeatureFlags();
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(
     role !== "none" ? role : null
   );
   const [isSaving, setIsSaving] = useState(false);
+
+  const isAdminGovernanceEnabled = hasFeature("admin_governance");
 
   const { roleProvisioningStatus } = useProvisioningStatus({
     workspaceId: workspace.sId,
@@ -58,9 +86,21 @@ export function ChangeMemberModal({
   const hasActiveRoleProvisioningGroups = () => {
     return (
       roleProvisioningStatus.hasAdminGroup ||
+      // The manager provisioning group only governs roles from the UI when admin
+      // governance is enabled.
+      (isAdminGovernanceEnabled && roleProvisioningStatus.hasManagerGroup) ||
       roleProvisioningStatus.hasBuilderGroup
     );
   };
+
+  const roleMessage =
+    role && isActiveRoleType(role)
+      ? getMemberRoleMessage({
+          hasActiveRoleProvisioningGroups: hasActiveRoleProvisioningGroups(),
+          isAdminGovernanceEnabled,
+          role,
+        })
+      : "";
 
   // Revoking an admin requires to be an admin
   const canRevokeMember = role !== "admin" || isAdmin(workspace);
@@ -123,16 +163,7 @@ export function ChangeMemberModal({
                       disabled={hasActiveRoleProvisioningGroups()}
                     />
                   </div>
-                  <Page.P>
-                    {hasActiveRoleProvisioningGroups() ? (
-                      "The roles are managed by your identity provider through group provisioning (dust-admins and dust-builders groups). Role changes must be made in your identity provider."
-                    ) : (
-                      <>
-                        The role defines the rights of a member of the
-                        workspace. {ROLES_DATA[role]["description"]}
-                      </>
-                    )}
-                  </Page.P>
+                  <Page.P>{roleMessage}</Page.P>
                 </div>
 
                 {canRevokeMember && (

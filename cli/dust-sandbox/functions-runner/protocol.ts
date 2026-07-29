@@ -1,5 +1,5 @@
 // Wire protocol for the function runner: JSON shapes exchanged on stdin/stdout
-// and helpers translating request/response bodies to and from bytes.
+// and the helper translating request bodies to bytes.
 
 export type Encoding = "utf8" | "base64";
 
@@ -11,23 +11,26 @@ export interface RequestInput {
   encoding: Encoding;
 }
 
-export interface ResponseOutput {
-  status: number;
-  headers: Record<string, string>;
-  body: string | null;
-  encoding: Encoding;
-}
+export const RUNNER_ERROR_CODES = [
+  "bad_input",
+  "invalid_input",
+  "import_failed",
+  "threw",
+  "bad_return",
+  "http_error",
+  "invalid_output",
+] as const;
 
-export type ErrorKind = "bad_input" | "import_failed" | "threw" | "bad_return";
+export type ErrorCode = (typeof RUNNER_ERROR_CODES)[number];
 
-export interface InvocationError {
-  kind: ErrorKind;
-  message: string;
-  stack?: string;
-}
+export type NonHttpErrorCode = Exclude<ErrorCode, "http_error">;
+
+export type InvocationError =
+  | { code: NonHttpErrorCode; message: string }
+  | { code: "http_error"; message: string; status: number };
 
 export type Output =
-  | { ok: true; response: ResponseOutput }
+  | { ok: true; output: unknown }
   | { ok: false; error: InvocationError };
 
 export class BadInputError extends Error {}
@@ -84,16 +87,4 @@ export function decodeRequestBody(input: RequestInput): Uint8Array | undefined {
     return new Uint8Array(Buffer.from(input.body, "base64"));
   }
   return new TextEncoder().encode(input.body);
-}
-
-export function encodeResponseBody(bytes: Uint8Array): {
-  body: string | null;
-  encoding: Encoding;
-} {
-  try {
-    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    return { body: text, encoding: "utf8" };
-  } catch {
-    return { body: Buffer.from(bytes).toString("base64"), encoding: "base64" };
-  }
 }

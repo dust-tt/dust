@@ -5,7 +5,7 @@ import {
 } from "@app/lib/api/assistant/observability/skill_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { stringify } from "csv-stringify/sync";
@@ -26,83 +26,78 @@ interface SkillUsageExportRow {
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  ensureIsBusinessAdmin(),
-  validate("query", QuerySchema),
-  async (ctx) => {
-    const auth = ctx.get("auth");
+app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
 
-    const { days } = ctx.req.valid("query");
-    const owner = auth.getNonNullableWorkspace();
-    const baseQuery = buildAgentAnalyticsBaseQuery({
-      workspaceId: owner.sId,
-      days,
+  const { days } = ctx.req.valid("query");
+  const owner = auth.getNonNullableWorkspace();
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: owner.sId,
+    days,
+  });
+
+  const skillsResult = await fetchAvailableSkills(baseQuery);
+  if (skillsResult.isErr()) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to retrieve available skills: ${skillsResult.error.message}`,
+      },
     });
+  }
 
-    const skillsResult = await fetchAvailableSkills(baseQuery);
-    if (skillsResult.isErr()) {
+  const skills = skillsResult.value;
+  const rows: SkillUsageExportRow[] = [];
+
+  for (const skill of skills) {
+    const usageResult = await fetchSkillUsageMetrics(
+      baseQuery,
+      skill.skillName
+    );
+    if (usageResult.isErr()) {
       return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: `Failed to retrieve available skills: ${skillsResult.error.message}`,
+          message: `Failed to retrieve skill usage for ${skill.skillName}: ${usageResult.error.message}`,
         },
       });
     }
 
-    const skills = skillsResult.value;
-    const rows: SkillUsageExportRow[] = [];
-
-    for (const skill of skills) {
-      const usageResult = await fetchSkillUsageMetrics(
-        baseQuery,
-        skill.skillName
-      );
-      if (usageResult.isErr()) {
-        return apiError(ctx, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Failed to retrieve skill usage for ${skill.skillName}: ${usageResult.error.message}`,
-          },
-        });
-      }
-
-      for (const point of usageResult.value) {
-        rows.push({
-          date: point.date,
-          skillName: skill.skillName,
-          executions: point.executionCount,
-          uniqueUsers: point.uniqueUsers,
-        });
-      }
+    for (const point of usageResult.value) {
+      rows.push({
+        date: point.date,
+        skillName: skill.skillName,
+        executions: point.executionCount,
+        uniqueUsers: point.uniqueUsers,
+      });
     }
-
-    rows.sort((a, b) => {
-      const dateCompare = a.date.localeCompare(b.date);
-      if (dateCompare !== 0) {
-        return dateCompare;
-      }
-      return a.skillName.localeCompare(b.skillName);
-    });
-
-    const headers: (keyof SkillUsageExportRow)[] = [
-      "date",
-      "skillName",
-      "executions",
-      "uniqueUsers",
-    ];
-    const csvData = rows.map((row) => headers.map((h) => row[h]));
-    const csv = stringify([headers, ...csvData], { header: false });
-
-    ctx.header("Content-Type", "text/csv");
-    ctx.header(
-      "Content-Disposition",
-      `attachment; filename="dust_skill_usage_last_${days}_days.csv"`
-    );
-    return ctx.body(csv);
   }
-);
+
+  rows.sort((a, b) => {
+    const dateCompare = a.date.localeCompare(b.date);
+    if (dateCompare !== 0) {
+      return dateCompare;
+    }
+    return a.skillName.localeCompare(b.skillName);
+  });
+
+  const headers: (keyof SkillUsageExportRow)[] = [
+    "date",
+    "skillName",
+    "executions",
+    "uniqueUsers",
+  ];
+  const csvData = rows.map((row) => headers.map((h) => row[h]));
+  const csv = stringify([headers, ...csvData], { header: false });
+
+  ctx.header("Content-Type", "text/csv");
+  ctx.header(
+    "Content-Disposition",
+    `attachment; filename="dust_skill_usage_last_${days}_days.csv"`
+  );
+  return ctx.body(csv);
+});
 
 export default app;

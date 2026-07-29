@@ -2,6 +2,7 @@ import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configurati
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
+import { getEffectiveSpaceIdsForAgentRun } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import {
@@ -9,6 +10,7 @@ import {
   hasSharedMembership,
 } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -26,7 +28,9 @@ import {
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
+import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -38,7 +42,10 @@ import {
 } from "@app/lib/resources/permission_utils";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
-import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import type {
+  CodeDefinedSkillFile,
+  SkillDefinition,
+} from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -73,6 +80,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
+  SkillAvailability,
   SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
@@ -80,6 +88,7 @@ import type {
   SkillType,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
+import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 import { SKILL_GROUP_PREFIX } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -128,6 +137,8 @@ type SkillResourceConstructorOptions =
       // When true, the global skill's instructions are exposed to the front-end.
       exposeInstructions?: boolean;
       fileAttachments: FileResource[];
+      // Files that ship with a code-defined skill (addressable, not embedded).
+      files?: readonly CodeDefinedSkillFile[];
       globalSId: string;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
@@ -138,6 +149,7 @@ type SkillResourceConstructorOptions =
       // Custom skills always expose their own instructions; this flag is unused.
       exposeInstructions?: undefined;
       fileAttachments: FileResource[];
+      files?: readonly CodeDefinedSkillFile[];
       globalSId?: undefined;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
@@ -231,6 +243,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   readonly dataSourceConfigurations: SkillDataSourceConfigurationModel[];
   private fileAttachments: FileResource[];
+  private readonly codeDefinedFiles: readonly CodeDefinedSkillFile[];
   readonly editorGroup: GroupResource | null = null;
   readonly version: number | null = null;
 
@@ -248,6 +261,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       dataSourceConfigurations,
       exposeInstructions,
       fileAttachments,
+      files,
       globalSId,
       mcpServerConfigurations,
       editorGroup,
@@ -260,6 +274,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     this.editorGroup = editorGroup ?? null;
     this.exposeInstructions = exposeInstructions ?? false;
     this.fileAttachments = fileAttachments ?? [];
+    this.codeDefinedFiles = files ?? [];
     this.globalSId = globalSId ?? null;
     this._mcpServerConfigurations = mcpServerConfigurations;
     this.version = version ?? null;
@@ -282,6 +297,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   getFileAttachments(): readonly FileResource[] {
     return this.fileAttachments;
+  }
+
+  getCodeDefinedFiles(): readonly CodeDefinedSkillFile[] {
+    return this.codeDefinedFiles;
+  }
+
+  hasFiles(): boolean {
+    return this.fileAttachments.length > 0 || this.codeDefinedFiles.length > 0;
   }
 
   get mcpServerConfigurations(): SkillMCPServerConfiguration[] {
@@ -479,7 +502,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<Result<SkillResource, Error>> {
     const mcpServerViews = await MCPServerViewResource.fetchByIds(
       auth,
-      mcpServerViewIds
+      mcpServerViewIds,
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
     );
 
     if (mcpServerViews.length !== mcpServerViewIds.length) {
@@ -554,11 +586,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     options: SkillConfigurationFindOptions = {},
     context: {
       agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds?: string[];
       transaction?: Transaction;
     } = {}
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
-    const { agentLoopData, transaction } = context;
+    const {
+      agentLoopData,
+      effectiveSpaceIds: providedEffectiveSpaceIds,
+      transaction,
+    } = context;
 
     const {
       where,
@@ -632,7 +669,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
           auth,
           removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
-          { includeMetadata: false }
+          {
+            includeMetadata: false,
+            includeHeavyAttributes: [
+              "authorization",
+              "cachedTools",
+              "customHeaders",
+              "lastError",
+              "sharedSecret",
+            ],
+          }
         );
       }
 
@@ -786,10 +832,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (def) => !agentLoopData || !def.isDisabledForAgentLoop?.(agentLoopData)
     );
 
+    assert(
+      !agentLoopData || providedEffectiveSpaceIds !== undefined,
+      "effectiveSpaceIds must be provided with agentLoopData"
+    );
+    const effectiveSpaceIds = providedEffectiveSpaceIds ?? [];
     const requestedSpaceModelIds = removeNulls(
-      (agentLoopData?.agentConfiguration?.requestedSpaceIds ?? []).map(
-        getResourceIdFromSId
-      )
+      effectiveSpaceIds.map(getResourceIdFromSId)
     );
 
     // Batch-fetch MCP server views for all enabled global skills in a single query.
@@ -805,7 +854,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const allMCPServerViews = await MCPServerViewResource.listByMCPServers(
         auth,
         mcpServerIds,
-        transaction
+        {
+          transaction,
+          includeHeavyAttributes: [
+            "authorization",
+            "cachedTools",
+            "customHeaders",
+            "lastError",
+            "sharedSecret",
+          ],
+        }
       );
       mcpServerViews = allMCPServerViews.filter(
         (view) =>
@@ -819,6 +877,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (def) =>
         this.fromGlobalSkill(auth, def, {
           agentLoopData,
+          effectiveSpaceIds,
           mcpServerViews,
           withInstructions,
         }),
@@ -877,8 +936,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     sIds: string[],
     {
       agentLoopData,
+      effectiveSpaceIds,
       onlyActive = false,
-    }: { agentLoopData?: AgentLoopExecutionData; onlyActive?: boolean } = {}
+    }: {
+      agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds?: string[];
+      onlyActive?: boolean;
+    } = {}
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];
@@ -912,14 +976,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           status: onlyActive ? ["active"] : ["active", "archived", "suggested"],
         },
       },
-      { agentLoopData }
+      { agentLoopData, effectiveSpaceIds }
     );
   }
 
   static async fetchByName(
     auth: Authenticator,
     name: string,
-    { agentLoopData }: { agentLoopData?: AgentLoopExecutionData } = {}
+    {
+      agentLoopData,
+      effectiveSpaceIds,
+    }: {
+      agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds?: string[];
+    } = {}
   ): Promise<SkillResource | null> {
     const resources = await this.baseFetch(
       auth,
@@ -929,7 +999,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
         limit: 1,
       },
-      { agentLoopData }
+      { agentLoopData, effectiveSpaceIds }
     );
 
     if (resources.length === 0) {
@@ -1054,6 +1124,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }[],
     {
       agentLoopData,
+      effectiveSpaceIds,
       status,
       transaction,
       withInstructions,
@@ -1061,6 +1132,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withFileAttachments,
     }: {
       agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds?: string[];
       status?: SkillStatus | SkillStatus[];
       transaction?: Transaction;
       withInstructions?: boolean;
@@ -1083,7 +1155,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         withTools,
         withFileAttachments,
       },
-      { agentLoopData, transaction }
+      { agentLoopData, effectiveSpaceIds, transaction }
     );
   }
 
@@ -1098,10 +1170,121 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       : { customSkillId: this.id };
   }
 
+  static async listFavoritesForCurrentUser(
+    auth: Authenticator,
+    {
+      agentLoopData,
+    }: {
+      agentLoopData?: AgentLoopExecutionData;
+    } = {}
+  ): Promise<SkillResource[]> {
+    const user = auth.user();
+    if (!user) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const favorites = await SkillUserFavoriteModel.findOne({
+      attributes: ["skillIds"],
+      where: {
+        workspaceId: workspace.id,
+        userId: user.id,
+      },
+    });
+
+    if (!favorites || favorites.skillIds.length === 0) {
+      return [];
+    }
+
+    return this.fetchByIds(auth, favorites.skillIds, {
+      agentLoopData,
+      onlyActive: true,
+    });
+  }
+
+  async isFavoriteForCurrentUser(auth: Authenticator): Promise<boolean> {
+    const user = auth.user();
+    if (!user) {
+      return false;
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const favorites = await SkillUserFavoriteModel.findOne({
+      attributes: ["skillIds"],
+      where: {
+        workspaceId: workspace.id,
+        userId: user.id,
+      },
+    });
+
+    return favorites?.skillIds.includes(this.sId) ?? false;
+  }
+
+  async setFavorite(
+    auth: Authenticator,
+    isFavorite: boolean
+  ): Promise<Result<undefined, Error>> {
+    const user = auth.user();
+    if (!user) {
+      return new Err(new Error("User must be authenticated"));
+    }
+
+    if (this.status !== "active") {
+      return new Err(
+        new Error("Only active skills can update favorite state.")
+      );
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const favorites = await SkillUserFavoriteModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        userId: user.id,
+      },
+    });
+
+    const wasFavorite = favorites?.skillIds.includes(this.sId) ?? false;
+    if (wasFavorite === isFavorite) {
+      return new Ok(undefined);
+    }
+
+    if (favorites) {
+      await favorites.update({
+        skillIds: isFavorite
+          ? [...favorites.skillIds, this.sId]
+          : favorites.skillIds.filter((skillId) => skillId !== this.sId),
+      });
+    } else {
+      await SkillUserFavoriteModel.create({
+        workspaceId: workspace.id,
+        userId: user.id,
+        skillIds: [this.sId],
+      });
+    }
+
+    if (!this.globalSId) {
+      await this.model.increment("favoriteCount", {
+        by: isFavorite ? 1 : -1,
+        where: {
+          id: this.id,
+          workspaceId: workspace.id,
+        },
+      });
+    }
+
+    return new Ok(undefined);
+  }
+
   static async listByAgentConfiguration(
     auth: Authenticator,
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
-    { agentLoopData }: { agentLoopData?: AgentLoopExecutionData } = {}
+    {
+      agentLoopData,
+      effectiveSpaceIds,
+    }: {
+      agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds?: string[];
+    } = {}
   ): Promise<SkillResource[]> {
     const refs = await this.getSkillReferencesForAgent(
       auth,
@@ -1114,6 +1297,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     return this.fetchBySkillReferences(auth, refs, {
       agentLoopData,
+      effectiveSpaceIds,
     });
   }
 
@@ -1253,7 +1437,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       limit,
       globalSpaceOnly,
       onlyCustom,
-      isDefault,
+      availability,
       updatedAfter,
       reinforcementNotOff,
       withInstructions = true,
@@ -1264,7 +1448,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       limit?: number;
       globalSpaceOnly?: boolean;
       onlyCustom?: boolean;
-      isDefault?: boolean;
+      availability?: SkillAvailability | SkillAvailability[];
       updatedAfter?: Date;
       reinforcementNotOff?: boolean;
       withInstructions?: boolean;
@@ -1275,7 +1459,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const skills = await this.baseFetch(auth, {
       where: {
         status,
-        ...(isDefault !== undefined ? { isDefault } : {}),
+        ...(availability !== undefined ? { availability } : {}),
         ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
         ...(reinforcementNotOff ? { reinforcement: { [Op.ne]: "off" } } : {}),
       },
@@ -1303,8 +1487,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     {
       agentLoopData,
+      effectiveSpaceIds,
     }: {
       agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds?: string[];
     } = {}
   ): Promise<SkillResource[]> {
     return this.baseFetch(
@@ -1312,10 +1498,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       {
         where: {
           status: "active",
-          isDefault: true,
+          availability: "users_and_agents",
         },
       },
-      { agentLoopData }
+      { agentLoopData, effectiveSpaceIds }
     );
   }
 
@@ -1434,11 +1620,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       conversation,
       agentConfiguration,
       agentLoopData,
+      effectiveSpaceIds,
       transaction,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationResource;
       agentConfiguration?: AgentConfigurationWithoutModelType;
       agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds?: string[];
       transaction?: Transaction;
     }
   ): Promise<SkillResource[]> {
@@ -1464,6 +1652,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     return this.fetchBySkillReferences(auth, conversationSkills, {
       agentLoopData,
+      effectiveSpaceIds,
       transaction,
     });
   }
@@ -1473,9 +1662,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       conversation,
       agentLoopData,
+      effectiveSpaceIds,
     }: {
       conversation: ConversationWithoutContentType;
       agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds?: string[];
     }
   ): Promise<SkillResource[]> {
     if (!isPodConversation(conversation)) {
@@ -1489,6 +1680,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     return this.fetchByIds(auth, projectMetadata?.defaultSkillIds ?? [], {
       agentLoopData,
+      effectiveSpaceIds,
       onlyActive: true,
     });
   }
@@ -1503,6 +1695,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           conversation: ConversationWithoutContentType;
         }
   ): Promise<{
+    effectiveSpaceIds: string[];
+    hasSelectedSpacesOutsideAgentScope: boolean;
     enabledSkills: SkillResource[];
     systemSkills: SkillResource[];
     equippedSkills: SkillResource[];
@@ -1510,6 +1704,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const { agentConfiguration, conversation } = params;
     // Light type-guard to check whether we have a full AgentLoopExecutionData.
     const agentLoopData = "userMessage" in params ? params : undefined;
+    const effectiveSpaceIds = await getEffectiveSpaceIdsForAgentRun(auth, {
+      agentConfiguration,
+      conversation,
+    });
+    const requestedSpaceIds = new Set(agentConfiguration.requestedSpaceIds);
+    const hasSelectedSpacesOutsideAgentScope = effectiveSpaceIds.some(
+      (spaceId) => !requestedSpaceIds.has(spaceId)
+    );
 
     const conversationEnabledSkills = await this.listEnabledByConversation(
       auth,
@@ -1517,24 +1719,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         conversation,
         agentConfiguration,
         agentLoopData,
+        effectiveSpaceIds,
       }
     );
 
     const podDefaultSkills = await this.listPodDefaultSkillsForConversation(
       auth,
-      { conversation, agentLoopData }
+      { conversation, agentLoopData, effectiveSpaceIds }
     );
 
     const allAgentSkills = await this.listByAgentConfiguration(
       auth,
       agentConfiguration,
-      { agentLoopData }
+      { agentLoopData, effectiveSpaceIds }
     );
 
     let discoverableSkills: SkillResource[] = [];
     if (allAgentSkills.some((s) => s.globalSId === "discover_skills")) {
       discoverableSkills = await this.listDiscoverable(auth, {
         agentLoopData,
+        effectiveSpaceIds,
       });
     }
 
@@ -1583,12 +1787,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const autoEnabledSkills = autoEnabledSkillRefs.length
       ? await this.fetchBySkillReferences(auth, autoEnabledSkillRefs, {
           agentLoopData,
+          effectiveSpaceIds,
         })
       : [];
 
     const autoEquippedSkills = autoEquippedSkillRefs.length
       ? await this.fetchBySkillReferences(auth, autoEquippedSkillRefs, {
           agentLoopData,
+          effectiveSpaceIds,
           withInstructions: false,
           withTools: false,
           withFileAttachments: false,
@@ -1625,6 +1831,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return {
+      effectiveSpaceIds,
+      hasSelectedSpacesOutsideAgentScope,
       systemSkills: systemSkills.sort(sortByName),
       enabledSkills: conversationEnabledSkills
         .filter((s) => !systemSkillIds.has(s.sId))
@@ -1750,20 +1958,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     def: SkillDefinition,
     {
       agentLoopData,
+      effectiveSpaceIds,
       mcpServerViews,
       withInstructions = true,
     }: {
       agentLoopData?: AgentLoopExecutionData;
+      effectiveSpaceIds: string[];
       mcpServerViews: MCPServerViewResource[];
       withInstructions?: boolean;
     }
   ): Promise<SkillResource> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const { agentConfiguration } = agentLoopData ?? {};
-    const requestedSpaceIds = agentConfiguration?.requestedSpaceIds ?? [];
     const requestedSpaceModelIds = removeNulls(
-      requestedSpaceIds.map(getResourceIdFromSId)
+      effectiveSpaceIds.map(getResourceIdFromSId)
     );
 
     const viewsByServerId = groupBy(
@@ -1784,7 +1992,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const instructions = withInstructions
       ? def.fetchInstructions
         ? await def.fetchInstructions(auth, {
-            spaceIds: requestedSpaceIds,
+            spaceIds: effectiveSpaceIds,
             agentLoopData,
           })
         : def.instructions
@@ -1809,7 +2017,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         icon: def.icon,
         source: null,
         sourceMetadata: null,
-        isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
+        availability: SystemSkillsRegistry.isSystemSkill(def.sId)
+          ? "workspace_users"
+          : "users_and_agents",
         favoriteCount: 0,
         reinforcement: "auto",
         lastReinforcementAnalysisAt: null,
@@ -1824,13 +2034,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         globalSId: def.sId,
         mcpServerConfigurations,
         fileAttachments: [],
+        files: def.files ?? [],
       }
     );
   }
 
   canWrite(auth: Authenticator): boolean {
-    // API keys with at least builder role can write to any skill.
-    if (auth.isKey() && auth.isBuilder()) {
+    // TODO(governance): cleanup we we'll be able to assign API key to editor groups.
+    // API keys cannot be added to a skill's editor group (no such assignment mechanism exists),
+    // so any key is allowed to write to any skill. Skill *creation* is separately gated by
+    // `auth.hasWorkspacePermission("create", "skill")`; this only governs already-existing skills.
+    if (auth.isKey()) {
       return true;
     }
 
@@ -1842,8 +2056,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   canAdministrate(auth: Authenticator): boolean {
-    // API keys with at least builder role can administrate any skill.
-    if (auth.isKey() && auth.isBuilder()) {
+    // See canWrite: API keys have no editor-group assignment mechanism, so any key can
+    // administrate any skill.
+    if (auth.isKey()) {
       return true;
     }
 
@@ -2052,7 +2267,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
     const allMcpServerViews = await MCPServerViewResource.fetchByModelIds(
       auth,
-      allMcpServerViewIds
+      allMcpServerViewIds,
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
     );
     const mcpServerViewMap = new Map(
       allMcpServerViews.map((view) => [view.id, view])
@@ -2095,7 +2319,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           requestedSpaceIds: versionModel.requestedSpaceIds,
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
-          isDefault: versionModel.isDefault,
+          availability: versionModel.availability,
           favoriteCount: this.favoriteCount,
           reinforcement: "auto",
           lastReinforcementAnalysisAt: null,
@@ -2490,7 +2714,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       if (existingArchivedSkill) {
         const timestamp = formatTimestampToFriendlyDate(
           existingArchivedSkill.updatedAt.getTime(),
-          "compactWithDay"
+          "long"
         );
         await existingArchivedSkill.update(
           { name: `${existingArchivedSkill.name} (archived on ${timestamp})` },
@@ -2588,11 +2812,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentFacingDescription,
       attachedKnowledge,
+      availability,
       fileAttachments,
       icon,
       instructions,
       instructionsHtml,
-      isDefault,
       mcpServerViews,
       name,
       reinforcement,
@@ -2604,11 +2828,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }: {
       agentFacingDescription: string;
       attachedKnowledge: SkillAttachedKnowledge[];
+      availability?: SkillAvailability;
       fileAttachments?: FileResource[];
       icon: string | null;
       instructions: string;
       instructionsHtml?: string | null;
-      isDefault?: boolean;
       mcpServerViews: MCPServerViewResource[];
       name: string;
       reinforcement?: SkillReinforcementMode;
@@ -2620,6 +2844,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   ): Promise<void> {
     assert(this.canWrite(auth), "User is not authorized to update this skill");
+
+    // With skill publication governance, changing the availability requires the
+    // workspace-level publish permission — even for editors.
+    if (
+      availability !== undefined &&
+      availability !== this.availability &&
+      (await hasFeatureFlag(auth, "admin_governance_skill_publication"))
+    ) {
+      assert(
+        await auth.hasWorkspacePermission("publish", "skill"),
+        "User is not authorized to update this skill's availability"
+      );
+    }
 
     // Snapshot the previous name and icon before updating to detect changes below.
     const previousName = this.name;
@@ -2654,7 +2891,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(status ? { status } : {}),
           ...(source ? { source } : {}),
           ...(sourceMetadata ? { sourceMetadata } : {}),
-          ...(isDefault !== undefined ? { isDefault } : {}),
+          ...(availability !== undefined ? { availability } : {}),
           ...(reinforcement !== undefined ? { reinforcement } : {}),
         },
         transaction
@@ -2703,6 +2940,52 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     await this.upsertCurrentUserAsEditor(auth);
+  }
+
+  /**
+   * Update only the availability of the skill. Requires the workspace-level "publish"
+   * permission on skills — being an editor is neither required nor sufficient. Does not
+   * touch editedBy.
+   */
+  static async updateAvailabilities(
+    auth: Authenticator,
+    skills: SkillResource[],
+    availability: SkillAvailability
+  ): Promise<void> {
+    assert(
+      await auth.hasWorkspacePermission("publish", "skill"),
+      "User is not authorized to update skill availability"
+    );
+
+    const changedSkills = skills.filter(
+      (skill) => skill.availability !== availability
+    );
+    if (changedSkills.length === 0) {
+      return;
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.user();
+
+    await withTransaction(async (transaction) => {
+      // Save the current version of each skill before updating.
+      await this.bulkSaveVersions(auth, changedSkills, { transaction });
+
+      await SkillConfigurationModel.update(
+        {
+          availability,
+          // Publishing counts as an edit even when the caller is not in the editor group.
+          ...(user ? { editedBy: user.id } : {}),
+        },
+        {
+          where: {
+            workspaceId: workspace.id,
+            id: { [Op.in]: changedSkills.map((skill) => skill.id) },
+          },
+          transaction,
+        }
+      );
+    });
   }
 
   /**
@@ -3809,7 +4092,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       })),
       canWrite: this.canWrite(auth),
       canAdministrate: this.canAdministrate(auth),
-      isDefault: this.isDefault,
+      isDefault: isDefaultFromAvailability(this.availability),
+      availability: this.availability,
     };
   }
 
@@ -3817,69 +4101,96 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
+    await SkillResource.bulkSaveVersions(auth, [this], { transaction });
+  }
 
-    // Fetch current MCP server configuration IDs for this skill.
+  /**
+   * Snapshot the current state of several skills as new version entries, with batched
+   * queries (one per satellite table) instead of per-skill round trips.
+   */
+  private static async bulkSaveVersions(
+    auth: Authenticator,
+    skills: SkillResource[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+    const skillIds = skills.map((skill) => skill.id);
+
+    // Fetch current MCP server configuration IDs for all skills.
     const mcpServerConfigurations =
       await SkillMCPServerConfigurationModel.findAll({
         where: {
           workspaceId: workspace.id,
-          skillConfigurationId: this.id,
+          skillConfigurationId: { [Op.in]: skillIds },
         },
         transaction,
       });
-
-    const mcpServerViewIds = mcpServerConfigurations.map(
-      (config) => config.mcpServerViewId
+    const mcpServerConfigsBySkillId = groupBy(
+      mcpServerConfigurations,
+      "skillConfigurationId"
     );
 
-    // Fetch current file attachment IDs for this skill.
+    // Fetch current file attachment IDs for all skills.
     const fileAttachments = await SkillFileAttachmentModel.findAll({
       where: {
         workspaceId: workspace.id,
-        skillConfigurationId: this.id,
+        skillConfigurationId: { [Op.in]: skillIds },
       },
       transaction,
     });
+    const fileAttachmentsBySkillId = groupBy(
+      fileAttachments,
+      "skillConfigurationId"
+    );
 
-    const fileAttachmentIds = fileAttachments.map((a) => a.fileId);
-
-    // Calculate the next version number by counting existing versions.
-    const where: WhereOptions<SkillVersionModel> = {
-      workspaceId: this.workspaceId,
-      skillConfigurationId: this.id,
+    // Compute the next version number per skill. Only (skillConfigurationId, version)
+    // pairs are loaded; skills have a bounded number of versions.
+    const versionWhere: WhereOptions<SkillVersionModel> = {
+      workspaceId: workspace.id,
+      skillConfigurationId: { [Op.in]: skillIds },
     };
-
-    const existingVersionsCount = await SkillVersionModel.count({
-      where,
+    const versionRows = await SkillVersionModel.findAll({
+      attributes: ["skillConfigurationId", "version"],
+      where: versionWhere,
       transaction,
     });
+    const maxVersionBySkillId = new Map<ModelId, number>();
+    for (const row of versionRows) {
+      const currentMax = maxVersionBySkillId.get(row.skillConfigurationId) ?? 0;
+      if (row.version > currentMax) {
+        maxVersionBySkillId.set(row.skillConfigurationId, row.version);
+      }
+    }
 
-    const versionNumber = existingVersionsCount + 1;
+    // Create the new version entries with the current state of each skill.
+    const versionData: SkillVersionCreationAttributes[] = skills.map(
+      (skill) => ({
+        workspaceId: skill.workspaceId,
+        skillConfigurationId: skill.id,
+        version: (maxVersionBySkillId.get(skill.id) ?? 0) + 1,
+        status: skill.status,
+        name: skill.name,
+        agentFacingDescription: skill.agentFacingDescription,
+        userFacingDescription: skill.userFacingDescription,
+        instructions: skill.instructions,
+        instructionsHtml: skill.instructionsHtml,
+        requestedSpaceIds: skill.requestedSpaceIds,
+        editedBy: skill.editedBy,
+        mcpServerViewIds: (mcpServerConfigsBySkillId[skill.id] ?? []).map(
+          (config) => config.mcpServerViewId
+        ),
+        fileAttachmentIds: (fileAttachmentsBySkillId[skill.id] ?? []).map(
+          (attachment) => attachment.fileId
+        ),
+        source: skill.source,
+        sourceMetadata: skill.sourceMetadata,
+        createdAt: skill.createdAt,
+        updatedAt: skill.updatedAt,
+        availability: skill.availability,
+      })
+    );
 
-    // Create a new version entry with the current state.
-    const versionData: SkillVersionCreationAttributes = {
-      workspaceId: this.workspaceId,
-      skillConfigurationId: this.id,
-      version: versionNumber,
-      status: this.status,
-      name: this.name,
-      agentFacingDescription: this.agentFacingDescription,
-      userFacingDescription: this.userFacingDescription,
-      instructions: this.instructions,
-      instructionsHtml: this.instructionsHtml,
-      requestedSpaceIds: this.requestedSpaceIds,
-      editedBy: this.editedBy,
-      mcpServerViewIds,
-      fileAttachmentIds,
-      source: this.source,
-      sourceMetadata: this.sourceMetadata,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
-      isDefault: this.isDefault,
-    };
-
-    await SkillVersionModel.create(versionData, {
+    await SkillVersionModel.bulkCreate(versionData, {
       transaction,
     });
   }

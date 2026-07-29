@@ -1,10 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  BadInputError,
-  decodeRequestBody,
-  encodeResponseBody,
-  parseInput,
-} from "./protocol.ts";
+import { BadInputError, decodeRequestBody, parseInput } from "./protocol.ts";
 
 describe("parseInput", () => {
   test("defaults method to GET and encoding to utf8", () => {
@@ -36,7 +31,7 @@ describe("parseInput", () => {
   });
 });
 
-describe("decodeRequestBody / encodeResponseBody", () => {
+describe("decodeRequestBody", () => {
   test("utf8 round-trip", () => {
     const bytes = decodeRequestBody({
       method: "POST",
@@ -57,11 +52,5 @@ describe("decodeRequestBody / encodeResponseBody", () => {
       encoding: "base64",
     });
     expect(Array.from(bytes!)).toEqual([0, 1, 255]);
-  });
-
-  test("non-UTF8 response bytes encode as base64", () => {
-    const { body, encoding } = encodeResponseBody(new Uint8Array([0xff, 0xfe]));
-    expect(encoding).toBe("base64");
-    expect(Array.from(Buffer.from(body!, "base64"))).toEqual([0xff, 0xfe]);
   });
 });

@@ -8,9 +8,7 @@ import {
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 // This is a placeholder tool name used in the metadata for UI detection.
 // The actual tool name is dynamic: `run_<agent_name>`.
@@ -153,12 +151,10 @@ export const RUN_AGENT_SERVER = {
     {
       name: RUN_AGENT_PLACEHOLDER_TOOL_NAME,
       description: "Run a child agent (agent as tool).",
-      inputSchema: zodToJsonSchema(
-        z.object({
-          ...RUN_AGENT_TOOL_SCHEMA,
-          ...RUN_AGENT_CONFIGURABLE_PROPERTIES,
-        })
-      ) as JSONSchema,
+      schema: {
+        ...RUN_AGENT_TOOL_SCHEMA,
+        ...RUN_AGENT_CONFIGURABLE_PROPERTIES,
+      },
       displayLabels: {
         running: "Running agent",
         done: "Run agent",

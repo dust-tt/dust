@@ -91,7 +91,10 @@ import {
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
-import { isCreditPricedPlan } from "@app/types/plan";
+import {
+  isCreditPricedPlan,
+  isSubscriptionCancellationScheduled,
+} from "@app/types/plan";
 import { isAdmin } from "@app/types/user";
 import {
   AlertCircle,
@@ -162,6 +165,12 @@ export function UsagePage() {
   // invite, seat changes, spend limits, settings) is disabled.
   const isReadOnly = !isCreditPriced && hasFeature("usage_page_read_only");
   const canViewUsage = isCreditPriced || isReadOnly;
+  // A cancelled subscription already has its end date scheduled with
+  // Metronome; scheduling a seat change on top of it can land past that end
+  // date and get rejected. Block seat changes until the subscription is
+  // reactivated or has fully ended.
+  const isSubscriptionCancelled =
+    isSubscriptionCancellationScheduled(subscription);
   const [searchTerm, setSearchTerm] = useState("");
   const [seatTypeFilter, setSeatTypeFilter] = useState<
     MembershipSeatType | "none" | null
@@ -911,6 +920,7 @@ export function UsagePage() {
       isLoading={isMembersUsageLoading}
       isRefreshing={isMembersUsageRefreshing}
       readOnly={isReadOnly}
+      seatActionsDisabled={isSubscriptionCancelled}
       showSpendLimit={!isFreePlanWorkspace}
       showModelTiersColumn={modelsPickerEnabled}
       userModelTierSelectionByUserId={userModelTierSelectionByUserId}
@@ -949,7 +959,9 @@ export function UsagePage() {
       onClear={selection.clearSelection}
       onBatchEditSpendLimit={handleBatchEditSpendLimit}
       onBatchChangeSeat={
-        isSeatBased && !isFreePlanWorkspace ? handleBatchChangeSeat : undefined
+        isSeatBased && !isFreePlanWorkspace && !isSubscriptionCancelled
+          ? handleBatchChangeSeat
+          : undefined
       }
       disabled={isReadOnly}
     />

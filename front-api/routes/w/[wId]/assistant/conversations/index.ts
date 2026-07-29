@@ -5,6 +5,11 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import {
+  addSelectedConversationSpaces,
+  validateSelectableSpaces,
+} from "@app/lib/api/assistant/conversation/selected_spaces";
+import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -17,7 +22,10 @@ import type {
   GetConversationsResponseBody,
   PostConversationsResponseBody,
 } from "@app/types/api/assistant/conversation/types";
-import type { UserMessageType } from "@app/types/assistant/conversation";
+import type {
+  ConversationType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
@@ -25,9 +33,11 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import uniq from "lodash/uniq";
 import { z } from "zod";
 
 import conversation from "./[cId]";
+import { apiErrorForSelectedSpaces } from "./[cId]/selected_spaces_errors";
 import bulkActions from "./bulk-actions";
 import search from "./search";
 import semanticSearch from "./semantic_search";
@@ -150,6 +160,10 @@ const app = workspaceApp();
  *                         type: array
  *                         items:
  *                           type: string
+ *                       selectedSpaceIds:
+ *                         type: array
+ *                         items:
+ *                           type: string
  *               contentFragments:
  *                 type: array
  *                 items:
@@ -157,6 +171,10 @@ const app = workspaceApp();
  *               metadata:
  *                 type: object
  *                 nullable: true
+ *               selectedSpaceIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
  *               skipToolsValidation:
  *                 type: boolean
  *     responses:
@@ -231,8 +249,24 @@ app.post(
       message,
       contentFragments,
       metadata,
+      selectedSpaceIds,
       skipToolsValidation,
     } = ctx.req.valid("json");
+
+    const allSelectedSpaceIds = uniq([
+      ...(selectedSpaceIds ?? []),
+      ...(message?.context.selectedSpaceIds ?? []),
+    ]);
+
+    if (allSelectedSpaceIds.length > 0) {
+      const validationResult = await validateSelectableSpaces(auth, {
+        podId: spaceId,
+        spaceIds: allSelectedSpaceIds,
+      });
+      if (validationResult.isErr()) {
+        return apiErrorForSelectedSpaces(ctx, validationResult.error);
+      }
+    }
 
     if (message?.context.clientSideMCPServerIds) {
       const hasServerAccess = await concurrentExecutor(
@@ -269,12 +303,40 @@ app.post(
       spaceModelId = space.id;
     }
 
-    let newConversation = await createConversation(auth, {
+    const newConversationResource = await createConversation(auth, {
       title,
       visibility,
       spaceId: spaceModelId,
       metadata,
     });
+
+    let newConversation: ConversationType = {
+      ...newConversationResource.toJSON(),
+      content: [],
+      owner: auth.getNonNullableWorkspace(),
+      visibility: visibility,
+    };
+
+    if (allSelectedSpaceIds.length > 0) {
+      const selectedSpacesResult = await addSelectedConversationSpaces(auth, {
+        conversation: newConversation,
+        spaceIds: allSelectedSpaceIds,
+        origin: "input_bar",
+        auditContext: getAuditLogContext(auth),
+        // The conversation was just created by this caller and has no participant row yet (the
+        // `upsertParticipation` call below is what creates the creator row), so there is no other
+        // participant to evict and nothing to check against.
+        enforceCreatorOnly: false,
+      });
+      if (selectedSpacesResult.isErr()) {
+        return apiErrorForSelectedSpaces(ctx, selectedSpacesResult.error);
+      }
+
+      newConversation = {
+        ...newConversation,
+        requestedSpaceIds: selectedSpacesResult.value.effectiveAcl.spaceIds,
+      };
+    }
 
     if (newConversation.depth === 0) {
       await ConversationResource.upsertParticipation(auth, {
@@ -317,14 +379,6 @@ app.post(
 
         newContentFragments.push(r.value);
       }
-
-      newConversation = {
-        ...newConversation,
-        content: [
-          ...newConversation.content,
-          ...newContentFragments.map((contentFragment) => [contentFragment]),
-        ],
-      };
     }
 
     if (message) {
@@ -390,7 +444,7 @@ app.post(
       // If a message was provided we do await for the message to be created
       // before returning the conversation along with the message.
       const messageRes = await postUserMessage(auth, {
-        conversation: newConversation,
+        conversationResource: newConversationResource,
         content: message.content,
         mentions: message.mentions,
         context: {
@@ -401,6 +455,7 @@ app.post(
           profilePictureUrl: message.context.profilePictureUrl,
           origin: message.context.origin ?? "web",
           clientSideMCPServerIds: message.context.clientSideMCPServerIds ?? [],
+          selectedSpaceIds: allSelectedSpaceIds,
         },
         skipToolsValidation: skipToolsValidation ?? false,
         modelSelection: message.modelSelection,
@@ -419,6 +474,7 @@ app.post(
       // conversation again will allow to have an up to date view of the
       // conversation with agent messages included so that the user of the API
       // can start streaming events from these agent messages directly.
+      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
       const updatedRes = await getConversation(auth, newConversation.sId);
 
       if (updatedRes.isOk()) {

@@ -2,6 +2,7 @@ import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import {
   buildCreditsScopeQuery,
+  MODEL_ID_FIELD,
   NOT_API_GROUP_KEY,
   NOT_API_GROUP_NAME,
 } from "@app/lib/api/assistant/observability/utils";
@@ -13,13 +14,21 @@ import {
 } from "@app/lib/api/elasticsearch";
 import { getProgrammaticUsageFilterClause } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
+import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type { TopConversationCreditsRow } from "@app/types/api/credits/my_top_conversations";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
-export type CreditBreakdownBy = "agent" | "user" | "origin" | "api_key";
+export type CreditBreakdownBy =
+  | "agent"
+  | "user"
+  | "origin"
+  | "api_key"
+  | "model";
 
 export type CreditGroupBy = CreditBreakdownBy | "none";
 
@@ -107,7 +116,12 @@ function totalCreditsFromSlice(slice: CreditSlice): number {
 
 function groupFieldFor(
   groupBy: CreditBreakdownBy
-): "agent_id" | "user_id" | "context_origin" | "api_key_name" {
+):
+  | "agent_id"
+  | "user_id"
+  | "context_origin"
+  | "api_key_name"
+  | typeof MODEL_ID_FIELD {
   switch (groupBy) {
     case "agent":
       return "agent_id";
@@ -117,6 +131,8 @@ function groupFieldFor(
       return "context_origin";
     case "api_key":
       return "api_key_name";
+    case "model":
+      return MODEL_ID_FIELD;
     default:
       return assertNever(groupBy);
   }
@@ -149,6 +165,8 @@ function fallbackGroupName(groupBy: CreditBreakdownBy): string {
       return "Unknown source";
     case "api_key":
       return "Unknown API key";
+    case "model":
+      return "Unknown model";
     default:
       return assertNever(groupBy);
   }
@@ -190,6 +208,12 @@ async function resolveGroupNames(
           id,
           id === NOT_API_GROUP_KEY ? NOT_API_GROUP_NAME : id,
         ])
+      );
+    case "model":
+      // The group key is the resolved model id; fall back to the raw id for
+      // models that are no longer part of the catalog.
+      return new Map(
+        ids.map((id) => [id, getModelConfigByModelId(id)?.displayName ?? id])
       );
     default:
       return assertNever(groupBy);
@@ -247,6 +271,7 @@ export async function fetchCreditUsage(
     userIds,
     apiKeyNames,
     agentTagIds,
+    modelIds,
   }: {
     startDate: string;
     endDate: string;
@@ -257,6 +282,7 @@ export async function fetchCreditUsage(
     userIds?: string[];
     apiKeyNames?: string[];
     agentTagIds?: string[];
+    modelIds?: string[];
   }
 ): Promise<Result<CreditUsageResult, ElasticsearchError>> {
   const aggregations: Record<string, estypes.AggregationsAggregationContainer> =
@@ -280,6 +306,7 @@ export async function fetchCreditUsage(
     userIds,
     apiKeyNames,
     agentTagIds,
+    modelIds,
     extraFilters:
       // api_key buckets missing values under "Not API" instead of dropping
       // them, so the rows keep summing to the total.
@@ -326,6 +353,83 @@ export async function fetchCreditUsage(
   return new Ok({ totalCredits, rows });
 }
 
+type TopConversationsAggs = {
+  by_conversation?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
+};
+
+// Conversations ranked by summed per-message AWU credits (cost.full_awu) over
+// the window. Same source and scope as fetchCreditUsage; scope to a user via
+// `userIds` so the ranking only counts that user's messages. Conversations
+// that can no longer be fetched (deleted, or the caller lost access) are
+// dropped since they cannot be linked to.
+export async function fetchTopConversationsByCredits(
+  auth: Authenticator,
+  {
+    startDate,
+    endDate,
+    limit,
+    userIds,
+  }: {
+    startDate: string;
+    endDate: string;
+    limit: number;
+    userIds?: string[];
+  }
+): Promise<Result<TopConversationCreditsRow[], ElasticsearchError>> {
+  const query = buildCreditsScopeQuery(auth, {
+    startDate,
+    endDate,
+    userIds,
+    extraFilters: [{ exists: { field: "conversation_id" } }],
+  });
+
+  const result = await searchAnalytics<never, TopConversationsAggs>(query, {
+    aggregations: {
+      by_conversation: {
+        terms: {
+          field: "conversation_id",
+          size: limit,
+          order: { total_cost: "desc" },
+        },
+        aggs: { ...creditSubAggs },
+      },
+    },
+    size: 0,
+  });
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const ranked = bucketsToArray<GroupBucket>(
+    result.value.aggregations?.by_conversation?.buckets
+  ).map((bucket) => ({
+    conversationId: String(bucket.key),
+    totalCredits: totalCreditsFromSlice(bucket),
+  }));
+
+  if (ranked.length === 0) {
+    return new Ok([]);
+  }
+
+  const conversations = await ConversationResource.fetchByIds(
+    auth,
+    ranked.map((row) => row.conversationId)
+  );
+  const titlesByConversationId = new Map(
+    conversations.map((conversation) => [conversation.sId, conversation.title])
+  );
+
+  return new Ok(
+    ranked
+      .filter((row) => titlesByConversationId.has(row.conversationId))
+      .map((row) => ({
+        ...row,
+        title: titlesByConversationId.get(row.conversationId) ?? null,
+      }))
+  );
+}
+
 // Per-message AWU credits bucketed over time (the trend behind
 // get_credit_usage's totals). Same source and scope as fetchCreditUsage.
 export async function fetchCreditTimeseries(
@@ -340,6 +444,7 @@ export async function fetchCreditTimeseries(
     userIds,
     apiKeyNames,
     agentTagIds,
+    modelIds,
     fillWindow,
   }: {
     startDate: string;
@@ -351,6 +456,7 @@ export async function fetchCreditTimeseries(
     userIds?: string[];
     apiKeyNames?: string[];
     agentTagIds?: string[];
+    modelIds?: string[];
     fillWindow?: boolean;
   }
 ): Promise<Result<CreditTimeseriesPoint[], ElasticsearchError>> {
@@ -362,6 +468,7 @@ export async function fetchCreditTimeseries(
     userIds,
     apiKeyNames,
     agentTagIds,
+    modelIds,
   });
 
   const result = await searchAnalytics<never, CreditTimeseriesAggs>(query, {
@@ -414,6 +521,7 @@ export async function fetchCreditTimeseriesByUsageType(
     userIds,
     apiKeyNames,
     agentTagIds,
+    modelIds,
     fillWindow,
   }: {
     startDate: string;
@@ -425,6 +533,7 @@ export async function fetchCreditTimeseriesByUsageType(
     userIds?: string[];
     apiKeyNames?: string[];
     agentTagIds?: string[];
+    modelIds?: string[];
     fillWindow?: boolean;
   }
 ): Promise<Result<CreditUsageTypePoint[], ElasticsearchError>> {
@@ -436,6 +545,7 @@ export async function fetchCreditTimeseriesByUsageType(
     userIds,
     apiKeyNames,
     agentTagIds,
+    modelIds,
   });
 
   const programmaticFilter = getProgrammaticUsageFilterClause();
@@ -501,6 +611,7 @@ export async function fetchCreditTimeseriesBreakdown(
     userIds,
     apiKeyNames,
     agentTagIds,
+    modelIds,
     fillWindow,
   }: {
     startDate: string;
@@ -514,6 +625,7 @@ export async function fetchCreditTimeseriesBreakdown(
     userIds?: string[];
     apiKeyNames?: string[];
     agentTagIds?: string[];
+    modelIds?: string[];
     fillWindow?: boolean;
   }
 ): Promise<Result<CreditTimeseriesBreakdown, ElasticsearchError>> {
@@ -527,6 +639,7 @@ export async function fetchCreditTimeseriesBreakdown(
     userIds,
     apiKeyNames,
     agentTagIds,
+    modelIds,
   });
   if (ranking.isErr()) {
     return ranking;
@@ -549,6 +662,7 @@ export async function fetchCreditTimeseriesBreakdown(
     userIds,
     apiKeyNames,
     agentTagIds,
+    modelIds,
   });
 
   const result = await searchAnalytics<never, CreditTimeseriesBreakdownAggs>(

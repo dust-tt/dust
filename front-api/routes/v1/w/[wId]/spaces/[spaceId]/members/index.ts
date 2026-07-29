@@ -60,7 +60,7 @@ const withEditableSpace = createMiddleware<
 
   if (
     space.managementMode === "group" ||
-    space.groups.some((g) => g.kind === "global")
+    space.groups.some((group) => group.isGlobal())
   ) {
     return apiError(ctx, {
       status_code: 404,
@@ -93,11 +93,12 @@ app.get(
   async (ctx): HandlerResult<GetSpaceMembersResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
+    const groups = await space.fetchGroupResources(auth);
 
     const currentMembers = uniqBy(
       (
         await concurrentExecutor(
-          space.groups,
+          groups,
           (group) => group.getActiveMembers(auth),
           { concurrency: 1 }
         )

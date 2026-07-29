@@ -1,7 +1,7 @@
 import type { StaticModelIdType } from "@app/types/assistant/models/models";
 
 // All pricing are in USD per million tokens (equivalent to micro-USD per token).
-export type PricingEntry = {
+type TokenPricingRates = {
   input: number;
   output: number;
   // Cache write rate. For providers that bill by cache retention duration, this is the short-lived
@@ -9,6 +9,12 @@ export type PricingEntry = {
   cache_creation_input_tokens?: number;
   long_cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
+};
+
+export type PricingEntry = TokenPricingRates & {
+  long_context?: TokenPricingRates & {
+    prompt_token_threshold: number;
+  };
 };
 
 // Pricing for current models (USD per million tokens - equivalent to micro-USD per token)
@@ -182,6 +188,13 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     long_cache_creation_input_tokens: 10.0,
     cache_read_input_tokens: 0.5,
   },
+  "claude-opus-5": {
+    input: 5.0,
+    output: 25.0,
+    cache_creation_input_tokens: 6.25,
+    long_cache_creation_input_tokens: 10.0,
+    cache_read_input_tokens: 0.5,
+  },
   // https://platform.claude.com/docs/en/about-claude/models/overview
   "claude-fable-5": {
     input: 10.0,
@@ -300,6 +313,13 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 9.0,
     cache_read_input_tokens: 0.15,
   },
+  // https://ai.google.dev/gemini-api/docs/pricing (2026-07-25): output-only
+  // cut vs 3.5 Flash (input unchanged at $1.50, output $9.0 -> $7.5).
+  "gemini-3.6-flash": {
+    input: 1.5,
+    output: 7.5,
+    cache_read_input_tokens: 0.15,
+  },
   "gemini-2.5-flash": {
     input: 0.15,
     output: 0.6,
@@ -309,6 +329,13 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 0.3,
   },
   "gemini-3.1-flash-lite": {
+    input: 0.25,
+    output: 1.5,
+    cache_read_input_tokens: 0.025,
+  },
+  // https://ai.google.dev/gemini-api/docs/pricing (2026-07-25): matches the
+  // Flash-Lite family rate.
+  "gemini-3.5-flash-lite": {
     input: 0.25,
     output: 1.5,
     cache_read_input_tokens: 0.025,
@@ -357,6 +384,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 4.0,
     cache_read_input_tokens: 0.16,
   },
+  // https://docs.fireworks.ai/serverless/pricing
+  "accounts/fireworks/models/kimi-k3": {
+    input: 3.75,
+    output: 18.75,
+    cache_read_input_tokens: 0.375,
+  },
   // https://app.fireworks.ai/models/fireworks/minimax-m2p5
   "accounts/fireworks/models/minimax-m2p5": {
     input: 0.3,
@@ -382,6 +415,18 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   "grok-3-mini-latest": {
     input: 0.2,
     output: 1.0,
+  },
+  // https://docs.x.ai/developers/models/grok-4.5
+  "grok-4.5": {
+    input: 2.0,
+    output: 6.0,
+    cache_read_input_tokens: 0.3,
+    long_context: {
+      prompt_token_threshold: 200_000,
+      input: 4.0,
+      output: 12.0,
+      cache_read_input_tokens: 0.6,
+    },
   },
   "grok-4-latest": {
     input: 1.25,
@@ -412,6 +457,16 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   // This model is not real and is used to select the best model for the task.
   // It is not used for actual generation.
   auto: {
+    input: 0,
+    output: 0,
+    cache_read_input_tokens: 0,
+  },
+  auto_fast: {
+    input: 0,
+    output: 0,
+    cache_read_input_tokens: 0,
+  },
+  auto_complex: {
     input: 0,
     output: 0,
     cache_read_input_tokens: 0,

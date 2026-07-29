@@ -4,6 +4,7 @@ import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_vie
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
@@ -19,6 +20,7 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/apps/:aId", () => {
   it("returns 409 when the app is used by an active agent", async () => {
     const { workspace, user, globalSpace, auth } =
       await createPrivateApiMockRequest({ role: "admin" });
+    await FeatureFlagFactory.basic(auth, "legacy_dust_apps");
 
     const app = await AppResource.makeNew(
       {
@@ -105,6 +107,7 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/apps/:aId", () => {
     const { workspace, globalSpace, auth } = await createPrivateApiMockRequest({
       role: "admin",
     });
+    await FeatureFlagFactory.basic(auth, "legacy_dust_apps");
 
     const app = await AppResource.makeNew(
       {

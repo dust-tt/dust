@@ -152,6 +152,23 @@ describe("GET /api/w/:wId/groups", () => {
     expect(backendGroup).toBeDefined();
     expect(backendGroup.memberCount).toBe(1);
   });
+
+  it("lets a manager list provisioned groups", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "manager",
+    });
+
+    await GroupFactory.provisioned(workspace, "Engineering");
+
+    const response = await getGroups(workspace, { kind: "provisioned" });
+
+    expect(response.status).toBe(200);
+    const { groups } = await response.json();
+    expect(groups.map((g: { name: string }) => g.name)).toEqual([
+      "Engineering",
+    ]);
+  });
 });
 
 describe("POST /api/w/:wId/groups", () => {
@@ -218,10 +235,10 @@ describe("POST /api/w/:wId/groups", () => {
     expect((await response.json()).error.type).toBe("user_not_found");
   });
 
-  it("lets a business admin create a regular_manual group", async () => {
+  it("lets a manager create a regular_manual group", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "business_admin",
+      role: "manager",
     });
 
     const response = await postGroup(workspace, {
@@ -342,10 +359,10 @@ describe("GET /api/w/:wId/groups/:groupId", () => {
     expect(response.status).toBe(200);
   });
 
-  it("lets a business admin read the group", async () => {
+  it("lets a manager read the group", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
-      role: "business_admin",
+      role: "manager",
     });
     const group = await GroupFactory.regularManual(workspace, "Legal");
 
@@ -498,10 +515,10 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     );
   });
 
-  it("lets a business admin update the group", async () => {
+  it("lets a manager update the group", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
-      role: "business_admin",
+      role: "manager",
     });
     const group = await GroupFactory.regularManual(workspace, "Old name");
 
@@ -617,10 +634,10 @@ describe("DELETE /api/w/:wId/groups/:groupId", () => {
     expect(refetched.isErr()).toBe(true);
   });
 
-  it("lets a business admin delete the group", async () => {
+  it("lets a manager delete the group", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "DELETE",
-      role: "business_admin",
+      role: "manager",
     });
     const group = await GroupFactory.regularManual(workspace, "Doomed");
 

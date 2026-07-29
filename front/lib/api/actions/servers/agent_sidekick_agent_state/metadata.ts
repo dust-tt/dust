@@ -1,11 +1,8 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA = createToolsRecord({
-  get_agent_info: {
+export const AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA = [
+  {
+    name: "get_agent_info",
     description:
       "Get detailed information about the current agent configuration, including name, description, instructions, model settings, and the IDs of all skills and tools currently used by the agent.",
     schema: {},
@@ -17,7 +14,7 @@ export const AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const;
 
 export const AGENT_SIDEKICK_AGENT_STATE_SERVER = {
   serverInfo: {
@@ -29,13 +26,5 @@ export const AGENT_SIDEKICK_AGENT_STATE_SERVER = {
     icon: "ActionRobotIcon",
     documentationUrl: null,
   },
-  tools: Object.values(AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

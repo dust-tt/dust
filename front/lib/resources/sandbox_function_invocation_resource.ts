@@ -30,16 +30,21 @@ import logger from "@app/logger/logger";
 import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
 import type {
   PostSandboxFunctionInvocationRequestBody,
+  SandboxFunctionCallError,
+  SandboxFunctionInvocationContext,
   SandboxFunctionInvocationStatus,
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
 import { isDevelopment } from "@app/types/shared/env";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { Attributes, Transaction } from "sequelize";
 import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const SANDBOX_FUNCTION_WORKING_DIRECTORY = "/home/agent";
 const SANDBOX_FUNCTION_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
@@ -49,22 +54,83 @@ const DSBX_BIN_PATH = "/opt/bin/dsbx";
 const SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS = 2_048;
 const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
 const GCS_CONCURRENCY = 4;
-const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 1;
+const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 2;
 
-const SandboxFunctionInvocationDataSchema = z.object({
-  version: z.literal(SANDBOX_FUNCTION_INVOCATION_DATA_VERSION),
-  input: z.unknown().optional(),
-  result: z.unknown().optional(),
-  error: z.string().optional(),
+// `code` is not narrowed to `SandboxFunctionCallErrorCode`: it is forwarded from whatever
+// classified the failure (runner, API error type, front), and a code introduced by a newer deploy
+// must stay readable rather than fail to parse.
+const StoredCallErrorSchema = z.object({
+  code: z.string(),
+  message: z.string(),
+  status: z.number().optional(),
 });
 
-type SandboxFunctionInvocationData = z.infer<
-  typeof SandboxFunctionInvocationDataSchema
+export type StoredSandboxFunctionCallError = z.infer<
+  typeof StoredCallErrorSchema
 >;
+
+const InvocationDataBaseSchema = z.object({
+  input: z.unknown().optional(),
+  context: z
+    .object({
+      timezone: z.string().optional(),
+    })
+    .optional(),
+  result: z.unknown().optional(),
+});
+
+// Every shape we have ever written, discriminated on `version` so a new one is an added arm rather
+// than a wider guess at what a blob contains. Reads accept all of them, writes always produce the
+// current version.
+const StoredInvocationDataSchema = z.discriminatedUnion("version", [
+  // v1 recorded the failure message only.
+  InvocationDataBaseSchema.extend({
+    version: z.literal(1),
+    error: z.string().optional(),
+  }),
+  // v2 records the whole call error, so `inspect_invocations` can report its code and status.
+  InvocationDataBaseSchema.extend({
+    version: z.literal(2),
+    error: StoredCallErrorSchema.optional(),
+  }),
+]);
+
+type StoredInvocationData = z.infer<typeof StoredInvocationDataSchema>;
+
+// Derived from the current arm rather than written out, so the two cannot drift. Bumping the
+// version constant makes `case 2` below stop typechecking until a migration exists.
+type SandboxFunctionInvocationData = Extract<
+  StoredInvocationData,
+  { version: typeof SANDBOX_FUNCTION_INVOCATION_DATA_VERSION }
+>;
+
+function migrateStoredInvocationData(
+  stored: StoredInvocationData
+): SandboxFunctionInvocationData {
+  switch (stored.version) {
+    case 1:
+      // Spread rather than list fields, so a field added to the shared base carries through
+      // instead of being silently dropped from every v1 blob on read.
+      return {
+        ...stored,
+        version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+        // v1 only ever recorded errors that went through `fail(Error)`, which classified them as
+        // `invocation_failed`.
+        error:
+          stored.error !== undefined
+            ? { code: "invocation_failed", message: stored.error }
+            : undefined,
+      };
+    case 2:
+      return stored;
+    default:
+      return assertNever(stored);
+  }
+}
 
 export interface SandboxFunctionInvocationForLLM {
   createdAt: string;
-  error?: string;
+  error?: StoredSandboxFunctionCallError;
   input: unknown;
   invocationId: string;
   result?: unknown;
@@ -72,19 +138,20 @@ export interface SandboxFunctionInvocationForLLM {
   updatedAt: string;
 }
 
-function parseSandboxFunctionInvocationData(
+function safeParseStoredInvocationData(
   content: string
-): SandboxFunctionInvocationData {
-  const result = SandboxFunctionInvocationDataSchema.safeParse(
-    JSON.parse(content)
-  );
-  if (!result.success) {
-    throw new Error(
-      `Invalid sandbox function invocation data: ${result.error.message}`
-    );
+): Result<StoredInvocationData, Error> {
+  const jsonResult = safeParseJSON(content);
+  if (jsonResult.isErr()) {
+    return jsonResult;
   }
 
-  return result.data;
+  const parseResult = StoredInvocationDataSchema.safeParse(jsonResult.value);
+  if (!parseResult.success) {
+    return new Err(new Error(fromError(parseResult.error).toString()));
+  }
+
+  return new Ok(parseResult.data);
 }
 
 function dustAPIBaseUrlForSandbox(): string {
@@ -145,19 +212,31 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return this.data.input;
   }
 
+  get context(): SandboxFunctionInvocationContext | undefined {
+    return this.data.context;
+  }
+
   get result(): unknown {
     return this.data.result;
   }
 
-  get error(): string | undefined {
+  get error(): StoredSandboxFunctionCallError | undefined {
     return this.data.error;
   }
 
-  async fail(error: Error): Promise<void> {
+  async fail(error: Error | SandboxFunctionCallError): Promise<void> {
+    const callError: SandboxFunctionCallError =
+      error instanceof Error
+        ? { code: "invocation_failed", message: error.message }
+        : error;
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
-      error: error.message,
+      context: this.context,
+      // Persist the whole error: the code and status are what `inspect_invocations` needs to say
+      // why an invocation failed, and dropping them here would leave the message as the only
+      // record of a failure the stream classified precisely.
+      error: callError,
     };
     await this.writeDataToGcs();
     await this.update({ status: "errored" });
@@ -167,7 +246,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         created: Date.now(),
         invocationId: this.sId,
         functionId: this.sandboxFunction.sId,
-        message: error.message,
+        error: callError,
       },
       { invocationId: this.sId }
     );
@@ -177,6 +256,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
+      context: this.context,
       result,
     };
     await this.writeDataToGcs();
@@ -301,7 +381,23 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     }
 
     const [buffer] = downloadResult.value;
-    this.data = parseSandboxFunctionInvocationData(buffer.toString("utf-8"));
+    const storedResult = safeParseStoredInvocationData(
+      buffer.toString("utf-8")
+    );
+    if (storedResult.isErr()) {
+      // Listings load every invocation's blob, so failing here would take down a whole listing
+      // over one unreadable record: a truncated write, or a blob a newer deploy wrote mid-rollout.
+      // Degrade to an empty record and keep the rest of the listing readable.
+      logger.error(
+        { gcsPath: this.gcsPath, error: storedResult.error.message },
+        "Invalid sandbox function invocation data"
+      );
+      this.data = { version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION };
+
+      return;
+    }
+
+    this.data = migrateStoredInvocationData(storedResult.value);
   }
 
   private async writeDataToGcs(): Promise<void> {
@@ -338,9 +434,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     {
       sandboxFunction,
       input,
+      context,
     }: {
       sandboxFunction: SandboxFunctionResource;
       input: unknown;
+      context?: SandboxFunctionInvocationContext;
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionInvocationResource> {
@@ -363,6 +461,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const data: SandboxFunctionInvocationData = {
         version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
         input,
+        context,
       };
       const resource = new this(this.model, invocation.get(), {
         sandboxFunction,
@@ -391,6 +490,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     const invocation = await this.makeNew(auth, {
       sandboxFunction,
       input: body.input,
+      context: body.context,
     });
     await publishSandboxFunctionInvocationEvent(
       {

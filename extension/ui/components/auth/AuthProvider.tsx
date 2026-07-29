@@ -1,7 +1,8 @@
-import { AuthContext } from "@app/lib/auth/AuthContext";
+import { AuthContext, type AuthContextValue } from "@app/lib/auth/AuthContext";
+import { emptyWorkspacePermissions } from "@app/types/group_permissions";
 import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
-import { isAdmin, isBuilder, isBusinessAdmin } from "@app/types/user";
+import { isAdmin, isManager } from "@app/types/user";
 import type { AuthError } from "@extension/shared/services/auth";
 import { useAuthHook } from "@extension/ui/components/auth/useAuth";
 import type { ReactNode } from "react";
@@ -158,7 +159,7 @@ export function ExtensionAuthProvider({
     ]
   );
 
-  const frontAuthValue = useMemo(() => {
+  const frontAuthValue: AuthContextValue | null = useMemo(() => {
     if (!user || !workspace) {
       return null;
     }
@@ -167,11 +168,11 @@ export function ExtensionAuthProvider({
       workspace,
       subscription: EXTENSION_SUBSCRIPTION,
       isAdmin: isAdmin(workspace),
-      isBusinessAdmin: isBusinessAdmin(workspace),
-      isBuilder: isBuilder(workspace),
+      isManager: isManager(workspace),
       featureFlags,
       vizUrl: process.env.VIZ_PUBLIC_URL ?? "",
       providersHealth: null,
+      workspacePermissions: emptyWorkspacePermissions(),
     };
   }, [user, workspace, featureFlags]);
 

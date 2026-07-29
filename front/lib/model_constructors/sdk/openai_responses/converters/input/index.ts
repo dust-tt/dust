@@ -1,5 +1,7 @@
 import type { Client } from "@app/lib/model_constructors/client";
+import { includesOpenAIToolSearchTool } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search";
 import {
+  assistantProviderPassthroughMessageToInputItems,
   assistantReasoningMessageToInputItems,
   assistantTextMessageToInputItem,
   assistantToolCallRequestToInputItem,
@@ -7,13 +9,12 @@ import {
   forceToolToToolChoice,
   type MessageItemConverters,
   outputFormatToResponseFormat,
+  promptCacheBreakpointFor,
   reasoningToOpenAIResponsesReasoning,
   systemMessagesToInputItems,
-  systemMessageToInputItem,
-  toFunctionTool,
   toolCallResultMessageToInputItem,
+  toolSpecsToOpenAITools,
   userImageMessageToInputItem,
-  userTextMessageToInputItem,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import { toToolChoiceInput } from "@app/lib/model_constructors/types/input/configuration";
@@ -21,6 +22,7 @@ import type {
   Payload,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
+import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/model_constructors/types/tool_search";
 import type {
   ResponseCreateParamsNonStreaming,
   ResponseInputItem,
@@ -38,14 +40,15 @@ export function WithOpenAIResponsesInputConverter<
     extends Base
     implements MessageItemConverters
   {
-    systemMessageToInputItem = systemMessageToInputItem;
-    userTextMessageToInputItem = userTextMessageToInputItem;
+    promptCacheBreakpointFor = promptCacheBreakpointFor;
     userImageMessageToInputItem = userImageMessageToInputItem;
     toolCallResultMessageToInputItem = toolCallResultMessageToInputItem;
     assistantTextMessageToInputItem = assistantTextMessageToInputItem;
     assistantReasoningMessageToInputItems =
       assistantReasoningMessageToInputItems;
     assistantToolCallRequestToInputItem = assistantToolCallRequestToInputItem;
+    assistantProviderPassthroughMessageToInputItems =
+      assistantProviderPassthroughMessageToInputItems;
 
     conversationToInput(
       conversation: Payload["conversation"]
@@ -64,15 +67,37 @@ export function WithOpenAIResponsesInputConverter<
       config: InputConfig
     ): ResponseCreateParamsNonStreaming {
       const { conversation } = payload;
-      const { tools = [], temperature, reasoning, outputFormat } = config;
+      const {
+        tools = [],
+        temperature,
+        reasoning,
+        outputFormat,
+        cacheKey,
+        forceTool,
+        toolSearchEnabled,
+      } = config;
 
       const reasoningConfig = reasoningToOpenAIResponsesReasoning(reasoning);
+      const openAITools = toolSpecsToOpenAITools(tools, {
+        forceTool,
+        toolSearchEnabled: toolSearchEnabled ?? false,
+      });
 
       return {
-        model: this.constructor.modelId,
+        model: this.constructor.model,
         max_output_tokens: this.constructor.maxOutputTokens,
+        ...(cacheKey ? { prompt_cache_key: cacheKey } : {}),
         input: [
           ...this.systemMessagesToInputItems(conversation.system),
+          ...(includesOpenAIToolSearchTool(openAITools)
+            ? this.systemMessagesToInputItems([
+                {
+                  role: "system",
+                  type: "text",
+                  content: { value: TOOL_SEARCH_INSTRUCTION },
+                },
+              ])
+            : []),
           ...this.conversationToInput(conversation),
         ],
         ...(reasoningConfig
@@ -81,7 +106,7 @@ export function WithOpenAIResponsesInputConverter<
               include: ["reasoning.encrypted_content"],
             }
           : {}),
-        tools: tools.map((tool) => toFunctionTool(tool)),
+        tools: openAITools,
         tool_choice: forceToolToToolChoice(tools, toToolChoiceInput(config)),
         ...(outputFormat
           ? { text: { format: outputFormatToResponseFormat(outputFormat) } }

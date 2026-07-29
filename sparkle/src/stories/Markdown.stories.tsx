@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { expect, waitFor } from "storybook/test";
 
 import { Markdown } from "../index_with_tw_base";
 
@@ -389,6 +390,11 @@ pie title Distribution
 export const ExtendedMarkdownStory: Story = {
   args: {
     content: example,
+  },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      expect(canvasElement.querySelector(".mermaid svg")).not.toBeNull();
+    });
   },
 };
 

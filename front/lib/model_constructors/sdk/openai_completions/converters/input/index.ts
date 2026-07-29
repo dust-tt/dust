@@ -17,7 +17,8 @@ import {
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import { toToolChoiceInput } from "@app/lib/model_constructors/types/input/configuration";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
-import type { ChatCompletionCreateParamsNonStreaming } from "openai/resources/chat/completions";
+import type { Model } from "@app/lib/model_constructors/types/models";
+import type { ChatCompletionCreateParams } from "openai/resources/chat/completions";
 
 type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 
@@ -40,10 +41,16 @@ export function WithOpenAICompletionsInputConverter<
     assistantReasoningMessageToMessage = assistantReasoningMessageToMessage;
     assistantToolCallRequestToMessage = assistantToolCallRequestToMessage;
 
+    // Identity by default; endpoints whose host expects a different model string
+    // (e.g. Fireworks' `accounts/fireworks/models/...` path) override this.
+    modelToHostModel = (modelId: Model): string => modelId;
+
+    // Returns the union (not `NonStreaming`) so streaming clients can override
+    // this and add `stream`/`stream_options` while still calling `super`.
     buildRequestPayload(
       payload: Payload,
       config: InputConfig
-    ): ChatCompletionCreateParamsNonStreaming {
+    ): ChatCompletionCreateParams {
       const { conversation } = payload;
       const { tools = [], temperature, reasoning, outputFormat } = config;
 
@@ -55,7 +62,7 @@ export function WithOpenAICompletionsInputConverter<
       // only sent when non-empty. No explicit max-output cap is sent, matching
       // the legacy client.
       return {
-        model: this.constructor.modelId,
+        model: this.modelToHostModel(this.constructor.model),
         messages: conversationToOpenAICompletionsMessages(conversation, this),
         temperature,
         tool_choice: forceToolNameToToolChoice(

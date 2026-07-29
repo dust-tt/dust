@@ -1,9 +1,8 @@
 import {
   type InputConfig,
   inputConfigSchema,
-  temperatureSchema,
 } from "@app/lib/model_constructors/types/input/configuration";
-import { GPT_5_MINI_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { GPT_5_MINI } from "@app/lib/model_constructors/types/models";
 
 import { z } from "zod";
 
@@ -12,28 +11,28 @@ const CONTEXT_SIZE = 400_000;
 const MAX_OUTPUT_TOKENS = 128_000;
 const DEFAULT_REASONING_EFFORT = "medium";
 
-// gpt-5-mini accepts minimal/low/medium/high. It has no "none"; we accept it
-// and map it to the nearest supported effort ("minimal"). "xhigh" and the
-// universal "maximal" (mapped to "xhigh") remain unsupported and surface as an
-// input configuration error.
 const GPT_5_MINI_REASONING_EFFORTS = [
-  "none",
   "minimal",
   "low",
   "medium",
   "high",
 ] as const;
 
-// The Responses API rejects an explicit temperature for gpt-5-mini in every
-// configuration, so it is always dropped.
+// Characterized against the live API (2026-07-27) by running the endpoint suite
+// with the widest `inputConfigSchema`. Accepted efforts: minimal/low/medium/high;
+// 'none', 'xhigh' and the universal 'maximal' are rejected with a 400. Because
+// there is no "none" effort ("`'none' is not supported`"), reasoning is always
+// on and there is no thinking-off branch.
+//
+// `temperature` accepts exactly one value: `1` (the API default). Every other
+// value is rejected with "Unsupported parameter: 'temperature' is not supported
+// with this model" — so the field is `z.literal(1)`, defaulted so callers can
+// omit it, rather than `z.undefined()`.
 const configSchema = inputConfigSchema.extend({
   reasoning: z
     .object({ effort: z.enum(GPT_5_MINI_REASONING_EFFORTS) })
-    .default({ effort: DEFAULT_REASONING_EFFORT })
-    .transform(({ effort }) => ({
-      effort: effort === "none" ? "minimal" : effort,
-    })),
-  temperature: temperatureSchema.optional().transform(() => undefined),
+    .default({ effort: DEFAULT_REASONING_EFFORT }),
+  temperature: z.literal(1).optional().default(1),
 });
 
 // Mixin carrying shared config; runtime base differs per surface.
@@ -43,12 +42,17 @@ export function WithOpenAIGptFiveMiniConfig<
   ) => object,
 >(Base: TBase) {
   abstract class OpenAIGptFiveMini extends Base {
-    static readonly modelId = GPT_5_MINI_MODEL_ID;
+    static readonly model = GPT_5_MINI;
 
     static readonly configSchema: z.ZodType<InputConfig> = configSchema;
 
     static readonly contextSize = CONTEXT_SIZE;
     static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
+
+    // This model does not support explicit prompt cache breakpoints. They are
+    // only supported starting with GPT-5.6.
+    // https://developers.openai.com/api/docs/guides/prompt-caching#prompt-cache-breakpoints
+    promptCacheBreakpointFor = () => ({});
   }
 
   return OpenAIGptFiveMini;

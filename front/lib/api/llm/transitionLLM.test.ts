@@ -2,10 +2,12 @@ import {
   convertToOldEvent,
   reasoningContentToLegacyMetadata,
   toBaseMessages,
+  withMessageCacheBreakpoints,
 } from "@app/lib/api/llm/transitionLLM";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { assistantReasoningMessageToInputItems } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
+import type { BaseMessage } from "@app/lib/model_constructors/types/input/messages";
 import type { ProviderPassthroughEvent } from "@app/lib/model_constructors/types/output/events";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
@@ -19,10 +21,10 @@ const llmMetadata: LLMClientMetadata = {
 };
 
 const endpointMetadata: EndpointMetadata = {
-  providerId: "anthropic",
-  api: "anthropic",
+  lab: "anthropic",
+  host: "anthropic",
   region: "us",
-  modelId: "claude-sonnet-4-6",
+  model: "claude-sonnet-4-6",
 };
 
 const serverToolUseBlock = {
@@ -78,6 +80,108 @@ describe("toBaseMessages", () => {
         content: { provider: "anthropic", block: serverToolUseBlock },
       },
     ]);
+  });
+
+  it("preserves a function call namespace", () => {
+    const message: ModelMessageTypeMultiActionsWithoutContentFragment = {
+      role: "assistant",
+      name: "agent",
+      contents: [
+        {
+          type: "function_call",
+          value: {
+            id: "call_123",
+            name: "get_weather",
+            arguments: "{}",
+            namespace: "weather",
+          },
+        },
+      ],
+    };
+
+    expect(toBaseMessages(message)).toEqual([
+      {
+        role: "assistant",
+        type: "tool_call_request",
+        content: {
+          callId: "call_123",
+          toolName: "get_weather",
+          arguments: "{}",
+          namespace: "weather",
+        },
+        signature: undefined,
+      },
+    ]);
+  });
+});
+
+describe("withMessageCacheBreakpoints", () => {
+  const cacheOf = (m: BaseMessage) => ("cache" in m ? m.cache : undefined);
+
+  const equippedSkillsMessage: ModelMessageTypeMultiActionsWithoutContentFragment =
+    {
+      role: "user",
+      name: "system",
+      content: [{ type: "text", text: "equipped skills" }],
+    };
+
+  const messages: BaseMessage[] = [
+    { role: "user", type: "text", content: { value: "equipped skills" } },
+    { role: "assistant", type: "text", content: { value: "hello" } },
+    { role: "user", type: "text", content: { value: "latest turn" } },
+  ];
+
+  it("caches the equipped-skills block and, on the Anthropic API, leaves the tail to the top-level cache", () => {
+    const result = withMessageCacheBreakpoints(
+      messages,
+      equippedSkillsMessage,
+      {
+        explicitTailBreakpoint: false,
+      }
+    );
+
+    expect(cacheOf(result[0])).toBe("short");
+    expect(cacheOf(result[1])).toBeUndefined();
+    expect(cacheOf(result[2])).toBeUndefined();
+  });
+
+  it("also caches the last user message when an explicit tail breakpoint is required (Vertex/agent-platform)", () => {
+    const result = withMessageCacheBreakpoints(
+      messages,
+      equippedSkillsMessage,
+      {
+        explicitTailBreakpoint: true,
+      }
+    );
+
+    expect(cacheOf(result[0])).toBe("short");
+    expect(cacheOf(result[2])).toBe("short");
+  });
+
+  it("skips the equipped-skills breakpoint when the first message is not the name:system block", () => {
+    const firstUserTurn: ModelMessageTypeMultiActionsWithoutContentFragment = {
+      role: "user",
+      name: "user",
+      content: [{ type: "text", text: "hi" }],
+    };
+
+    const result = withMessageCacheBreakpoints(messages, firstUserTurn, {
+      explicitTailBreakpoint: false,
+    });
+
+    expect(result.every((m) => cacheOf(m) === undefined)).toBe(true);
+  });
+
+  it("does not mutate the input array", () => {
+    const input: BaseMessage[] = [
+      { role: "user", type: "text", content: { value: "equipped skills" } },
+    ];
+
+    withMessageCacheBreakpoints(input, equippedSkillsMessage, {
+      explicitTailBreakpoint: true,
+    });
+
+    expect(cacheOf(input[0])).toBeUndefined();
   });
 });
 
@@ -175,7 +279,7 @@ describe("convertToOldEvent — token_usage", () => {
             shortCacheCreated: 5_000,
             cacheHit: 20_000,
             standardInput: 1_000,
-            standardOutput: 400,
+            totalOutput: 500,
             reasoning: 100,
           },
           metadata: endpointMetadata,
@@ -186,7 +290,7 @@ describe("convertToOldEvent — token_usage", () => {
       type: "token_usage",
       content: {
         inputTokens: 56_000,
-        outputTokens: 400,
+        totalOutputTokens: 500,
         reasoningTokens: 100,
         totalTokens: 56_500,
         cachedTokens: 20_000,
@@ -210,8 +314,7 @@ describe("convertToOldEvent — token_usage", () => {
             shortCacheCreated: 0,
             cacheHit: 20_000,
             standardInput: 1_000,
-            standardOutput: 400,
-            reasoning: 0,
+            totalOutput: 400,
           },
           metadata: endpointMetadata,
         },
@@ -221,8 +324,7 @@ describe("convertToOldEvent — token_usage", () => {
       type: "token_usage",
       content: {
         inputTokens: 56_000,
-        outputTokens: 400,
-        reasoningTokens: 0,
+        totalOutputTokens: 400,
         totalTokens: 56_400,
         cachedTokens: 20_000,
         cacheCreationTokens: 35_000,
@@ -230,6 +332,27 @@ describe("convertToOldEvent — token_usage", () => {
       },
       metadata: llmMetadata,
     });
+  });
+
+  it("rejects reasoning tokens that are not a subset of output tokens", () => {
+    expect(() =>
+      convertToOldEvent(
+        {
+          type: "token_usage",
+          content: {
+            cacheCreated: 0,
+            longCacheCreated: 0,
+            shortCacheCreated: 0,
+            cacheHit: 0,
+            standardInput: 0,
+            totalOutput: 100,
+            reasoning: 101,
+          },
+          metadata: endpointMetadata,
+        },
+        llmMetadata
+      )
+    ).toThrow("reasoning must be a non-negative subset of totalOutput");
   });
 });
 
@@ -244,6 +367,33 @@ describe("convertToOldEvent", () => {
     expect(convertToOldEvent(event, llmMetadata)).toEqual({
       type: "provider_passthrough",
       content: { provider: "anthropic", block: serverToolUseBlock },
+      metadata: llmMetadata,
+    });
+  });
+
+  it("preserves a function call namespace", () => {
+    expect(
+      convertToOldEvent(
+        {
+          type: "tool_call",
+          content: {
+            id: "call_123",
+            name: "get_weather",
+            arguments: {},
+            namespace: "weather",
+          },
+          metadata: endpointMetadata,
+        },
+        llmMetadata
+      )
+    ).toEqual({
+      type: "tool_call",
+      content: {
+        id: "call_123",
+        name: "get_weather",
+        arguments: {},
+        namespace: "weather",
+      },
       metadata: llmMetadata,
     });
   });

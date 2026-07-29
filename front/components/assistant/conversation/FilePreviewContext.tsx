@@ -1,5 +1,6 @@
 import { FilePreviewDialog } from "@app/components/file_explorer/FilePreviewDialog";
 import type { FileEntry } from "@app/components/file_explorer/types";
+import { isFilePreviewableContentType } from "@app/components/file_explorer/utils";
 import {
   fetchFileIdFromPath,
   getFileDownloadUrl,
@@ -67,6 +68,11 @@ export function FilePreviewProvider({
         return;
       }
 
+      if (!isFilePreviewableContentType(file.contentType)) {
+        window.open(downloadUrl, "_blank");
+        return;
+      }
+
       setPreviewState({
         entry: {
           kind: "file",
@@ -77,7 +83,9 @@ export function FilePreviewProvider({
           fileId: file.fileId ?? null,
           thumbnailUrl: null,
           sizeBytes: 0,
-          lastModifiedMs: 0,
+          // No mtime here: stands in to cache-bust the per-URL cached PDF
+          // conversion, so an edited file stops rendering its stale one.
+          lastModifiedMs: Date.now(),
         },
         fileUrl,
         downloadUrl,

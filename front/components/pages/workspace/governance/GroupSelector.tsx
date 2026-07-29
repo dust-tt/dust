@@ -1,3 +1,5 @@
+import { GroupDialog } from "@app/components/groups/GroupDialog";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import type { GroupType } from "@app/types/groups";
 import {
   Button,
@@ -6,6 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Plus,
 } from "@dust-tt/sparkle";
@@ -14,15 +17,19 @@ import { useState } from "react";
 interface GroupSelectorProps {
   selectedGroups: GroupType[];
   selectableGroups: GroupType[];
+  disabled?: boolean;
   onSelectionChange: (groupIds: string[]) => void;
 }
 
 export const GroupSelector = ({
   selectedGroups,
   selectableGroups,
+  disabled,
   onSelectionChange,
 }: GroupSelectorProps) => {
+  const owner = useWorkspace();
   const [groupSearch, setGroupSearch] = useState("");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const filteredGroups = selectableGroups.filter((g) =>
     g.name.toLowerCase().includes(groupSearch.toLowerCase())
   );
@@ -34,6 +41,7 @@ export const GroupSelector = ({
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
+            className="animate-in fade-in duration-75"
             size="xs"
             icon={Plus}
             label="Add a group"
@@ -52,6 +60,7 @@ export const GroupSelector = ({
             <DropdownMenuItem
               key={group.sId}
               label={group.name}
+              disabled={disabled}
               endComponent={
                 <Chip
                   label={
@@ -72,19 +81,40 @@ export const GroupSelector = ({
               disabled
             />
           )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            icon={Plus}
+            label="Create a group"
+            disabled={disabled}
+            onClick={() => setIsCreateDialogOpen(true)}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
       {selectedGroups.map((group) => (
         <Chip
           key={group.sId}
+          className="animate-in fade-in duration-75"
           label={group.name}
           size="xs"
           color="highlight"
-          onRemove={() =>
-            onSelectionChange(selectedGroupIds.filter((id) => id !== group.sId))
-          }
+          onRemove={() => {
+            if (disabled) {
+              return;
+            }
+            onSelectionChange(
+              selectedGroupIds.filter((id) => id !== group.sId)
+            );
+          }}
         />
       ))}
+      <GroupDialog
+        owner={owner}
+        isOpen={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onCreated={(group) =>
+          onSelectionChange([...selectedGroupIds, group.sId])
+        }
+      />
     </div>
   );
 };

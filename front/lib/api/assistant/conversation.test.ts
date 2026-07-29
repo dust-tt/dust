@@ -106,6 +106,31 @@ const TEST_CREDIT_EXPIRATION_DELAY_MS =
   TEST_CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
 const TEST_DAILY_USAGE_TTL_SECONDS = 60 * 60;
 
+async function fetchConversationResource(
+  auth: Authenticator,
+  sId: string
+): Promise<ConversationResource> {
+  const resource = await ConversationResource.fetchById(auth, sId);
+  if (!resource) {
+    throw new Error(`Failed to fetch conversation resource: ${sId}`);
+  }
+  return resource;
+}
+
+async function fetchRegularAutoGroup(
+  space: SpaceResource,
+  auth: Authenticator
+) {
+  const groupReference = space.groups.find((group) => group.isRegularAuto());
+  if (!groupReference) {
+    return null;
+  }
+  const [group] = await space.fetchGroupResources(auth, {
+    groupReferences: [groupReference],
+  });
+  return group;
+}
+
 async function createActiveProgrammaticCredit(
   auth: Authenticator
 ): Promise<void> {
@@ -139,6 +164,7 @@ describe("retryAgentMessage", () => {
     ReturnType<typeof createResourceTest>
   >["globalGroup"];
   let conversation: ConversationType;
+  let conversationResource: ConversationResource;
   let agentConfig: LightAgentConfigurationType;
   let agentMessage: AgentMessageType;
 
@@ -170,6 +196,10 @@ describe("retryAgentMessage", () => {
       throw new Error("Failed to fetch conversation");
     }
     conversation = fetchedConversationResult.value;
+    conversationResource = await fetchConversationResource(
+      auth,
+      conversationWithoutContent.sId
+    );
 
     // Find the agent message in the conversation
     const agentMessages = conversation.content
@@ -198,7 +228,7 @@ describe("retryAgentMessage", () => {
     expect(userMessage).toBeDefined();
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -234,13 +264,9 @@ describe("retryAgentMessage", () => {
 
     expect(userMessage).toBeDefined();
 
-    const branchedConversation: ConversationType = {
-      ...conversation,
-      branchId,
-    };
-
     const result = await retryAgentMessage(auth, {
-      conversation: branchedConversation,
+      conversationResource,
+      branchId,
       message: agentMessage,
     });
 
@@ -260,7 +286,7 @@ describe("retryAgentMessage", () => {
 
   it("should call publishAgentMessagesEvents with correct arguments", async () => {
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -290,7 +316,7 @@ describe("retryAgentMessage", () => {
     const originalId = agentMessage.sId;
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -321,7 +347,7 @@ describe("retryAgentMessage", () => {
     };
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: nonExistentMessage,
     });
 
@@ -337,7 +363,7 @@ describe("retryAgentMessage", () => {
   it("should return error when message was already retried", async () => {
     // First retry
     const firstRetry = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
     expect(firstRetry.isOk()).toBe(true);
@@ -347,7 +373,7 @@ describe("retryAgentMessage", () => {
 
     // Try to retry again with the same original message
     const secondRetry = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -363,7 +389,7 @@ describe("retryAgentMessage", () => {
 
   it("should preserve agent message properties in the retry", async () => {
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -398,19 +424,15 @@ describe("retryAgentMessage", () => {
       }
     );
 
-    // Refresh conversation
-    const refreshedConversationResult = await getConversation(
+    // Refresh conversation resource
+    const refreshedConversationResource = await fetchConversationResource(
       auth,
       conversation.sId
     );
-    if (refreshedConversationResult.isErr()) {
-      throw new Error("Failed to fetch conversation");
-    }
-    const refreshedConversation = refreshedConversationResult.value;
-    expect(refreshedConversation.hasError).toBe(true);
+    expect(refreshedConversationResource.toJSON().hasError).toBe(true);
 
     const result = await retryAgentMessage(auth, {
-      conversation: refreshedConversation,
+      conversationResource: refreshedConversationResource,
       message: agentMessage,
     });
 
@@ -435,7 +457,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(0);
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -458,7 +480,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(100);
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -477,7 +499,7 @@ describe("retryAgentMessage", () => {
     };
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: messageWithInvalidParent,
     });
 
@@ -507,7 +529,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(100);
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -540,7 +562,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(100);
 
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -566,7 +588,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(0);
 
     const result = await retryAgentMessage(systemKeyAuth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -596,7 +618,7 @@ describe("retryAgentMessage", () => {
       .mockResolvedValue(100);
 
     const result = await retryAgentMessage(mixedAuth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -617,7 +639,7 @@ describe("retryAgentMessage", () => {
 
     // Try to retry the agent message
     const result = await retryAgentMessage(auth, {
-      conversation,
+      conversationResource,
       message: agentMessage,
     });
 
@@ -637,6 +659,7 @@ describe("retryAgentMessage", () => {
     let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
     let anotherProjectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
     let projectConversation: ConversationType;
+    let projectConversationResource: ConversationResource;
     let projectAgentMessage: AgentMessageType;
     let agentWithDifferentSpace: LightAgentConfigurationType;
 
@@ -652,11 +675,13 @@ describe("retryAgentMessage", () => {
       const user = auth.getNonNullableUser();
       const userJson = user.toJSON();
 
-      const projectSpaceGroup = projectSpace.groups.find((g) =>
-        g.isRegularAuto()
+      const projectSpaceGroup = await fetchRegularAutoGroup(
+        projectSpace,
+        internalAdminAuth
       );
-      const anotherProjectSpaceGroup = anotherProjectSpace.groups.find((g) =>
-        g.isRegularAuto()
+      const anotherProjectSpaceGroup = await fetchRegularAutoGroup(
+        anotherProjectSpace,
+        internalAdminAuth
       );
 
       if (projectSpaceGroup) {
@@ -749,6 +774,10 @@ describe("retryAgentMessage", () => {
         throw new Error("Failed to fetch conversation");
       }
       projectConversation = fetchedConversationResult.value;
+      projectConversationResource = await fetchConversationResource(
+        auth,
+        conversationWithoutContent.sId
+      );
 
       // Find the agent message in the conversation
       const agentMessages = projectConversation.content
@@ -764,7 +793,7 @@ describe("retryAgentMessage", () => {
 
     it("should return error when agent is restricted by space usage in project conversation with more than one manual member on that project", async () => {
       const result = await retryAgentMessage(auth, {
-        conversation: projectConversation,
+        conversationResource: projectConversationResource,
         message: projectAgentMessage,
       });
 
@@ -822,6 +851,10 @@ describe("retryAgentMessage", () => {
         throw new Error("Failed to fetch conversation");
       }
       const sameSpaceConversation = fetchedConversationResult.value;
+      const sameSpaceConversationResource = await fetchConversationResource(
+        auth,
+        conversationWithoutContent.sId
+      );
 
       const agentMessages = sameSpaceConversation.content
         .flat()
@@ -837,7 +870,7 @@ describe("retryAgentMessage", () => {
         .mockResolvedValue(100);
 
       const result = await retryAgentMessage(auth, {
-        conversation: sameSpaceConversation,
+        conversationResource: sameSpaceConversationResource,
         message: sameSpaceAgentMessage,
       });
 
@@ -889,6 +922,10 @@ describe("retryAgentMessage", () => {
         throw new Error("Failed to fetch conversation");
       }
       const globalSpaceConversation = fetchedConversationResult.value;
+      const globalSpaceConversationResource = await fetchConversationResource(
+        auth,
+        conversationWithoutContent.sId
+      );
 
       const agentMessages = globalSpaceConversation.content
         .flat()
@@ -904,7 +941,7 @@ describe("retryAgentMessage", () => {
         .mockResolvedValue(100);
 
       const result = await retryAgentMessage(auth, {
-        conversation: globalSpaceConversation,
+        conversationResource: globalSpaceConversationResource,
         message: globalSpaceAgentMessage,
       });
 
@@ -939,6 +976,7 @@ describe("getConversation with branches", () => {
 
     const beforeBranchUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "before branch",
       userContextUsername: "testuser",
@@ -962,6 +1000,7 @@ describe("getConversation with branches", () => {
 
     const atBranchUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "at branch",
       userContextUsername: "testuser",
@@ -985,6 +1024,7 @@ describe("getConversation with branches", () => {
 
     const afterBranchUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "after branch main",
       userContextUsername: "testuser",
@@ -1016,6 +1056,7 @@ describe("getConversation with branches", () => {
 
     const branchUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "branch message",
       userContextUsername: "testuser",
@@ -1245,6 +1286,7 @@ describe("softDeleteAgentMessage", () => {
 describe("softDeleteUserMessageAndReplies", () => {
   let auth: Authenticator;
   let conversation: ConversationType;
+  let conversationResource: ConversationResource;
   let agentConfig: LightAgentConfigurationType;
 
   beforeEach(async () => {
@@ -1272,6 +1314,10 @@ describe("softDeleteUserMessageAndReplies", () => {
       throw new Error("Failed to fetch conversation");
     }
     conversation = fetchedConversationResult.value;
+    conversationResource = await fetchConversationResource(
+      auth,
+      conversationWithoutContent.sId
+    );
   });
 
   it("cascade-deletes the agent message that replied to the deleted user message", async () => {
@@ -1284,7 +1330,7 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: firstUserMessage,
-      conversation,
+      conversationResource,
     });
 
     expect(result.isOk()).toBe(true);
@@ -1328,7 +1374,7 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: lastUser,
-      conversation,
+      conversationResource,
     });
     expect(result.isOk()).toBe(true);
 
@@ -1351,7 +1397,7 @@ describe("softDeleteUserMessageAndReplies", () => {
     // Pre-delete the agent directly.
     const preDelete = await softDeleteAgentMessage(auth, {
       message: firstAgent,
-      conversation,
+      conversation: conversationResource.toJSON(),
     });
     expect(preDelete.isOk()).toBe(true);
 
@@ -1361,6 +1407,10 @@ describe("softDeleteUserMessageAndReplies", () => {
       throw new Error("Failed to refetch conversation");
     }
     const refetchedConversation = refetched.value;
+    const refetchedConversationResource = await fetchConversationResource(
+      auth,
+      conversation.sId
+    );
     const firstUser = refetchedConversation.content
       .flat()
       .find((m): m is UserMessageType => isUserMessageType(m));
@@ -1373,7 +1423,7 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: firstUser,
-      conversation: refetchedConversation,
+      conversationResource: refetchedConversationResource,
     });
     expect(result.isOk()).toBe(true);
 
@@ -1404,7 +1454,7 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: firstUserMessage,
-      conversation,
+      conversationResource,
     });
     expect(result.isOk()).toBe(true);
 
@@ -1412,6 +1462,64 @@ describe("softDeleteUserMessageAndReplies", () => {
       messageIds: [firstAgentMessage.sId],
       conversationId: conversation.sId,
     });
+  });
+
+  it("starts a follow-up after deleting the previous running reply", async () => {
+    const oneTurnConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    const fetched = await getConversation(auth, oneTurnConversation.sId);
+    if (fetched.isErr()) {
+      throw fetched.error;
+    }
+    const userMessage = fetched.value.content
+      .flat()
+      .find((message): message is UserMessageType =>
+        isUserMessageType(message)
+      );
+    if (!userMessage) {
+      throw new Error("No user message found in conversation");
+    }
+
+    const deleted = await softDeleteUserMessageAndReplies(auth, {
+      message: userMessage,
+      conversationResource: await fetchConversationResource(
+        auth,
+        oneTurnConversation.sId
+      ),
+    });
+    expect(deleted.isOk()).toBe(true);
+
+    const afterDelete = await getConversation(auth, oneTurnConversation.sId);
+    if (afterDelete.isErr()) {
+      throw afterDelete.error;
+    }
+
+    const user = auth.getNonNullableUser().toJSON();
+    const followUp = await postUserMessage(auth, {
+      conversationResource: await fetchConversationResource(
+        auth,
+        oneTurnConversation.sId
+      ),
+      content: "Follow-up",
+      mentions: [{ configurationId: agentConfig.sId }],
+      context: {
+        username: user.username,
+        timezone: "UTC",
+        fullName: user.fullName,
+        email: user.email,
+        profilePictureUrl: user.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(followUp.isOk()).toBe(true);
+    if (followUp.isOk()) {
+      expect(followUp.value.userMessage.visibility).toBe("visible");
+      expect(followUp.value.agentMessages).toHaveLength(1);
+    }
   });
 
   it("does not signal gracefullyStopAgentLoop when the cascaded agent reply already finished", async () => {
@@ -1441,7 +1549,10 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     const result = await softDeleteUserMessageAndReplies(auth, {
       message: firstUserMessage,
-      conversation: refetched.value,
+      conversationResource: await fetchConversationResource(
+        auth,
+        conversation.sId
+      ),
     });
     expect(result.isOk()).toBe(true);
 
@@ -1459,6 +1570,7 @@ describe("postUserMessage", () => {
     ReturnType<typeof createResourceTest>
   >["globalSpace"];
   let conversation: ConversationType;
+  let conversationResource: ConversationResource;
   let agentConfig1: LightAgentConfigurationType;
 
   beforeEach(async () => {
@@ -1488,6 +1600,10 @@ describe("postUserMessage", () => {
       throw new Error("Failed to fetch conversation");
     }
     conversation = fetchedConversationResult.value;
+    conversationResource = await fetchConversationResource(
+      auth,
+      conversationWithoutContent.sId
+    );
 
     vi.clearAllMocks();
   });
@@ -1526,7 +1642,10 @@ describe("postUserMessage", () => {
     const noCreditUserJson = noCreditUser.toJSON();
 
     const result = await postUserMessage(noCreditAuth, {
-      conversation: fetchedConversationResult.value,
+      conversationResource: await fetchConversationResource(
+        noCreditAuth,
+        fetchedConversationResult.value.sId
+      ),
       content: "Programmatic message",
       mentions: [],
       context: {
@@ -1557,6 +1676,40 @@ describe("postUserMessage", () => {
     rateLimiterSpy.mockRestore();
   });
 
+  it("should reject mentions of a retired global agent", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const result = await postUserMessage(auth, {
+      conversationResource: await fetchConversationResource(
+        auth,
+        conversation.sId
+      ),
+      content: `Hello @claude-4-sonnet`,
+      mentions: [
+        {
+          configurationId: GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
+        } satisfies AgentMention,
+      ],
+      context: {
+        username: userJson.username,
+        timezone: "UTC",
+        fullName: userJson.fullName,
+        email: userJson.email,
+        profilePictureUrl: userJson.image,
+        origin: "zapier",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(400);
+      expect(result.error.api_error.type).toBe("agent_inaccessible");
+    }
+    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+  });
+
   it("should preserve agent mentions in the returned userMessage", async () => {
     const mentions: MentionType[] = [
       {
@@ -1568,7 +1721,7 @@ describe("postUserMessage", () => {
     const userJson = user.toJSON();
 
     const result = await postUserMessage(auth, {
-      conversation,
+      conversationResource,
       content: `Hello @${agentConfig1.name}`,
       mentions,
       context: {
@@ -1633,7 +1786,7 @@ describe("postUserMessage", () => {
     const userJson = user.toJSON();
 
     const result = await postUserMessage(auth, {
-      conversation,
+      conversationResource,
       content: `Hello @${mentionedUser.username}`,
       mentions,
       context: {
@@ -1701,7 +1854,7 @@ describe("postUserMessage", () => {
     const userJson = user.toJSON();
 
     const result = await postUserMessage(auth, {
-      conversation,
+      conversationResource,
       content: `Hello @${mentionedUser.username} and @${agentConfig1.name}`,
       mentions,
       context: {
@@ -1758,7 +1911,7 @@ describe("postUserMessage", () => {
     const userJson = user.toJSON();
 
     const result = await postUserMessage(auth, {
-      conversation,
+      conversationResource,
       content: "Hello without mentions",
       mentions: [],
       context: {
@@ -1798,6 +1951,7 @@ describe("postUserMessage", () => {
       const compactionMessageRow = await CompactionMessageModel.create({
         status: "created",
         content: null,
+        conversationId: conversation.id,
         workspaceId: workspace.id,
       });
       await MessageModel.create({
@@ -1816,7 +1970,10 @@ describe("postUserMessage", () => {
       }
 
       const result = await postUserMessage(auth, {
-        conversation: fetched.value,
+        conversationResource: await fetchConversationResource(
+          auth,
+          fetched.value.sId
+        ),
         content: "should be blocked",
         mentions: [],
         context: {
@@ -1849,6 +2006,7 @@ describe("postUserMessage", () => {
       const compactionMessageRow = await CompactionMessageModel.create({
         status: "succeeded",
         content: "compacted summary",
+        conversationId: conversation.id,
         workspaceId: workspace.id,
       });
       await MessageModel.create({
@@ -1868,7 +2026,10 @@ describe("postUserMessage", () => {
       }
 
       const result = await postUserMessage(auth, {
-        conversation: fetched.value,
+        conversationResource: await fetchConversationResource(
+          auth,
+          fetched.value.sId
+        ),
         content: "should be allowed",
         mentions: [],
         context: {
@@ -1900,7 +2061,7 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const result = await postUserMessage(auth, {
-        conversation,
+        conversationResource,
         content: "Hello without explicit mentions",
         mentions: [],
         context: {
@@ -1958,7 +2119,7 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const firstFromUser = await postUserMessage(auth, {
-        conversation,
+        conversationResource,
         content: "first from A",
         mentions: [],
         context: {
@@ -1993,7 +2154,10 @@ describe("postUserMessage", () => {
       vi.clearAllMocks();
 
       const secondFromUser = await postUserMessage(auth, {
-        conversation: afterFirst.value,
+        conversationResource: await fetchConversationResource(
+          auth,
+          afterFirst.value.sId
+        ),
         content: "second from A",
         mentions: [],
         context: {
@@ -2040,7 +2204,7 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const result = await postUserMessage(auth, {
-        conversation,
+        conversationResource,
         content: "From extension",
         mentions: [],
         context: {
@@ -2078,7 +2242,7 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const result = await postUserMessage(auth, {
-        conversation,
+        conversationResource,
         content: "Hello without explicit mentions",
         mentions: [],
         context: {
@@ -2132,7 +2296,10 @@ describe("postUserMessage", () => {
         }
 
         resultWithOtherAgent = await postUserMessage(auth, {
-          conversation: afterFirstPostResult.value,
+          conversationResource: await fetchConversationResource(
+            auth,
+            afterFirstPostResult.value.sId
+          ),
           content: "Hello with explicit agent mention",
           mentions: [
             {
@@ -2202,7 +2369,7 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const result = await postUserMessage(auth, {
-        conversation,
+        conversationResource,
         content: "API message",
         mentions: [],
         context: {
@@ -2246,7 +2413,7 @@ describe("postUserMessage", () => {
       const userBJson = userB.toJSON();
 
       const firstFromA = await postUserMessage(auth, {
-        conversation,
+        conversationResource,
         content: "first from A",
         mentions: [],
         context: {
@@ -2273,7 +2440,10 @@ describe("postUserMessage", () => {
       }
 
       const firstFromB = await postUserMessage(authB, {
-        conversation: afterA.value,
+        conversationResource: await fetchConversationResource(
+          authB,
+          afterA.value.sId
+        ),
         content: "first from B",
         mentions: [],
         context: {
@@ -2302,7 +2472,10 @@ describe("postUserMessage", () => {
       vi.clearAllMocks();
 
       const secondFromA = await postUserMessage(auth, {
-        conversation: afterB.value,
+        conversationResource: await fetchConversationResource(
+          auth,
+          afterB.value.sId
+        ),
         content: "second from A",
         mentions: [],
         context: {
@@ -2334,7 +2507,7 @@ describe("postUserMessage", () => {
     let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
     let nonMemberAuth: Authenticator;
     let memberAuth: Authenticator;
-    let projectConversation: ConversationType;
+    let projectConversationResource: ConversationResource;
 
     beforeEach(async () => {
       // Create a project space
@@ -2357,8 +2530,9 @@ describe("postUserMessage", () => {
       );
 
       // Add member user to the project space group
-      const projectSpaceGroup = projectSpace.groups.find((g) =>
-        g.isRegularAuto()
+      const projectSpaceGroup = await fetchRegularAutoGroup(
+        projectSpace,
+        internalAdminAuth
       );
       if (projectSpaceGroup) {
         const addRes = await projectSpaceGroup.dangerouslyAddMember(
@@ -2395,7 +2569,10 @@ describe("postUserMessage", () => {
       if (fetchedConversationResult.isErr()) {
         throw new Error("Failed to fetch conversation");
       }
-      projectConversation = fetchedConversationResult.value;
+      projectConversationResource = await fetchConversationResource(
+        memberAuth,
+        conversationWithoutContent.sId
+      );
     });
 
     it("should allow posting a message when user is a project member", async () => {
@@ -2403,7 +2580,7 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const result = await postUserMessage(memberAuth, {
-        conversation: projectConversation,
+        conversationResource: projectConversationResource,
         content: "Hello from a project member",
         mentions: [],
         context: {
@@ -2430,7 +2607,7 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const result = await postUserMessage(nonMemberAuth, {
-        conversation: projectConversation,
+        conversationResource: projectConversationResource,
         content: "Hello from a non-member",
         mentions: [],
         context: {
@@ -2472,7 +2649,7 @@ describe("postUserMessage", () => {
       expect(restrictedPod?.isOpen()).toBe(false);
 
       const result = await postUserMessage(apiKeyAuth, {
-        conversation: projectConversation,
+        conversationResource: projectConversationResource,
         content: "Hello from an integration",
         mentions: [],
         context: {
@@ -2521,7 +2698,7 @@ describe("postUserMessage", () => {
       expect(openPod?.isOpen()).toBe(true);
 
       const result = await postUserMessage(apiKeyAuth, {
-        conversation: projectConversation,
+        conversationResource: projectConversationResource,
         content: "Hello from an integration",
         mentions: [],
         context: {
@@ -2569,7 +2746,7 @@ describe("postUserMessage", () => {
       expect(openPod?.isOpen()).toBe(true);
 
       const result = await postUserMessage(apiKeyAuth, {
-        conversation: projectConversation,
+        conversationResource: projectConversationResource,
         content: "Hello from an integration",
         mentions: [],
         context: {
@@ -2597,14 +2774,12 @@ describe("postUserMessage", () => {
       const user = memberAuth.getNonNullableUser();
       const userJson = user.toJSON();
 
-      // Create a conversation with a non-existent spaceId
-      const conversationWithInvalidSpace: ConversationType = {
-        ...projectConversation,
-        spaceId: "invalid-space-id",
-      };
+      const fetchPodSpy = vi
+        .spyOn(SpaceResource, "fetchById")
+        .mockResolvedValue(null);
 
       const result = await postUserMessage(memberAuth, {
-        conversation: conversationWithInvalidSpace,
+        conversationResource: projectConversationResource,
         content: "Hello",
         mentions: [],
         context: {
@@ -2617,6 +2792,8 @@ describe("postUserMessage", () => {
         },
         skipToolsValidation: false,
       });
+
+      fetchPodSpy.mockRestore();
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -2649,7 +2826,10 @@ describe("postUserMessage", () => {
       const userJson = user.toJSON();
 
       const result = await postUserMessage(nonMemberAuth, {
-        conversation: regularConversation,
+        conversationResource: await fetchConversationResource(
+          nonMemberAuth,
+          regularConversation.sId
+        ),
         content: "Hello from a non-member to regular conversation",
         mentions: [],
         context: {
@@ -2691,7 +2871,7 @@ describe("postUserMessage", () => {
       );
 
       const result = await postUserMessage(apiKeyAuth, {
-        conversation,
+        conversationResource,
         content: "Hello from API key",
         mentions: [],
         context: {
@@ -2716,6 +2896,7 @@ describe("postUserMessage", () => {
     let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
     let anotherProjectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
     let projectConversation: ConversationType;
+    let projectConversationResource: ConversationResource;
     let agentWithDifferentSpace: LightAgentConfigurationType;
 
     async function setupProjectWithRestrictedAgent({
@@ -2731,11 +2912,13 @@ describe("postUserMessage", () => {
       );
       const user = auth.getNonNullableUser();
 
-      const projectSpaceGroup = projectSpace.groups.find((g) =>
-        g.isRegularAuto()
+      const projectSpaceGroup = await fetchRegularAutoGroup(
+        projectSpace,
+        internalAdminAuth
       );
-      const anotherProjectSpaceGroup = anotherProjectSpace.groups.find((g) =>
-        g.isRegularAuto()
+      const anotherProjectSpaceGroup = await fetchRegularAutoGroup(
+        anotherProjectSpace,
+        internalAdminAuth
       );
 
       if (projectSpaceGroup) {
@@ -2824,6 +3007,10 @@ describe("postUserMessage", () => {
         throw new Error("Failed to fetch conversation");
       }
       projectConversation = fetchedConversationResult.value;
+      projectConversationResource = await fetchConversationResource(
+        auth,
+        conversationWithoutContent.sId
+      );
     }
 
     describe("with projects feature flag enabled regarding branches", () => {
@@ -2847,7 +3034,7 @@ describe("postUserMessage", () => {
         expect(branchesBefore.length).toBe(0);
 
         const result = await postUserMessage(auth, {
-          conversation: projectConversation,
+          conversationResource: projectConversationResource,
           content: `Hello @${agentWithDifferentSpace.name}`,
           mentions: [{ configurationId: agentWithDifferentSpace.sId }],
           context: {
@@ -2873,7 +3060,6 @@ describe("postUserMessage", () => {
           );
         expect(branchesAfter.length).toBe(1);
         const branch = branchesAfter[0];
-        expect(projectConversation.branchId).toBe(branch.sId);
 
         const newUserMessageId = result.value.userMessage.id;
         const newUserMessageRow = await MessageModel.findOne({
@@ -2908,7 +3094,7 @@ describe("postUserMessage", () => {
           .mockResolvedValue(100);
 
         const firstPost = await postUserMessage(auth, {
-          conversation: projectConversation,
+          conversationResource: projectConversationResource,
           content: `First message @${agentWithDifferentSpace.name}`,
           mentions: [{ configurationId: agentWithDifferentSpace.sId }],
           context: {
@@ -2927,23 +3113,22 @@ describe("postUserMessage", () => {
           return;
         }
 
-        expect(projectConversation.branchId).toBeDefined();
-        const branchId = projectConversation.branchId!;
+        const branchesAfterFirstPost =
+          await ConversationBranchResource.listForConversation(
+            auth,
+            projectConversation.id
+          );
+        expect(branchesAfterFirstPost.length).toBe(1);
+        const branchId = branchesAfterFirstPost[0].sId;
 
-        const conversationWithBranch = await getConversation(
+        const convInBranchResource = await fetchConversationResource(
           auth,
-          projectConversation.sId,
-          false,
-          branchId
+          projectConversation.sId
         );
-        expect(conversationWithBranch.isOk()).toBe(true);
-        if (conversationWithBranch.isErr()) {
-          return;
-        }
-        const convInBranch = conversationWithBranch.value;
 
         const secondPost = await postUserMessage(auth, {
-          conversation: convInBranch,
+          conversationResource: convInBranchResource,
+          branchId,
           content: "Second message in branch",
           mentions: [],
           context: {
@@ -2996,7 +3181,7 @@ describe("postUserMessage", () => {
         expect(projectConversation.content.length).toBe(0);
 
         const result = await postUserMessage(auth, {
-          conversation: projectConversation,
+          conversationResource: projectConversationResource,
           content: `Hello @${agentWithDifferentSpace.name}`,
           mentions: [{ configurationId: agentWithDifferentSpace.sId }],
           context: {
@@ -3022,7 +3207,6 @@ describe("postUserMessage", () => {
           );
         expect(branchesAfter.length).toBe(1);
         const branch = branchesAfter[0];
-        expect(projectConversation.branchId).toBe(branch.sId);
 
         // Anchor message: rank 0, empty content, origin "branch_anchor".
         const anchorMessageRow = await MessageModel.findOne({
@@ -3133,7 +3317,7 @@ describe("postUserMessage", () => {
           .mockResolvedValue(100);
 
         const result = await postUserMessage(auth, {
-          conversation: projectConversation,
+          conversationResource: projectConversationResource,
           content: `Hello @${agentWithDifferentSpace.name}`,
           mentions: [{ configurationId: agentWithDifferentSpace.sId }],
           context: {
@@ -3159,7 +3343,6 @@ describe("postUserMessage", () => {
           );
         expect(branchesAfter.length).toBe(1);
         const branch = branchesAfter[0];
-        expect(projectConversation.branchId).toBe(branch.sId);
 
         const anchorMessageRow = await MessageModel.findOne({
           where: {
@@ -3248,6 +3431,7 @@ describe("compactConversation", () => {
     const compactionMessageRow = await CompactionMessageModel.create({
       status: "succeeded",
       content: "compacted summary",
+      conversationId: conversation.id,
       workspaceId: workspace.id,
     });
     await MessageModel.create({
@@ -3288,6 +3472,7 @@ describe("compactConversation", () => {
       status: "created",
       agentConfigurationId: agentConfig.sId,
       agentConfigurationVersion: 0,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       skipToolsValidation: false,
     });
@@ -3322,7 +3507,7 @@ describe("compactConversation", () => {
 describe("editUserMessage", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
-  let conversation: ConversationType;
+  let conversationResource: ConversationResource;
   let agentConfig1: LightAgentConfigurationType;
   let agentConfig2: LightAgentConfigurationType;
   let originalUserMessage: UserMessageType;
@@ -3348,27 +3533,19 @@ describe("editUserMessage", () => {
       visibility: "unlisted",
     });
 
-    const fetchedConversationResult = await getConversation(
+    conversationResource = await fetchConversationResource(
       auth,
       conversationWithoutContent.sId
     );
-    if (fetchedConversationResult.isErr()) {
-      throw new Error("Failed to fetch conversation");
-    }
-    conversation = fetchedConversationResult.value;
 
-    // Create an original user message with agent mentions
+    // Create an original user message without mentions or agent replies.
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
 
     const postResult = await postUserMessage(auth, {
-      conversation,
-      content: `Original message with @${agentConfig1.name}`,
-      mentions: [
-        {
-          configurationId: agentConfig1.sId,
-        } satisfies AgentMention,
-      ],
+      conversationResource,
+      content: "Original message without mentions",
+      mentions: [],
       context: {
         username: userJson.username,
         timezone: "UTC",
@@ -3378,6 +3555,7 @@ describe("editUserMessage", () => {
         origin: "web",
       },
       skipToolsValidation: false,
+      skipDustAutoMention: true,
     });
 
     if (postResult.isErr()) {
@@ -3399,7 +3577,7 @@ describe("editUserMessage", () => {
     ];
 
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
       content: `Edited message with @${agentConfig1.name} and @${agentConfig2.name}`,
       mentions,
@@ -3460,7 +3638,7 @@ describe("editUserMessage", () => {
     ];
 
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
       content: `Edited message with @${mentionedUser.username}`,
       mentions,
@@ -3518,7 +3696,7 @@ describe("editUserMessage", () => {
     ];
 
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
       content: `Edited message with @${mentionedUser.username} and @${agentConfig2.name}`,
       mentions,
@@ -3565,7 +3743,7 @@ describe("editUserMessage", () => {
 
   it("should preserve empty mentions array when editing removes all mentions", async () => {
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
       content: "Edited message without mentions",
       mentions: [],
@@ -3612,7 +3790,7 @@ describe("editUserMessage", () => {
     ];
 
     const result = await editUserMessage(auth, {
-      conversation,
+      conversationResource,
       message: originalUserMessage,
       content: `Edited message with only user mention @${mentionedUser.username}`,
       mentions,
@@ -3690,12 +3868,13 @@ describe("postNewContentFragment", () => {
 
     // SpaceFactory.project creates a group and associates it with the space
     // We need to add the user to those groups
-    // The groups are available on space.groups
-    const projectSpaceGroup = projectSpace.groups.find((g) =>
-      g.isRegularAuto()
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
     );
-    const anotherProjectSpaceGroup = anotherProjectSpace.groups.find((g) =>
-      g.isRegularAuto()
+    const anotherProjectSpaceGroup = await fetchRegularAutoGroup(
+      anotherProjectSpace,
+      internalAdminAuth
     );
 
     if (projectSpaceGroup) {
@@ -4148,17 +4327,16 @@ describe("postNewContentFragment", () => {
       });
       expect(messageCountAfterFirst).toBe(1);
 
-      const conversationWithoutContentResult =
-        await ConversationResource.fetchConversationWithoutContent(
-          auth,
-          conversationWithoutContent.sId
-        );
-      expect(conversationWithoutContentResult.isOk()).toBe(true);
-      if (conversationWithoutContentResult.isErr()) {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversationWithoutContent.sId
+      );
+      expect(conversationResource).not.toBeNull();
+      if (!conversationResource) {
         throw new Error("Failed to fetch conversation metadata");
       }
 
-      const conversationAfterFirst = conversationWithoutContentResult.value;
+      const conversationAfterFirst = conversationResource.toJSON();
 
       const second = await postNewContentFragment(
         auth,
@@ -4230,19 +4408,18 @@ describe("postNewContentFragment", () => {
       );
       expect(first.isOk()).toBe(true);
 
-      const conversationMetadataResult =
-        await ConversationResource.fetchConversationWithoutContent(
-          auth,
-          conversationWithoutContent.sId
-        );
-      expect(conversationMetadataResult.isOk()).toBe(true);
-      if (conversationMetadataResult.isErr()) {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversationWithoutContent.sId
+      );
+      expect(conversationResource).not.toBeNull();
+      if (!conversationResource) {
         throw new Error("Failed to fetch conversation metadata");
       }
 
       const second = await postNewContentFragment(
         auth,
-        conversationMetadataResult.value,
+        conversationResource.toJSON(),
         {
           ...input,
           supersededContentFragmentId: first.isOk()
@@ -4380,6 +4557,7 @@ describe("isConversationEventAllowedForAuth", () => {
 
     const baseUserMessage = await UserMessageModel.create({
       userId: user.id,
+      conversationId: conversation.id,
       workspaceId: workspace.id,
       content: "Base message",
       userContextUsername: "testuser",
@@ -4738,19 +4916,16 @@ describe("conversation fetch forkingData", () => {
       },
     ];
 
-    const conversationResult =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        parentConversation.sId,
-        { includeForkingData: true }
-      );
-    expect(conversationResult.isOk()).toBe(true);
-
-    if (conversationResult.isOk()) {
-      expect(conversationResult.value.forkingData).toEqual({
-        forkedChildren: expectedForkedChildren,
-      });
-    }
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      parentConversation.sId,
+      { includeForkingData: true }
+    );
+    expect(conversationResource).not.toBeNull();
+    const forkingData = await conversationResource!.fetchForkingData(auth);
+    expect(forkingData).toEqual({
+      forkedChildren: expectedForkedChildren,
+    });
   });
 });
 
@@ -4787,7 +4962,10 @@ describe("postUserMessage no-seat gate", () => {
 
     const userJson = user.toJSON();
     const result = await postUserMessage(auth, {
-      conversation: fetched.value,
+      conversationResource: await fetchConversationResource(
+        auth,
+        fetched.value.sId
+      ),
       content: `Hello @${agent.name}`,
       mentions: [{ configurationId: agent.sId } satisfies AgentMention],
       context: {

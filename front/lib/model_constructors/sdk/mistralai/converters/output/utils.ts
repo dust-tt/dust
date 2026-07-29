@@ -54,8 +54,9 @@ function usageToTokenUsageEvent(
       shortCacheCreated: 0,
       cacheHit: 0,
       standardInput: usage?.promptTokens ?? 0,
-      standardOutput: usage?.completionTokens ?? 0,
-      reasoning: 0,
+      // Mistral exposes one aggregate completion count with no reasoning-token
+      // breakdown, so the inclusive total remains unattributed.
+      totalOutput: usage?.completionTokens ?? 0,
     },
     metadata,
   };
@@ -102,7 +103,7 @@ export function streamErrorToErrorEvent(
         return buildErrorEvent({
           metadata,
           type: "rate_limit_error",
-          message: `Rate limit exceeded for Mistral/${metadata.modelId}: ${error.message}`,
+          message: `Rate limit exceeded for Mistral/${metadata.model}: ${error.message}`,
           originalError: error,
         });
       default:

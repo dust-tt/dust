@@ -44,10 +44,10 @@ import type { ModelResponseEvent } from "@app/lib/model_constructors/types/outpu
 import { describe, expect, it, vi } from "vitest";
 
 const metadata: EndpointMetadata = {
-  providerId: "anthropic",
-  api: "anthropic",
+  lab: "anthropic",
+  host: "anthropic",
   region: "us",
-  modelId: "claude-sonnet-4-6",
+  model: "claude-sonnet-4-6",
 };
 
 // The real leaf converters, bundled into the interface the composites consume.
@@ -133,8 +133,7 @@ function makeStubConverters(): OutputEventConverters {
         shortCacheCreated: 0,
         cacheHit: 0,
         standardInput: 0,
-        standardOutput: 0,
-        reasoning: 0,
+        totalOutput: 0,
       },
       metadata,
     })),
@@ -422,7 +421,7 @@ describe("messageDeltaUsageToTokenUsageEvent", () => {
         shortCacheCreated: 4,
         cacheHit: 20,
         standardInput: 100,
-        standardOutput: 35,
+        totalOutput: 50,
         reasoning: 15,
       },
       metadata,
@@ -447,14 +446,14 @@ describe("messageDeltaUsageToTokenUsageEvent", () => {
         shortCacheCreated: 0,
         cacheHit: 20,
         standardInput: 100,
-        standardOutput: 35,
+        totalOutput: 50,
         reasoning: 15,
       },
       metadata,
     });
   });
 
-  it("rolls reasoning into standardOutput when there is no breakdown", () => {
+  it("keeps inclusive output without inventing a reasoning breakdown", () => {
     const usage: BetaMessageDeltaUsage = {
       cache_creation_input_tokens: null,
       cache_read_input_tokens: null,
@@ -472,8 +471,7 @@ describe("messageDeltaUsageToTokenUsageEvent", () => {
         shortCacheCreated: 0,
         cacheHit: 0,
         standardInput: 0,
-        standardOutput: 40,
-        reasoning: 0,
+        totalOutput: 40,
       },
       metadata,
     });
@@ -512,6 +510,25 @@ describe("streamErrorToErrorEvent", () => {
     const result = streamErrorToErrorEvent(metadata, err);
     expect(result.content.type).toBe("network_error");
     expect(result.content.originalError).toBe(err);
+  });
+
+  it("maps file download failures to server_error", () => {
+    const err = new APIError(
+      400,
+      {
+        type: "error",
+        error: {
+          type: "invalid_request_error",
+          message: "Unable to download the file. Please verify the URL.",
+        },
+      },
+      "Unable to download the file. Please verify the URL.",
+      undefined,
+      "invalid_request_error"
+    );
+    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
+      "server_error"
+    );
   });
 
   it.each([
@@ -1263,7 +1280,7 @@ describe("rawOutputToEvents", () => {
         shortCacheCreated: 7,
         cacheHit: 0,
         standardInput: 3,
-        standardOutput: 5,
+        totalOutput: 5,
         reasoning: 0,
       },
     });

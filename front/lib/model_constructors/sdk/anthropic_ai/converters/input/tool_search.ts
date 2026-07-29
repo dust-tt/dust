@@ -1,3 +1,5 @@
+import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/model_constructors/types/tool_search";
+
 // Shared by the legacy LLM client (lib/api/llm/clients/anthropic) and the
 // model_constructors client. Both prepend the tool search tool when at least one
 // tool is deferred, and both surface the same system-prompt hint so the model
@@ -16,22 +18,16 @@ export const TOOL_SEARCH_TOOL = {
 // tool is prepended.
 const TOOL_SEARCH_TOOL_TYPE = TOOL_SEARCH_TOOL.type;
 
-// Added to the system prompt only when the search tool is in the request. Phrased
-// without naming the bm25 tool so it stays accurate across search implementations.
-//
-// The second paragraph steers the model away from mixing a tool search with a
-// regular tool call in the same turn: the API leaves such searches un-run (the
-// turn ends on the tool call), and replaying the un-run blocks is fragile.
+// Added to the system prompt only when the search tool is in the request. The
+// Anthropic-specific paragraph steers the model away from mixing a tool search
+// with a regular tool call in the same turn. The API leaves such searches un-run
+// when the turn ends on the tool call, and replaying the un-run blocks is fragile.
 // Skill-enabling tools are called out explicitly because they are the most
 // frequent offender observed in practice. It also discourages chaining searches
 // when a tool returned by the first search can already handle the task.
-export const TOOL_SEARCH_INSTRUCTION =
-  "You can search for and load far more tools than are visible to you now, " +
-  "including ones that fetch live or account-specific data and act in external " +
-  "systems. When a request needs current state, the user's own systems, or an " +
-  "action your visible tools cannot take, search for a tool before making " +
-  "something up, answering from stale memory, or telling the user it is not " +
-  "possible.\n\n" +
+export const ANTHROPIC_TOOL_SEARCH_INSTRUCTION =
+  TOOL_SEARCH_INSTRUCTION +
+  "\n\n" +
   "Never mix tool searches with other tool calls in the same turn. Issuing " +
   "several searches together is fine, but if you call any other tool " +
   "(including enabling a skill) in the same turn as a search, the search is " +

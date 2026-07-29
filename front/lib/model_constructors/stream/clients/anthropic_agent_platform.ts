@@ -3,8 +3,8 @@ import type {
   BetaRawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import type {
+  Model as HostModel,
   MessageCreateParamsNonStreaming,
-  Model,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import AnthropicVertex from "@anthropic-ai/vertex-sdk";
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
@@ -16,14 +16,14 @@ import { WithAnthropicAIOutputConverter } from "@app/lib/model_constructors/sdk/
 import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
+import { AGENT_PLATFORM_HOST } from "@app/lib/model_constructors/types/hosts";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
+import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
 import {
-  CLAUDE_HAIKU_4_5_MODEL_ID,
-  type ModelId,
-} from "@app/lib/model_constructors/types/model_ids";
+  CLAUDE_HAIKU_4_5,
+  type Model,
+} from "@app/lib/model_constructors/types/models";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
-import { AGENT_PLATFORM_API } from "@app/lib/model_constructors/types/provider_apis";
-import { ANTHROPIC_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
 
 import { z } from "zod";
 
@@ -41,8 +41,8 @@ export const anthropicAgentPlatformConfigSchema = inputConfigSchema.extend({
     .optional(),
 });
 
-const MODEL_MAPPING: Partial<Record<ModelId, Model>> = {
-  [CLAUDE_HAIKU_4_5_MODEL_ID]: "claude-haiku-4-5@20251001",
+const MODEL_MAPPING: Partial<Record<Model, HostModel>> = {
+  [CLAUDE_HAIKU_4_5]: "claude-haiku-4-5@20251001",
 };
 
 export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputConverter(
@@ -59,8 +59,8 @@ export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputC
     regionalEndpoint: AgentPlatformRegionalEndpoint;
   };
 
-  static readonly providerId = ANTHROPIC_PROVIDER_ID;
-  static readonly api = AGENT_PLATFORM_API;
+  static readonly lab = ANTHROPIC_LAB;
+  static readonly host = AGENT_PLATFORM_HOST;
 
   static readonly regionalEndpoint: AgentPlatformRegionalEndpoint;
 
@@ -78,7 +78,7 @@ export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputC
     });
   }
 
-  modelIdToApiModelId = (modelId: ModelId): Model =>
+  modelToHostModel = (modelId: Model): HostModel =>
     MODEL_MAPPING[modelId] ?? modelId;
 
   // Vertex AI rejects URL image sources, so inline images as base64.

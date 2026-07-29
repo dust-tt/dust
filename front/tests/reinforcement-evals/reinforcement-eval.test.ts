@@ -39,15 +39,6 @@ function formatToolCallSummary(tc: ToolCall): string {
       if (instructionEdits?.length) {
         parts.push(`${instructionEdits.length} instructionEdit(s)`);
       }
-      const toolEdits = Array.isArray(args.toolEdits)
-        ? args.toolEdits
-        : undefined;
-      if (toolEdits?.length) {
-        const items = toolEdits
-          .map((t) => `${t.action ?? "?"} ${t.toolId ?? "?"}`)
-          .join(", ");
-        parts.push(`toolEdits=[${items}]`);
-      }
       return `edit_skill(${parts.join(", ")})`;
     }
     default:

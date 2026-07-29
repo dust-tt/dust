@@ -1,7 +1,7 @@
 import { getSkillIcon } from "@app/lib/skill";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import { AttachmentChip } from "@dust-tt/sparkle";
 import { visit } from "unist-util-visit";
 
@@ -21,7 +21,10 @@ export function SkillBlock({
   skillIcon,
   skillName,
 }: SkillBlockProps) {
-  const href = isBuilder(owner)
+  const { hasPermission } = useWorkspacePermissions();
+  const canCreateSkill = hasPermission("create", "skill");
+
+  const href = canCreateSkill
     ? getManageSkillsRoute(owner.sId, skillId)
     : undefined;
 

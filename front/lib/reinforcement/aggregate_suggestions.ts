@@ -4,7 +4,6 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
@@ -53,7 +52,7 @@ It is ok to simply call no tool if all suggestions are minor.
   aggregation_rules: `
 Start by grouping suggestions by skill, then within each skill group by topic:
 - For instruction edits, group by coherent theme within the skill (e.g. tone, tool usage, formatting). Suggestions that address different topics MUST be kept as separate suggestions — do NOT merge unrelated topics into one suggestion.
-- For inline tool reference changes, group by the target <tool> reference within each skill. Tool references are instruction edits, so NEVER output separate tool edits.
+- For inline tool reference changes, group by the target <tool> reference within each skill. Tool references are instruction edits.
 - For agent-facing description edits, create AT MOST ONE description-edit suggestion per skill. When multiple drafts target the description, merge them into a single coherent replacement. Max description size is ${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters.
 NEVER create more than one suggestion per (skill, topic) pair.
 
@@ -78,7 +77,6 @@ There may be situations where suggestions are co-dependent. For example, there m
 You are provided all of the attributes associated with a conversation suggestion. You MUST use these EXACT attributes to create the final suggestion.
 The exceptions are:
 - The "analysis", "title", and "sourceSuggestionIds" attributes; these MUST be newly authored for each final suggestion.
-- Legacy "toolEdits"; convert these into instruction edits that add or remove the corresponding inline <tool> tag. Do NOT include "toolEdits" in the final edit_skill call.
 
 For "analysis": Provide a user-facing explanation of why the suggestion is impactful and how many conversations support it. The end user does NOT care about the technical considerations behind your thought process.
 
@@ -105,13 +103,6 @@ function formatSuggestion(s: SkillSuggestionType): string {
           xml += `<instructionEdit targetBlockId="${escapeXml(e.targetBlockId)}" type="${escapeXml(e.type)}"><content>${escapeXml(e.content)}</content></instructionEdit>`;
         }
         xml += "</instructionEdits>";
-      }
-      if (s.suggestion.toolEdits?.length) {
-        xml += "<toolEdits>";
-        for (const t of s.suggestion.toolEdits) {
-          xml += `<toolEdit action="${escapeXml(t.action)}" toolId="${escapeXml(t.toolId)}"/>`;
-        }
-        xml += "</toolEdits>";
       }
       if (s.suggestion.agentFacingDescriptionEdit) {
         xml += `<agentFacingDescriptionEdit><content>${escapeXml(s.suggestion.agentFacingDescriptionEdit.content)}</content></agentFacingDescriptionEdit>`;
@@ -319,7 +310,7 @@ export async function createSkillSuggestionsConversation(
   );
 
   const conversationTitle = `Reinforced suggestions for ${skillType.name} skill`;
-  const conversation = await createConversation(auth, {
+  const conversationResource = await createConversation(auth, {
     title: conversationTitle,
     visibility: "unlisted",
     spaceId: null,
@@ -334,11 +325,11 @@ export async function createSkillSuggestionsConversation(
   await SkillSuggestionResource.bulkSetNotificationConversation(
     auth,
     pendingSuggestions,
-    conversation.id
+    conversationResource.id
   );
 
   const contentFragmentRes = await toFileContentFragment(auth, {
-    conversation,
+    conversation: conversationResource,
     contentFragment: {
       title: `${pendingSuggestions.length} pending suggestions for ${skillType.name} skill`,
       content: formattedSuggestions,
@@ -364,7 +355,7 @@ export async function createSkillSuggestionsConversation(
 
   const contentFragmentPostRes = await postNewContentFragment(
     auth,
-    conversation,
+    conversationResource.toJSON(),
     contentFragmentRes.value,
     {
       username: author.username,
@@ -393,7 +384,7 @@ export async function createSkillSuggestionsConversation(
   );
 
   const messageRes = await postUserMessage(auth, {
-    conversation,
+    conversationResource,
     content,
     mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
     context: {
@@ -422,7 +413,7 @@ export async function createSkillSuggestionsConversation(
     editors,
     (editor) =>
       ConversationResource.upsertParticipation(auth, {
-        conversation,
+        conversation: conversationResource,
         action: "posted",
         user: editor,
         lastReadAt: null,
@@ -477,18 +468,20 @@ export async function postSkillSuggestionStatusUpdate(
   };
 
   for (const [conversationId, items] of byConversation) {
-    const conversationRes = await getConversation(auth, conversationId);
-    if (conversationRes.isErr()) {
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversationResource) {
       logger.warn(
         {
           conversationId,
-          error: conversationRes.error.message,
+          error: "Conversation not found",
         },
         "ReinforcedSkills: failed to fetch notification conversation for status update"
       );
       continue;
     }
-    const conversation = conversationRes.value;
 
     const titles = items.map((s) => s.title ?? s.sId);
     const content =
@@ -497,7 +490,7 @@ export async function postSkillSuggestionStatusUpdate(
         : `${actorName} ${verb}:\n${titles.map((t) => `${marker} ${t}`).join("\n")}`;
 
     const postRes = await postUserMessage(auth, {
-      conversation,
+      conversationResource,
       content,
       mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
       context: messageContext,
@@ -520,9 +513,28 @@ export async function postSkillSuggestionStatusUpdate(
     // as unread for the acting editor. Push `lastReadAt` a minute into the
     // future so the ack holds through the imminent agent completion — the
     // NOOP reply lands within milliseconds.
-    await ConversationResource.markAsReadForAuthUser(auth, {
-      conversation,
-      lastReadAt: new Date(Date.now() + 60_000),
-    });
+    const lastReadAt = new Date(Date.now() + 60_000);
+
+    // When the last pending suggestion of this notification conversation has
+    // been handled, mark the conversation as read for every participant: the
+    // other editors have nothing left to act on and should not be notified
+    // about an already-handled suggestion list.
+    const hasPending =
+      await SkillSuggestionResource.hasPendingForNotificationConversation(
+        auth,
+        conversationResource.id
+      );
+
+    if (hasPending) {
+      await ConversationResource.markAsReadForAuthUser(auth, {
+        conversation: conversationResource,
+        lastReadAt,
+      });
+    } else {
+      await ConversationResource.markAsReadForAllParticipants(auth, {
+        conversation: conversationResource,
+        lastReadAt,
+      });
+    }
   }
 }

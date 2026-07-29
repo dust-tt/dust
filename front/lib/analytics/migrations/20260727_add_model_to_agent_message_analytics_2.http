@@ -1,0 +1,22 @@
+PUT /front.agent_message_analytics_2/_mapping
+{
+  "properties": {
+    "model": {
+      "type": "object",
+      "properties": {
+        "provider_id": {
+          "type": "keyword"
+        },
+        "model_id": {
+          "type": "keyword"
+        },
+        "reasoning_effort": {
+          "type": "keyword"
+        },
+        "resolution_method": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}

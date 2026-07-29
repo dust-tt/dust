@@ -292,3 +292,82 @@ describe("addRateLimiterCount", () => {
     }
   });
 });
+
+describe("fixed-window counter", () => {
+  let addFixedWindowCount: RateLimiterModule["addFixedWindowCount"];
+  let getFixedWindowCount: RateLimiterModule["getFixedWindowCount"];
+
+  const fixedWindowKeysToExpire = new Set<string>();
+
+  // A far-future window boundary so entries persist for the whole test run.
+  const boundsFor = (label: string) => ({
+    label,
+    windowEndMs: Date.UTC(2999, 0, 1),
+  });
+
+  beforeAll(async () => {
+    const redisModule = await import("@app/lib/api/redis");
+    const rateLimiterModule = await import("@app/lib/utils/rate_limiter");
+
+    closeRedisClients = redisModule.closeRedisClients;
+    expireRateLimiterKey = rateLimiterModule.expireRateLimiterKey;
+    addFixedWindowCount = rateLimiterModule.addFixedWindowCount;
+    getFixedWindowCount = rateLimiterModule.getFixedWindowCount;
+  });
+
+  afterEach(async () => {
+    // Fixed-window keys are suffixed with the window label, so expire the
+    // fully-qualified key rather than the base.
+    await Promise.all(
+      [...fixedWindowKeysToExpire].map((key) => expireRateLimiterKey({ key }))
+    );
+    fixedWindowKeysToExpire.clear();
+  });
+
+  afterAll(async () => {
+    await closeRedisClients();
+  });
+
+  it("accumulates increments within the same window", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    const bounds = boundsFor("w1");
+    fixedWindowKeysToExpire.add(`${key}:${bounds.label}`);
+
+    await addFixedWindowCount({ key, bounds, incrementBy: 9, logger });
+    await addFixedWindowCount({ key, bounds, incrementBy: 2, logger });
+
+    const count = await getFixedWindowCount({ key, bounds });
+    expect(count.isOk()).toBe(true);
+    if (count.isOk()) {
+      // Unlike the limit-guarded rolling limiter, the fixed-window counter
+      // records the full amount even past any threshold.
+      expect(count.value).toBe(11);
+    }
+  });
+
+  it("returns 0 for a window with no entries", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+
+    const count = await getFixedWindowCount({ key, bounds: boundsFor("w1") });
+    expect(count.isOk()).toBe(true);
+    if (count.isOk()) {
+      expect(count.value).toBe(0);
+    }
+  });
+
+  it("keeps separate counts per window label", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    const windowA = boundsFor("wA");
+    const windowB = boundsFor("wB");
+    fixedWindowKeysToExpire.add(`${key}:${windowA.label}`);
+    fixedWindowKeysToExpire.add(`${key}:${windowB.label}`);
+
+    await addFixedWindowCount({ key, bounds: windowA, incrementBy: 4, logger });
+    await addFixedWindowCount({ key, bounds: windowB, incrementBy: 7, logger });
+
+    const countA = await getFixedWindowCount({ key, bounds: windowA });
+    const countB = await getFixedWindowCount({ key, bounds: windowB });
+    expect(countA.isOk() && countA.value).toBe(4);
+    expect(countB.isOk() && countB.value).toBe(7);
+  });
+});

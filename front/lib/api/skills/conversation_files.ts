@@ -3,10 +3,25 @@ import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { Ok, type Result } from "@app/types/shared/result";
+import type { Readable } from "stream";
+
+// A skill file ready to be written into a conversation, regardless of whether it
+// came from a database-backed `FileResource` (custom skills) or was declared
+// inline by a code-defined skill.
+type WritableSkillFile = {
+  fileName: string;
+  contentType: string;
+  content: Readable | string;
+};
 
 /**
- * Copy a skill's file attachments into the conversation's file system under
+ * Copy a skill's files into the conversation's file system under
  * `skills/{skillName}/{fileName}` (skill names are unique per workspace).
+ *
+ * This handles both file sources uniformly: database-backed `FileResource`
+ * attachments (custom skills) and inline files declared by code-defined skills.
+ * From the model's, the `files__*` tools', and the sandbox's point of view they
+ * are indistinguishable once written.
  *
  * Writing through DustFileSystem (rather than the sandbox filesystem) makes the files visible
  * everywhere the conversation files are: the `files__*` tools, the sandbox gcsfuse mount
@@ -26,8 +41,20 @@ export async function loadSkillFilesToConversation(
     conversation: ConversationWithoutContentType;
   }
 ): Promise<Result<{ loadedPaths: string[] }, Error>> {
-  const fileAttachments = skill.getFileAttachments();
-  if (fileAttachments.length === 0) {
+  const files: WritableSkillFile[] = [
+    ...skill.getFileAttachments().map((file) => ({
+      fileName: file.fileName,
+      contentType: file.contentType,
+      content: file.getReadStream({ auth, version: "original" }),
+    })),
+    ...skill.getCodeDefinedFiles().map((file) => ({
+      fileName: file.fileName,
+      contentType: file.contentType,
+      content: file.content,
+    })),
+  ];
+
+  if (files.length === 0) {
     return new Ok({ loadedPaths: [] });
   }
 
@@ -47,12 +74,12 @@ export async function loadSkillFilesToConversation(
 
   const loadedPaths: string[] = [];
 
-  for (const file of fileAttachments) {
+  for (const file of files) {
     const scopedPath = `${conversationMount.scopedPrefix}/skills/${skill.name}/${file.fileName}`;
 
     const writeResult = await fileSystem.write(
       scopedPath,
-      file.getReadStream({ auth, version: "original" }),
+      file.content,
       file.contentType
     );
     if (writeResult.isErr()) {

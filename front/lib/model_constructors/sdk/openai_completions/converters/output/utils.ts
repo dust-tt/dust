@@ -39,19 +39,27 @@ function usageToTokenUsageEvent(
   usage: ChatCompletionChunk["usage"]
 ): TokenUsageEvent {
   const cacheHit = usage?.prompt_tokens_details?.cached_tokens ?? 0;
-  const reasoning = usage?.completion_tokens_details?.reasoning_tokens ?? 0;
+  const cacheCreated = usage?.prompt_tokens_details?.cache_write_tokens ?? 0;
+  const reasoning = usage?.completion_tokens_details?.reasoning_tokens;
   return {
     type: "token_usage",
     content: {
-      // OpenAI-style prompt caching has no separate creation cost or TTL buckets.
-      cacheCreated: 0,
+      // OpenAI usage reports a flat cache write total without TTL buckets.
+      cacheCreated,
       longCacheCreated: 0,
       shortCacheCreated: 0,
       cacheHit,
-      // prompt_tokens includes cached; subtract to get the uncached portion.
-      standardInput: (usage?.prompt_tokens ?? 0) - cacheHit,
-      standardOutput: (usage?.completion_tokens ?? 0) - reasoning,
-      reasoning,
+      // prompt_tokens includes cache reads and writes. Subtract both to get
+      // standard input.
+      standardInput: Math.max(
+        0,
+        (usage?.prompt_tokens ?? 0) - cacheHit - cacheCreated
+      ),
+      // The current Fireworks path reports completion_tokens as its aggregate
+      // output. Preserve any optional reasoning detail as a subset. Providers
+      // without the breakdown simply omit reasoning.
+      totalOutput: usage?.completion_tokens ?? 0,
+      ...(reasoning !== undefined ? { reasoning } : {}),
     },
     metadata,
   };
@@ -98,7 +106,7 @@ export function streamErrorToErrorEvent(
         return buildErrorEvent({
           metadata,
           type: "rate_limit_error",
-          message: `Rate limit exceeded for Fireworks/${metadata.modelId}: ${error.message}`,
+          message: `Rate limit exceeded for Fireworks/${metadata.model}: ${error.message}`,
           originalError: error,
         });
       default:

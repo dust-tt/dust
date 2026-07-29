@@ -176,12 +176,18 @@ export function isRemoteMCPServerType(
   return serverType === "remote";
 }
 
-export function getMcpServerViewDescription(view: MCPServerViewType): string {
+export function getMcpServerViewDescription(view: {
+  description: string | null;
+  server: Pick<MCPServerType, "description">;
+}): string {
   return view.description ?? view.server.description;
 }
 
 export function getMcpServerViewDisplayName(
-  view: MCPServerViewType,
+  view: {
+    name: string | null;
+    server: Pick<MCPServerType, "sId" | "name">;
+  },
   action?:
     | AgentBuilderMCPConfiguration
     | BuilderAction
@@ -194,7 +200,7 @@ export function getMcpServerViewDisplayName(
 }
 
 export function getMcpServerDisplayName(
-  server: MCPServerType,
+  server: Pick<MCPServerType, "sId" | "name">,
   action?:
     | AgentBuilderMCPConfiguration
     | BuilderAction

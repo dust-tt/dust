@@ -1,5 +1,4 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   DEFAULT_CREDIT_GROUPS,
   DEFAULT_RESULTS,
@@ -8,9 +7,7 @@ import {
   timeWindowSchemaShape,
   usageFilterSchema,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 const topListSchema = (entityPlural: string) => ({
   ...timeWindowSchemaShape,
@@ -32,12 +29,14 @@ const getTopUsersSchema = topListSchema("users");
 const getTopSkillsSchema = topListSchema("skills");
 const getTopToolsSchema = topListSchema("tools");
 const getTopAgentTagsSchema = topListSchema("agent tags");
+const getTopModelsSchema = topListSchema("models");
 
 const getSourceBreakdownSchema = {
   ...timeWindowSchemaShape,
   agentIds: usageFilterSchema.agentIds,
   userIds: usageFilterSchema.userIds,
   agentTagIds: usageFilterSchema.agentTagIds,
+  modelIds: usageFilterSchema.modelIds,
 };
 
 const getAgentDetailsSchema = {
@@ -52,11 +51,12 @@ const getCreditUsageSchema = {
   ...timeWindowSchemaShape,
   ...usageFilterSchema,
   groupBy: z
-    .enum(["agent", "user", "none"])
+    .enum(["agent", "user", "model", "none"])
     .optional()
     .describe(
-      "Break the estimated credits down by top 'agent' or 'user', or 'none' " +
-        "(default) for the workspace total only."
+      "Break the estimated credits down by top 'agent', 'user' or 'model' " +
+        "(the model that answered the message), or 'none' (default) for the " +
+        "workspace total only."
     ),
   limit: z
     .number()
@@ -78,11 +78,12 @@ const getCreditTimeseriesSchema = {
     .optional()
     .describe("Bucket granularity for the credit trend (default day)."),
   breakdownBy: z
-    .enum(["agent", "user"])
+    .enum(["agent", "user", "model"])
     .optional()
     .describe(
-      "Split each bucket into the top agents or users by credits, plus an " +
-        "'other' series for the rest. Omit for a single total-credits trend."
+      "Split each bucket into the top agents, users or models by credits, " +
+        "plus an 'other' series for the rest. Omit for a single total-credits " +
+        "trend."
     ),
   breakdownLimit: z
     .number()
@@ -116,8 +117,9 @@ const getUsageTimeseriesSchema = {
     ),
 };
 
-export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
-  get_top_agents: {
+export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
+  {
+    name: "get_top_agents",
     description:
       "Return the workspace's most-used and most active agents over a time " +
       "window (defaults to the current calendar month), ranked by message " +
@@ -133,7 +135,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_top_users: {
+  {
+    name: "get_top_users",
     description:
       "Return the workspace's most active users and members over a time " +
       "window (defaults to the current calendar month), ranked by number of " +
@@ -149,7 +152,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_top_agent_tags: {
+  {
+    name: "get_top_agent_tags",
     description:
       "List the agent tags applied across the workspace over a time window " +
       "(defaults to the current calendar month), ranked by message volume, " +
@@ -168,7 +172,28 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_agent_details: {
+  {
+    name: "get_top_models",
+    description:
+      "List which LLM models (Claude, GPT, Gemini, ...) answered messages over " +
+      "a time window (defaults to the current calendar month), ranked by " +
+      "message volume, with each model's provider and its distinct agent and " +
+      "user counts. Use this to answer which model is used most, and to " +
+      "discover the model ids to pass as the modelIds filter of the other " +
+      "analytics tools; for credits per model use get_credit_usage with " +
+      "groupBy 'model'. Models come from historical message data, so retired " +
+      "models may appear. Admin-only.",
+    schema: getTopModelsSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top models",
+      done: "Retrieved top models",
+    },
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+  {
+    name: "get_agent_details",
     description:
       "Return an agent's full configuration: name, description, scope, model, " +
       "equipped skills and capabilities, and its complete system prompt and " +
@@ -183,12 +208,13 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_top_skills: {
+  {
+    name: "get_top_skills",
     description:
       "Return the workspace's most-used skills over a time window (defaults " +
       "to the current calendar month), ranked by execution count. Optionally " +
-      "filter by source (context_origin), agent, user, or tag. Use this to " +
-      "answer which skills are used most. Admin-only.",
+      "filter by source (context_origin), agent, user, tag, or model. Use this " +
+      "to answer which skills are used most. Admin-only.",
     schema: getTopSkillsSchema,
     stake: "never_ask",
     displayLabels: {
@@ -198,13 +224,14 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_top_tools: {
+  {
+    name: "get_top_tools",
     description:
       "Return the workspace's most-used MCP tools and integrations over a " +
       "time window (defaults to the current calendar month), ranked by " +
       "execution count. Shows which MCP server tools are called most. Optionally " +
-      "filter by source (context_origin), agent, user, or tag. Use this to " +
-      "answer which tools are used most or which integrations agents " +
+      "filter by source (context_origin), agent, user, tag, or model. Use this " +
+      "to answer which tools are used most or which integrations agents " +
       "rely on. Admin-only.",
     schema: getTopToolsSchema,
     stake: "never_ask",
@@ -215,7 +242,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_source_breakdown: {
+  {
+    name: "get_source_breakdown",
     description:
       "Return the workspace's message volume broken down by source — where " +
       "messages originate (Conversation, Slack, API, Trigger, extension, and " +
@@ -225,8 +253,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       "dashboard. Use this to discover and compare which channels or " +
       "integrations drive usage (including programmatic ones like API and " +
       "triggers) — the source filter on the other tools only narrows to one " +
-      "source, this enumerates them all. Optionally filter by agent, user, or " +
-      "tag. Admin-only.",
+      "source, this enumerates them all. Optionally filter by agent, user, " +
+      "tag, or model. Admin-only.",
     schema: getSourceBreakdownSchema,
     stake: "never_ask",
     displayLabels: {
@@ -236,17 +264,19 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_credit_usage: {
+  {
+    name: "get_credit_usage",
     description:
       "Estimate AWU credit consumption over a time window (defaults to the " +
-      "current calendar month), optionally broken down by the top agents or " +
-      "users. Credits combine model compute and tool usage, mirroring how " +
-      "billing computes them. IMPORTANT: these figures are ESTIMATES derived " +
-      "from usage logs — always tell the user they are approximate and point " +
-      "them to the workspace Usage page for exact, billed credit amounts. " +
-      "Optionally filter by source (context_origin), agent, user, or tag — " +
-      "e.g. filter by tag to attribute credits to all agents with a given " +
-      "tag. Admin-only.",
+      "current calendar month), optionally broken down by the top agents, " +
+      "users or models. Credits combine model compute and tool usage, " +
+      "mirroring how billing computes them. IMPORTANT: these figures are " +
+      "ESTIMATES derived from usage logs — always tell the user they are " +
+      "approximate and point them to the workspace Usage page for exact, " +
+      "billed credit amounts. Optionally filter by source (context_origin), " +
+      "agent, user, tag, or model — e.g. filter by tag to attribute credits " +
+      "to all agents with a given tag, or group by model to see which models " +
+      "drive spend. Admin-only.",
     schema: getCreditUsageSchema,
     stake: "never_ask",
     displayLabels: {
@@ -256,18 +286,20 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_credit_timeseries: {
+  {
+    name: "get_credit_timeseries",
     description:
       "Return estimated AWU credit consumption as a time series over a window " +
       "(defaults to the last 30 days), bucketed by day, week, or month. Set " +
       "breakdownBy to split each " +
-      "bucket into the top agents or users plus an 'other' series (a stacked " +
-      "trend). Use this for credit/spend TRENDS over time; use get_credit_usage " +
-      "for a single window's totals and top agent/user attribution. IMPORTANT: " +
+      "bucket into the top agents, users or models plus an 'other' series (a " +
+      "stacked trend). Use this for credit/spend TRENDS over time; use " +
+      "get_credit_usage for a single window's totals and top " +
+      "agent/user/model attribution. IMPORTANT: " +
       "these figures are ESTIMATES — always tell the user they are approximate " +
       "and point them to the workspace Usage page for exact, billed credit " +
       "amounts. Chart the result. Optionally filter by source (context_origin), " +
-      "agent, user, or tag. Admin-only.",
+      "agent, user, tag, or model. Admin-only.",
     schema: getCreditTimeseriesSchema,
     stake: "never_ask",
     displayLabels: {
@@ -277,7 +309,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_usage_timeseries: {
+  {
+    name: "get_usage_timeseries",
     description:
       "Return a usage time series over a window (defaults to the last 30 " +
       "days). Plot message volume (messages, conversations, active users), " +
@@ -293,7 +326,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-});
+] as const;
 
 export const WORKSPACE_ANALYTICS_SERVER = {
   serverInfo: {
@@ -306,13 +339,5 @@ export const WORKSPACE_ANALYTICS_SERVER = {
     authorization: null,
     documentationUrl: null,
   },
-  tools: Object.values(WORKSPACE_ANALYTICS_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: WORKSPACE_ANALYTICS_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

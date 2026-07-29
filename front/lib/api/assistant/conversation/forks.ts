@@ -37,10 +37,7 @@ import type {
   FileAttachmentType,
 } from "@app/types/api/assistant/conversation/attachments";
 import type { CompactionAttachmentIdReplacements } from "@app/types/assistant/compaction";
-import type {
-  ConversationType,
-  ConversationWithoutContentType,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isFileContentFragment } from "@app/types/content_fragment";
@@ -74,19 +71,6 @@ type CarriedAttachmentResult = {
 
 const ATTACHMENT_CARRY_OVER_CONCURRENCY = 4;
 const INTERACTIVE_CONTENT_REWRITE_CONCURRENCY = 4;
-
-function filterConversationContentUpToRank(
-  conversation: ConversationType,
-  maxRank: number
-): ConversationType {
-  return {
-    ...conversation,
-    content: conversation.content.filter((versions) => {
-      const latestVersion = versions[versions.length - 1];
-      return latestVersion ? latestVersion.rank <= maxRank : false;
-    }),
-  };
-}
 
 async function getForkCompactionModel(
   auth: Authenticator,
@@ -421,17 +405,14 @@ async function carryOverConversationAttachments(
     childConversation,
     sourceMessageRank,
   }: {
-    parentConversation: ConversationType;
-    childConversation: ConversationType;
+    parentConversation: ConversationWithoutContentType;
+    childConversation: ConversationWithoutContentType;
     sourceMessageRank: number;
   }
 ): Promise<CompactionAttachmentIdReplacements> {
-  const parentConversationAtSource = filterConversationContentUpToRank(
-    parentConversation,
-    sourceMessageRank
-  );
   const attachments = await listAttachments(auth, {
-    conversation: parentConversationAtSource,
+    conversation: parentConversation,
+    upToRank: sourceMessageRank,
   });
   // We carry over direct conversation attachments and agent-generated tool outputs that were
   // attached before the fork point. Project-context files remain accessible via the shared
@@ -725,6 +706,7 @@ export async function createConversationFork(
     );
   }
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const childConversation = await getConversation(
     auth,
     childConversationId.value.childConversationId
@@ -747,6 +729,7 @@ export async function createConversationFork(
     });
   }
 
+  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
   const parentConversationWithContent = await getConversation(
     auth,
     conversationId

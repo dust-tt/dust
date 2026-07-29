@@ -13,6 +13,7 @@ function createPending(workspace: { sId: string }) {
 describe("POST /api/w/:wId/assistant/agent_configurations/create-pending", () => {
   it("creates a pending agent and returns sId; pending agent has correct status and placeholder values", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      role: "admin",
       method: "POST",
     });
 

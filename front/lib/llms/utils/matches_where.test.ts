@@ -67,10 +67,10 @@ describe("matchesWhere", () => {
       // Combining eq/in is only meaningful on a non-boolean field, since
       // `ValueFilter<boolean>` distributes into `ScalarValueFilter<true> |
       // ScalarValueFilter<false>` and cannot mix the two literals.
-      const item = { providerId: "anthropic" };
+      const item = { lab: "anthropic" };
       expect(
         matchesWhere(item, {
-          providerId: {
+          lab: {
             eq: "anthropic",
             in: ["anthropic", "google_ai_studio"],
           },
@@ -78,7 +78,7 @@ describe("matchesWhere", () => {
       ).toBe(true);
       expect(
         matchesWhere(item, {
-          providerId: { eq: "anthropic", in: ["openai"] },
+          lab: { eq: "anthropic", in: ["openai"] },
         })
       ).toBe(false);
     });
@@ -88,19 +88,15 @@ describe("matchesWhere", () => {
     // Mimics matching an endpoint's singular identity fields, e.g. an Anthropic
     // global Sonnet 4.6 stream endpoint.
     const endpoint = {
-      providerId: "anthropic",
-      api: "anthropic",
-      modelId: "claude-sonnet-4-6",
+      lab: "anthropic",
+      host: "anthropic",
+      model: "claude-sonnet-4-6",
       region: "global",
     };
 
-    it("eq matches the providerId and region", () => {
-      expect(matchesWhere(endpoint, { providerId: { eq: "anthropic" } })).toBe(
-        true
-      );
-      expect(matchesWhere(endpoint, { providerId: { eq: "openai" } })).toBe(
-        false
-      );
+    it("eq matches the lab and region", () => {
+      expect(matchesWhere(endpoint, { lab: { eq: "anthropic" } })).toBe(true);
+      expect(matchesWhere(endpoint, { lab: { eq: "openai" } })).toBe(false);
       expect(matchesWhere(endpoint, { region: { eq: "global" } })).toBe(true);
       expect(matchesWhere(endpoint, { region: { eq: "eu" } })).toBe(false);
     });
@@ -108,12 +104,12 @@ describe("matchesWhere", () => {
     it("in matches against an allowed provider list", () => {
       expect(
         matchesWhere(endpoint, {
-          providerId: { in: ["anthropic", "openai"] },
+          lab: { in: ["anthropic", "openai"] },
         })
       ).toBe(true);
       expect(
         matchesWhere(endpoint, {
-          providerId: { in: ["openai", "google_ai_studio"] },
+          lab: { in: ["openai", "google_ai_studio"] },
         })
       ).toBe(false);
     });
@@ -121,14 +117,14 @@ describe("matchesWhere", () => {
     it("matches across several identity fields at once", () => {
       expect(
         matchesWhere(endpoint, {
-          providerId: { eq: "anthropic" },
-          api: { eq: "anthropic" },
+          lab: { eq: "anthropic" },
+          host: { eq: "anthropic" },
           region: { in: ["global", "us"] },
         })
       ).toBe(true);
       expect(
         matchesWhere(endpoint, {
-          providerId: { eq: "anthropic" },
+          lab: { eq: "anthropic" },
           region: { in: ["eu", "us"] },
         })
       ).toBe(false);
@@ -219,14 +215,14 @@ describe("matchesWhere", () => {
     };
     const description: EndpointConfigCoverage = {
       region: ["eu", "global"],
-      providerId: ["anthropic"],
-      modelId: ["claude-sonnet-4-6"],
-      api: ["anthropic", "agent-platform"],
+      lab: ["anthropic"],
+      model: ["claude-sonnet-4-6"],
+      host: ["anthropic", "agent-platform"],
     };
 
     it("matches provider and region membership", () => {
       expect(
-        matchesWhere(description, { providerId: { contains: "anthropic" } })
+        matchesWhere(description, { lab: { contains: "anthropic" } })
       ).toBe(true);
       expect(
         matchesWhere(description, { region: { containsAny: ["us", "eu"] } })
@@ -239,15 +235,15 @@ describe("matchesWhere", () => {
     it("matches multiple list fields together", () => {
       expect(
         matchesWhere(description, {
-          providerId: { contains: "anthropic" },
-          api: { containsAll: ["anthropic", "agent-platform"] },
+          lab: { contains: "anthropic" },
+          host: { containsAll: ["anthropic", "agent-platform"] },
           region: { containsAny: ["eu"] },
         })
       ).toBe(true);
       expect(
         matchesWhere(description, {
-          providerId: { contains: "anthropic" },
-          api: { contains: "openai-responses" },
+          lab: { contains: "anthropic" },
+          host: { contains: "openai-responses" },
         })
       ).toBe(false);
     });

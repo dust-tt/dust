@@ -1,6 +1,6 @@
 import {
   formatMicroUsdToUsd,
-  makeColumnsForUnifiedCredits,
+  makeColumnsForCredits,
 } from "@app/components/poke/credits/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import type { PokeStripeSubscriptionWire } from "@app/lib/api/poke/workspace_info";
@@ -15,12 +15,6 @@ const PokeProgrammaticCostChart = safeLazy(() =>
   )
 );
 
-const PokeAwuUsageFromAnalyticsChart = safeLazy(() =>
-  import("@app/components/poke/credits/PokeAwuUsageFromAnalyticsChart").then(
-    (mod) => ({ default: mod.PokeAwuUsageFromAnalyticsChart })
-  )
-);
-
 function PokeChartFallback() {
   return <div className="h-96 animate-pulse rounded-lg bg-muted-background" />;
 }
@@ -28,7 +22,7 @@ function PokeChartFallback() {
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeCreditsData } from "@app/poke/swr/credits";
 import { usePokeCredits } from "@app/poke/swr/credits";
-import type { PokeUnifiedCreditRow } from "@app/types/api/poke/credits";
+import type { PokeCreditType } from "@app/types/api/poke/credits";
 import type { SubscriptionType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 
@@ -42,17 +36,11 @@ interface CreditsDataTableProps {
 }
 
 function sortRowsByStartDateDescending(
-  rows: PokeUnifiedCreditRow[]
-): PokeUnifiedCreditRow[] {
+  rows: PokeCreditType[]
+): PokeCreditType[] {
   return [...rows].sort((a, b) => {
-    const aStart =
-      (a.internal?.startDate
-        ? new Date(a.internal.startDate).getTime()
-        : a.metronome?.startDate) ?? null;
-    const bStart =
-      (b.internal?.startDate
-        ? new Date(b.internal.startDate).getTime()
-        : b.metronome?.startDate) ?? null;
+    const aStart = a.startDate ? new Date(a.startDate).getTime() : null;
+    const bStart = b.startDate ? new Date(b.startDate).getTime() : null;
     // Null start dates go first (pending credits).
     if (aStart === null && bStart === null) {
       return 0;
@@ -111,10 +99,7 @@ export function CreditsDataTable({
               </div>
             )}
             <PokeDataTable
-              columns={makeColumnsForUnifiedCredits({
-                metronomeCustomerId: owner.metronomeCustomerId,
-                owner,
-              })}
+              columns={makeColumnsForCredits()}
               data={sortRowsByStartDateDescending(data.rows)}
               defaultFilterColumn="type"
             />
@@ -126,12 +111,6 @@ export function CreditsDataTable({
         <div className="flex flex-col gap-4">
           <Suspense fallback={<PokeChartFallback />}>
             <PokeProgrammaticCostChart
-              owner={owner}
-              billingCycleStartDay={billingCycleStartDay}
-            />
-          </Suspense>
-          <Suspense fallback={<PokeChartFallback />}>
-            <PokeAwuUsageFromAnalyticsChart
               owner={owner}
               billingCycleStartDay={billingCycleStartDay}
             />

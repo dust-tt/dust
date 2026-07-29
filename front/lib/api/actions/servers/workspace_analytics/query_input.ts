@@ -86,6 +86,13 @@ export const usageFilterSchema = {
       "Restrict to messages from agents carrying any of these agent tag " +
         "sIds, as returned by get_top_agent_tags."
     ),
+  modelIds: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Restrict to messages answered by these models, identified by their " +
+        "model id (e.g. 'claude-sonnet-4-5'), as returned by get_top_models."
+    ),
 };
 
 export type TimeWindowInput = z.input<typeof timeWindowInputSchema>;

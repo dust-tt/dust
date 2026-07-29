@@ -37,7 +37,7 @@ export class SystemSkillsRegistry {
     where: AllSkillConfigurationFindOptions["where"] = {}
   ): Promise<SystemSkillDefinition[]> {
     return filterSkillDefinitions(auth, SYSTEM_SKILLS_ARRAY, where, {
-      isDefault: false,
+      availability: "workspace_users",
     });
   }
 

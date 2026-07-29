@@ -4,7 +4,6 @@ import { GET_DATABASE_SCHEMA_MARKER } from "@app/lib/actions/mcp_internal_action
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   executeQuery,
   verifyDataSourceViewReadAccess,
@@ -28,7 +27,6 @@ import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import assert from "assert";
 
 function tablesFromUris(tableUris: string[]): TablesConfigurationToolType {
   return tableUris.map((uri) => ({
@@ -240,11 +238,6 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
     { tables, query, fileName },
     { auth, runContext }
   ) => {
-    // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
-    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
-
-    const agentLoopRunContext = runContext;
-
     const resolvedRes = await resolveTableConfigurations(auth, tables);
     if (resolvedRes.isErr()) {
       return resolvedRes;
@@ -281,7 +274,7 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
         };
       }),
       query,
-      conversationId: agentLoopRunContext.conversation.sId,
+      runContext,
       fileName,
       connectorProvider,
     });

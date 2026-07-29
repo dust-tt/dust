@@ -47,6 +47,10 @@ path = "bin/qdrant/create_collection.rs"
 name = "qdrant_shard_rebalance_suggestions"
 path = "bin/qdrant/qdrant_shard_rebalance_suggestions.rs"
 
+[[bin]]
+name = "qdrant_shard_key_breakdown"
+path = "bin/qdrant/shard_key_breakdown.rs"
+
 # [[bin]]
 # name = "qdrant_migrator"
 # path = "bin/qdrant/migrator.rs"
@@ -62,6 +66,14 @@ path = "bin/qdrant/delete_orphaned_points.rs"
 [[bin]]
 name = "qdrant_count_points_per_data_source"
 path = "bin/qdrant/count_points_per_data_source.rs"
+
+[[bin]]
+name = "qdrant_reshard"
+path = "bin/qdrant/qdrant_reshard.rs"
+
+[[bin]]
+name = "qdrant_fill_random_points"
+path = "bin/qdrant/test/fill_random_points.rs"
 
 # [[bin]]
 # name = "oauth_generate_key"
@@ -157,7 +169,7 @@ parking_lot = "0.12"
 pest = "2.7"
 pest_derive = "2.7"
 pkcs8 = { version = "0.10", features = ["pem", "pkcs5", "encryption"] }
-qdrant-client = "1.15"
+qdrant-client = "1.18"
 rand = "0.8"
 rayon = "1.10"
 redis = { version = "0.24.0", features = ["tokio-comp"] }

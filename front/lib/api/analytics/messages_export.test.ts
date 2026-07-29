@@ -155,6 +155,63 @@ describe("fetchMessageExportRows", () => {
     expect(result.value[0].credits).toBe(0);
   });
 
+  it("reports the resolved model columns", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    mockMessageHits([
+      messageDoc({
+        model: {
+          provider_id: "anthropic",
+          model_id: "claude-opus-5",
+          reasoning_effort: "medium",
+          resolution_method: "agent",
+        },
+      }),
+    ]);
+
+    const result = await fetchMessageExportRows({
+      auth: authenticator,
+      owner: workspace,
+      startDate: "2026-07-01",
+      endDate: "2026-07-02",
+      timezone: "UTC",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value[0].modelId).toBe("claude-opus-5");
+    expect(result.value[0].modelProviderId).toBe("anthropic");
+    expect(result.value[0].modelResolutionMethod).toBe("agent");
+  });
+
+  it("leaves the model columns empty for docs indexed before the model fields shipped", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    mockMessageHits([messageDoc()]);
+
+    const result = await fetchMessageExportRows({
+      auth: authenticator,
+      owner: workspace,
+      startDate: "2026-07-01",
+      endDate: "2026-07-02",
+      timezone: "UTC",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value[0].modelId).toBe("");
+    expect(result.value[0].modelProviderId).toBe("");
+    expect(result.value[0].modelResolutionMethod).toBe("");
+  });
+
   it("reports the direct parent in parentMessageId and defaults to empty", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",

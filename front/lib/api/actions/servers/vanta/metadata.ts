@@ -1,8 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 const PaginationSchema = {
   pageSize: z
@@ -17,8 +14,9 @@ const PaginationSchema = {
     .optional(),
 };
 
-export const VANTA_TOOLS_METADATA = createToolsRecord({
-  list_tests: {
+export const VANTA_TOOLS_METADATA = [
+  {
+    name: "list_tests",
     description:
       "List Vanta's automated security and compliance tests with optional filtering by status, category, framework, or integration",
     schema: {
@@ -73,7 +71,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_test_entities: {
+  {
+    name: "list_test_entities",
     description:
       "Get the resources monitored by a specific security test, filter by status using FAILING or DEACTIVATED",
     schema: {
@@ -92,7 +91,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_controls: {
+  {
+    name: "list_controls",
     description:
       "List security controls in your Vanta account or retrieve a specific control by ID with framework mapping details",
     schema: {
@@ -114,7 +114,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_control_tests: {
+  {
+    name: "list_control_tests",
     description:
       "Enumerate automated tests that validate a specific security control, including status and failing entity information",
     schema: {
@@ -129,7 +130,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_control_documents: {
+  {
+    name: "list_control_documents",
     description:
       "List documents mapped to a control to locate supporting evidence quickly",
     schema: {
@@ -146,7 +148,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_documents: {
+  {
+    name: "list_documents",
     description:
       "List compliance documents in your Vanta account or retrieve a specific document by ID",
     schema: {
@@ -166,7 +169,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_document_resources: {
+  {
+    name: "list_document_resources",
     description:
       "Retrieve resources linked to a document (controls, links, uploads) by choosing the desired resource type",
     schema: {
@@ -184,7 +188,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_integrations: {
+  {
+    name: "list_integrations",
     description:
       "List integrations connected to your Vanta account or retrieve details for a specific integration",
     schema: {
@@ -202,7 +207,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_frameworks: {
+  {
+    name: "list_frameworks",
     description:
       "List compliance frameworks in your Vanta account with completion status and progress metrics",
     schema: {
@@ -220,7 +226,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_framework_controls: {
+  {
+    name: "list_framework_controls",
     description:
       "Retrieve the controls required by and associated with a compliance framework, including descriptions and implementation guidance",
     schema: {
@@ -237,7 +244,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_people: {
+  {
+    name: "list_people",
     description:
       "List people in your Vanta account or retrieve a specific person by ID with role and group membership",
     schema: {
@@ -255,7 +263,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_risks: {
+  {
+    name: "list_risks",
     description:
       "List security risk scenarios in your risk register or retrieve a specific scenario to review status, scoring, and treatment",
     schema: {
@@ -273,7 +282,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_vulnerabilities: {
+  {
+    name: "list_vulnerabilities",
     description:
       "List vulnerabilities detected across your infrastructure with CVE details, severity, and impacted assets",
     schema: {
@@ -337,7 +347,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 export const VANTA_SERVER = {
   serverInfo: {
@@ -352,13 +362,5 @@ export const VANTA_SERVER = {
     icon: "VantaLogo",
     documentationUrl: "https://docs.dust.tt/docs/vanta",
   },
-  tools: Object.values(VANTA_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: VANTA_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

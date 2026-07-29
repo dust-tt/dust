@@ -1,11 +1,16 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { ROLES_DATA } from "@app/components/members/Roles";
+import {
+  getRoleDescription,
+  getRoleProvisioningGroupsLabel,
+} from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Button,
   Mail01,
@@ -19,6 +24,27 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { useContext, useEffect, useState } from "react";
+
+function getInvitationRoleMessage({
+  isRoleManagedByProvisioning,
+  isAdminGovernanceEnabled,
+  role,
+}: {
+  isRoleManagedByProvisioning: boolean;
+  isAdminGovernanceEnabled: boolean;
+  role: ActiveRoleType;
+}): string {
+  if (isRoleManagedByProvisioning) {
+    return `This invitation's role is managed by your identity provider through group provisioning (${getRoleProvisioningGroupsLabel(
+      isAdminGovernanceEnabled
+    )}). Role changes must be made in your identity provider.`;
+  }
+
+  return `The role defines the rights of a member for the workspace. ${getRoleDescription(
+    role,
+    isAdminGovernanceEnabled
+  )}`;
+}
 
 export function EditInvitationModal({
   owner,
@@ -35,6 +61,14 @@ export function EditInvitationModal({
 
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
+  const { hasFeature } = useFeatureFlags();
+
+  const isAdminGovernanceEnabled = hasFeature("admin_governance");
+
+  // Managers cannot revoke or resend invitations targeting the admin role
+  // (matches the server-side escalation guard); only admins can.
+  const canManageAdminInvitation =
+    invitation?.initialRole !== "admin" || isAdmin(owner);
 
   const { roleProvisioningStatus } = useProvisioningStatus({
     workspaceId: owner.sId,
@@ -43,7 +77,18 @@ export function EditInvitationModal({
   // Check if this invitation's role would be managed by provisioning groups
   const isRoleManagedByProvisioning =
     (roleProvisioningStatus.hasAdminGroup && selectedRole === "admin") ||
+    (isAdminGovernanceEnabled &&
+      roleProvisioningStatus.hasManagerGroup &&
+      selectedRole === "manager") ||
     (roleProvisioningStatus.hasBuilderGroup && selectedRole === "builder");
+
+  const roleMessage = invitation
+    ? getInvitationRoleMessage({
+        isRoleManagedByProvisioning,
+        isAdminGovernanceEnabled,
+        role: invitation.initialRole,
+      })
+    : "";
 
   useEffect(() => {
     if (invitation) {
@@ -102,48 +147,41 @@ export function EditInvitationModal({
                     disabled={isRoleManagedByProvisioning}
                   />
                 </div>
-                <div className="text-muted-foreground">
-                  {isRoleManagedByProvisioning ? (
-                    "This invitation's role is managed by your identity provider through group provisioning (dust-admins and dust-builders groups). Role changes must be made in your identity provider."
-                  ) : (
-                    <>
-                      The role defines the rights of a member for the workspace.{" "}
-                      {ROLES_DATA[invitation.initialRole].description}
-                    </>
-                  )}
-                </div>
+                <div className="text-muted-foreground">{roleMessage}</div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="primary"
-                  label="Send invitation again"
-                  icon={Mail01}
-                  onClick={async () => {
-                    await sendInvitations({
-                      owner,
-                      emails: [invitation.inviteEmail],
-                      invitationRole: selectedRole,
-                      sendNotification,
-                      isNewInvitation: false,
-                    });
-                  }}
-                />
-                <Button
-                  variant="warning"
-                  label="Revoke invitation"
-                  icon={XClose}
-                  disabled={owner.ssoEnforced}
-                  onClick={async () => {
-                    await updateInvitation({
-                      invitation,
-                      owner,
-                      sendNotification,
-                      confirm,
-                    });
-                  }}
-                />
-              </div>
+              {canManageAdminInvitation && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="primary"
+                    label="Send invitation again"
+                    icon={Mail01}
+                    onClick={async () => {
+                      await sendInvitations({
+                        owner,
+                        emails: [invitation.inviteEmail],
+                        invitationRole: selectedRole,
+                        sendNotification,
+                        isNewInvitation: false,
+                      });
+                    }}
+                  />
+                  <Button
+                    variant="warning"
+                    label="Revoke invitation"
+                    icon={XClose}
+                    disabled={owner.ssoEnforced}
+                    onClick={async () => {
+                      await updateInvitation({
+                        invitation,
+                        owner,
+                        sendNotification,
+                        confirm,
+                      });
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
         </SheetContainer>

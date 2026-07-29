@@ -1,4 +1,5 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import {
   ContentMessage,
@@ -13,35 +14,45 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useFormState } from "react-hook-form";
 
 const MIN_DISCOVERABLE_DESCRIPTION_LENGTH = 150;
 
 export function SkillBuilderIsDefaultSection() {
+  const { hasFeature } = useFeatureFlags();
+  const isSkillPublicationEnabled = hasFeature(
+    "admin_governance_skill_publication"
+  );
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
-  const isDefault = watch("isDefault");
+  const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
+  const availability = watch("availability");
+  const isDiscoverable = availability === "users_and_agents";
   const agentFacingDescription = watch("agentFacingDescription");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const isDescriptionTooShort =
     agentFacingDescription.trim().length < MIN_DISCOVERABLE_DESCRIPTION_LENGTH;
 
   const handleToggle = () => {
-    if (!isDefault) {
+    if (!isDiscoverable) {
       setShowConfirmDialog(true);
     } else {
-      setValue("isDefault", false, { shouldDirty: true });
+      setValue("availability", "workspace_users", { shouldDirty: true });
     }
   };
 
   const handleConfirm = () => {
-    setValue("isDefault", true, { shouldDirty: true });
+    setValue("availability", "users_and_agents", { shouldDirty: true });
     setShowConfirmDialog(false);
   };
 
   return (
     <>
       <div className="flex items-center gap-2">
-        <SliderToggle selected={isDefault} onClick={handleToggle} />
+        <SliderToggle
+          disabled={isReadOnly}
+          selected={isDiscoverable}
+          onClick={handleToggle}
+        />
         <span className="text-sm text-foreground">
           Allow agents to discover this skill
         </span>
@@ -77,7 +88,7 @@ export function SkillBuilderIsDefaultSection() {
                   discoverable.
                 </li>
               </ul>
-              {isDescriptionTooShort && (
+              {isDescriptionTooShort && !isSkillPublicationEnabled && (
                 <ContentMessage
                   variant="golden"
                   title="Agents may not understand when to use this skill"
@@ -104,7 +115,7 @@ export function SkillBuilderIsDefaultSection() {
             rightButtonProps={{
               label: "Confirm",
               variant: "warning",
-              disabled: isDescriptionTooShort,
+              disabled: isReadOnly || isDescriptionTooShort,
               onClick: handleConfirm,
             }}
           />

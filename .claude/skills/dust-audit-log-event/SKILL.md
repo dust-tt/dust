@@ -76,7 +76,7 @@ void emitAuditLogEvent({
     buildWorkspaceTarget(auth.getNonNullableWorkspace()),
     { type: "resource", id: resource.sId, name: resource.name },
   ],
-  context: getAuditLogContext(auth, req),
+  context: getAuditLogContext(auth),
   metadata: {
     field_name: String(value),
   },
@@ -144,7 +144,7 @@ Check all of the following:
   events
 - `targets` start with the workspace target when a workspace exists
 - metadata values are wrapped with `String(...)` when needed
-- request-backed events use `getAuditLogContext(auth, req)` when `req` is available
+- request-backed events use `getAuditLogContext(auth)` (the client IP comes from the `Authenticator`, set by the auth middleware)
 - the emit call uses `void`
 - the targets in the emit call exactly match (in type and count) the targets in the schema JSON file
 - if modifying an existing event's targets, the schema JSON file has been updated to match

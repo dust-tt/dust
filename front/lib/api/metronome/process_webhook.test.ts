@@ -2,13 +2,16 @@ import {
   dispatchPaygCapReached,
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
+  syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import {
   getMetronomeCommit,
   getMetronomeContractById,
+  getMetronomeCredit,
   listMetronomeContracts,
   setMetronomeCommitCustomFields,
+  setMetronomeContractCreditCustomFields,
 } from "@app/lib/metronome/client";
 import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
@@ -23,6 +26,7 @@ import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { launchReconcileWorkspaceUserCreditStatesWorkflow } from "@app/temporal/metronome_events_queue/client";
 import {
   launchScheduleWorkspaceScrubWorkflow,
   terminateScheduleWorkspaceScrubWorkflow,
@@ -30,7 +34,7 @@ import {
 import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
-import type { Commit, ContractV2 } from "@metronome/sdk/resources";
+import type { Commit, ContractV2, Credit } from "@metronome/sdk/resources";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { processMetronomeWebhook } from "./process_webhook";
@@ -42,13 +46,19 @@ vi.mock(import("@app/lib/metronome/client"), async (importOriginal) => {
     getMetronomeContractById: vi.fn(),
     listMetronomeContracts: vi.fn(),
     getMetronomeCommit: vi.fn(),
+    getMetronomeCredit: vi.fn(),
     setMetronomeCommitCustomFields: vi.fn(),
+    setMetronomeContractCreditCustomFields: vi.fn(),
   };
 });
 
 vi.mock("@app/temporal/scrub_workspace/client", () => ({
   launchScheduleWorkspaceScrubWorkflow: vi.fn(),
   terminateScheduleWorkspaceScrubWorkflow: vi.fn(),
+}));
+
+vi.mock("@app/temporal/metronome_events_queue/client", () => ({
+  launchReconcileWorkspaceUserCreditStatesWorkflow: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/subscription", () => ({
@@ -64,6 +74,7 @@ vi.mock("@app/lib/api/metronome/credit_state_dispatcher", async () => {
     dispatchPerUserCapReached: vi.fn(),
     dispatchPerUserCapResolved: vi.fn(),
     dispatchPaygCapReached: vi.fn(),
+    syncPoolCreditStateFromBalance: vi.fn(),
   };
 });
 
@@ -126,6 +137,7 @@ const NEW_CONTRACT_ID = "contract_new_yyy";
 const ENT_PLAN_CODE = "ENT_TEST_PLAN";
 const USER_ID = "user_test_xxx";
 const COMMIT_ID = "commit_test_xxx";
+const CREDIT_ID = "credit_test_xxx";
 
 /** Build a contract event payload that matches the centralized webhook schema. */
 function contractEvent(
@@ -695,10 +707,14 @@ describe("processMetronomeWebhook — swap webhook ordering", () => {
     expect(oldSub!.status).toBe("ended");
   });
 
-  it("keeps a shadow-billed (Stripe-backed) old sub as ended_backend_only so Stripe converges it", async () => {
-    // The fix is scoped to Metronome-only subs. A sub with a Stripe
-    // subscription must still wait for Stripe's customer.subscription.deleted
-    // webhook, so it ends as ended_backend_only.
+  it("converges a shadow-billed (Stripe-backed) old sub to ended on activation (does not strand in ended_backend_only)", async () => {
+    // A pending-row cutover races Stripe's customer.subscription.deleted (the
+    // scheduled cancel_at). When the Stripe event lands first it is consumed by
+    // the "active + pending → skip" branch, leaving contract.start's
+    // activatePending as the only handler that can finalize the old sub. It must
+    // therefore end directly as `ended` rather than waiting on a Stripe webhook
+    // that already fired, otherwise the old sub is stranded in
+    // `ended_backend_only`.
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID, {
       stripeSubscriptionId: "sub_shadow_xxx",
     });
@@ -719,7 +735,7 @@ describe("processMetronomeWebhook — swap webhook ordering", () => {
       refreshed!,
       OLD_CONTRACT_ID
     );
-    expect(oldSub!.status).toBe("ended_backend_only");
+    expect(oldSub!.status).toBe("ended");
   });
 });
 
@@ -954,5 +970,214 @@ describe("processMetronomeWebhook — commit.create DUST_CONTRACT_CREDIT_TYPE st
 
     expect(result.isOk()).toBe(true);
     expect(setMetronomeCommitCustomFields).not.toHaveBeenCalled();
+  });
+});
+
+describe("processMetronomeWebhook — credit.create pool reconcile", () => {
+  // A recurring free AWU credit granted at contract-switch time lands via
+  // credit.create *after* contract.start already reconciled the pool (before
+  // the credit existed). credit.create must reconcile the pool so the
+  // workspace does not stay stuck in the pre-credit state.
+  function creditCreateEvent(): MetronomeWebhookEvent {
+    return {
+      id: "evt_credit_create_xxx",
+      type: "credit.create",
+      timestamp: new Date().toISOString(),
+      credit_id: CREDIT_ID,
+      credit_custom_fields: null,
+      contract_id: null,
+      contract_custom_fields: null,
+      parent_recurring_credit_id: null,
+      customer_id: METRONOME_CUSTOMER_ID,
+      customer_custom_fields: null,
+    };
+  }
+
+  function credit(
+    creditTypeId: string,
+    { allocation }: { allocation?: "INDIVIDUAL" | "POOLED" } = {}
+  ): Credit {
+    return {
+      id: CREDIT_ID,
+      product: { id: "prod_free_credit", name: "Free Credits" },
+      type: "CREDIT",
+      access_schedule: {
+        schedule_items: [],
+        credit_type: { id: creditTypeId, name: "AWU" },
+      },
+      ...(allocation ? { subscription_config: { allocation } } : {}),
+    } as Credit;
+  }
+
+  beforeEach(() => {
+    vi.mocked(setMetronomeContractCreditCustomFields).mockResolvedValue(
+      new Ok(undefined)
+    );
+    vi.mocked(syncPoolCreditStateFromBalance).mockResolvedValue(undefined);
+    vi.mocked(
+      launchReconcileWorkspaceUserCreditStatesWorkflow
+    ).mockResolvedValue(undefined);
+  });
+
+  it("stamps and reconciles the pool when a pool AWU credit is created", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(getMetronomeCredit).mockResolvedValue(
+      new Ok(credit(getCreditTypeAwuId()))
+    );
+
+    const result = await processMetronomeWebhook({
+      event: creditCreateEvent(),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(setMetronomeContractCreditCustomFields).toHaveBeenCalledWith({
+      creditId: CREDIT_ID,
+      customFields: {
+        [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+      },
+    });
+    expect(syncPoolCreditStateFromBalance).toHaveBeenCalledWith({
+      workspace,
+      metronomeCustomerId: METRONOME_CUSTOMER_ID,
+    });
+    expect(
+      launchReconcileWorkspaceUserCreditStatesWorkflow
+    ).not.toHaveBeenCalled();
+  });
+
+  it("does not stamp or reconcile the pool for a non-AWU credit", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(getMetronomeCredit).mockResolvedValue(
+      new Ok(credit("non_awu_credit_type"))
+    );
+
+    const result = await processMetronomeWebhook({
+      event: creditCreateEvent(),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(setMetronomeContractCreditCustomFields).not.toHaveBeenCalled();
+    expect(syncPoolCreditStateFromBalance).not.toHaveBeenCalled();
+  });
+
+  it("reconciles per-user (not pool) state, without stamping, for a per-seat (INDIVIDUAL) credit", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(getMetronomeCredit).mockResolvedValue(
+      new Ok(credit(getCreditTypeAwuId(), { allocation: "INDIVIDUAL" }))
+    );
+
+    const result = await processMetronomeWebhook({
+      event: creditCreateEvent(),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(setMetronomeContractCreditCustomFields).not.toHaveBeenCalled();
+    expect(syncPoolCreditStateFromBalance).not.toHaveBeenCalled();
+    expect(
+      launchReconcileWorkspaceUserCreditStatesWorkflow
+    ).toHaveBeenCalledWith({ workspaceId: workspace.sId });
+  });
+});
+
+describe("processMetronomeWebhook — credit.segment.start / credit.edit", () => {
+  function creditEvent(
+    type: "credit.segment.start" | "credit.edit"
+  ): MetronomeWebhookEvent {
+    return {
+      id: `evt_${type}_xxx`,
+      type,
+      timestamp: new Date().toISOString(),
+      credit_id: CREDIT_ID,
+      credit_custom_fields: null,
+      contract_id: null,
+      contract_custom_fields: null,
+      parent_recurring_credit_id: null,
+      customer_id: METRONOME_CUSTOMER_ID,
+      customer_custom_fields: null,
+      segment_id: "seg_xxx",
+    } as MetronomeWebhookEvent;
+  }
+
+  function credit(
+    creditTypeId: string,
+    { allocation }: { allocation?: "INDIVIDUAL" | "POOLED" } = {}
+  ): Credit {
+    return {
+      id: CREDIT_ID,
+      product: { id: "prod_free_credit", name: "Free Credits" },
+      type: "CREDIT",
+      access_schedule: {
+        schedule_items: [],
+        credit_type: { id: creditTypeId, name: "AWU" },
+      },
+      ...(allocation ? { subscription_config: { allocation } } : {}),
+    } as Credit;
+  }
+
+  beforeEach(() => {
+    vi.mocked(syncPoolCreditStateFromBalance).mockResolvedValue(undefined);
+    vi.mocked(
+      launchReconcileWorkspaceUserCreditStatesWorkflow
+    ).mockResolvedValue(undefined);
+  });
+
+  it("reconciles the pool for a pool AWU credit segment", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(getMetronomeCredit).mockResolvedValue(
+      new Ok(credit(getCreditTypeAwuId()))
+    );
+
+    const result = await processMetronomeWebhook({
+      event: creditEvent("credit.segment.start"),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(syncPoolCreditStateFromBalance).toHaveBeenCalledWith({
+      workspace,
+      metronomeCustomerId: METRONOME_CUSTOMER_ID,
+    });
+    expect(
+      launchReconcileWorkspaceUserCreditStatesWorkflow
+    ).not.toHaveBeenCalled();
+  });
+
+  it("reconciles per-user state for a per-seat credit on credit.edit (not only segment.start)", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(getMetronomeCredit).mockResolvedValue(
+      new Ok(credit(getCreditTypeAwuId(), { allocation: "INDIVIDUAL" }))
+    );
+
+    const result = await processMetronomeWebhook({
+      event: creditEvent("credit.edit"),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(syncPoolCreditStateFromBalance).not.toHaveBeenCalled();
+    expect(
+      launchReconcileWorkspaceUserCreditStatesWorkflow
+    ).toHaveBeenCalledWith({ workspaceId: workspace.sId });
+  });
+
+  it("does nothing for a non-AWU credit segment", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(getMetronomeCredit).mockResolvedValue(
+      new Ok(credit("non_awu_credit_type"))
+    );
+
+    const result = await processMetronomeWebhook({
+      event: creditEvent("credit.segment.start"),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(syncPoolCreditStateFromBalance).not.toHaveBeenCalled();
+    expect(
+      launchReconcileWorkspaceUserCreditStatesWorkflow
+    ).not.toHaveBeenCalled();
   });
 });

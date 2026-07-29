@@ -1,10 +1,7 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 // Schema for tool_without_user_config
 const toolWithoutUserConfigSchema = {
@@ -79,8 +76,9 @@ const passThroughSchema = {
 };
 
 // Tools metadata
-export const PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA = createToolsRecord({
-  tool_without_user_config: {
+export const PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA = [
+  {
+    name: "tool_without_user_config",
     description: "Test the tool without user config.",
     schema: toolWithoutUserConfigSchema,
     stake: "high",
@@ -91,7 +89,8 @@ export const PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  pass_through: {
+  {
+    name: "pass_through",
     description: "Pass through inputs for primitive type debugging.",
     schema: passThroughSchema,
     stake: "high",
@@ -102,7 +101,7 @@ export const PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const;
 
 // Server metadata - used in constants.ts
 export const PRIMITIVE_TYPES_DEBUGGER_SERVER = {
@@ -115,13 +114,5 @@ export const PRIMITIVE_TYPES_DEBUGGER_SERVER = {
     authorization: null,
     documentationUrl: null,
   },
-  tools: Object.values(PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

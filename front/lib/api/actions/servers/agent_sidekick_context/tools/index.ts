@@ -338,7 +338,19 @@ export async function createToolsSuggestions({
   }
 
   // Validate that all tool IDs exist and are accessible.
-  const tools = await MCPServerViewResource.fetchByIds(auth, suggestionToolIds);
+  const tools = await MCPServerViewResource.fetchByIds(
+    auth,
+    suggestionToolIds,
+    {
+      includeHeavyAttributes: [
+        "authorization",
+        "cachedTools",
+        "customHeaders",
+        "lastError",
+        "sharedSecret",
+      ],
+    }
+  );
   const foundToolIds = new Set(tools.map((t) => t.sId));
   const missingToolIds = suggestionToolIds.filter(
     (id) => !foundToolIds.has(id)
@@ -1518,6 +1530,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(new MCPError("Authentication required"));
     }
 
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
     const conversationRes = await getConversation(auth, conversationId);
     if (conversationRes.isErr()) {
       return new Err(

@@ -51,7 +51,7 @@ beforeEach(() => {
 });
 
 describe("GET /api/w/[wId]/credits/members-usage", () => {
-  it("returns 403 when the caller is not a business admin", async () => {
+  it("returns 403 when the caller is not a manager", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
@@ -64,10 +64,10 @@ describe("GET /api/w/[wId]/credits/members-usage", () => {
     expect(membersUsage.getMembersUsage).not.toHaveBeenCalled();
   });
 
-  it("allows a business admin to read members usage", async () => {
+  it("allows a manager to read members usage", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
-      role: "business_admin",
+      role: "manager",
     });
 
     const response = await honoApp.request(membersUsageUrl(workspace.sId));

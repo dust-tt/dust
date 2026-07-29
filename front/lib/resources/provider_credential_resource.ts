@@ -1,6 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
 import config from "@app/lib/api/config";
-import { isGoogleAuthenticationErrorMessage } from "@app/lib/api/llm/clients/google/utils/errors";
 import type { Authenticator } from "@app/lib/auth";
 import { ProviderCredentialModel } from "@app/lib/models/provider_credential";
 import { notifyProviderCredentialsHealthUpdated } from "@app/lib/notifications/workflows/provider-credential-updated";
@@ -616,6 +615,10 @@ async function isCredentialHealthy({
       assertNever(provider);
   }
 }
+
+const isGoogleAuthenticationErrorMessage = (message: string): boolean => {
+  return message.toLowerCase().includes("api key not valid");
+};
 
 // Returns true only if the credential fails with a 401 authentication error,
 // which confirms the key is invalid (not just a transient network/rate-limit issue).

@@ -17,6 +17,10 @@ interface DustMcpServerSettingsItemProps {
   owner: WorkspaceType;
 }
 
+const LABEL = "MCP server";
+const DESCRIPTION =
+  "Whether external MCP clients can connect to this workspace.";
+
 export function DustMcpServerSettingsItem({
   owner,
 }: DustMcpServerSettingsItemProps) {
@@ -42,15 +46,12 @@ export function DustMcpServerSettingsItem({
     });
   };
 
-  const label = "MCP server";
-  const description = `Allow external MCP clients to connect to this workspace via ${mcpServerUrl}.`;
-
   return (
     <>
       {hasFeature("admin_governance") ? (
         <GovernanceSettingRowLayout
-          label={label}
-          description={description}
+          label={LABEL}
+          description={DESCRIPTION}
           action={
             <div className="flex shrink-0 items-center gap-2">
               {isEnabled && (
@@ -75,8 +76,8 @@ export function DustMcpServerSettingsItem({
         />
       ) : (
         <ContextItem
-          title={label}
-          subElement={description}
+          title={LABEL}
+          subElement={`Allow external MCP clients to connect to this workspace via ${mcpServerUrl}.`}
           visual={<Server01 className="h-6 w-6" />}
           truncateSubElement={true}
           hasSeparatorIfLast={true}

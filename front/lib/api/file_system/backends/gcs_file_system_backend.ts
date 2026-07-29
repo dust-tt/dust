@@ -9,6 +9,7 @@ import {
   DustFileSystemError,
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
+  SCOPED_PREFIX_USER,
 } from "@app/lib/api/file_system/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -34,7 +35,7 @@ import type { FileSystemBackend } from "./file_system_backend";
 // ---------------------------------------------------------------------------
 
 type ParsedScopedPath = {
-  kind: "conversation" | "pod";
+  kind: "conversation" | "pod" | "user";
   id: string;
   /** Path component after `<kind>-<id>/`, empty string for a root listing. */
   rel: string;
@@ -61,6 +62,11 @@ function parseScopedPath(scopedPath: string): ParsedScopedPath | null {
   if (prefix.startsWith(SCOPED_PREFIX_POD)) {
     const id = prefix.slice(SCOPED_PREFIX_POD.length);
     return id ? { kind: "pod", id, rel } : null;
+  }
+
+  if (prefix.startsWith(SCOPED_PREFIX_USER)) {
+    const id = prefix.slice(SCOPED_PREFIX_USER.length);
+    return id ? { kind: "user", id, rel } : null;
   }
 
   return null;
@@ -99,6 +105,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       case "pod":
         return `w/${this.workspaceId}/pods/${p.id}/files/${p.rel}`;
 
+      case "user":
+        return `w/${this.workspaceId}/users/${p.id}/files/${p.rel}`;
+
       default:
         assertNever(p.kind);
     }
@@ -121,6 +130,11 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       return `${SCOPED_PREFIX_POD}${pod[1]}/${pod[2]}`;
     }
 
+    const user = rest.match(/^users\/([^/]+)\/files\/(.*)$/);
+    if (user) {
+      return `${SCOPED_PREFIX_USER}${user[1]}/${user[2]}`;
+    }
+
     return null;
   }
 
@@ -132,6 +146,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
       case "pod":
         return `w/${this.workspaceId}/pods/${mount.id}/files`;
+
+      case "user":
+        return `w/${this.workspaceId}/users/${mount.id}/files`;
 
       default:
         assertNever(mount.kind);
@@ -580,7 +597,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
   async getDownloadUrl(
     scopedPath: string,
-    _opts?: { expiresInMs?: number; fileName?: string }
+    opts?: { expiresInMs?: number; fileName?: string }
   ): Promise<Result<string, DustFileSystemError>> {
     const gcsPath = this.toGCSPath(scopedPath);
     if (!gcsPath) {
@@ -593,7 +610,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
 
     try {
-      const url = await getCachedPrivateUploadSignedUrl(gcsPath);
+      const url = await getCachedPrivateUploadSignedUrl(gcsPath, {
+        expirationDelayMs: opts?.expiresInMs,
+      });
 
       return new Ok(url);
     } catch (err) {
@@ -609,15 +628,20 @@ export class GCSFileSystemBackend implements FileSystemBackend {
   ): SandboxMountAdapter {
     const bucket = fileStorageConfig.getGcsPrivateUploadsBucket();
     const targets: GCSMountTarget[] = [
-      ...mounts.map(
-        (mount): GCSMountTarget => ({
-          gcsPrefix: this.mountRootGCSPrefix(mount),
-          sandboxMountPoint: mount.sandboxMountPoint,
-          legacySandboxMountPoint: mount.legacySandboxMountPoint,
-          readOnly: false,
-          mountProfile: "workload",
-        })
-      ),
+      ...mounts
+        .filter(
+          (mount): mount is FileSystemMount & { sandboxMountPoint: string } =>
+            mount.sandboxMountPoint !== null
+        )
+        .map(
+          (mount): GCSMountTarget => ({
+            gcsPrefix: this.mountRootGCSPrefix(mount),
+            sandboxMountPoint: mount.sandboxMountPoint,
+            legacySandboxMountPoint: mount.legacySandboxMountPoint,
+            readOnly: false,
+            mountProfile: "workload",
+          })
+        ),
       ...sandboxOnlyMounts.map(
         (mount): GCSMountTarget => ({
           gcsPrefix: this.sandboxOnlyMountGCSPrefix(mount),

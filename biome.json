@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
   "root": true,
   "plugins": [],
   "vcs": {
@@ -97,6 +97,16 @@
         "./.grit/patterns/enforceClientTypesInPublicApi.grit",
         "./.grit/patterns/noClientDeepImports.grit"
       ]
+    },
+    {
+      "includes": [
+        "front/**/*.{js,jsx,ts,tsx}",
+        "front-api/**/*.{js,jsx,ts,tsx}",
+        "!front/lib/api/assistant/conversation/fetch.ts",
+        "!**/*.{test,spec}.{js,jsx,ts,tsx}",
+        "!front/tests/**"
+      ],
+      "plugins": ["./.grit/patterns/noExpensiveConversationFetch.grit"]
     },
     {
       "includes": ["front-api/**/*.ts", "!front-api/routes/types.ts"],

@@ -1,5 +1,7 @@
 import { MCPServerViewSchema } from "@app/lib/api/mcp_schemas";
 import type { AgentsUsageType } from "@app/types/data_source";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
 import { z } from "zod";
 
@@ -8,6 +10,47 @@ export type SkillStatus = (typeof SKILL_STATUSES)[number];
 
 export const SKILL_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
 export type SkillReinforcementMode = (typeof SKILL_REINFORCEMENT_MODES)[number];
+
+export const SKILL_AVAILABILITIES = [
+  "editors",
+  "workspace_users",
+  "users_and_agents",
+] as const;
+export type SkillAvailability = (typeof SKILL_AVAILABILITIES)[number];
+
+export const DEFAULT_SKILL_AVAILABILITY: SkillAvailability = "workspace_users";
+
+// With skill publication governance, new skills start unpublished (editors-only) and must be
+// explicitly published by a holder of the skill publish permission.
+export function getDefaultSkillAvailability(
+  featureFlags: WhitelistableFeature[]
+): SkillAvailability {
+  return featureFlags.includes("admin_governance_skill_publication")
+    ? "editors"
+    : DEFAULT_SKILL_AVAILABILITY;
+}
+
+// The DB column is availability; isDefault survives as a boolean alias in the API and
+// frontend. Remove these mappings once clients rely on availability directly.
+export function availabilityFromIsDefault(
+  isDefault: boolean
+): SkillAvailability {
+  return isDefault ? "users_and_agents" : "workspace_users";
+}
+
+export function isDefaultFromAvailability(
+  availability: SkillAvailability
+): boolean {
+  switch (availability) {
+    case "users_and_agents":
+      return true;
+    case "workspace_users":
+    case "editors":
+      return false;
+    default:
+      return assertNever(availability);
+  }
+}
 
 export const SKILL_VIEWS = ["full", "summary"] as const;
 export type SkillViewType = (typeof SKILL_VIEWS)[number];
@@ -56,7 +99,9 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
   ),
   canWrite: z.boolean(),
   canAdministrate: z.boolean(),
+  // @deprecated Use availability instead. Kept while old clients still read it.
   isDefault: z.boolean(),
+  availability: z.enum(SKILL_AVAILABILITIES),
 });
 
 export type SkillWithoutInstructionsAndToolsType = z.infer<

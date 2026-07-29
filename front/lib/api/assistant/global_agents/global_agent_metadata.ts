@@ -33,11 +33,7 @@ import {
 } from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-export const GLOBAL_AGENT_AUDIENCES = [
-  "everyone",
-  "builders",
-  "admins",
-] as const;
+export const GLOBAL_AGENT_AUDIENCES = ["everyone", "admins"] as const;
 export type GlobalAgentAudience = (typeof GLOBAL_AGENT_AUDIENCES)[number];
 
 type AgentMetadata = {
@@ -55,8 +51,6 @@ export function canRoleSeeAudience(
   switch (audience) {
     case "everyone":
       return true;
-    case "builders":
-      return auth.isBuilder();
     case "admins":
       return auth.isAdmin();
     default:
@@ -299,7 +293,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.DUST_EDGE,
         name: "dust-edge",
         description:
-          "Same as dust but running Claude Opus 4.8 to experiment internally.",
+          "Same as dust but running Claude Opus 5 to experiment internally.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_QUICK:
@@ -572,7 +566,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_ANT,
         name: "dust-ant",
-        description: "Same as dust but running Sonnet 4.6.",
+        description: "Same as dust but running Claude Opus 5.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM:
@@ -639,7 +633,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_KIMI,
         name: "dust-kimi",
-        description: "Same as dust but running Kimi K2.6.",
+        description: "Same as dust but running Kimi K3.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM:

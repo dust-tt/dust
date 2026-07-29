@@ -3,6 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { getPod } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import { callSandboxFunction } from "@app/lib/api/sandbox_functions/call_sandbox_function";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -30,18 +31,23 @@ export async function callHandler(
     );
   }
 
-  const result = await callSandboxFunction(auth, sandboxFunction, input);
+  const timezone = isAgentLoopRunContext(runContext)
+    ? runContext.userMessage.context.timezone
+    : runContext.invocation.context?.timezone;
+  const result = await callSandboxFunction(
+    auth,
+    sandboxFunction,
+    input,
+    timezone === undefined ? undefined : { timezone }
+  );
   if (result.isErr()) {
-    return new Err(new MCPError(result.error.message));
-  }
-
-  const outcome = result.value;
-  if (!outcome.ok) {
-    // The function ran but returned an error: model- or builder-correctable, not internal.
+    const { code, message } = result.error;
     return new Err(
       new MCPError(
-        `Pod function "${slug}" returned an error (${outcome.errorKind}): ${outcome.message}`,
-        { tracked: false }
+        `Pod function "${slug}" returned an error (${code}): ${message}`,
+        {
+          tracked: code === "invocation_failed" || code === "transport_error",
+        }
       )
     );
   }
@@ -49,12 +55,7 @@ export async function callHandler(
   return new Ok([
     {
       type: "text",
-      text: [
-        `HTTP ${outcome.status}`,
-        "",
-        "Response Body:",
-        outcome.output,
-      ].join("\n"),
+      text: JSON.stringify(result.value, null, 2) ?? "null",
     },
   ]);
 }

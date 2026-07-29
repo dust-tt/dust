@@ -1,8 +1,6 @@
 import { GEMINI_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
-import {
-  inputConfigSchema,
-  temperatureSchema,
-} from "@app/lib/model_constructors/types/input/configuration";
+import { geminiTemperatureSchema } from "@app/lib/model_constructors/providers/google_ai_studio/temperature";
+import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
 
 import { z } from "zod";
 
@@ -22,13 +20,14 @@ const baseConfig = inputConfigSchema.extend({
   cacheKey: z.undefined(),
 });
 
-// Supports all native thinking levels (minimal/low/medium/high) and strongly
-// recommends `temperature: 1`, so we coerce temperature to 1.
+// Supports all native thinking levels (minimal/low/medium/high). Google
+// recommends `temperature: 1` but accepts the whole 0..2 range; the coercion is
+// a Dust product choice applied in the llms layer.
 export const geminiV3ConfigSchema = baseConfig.extend({
   reasoning: z
     .object({
       effort: z.enum([...GEMINI_SUPPORTED_REASONING_EFFORTS]),
     })
     .default({ effort: DEFAULT_REASONING_EFFORT }),
-  temperature: temperatureSchema.optional().transform(() => 1 as const),
+  temperature: geminiTemperatureSchema.optional(),
 });

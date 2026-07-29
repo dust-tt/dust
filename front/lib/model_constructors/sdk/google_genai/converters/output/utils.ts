@@ -157,6 +157,8 @@ export function usageToTokenUsageEvent(
   // subtract the cached portion so it is not counted twice against pricing.
   const totalInput =
     (usage?.promptTokenCount ?? 0) + (usage?.toolUsePromptTokenCount ?? 0);
+  const candidateTokens = usage?.candidatesTokenCount ?? 0;
+  const reasoning = usage?.thoughtsTokenCount;
   return {
     type: "token_usage",
     content: {
@@ -167,8 +169,10 @@ export function usageToTokenUsageEvent(
       shortCacheCreated: 0,
       cacheHit,
       standardInput: Math.max(0, totalInput - cacheHit),
-      standardOutput: usage?.candidatesTokenCount ?? 0,
-      reasoning: usage?.thoughtsTokenCount ?? 0,
+      // Gemini reports candidate and thought tokens separately, while Dust's
+      // totalOutput contract is the inclusive billed output total.
+      totalOutput: candidateTokens + (reasoning ?? 0),
+      ...(reasoning !== undefined ? { reasoning } : {}),
     },
     metadata,
   };
@@ -206,7 +210,7 @@ export function finishReasonToErrorEvent(
       return buildErrorEvent({
         metadata,
         type: "model_output_error",
-        message: `Model generated an invalid tool call for ${metadata.modelId}.`,
+        message: `Model generated an invalid tool call for ${metadata.model}.`,
       });
     // Any other finish reason (OTHER, NO_IMAGE, unspecified, future values, ...)
     // is surfaced as an unknown error.
@@ -263,7 +267,7 @@ function apiErrorToErrorEvent(
       return buildErrorEvent({
         metadata,
         type: "rate_limit_error",
-        message: `Rate limit exceeded for Google/${metadata.modelId}: ${error.message}`,
+        message: `Rate limit exceeded for Google/${metadata.model}: ${error.message}`,
         originalError: error,
       });
     case 503:

@@ -49,7 +49,12 @@ export type AgentErrorContentType = {
 export type AgentProviderPassthroughContentType = {
   type: "provider_passthrough";
   value: {
-    provider: ModelProviderIdType;
+    // Anthropic feature only for now. Need split between host and lab to be
+    // completed for other lab support.
+    provider: Exclude<
+      ModelProviderIdType,
+      "xai" | "fireworks" | "auto" | "auto_fast" | "auto_complex"
+    >;
     block: unknown;
   };
 };

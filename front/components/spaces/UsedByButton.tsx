@@ -102,6 +102,11 @@ function UsedByButtonIcon({
   );
 }
 
+// The composite icon (robot + count + chevron) is wider than the icon-only
+// fixed width (w-6 on xs); size to content instead.
+const USED_BY_BUTTON_CLASSES =
+  "w-auto border-0 px-2 hover:bg-muted-background hover:text-foreground";
+
 interface UsedByButtonProps {
   usage: AgentsUsageType | SkillUsageType | null;
   onItemClick: (assistantSid: string) => void;
@@ -137,7 +142,7 @@ export function UsedByButton({
         variant="ghost-secondary"
         isSelect={false}
         size="xs"
-        className="border-0 hover:bg-muted-background hover:text-foreground"
+        className={USED_BY_BUTTON_CLASSES}
         aria-label="Used by 0 agents"
         disabled
       />
@@ -217,7 +222,7 @@ export function UsedByButton({
           variant="ghost-secondary"
           isSelect={false}
           size="xs"
-          className="border-0 hover:bg-muted-background hover:text-foreground"
+          className={USED_BY_BUTTON_CLASSES}
           aria-label={`Used by ${usageLabel}`}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();

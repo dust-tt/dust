@@ -15,6 +15,19 @@ export class RateLimitError extends Error {}
 
 export const RATE_LIMITER_PREFIX = "rate_limiter";
 
+// Grace period kept after the window boundary before the Redis key expires, so
+// a read straddling the boundary still sees a just-closed window rather than a
+// premature miss.
+const FIXED_WINDOW_EXPIRE_GRACE_MS = 60_000;
+
+// A resolved fixed window: a stable label identifying the current window and
+// the absolute UTC end of that window. The label is appended to the Redis key
+// so each window is a distinct key that naturally expires; `windowEndMs` drives
+// `PEXPIREAT`. Callers resolve these bounds however they like — pure calendar
+// math or an external anchor such as a billing contract — keeping this counter
+// agnostic of window semantics.
+export type FixedWindowBounds = { label: string; windowEndMs: number };
+
 const makeRateLimiterKey = (key: string) => `${RATE_LIMITER_PREFIX}:${key}`;
 
 type RateLimiterArgs = {
@@ -243,5 +256,97 @@ export function getTimeframeSecondsFromLiteral(
 
     default:
       assertNever(timeframeLiteral);
+  }
+}
+
+/**
+ * Unconditionally records `incrementBy` units against a fixed-window counter
+ * identified by `bounds`. Unlike the rolling `addRateLimiterCount`, the key
+ * encodes the current window (via `bounds.label`) and is a plain `INCRBY` with
+ * `PEXPIREAT` set to `bounds.windowEndMs` — enforcement (reading the count and
+ * comparing to a limit) happens beforehand via `getFixedWindowCount`, not here.
+ */
+export async function addFixedWindowCount({
+  key,
+  bounds,
+  incrementBy,
+  logger,
+}: {
+  key: string;
+  bounds: FixedWindowBounds;
+  incrementBy: number;
+  logger: LoggerInterface;
+}): Promise<void> {
+  // Fail open on invalid input, matching the Redis-error path below: recording
+  // runs on the message-send path, so a bad increment must never throw and
+  // break the send — log and skip instead.
+  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
+    getStatsDClient().increment("ratelimiter.error.count", 1, [
+      "operation:add_fixed_window",
+    ]);
+    logger.error(
+      { key, label: bounds.label, incrementBy },
+      "addFixedWindowCount: incrementBy must be a positive integer, skipping"
+    );
+    return;
+  }
+
+  const redisKey = makeRateLimiterKey(`${key}:${bounds.label}`);
+  const expireAtMs = bounds.windowEndMs + FIXED_WINDOW_EXPIRE_GRACE_MS;
+
+  const luaScript = `
+    local key = KEYS[1]
+    local increment_by = tonumber(ARGV[1])
+    local expire_at_ms = tonumber(ARGV[2])
+
+    local total = redis.call('INCRBY', key, increment_by)
+    redis.call('PEXPIREAT', key, expire_at_ms)
+    return total
+  `;
+
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    await redis.eval(luaScript, {
+      keys: [redisKey],
+      arguments: [incrementBy.toString(), expireAtMs.toString()],
+    });
+  } catch (e) {
+    getStatsDClient().increment("ratelimiter.error.count", 1, [
+      "operation:add_fixed_window",
+    ]);
+    logger.error(
+      { key, label: bounds.label, incrementBy, error: e },
+      "addFixedWindowCount error"
+    );
+  }
+}
+
+/**
+ * Reads the current fixed-window count for `key` in the window identified by
+ * `bounds`. Returns 0 when the window has no entries yet. Mirrors
+ * `getRateLimiterCount` but for the boundary-bucketed counter written by
+ * `addFixedWindowCount`.
+ */
+export async function getFixedWindowCount({
+  key,
+  bounds,
+}: {
+  key: string;
+  bounds: FixedWindowBounds;
+}): Promise<Result<number, Error>> {
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    const redisKey = makeRateLimiterKey(`${key}:${bounds.label}`);
+
+    const raw = await redis.get(redisKey);
+    const count = raw === null ? 0 : Number(raw);
+
+    if (!Number.isFinite(count)) {
+      return new Err(new Error(`Non-numeric fixed-window count: ${raw}`));
+    }
+
+    return new Ok(count);
+  } catch (err) {
+    return new Err(normalizeError(err));
   }
 }

@@ -43,6 +43,7 @@ export async function fetchTopUsers(
     agentIds,
     userIds,
     agentTagIds,
+    modelIds,
   }: {
     days?: number;
     startDate?: string;
@@ -52,6 +53,7 @@ export async function fetchTopUsers(
     agentIds?: string[];
     userIds?: string[];
     agentTagIds?: string[];
+    modelIds?: string[];
   }
 ): Promise<Result<WorkspaceTopUserRow[], ElasticsearchError>> {
   const owner = auth.getNonNullableWorkspace();
@@ -65,6 +67,7 @@ export async function fetchTopUsers(
     agentIds,
     userIds,
     agentTagIds,
+    modelIds,
   });
 
   const result = await searchAnalytics<never, TopUsersAggs>(

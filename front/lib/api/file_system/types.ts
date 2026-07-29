@@ -1,18 +1,20 @@
 /**
  * Shared types for the DustFileSystem abstraction.
  *
- * Scoped path: the agent/API-visible path format, e.g. `conversation-{cId}/report.pdf`
- * or `pod-{pId}/data.csv`. Every public interface accepts and returns scoped paths.
+ * Scoped path: the agent/API-visible path format, e.g. `conversation-{cId}/report.pdf`,
+ * `pod-{pId}/data.csv`, or `user-{uId}/memory.md`. Every public interface accepts and
+ * returns scoped paths.
  *
- * FileSystemMount: one logical namespace (conversation or pod) with its scoped prefix,
- * sandbox mount point, backward-compat aliases, and per-mount permissions.
+ * FileSystemMount: one logical namespace (conversation, pod, or user) with its scoped
+ * prefix, sandbox mount point, backward-compat aliases, and per-mount permissions.
  */
 
-export type FileSystemMountKind = "conversation" | "pod";
+export type FileSystemMountKind = "conversation" | "pod" | "user";
 
 /** Canonical scoped-path prefixes (include the trailing dash). */
 export const SCOPED_PREFIX_CONVERSATION = "conversation-" as const;
 export const SCOPED_PREFIX_POD = "pod-" as const;
+export const SCOPED_PREFIX_USER = "user-" as const;
 
 /** Legacy agent-visible path prefixes (no trailing dash/slash). */
 export const LEGACY_PREFIX_CONVERSATION = "conversation" as const;
@@ -27,8 +29,11 @@ export type FileSystemMount = {
   /** Prefix of every scoped path in this mount, e.g. `conversation-{cId}` or `pod-{pId}`. */
   scopedPrefix: string;
 
-  /** Absolute sandbox path, e.g. `/files/conversation-{cId}`. */
-  sandboxMountPoint: string;
+  /**
+   * Absolute sandbox path, e.g. `/files/conversation-{cId}`. Null for scopes that are
+   * never mounted into a sandbox (e.g. the user scope).
+   */
+  sandboxMountPoint: string | null;
 
   /**
    * Legacy scoped prefix (`"conversation"` or `"project"`) accepted for backward compat.

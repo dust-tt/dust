@@ -32,6 +32,7 @@ pub enum CredentialProvider {
     Notion,
     Freshservice,
     Databricks,
+    Servicenow,
     UkgReady,
     Vanta,
     // BYOK model providers
@@ -53,6 +54,7 @@ impl From<ConnectionProvider> for CredentialProvider {
             ConnectionProvider::McpStatic => CredentialProvider::McpStatic,
             ConnectionProvider::Freshservice => CredentialProvider::Freshservice,
             ConnectionProvider::Databricks => CredentialProvider::Databricks,
+            ConnectionProvider::Servicenow => CredentialProvider::Servicenow,
             ConnectionProvider::Snowflake => CredentialProvider::Snowflake,
             ConnectionProvider::UkgReady => CredentialProvider::UkgReady,
             ConnectionProvider::Vanta => CredentialProvider::Vanta,
@@ -255,6 +257,9 @@ impl Credential {
                 vec!["freshservice_domain"]
             }
             CredentialProvider::Databricks => {
+                vec!["client_id", "client_secret"]
+            }
+            CredentialProvider::Servicenow => {
                 vec!["client_id", "client_secret"]
             }
             CredentialProvider::UkgReady => {

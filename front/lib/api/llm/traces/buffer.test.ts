@@ -65,7 +65,7 @@ class LLMEventFactory {
       type: "token_usage",
       content: {
         inputTokens: faker.number.int({ min: 10, max: 1000 }),
-        outputTokens: faker.number.int({ min: 10, max: 1000 }),
+        totalOutputTokens: faker.number.int({ min: 10, max: 1000 }),
         totalTokens: 0, // Will be calculated
       },
       metadata: {

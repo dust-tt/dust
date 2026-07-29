@@ -118,6 +118,7 @@ const VisualizationRPCRequestSchema = z.union([
 export type VisualizationRPCRequest = z.infer<
   typeof VisualizationRPCRequestSchema
 >;
+export type CallFunctionRequest = z.infer<typeof CallFunctionRequestSchema>;
 export type VisualizationRPCCommand = VisualizationRPCRequest["command"];
 
 // Define a mapped type for backward compatibility.
@@ -134,7 +135,7 @@ export type VisualizationRPCRequestMap = {
 
 // Command results.
 export interface CommandResultMap {
-  callFunction: { result: unknown; error?: string };
+  callFunction: unknown;
   getCodeToExecute: { code: string };
   getFile: { fileBlob: Blob | null };
   downloadFileRequest: { blob: Blob; filename?: string };

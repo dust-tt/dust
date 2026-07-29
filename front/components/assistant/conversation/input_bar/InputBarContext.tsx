@@ -9,6 +9,7 @@ import type {
   RichMention,
 } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
+import { ModelSelectionSchema } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
@@ -18,6 +19,44 @@ import {
   useMemo,
   useState,
 } from "react";
+
+const STICKY_MODEL_OVERRIDE_STORAGE_KEY = "inputBarModelOverride_v1";
+
+function readStickyModelOverride(): ModelSelectionType | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+  try {
+    const raw = window.sessionStorage.getItem(
+      STICKY_MODEL_OVERRIDE_STORAGE_KEY
+    );
+    if (!raw) {
+      return undefined;
+    }
+    const parsed = ModelSelectionSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeStickyModelOverride(selection: ModelSelectionType | undefined) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    if (selection === undefined) {
+      window.sessionStorage.removeItem(STICKY_MODEL_OVERRIDE_STORAGE_KEY);
+    } else {
+      window.sessionStorage.setItem(
+        STICKY_MODEL_OVERRIDE_STORAGE_KEY,
+        JSON.stringify(selection)
+      );
+    }
+  } catch {
+    // Best-effort write only.
+  }
+}
 
 /** Payload for the first message when creation is deferred until after navigation. */
 export type PendingConversationMessage = {
@@ -61,6 +100,8 @@ export const InputBarContext = createContext<{
   clearPendingFirstMessage: (conversationId: string) => void;
   isLoadingGoTemplate: boolean;
   setIsLoadingGoTemplate: (loading: boolean) => void;
+  stickyModelOverride: ModelSelectionType | undefined;
+  setStickyModelOverride: (selection: ModelSelectionType | undefined) => void;
   fileUploaderService: FileUploaderService;
   captureActions?: CaptureActions;
   // Fired right before submit; the extension uses it to snapshot browser tab state.
@@ -79,6 +120,8 @@ export const InputBarContext = createContext<{
   clearPendingFirstMessage: () => {},
   isLoadingGoTemplate: false,
   setIsLoadingGoTemplate: () => {},
+  stickyModelOverride: undefined,
+  setStickyModelOverride: () => {},
   fileUploaderService: {
     fileBlobs: [],
     handleFileChange: async () => undefined,
@@ -120,6 +163,20 @@ export function InputBarContextProvider({
   const [pendingInputText, setPendingInputTextState] =
     useState<PendingInputText | null>(null);
   const [isLoadingGoTemplate, setIsLoadingGoTemplate] = useState(false);
+
+  // Sticky model-picker override, hydrated from sessionStorage on mount and
+  // written through on every change so it survives reloads within the tab.
+  const [stickyModelOverride, setStickyModelOverrideState] = useState<
+    ModelSelectionType | undefined
+  >(() => readStickyModelOverride());
+
+  const setStickyModelOverride = useCallback(
+    (selection: ModelSelectionType | undefined) => {
+      writeStickyModelOverride(selection);
+      setStickyModelOverrideState(selection);
+    },
+    []
+  );
 
   // First message stashed while navigating to a newly-created conversation (deferred-send flow).
   const [
@@ -206,6 +263,8 @@ export function InputBarContextProvider({
       clearPendingFirstMessage,
       isLoadingGoTemplate,
       setIsLoadingGoTemplate,
+      stickyModelOverride,
+      setStickyModelOverride,
       captureActions,
       fileUploaderService,
       onBeforeSubmit,
@@ -221,6 +280,8 @@ export function InputBarContextProvider({
       setPendingFirstMessage,
       clearPendingFirstMessage,
       isLoadingGoTemplate,
+      stickyModelOverride,
+      setStickyModelOverride,
       captureActions,
       fileUploaderService,
       onBeforeSubmit,

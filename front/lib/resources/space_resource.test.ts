@@ -11,15 +11,17 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("SpaceResource", () => {
   describe("updatePermissions", () => {
@@ -140,6 +142,44 @@ describe("SpaceResource", () => {
           },
         })
       ).resolves.toBe(0);
+    });
+
+    it("should delete pod-scoped sandbox env vars but keep workspace-scoped ones when hard deleting a space", async () => {
+      const pod = await SpaceFactory.project(workspace, user1.id);
+
+      await SandboxEnvVarFactory.create(adminAuth, {
+        name: "POD_TOKEN",
+        space: pod,
+      });
+      await SandboxEnvVarFactory.create(adminAuth, {
+        name: "WORKSPACE_TOKEN",
+      });
+
+      const softDeleteResult = await pod.delete(adminAuth, {
+        hardDelete: false,
+      });
+      expect(softDeleteResult.isOk()).toBe(true);
+
+      const deletedSpace = await SpaceResource.fetchById(adminAuth, pod.sId, {
+        includeDeleted: true,
+      });
+      if (!deletedSpace) {
+        throw new Error("Deleted space should exist");
+      }
+
+      const hardDeleteResult = await hardDeleteSpace(adminAuth, deletedSpace);
+      expect(hardDeleteResult.isOk()).toBe(true);
+
+      await expect(
+        WorkspaceSandboxEnvVarModel.count({
+          where: { workspaceId: workspace.id, spaceId: pod.id },
+        })
+      ).resolves.toBe(0);
+      await expect(
+        WorkspaceSandboxEnvVarModel.count({
+          where: { workspaceId: workspace.id, name: "WORKSPACE_TOKEN" },
+        })
+      ).resolves.toBe(1);
     });
 
     describe("authorization checks", () => {
@@ -1158,6 +1198,49 @@ describe("SpaceResource", () => {
       expect(spaces.some((s) => s.id === regularSpace.id)).toBe(true);
     });
 
+    it("hydrates group references directly from group vaults", async () => {
+      const regularSpace = await SpaceFactory.regular(workspace);
+      const [groupReference] = regularSpace.groups;
+      const findAllSpy = vi.spyOn(SpaceModel, "findAll");
+
+      const fetchedSpace = await SpaceResource.fetchById(
+        adminAuth,
+        regularSpace.sId
+      );
+
+      expect(fetchedSpace).not.toBeNull();
+      expect(findAllSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.arrayContaining([
+            expect.objectContaining({
+              as: "groupSpaces",
+              model: GroupSpaceModel,
+            }),
+          ]),
+        })
+      );
+      expect(findAllSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.arrayContaining([
+            expect.objectContaining({ model: GroupResource.model }),
+          ]),
+        })
+      );
+      expect(fetchedSpace?.groups).toEqual([
+        expect.objectContaining({
+          groupId: groupReference.groupId,
+          groupKind: "regular_auto",
+          groupSpaceKind: "member",
+          workspaceId: workspace.id,
+        }),
+      ]);
+      expect(fetchedSpace?.toJSON().groupIds).toEqual([
+        groupReference.groupSId,
+      ]);
+
+      findAllSpy.mockRestore();
+    });
+
     it("should include conversations space when includeConversationsSpace is true", async () => {
       const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
         includeConversationsSpace: true,
@@ -1368,7 +1451,12 @@ describe("SpaceResource", () => {
 
     it("should return project spaces only for members", async () => {
       const projectSpace = await SpaceFactory.project(workspace);
-      const projectGroup = projectSpace.groups.find((g) => g.isRegularAuto());
+      const projectGroupReference = projectSpace.groups.find((group) =>
+        group.isRegularAuto()
+      );
+      const [projectGroup] = await projectSpace.fetchGroupResources(adminAuth, {
+        groupReferences: projectGroupReference ? [projectGroupReference] : [],
+      });
 
       // User is not a member, should not see it
       const userSpaces =
@@ -1734,6 +1822,8 @@ describe("searchProjectsByNamePaginated", () => {
 // List of all known models that have a foreign key relationship to Space (via vaultId or spaceId)
 // These are Sequelize model names (modelName property), not TypeScript class names
 const KNOWN_SPACE_RELATED_MODELS = [
+  "activation_nudge",
+  "activation_pod",
   "agent_project_configuration",
   "app",
   "conversation_selected_spaces",
@@ -1743,6 +1833,7 @@ const KNOWN_SPACE_RELATED_MODELS = [
   "data_source_view",
   "group_vaults",
   "mcp_server_view",
+  "workspace_sandbox_env_var",
   "sandbox_function",
   "sandbox_owner",
   "project_metadata",

@@ -7,7 +7,7 @@ import {
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -20,45 +20,40 @@ const QuerySchema = z.object({
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  ensureIsBusinessAdmin(),
-  validate("query", QuerySchema),
-  async (ctx) => {
-    const auth = ctx.get("auth");
+app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
 
-    const { days } = ctx.req.valid("query");
-    const owner = auth.getNonNullableWorkspace();
+  const { days } = ctx.req.valid("query");
+  const owner = auth.getNonNullableWorkspace();
 
-    const baseQuery = buildAgentAnalyticsBaseQuery({
-      workspaceId: owner.sId,
-      days,
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: owner.sId,
+    days,
+  });
+
+  const result = await fetchAgentExportRows(baseQuery, auth, true);
+
+  if (result.isErr()) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to retrieve agent analytics: ${result.error.message}`,
+      },
     });
-
-    const result = await fetchAgentExportRows(baseQuery, auth, true);
-
-    if (result.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: `Failed to retrieve agent analytics: ${result.error.message}`,
-        },
-      });
-    }
-
-    const csv = rowsToCsv(
-      AGENT_EXPORT_HEADERS,
-      result.value.map(toAgentExportCsvRow)
-    );
-
-    ctx.header("Content-Type", "text/csv");
-    ctx.header(
-      "Content-Disposition",
-      `attachment; filename="dust_agents_last_${days}_days.csv"`
-    );
-    return ctx.body(csv);
   }
-);
+
+  const csv = rowsToCsv(
+    AGENT_EXPORT_HEADERS,
+    result.value.map(toAgentExportCsvRow)
+  );
+
+  ctx.header("Content-Type", "text/csv");
+  ctx.header(
+    "Content-Disposition",
+    `attachment; filename="dust_agents_last_${days}_days.csv"`
+  );
+  return ctx.body(csv);
+});
 
 export default app;

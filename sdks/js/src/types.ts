@@ -24,6 +24,8 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "xai"
   | "noop"
   | "auto"
+  | "auto_fast"
+  | "auto_complex"
 >();
 
 export type KnownModelLLMId =
@@ -65,6 +67,7 @@ export type KnownModelLLMId =
   | "claude-opus-4-6"
   | "claude-opus-4-7"
   | "claude-opus-4-8"
+  | "claude-opus-5"
   | "claude-fable-5"
   | "claude-sonnet-4-6"
   | "claude-sonnet-5"
@@ -82,6 +85,8 @@ export type KnownModelLLMId =
   | "gemini-3.1-pro-preview"
   | "gemini-3-flash-preview"
   | "gemini-3.5-flash"
+  | "gemini-3.5-flash-lite"
+  | "gemini-3.6-flash"
   | "deepseek-chat" // deepseek api
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
@@ -89,18 +94,22 @@ export type KnownModelLLMId =
   | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
   | "accounts/fireworks/models/kimi-k2p5" // fireworks
   | "accounts/fireworks/models/kimi-k2p6" // fireworks
+  | "accounts/fireworks/models/kimi-k3" // fireworks
   | "accounts/fireworks/models/minimax-m2p5" // fireworks
   | "accounts/fireworks/models/glm-5" // fireworks
   | "accounts/fireworks/models/glm-5p2" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
+  | "grok-4.5" // xAI
   | "grok-4-latest" // xAI
   | "grok-4-fast-non-reasoning-latest"
   | "grok-4-fast-reasoning-latest"
   | "grok-4-1-fast-non-reasoning-latest"
   | "grok-4-1-fast-reasoning-latest"
   | "noop" // Noop
-  | "auto"; // Auto
+  | "auto" // Auto
+  | "auto_fast" // Fast stream tier
+  | "auto_complex"; // Complex stream tier
 
 // Cast to allow custom/unknown model IDs while preserving autocomplete.
 const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<
@@ -723,11 +732,11 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "activation_scheduler"
   | "activation_skill"
   | "advanced_notion_management"
+  | "allow_scim"
   | "allow_sso"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "anthropic_cache_diagnostics"
-  | "anthropic_tool_search"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
@@ -763,7 +772,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_usage_mcp"
   | "power_bi_mcp"
   | "reinforced_agents"
-  | "render_search_results_as_markdown"
   | "self_improvement_beta_tester"
   | "legacy_billing"
   | "plan_mode"
@@ -777,6 +785,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool"
   | "sandbox_functions"
   | "self_created_slack_app_connector_rollout"
+  | "servicenow_tool"
   | "show_debug_tools"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
@@ -793,11 +802,12 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "sensitivity_labels"
   | "use_vertex_for_supported_models"
   | "admin_governance"
-  | "use_new_llm_router"
+  | "admin_governance_skill_publication"
   | "live_speech_to_text"
   | "workspace_default_agent"
   | "whitelabel_frames"
   | "workday_mcp"
+  | "user_memory"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -805,13 +815,7 @@ export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
 const WorkspaceSegmentationSchema =
   FlexibleEnumSchema<"interesting">().nullable();
 
-const RoleSchema = z.enum([
-  "admin",
-  "business_admin",
-  "builder",
-  "user",
-  "none",
-]);
+const RoleSchema = z.enum(["admin", "manager", "builder", "user", "none"]);
 
 const LightWorkspaceSchema = z.object({
   id: ModelIdSchema,
@@ -868,17 +872,20 @@ export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
 
 const ActionGeneratedFileBaseSchema = z.object({
   title: z.string(),
-  contentType: ActionGeneratedFileContentTypeSchema,
   snippet: z.string().nullable(),
   hidden: z.boolean().optional(),
   isInProjectContext: z.boolean().optional(),
 });
 
 const ActionGeneratedFileSchema = z.union([
+  // File backed by a Dust FileResource: always a supported content type.
   ActionGeneratedFileBaseSchema.extend({
+    contentType: ActionGeneratedFileContentTypeSchema,
     fileId: z.string(),
   }),
+  // File path only, no FileResource in DB. Not restricted to supported content types.
   ActionGeneratedFileBaseSchema.extend({
+    contentType: z.string(),
     fileId: z.null(),
     filePath: z.string(),
   }),
@@ -3175,6 +3182,7 @@ export const PublicFrameResponseBodySchema = z.object({
   conversationUrl: z.string().nullable(),
   projectUrl: z.string().nullable(),
   file: FileTypeSchema,
+  isAuthenticatedMember: z.boolean().optional(),
 });
 
 export type PublicFrameResponseBodyType = z.infer<
@@ -3185,6 +3193,7 @@ export const PublicVizContentResponseBodySchema = z.object({
   content: z.string(),
   contentType: z.string(),
   metadata: z.record(z.unknown()).optional(),
+  isAuthenticatedMember: z.boolean().optional(),
 });
 
 export type PublicVizContentResponseBodyType = z.infer<

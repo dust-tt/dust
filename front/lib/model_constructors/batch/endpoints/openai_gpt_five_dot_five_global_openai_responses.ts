@@ -1,0 +1,23 @@
+import { OpenAIResponsesBatch } from "@app/lib/model_constructors/batch/clients/openai_responses";
+import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch/configuration";
+import { OPENAI_GLOBAL_BASE_URL } from "@app/lib/model_constructors/providers/openai/base_url";
+import { WithOpenAIGptFiveDotFiveConfig } from "@app/lib/model_constructors/providers/openai/models/gpt_five_dot_five";
+import { GLOBAL } from "@app/lib/model_constructors/types/regions";
+
+export class OpenAIGptFiveDotFiveGlobalOpenAIResponsesBatch extends WithOpenAIGptFiveDotFiveConfig(
+  OpenAIResponsesBatch
+) {
+  // Batch pricing is half the standard OpenAI rate.
+  static readonly tokenPricing = {
+    standardInput: 2.5,
+    standardOutput: 15.0,
+  };
+
+  static readonly region = GLOBAL;
+
+  static readonly id = this.buildId();
+
+  protected readonly baseUrl = OPENAI_GLOBAL_BASE_URL;
+}
+
+OpenAIGptFiveDotFiveGlobalOpenAIResponsesBatch satisfies BatchEndpointConstructor;

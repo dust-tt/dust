@@ -108,6 +108,12 @@ export const RESOURCES_PREFIX = {
 
   // Activation recommendations.
   activation_recommendation: "arc",
+
+  // Activation nudges.
+  activation_nudge: "anu",
+
+  // Activation pods.
+  activation_pod: "apo",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

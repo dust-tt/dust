@@ -15,6 +15,7 @@ import {
 import { isProPlanPrefix } from "@app/lib/plans/plan_codes";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { heartbeat } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -104,6 +105,7 @@ export async function syncMetronomeSeatCountForWorkspace({
     },
     "[SeatSync] stagePendingContractSeats done"
   );
+  await heartbeat();
 
   const activeContract = activeSubscription?.metronomeContractId
     ? await getActiveContract(workspace.sId)
@@ -152,6 +154,7 @@ export async function syncMetronomeSeatCountForWorkspace({
     return new Err(result.error);
   }
   const activeContractSummary = result.value;
+  await heartbeat();
 
   // Single-user scope: reconcile just this user from the live balances now that
   // their seat credits are assigned. Skips the whole-workspace reconcile and the
@@ -205,6 +208,7 @@ export async function syncMetronomeSeatCountForWorkspace({
     { workspaceId, durationMs: Date.now() - reconcileStartedAt },
     "[SeatSync] reconcileWorkspaceUserCreditStates done"
   );
+  await heartbeat();
 
   // Ensure per-seat-type cap alerts exist with the current default pool limit.
   // Best-effort: a failure here must not fail the seat sync.
@@ -309,6 +313,7 @@ async function stagePendingContractSeats({
     },
     "[SeatSync] remapMembershipSeatTypesForContract done"
   );
+  await heartbeat();
   if (remapResult.isErr()) {
     logger.warn(
       { workspaceId, err: remapResult.error.message },

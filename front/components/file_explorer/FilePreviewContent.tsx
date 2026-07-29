@@ -8,9 +8,10 @@ import type { FilePreviewCategory } from "@app/components/file_explorer/utils";
 import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
-import { useFileContentByUrl } from "@app/lib/swr/files";
+import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
 import { stripMimeParameters } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   CodeBlock,
   cn,
@@ -138,11 +139,12 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
 interface AudioPreviewProps {
   fileUrl: string;
   fileId: string | null;
+  owner?: LightWorkspaceType;
 }
 
-function AudioPreview({ fileUrl, fileId }: AudioPreviewProps) {
-  const sep = fileUrl.includes("?") ? "&" : "?";
-  const transcriptUrl = fileId ? `${fileUrl}${sep}version=processed` : null;
+function AudioPreview({ fileUrl, fileId, owner }: AudioPreviewProps) {
+  const transcriptUrl =
+    fileId && owner ? getFileProcessedUrl(owner, fileId) : null;
   const { fileContent: transcript } = useFileContentByUrl({
     url: transcriptUrl,
     disabled: !transcriptUrl,
@@ -203,8 +205,8 @@ export function useFilePreviewContent({
 
   const needsTextContent =
     category === "code" ||
-    category === "markdown" ||
     category === "text" ||
+    category === "markdown" ||
     category === "delimited";
 
   const { fileContent, isNotFound, isFileContentLoading, fileContentError } =
@@ -220,7 +222,7 @@ export function useFilePreviewContent({
   const truncatedContent = fileContent?.slice(0, MAX_TEXT_CHARS) ?? null;
 
   const processedContent =
-    (category === "markdown" || category === "text") && truncatedContent
+    category === "markdown" && truncatedContent
       ? processFileContent(truncatedContent, mimeType)
       : null;
 
@@ -254,6 +256,7 @@ interface FilePreviewContentProps {
   markdownViewMode?: MarkdownFilePreviewViewMode;
   onMarkdownContentChange?: (content: string) => void;
   onMarkdownViewModeChange?: (mode: MarkdownFilePreviewViewMode) => void;
+  owner?: LightWorkspaceType;
   processedContent: ProcessedContent | null;
 }
 
@@ -269,6 +272,7 @@ export function FilePreviewContent({
   markdownViewMode,
   onMarkdownContentChange,
   onMarkdownViewModeChange,
+  owner,
   processedContent,
 }: FilePreviewContentProps) {
   if (isContentLoading) {
@@ -316,7 +320,9 @@ export function FilePreviewContent({
     }
 
     case "audio":
-      return <AudioPreview fileUrl={fileUrl} fileId={entry.fileId} />;
+      return (
+        <AudioPreview fileUrl={fileUrl} fileId={entry.fileId} owner={owner} />
+      );
 
     case "delimited":
       if (fileContent) {
@@ -325,16 +331,6 @@ export function FilePreviewContent({
             content={fileContent.slice(0, MAX_TEXT_CHARS)}
             mimeType={stripMimeParameters(entry.contentType)}
           />
-        );
-      }
-      return null;
-
-    case "text":
-      if (processedContent) {
-        return (
-          <div className="rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
-            <Markdown content={processedContent.text} isStreaming={false} />
-          </div>
         );
       }
       return null;
@@ -358,7 +354,8 @@ export function FilePreviewContent({
       }
       return null;
 
-    case "code": {
+    case "code":
+    case "text": {
       const lang = getCodeLanguage(entry.fileName);
       const raw = fileContent?.slice(0, MAX_TEXT_CHARS) ?? "";
       let displayContent = raw;
@@ -377,6 +374,9 @@ export function FilePreviewContent({
         </div>
       );
     }
+
+    case "unsupported":
+      return null;
 
     default:
       assertNeverAndIgnore(category);

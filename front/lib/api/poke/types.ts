@@ -104,7 +104,7 @@ interface BasePlugin<
   isApplicableTo: (
     auth: Authenticator,
     resource: ResourceTypeMap[R] | null
-  ) => boolean;
+  ) => boolean | Promise<boolean>;
 }
 
 // Plugin with required async args function.
@@ -157,7 +157,7 @@ export function createPlugin<
   isApplicableTo?: (
     auth: Authenticator,
     resource: ResourceTypeMap[R] | null
-  ) => boolean;
+  ) => boolean | Promise<boolean>;
 } & (HasAsyncFields<T> extends true
   ? {
       populateAsyncArgs: (

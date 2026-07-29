@@ -1,11 +1,12 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import { displayRole, getRoleDescription } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
 import {
   formatPriceCents,
   getAvailableFrequencies,
   groupSeatTypesByFrequency,
+  includedSeatsOpen,
   SeatCard,
   sortSeatTypes,
 } from "@app/components/workspace/SeatCard";
@@ -15,10 +16,12 @@ import type {
   SeatBillingFrequency,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY,
+  mutateWorkspaceInvitations,
   sendInvitations,
 } from "@app/lib/invitations";
 import { useSeatPlan } from "@app/lib/swr/credits";
@@ -74,10 +77,6 @@ const useGetEmailsListAndError = (
     };
   }, [inviteEmails]);
 };
-
-function includedSeatsOpen(info: SeatTypeInfo): number {
-  return Math.max(0, info.minSeats - info.assignedCount);
-}
 
 function isSeatAtCapacity(
   seatType: MembershipSeatType,
@@ -143,6 +142,7 @@ export function InviteEmailButtonWithModal({
 
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
+  const { hasFeature } = useFeatureFlags();
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
   const handleMembersRoleChange = useChangeMembersRoles({ owner });
 
@@ -341,7 +341,7 @@ export function InviteEmailButtonWithModal({
         });
         await mutate(`/api/w/${owner.sId}/members`);
       }
-      await mutate(`/api/w/${owner.sId}/invitations`);
+      await mutateWorkspaceInvitations(owner);
       setOpen(false);
     }
   }
@@ -408,7 +408,10 @@ export function InviteEmailButtonWithModal({
                 />
               </div>
               <div className="text-muted-foreground">
-                {ROLES_DATA[invitationRole]["description"]}
+                {getRoleDescription(
+                  invitationRole,
+                  hasFeature("admin_governance")
+                )}
               </div>
             </div>
             {hasSeatSelection && (

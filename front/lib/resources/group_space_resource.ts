@@ -195,7 +195,7 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     if (setMembersRes.isErr()) {
       return new Err(setMembersRes.error);
     }
-    return new Ok(setMembersRes.value);
+    return new Ok(undefined);
   }
 
   /**

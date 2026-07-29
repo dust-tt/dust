@@ -50,8 +50,7 @@ export type SandboxStartupPhase =
   | "egress.wait_healthy"
   | "egress.healthcheck"
   | "egress.install_trust_bundle"
-  // GCS FUSE mount sub-steps. token_server brackets the single exec that writes
-  // the token, starts the token server, and polls it ready (was three execs).
+  // GCS token minting, broker startup, and individual gcsfuse mount commands.
   | "gcs.mint_token"
   | "gcs.token_server"
   | "gcs.gcsfuse_mount"

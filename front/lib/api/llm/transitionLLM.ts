@@ -1,5 +1,9 @@
 import { LLM } from "@app/lib/api/llm/llm";
-import type { BatchResult } from "@app/lib/api/llm/types/batch";
+import type {
+  BatchDeletionOutcome,
+  BatchResult,
+} from "@app/lib/api/llm/types/batch";
+import { isBatchNotFoundError } from "@app/lib/api/llm/types/batch";
 import {
   handleGenericError,
   type LLMErrorType,
@@ -15,6 +19,7 @@ import { EventError } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
+  LLMStreamMetadata,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
@@ -23,7 +28,10 @@ import {
   parseReasoningMetadata,
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
+import { getOpenAIPromptCacheKey } from "@app/lib/api/llm/utils/prompt_cache_key";
 import type { Authenticator } from "@app/lib/auth";
+import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch/configuration";
 import type {
   BatchEndpoint,
@@ -31,10 +39,13 @@ import type {
   BatchStatus,
 } from "@app/lib/model_constructors/batch/endpoint";
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
-import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import type { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
-import type { NoopRequest } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
-import { NoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
+import type { NoopRequest } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
+import { NoopNoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
+import {
+  AGENT_PLATFORM_HOST,
+  OPENAI_RESPONSES_HOST,
+} from "@app/lib/model_constructors/types/hosts";
 import type {
   InputConfig,
   ToolSpecification,
@@ -45,7 +56,12 @@ import type {
   SystemTextMessage,
   ToolCallResultPart,
 } from "@app/lib/model_constructors/types/input/messages";
-import { NOOP_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import {
+  GOOGLE_LAB,
+  type Lab,
+  NOOP_LAB,
+} from "@app/lib/model_constructors/types/labs";
+import { NOOP_MODEL } from "@app/lib/model_constructors/types/models";
 import type {
   ErrorType,
   ModelResponseEvent,
@@ -53,8 +69,8 @@ import type {
   TextEvent as NewTextEvent,
   ToolCallEvent as NewToolCallEvent,
   NonDeltaResponseEvent,
+  PassthroughLab,
 } from "@app/lib/model_constructors/types/output/events";
-import { NOOP_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
 import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type {
@@ -63,9 +79,17 @@ import type {
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
+import { isAgentMessagePhase } from "@app/types/assistant/agent_message_content";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
-import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import {
+  getMinimumReasoningEffort,
+  type ModelProviderIdType,
+  type ReasoningEffort,
+} from "@app/types/assistant/models/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 
 /**
@@ -91,6 +115,45 @@ function mapReasoningEffort(
       return "high";
     default:
       assertNever(effort);
+  }
+}
+
+// The persisted passthrough `provider` uses the legacy provider-id vocabulary
+// (e.g. `google_ai_studio`), while BaseMessage carries the model's `Lab`. Only
+// `google_ai_studio` diverges (-> `google`); the rest are identical.
+function passthroughProviderToLab(
+  provider: AgentProviderPassthroughContentType["value"]["provider"]
+): PassthroughLab {
+  switch (provider) {
+    case "google_ai_studio":
+      return GOOGLE_LAB;
+    case "openai":
+    case "anthropic":
+    case "mistral":
+    case "deepseek":
+    case "noop":
+      return provider;
+    default:
+      assertNever(provider);
+  }
+}
+
+// Inverse of `passthroughProviderToLab`: maps a new-router `PassthroughLab` back
+// to the legacy provider-id vocabulary persisted on the passthrough content.
+function labToPassthroughProvider(
+  lab: PassthroughLab
+): AgentProviderPassthroughContentType["value"]["provider"] {
+  switch (lab) {
+    case "google":
+      return "google_ai_studio";
+    case "openai":
+    case "anthropic":
+    case "mistral":
+    case "deepseek":
+    case "noop":
+      return lab;
+    default:
+      assertNever(lab);
   }
 }
 
@@ -154,6 +217,7 @@ export function toBaseMessages(
                   role: "assistant",
                   type: "text",
                   content: { value: c.value },
+                  phase: c.metadata?.phase,
                 },
               ];
             case "reasoning": {
@@ -198,6 +262,7 @@ export function toBaseMessages(
                     callId: c.value.id,
                     toolName: c.value.name,
                     arguments: c.value.arguments,
+                    namespace: c.value.namespace,
                   },
                   signature: c.value.metadata?.thoughtSignature,
                 },
@@ -208,7 +273,7 @@ export function toBaseMessages(
                   role: "assistant",
                   type: "provider_passthrough",
                   content: {
-                    provider: c.value.provider,
+                    provider: passthroughProviderToLab(c.value.provider),
                     block: c.value.block,
                   },
                 },
@@ -229,6 +294,47 @@ export function toBaseMessages(
     default:
       assertNever(message);
   }
+}
+
+// Places provider user-message cache breakpoints at the same boundaries as the
+// legacy Anthropic router. Returns a new array; does not mutate its input.
+//   - Equipped-skills prefix: always. When the first message is the
+//     `name: "system"` user block (the stable per agent+workspace skills list),
+//     its last content block is cached for cross-conversation reuse. Mirrors the
+//     legacy `isFirst && message.name === "system"` breakpoint. `toBaseMessages`
+//     emits one BaseMessage per user content item, so messages[0]'s last block
+//     sits at index (content.length - 1).
+//   - Conversation tail: only when `explicitTailBreakpoint` is set — i.e. on
+//     surfaces without the request-level automatic cache_control (Vertex/
+//     agent-platform). The last user message is cached, mirroring legacy's
+//     Vertex-only `isLast` marker. On the Anthropic API (and batch) the tail is
+//     left to the top-level automatic cache, keeping within the 4-slot budget.
+export function withMessageCacheBreakpoints(
+  baseMessages: BaseMessage[],
+  firstMessage: ModelMessageTypeMultiActionsWithoutContentFragment | undefined,
+  { explicitTailBreakpoint }: { explicitTailBreakpoint: boolean }
+): BaseMessage[] {
+  const result = [...baseMessages];
+
+  if (firstMessage?.role === "user" && firstMessage.name === "system") {
+    const skillsBlockIndex = firstMessage.content.length - 1;
+    const skillsBlock = result[skillsBlockIndex];
+    if (skillsBlock?.role === "user") {
+      result[skillsBlockIndex] = { ...skillsBlock, cache: "short" };
+    }
+  }
+
+  if (explicitTailBreakpoint) {
+    for (let i = result.length - 1; i >= 0; i--) {
+      const msg = result[i];
+      if (msg.role === "user") {
+        result[i] = { ...msg, cache: "short" };
+        break;
+      }
+    }
+  }
+
+  return result;
 }
 
 // The new router nests reasoning replay state under `metadata.content`: OpenAI
@@ -274,11 +380,7 @@ function convertAggregatedItem(
     case "tool_call":
       return {
         type: "tool_call",
-        content: {
-          id: item.content.id,
-          name: item.content.name,
-          arguments: item.content.arguments,
-        },
+        content: item.content,
         metadata: {
           ...metadata,
           ...(typeof item.metadata.content?.signature === "string"
@@ -363,12 +465,19 @@ export function convertToOldEvent(
         metadata,
       };
 
-    case "text":
+    case "text": {
+      // Carry the Responses API phase (commentary/final_answer) back onto the
+      // legacy text event so it is persisted and resent on follow-up turns.
+      const phase = event.metadata.content?.phase;
       return {
         type: "text_generated",
         content: { text: event.content.value },
-        metadata,
+        metadata: {
+          ...metadata,
+          ...(isString(phase) && isAgentMessagePhase(phase) ? { phase } : {}),
+        },
       };
+    }
 
     case "reasoning_delta":
       return {
@@ -403,11 +512,7 @@ export function convertToOldEvent(
     case "tool_call":
       return {
         type: "tool_call",
-        content: {
-          id: event.content.id,
-          name: event.content.name,
-          arguments: event.content.arguments,
-        },
+        content: event.content,
         metadata: {
           ...metadata,
           ...(typeof event.metadata.content?.signature === "string"
@@ -419,7 +524,7 @@ export function convertToOldEvent(
     case "token_usage": {
       const {
         standardInput,
-        standardOutput,
+        totalOutput,
         cacheHit,
         cacheCreated,
         longCacheCreated,
@@ -433,13 +538,21 @@ export function convertToOldEvent(
         ? longCacheCreated + shortCacheCreated
         : cacheCreated;
       const inputTokens = standardInput + cacheHit + totalCacheCreated;
+      if (
+        reasoning !== undefined &&
+        (reasoning < 0 || reasoning > totalOutput)
+      ) {
+        throw new Error(
+          "reasoning must be a non-negative subset of totalOutput"
+        );
+      }
       return {
         type: "token_usage",
         content: {
           inputTokens,
-          outputTokens: standardOutput,
-          reasoningTokens: reasoning,
-          totalTokens: inputTokens + standardOutput + reasoning,
+          totalOutputTokens: totalOutput,
+          ...(reasoning !== undefined ? { reasoningTokens: reasoning } : {}),
+          totalTokens: inputTokens + totalOutput,
           cachedTokens: cacheHit,
           cacheCreationTokens: totalCacheCreated,
           ...(hasDurationBreakdown
@@ -481,7 +594,10 @@ export function convertToOldEvent(
     case "provider_passthrough":
       return {
         type: "provider_passthrough",
-        content: event.content,
+        content: {
+          provider: labToPassthroughProvider(event.content.provider),
+          block: event.content.block,
+        },
         metadata,
       };
 
@@ -536,25 +652,30 @@ function convertBatchEventsToOld(
  * `BatchEndpointTransition` for batch — mirroring `StreamEndpoint`/`BatchEndpoint`.
  */
 abstract class BaseTransition extends LLM {
+  protected override readonly router = "new" as const;
+
   // Builds the provider-agnostic conversation payload (system + messages) shared
   // by both the streaming and batch surfaces.
-  protected buildPayload(streamParameters: LLMStreamParameters): Payload {
+  //
+  // `explicitTailBreakpoint` mirrors legacy's Vertex-only `isLast` marker: set it
+  // for surfaces that lack the request-level automatic `cache_control`
+  // (agent-platform/Vertex), so the conversation tail still gets a breakpoint.
+  // On the Anthropic API (and batch) it stays false — the tail is covered by the
+  // top-level automatic cache there, and adding one here would exceed the 4-slot
+  // breakpoint budget.
+  protected buildPayload(
+    streamParameters: LLMStreamParameters,
+    {
+      explicitTailBreakpoint = false,
+    }: { explicitTailBreakpoint?: boolean } = {}
+  ): Payload {
     const { conversation, prompt } = streamParameters;
 
-    const baseMessages = conversation.messages.flatMap(toBaseMessages);
-
-    // Cache breakpoint on the last user-role message so the conversation
-    // prefix is reused across turns. Mirrors the legacy cache_control:
-    // ephemeral marker on the last user content block, and the request-level
-    // cache_control that acted as a default trailing breakpoint for
-    // tool-result turns.
-    for (let i = baseMessages.length - 1; i >= 0; i--) {
-      const msg = baseMessages[i];
-      if (msg.role === "user") {
-        baseMessages[i] = { ...msg, cache: "short" };
-        break;
-      }
-    }
+    const baseMessages = withMessageCacheBreakpoints(
+      conversation.messages.flatMap(toBaseMessages),
+      conversation.messages[0],
+      { explicitTailBreakpoint }
+    );
 
     const { instructions, sharedContext, ephemeralContext } =
       normalizePrompt(prompt);
@@ -601,7 +722,18 @@ abstract class BaseTransition extends LLM {
   // own `configSchema` (stream and batch own theirs independently).
   protected buildConfig(
     streamParameters: LLMStreamParameters,
-    configSchema: BaseEndpointConfiguration["configSchema"]
+    configSchema: BaseEndpointConfiguration["configSchema"],
+    // Per-endpoint adjustments applied in order before schema validation
+    // (defaults to identity). Some schemas reject provider-invalid combinations
+    // (e.g. Anthropic requires temperature=1 with thinking), so the fix must land
+    // before `parse`, not after.
+    configParsers: Array<(config: InputConfig) => InputConfig> = [
+      (config) => config,
+    ],
+    // Prompt cache key, forwarded only by surfaces whose config schema accepts
+    // it (OpenAI Responses). Left undefined elsewhere so the provider schemas
+    // that guard `cacheKey` to `undefined` still parse.
+    cacheKey?: string
   ): InputConfig {
     const {
       specifications,
@@ -611,12 +743,25 @@ abstract class BaseTransition extends LLM {
       previousMessageId,
     } = streamParameters;
 
-    return configSchema.parse({
+    // Clamp the reasoning effort to the model's supported range. Some callers
+    // default to "none" when no effort is set, but models like GPT-5 reject the
+    // "none" effort their schema drops, so an unsupported effort falls back to
+    // the model's minimum supported one (mirrors the legacy Anthropic client).
+    // TODO(new_llm_router): this reliance on the legacy `supportedReasoningEfforts` is temporary.
+    // Once the new router is fully rolled out, drop this clamp and rely on each
+    // model constructor's own default reasoning effort instead.
+    const supportedEfforts = this.modelConfig.supportedReasoningEfforts;
+    const clampedReasoningEffort: ReasoningEffort | null =
+      this.reasoningEffort !== null && !supportedEfforts[this.reasoningEffort]
+        ? getMinimumReasoningEffort(supportedEfforts)
+        : this.reasoningEffort;
+
+    const config: InputConfig = {
       tools: specifications as ToolSpecification[],
       temperature: this.temperature ?? undefined,
       reasoning: {
         effort: mapReasoningEffort(
-          this.reasoningEffort,
+          clampedReasoningEffort,
           this.modelConfig.useNativeLightReasoning ?? false
         ),
       },
@@ -627,6 +772,16 @@ abstract class BaseTransition extends LLM {
         this.responseFormat,
         this.metadata.clientId
       ),
+      cacheKey,
+    };
+
+    const parsedConfig = configParsers.reduce(
+      (acc, parser) => parser(acc),
+      config
+    );
+
+    return configSchema.parse({
+      ...parsedConfig,
       // Prompt-cache diagnostics opt-in. Kept only by the Anthropic (direct)
       // config schema; other surfaces' schemas strip this unknown key.
       previousMessageId,
@@ -640,16 +795,22 @@ abstract class BaseTransition extends LLM {
  */
 export class StreamEndpointTransition extends BaseTransition {
   private model: StreamEndpoint;
+  private endpointConstructor: DustStreamEndpointConstructor;
 
   constructor(
     auth: Authenticator,
-    llmParameters: LLMParameters,
-    modelConstructor: StreamEndpointConstructor
+    llmParameters: LLMParameters<DustStreamEndpointConstructor>,
+    modelConstructor: DustStreamEndpointConstructor
   ) {
-    super(auth, modelConstructor.providerId, llmParameters);
+    super(
+      auth,
+      llmParameters.modelInfo.endpoint.modelConfig.providerId,
+      llmParameters
+    );
+    this.endpointConstructor = modelConstructor;
     this.model = new modelConstructor(llmParameters.credentials);
 
-    const { api, region } = this.model.metadata();
+    const { host: api, region } = this.model.metadata();
     this.metadata = {
       ...this.metadata,
       inferenceProvider: api,
@@ -657,10 +818,30 @@ export class StreamEndpointTransition extends BaseTransition {
     };
   }
 
-  protected buildStreamRequestPayload(streamParameters: LLMStreamParameters) {
+  protected buildStreamRequestPayload(
+    streamParameters: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
+  ) {
+    const { host: api } = this.model.metadata();
+    // Agent-platform (Vertex) has no request-level automatic cache_control, so it
+    // needs an explicit breakpoint on the conversation tail (legacy's isLast).
+    const explicitTailBreakpoint = api === AGENT_PLATFORM_HOST;
+    // Only OpenAI Responses consumes a prompt cache key (as `prompt_cache_key`);
+    // use the workspace and agent configuration so requests can reuse cached
+    // prefixes across conversations. Other surfaces guard `cacheKey` to
+    // undefined, so leave it unset for them.
+    const cacheKey =
+      api === OPENAI_RESPONSES_HOST && metadata
+        ? getOpenAIPromptCacheKey(metadata)
+        : undefined;
     return this.model.buildRequestPayload(
-      this.buildPayload(streamParameters),
-      this.buildConfig(streamParameters, this.model.constructor.configSchema)
+      this.buildPayload(streamParameters, { explicitTailBreakpoint }),
+      this.buildConfig(
+        streamParameters,
+        this.model.constructor.configSchema,
+        this.endpointConstructor.configParsers,
+        cacheKey
+      )
     );
   }
 
@@ -686,17 +867,17 @@ export class StreamEndpointTransition extends BaseTransition {
  *   base `getSimulatedRunUsages` hook.
  */
 export class NoopStreamTransition extends StreamEndpointTransition {
-  private readonly noopModel = new NoopGlobalNoopStream(undefined);
+  private readonly noopModel = new NoopNoopGlobalNoopStream(undefined);
   private readonly noopMetaData?: Record<string, unknown>;
   private simulatedRunUsages: RunUsageType[] | null = null;
 
   constructor(
     auth: Authenticator,
-    llmParameters: LLMParameters,
-    modelConstructor: StreamEndpointConstructor
+    llmParameters: LLMParameters<DustStreamEndpointConstructor>,
+    modelConstructor: DustStreamEndpointConstructor
   ) {
     super(auth, llmParameters, modelConstructor);
-    this.noopMetaData = llmParameters.metaData;
+    this.noopMetaData = llmParameters.modelInfo.metaData;
   }
 
   protected override buildStreamRequestPayload(
@@ -719,10 +900,11 @@ export class NoopStreamTransition extends StreamEndpointTransition {
       const costMicroUsd = Math.round(parseFloat(consumeMatch[1]) * 1_000_000);
       this.simulatedRunUsages = [
         {
-          providerId: NOOP_PROVIDER_ID,
-          modelId: NOOP_MODEL_ID,
+          providerId: NOOP_LAB,
+          modelId: NOOP_MODEL,
           promptTokens: 0,
           completionTokens: 0,
+          reasoningTokens: null,
           cachedTokens: null,
           costMicroUsd,
           isBatch: false,
@@ -741,6 +923,19 @@ export class NoopStreamTransition extends StreamEndpointTransition {
   }
 }
 
+const LAB_TO_PROVIDER_ID: Record<Lab, ModelProviderIdType> = {
+  openai: "openai",
+  anthropic: "anthropic",
+  mistral: "mistral",
+  google: "google_ai_studio",
+  deepseek: "deepseek",
+  xai: "xai",
+  noop: "noop",
+  // Should never happen
+  moonshot_ai: "fireworks",
+  z_ai: "fireworks",
+};
+
 /**
  * Batch transition: wraps a new `BatchEndpoint` and delegates batch submission,
  * polling, and result conversion to it. Returned by `getBatchLLM`.
@@ -750,10 +945,14 @@ export class BatchEndpointTransition extends BaseTransition {
 
   constructor(
     auth: Authenticator,
-    llmParameters: LLMParameters,
+    llmParameters: LLMParameters<DustBatchEndpointConstructor>,
     modelConstructor: BatchEndpointConstructor
   ) {
-    super(auth, modelConstructor.providerId, llmParameters);
+    super(
+      auth,
+      LAB_TO_PROVIDER_ID[llmParameters.modelInfo.endpoint.lab],
+      llmParameters
+    );
     this.model = new modelConstructor(llmParameters.credentials);
   }
 
@@ -805,7 +1004,17 @@ export class BatchEndpointTransition extends BaseTransition {
     return batchResult;
   }
 
-  override async deleteBatch(batchId: string): Promise<boolean> {
-    return this.model.deleteBatch(batchId);
+  override async deleteBatch(
+    batchId: string
+  ): Promise<Result<BatchDeletionOutcome, Error>> {
+    try {
+      const deleted = await this.model.deleteBatch(batchId);
+      return new Ok(deleted ? "deleted" : "unsupported");
+    } catch (err) {
+      if (isBatchNotFoundError(err)) {
+        return new Ok("do_not_exist");
+      }
+      return new Err(normalizeError(err));
+    }
   }
 }

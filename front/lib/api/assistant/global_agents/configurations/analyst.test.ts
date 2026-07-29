@@ -1,8 +1,11 @@
+import { _getAnalystGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/analyst";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { GROK_4_5_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { describe, expect, it } from "vitest";
 
@@ -22,6 +25,20 @@ async function fetchAnalyst(role: MembershipRoleType, optedOut = false) {
 }
 
 describe("analyst global agent visibility", () => {
+  it("uses Grok 4.5 when xAI is the enabled provider", async () => {
+    const workspace = await WorkspaceFactory.enterprise({
+      whiteListedProviders: ["xai"],
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const analyst = _getAnalystGlobalAgent({
+      auth,
+      featureFlags: ["xai_feature"],
+    });
+
+    expect(analyst.model.modelId).toBe(GROK_4_5_MODEL_CONFIG.modelId);
+  });
+
   it("is available to admins by default", async () => {
     const agents = await fetchAnalyst("admin");
     expect(agents).toHaveLength(1);

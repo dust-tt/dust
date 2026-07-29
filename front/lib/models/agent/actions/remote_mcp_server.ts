@@ -24,6 +24,9 @@ export class RemoteMCPServerModel extends WorkspaceAwareModel<RemoteMCPServerMod
   declare cachedName: string;
   declare cachedDescription: string | null;
   declare cachedTools: MCPToolType[];
+  // Derived from cachedTools at write time: true when at least one tool input schema forces a
+  // Dust configurable input, i.e. the server cannot be attached directly in a conversation.
+  declare cachedToolsRequireConfiguration: CreationOptional<boolean>;
 
   declare lastSyncAt: Date | null;
   declare lastError: string | null;
@@ -71,6 +74,11 @@ RemoteMCPServerModel.init(
       type: DataTypes.JSONB,
       allowNull: true,
       defaultValue: [],
+    },
+    cachedToolsRequireConfiguration: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     lastSyncAt: {
       type: DataTypes.DATE,

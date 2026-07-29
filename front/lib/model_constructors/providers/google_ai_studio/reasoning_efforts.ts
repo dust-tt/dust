@@ -1,8 +1,15 @@
-// Native Gemini 3.x thinking levels exposed as reasoning efforts. Every Gemini
-// model supports low/medium/high; Flash and Flash-Lite additionally support
-// `minimal`. Flash-Lite additionally supports `none` — Gemini 3 has no "off"
-// thinking level, so (matching the legacy router) `none` maps to the minimum
-// thinking budget with thoughts hidden.
+// Native Gemini 3.x thinking levels exposed as reasoning efforts, verified
+// against the live API on 2026-07-27 (AI Studio and Vertex agree).
+//
+// Every Gemini model supports low/medium/high. Flash and Flash-Lite also accept
+// the `MINIMAL` thinking level; Pro rejects it ("Thinking level MINIMAL is not
+// supported for this model").
+//
+// `none` is only exposed where thinking can genuinely be turned off, i.e. where
+// `thinkingBudget: 0` is accepted — gemini-3.1-flash-lite and gemini-3.5-flash.
+// gemini-3.5-flash-lite and gemini-3.6-flash reject budget 0 with
+// INVALID_ARGUMENT, and Pro answers "Budget 0 is invalid. This model only works
+// in thinking mode", so none of them offers a thinking-off effort.
 export const GEMINI_PRO_SUPPORTED_REASONING_EFFORTS = [
   "low",
   "medium",
@@ -14,11 +21,12 @@ export const GEMINI_SUPPORTED_REASONING_EFFORTS = [
   ...GEMINI_PRO_SUPPORTED_REASONING_EFFORTS,
 ] as const;
 
-// Widest Gemini reasoning contract (Flash-Lite). Other models narrow it.
-export const GEMINI_FLASH_LITE_SUPPORTED_REASONING_EFFORTS = [
+// Widest Gemini reasoning contract: the models that can actually disable
+// thinking. Other models narrow it.
+export const GEMINI_THINKING_OFF_SUPPORTED_REASONING_EFFORTS = [
   "none",
   ...GEMINI_SUPPORTED_REASONING_EFFORTS,
 ] as const;
 
 export type GeminiSupportedReasoningEffort =
-  (typeof GEMINI_FLASH_LITE_SUPPORTED_REASONING_EFFORTS)[number];
+  (typeof GEMINI_THINKING_OFF_SUPPORTED_REASONING_EFFORTS)[number];

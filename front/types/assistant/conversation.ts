@@ -150,6 +150,7 @@ export type UserMessageContext = {
   lastTriggerRunAt?: number | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
+  selectedSpaceIds?: string[];
   apiKeyId?: number | null;
   authMethod?: string | null;
 };
@@ -795,6 +796,11 @@ export type ConversationTitleEvent = {
   type: "conversation_title";
   created: number;
   title: string;
+};
+
+export type ConversationForkPreparedEvent = {
+  type: "conversation_fork_prepared";
+  created: number;
 };
 
 // Event sent when the conversation's plan.md is created, edited, or closed. A refetch signal: the

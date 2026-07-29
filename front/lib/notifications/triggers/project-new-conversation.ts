@@ -1,6 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getNovuClient } from "@app/lib/notifications";
+import { triggerActivationNewConversationEmail } from "@app/lib/notifications/workflows/activation-new-conversation";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
@@ -127,6 +129,12 @@ const triggerProjectNewConversationNotifications = async (
     return new Err(new DustError("space_not_found", "Space not found"));
   }
 
+  // Activation pods send a dedicated email to the target user after the agent has replied.
+  const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
+  if (activationPod !== null) {
+    return new Ok(undefined);
+  }
+
   const { groupsToProcess } = await space.fetchManualGroupsMemberships(auth);
 
   const projectMembers = uniqBy(
@@ -224,4 +232,67 @@ export function notifyNewProjectConversation(
       );
     }
   });
+}
+
+/**
+ * Send the dedicated activation email once the agent has replied in an
+ * activation-pod conversation. Called from the agent-loop completion path so
+ * the notification (and its per-user delay) starts only after the reply exists.
+ *
+ * Runs only if the conversation belongs to an activation pod and was started
+ * by the activation nudge workflow. Respects the target user's notification
+ * settings.
+ */
+export async function notifyActivationConversationAgentReplied(
+  auth: Authenticator,
+  { conversationId }: { conversationId: string }
+): Promise<void> {
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversationId,
+    { excludeTest: true }
+  );
+  if (!conversationResource) {
+    return;
+  }
+
+  const conversation = conversationResource.toJSON();
+  if (!isPodConversation(conversation)) {
+    return;
+  }
+
+  const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+  if (!space) {
+    return;
+  }
+
+  const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
+  if (activationPod === null) {
+    return;
+  }
+
+  const userToNotify = auth.user();
+  if (!userToNotify) {
+    return;
+  }
+
+  const [allowedUser] = await filterMembersByNotifyCondition(
+    auth,
+    [userToNotify],
+    space.id
+  );
+  if (!allowedUser) {
+    return;
+  }
+
+  const res = await triggerActivationNewConversationEmail(auth, {
+    conversation,
+    userToNotify: allowedUser,
+  });
+  if (res.isErr()) {
+    logger.error(
+      { error: res.error, conversationId },
+      "Failed to trigger activation new conversation email"
+    );
+  }
 }

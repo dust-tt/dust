@@ -1,3 +1,5 @@
+import { OPENAI_TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search";
+import { parseOpenAIToolSearchItem } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search_passthrough";
 import type {
   OutputFormat,
   Reasoning,
@@ -6,6 +8,7 @@ import type {
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
   BaseAssistantMessage,
+  BaseAssistantProviderPassthroughMessage,
   BaseAssistantReasoningMessage,
   BaseAssistantTextMessage,
   BaseAssistantToolCallRequestMessage,
@@ -14,6 +17,7 @@ import type {
   BaseUserImageMessage,
   BaseUserMessage,
   BaseUserTextMessage,
+  CacheOption,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -21,16 +25,53 @@ import type {
   FunctionTool,
   ResponseFormatTextJSONSchemaConfig,
   ResponseInputItem,
+  ResponseInputText,
+  Tool,
   ToolChoiceFunction,
 } from "openai/resources/responses/responses";
 import type { Reasoning as OpenAIReasoning } from "openai/resources/shared";
 
-// The per-message leaf converters. Composites below take an object satisfying
-// this interface (`this`), so overriding one leaf on an endpoint changes how
-// every composite uses it.
+type PromptCacheBreakpoint =
+  | {
+      prompt_cache_breakpoint: NonNullable<
+        ResponseInputText["prompt_cache_breakpoint"]
+      >;
+    }
+  | Record<string, never>;
+
+// This SDK client is shared across hosts and labs. The goal is to let a
+// specific endpoint override one small conversion step (e.g. how a user image
+// message becomes an input item) without reimplementing the whole
+// `buildRequestPayload`.
+//
+// To make that possible, conversions are split into two kinds:
+//
+//   - "leaf" converters (this interface): the smallest units, each turning one
+//     Base* message into one (or a few) Responses input item(s). E.g.
+//     `userImageMessageToInputItem`, `assistantTextMessageToInputItem`. These
+//     are the override points.
+//
+//   - "composite" converters (defined below): higher-level converters that
+//     assemble input items by delegating to leaves rather than doing the leaf
+//     work themselves. E.g. `userMessageToInputItems` switches on message type
+//     and calls `userImageMessageToInputItem` / `toolCallResultMessageToInputItem`.
+//
+// The link between them is that composites receive an object satisfying this
+// interface (`this` on the endpoint class — see
+// `WithOpenAIResponsesInputConverter`) and route every child call through it. So
+// overriding a single leaf field on an endpoint changes how every composite
+// depending on it behaves — no need to touch the composites or
+// `buildRequestPayload`.
+//
+// This composes both ways: a composite is itself an override point. An endpoint
+// can override a composite method and still reach its children through
+// `this.<child>` (e.g. a custom `userMessageToInputItems` that calls
+// `this.userImageMessageToInputItem`), so it picks up any leaf overrides too and
+// only the reassembly logic changes.
+//
+// "leaf" / "composite" naming lives only in comments; it's just a mental model
+// for how the pieces compose.
 export interface MessageItemConverters {
-  systemMessageToInputItem(message: SystemTextMessage): ResponseInputItem;
-  userTextMessageToInputItem(message: BaseUserTextMessage): ResponseInputItem;
   userImageMessageToInputItem(message: BaseUserImageMessage): ResponseInputItem;
   toolCallResultMessageToInputItem(
     message: BaseToolCallResultMessage
@@ -44,26 +85,68 @@ export interface MessageItemConverters {
   assistantToolCallRequestToInputItem(
     message: BaseAssistantToolCallRequestMessage
   ): ResponseInputItem;
+  assistantProviderPassthroughMessageToInputItems(
+    message: BaseAssistantProviderPassthroughMessage
+  ): ResponseInputItem[];
+  promptCacheBreakpointFor(
+    cache: CacheOption | undefined
+  ): PromptCacheBreakpoint;
+}
+
+// -- Small, reusable building blocks --
+
+// Spreadable fragment adding an explicit breakpoint only when the message opts
+// in and the model supports it. OpenAI applies one request-wide TTL, so both
+// cache durations map to the same wire representation.
+export function promptCacheBreakpointFor(
+  cache: CacheOption | undefined
+): PromptCacheBreakpoint {
+  switch (cache) {
+    case "short":
+    case "long":
+      // Link to the doc: https://developers.openai.com/api/docs/guides/prompt-caching
+      // We can create up to 4 new cache writes (i.e. 4 cache breakpoints).
+      // We can't control the TTL, it's set to 30min (they may change this in the future).
+      return { prompt_cache_breakpoint: { mode: "explicit" } };
+    case undefined:
+      return {};
+    default:
+      return assertNever(cache);
+  }
 }
 
 // -- Leaf converters: one Responses input item per message --
 
 // OpenAI uses the "developer" role for the system prompt on reasoning models.
 export function systemMessageToInputItem(
-  message: SystemTextMessage
+  message: SystemTextMessage,
+  converters: MessageItemConverters
 ): ResponseInputItem {
   return {
     role: "developer",
-    content: [{ type: "input_text", text: message.content.value }],
+    content: [
+      {
+        type: "input_text",
+        text: message.content.value,
+        ...converters.promptCacheBreakpointFor(message.cache),
+      },
+    ],
   };
 }
 
 export function userTextMessageToInputItem(
-  message: BaseUserTextMessage
+  message: BaseUserTextMessage,
+  converters: MessageItemConverters
 ): ResponseInputItem {
   return {
     role: "user",
-    content: [{ type: "input_text", text: message.content.value }],
+    content: [
+      {
+        type: "input_text",
+        text: message.content.value,
+        ...converters.promptCacheBreakpointFor(message.cache),
+      },
+    ],
   };
 }
 
@@ -104,7 +187,11 @@ export function toolCallResultMessageToInputItem(
 export function assistantTextMessageToInputItem(
   message: BaseAssistantTextMessage
 ): ResponseInputItem {
-  return { role: "assistant", content: message.content.value };
+  return {
+    role: "assistant",
+    content: message.content.value,
+    ...(message.phase ? { phase: message.phase } : {}),
+  };
 }
 
 export function assistantReasoningMessageToInputItems(
@@ -139,7 +226,19 @@ export function assistantToolCallRequestToInputItem(
     call_id: message.content.callId,
     name: message.content.toolName,
     arguments: message.content.arguments,
+    namespace: message.content.namespace,
   };
+}
+
+export function assistantProviderPassthroughMessageToInputItems(
+  message: BaseAssistantProviderPassthroughMessage
+): ResponseInputItem[] {
+  if (message.content.provider !== "openai") {
+    return [];
+  }
+
+  const item = parseOpenAIToolSearchItem(message.content.block);
+  return item ? [item] : [];
 }
 
 // -- Composite message converters (depend on the leaf converters) --
@@ -150,7 +249,7 @@ export function userMessageToInputItems(
 ): ResponseInputItem[] {
   switch (message.type) {
     case "text":
-      return [converters.userTextMessageToInputItem(message)];
+      return [userTextMessageToInputItem(message, converters)];
     case "image_url":
       return [converters.userImageMessageToInputItem(message)];
     case "tool_call_result":
@@ -172,8 +271,9 @@ export function assistantMessageToInputItems(
     case "tool_call_request":
       return [converters.assistantToolCallRequestToInputItem(message)];
     case "provider_passthrough":
-      // Opaque block owned by another provider. Skip.
-      return [];
+      return converters.assistantProviderPassthroughMessageToInputItems(
+        message
+      );
     default:
       assertNever(message);
   }
@@ -199,12 +299,15 @@ export function systemMessagesToInputItems(
   system: SystemTextMessage[],
   converters: MessageItemConverters
 ): ResponseInputItem[] {
-  return system.map((message) => converters.systemMessageToInputItem(message));
+  return system.map((message) => systemMessageToInputItem(message, converters));
 }
 
 // -- Config converters (pure) --
 
-export function toFunctionTool(tool: ToolSpecification): FunctionTool {
+export function toFunctionTool(
+  tool: ToolSpecification,
+  { toolSearchEnabled = false }: { toolSearchEnabled?: boolean } = {}
+): FunctionTool {
   return {
     type: "function",
     name: tool.name,
@@ -214,7 +317,26 @@ export function toFunctionTool(tool: ToolSpecification): FunctionTool {
     // the core provider, which sends `strict: false` for function tools.
     strict: false,
     parameters: { type: "object", ...tool.inputSchema },
+    ...(toolSearchEnabled && !tool.eager ? { defer_loading: true } : {}),
   };
+}
+
+export function toolSpecsToOpenAITools(
+  tools: ToolSpecification[],
+  {
+    forceTool,
+    toolSearchEnabled,
+  }: { forceTool: string | undefined; toolSearchEnabled: boolean }
+): Tool[] {
+  const converted = tools.map((tool) =>
+    toFunctionTool(tool, {
+      toolSearchEnabled: toolSearchEnabled && tool.name !== forceTool,
+    })
+  );
+
+  return converted.some((tool) => tool.defer_loading)
+    ? [OPENAI_TOOL_SEARCH_TOOL, ...converted]
+    : converted;
 }
 
 export function forceToolToToolChoice(

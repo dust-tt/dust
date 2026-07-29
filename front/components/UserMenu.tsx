@@ -27,7 +27,7 @@ import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import {
   isOnlyAdmin,
   isOnlyBuilder,
-  isOnlyBusinessAdmin,
+  isOnlyManager,
   isOnlyUser,
 } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
@@ -166,7 +166,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
     typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
 
   const forceRoleUpdate = useMemo(
-    () => async (role: "user" | "builder" | "admin" | "business_admin") => {
+    () => async (role: "user" | "builder" | "admin" | "manager") => {
       const result = await forceUserRole(user, owner, role, featureFlags);
       if (result.isOk()) {
         sendNotification({
@@ -429,10 +429,10 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                         icon={Star01}
                       />
                     )}
-                    {!isOnlyBusinessAdmin(owner) && (
+                    {!isOnlyManager(owner) && (
                       <DropdownMenuItem
-                        label="Become Business Admin"
-                        onClick={() => forceRoleUpdate("business_admin")}
+                        label="Become Manager"
+                        onClick={() => forceRoleUpdate("manager")}
                         icon={Star01}
                       />
                     )}

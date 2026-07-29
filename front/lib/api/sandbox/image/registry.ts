@@ -25,8 +25,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.54";
-const DSBX_CLI_VERSION = "0.1.33";
+const DUST_BASE_IMAGE_VERSION = "0.8.59";
+const DSBX_CLI_VERSION = "0.1.38";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
 // list must not silently change this user's UID.
@@ -52,6 +52,7 @@ const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
 const LITESTREAM_LOCAL_DIR = path.resolve(__dirname, "litestream");
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
+const TOKEN_LOCAL_DIR = path.resolve(__dirname, "token");
 
 interface PythonLibrary {
   name: string;
@@ -304,48 +305,31 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
   .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
   .runCmd(getSshHardeningCommand(), { user: "root" })
-  // Create the token server script. Threaded on purpose: gcsfuse fetches the
-  // token on EVERY GCS request (--reuse-token-from-url=false), and a
-  // single-connection nc loop drops concurrent fetches (connection reset →
-  // gcsfuse retry backoff), starving call-dense consumers like the pod-state
-  // litestream restore.
-  .runCmd("mkdir -p /home/agent/.bin", { user: "root" })
-  // TODO(2026-03-06 SANDBOX): .copy is broken, use file once fixed.
-  .runCmd(
-    `tee /home/agent/.bin/token-server.sh > /dev/null << 'SHELLEOF'
-#!/bin/bash
-exec python3 - << 'PYEOF'
-import http.server
-import socketserver
-
-
-class Handler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        try:
-            body = open("/tmp/token.json", "rb").read()
-        except OSError:
-            body = b"{}"
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, *args):
-        pass
-
-
-class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
-    daemon_threads = True
-    allow_reuse_address = True
-
-
-Server(("127.0.0.1", 9876), Handler).serve_forever()
-PYEOF
-SHELLEOF`,
+  // The root-owned token broker requires /usr/bin/python3.
+  .runCmd("apt-get update && apt-get install -y python3", { user: "root" })
+  // The per-mount broker helpers live outside the agent's group-writable home and serve
+  // mode-0600 tokens from /run/dust-gcs.
+  .runCmd("mkdir -p /usr/local/bin", { user: "root" })
+  .copy(
+    getLocalContent(TOKEN_LOCAL_DIR, "dust-gcs-token-server.py"),
+    "/usr/local/bin/dust-gcs-token-server.py",
     { user: "root" }
   )
-  .runCmd("chmod 755 /home/agent/.bin/token-server.sh", { user: "root" })
+  .copy(
+    getLocalContent(TOKEN_LOCAL_DIR, "dust-gcs-write-token.sh"),
+    "/usr/local/bin/dust-gcs-write-token.sh",
+    { user: "root" }
+  )
+  .copy(
+    getLocalContent(TOKEN_LOCAL_DIR, "dust-gcs-token-firewall.sh"),
+    "/usr/local/bin/dust-gcs-token-firewall.sh",
+    { user: "root" }
+  )
+  .runCmd(
+    "chown root:root /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh && " +
+      "chmod 755 /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh",
+    { user: "root" }
+  )
   .runCmd(getEgressResolverUserSetupCommand(), { user: "root" })
   .runCmd(getDustStateUserSetupCommand(), { user: "root" })
   .runCmd(getPodStateSetupCommand(), { user: "root" })

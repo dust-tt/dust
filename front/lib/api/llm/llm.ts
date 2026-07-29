@@ -9,6 +9,7 @@ import type {
   LLMTraceCustomization,
 } from "@app/lib/api/llm/traces/types";
 import type {
+  BatchDeletionOutcome,
   BatchResult,
   BatchResultWithRunIds,
   BatchStatus,
@@ -23,25 +24,35 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
 import type { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
+
 import type {
   ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { type LangfuseGeneration, startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
 import pickBy from "lodash/pickBy";
 import startCase from "lodash/startCase";
 
-export abstract class LLM<TPayload = unknown> {
+export abstract class LLM<
+  TEndpoint extends
+    | DustStreamEndpointConstructor
+    | DustBatchEndpointConstructor =
+    | DustStreamEndpointConstructor
+    | DustBatchEndpointConstructor,
+  TPayload = unknown,
+> {
   protected modelId: ModelIdType;
   protected modelConfig: ModelConfigurationType;
   protected temperature: number | null;
@@ -49,6 +60,8 @@ export abstract class LLM<TPayload = unknown> {
   protected responseFormat: string | null;
   protected bypassFeatureFlag: boolean;
   protected metadata: LLMClientMetadata;
+  // Temporary during the router migration; "new" is set by BaseTransition.
+  protected readonly router: "legacy" | "new" = "legacy";
 
   // Tracing fields.
   protected readonly authenticator: Authenticator;
@@ -64,24 +77,18 @@ export abstract class LLM<TPayload = unknown> {
       bypassFeatureFlag = false,
       context,
       getTraceOutput,
-      modelId,
-      reasoningEffort = "none",
-      responseFormat = null,
-      temperature = AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
-    }: LLMParameters
+      modelInfo,
+    }: LLMParameters<TEndpoint>
   ) {
-    this.modelId = modelId;
-    const modelConfig = getSupportedModelConfig({
-      modelId: this.modelId,
-      providerId,
-    });
-    if (!modelConfig) {
-      throw new Error(`Model config not found for ${modelId}/${providerId}`);
-    }
+    const modelConfig = modelInfo.endpoint.modelConfig;
+    this.modelId = modelConfig.modelId;
     this.modelConfig = modelConfig;
-    this.temperature = temperature;
-    this.reasoningEffort = reasoningEffort;
-    this.responseFormat = responseFormat;
+    this.temperature =
+      modelInfo.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES["balanced"];
+    // TODO(new-llm-router): We should not set reasoning effort to none
+    // Not in scope of the current refactor
+    this.reasoningEffort = modelInfo.reasoningEffort ?? "none";
+    this.responseFormat = modelInfo.responseFormat ?? null;
     this.bypassFeatureFlag = bypassFeatureFlag;
     this.metadata = {
       clientId: providerId,
@@ -267,6 +274,7 @@ export abstract class LLM<TPayload = unknown> {
           logger.error(
             {
               llmEventType: "error",
+              router: this.router,
               errorContent: currentEvent.content,
               modelId: this.modelId,
               inferenceProvider: this.metadata.inferenceProvider,
@@ -285,6 +293,7 @@ export abstract class LLM<TPayload = unknown> {
           logger.info(
             {
               llmEventType: "success",
+              router: this.router,
               modelId: this.modelId,
               inferenceProvider: this.metadata.inferenceProvider,
               region: this.metadata.region,
@@ -322,7 +331,7 @@ export abstract class LLM<TPayload = unknown> {
             usageDetails: {
               // Report the uncached input tokens if provider supports it.
               input: tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,
-              output: tokenUsage.outputTokens,
+              output: tokenUsage.totalOutputTokens,
               total: tokenUsage.totalTokens,
               cache_read_input_tokens: tokenUsage.cachedTokens ?? 0,
               cache_creation_input_tokens: tokenUsage.cacheCreationTokens ?? 0,
@@ -480,11 +489,13 @@ export abstract class LLM<TPayload = unknown> {
   }
 
   /**
-   * Delete a batch. Returns true if the batch was successfully deleted.
-   * By default returns false (deletion not supported).
+   * Delete a batch's data on the provider.
+   * By default the provider does not support deletion.
    */
-  async deleteBatch(_batchId: string): Promise<boolean> {
-    return false;
+  async deleteBatch(
+    _batchId: string
+  ): Promise<Result<BatchDeletionOutcome, Error>> {
+    return new Ok("unsupported");
   }
 
   /**
@@ -652,7 +663,7 @@ export abstract class LLM<TPayload = unknown> {
         generation.update({
           usageDetails: {
             input: tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,
-            output: tokenUsage.outputTokens,
+            output: tokenUsage.totalOutputTokens,
             total: tokenUsage.totalTokens,
             cache_read_input_tokens: tokenUsage.cachedTokens ?? 0,
             cache_creation_input_tokens: tokenUsage.cacheCreationTokens ?? 0,

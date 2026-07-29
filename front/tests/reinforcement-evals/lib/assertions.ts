@@ -13,28 +13,12 @@ interface InstructionEditItem {
   type: string;
 }
 
-interface ToolEditItem {
-  action: string;
-  toolId: string;
-}
-
 function isInstructionEditItem(value: unknown): value is InstructionEditItem {
   return (
     typeof value === "object" &&
     value !== null &&
     "targetBlockId" in value &&
     typeof value.targetBlockId === "string"
-  );
-}
-
-function isToolEditItem(value: unknown): value is ToolEditItem {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "toolId" in value &&
-    typeof value.toolId === "string" &&
-    "action" in value &&
-    typeof value.action === "string"
   );
 }
 
@@ -77,14 +61,6 @@ function getInstructionEdits(
     return [];
   }
   return edits.filter(isInstructionEditItem);
-}
-
-function getToolEdits(args: Record<string, unknown>): ToolEditItem[] {
-  const edits = args.toolEdits;
-  if (!Array.isArray(edits)) {
-    return [];
-  }
-  return edits.filter(isToolEditItem);
 }
 
 function instructionEditsContainToolReference(
@@ -153,37 +129,12 @@ export function validateToolCallAssertion(
       }
       return { success: true };
     }
-    case "editSkillWithTool": {
-      const call = findEditSkillCall(
-        toolCalls,
-        (c) =>
-          getSkillId(c.arguments) === assertion.skillId &&
-          getToolEdits(c.arguments).some((t) => t.toolId === assertion.toolId)
-      );
-      if (!call) {
-        return {
-          success: false,
-          error: `Expected an edit_skill call with toolEdit toolId "${assertion.toolId}" for skillId "${assertion.skillId}", but no such call was made`,
-        };
-      }
-      if (assertion.sourceSuggestionIds) {
-        const sourceResult = validateSourceSuggestionIds(
-          call,
-          assertion.sourceSuggestionIds
-        );
-        if (sourceResult) {
-          return sourceResult;
-        }
-      }
-      return { success: true };
-    }
     case "editSkillWithInlineToolReference": {
       const call = findEditSkillCall(toolCalls, (c) => {
         const instructionEdits = getInstructionEdits(c.arguments);
         return (
           getSkillId(c.arguments) === assertion.skillId &&
           instructionEdits.length > 0 &&
-          getToolEdits(c.arguments).length === 0 &&
           instructionEditsContainToolReference(
             instructionEdits,
             assertion.toolId
@@ -193,7 +144,7 @@ export function validateToolCallAssertion(
       if (!call) {
         return {
           success: false,
-          error: `Expected an edit_skill call with instructionEdits referencing inline tool "${assertion.toolId}" for skillId "${assertion.skillId}", and no toolEdits, but no such call was made`,
+          error: `Expected an edit_skill call with instructionEdits referencing inline tool "${assertion.toolId}" for skillId "${assertion.skillId}", but no such call was made`,
         };
       }
       if (assertion.sourceSuggestionIds) {
@@ -213,7 +164,6 @@ export function validateToolCallAssertion(
         return (
           getSkillId(c.arguments) === assertion.skillId &&
           instructionEdits.length > 0 &&
-          getToolEdits(c.arguments).length === 0 &&
           !instructionEditsContainToolReference(
             instructionEdits,
             assertion.toolId
@@ -223,7 +173,7 @@ export function validateToolCallAssertion(
       if (!call) {
         return {
           success: false,
-          error: `Expected an edit_skill call with instructionEdits removing inline tool "${assertion.toolId}" for skillId "${assertion.skillId}", and no toolEdits, but no such call was made`,
+          error: `Expected an edit_skill call with instructionEdits removing inline tool "${assertion.toolId}" for skillId "${assertion.skillId}", but no such call was made`,
         };
       }
       if (assertion.sourceSuggestionIds) {
@@ -289,17 +239,12 @@ export function validateToolCallAssertion(
           continue;
         }
         const instructionEdits = getInstructionEdits(tc.arguments);
-        const toolEdits = getToolEdits(tc.arguments);
         const hasDescriptionEdit =
           getAgentFacingDescriptionEditContent(tc.arguments) !== undefined;
-        if (
-          instructionEdits.length > 0 ||
-          toolEdits.length > 0 ||
-          hasDescriptionEdit
-        ) {
+        if (instructionEdits.length > 0 || hasDescriptionEdit) {
           return {
             success: false,
-            error: `Expected no suggestions, but edit_skill was called with ${instructionEdits.length} instructionEdit(s), ${toolEdits.length} toolEdit(s)${hasDescriptionEdit ? ", and an agentFacingDescriptionEdit" : ""}`,
+            error: `Expected no suggestions, but edit_skill was called with ${instructionEdits.length} instructionEdit(s)${hasDescriptionEdit ? " and an agentFacingDescriptionEdit" : ""}`,
           };
         }
       }

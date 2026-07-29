@@ -1,0 +1,78 @@
+// @vitest-environment node
+
+import { AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_haiku_four_dot_five_eu_agent_platform";
+import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/cases";
+import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
+import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
+
+export const AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStreamSetup: StreamSetup =
+  {
+    createInstance: () =>
+      new AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream({
+        AGENT_PLATFORM_PROJECT_ID: process.env.VERTEX_AI_PROJECT_ID ?? "",
+      }),
+    // `null` runs the case with its default checkers; a checker array overrides
+    // them. Every case always runs.
+    tests: {
+      "simple/no-tools/t-default/r-minimal": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0/r-minimal": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0.1/r-minimal": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-1/r-minimal": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-default/r-maximal": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-default/r-xhigh": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0/r-maximal": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0/r-xhigh": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0.1/r-maximal": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0.1/r-xhigh": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-1/r-maximal": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-1/r-xhigh": [INPUT_CONFIGURATION_ERROR],
+      // When forcing tool use, reasoning must be set to none.
+      "calc/calc/t-default/r-default/force-tool": [INPUT_CONFIGURATION_ERROR],
+      "calc/calc/t-default/r-high/force-tool": [INPUT_CONFIGURATION_ERROR],
+
+      "simple/no-tools/t-default/r-default": null,
+      "simple/no-tools/t-default/r-none": null,
+      "simple/no-tools/t-default/r-low": null,
+      "simple/no-tools/t-default/r-medium": null,
+      "simple/no-tools/t-default/r-high": null,
+      "simple/no-tools/t-0/r-default": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0/r-none": null,
+      "simple/no-tools/t-0/r-low": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0/r-medium": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0/r-high": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0.1/r-default": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0.1/r-none": null,
+      "simple/no-tools/t-0.1/r-low": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0.1/r-medium": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0.1/r-high": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-1/r-default": null,
+      "simple/no-tools/t-1/r-none": null,
+      "simple/no-tools/t-1/r-low": null,
+      "simple/no-tools/t-1/r-medium": null,
+      "simple/no-tools/t-1/r-high": null,
+
+      "calc/calc/t-default/r-medium": null,
+      "calc/calc/t-0.1/r-default": [INPUT_CONFIGURATION_ERROR],
+      "calc/calc/t-0.1/r-medium": [INPUT_CONFIGURATION_ERROR],
+
+      "calc/calc/t-default/r-default/force-tool-default": null,
+      "calc/calc/t-default/r-none/force-tool": null,
+
+      "reasoning/no-tools/t-default/r-none": null,
+      "reasoning/no-tools/t-default/r-minimal": [INPUT_CONFIGURATION_ERROR],
+      "reasoning/no-tools/t-default/r-low": null,
+
+      "output-format/json-schema/t-default/r-none": null,
+      "output-format/json-schema/t-default/r-high": null,
+
+      "following/no-tools/t-default/r-default": null,
+
+      "cache/no-tools/t-default/r-default": null,
+    },
+  };
+
+// NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/anthropic_claude_haiku_four_dot_five_eu_agent_platform.test.ts
+runStreamEndpointTests(
+  AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream,
+  AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStreamSetup
+);

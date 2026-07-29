@@ -3,6 +3,7 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -17,6 +18,10 @@ import type {
   PatchSkillResponseBody,
 } from "@app/types/api/skills";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import {
+  availabilityFromIsDefault,
+  SKILL_AVAILABILITIES,
+} from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -53,7 +58,9 @@ const PatchSkillRequestBodySchema = z.object({
   instructionsHtml: z.string().nullable(),
   additionalRequestedSpaceIds: z.array(z.string()).optional(),
   fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
+  // @deprecated Use availability instead. Kept while old clients still send it.
   isDefault: z.boolean().optional(),
+  availability: z.enum(SKILL_AVAILABILITIES).optional(),
   reinforcement: z.enum(["auto", "on", "off"]).optional(),
 });
 
@@ -181,7 +188,55 @@ app.patch(
       });
     }
 
-    // Check if user can write.
+    // Resolve the requested availability once: isDefault is a deprecated alias; an explicit
+    // availability takes priority over it.
+    const requestedAvailability =
+      body.availability ??
+      (body.isDefault !== undefined
+        ? availabilityFromIsDefault(body.isDefault)
+        : undefined);
+
+    const hasSkillPublicationGovernance = await hasFeatureFlag(
+      auth,
+      "admin_governance_skill_publication"
+    );
+
+    // Without skill publication governance, keep the previous behavior: only the two
+    // legacy availability values are accepted.
+    if (!hasSkillPublicationGovernance && requestedAvailability === "editors") {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            'Availability "editors" requires skill publication governance to be enabled.',
+        },
+      });
+    }
+
+    const availabilityChanged =
+      requestedAvailability !== undefined &&
+      requestedAvailability !== skill.availability;
+
+    // With skill publication governance, changing a skill's availability requires the
+    // workspace-level permission to publish skills — even for editors.
+    if (
+      hasSkillPublicationGovernance &&
+      availabilityChanged &&
+      !(await auth.hasWorkspacePermission("publish", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "You don't have permission to change this skill's availability.",
+        },
+      });
+    }
+
+    // Editing a skill remains editor-only; non-editors holding the publish permission use
+    // PATCH /skills/:sId/availability to publish or unpublish without editing.
     if (!skill.canWrite(auth)) {
       return apiError(ctx, {
         status_code: 403,
@@ -218,11 +273,21 @@ app.patch(
       }
     }
 
-    // Fetch MCP server views first to compute requestedSpaceIds.
+    // Fetch MCP server views first to compute requestedSpaceIds. The views end up on the
+    // updated skill, whose serialized response includes their tools — fetch the heavy attributes.
     const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
     const mcpServerViews = await MCPServerViewResource.fetchByIds(
       auth,
-      mcpServerViewIds
+      mcpServerViewIds,
+      {
+        includeHeavyAttributes: [
+          "authorization",
+          "cachedTools",
+          "customHeaders",
+          "lastError",
+          "sharedSecret",
+        ],
+      }
     );
 
     if (mcpServerViewIds.length !== mcpServerViews.length) {
@@ -375,7 +440,7 @@ app.patch(
       icon: body.icon,
       instructions: body.instructions,
       instructionsHtml: body.instructionsHtml,
-      isDefault: body.isDefault,
+      availability: requestedAvailability,
       mcpServerViews,
       name,
       reinforcement: body.reinforcement,

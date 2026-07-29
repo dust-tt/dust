@@ -1,13 +1,11 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const OUTLOOK_TOOL_NAME = "outlook" as const;
 
-export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
-  get_messages: {
+export const OUTLOOK_TOOLS_METADATA = [
+  {
+    name: "get_messages",
     description:
       "Get message metadata and previews from Outlook. Returns subject, sender, date, and a short bodyPreview snippet (~255 chars) — NOT the full body. If the task requires reading the actual content of any email, you MUST call get_message_body for each message after this call.",
     schema: {
@@ -54,7 +52,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_folders: {
+  {
+    name: "list_folders",
     description:
       "List mail folders in an Outlook mailbox. Returns the immediate children of the specified folder path, or top-level folders when no path is given. Use this to discover the full folder hierarchy before calling get_messages with a subfolder path.",
     schema: {
@@ -81,7 +80,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_attachments: {
+  {
+    name: "list_attachments",
     description:
       "List attachments on an Outlook message, returning metadata only (id, name, contentType, size, isInline). Use this first to see what attachments exist, then call get_attachment for each one you want to retrieve. Inline attachments (embedded images, signatures) are excluded by default.",
     schema: {
@@ -111,7 +111,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_attachment: {
+  {
+    name: "get_attachment",
     description:
       "Retrieve a single attachment from an Outlook message by its attachment ID. Works for any file size — for large attachments (>4MB) where the list call returns no inline content, this tool fetches via a dedicated download endpoint. Call list_attachments first to get attachment IDs.",
     schema: {
@@ -138,7 +139,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_attachments: {
+  {
+    name: "get_attachments",
     description:
       "Get all attachments from an Outlook message at once. For better control over large attachments, prefer list_attachments followed by individual get_attachment calls instead.",
     schema: {
@@ -164,7 +166,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_drafts: {
+  {
+    name: "get_drafts",
     description:
       "Get draft emails from Outlook. Returns a limited number of drafts by default to avoid overwhelming responses.",
     schema: {
@@ -199,7 +202,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_draft: {
+  {
+    name: "create_draft",
     description: `Create a new email draft in Outlook, or a reply draft to an existing message.
 - The draft will be saved in the user's Outlook account and can be reviewed and sent later.
 - The draft will include proper email headers and formatting.`,
@@ -280,7 +284,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  delete_draft: {
+  {
+    name: "delete_draft",
     description: "Delete a draft email from Outlook.",
     schema: {
       messageId: z.string().describe("The ID of the draft to delete"),
@@ -301,7 +306,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  send_mail: {
+  {
+    name: "send_mail",
     description: `Send an email directly via Outlook.
 - The email will be sent immediately without creating a draft.
 - Use this when all required fields are known.`,
@@ -382,7 +388,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  move_messages: {
+  {
+    name: "move_messages",
     description:
       'Move one or more messages to a destination folder in Outlook. The destination is given as a path of folder names from the top level (e.g. ["Archive", "2026", "Receipts"]). Any folders along the path that do not exist are created automatically. Prefer passing all messages destined for the same folder in a single call rather than calling this tool in parallel. Note: Microsoft Graph assigns a new message ID after a move.',
     schema: {
@@ -413,7 +420,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_message_body: {
+  {
+    name: "get_message_body",
     description:
       "Get the full body of a single Outlook message. ALWAYS call this after get_messages whenever the task requires reading email content — get_messages only returns a short preview. For large emails, use startChar/endChar to read in chunks and repeat until moreAvailable is false.",
     schema: {
@@ -455,7 +463,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_contacts: {
+  {
+    name: "get_contacts",
     description:
       "Get contacts from Outlook. Supports search queries to filter contacts.",
     schema: {
@@ -488,7 +497,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_contact: {
+  {
+    name: "create_contact",
     description: "Create a new contact in Outlook.",
     schema: {
       displayName: z.string().describe("Display name of the contact"),
@@ -522,7 +532,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_contact: {
+  {
+    name: "update_contact",
     description: "Update an existing contact in Outlook.",
     schema: {
       contactId: z.string().describe("ID of the contact to update"),
@@ -560,7 +571,7 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 export const OUTLOOK_MAIL_SERVER = {
   serverInfo: {
@@ -627,13 +638,5 @@ export const OUTLOOK_MAIL_SERVER = {
     icon: "MicrosoftOutlookLogo",
     documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
   },
-  tools: Object.values(OUTLOOK_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: OUTLOOK_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

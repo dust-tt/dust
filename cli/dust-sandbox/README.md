@@ -49,7 +49,7 @@ cargo build
 Functions are self-contained Bun bundles in `$DUST_FUNCTIONS_DIR`, named
 `<name>.ts`. `dsbx` executes them via an embedded runner (`bun` required).
 
-- `dsbx function run <name>` — request envelope JSON on stdin → response JSON
+- `dsbx function run <name>` — request envelope JSON on stdin → parsed output or error envelope
   on stdout (`{ok, response}` / `{ok:false, error}`).
 - `dsbx function get <name>` — prints `{name, description, input_schema,
   output_schema}` (JSON Schema).

@@ -1,7 +1,9 @@
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import type { AgentMessagePhase } from "@app/types/assistant/agent_message_content";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type {
+  AgentMessagePhase,
+  AgentProviderPassthroughContentType,
+} from "@app/types/assistant/agent_message_content";
 
 export type Delta = {
   delta: string;
@@ -61,6 +63,7 @@ export interface ToolCall {
   id: string;
   name: string;
   arguments: Record<string, unknown>;
+  namespace?: string;
 }
 
 export interface ToolCallEvent {
@@ -86,7 +89,7 @@ export interface ReasoningGeneratedEvent {
 // interpreting it.
 export interface ProviderPassthroughEvent {
   type: "provider_passthrough";
-  content: { provider: ModelProviderIdType; block: unknown };
+  content: AgentProviderPassthroughContentType["value"];
   metadata: LLMClientMetadata;
 }
 
@@ -106,8 +109,12 @@ export interface TokenUsage {
   longCacheCreationTokens?: number;
   shortCacheCreationTokens?: number;
   cachedTokens?: number;
+  // Total input tokens including cache hits and cache creation tokens.
   inputTokens: number;
-  outputTokens: number;
+  // Total output tokens billed by the provider, including reasoning tokens.
+  // Do not add reasoningTokens to this value. reasoningTokens is a subset.
+  totalOutputTokens: number;
+  // Reasoning and thinking portion of totalOutputTokens.
   reasoningTokens?: number;
   totalTokens: number;
   // Raw input tokens after the last cache breakpoint (not from cache).

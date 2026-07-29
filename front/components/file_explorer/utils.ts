@@ -6,33 +6,48 @@ import {
   isInteractiveContentType,
   isMarkdownContentType,
   isPdfContentType,
+  isSandboxFunctionContentType,
+  stripMimeParameters,
 } from "@app/types/files";
 
-const VIEWER_CONTENT_TYPES = [
+const VIEWER_CONTENT_TYPES = new Set<string>([
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.ms-powerpoint",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-] as const;
+]);
+
+const CODE_PREVIEW_CONTENT_TYPES = new Set<string>([
+  "application/javascript",
+  "application/typescript",
+]);
+
+const TEXT_PREVIEW_CONTENT_TYPES = new Set<string>([
+  "application/json",
+  "application/vnd.dust.section.json",
+  "application/x-ndjson",
+  "application/xml",
+  "application/yaml",
+  "message/rfc822",
+]);
 
 function isViewerCompatible(contentType: string): boolean {
-  return VIEWER_CONTENT_TYPES.includes(
-    contentType as (typeof VIEWER_CONTENT_TYPES)[number]
-  );
+  return VIEWER_CONTENT_TYPES.has(contentType);
 }
 
 export type FilePreviewCategory =
   | "frame"
   | "code"
+  | "text"
   | "pdf"
   | "viewer"
   | "audio"
   | "markdown"
   | "delimited"
-  | "text"
-  | "image";
+  | "image"
+  | "unsupported";
 
 export interface FilePreviewConfig {
   category: FilePreviewCategory;
@@ -41,7 +56,19 @@ export interface FilePreviewConfig {
   supportsCopyContent: boolean;
 }
 
-export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
+function isTextPreviewContentType(contentType: string): boolean {
+  return (
+    contentType.startsWith("text/") ||
+    contentType.endsWith("+json") ||
+    contentType.endsWith("+xml") ||
+    TEXT_PREVIEW_CONTENT_TYPES.has(contentType)
+  );
+}
+
+export function getFilePreviewConfig(
+  rawContentType: string
+): FilePreviewConfig {
+  const contentType = stripMimeParameters(rawContentType);
   const category = getFileFormatCategory(contentType);
 
   if (isInteractiveContentType(contentType)) {
@@ -80,9 +107,22 @@ export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
     };
   }
 
-  if (category === "code" || category === "data") {
+  if (
+    category === "code" ||
+    isSandboxFunctionContentType(contentType) ||
+    CODE_PREVIEW_CONTENT_TYPES.has(contentType)
+  ) {
     return {
       category: "code",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+      supportsCopyContent: true,
+    };
+  }
+
+  if (isTextPreviewContentType(contentType)) {
+    return {
+      category: "text",
       needsProcessedVersion: false,
       supportsExternalViewer: false,
       supportsCopyContent: true,
@@ -117,11 +157,15 @@ export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
   }
 
   return {
-    category: "text",
+    category: "unsupported",
     needsProcessedVersion: false,
     supportsExternalViewer: false,
-    supportsCopyContent: true,
+    supportsCopyContent: false,
   };
+}
+
+export function isFilePreviewableContentType(contentType: string): boolean {
+  return getFilePreviewConfig(contentType).category !== "unsupported";
 }
 
 import type {
@@ -185,17 +229,22 @@ export function getFileExplorerBucket(
     case "code":
       return "code";
 
+    case "text":
+      return "texts";
+
     case "delimited":
       return "tables";
 
     case "pdf":
     case "viewer":
     case "markdown":
-    case "text":
       return "texts";
 
     case "frame":
       return "frames";
+
+    case "unsupported":
+      return null;
 
     default:
       return null;
@@ -312,12 +361,14 @@ export function getCategoryFromContentType(
     case "delimited":
       return "table";
     case "code":
+    case "text":
     case "viewer":
     case "markdown":
-    case "text":
       return "document";
     case "frame":
       return "frame";
+    case "unsupported":
+      return "other";
     default:
       return "other";
   }

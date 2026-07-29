@@ -19,6 +19,7 @@ export class SandboxModel extends WorkspaceAwareModel<SandboxModel> {
   declare status: SandboxStatus;
   declare statusChangedAt: CreationOptional<Date>;
   declare lastActivityAt: Date;
+  declare lastRuntimeRefreshAt: CreationOptional<Date | null>;
   declare baseImage: CreationOptional<string | null>;
   declare version: CreationOptional<string | null>;
   declare killRequestedAt: CreationOptional<Date | null>;
@@ -54,6 +55,10 @@ SandboxModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    lastRuntimeRefreshAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     baseImage: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -72,13 +77,24 @@ SandboxModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
+        // Keep through the sandbox reaper rollback window: the pre-patch stale
+        // query does not exclude kill-requested rows and cannot use the new
+        // partial reaper index.
         fields: ["status", "lastActivityAt"],
         name: "sandboxes_status_last_activity_idx",
       },
       {
-        fields: ["killRequestedAt"],
-        name: "sandboxes_kill_requested_at_idx",
-        where: { killRequestedAt: { [Op.ne]: null } },
+        fields: ["killRequestedAt", "id"],
+        name: "sandboxes_reaper_kill_requested_idx",
+        where: {
+          killRequestedAt: { [Op.ne]: null },
+          status: { [Op.ne]: "deleted" },
+        },
+      },
+      {
+        fields: ["status", "lastActivityAt", "id"],
+        name: "sandboxes_reaper_stale_idx",
+        where: { killRequestedAt: { [Op.is]: null } },
       },
       {
         fields: ["baseImage", "version"],

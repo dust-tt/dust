@@ -69,7 +69,7 @@ export function AgentSingleActionPanel({
         onClose={onClose}
       >
         <div className="flex items-center justify-center">
-          <Spinner variant="color" />
+          <Spinner />
         </div>
       </AgentActionsPanelHeader>
     );

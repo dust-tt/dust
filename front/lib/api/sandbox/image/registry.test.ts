@@ -96,7 +96,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.54",
+      tag: "0.8.59",
     });
   });
 
@@ -167,7 +167,7 @@ describe("sandbox image registry", () => {
       expect(command).toContain("/usr/bin/systemd-analyze unit-paths");
       expect(command).toContain("systemd unit path must be absolute");
       expect(command).toContain(
-        "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle /opt/bin/litestream"
+        "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh /opt/bin/litestream"
       );
       expect(command).toContain("empty-password local accounts must not exist");
       expect(command).toContain("privileged primary group");
@@ -280,6 +280,7 @@ describe("sandbox image registry", () => {
 
     expect(nftablesScript).toContain("nft add table ip dust-egress");
     expect(nftablesScript).toContain("DNS_STUB_PORT=1053");
+    expect(nftablesScript).toContain("GCS_TOKEN_SERVER_PORT=987");
     expect(nftablesScript).toContain(
       "nft add chain ip dust-egress nat_output '{ type nat hook output priority -100 ; policy accept ; }'"
     );
@@ -300,6 +301,9 @@ describe("sandbox image registry", () => {
     );
     expect(nftablesScript).toContain(
       "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.1 udp dport $DNS_STUB_PORT accept"
+    );
+    expect(nftablesScript).toContain(
+      "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.0/8 tcp dport $GCS_TOKEN_SERVER_PORT drop"
     );
     expect(nftablesScript).toContain(
       "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.0/8 tcp dport 22 drop"
@@ -326,6 +330,11 @@ describe("sandbox image registry", () => {
     expectContentInOrder(
       nftablesScript,
       "udp dport $DNS_STUB_PORT accept",
+      "tcp dport $GCS_TOKEN_SERVER_PORT drop"
+    );
+    expectContentInOrder(
+      nftablesScript,
+      "tcp dport $GCS_TOKEN_SERVER_PORT drop",
       "tcp dport 22 drop"
     );
     expectContentInOrder(
@@ -335,13 +344,57 @@ describe("sandbox image registry", () => {
     );
   });
 
+  test("installs the root-owned GCS token broker without the compatibility broker", () => {
+    const operations = getDustBaseImageOperations();
+    const runCommands = getRunCommands(operations);
+    const copyOperations = getCopyOperations(operations);
+    const server = getCopiedContent(
+      copyOperations,
+      "/usr/local/bin/dust-gcs-token-server.py"
+    );
+    const writer = getCopiedContent(
+      copyOperations,
+      "/usr/local/bin/dust-gcs-write-token.sh"
+    );
+    const firewall = getCopiedContent(
+      copyOperations,
+      "/usr/local/bin/dust-gcs-token-firewall.sh"
+    );
+
+    expect(runCommands).toEqual(
+      expect.arrayContaining([
+        "apt-get update && apt-get install -y python3",
+        "mkdir -p /usr/local/bin",
+        expect.stringContaining(
+          "chown root:root /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh"
+        ),
+      ])
+    );
+    expect(runCommands.join("\n")).not.toContain(
+      "/home/agent/.bin/token-server.sh"
+    );
+    expect(server).toMatch(/^#!\/usr\/bin\/python3$/m);
+    expect(server).toContain('self.path == "/token/mount-0"');
+    expect(server).toContain('self.path == "/healthz"');
+    expect(server).toContain('Server(("127.0.0.1", 987), Handler)');
+    expect(server).not.toContain("/tmp/token.json");
+    expect(writer).toContain("^/run/dust-gcs/mount-[0-9]+\\.json$");
+    expect(writer).toContain("chmod 600");
+    expect(writer).toContain("mv -f");
+    expect(firewall).toContain("dust-gcs-token");
+    expect(firewall).toContain("/usr/bin/flock -x 9");
+    expect(firewall).toContain("meta skuid 1003");
+    expect(firewall).toContain("tcp dport 987 drop");
+    expect(firewall).not.toContain("delete table ip dust-gcs-token");
+  });
+
   test("installs the current dsbx CLI release", () => {
     const runCommands = getRunCommands(getDustBaseImageOperations());
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.33/dsbx-linux-x86_64"
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.38/dsbx-linux-x86_64"
         ),
         expect.stringContaining(
           "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"
@@ -586,7 +639,9 @@ describe("sandbox image registry", () => {
       `export JAVA_TOOL_OPTIONS='${SANDBOX_TRUST_ENV_VARS.JAVA_TOOL_OPTIONS}'\n`
     );
 
-    expect(tmpfilesConfig).toBe("d /run/dust 0755 root root -\n");
+    expect(tmpfilesConfig).toBe(
+      "d /run/dust 0755 root root -\nd /run/dust-gcs 0700 root root -\n"
+    );
     expect(installer).toContain(
       '/usr/bin/openssl x509 -in "$CA_PATH" -out "$normalized_ca_tmp" -outform PEM'
     );

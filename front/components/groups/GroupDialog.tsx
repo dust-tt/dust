@@ -1,7 +1,8 @@
 import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
 import { useCreateGroup, useGroup, useUpdateGroup } from "@app/lib/swr/groups";
-import type { WorkspaceType } from "@app/types/user";
+import type { GroupType } from "@app/types/groups";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -15,11 +16,12 @@ import {
 import { type MouseEvent, useState } from "react";
 
 interface GroupDialogProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   // When set, the dialog edits the existing group; otherwise it creates one.
   groupId?: string | null;
+  onCreated?: (group: GroupType) => void;
 }
 
 export function GroupDialog({
@@ -27,6 +29,7 @@ export function GroupDialog({
   isOpen,
   onOpenChange,
   groupId = null,
+  onCreated,
 }: GroupDialogProps) {
   const isEdit = groupId !== null;
 
@@ -53,6 +56,7 @@ export function GroupDialog({
             groupId={groupId}
             initialName={group?.name ?? ""}
             initialMembers={members}
+            onCreated={onCreated}
             onClose={() => onOpenChange(false)}
           />
         ) : (
@@ -68,10 +72,11 @@ export function GroupDialog({
 }
 
 interface GroupFormProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   groupId: string | null;
   initialName: string;
   initialMembers: SearchMemberType[];
+  onCreated?: (group: GroupType) => void;
   onClose: () => void;
 }
 
@@ -80,6 +85,7 @@ function GroupForm({
   groupId,
   initialName,
   initialMembers,
+  onCreated,
   onClose,
 }: GroupFormProps) {
   const [name, setName] = useState(initialName);
@@ -96,11 +102,17 @@ function GroupForm({
     e.preventDefault();
     const trimmedName = name.trim();
     const memberIds = Array.from(selectedMemberIds);
-    const result = groupId
-      ? await doUpdateGroup({ name: trimmedName, memberIds })
-      : await doCreateGroup({ name: trimmedName, memberIds });
+    if (groupId) {
+      const result = await doUpdateGroup({ name: trimmedName, memberIds });
+      if (result) {
+        onClose();
+      }
+      return;
+    }
 
+    const result = await doCreateGroup({ name: trimmedName, memberIds });
     if (result) {
+      onCreated?.(result.group);
       onClose();
     }
   };

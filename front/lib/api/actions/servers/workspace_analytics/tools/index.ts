@@ -34,6 +34,7 @@ import {
 } from "@app/lib/api/assistant/observability/tool_usage";
 import { fetchTopAgentTags } from "@app/lib/api/assistant/observability/top_agent_tags";
 import { fetchTopAgents } from "@app/lib/api/assistant/observability/top_agents";
+import { fetchTopModels } from "@app/lib/api/assistant/observability/top_models";
 import { fetchTopUsers } from "@app/lib/api/assistant/observability/top_users";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -50,11 +51,13 @@ function scopedBaseQuery(
     agentIds,
     userIds,
     agentTagIds,
+    modelIds,
   }: {
     source?: string;
     agentIds?: string[];
     userIds?: string[];
     agentTagIds?: string[];
+    modelIds?: string[];
   }
 ) {
   return buildAgentAnalyticsBaseQuery({
@@ -65,6 +68,7 @@ function scopedBaseQuery(
     agentIds,
     userIds,
     agentTagIds,
+    modelIds,
   });
 }
 
@@ -118,6 +122,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     },
     { auth }
   ) => {
@@ -139,6 +144,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     });
 
     if (result.isErr()) {
@@ -185,6 +191,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     },
     { auth }
   ) => {
@@ -206,6 +213,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     });
 
     if (result.isErr()) {
@@ -252,6 +260,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     },
     { auth }
   ) => {
@@ -273,6 +282,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     });
 
     if (result.isErr()) {
@@ -303,6 +313,78 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
         type: "text" as const,
         text:
           `Top agent tags for ${label} (${tz}), most used first:\n` +
+          lines.join("\n"),
+      },
+    ]);
+  },
+
+  get_top_models: async (
+    {
+      limit,
+      period,
+      startDate,
+      endDate,
+      timezone,
+      source,
+      agentIds,
+      userIds,
+      agentTagIds,
+      modelIds,
+    },
+    { auth }
+  ) => {
+    const denied = workspaceAdminGuard(auth);
+    if (denied) {
+      return new Err(denied);
+    }
+
+    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
+    if (window.isErr()) {
+      return new Err(new MCPError(window.error, { tracked: false }));
+    }
+
+    const result = await fetchTopModels(auth, {
+      startDate: window.value.startDate,
+      endDate: window.value.endDate,
+      limit: limit ?? DEFAULT_RESULTS,
+      contextOrigin: source,
+      agentIds,
+      userIds,
+      agentTagIds,
+      modelIds,
+    });
+
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(`Failed to retrieve top models: ${result.error.message}`)
+      );
+    }
+
+    const { label, timezone: tz } = window.value;
+
+    if (result.value.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `No model activity recorded for ${label} (${tz}).`,
+        },
+      ]);
+    }
+
+    const lines = result.value.map((model, index) => {
+      const provider = model.providerId ? ` (${model.providerId})` : "";
+      return (
+        `${index + 1}. ${model.name}${provider} [${model.modelId}] — ` +
+        `${model.messageCount} messages, ${model.agentCount} agents, ` +
+        `${model.userCount} users`
+      );
+    });
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Top models for ${label} (${tz}), most used first:\n` +
           lines.join("\n"),
       },
     ]);
@@ -376,6 +458,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     },
     { auth }
   ) => {
@@ -394,6 +477,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     });
 
     const result = await fetchAvailableSkills(baseQuery);
@@ -441,6 +525,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     },
     { auth }
   ) => {
@@ -459,6 +544,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     });
 
     const result = await fetchAvailableTools(baseQuery);
@@ -505,7 +591,16 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   },
 
   get_source_breakdown: async (
-    { period, startDate, endDate, timezone, agentIds, userIds, agentTagIds },
+    {
+      period,
+      startDate,
+      endDate,
+      timezone,
+      agentIds,
+      userIds,
+      agentTagIds,
+      modelIds,
+    },
     { auth }
   ) => {
     const denied = workspaceAdminGuard(auth);
@@ -522,6 +617,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     });
 
     const result = await fetchContextOriginBreakdown(baseQuery);
@@ -573,6 +669,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     },
     { auth }
   ) => {
@@ -596,6 +693,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     });
 
     if (result.isErr()) {
@@ -654,6 +752,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     },
     { auth }
   ) => {
@@ -688,6 +787,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
         agentIds,
         userIds,
         agentTagIds,
+        modelIds,
       });
 
       if (result.isErr()) {
@@ -741,6 +841,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     });
 
     if (result.isErr()) {
@@ -787,6 +888,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     },
     { auth }
   ) => {
@@ -808,6 +910,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       agentIds,
       userIds,
       agentTagIds,
+      modelIds,
     });
     const { label, timezone: tz } = window.value;
     const selectedMetric = metric ?? "messages";

@@ -1,11 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const OPENAI_USAGE_TOOLS_METADATA = createToolsRecord({
-  get_completions_usage: {
+export const OPENAI_USAGE_TOOLS_METADATA = [
+  {
+    name: "get_completions_usage",
     description:
       "Get OpenAI completions usage data from the Usage API. Returns token usage, model requests, and other metrics.",
     schema: {
@@ -77,7 +75,8 @@ export const OPENAI_USAGE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_organization_costs: {
+  {
+    name: "get_organization_costs",
     description:
       "Get OpenAI organization cost data from the Costs API. Returns detailed cost breakdown by line items.",
     schema: {
@@ -125,7 +124,7 @@ export const OPENAI_USAGE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 export const OPENAI_USAGE_SERVER = {
   serverInfo: {
@@ -137,13 +136,5 @@ export const OPENAI_USAGE_SERVER = {
     icon: "OpenaiLogo",
     documentationUrl: null,
   },
-  tools: Object.values(OPENAI_USAGE_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: OPENAI_USAGE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

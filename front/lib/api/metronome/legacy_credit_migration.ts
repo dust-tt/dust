@@ -3,6 +3,8 @@ import { addCreditToContract } from "@app/lib/metronome/client";
 import {
   AWU_PRIORITY_FREE_SEAT_CREDIT,
   AWU_PRIORITY_PURCHASED_COMMIT,
+  CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_POOL,
   getCreditTypeAwuId,
   getProductFreeCreditId,
   getProductPrepaidCommitId,
@@ -157,6 +159,9 @@ export async function applyLegacyCreditMigrationAtActivation({
       uniquenessKey: `legacy-credit-conversion:${workspace.sId}:${metronomeContractId}`,
       applicableProductTags: [USAGE_TAG],
       priority: AWU_PRIORITY_PURCHASED_COMMIT,
+      customFields: {
+        [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+      },
     });
     if (res.isErr()) {
       logger.error(
@@ -184,6 +189,9 @@ export async function applyLegacyCreditMigrationAtActivation({
       uniquenessKey: `legacy-migration-bonus:${workspace.sId}:${metronomeContractId}`,
       applicableProductTags: [USAGE_TAG],
       priority: AWU_PRIORITY_FREE_SEAT_CREDIT,
+      customFields: {
+        [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+      },
     });
     if (res.isErr()) {
       logger.error(

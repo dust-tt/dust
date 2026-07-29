@@ -12,8 +12,8 @@ import type {
 import { encrypt } from "@app/types/shared/utils/encryption";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import {
+  ensureHasWorkspacePermission,
   ensureIsAdmin,
-  ensureIsBuilder,
 } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -32,9 +32,15 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsBuilder(),
+  // Dust app secrets are part of Dust app administration.
+  ensureHasWorkspacePermission(
+    "admin",
+    "dust_app",
+    "You do not have permission to manage Dust app secrets."
+  ),
   async (ctx): HandlerResult<GetDustAppSecretsResponseBody> => {
     const auth = ctx.get("auth");
+
     const owner = auth.getNonNullableWorkspace();
 
     const remaining = await rateLimiter({

@@ -2,6 +2,7 @@ import {
   SEAT_TYPE_ICONS,
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
+import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
 import {
   getSeatBarClasses,
@@ -529,7 +530,12 @@ function buildConsumedAwuCreditsColumn(
 
 const modelTiersColumn: ColumnDef<RowData, string> = {
   id: "modelTiers" as const,
-  header: "Models tier",
+  header: () => (
+    <span className="flex items-center gap-1">
+      Models tier
+      <ModelTiersInfoButton />
+    </span>
+  ),
   enableSorting: false,
   accessorFn: (row) => row.modelTiersSummary,
   cell: (info: Info) => {
@@ -607,6 +613,9 @@ interface MembersUsageTableProps {
   isSeatBased: boolean;
   showSpendLimit: boolean;
   readOnly: boolean;
+  // Disables only the seat-assign/change/remove actions (e.g. while the
+  // subscription has a cancellation scheduled), independent of `readOnly`.
+  seatActionsDisabled?: boolean;
   onChangeSeat: (member: MemberUsageType) => void;
   onRemoveSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
@@ -642,6 +651,7 @@ export function MembersUsageTable({
   isSeatBased,
   showSpendLimit,
   readOnly,
+  seatActionsDisabled = false,
   onChangeSeat,
   onRemoveSeat,
   onEditSpendLimit,
@@ -707,7 +717,7 @@ export function MembersUsageTable({
                   {
                     kind: "item" as const,
                     label: "Assign seat",
-                    disabled: readOnly,
+                    disabled: readOnly || seatActionsDisabled,
                     onClick: () => onChangeSeat(m),
                   },
                 ]
@@ -717,7 +727,7 @@ export function MembersUsageTable({
                   {
                     kind: "item" as const,
                     label: "Change seat type",
-                    disabled: readOnly,
+                    disabled: readOnly || seatActionsDisabled,
                     onClick: () => onChangeSeat(m),
                   },
                 ]
@@ -769,7 +779,7 @@ export function MembersUsageTable({
                     kind: "item" as const,
                     label: "Remove seat",
                     variant: "warning" as const,
-                    disabled: readOnly,
+                    disabled: readOnly || seatActionsDisabled,
                     onClick: () => onRemoveSeat(m),
                   },
                 ]
@@ -790,6 +800,7 @@ export function MembersUsageTable({
       workspaceAllowedModelTiers,
       groupNameToId,
       readOnly,
+      seatActionsDisabled,
       onChangeSeat,
       onRemoveSeat,
       onEditSpendLimit,

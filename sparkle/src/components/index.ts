@@ -100,6 +100,7 @@ export {
   DataTable,
   ScrollableDataTable,
 } from "./DataTable";
+export { DataTableLoadingSkeleton } from "./DataTableLoadingSkeleton";
 export {
   Dialog,
   DialogClose,
@@ -270,6 +271,8 @@ export {
 } from "./Sheet";
 export type { SidebarLayoutProps, SidebarLayoutRef } from "./SidebarLayout";
 export { SidebarLayout } from "./SidebarLayout";
+export type { SliderStepsProps } from "./SliderSteps";
+export { SliderSteps } from "./SliderSteps";
 export { SliderToggle } from "./SliderToggle";
 export { Spinner } from "./Spinner";
 export type { SpinnerBrandProps } from "./SpinnerBrand";

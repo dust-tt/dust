@@ -12,10 +12,8 @@ import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMe
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
-import { useAutoOpenFilesPanel } from "@app/components/assistant/conversation/files_panel/useAutoOpenFilesPanel";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { getModelWithReasoningEffortLabel } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import type {
   AgentMessageStateWithControlEvent,
   AgentMessageWithStreaming,
@@ -28,6 +26,7 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
+import { useAutoOpenSidePanel } from "@app/components/assistant/conversation/useAutoOpenSidePanel";
 import {
   CREDIT_COST_ITEM_CLASS_NAME,
   useCreditCostMenuItem,
@@ -183,7 +182,9 @@ function PrunedContextChip() {
             process at once.
           </p>
           <p>
-            For best accuracy, start a fresh conversation or narrow the request.
+            For best accuracy, first use <code>/compact</code> to summarize this
+            conversation and free up context. If needed, start a fresh
+            conversation or narrow your request.
           </p>
           <p>
             <a
@@ -1385,14 +1386,10 @@ function AgentMessageContent({
     ]
   );
 
-  // Auto-open interactive content drawer when interactive files are available.
-  const { interactiveFiles } = useAutoOpenInteractiveContent({
+  const { interactiveFiles } = useAutoOpenSidePanel({
     agentMessage,
     isLastMessage,
   });
-
-  // Auto-open file explorer panel when regular generated files are available.
-  useAutoOpenFilesPanel({ agentMessage, isLastMessage });
 
   const blockedActionElement = blockedAction ? (
     <BlockedAction

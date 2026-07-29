@@ -125,6 +125,7 @@ export async function writeBatchUserMessages(
         {
           workspaceId: workspace.id,
           userId: null,
+          conversationId: conversationResource.id,
           content,
           userContextUsername,
           userContextTimezone: "UTC",
@@ -220,6 +221,7 @@ export async function storeLlmResult(
           status,
           agentConfigurationId,
           agentConfigurationVersion: 0,
+          conversationId: conversation.id,
           workspaceId: workspace.id,
           skipToolsValidation: false,
           errorCode: firstError ? firstError.content.type : null,
@@ -311,6 +313,7 @@ export async function sendBatchCallToLlm(
     const conversationResource = writeBatchResult.value;
 
     // Reconstruct the full conversation from DB.
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
     const conversationRes = await getConversation(
       auth,
       conversationResource.sId
@@ -388,6 +391,11 @@ export interface BatchDownloadResult {
 /**
  * Download batch results from the LLM and store them as agent messages in the
  * corresponding conversations.
+ *
+ * Note: the batch is NOT deleted here. Deleting it inside this function would make callers
+ * non-idempotent (a retry after a downstream failure would 404 on getBatchResult). Callers are
+ * responsible for guaranteeing deletion once the results are consumed (e.g. via a dedicated
+ * Temporal activity in a workflow-level finally block).
  */
 export async function downloadBatchResultFromLlm(
   auth: Authenticator,
@@ -425,20 +433,6 @@ export async function downloadBatchResultFromLlm(
       { runIds: [dustRunId] }
     );
     storedResultInfo.set(conversationId, info);
-  }
-
-  const deleted = await llm.deleteBatch(batchId);
-  if (!deleted) {
-    const metadata = llm.getMetadata();
-    logger.warn(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        providerId: metadata.clientId,
-        modelId: metadata.modelId,
-        batchId,
-      },
-      "Failed to delete batch after downloading results"
-    );
   }
 
   return { events, storedResultInfo };
@@ -489,7 +483,9 @@ function eventToStoredStepContent(
         type: "reasoning",
         value: {
           reasoning: event.content.text,
-          metadata: event.metadata.encrypted_content ?? "",
+          // Same JSON shape as the streaming path (get_output_from_llm.ts), so
+          // replay can extract `id` / `encrypted_content` from it.
+          metadata: JSON.stringify(event.metadata),
           tokens: 0,
           provider: event.metadata.clientId,
         },

@@ -24,16 +24,15 @@
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getInternalMCPServerMetadata,
   getInternalMCPServerToolArgumentsRequiringApproval,
-  getInternalMCPServerToolStakes,
+  INTERNAL_MCP_SERVERS,
+  type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import { getInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/servers";
-import type { InternalMCPToolType } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { extractMetadataFromTools } from "@app/lib/actions/mcp_metadata";
 import type { MCPToolType, ToolCostCategory } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -203,7 +202,12 @@ async function collectAllServersMetadata(): Promise<ServerMetadataSnapshot[]> {
   for (const serverName of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
     try {
       const tools = await getToolsFromServer(serverName);
-      const toolsStakes = getInternalMCPServerToolStakes(serverName);
+      const toolsStakes = Object.fromEntries(
+        INTERNAL_MCP_SERVERS[serverName].metadata.tools.map((t) => [
+          t.name,
+          t.stake,
+        ])
+      );
 
       servers.push({
         name: serverName,
@@ -265,8 +269,7 @@ describe("MCP Servers Metadata Snapshot", () => {
     const allBilling: Record<string, Record<string, ToolBillingSnapshot>> = {};
 
     for (const serverName of [...AVAILABLE_INTERNAL_MCP_SERVER_NAMES].sort()) {
-      const tools = getInternalMCPServerMetadata(serverName)
-        .tools as InternalMCPToolType[];
+      const { tools } = getInternalMCPServerMetadata(serverName);
 
       const toolSnapshots: Record<string, ToolBillingSnapshot> = {};
       for (const tool of [...tools].sort((a, b) =>
@@ -307,7 +310,12 @@ describe("MCP Servers Metadata Snapshot", () => {
     const allStakes: Record<string, Record<string, MCPToolStakeLevelType>> = {};
 
     for (const serverName of [...AVAILABLE_INTERNAL_MCP_SERVER_NAMES].sort()) {
-      const stakes = getInternalMCPServerToolStakes(serverName);
+      const stakes = Object.fromEntries(
+        INTERNAL_MCP_SERVERS[serverName].metadata.tools.map((t) => [
+          t.name,
+          t.stake,
+        ])
+      );
       allStakes[serverName] = sortToolsStakes(stakes) ?? {};
     }
 
@@ -329,7 +337,12 @@ describe("MCP Servers Metadata Snapshot", () => {
 
   it("requires input scoping for every medium-stake tool", () => {
     for (const serverName of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
-      const stakes = getInternalMCPServerToolStakes(serverName);
+      const stakes = Object.fromEntries(
+        INTERNAL_MCP_SERVERS[serverName].metadata.tools.map((t) => [
+          t.name,
+          t.stake,
+        ])
+      );
 
       for (const [toolName, stake] of Object.entries(stakes)) {
         if (stake === "medium") {

@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
+  type AgentLoopRunContext,
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
@@ -759,7 +760,7 @@ export async function executePostMessage(
     to,
     message,
     threadTs,
-    fileId,
+    fileAttachment,
     unfurlLinks,
     unfurlMedia,
     showSentByFooter,
@@ -768,7 +769,9 @@ export async function executePostMessage(
     to: string | string[];
     message: string;
     threadTs: string | undefined;
-    fileId: string | undefined;
+    fileAttachment:
+      | { fileId: string; runContext: AgentLoopRunContext }
+      | undefined;
     unfurlLinks: boolean | undefined;
     unfurlMedia: boolean | undefined;
     showSentByFooter?: boolean;
@@ -809,16 +812,15 @@ export async function executePostMessage(
     message = slackifyMarkdown(originalMessage);
   }
 
-  if (!(await hasSlackScope(accessToken, "files:write"))) {
-    fileId = undefined;
-  }
+  const canUploadFile = await hasSlackScope(accessToken, "files:write");
 
   // If a file is provided, upload it as attachment of the original message.
-  if (fileId) {
+  if (fileAttachment && canUploadFile) {
+    const { fileId, runContext } = fileAttachment;
     const fileResult = await getFileFromConversationAttachment(
       auth,
       fileId,
-      toolContext
+      runContext
     );
     if (fileResult.isErr()) {
       return new Err(

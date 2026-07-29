@@ -10,7 +10,7 @@ import {
   ReverseLeft,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useFormState } from "react-hook-form";
 
 const LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD = 40_000;
 
@@ -19,6 +19,7 @@ const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 
 export function SkillBuilderInstructionsSection() {
   const { setValue, watch } = useFormContext<SkillBuilderFormData>();
+  const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
   const { compareVersion, exitDiffMode } = useSkillVersionComparisonContext();
   const [addKnowledge, setAddKnowledge] = useState<(() => void) | null>(null);
 
@@ -63,6 +64,7 @@ export function SkillBuilderInstructionsSection() {
               icon={ReverseLeft}
               onClick={restoreInstructions}
               label="Restore instructions"
+              disabled={isReadOnly}
             />
           )}
           {!compareVersion && (
@@ -71,7 +73,7 @@ export function SkillBuilderInstructionsSection() {
               label="Attach knowledge"
               icon={BookOpen01}
               onClick={addKnowledge ?? undefined}
-              disabled={!addKnowledge}
+              disabled={isReadOnly || !addKnowledge}
             />
           )}
         </div>

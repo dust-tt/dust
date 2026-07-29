@@ -56,11 +56,7 @@ import { serializeMention } from "@app/lib/mentions/format";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type {
-  AgentErrorCategory,
-  GenericErrorContent,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { CitationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
@@ -79,27 +75,6 @@ import type { RequestMeta } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import maxBy from "lodash/maxBy";
 import type z from "zod";
-
-const UNTRACKED_CHILD_AGENT_ERROR_CATEGORIES = [
-  "retryable_model_error",
-  "context_window_exceeded",
-  "empty_content",
-  "provider_internal_error",
-  "stream_error",
-] satisfies AgentErrorCategory[];
-const UNTRACKED_CHILD_AGENT_ERROR_CODES = ["max_step_reached"] as const;
-
-function shouldTrackChildAgentError(error: GenericErrorContent): boolean {
-  const category = error.metadata?.category;
-  if (
-    typeof category === "string" &&
-    UNTRACKED_CHILD_AGENT_ERROR_CATEGORIES.some((c) => c === category)
-  ) {
-    return false;
-  }
-
-  return !UNTRACKED_CHILD_AGENT_ERROR_CODES.some((code) => code === error.code);
-}
 
 function canRunChildAgent(agent: LightAgentConfigurationType): boolean {
   switch (agent.status) {
@@ -643,14 +618,12 @@ const runAgent = async (
         }
       } else if (event.type === "agent_error") {
         const errorMessage = `Agent error: ${event.error.message}`;
-        // Certain types of agent errors should not be tracked as run_agent tool execution
-        // errors (they will be exposed to the model and will be tracked as errors from the
-        // agentic loop in the sub agent conversation).
-        const tracked = shouldTrackChildAgentError(event.error);
+        // Errors from sub-agents are typically captured by the monitoring stack through the
+        // actual sub-agent run, so avoid tracking them again as run_agent MCP errors.
         return await finalizeAndReturn(
           new Err(
             new MCPError(errorMessage, {
-              tracked,
+              tracked: false,
             })
           )
         );

@@ -1,28 +1,35 @@
 import { fireworksConfigSchema } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
-import { FIREWORKS_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/fireworks/reasoning_efforts";
-import { FIREWORKS_GLM_5P2_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { GLM_5P2 } from "@app/lib/model_constructors/types/models";
 import { z } from "zod";
 
 const CONTEXT_SIZE = 1_000_000;
 const MAX_OUTPUT_TOKENS = 64_000;
 
-// GLM-5.2 has no native light reasoning, so none/low must drop reasoning_effort
-// (the legacy client does the same); only medium/high reach the model.
+// Z.ai documents three states for GLM-5.2: thinking disabled
+// (`thinking: {type: "disabled"}`, enabled being the default), effort `high`,
+// and effort `max` — which is the documented default and what its own examples
+// use: https://docs.z.ai/guides/llm/glm-5.2
+// Our `maximal` is Z.ai's `max`.
+//
+// Confirmed live through Fireworks on 2026-07-27 with the widest
+// `inputConfigSchema`: `none` returns no reasoning content at all, high and max
+// both reason. The Fireworks gateway is looser than the model — it also takes
+// low/medium/xhigh and rejects only `minimal` — but those are not GLM-5.2
+// efforts, so the schema does not expose them.
 const configSchema = fireworksConfigSchema.extend({
   reasoning: z
-    .object({ effort: z.enum(FIREWORKS_SUPPORTED_REASONING_EFFORTS) })
-    .optional()
-    .default({ effort: "high" }),
+    .object({ effort: z.enum(["none", "high", "maximal"]) })
+    .default({ effort: "maximal" }),
 });
 
 // Mixin carrying shared config; runtime base differs per surface.
-export function WithFireworksGlm52Config<
+export function WithZAiGlm52Config<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  abstract class FireworksGlm52 extends Base {
-    static readonly modelId = FIREWORKS_GLM_5P2_MODEL_ID;
+  abstract class ZAiGlm52 extends Base {
+    static readonly model = GLM_5P2;
 
     static readonly configSchema = configSchema;
 
@@ -30,5 +37,5 @@ export function WithFireworksGlm52Config<
     static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
   }
 
-  return FireworksGlm52;
+  return ZAiGlm52;
 }

@@ -10,7 +10,7 @@ import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { wakeLock } from "@app/lib/wake_lock";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
@@ -20,7 +20,11 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureHasWorkspacePermission(
+    "admin",
+    "billing",
+    "You need billing access to manage billing settings, invoices, and payment methods."
+  ),
   async (ctx): HandlerResult<GetBusinessActivationResponseBody> => {
     const auth = ctx.get("auth");
 
@@ -80,14 +84,13 @@ app.post(
       async () => {
         const auth = ctx.get("auth");
 
-        // biome-ignore lint/plugin/noDirectRoleCheck: inside wakeLock callback, middleware not applicable
-        if (!auth.isAdmin()) {
+        if (!(await auth.hasWorkspacePermission("admin", "billing"))) {
           return apiError(ctx, {
             status_code: 403,
             api_error: {
               type: "workspace_auth_error",
               message:
-                "Only users that are `admins` for the current workspace can access this endpoint.",
+                "You need billing access to manage billing settings, invoices, and payment methods.",
             },
           });
         }
