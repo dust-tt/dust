@@ -28,12 +28,12 @@ import {
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import {
-  DEFAULT_AGENT_TOOL_NAME,
   EDIT_INFORMATION_TOOL_NAME,
   LIST_MEMBERS_TOOL_NAME,
   MOVE_CONVERSATION_TOOL_NAME,
   POD_MANAGER_TOOLS_METADATA,
   SEMANTIC_SEARCH_TOOL_NAME,
+  SET_DEFAULT_AGENT_TOOL_NAME,
   SET_PINNED_FRAME_TOOL_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
@@ -414,11 +414,11 @@ export function createProjectManagerTools(
       }, "Failed to set Pod pinned frame");
     },
 
-    [DEFAULT_AGENT_TOOL_NAME]: async (params) => {
+    [SET_DEFAULT_AGENT_TOOL_NAME]: async ({ agentName, dustPod }) => {
       return withErrorHandling(async () => {
         const contextRes = await getPod(auth, {
           toolContext,
-          dustPod: params.dustPod,
+          dustPod,
         });
         if (contextRes.isErr()) {
           return contextRes;
@@ -446,27 +446,34 @@ export function createProjectManagerTools(
         }
 
         // Resolve the agent by name. A null agentName clears the default so new
-        // conversations fall back to the workspace default / @dust.
+        // conversations fall back to the workspace default (Dust).
         let defaultAgentId: string | null = null;
         let defaultAgentName: string | null = null;
-        if (params.agentName !== null) {
+        if (agentName !== null) {
           const resolvedAgentId = await resolveAgentConfigurationIdByName(
             auth,
-            params.agentName
+            agentName
           );
           if (!resolvedAgentId) {
             return new Err(
-              new MCPError(`No agent found matching "${params.agentName}".`, {
+              new MCPError(`No agent found matching "${agentName}".`, {
+                tracked: false,
+              })
+            );
+          }
+          const agent = await getAgentConfiguration(auth, {
+            agentId: resolvedAgentId,
+            variant: "extra_light",
+          });
+          if (!agent) {
+            return new Err(
+              new MCPError(`No agent found matching "${agentName}".`, {
                 tracked: false,
               })
             );
           }
           defaultAgentId = resolvedAgentId;
-          const agent = await getAgentConfiguration(auth, {
-            agentId: resolvedAgentId,
-            variant: "extra_light",
-          });
-          defaultAgentName = agent?.name ?? null;
+          defaultAgentName = agent.name;
         }
 
         let metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
@@ -486,7 +493,7 @@ export function createProjectManagerTools(
               ? `Pod default agent set to ${
                   defaultAgentName ? `@${defaultAgentName}` : defaultAgentId
                 }.`
-              : "Pod default agent reset to the default (@dust).",
+              : "Pod default agent reset to the default (Dust).",
           })
         );
       }, "Failed to set Pod default agent");

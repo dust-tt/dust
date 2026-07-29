@@ -3,9 +3,9 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import {
-  DEFAULT_AGENT_TOOL_NAME,
   EDIT_INFORMATION_TOOL_NAME,
   POD_MANAGER_SERVER_NAME,
+  SET_DEFAULT_AGENT_TOOL_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import {
@@ -149,7 +149,7 @@ const MCP_TOOL_OVERRIDES: Partial<
       },
       alwaysAllowLabel: () => `Always allow agent to update Pod members`,
     },
-    [DEFAULT_AGENT_TOOL_NAME]: {
+    [SET_DEFAULT_AGENT_TOOL_NAME]: {
       title: (inputs) => {
         if (!isPodManagerDefaultAgentInput(inputs)) {
           return `Allow agent to set the Pod default agent?`;
@@ -159,7 +159,7 @@ const MCP_TOOL_OVERRIDES: Partial<
         }
         return `Allow agent to set the Pod default agent to @${inputs.agentName}?`;
       },
-      alwaysAllowLabel: () => `Always allow agent to set the Pod default agent`,
+      alwaysAllowLabel: () => "Always allow agent to set the Pod default agent",
     },
   },
   [WAKEUPS_SERVER_NAME]: {
