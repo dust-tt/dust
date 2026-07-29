@@ -252,9 +252,11 @@ export async function notionDrainDocumentUpsertQueueWorkflow({
     await sleep(5000);
   }
 
-  throw new Error(
-    `Timeout (1 hour) waiting for upsert queue to drain for connector ${connectorId}`
-  );
+  // Could not drain in 1H, something is off
+  // Keep waiting in another workflow
+  await continueAsNew<typeof notionDrainDocumentUpsertQueueWorkflow>({
+    connectorId,
+  });
 }
 
 export async function notionUpdateAllParentsFieldsWorkflow({
