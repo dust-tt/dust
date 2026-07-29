@@ -3,7 +3,6 @@ import { loadAllModels } from "@app/admin/db";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
-import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -14,6 +13,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { getReinforcedSkillsMetadata } from "@app/lib/reinforcement/types";
+import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -825,20 +825,17 @@ describe("destroyConversation", () => {
       },
     });
 
-    await AgentMessageConsumptionItemModel.create({
-      workspaceId: auth.getNonNullableWorkspace().id,
-      conversationId: conversation.id,
-      agentMessageId,
-      runUsageId: null,
-      agentMCPActionId: action.id,
-      itemKey: `tool-action:${action.id}`,
-      itemType: "tool",
+    await AgentMessageConsumptionItemResource.createPendingItems(auth, {
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessageId,
       attributionVersion: 1,
-      inputTokensCount: null,
-      outputTokensCount: null,
-      grossAttributedCreditAmountMicro: 0,
-      directCreditAmountMicro: null,
-      completedAt: null,
+      sources: [
+        {
+          itemType: "tool",
+          runUsageModelId: null,
+          agentMCPActionModelId: action.id,
+        },
+      ],
     });
 
     const result = await destroyConversation(auth, { conversation });
@@ -853,13 +850,11 @@ describe("destroyConversation", () => {
       })
     ).resolves.toBe(0);
     await expect(
-      AgentMessageConsumptionItemModel.count({
-        where: {
-          agentMessageId,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
+      AgentMessageConsumptionItemResource.listByAgentMessageModelId(auth, {
+        agentMessageModelId: agentMessageId,
+        attributionVersion: 1,
       })
-    ).resolves.toBe(0);
+    ).resolves.toHaveLength(0);
   });
 
   it("should delete selected spaces before deleting a conversation", async () => {
