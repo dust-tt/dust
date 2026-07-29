@@ -10,6 +10,7 @@ import {
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import { parseSandboxFunctionRunnerOutput } from "@app/lib/api/sandbox_functions/runner_output";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -49,6 +50,7 @@ import { fromError } from "zod-validation-error";
 const SANDBOX_FUNCTION_WORKING_DIRECTORY = "/home/agent";
 const SANDBOX_FUNCTION_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
 const DSBX_BIN_PATH = "/opt/bin/dsbx";
+const SANDBOX_FUNCTION_RESULT_TRANSPORT = "stdout";
 // Caps on runner output surfaced on failure: a small head for the error forwarded to the agent,
 // a larger one for the log fields.
 const SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS = 2_048;
@@ -318,6 +320,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           ),
           ...podDatabaseExecEnvVars(),
           DUST_SANDBOX_TOKEN: token,
+          DUST_SANDBOX_FUNCTION_RESULT_TRANSPORT:
+            SANDBOX_FUNCTION_RESULT_TRANSPORT,
         },
         stdin: JSON.stringify(inputEnvelope),
         timeoutMs: SANDBOX_FUNCTION_EXEC_TIMEOUT_MS,
@@ -326,8 +330,24 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       if (execResult.isErr()) {
         return execResult;
       }
+
+      const { exitCode, stdout, stderr } = execResult.value;
+      const parsedStdout = safeParseJSON(stdout.trim());
+      if (parsedStdout.isOk()) {
+        const runnerOutput = parseSandboxFunctionRunnerOutput(
+          parsedStdout.value
+        );
+        if (runnerOutput.isOk()) {
+          if (runnerOutput.value.ok) {
+            await this.succeed(runnerOutput.value.output);
+          } else {
+            await this.fail(runnerOutput.value.error);
+          }
+          return new Ok(undefined);
+        }
+      }
+
       if (execResult.value.exitCode !== 0) {
-        const { exitCode, stdout, stderr } = execResult.value;
         logger.error(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
@@ -356,10 +376,35 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         );
       }
 
+      // Older dsbx images ignore the result-transport setting and complete
+      // through the callback endpoint. The callback finishes before dsbx
+      // exits, so a terminal database status proves that path completed.
+      const persistedStatus = await this.fetchPersistedStatus();
+      if (persistedStatus === "succeeded" || persistedStatus === "errored") {
+        return new Ok(undefined);
+      }
+
+      const error = {
+        code: "invocation_failed" as const,
+        message: "Sandbox function returned an invalid result envelope.",
+      };
+      await this.fail(error);
       return new Ok(undefined);
     } catch (error) {
       return new Err(normalizeError(error));
     }
+  }
+
+  private async fetchPersistedStatus(): Promise<SandboxFunctionInvocationStatus | null> {
+    const invocation = await SandboxFunctionInvocationResource.model.findOne({
+      attributes: ["status"],
+      where: {
+        id: this.id,
+        workspaceId: this.workspaceId,
+      },
+    });
+
+    return invocation?.status ?? null;
   }
 
   static modelIdToSId({

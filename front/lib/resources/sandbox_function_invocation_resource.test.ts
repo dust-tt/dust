@@ -450,7 +450,10 @@ describe("SandboxFunctionInvocationResource", () => {
     const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
-        stdout: "hello world\n",
+        stdout: `${JSON.stringify({
+          ok: true,
+          output: { commentId: "comment-1" },
+        })}\n`,
         stderr: "",
       })
     );
@@ -472,7 +475,8 @@ describe("SandboxFunctionInvocationResource", () => {
         sandboxFunction,
         invocationId: invocation.sId,
       });
-    expect(refetchedInvocation?.status).toBe("created");
+    expect(refetchedInvocation?.status).toBe("succeeded");
+    expect(refetchedInvocation?.result).toEqual({ commentId: "comment-1" });
     expect(updateLastActivityAtSpy).toHaveBeenCalledOnce();
     expect(ensurePodSandboxReady).toHaveBeenCalledWith(authenticator, space);
     expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
@@ -499,6 +503,7 @@ describe("SandboxFunctionInvocationResource", () => {
       DUST_POD_DATABASES_DIR: "/pod-state/databases",
       DUST_POD_DATABASE_MAX_SIZE_BYTES: "1073741824",
       DUST_SANDBOX_TOKEN: "sbt-function-token",
+      DUST_SANDBOX_FUNCTION_RESULT_TRANSPORT: "stdout",
     });
     expect(opts?.user).toBe("agent-proxied");
     expect(opts?.workingDirectory).toBe("/home/agent");
@@ -517,6 +522,64 @@ describe("SandboxFunctionInvocationResource", () => {
       },
       body: JSON.stringify({ message: "hello" }),
       encoding: "utf8",
+    });
+  });
+
+  it("persists a structured runner error returned on stdout", async () => {
+    const { authenticator, sandboxFunction, sandbox, invocation } =
+      await setupExecutionTest();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 1,
+        stdout: `${JSON.stringify({
+          ok: false,
+          error: {
+            code: "invalid_output",
+            message: "Output did not match the schema.",
+          },
+        })}\n`,
+        stderr: "",
+      })
+    );
+
+    const result = await invocation.execute(authenticator);
+
+    expect(result.isOk()).toBe(true);
+    const refetchedInvocation =
+      await SandboxFunctionInvocationResource.fetchById(authenticator, {
+        sandboxFunction,
+        invocationId: invocation.sId,
+      });
+    expect(refetchedInvocation?.status).toBe("errored");
+    expect(refetchedInvocation?.error).toEqual({
+      code: "invalid_output",
+      message: "Output did not match the schema.",
+    });
+  });
+
+  it("accepts a terminal callback from an older dsbx image", async () => {
+    const { authenticator, sandboxFunction, sandbox, invocation } =
+      await setupExecutionTest();
+    vi.spyOn(sandbox, "exec").mockImplementation(async () => {
+      await invocation.succeed({ commentId: "callback-result" });
+      return new Ok({
+        exitCode: 0,
+        stdout: "",
+        stderr: "",
+      });
+    });
+
+    const result = await invocation.execute(authenticator);
+
+    expect(result.isOk()).toBe(true);
+    const refetchedInvocation =
+      await SandboxFunctionInvocationResource.fetchById(authenticator, {
+        sandboxFunction,
+        invocationId: invocation.sId,
+      });
+    expect(refetchedInvocation?.status).toBe("succeeded");
+    expect(refetchedInvocation?.result).toEqual({
+      commentId: "callback-result",
     });
   });
 
