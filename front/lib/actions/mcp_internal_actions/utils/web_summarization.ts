@@ -4,13 +4,14 @@ import {
   getSmallWhitelistedModel,
   selectEnabledModel,
 } from "@app/lib/api/assistant/models";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import { GPT_5_6_LUNA_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -38,7 +39,8 @@ export async function summarizeWithLLM({
 }): Promise<Result<string, Error>> {
   const toSummarize = content.slice(0, MAX_CHARACTERS_TO_SUMMARIZE);
 
-  const modelConfig = getModelConfigForWebSummarization(auth);
+  const featureFlags = await getFeatureFlags(auth);
+  const modelConfig = getModelConfigForWebSummarization(auth, featureFlags);
   if (!modelConfig) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate summary")
@@ -99,12 +101,15 @@ export async function summarizeWithLLM({
   return new Ok(summary);
 }
 
-export function getModelConfigForWebSummarization(auth: Authenticator): {
+export function getModelConfigForWebSummarization(
+  auth: Authenticator,
+  featureFlags: WhitelistableFeature[]
+): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: ReasoningEffort;
 } | null {
   const luna = selectEnabledModel(auth, [GPT_5_6_LUNA_MODEL_CONFIG], {
-    featureFlags: [],
+    featureFlags,
   });
   if (luna) {
     return {
@@ -113,7 +118,9 @@ export function getModelConfigForWebSummarization(auth: Authenticator): {
     };
   }
 
-  const smallModel = getSmallWhitelistedModel(auth);
+  const smallModel = getSmallWhitelistedModel(auth, new Set(), {
+    featureFlags,
+  });
   return smallModel
     ? {
         modelConfiguration: smallModel,

@@ -6,9 +6,9 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   CLAUDE_OPUS_5_MODEL_ID,
-  CLAUDE_SONNET_4_6_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
+import { GEMINI_3_1_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import {
   GPT_5_6_LUNA_MODEL_ID,
   GPT_5_6_SOL_MODEL_ID,
@@ -365,7 +365,7 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
 });
 
 describe("getGlobalAgents Deep Dive model routing", () => {
-  it("keeps Sonnet 4.6 as the Deep Dive primary model", async () => {
+  it("uses Sol with medium reasoning as the Deep Dive primary model", async () => {
     const workspace = await WorkspaceFactory.basic({
       whiteListedProviders: ["anthropic", "openai"],
     });
@@ -379,12 +379,12 @@ describe("getGlobalAgents Deep Dive model routing", () => {
 
     expect(agents).toHaveLength(1);
     expect(agents[0].model).toMatchObject({
-      modelId: CLAUDE_SONNET_4_6_MODEL_ID,
-      reasoningEffort: "light",
+      modelId: GPT_5_6_SOL_MODEL_ID,
+      reasoningEffort: "medium",
     });
   });
 
-  it("falls back to Sol for Deep Dive while using Sol for planning and Luna high for tasks", async () => {
+  it("uses Sol medium for Deep Dive while using Sol high for planning and Luna high for tasks", async () => {
     const workspace = await WorkspaceFactory.enterprise({
       whiteListedProviders: ["openai"],
     });
@@ -410,7 +410,7 @@ describe("getGlobalAgents Deep Dive model routing", () => {
       {
         sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
         modelId: GPT_5_6_SOL_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "medium",
       },
       {
         sId: GLOBAL_AGENTS_SID.DUST_TASK,
@@ -425,7 +425,7 @@ describe("getGlobalAgents Deep Dive model routing", () => {
     ]);
   });
 
-  it("falls back to Sonnet 5 for tasks and Opus 5 for planning", async () => {
+  it("falls back to Opus 5 light for enterprise Deep Dive", async () => {
     const workspace = await WorkspaceFactory.enterprise({
       whiteListedProviders: ["anthropic"],
     });
@@ -464,5 +464,43 @@ describe("getGlobalAgents Deep Dive model routing", () => {
         reasoningEffort: "high",
       },
     ]);
+  });
+
+  it("falls back to Sonnet 5 light for non-enterprise Deep Dive", async () => {
+    const workspace = await WorkspaceFactory.basic({
+      whiteListedProviders: ["anthropic"],
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [GLOBAL_AGENTS_SID.DEEP_DIVE],
+      "light"
+    );
+
+    expect(agents).toHaveLength(1);
+    expect(agents[0].model).toMatchObject({
+      modelId: CLAUDE_SONNET_5_MODEL_ID,
+      reasoningEffort: "light",
+    });
+  });
+
+  it("uses the generic large fallback when preferred Deep Dive models are unavailable", async () => {
+    const workspace = await WorkspaceFactory.basic({
+      whiteListedProviders: ["google_ai_studio"],
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [GLOBAL_AGENTS_SID.DEEP_DIVE],
+      "light"
+    );
+
+    expect(agents).toHaveLength(1);
+    expect(agents[0].model).toMatchObject({
+      modelId: GEMINI_3_1_PRO_MODEL_ID,
+      reasoningEffort: "light",
+    });
   });
 });

@@ -34,7 +34,6 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
-  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import {
@@ -384,26 +383,34 @@ function getLargeModelFallback(
   };
 }
 
-function getDeepDiveFallbackModelConfig(
+function getDeepDiveModelConfig(
   auth: Authenticator,
   featureFlags: WhitelistableFeature[],
   excludeProviders: ReadonlySet<ModelProviderIdType>
 ): ModelConfigWithReasoning | null {
+  const primaryModelConfig = getEnabledModelConfig(
+    auth,
+    GPT_5_6_SOL_MODEL_CONFIG,
+    "medium",
+    featureFlags,
+    excludeProviders
+  );
+  if (primaryModelConfig) {
+    return primaryModelConfig;
+  }
+
+  const fallbackModelConfig = getEnabledModelConfig(
+    auth,
+    shouldUseOpus(auth)
+      ? CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG
+      : CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
+    "light",
+    featureFlags,
+    excludeProviders
+  );
+
   return (
-    getEnabledModelConfig(
-      auth,
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-      "light",
-      featureFlags,
-      excludeProviders
-    ) ??
-    getEnabledModelConfig(
-      auth,
-      GPT_5_6_SOL_MODEL_CONFIG,
-      "light",
-      featureFlags,
-      excludeProviders
-    ) ??
+    fallbackModelConfig ??
     getLargeModelFallback(auth, featureFlags, excludeProviders)
   );
 }
@@ -476,23 +483,11 @@ export function _getDeepDiveGlobalAgent(
 ): AgentConfigurationType | null {
   const { run_agent: runAgentMCPServerView } = mcpServerViews;
   const pictureUrl = DUST_AVATAR_URL;
-  const modelConfig = getDeepDiveFallbackModelConfig(
+  const modelConfig = getDeepDiveModelConfig(
     auth,
     featureFlags,
     excludeProviders
   );
-
-  const enterpriseModelConfig = shouldUseOpus(auth)
-    ? getEnabledModelConfig(
-        auth,
-        CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
-        "light",
-        featureFlags,
-        excludeProviders
-      )
-    : null;
-
-  const effectiveModelConfig = enterpriseModelConfig ?? modelConfig;
 
   const deepAgent: Omit<
     AgentConfigurationType,
@@ -522,7 +517,7 @@ export function _getDeepDiveGlobalAgent(
     canEdit: false,
   };
 
-  if (settings?.status === "disabled_by_admin" || !effectiveModelConfig) {
+  if (settings?.status === "disabled_by_admin" || !modelConfig) {
     return {
       ...deepAgent,
       status: "disabled_by_admin",
@@ -532,10 +527,10 @@ export function _getDeepDiveGlobalAgent(
   }
 
   const model: AgentModelConfigurationType = {
-    providerId: effectiveModelConfig.modelConfiguration.providerId,
-    modelId: effectiveModelConfig.modelConfiguration.modelId,
+    providerId: modelConfig.modelConfiguration.providerId,
+    modelId: modelConfig.modelConfiguration.modelId,
     temperature: 1.0,
-    reasoningEffort: effectiveModelConfig.reasoningEffort,
+    reasoningEffort: modelConfig.reasoningEffort,
   };
 
   deepAgent.model = model;
