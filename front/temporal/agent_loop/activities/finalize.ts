@@ -147,11 +147,18 @@ export async function finalizeErroredAgentLoopActivity(
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
+  // A failed run is not billable (its terminal status is `failed`, which is not
+  // in AGENT_MESSAGE_STATUSES_TO_TRACK). We deliberately do NOT launch the
+  // Metronome usage / programmatic-usage emits here: those emits run
+  // asynchronously and read the message status at their own run time, when the
+  // message is often still transiently `created` (a tracked status) — so the
+  // emit-side status guard cannot catch them and the failed run gets billed.
+  // Not emitting at all is the correct behavior and keeps Metronome consistent
+  // with the ES analytics / credit accounting, which exclude `failed`.
+  // (`computeAndStoreAgentMessageCredits` self-gates on the message status.)
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
     launchAgentMessageAnalytics(auth, agentLoopArgs),
-    launchTrackProgrammaticUsage(auth, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
     sendEmailReplyOnError(
       auth,
