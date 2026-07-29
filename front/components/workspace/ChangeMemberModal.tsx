@@ -51,10 +51,7 @@ function getMemberRoleMessage({
     )}). Role changes must be made in your identity provider.`;
   }
 
-  return getRoleDescription(
-    role,
-    isAdminGovernanceEnabled
-  );
+  return getRoleDescription(role, isAdminGovernanceEnabled);
 }
 
 export function ChangeMemberModal({
