@@ -698,7 +698,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return res !== null;
   }
 
-  static async internalFetchWorkspacesWithFreeEndedSubscriptions(): Promise<{
+  static async internalFetchWorkspacesWithFreeEndedSubscriptions({
+    limit,
+  }: {
+    limit?: number;
+  } = {}): Promise<{
     workspaces: LightWorkspaceType[];
   }> {
     const freeEndedSubscriptions = await SubscriptionModel.findAll({
@@ -710,6 +714,9 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         },
       },
       include: [WorkspaceModel],
+      // Oldest expiry first, so a capped run drains the backlog deterministically.
+      order: [["endDate", "ASC"]],
+      limit,
     });
 
     const workspaces = freeEndedSubscriptions.map((s) =>
