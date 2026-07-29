@@ -49,6 +49,30 @@ function getRootCommandCall(
   return renderRootCommand(mock.mock.calls[callIndex][1] as RootCommand);
 }
 
+function createPodSandboxAdapter(): GCSSandboxMountAdapter {
+  const backend = new GCSFileSystemBackend("ws1", "test-private-uploads");
+  const adapter = backend.createSandboxAdapter(
+    [
+      {
+        kind: "pod",
+        id: "spc1",
+        scopedPrefix: "pod-spc1",
+        sandboxMountPoint: "/files/pod-spc1",
+        legacyPrefix: "project",
+        legacySandboxMountPoint: "/files/pod",
+        permissions: { canRead: true, canWrite: true },
+      },
+    ],
+    podSandboxOnlyMounts({ sId: "spc1" })
+  );
+
+  if (!(adapter instanceof GCSSandboxMountAdapter)) {
+    throw new Error("expected a GCSSandboxMountAdapter");
+  }
+
+  return adapter;
+}
+
 describe("buildMountCommand", () => {
   test("workload profile mounts as root with allow_other and permissive modes", () => {
     const command = renderRootCommand(
@@ -67,7 +91,7 @@ describe("buildMountCommand", () => {
     expect(command).toContain("bucket-x /files/pod-spc1");
   });
 
-  test("workload profile adds ro for read-only targets", () => {
+  test("pod function profile disables list caching for newly published functions", () => {
     const command = renderRootCommand(
       buildMountCommand({
         bucket: "bucket-x",
@@ -77,11 +101,13 @@ describe("buildMountCommand", () => {
           sandboxMountPoint: "/sandbox-functions/pods/spc1",
           legacySandboxMountPoint: null,
           readOnly: true,
+          mountProfile: "pod_sandbox_functions",
         }),
       })
     );
 
     expect(command).toContain("-o allow_other,ro");
+    expect(command).toContain("--kernel-list-cache-ttl-secs=0");
     expect(command).toContain("--token-url http://127.0.0.1:987/token/mount-1");
   });
 
@@ -126,25 +152,7 @@ describe("pod sandbox mount wiring", () => {
     // Derived from the ACTUAL wiring (podSandboxOnlyMounts + the backend's
     // prefix mapping) rather than hand-built prefixes, so dropping the state
     // mount from the pod set — or regressing its prefix string — fails here.
-    const backend = new GCSFileSystemBackend("ws1", "test-private-uploads");
-    const adapter = backend.createSandboxAdapter(
-      [
-        {
-          kind: "pod",
-          id: "spc1",
-          scopedPrefix: "pod-spc1",
-          sandboxMountPoint: "/files/pod-spc1",
-          legacyPrefix: "project",
-          legacySandboxMountPoint: "/files/pod",
-          permissions: { canRead: true, canWrite: true },
-        },
-      ],
-      podSandboxOnlyMounts({ sId: "spc1" })
-    );
-
-    if (!(adapter instanceof GCSSandboxMountAdapter)) {
-      throw new Error("expected a GCSSandboxMountAdapter");
-    }
+    const adapter = createPodSandboxAdapter();
 
     // Each mount gets its own 1 + 2-rule CAB. The firewall is the sole caller
     // authorization boundary; if a caller reaches the broker, each token still
@@ -164,6 +172,45 @@ describe("pod sandbox mount wiring", () => {
     expect(conditions).toContain("w/ws1/pods/spc1/files/");
     expect(conditions).toContain("w/ws1/pods/spc1/sandbox-functions/");
     expect(conditions).toContain("w/ws1/pods/spc1/state/");
+  });
+
+  test("the real pod function mount disables directory list caching", async () => {
+    vi.clearAllMocks();
+    mockMintDownscopedGcsToken.mockResolvedValue(
+      new Ok({ accessToken: "token", expiresInSeconds: 3600 })
+    );
+    const adapter = createPodSandboxAdapter();
+    const sandbox = {
+      sId: "sandbox-id",
+      execRoot: vi.fn().mockResolvedValue(successfulExec()),
+      requestKill: vi.fn(),
+    };
+    const auth = {
+      getNonNullableWorkspace: () => ({ sId: "workspace-id" }),
+    } as never;
+    const image = {
+      hasCapability: (capability: string) => capability === "gcsfuse",
+    } as never;
+
+    const result = await adapter.setup(auth, sandbox as never, image);
+
+    expect(result.isOk()).toBe(true);
+    const commands = sandbox.execRoot.mock.calls.map((_, callIndex) =>
+      getRootCommandCall(sandbox.execRoot, callIndex)
+    );
+    const podFilesCommand = commands.find(
+      (command) =>
+        command.includes("/usr/bin/gcsfuse") &&
+        command.includes("/files/pod-spc1")
+    );
+    const podFunctionsCommand = commands.find(
+      (command) =>
+        command.includes("/usr/bin/gcsfuse") &&
+        command.includes("/sandbox-functions/pods/spc1")
+    );
+
+    expect(podFilesCommand).toContain("--kernel-list-cache-ttl-secs=60");
+    expect(podFunctionsCommand).toContain("--kernel-list-cache-ttl-secs=0");
   });
 });
 

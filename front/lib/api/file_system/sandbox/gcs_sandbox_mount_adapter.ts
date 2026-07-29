@@ -71,6 +71,8 @@ function tokenUrl(index: number): string {
  * - "workload": root-mounted with `allow_other` so the unprivileged sandbox
  *   users can access it; permissive file/dir modes; 60s kernel list cache
  *   (read-mostly workloads). All agent-facing mounts.
+ * - "pod_sandbox_functions": same access model as "workload", but without
+ *   kernel list caching so newly published functions are visible immediately.
  * - "pod_state_replica": mounted AS `dust-state` (via runuser) so the FUSE
  *   default — only the mounting user can access the fs — makes it invisible to
  *   every other uid, including the untrusted workload uid 1003 and root. No
@@ -79,7 +81,10 @@ function tokenUrl(index: number): string {
  *   /pod-state layout in the image; targets with this profile are only ever
  *   constructed when a pod sandbox (the sandbox-functions computer) boots.
  */
-export type GCSMountProfile = "workload" | "pod_state_replica";
+export type GCSMountProfile =
+  | "workload"
+  | "pod_sandbox_functions"
+  | "pod_state_replica";
 
 export type GCSMountTarget = {
   /**
@@ -413,7 +418,8 @@ export function buildMountCommand({
   ];
 
   switch (target.mountProfile) {
-    case "workload": {
+    case "workload":
+    case "pod_sandbox_functions": {
       // allow_other lets the unprivileged sandbox user read the root-mounted fs. `ro` is only
       // defense-in-depth: the real write protection is the read-only token scope (see
       // buildAccessBoundaryRules), not this flag.
@@ -421,6 +427,8 @@ export function buildMountCommand({
       if (target.readOnly) {
         mountOptions.push("ro");
       }
+      const kernelListCacheTtlSeconds =
+        target.mountProfile === "pod_sandbox_functions" ? 0 : 60;
 
       const flags = [
         ...commonFlags,
@@ -428,7 +436,7 @@ export function buildMountCommand({
         mountOptions.join(","),
         "--file-mode=666",
         "--dir-mode=777",
-        "--kernel-list-cache-ttl-secs=60",
+        `--kernel-list-cache-ttl-secs=${kernelListCacheTtlSeconds}`,
       ];
 
       return rootCommand.stderrToStdout(
