@@ -9,7 +9,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { GroupKind } from "@app/types/groups";
 import type {
   CombinedResourcePermissions,
-  GroupPermission,
+  LegacyGroupPermission,
 } from "@app/types/resource_permissions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -214,7 +214,7 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
       case "project": {
         // Only gets the editor groups correponding to the space management mode
         const editorGroupSpaces = await this.getEditorGroupSpaces(true);
-        const editorGroupsPermissions: GroupPermission[] =
+        const editorGroupsPermissions: LegacyGroupPermission[] =
           editorGroupSpaces.map((egs) => ({
             id: egs.groupId,
             permissions: ["admin", "read", "write"],

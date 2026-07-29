@@ -1490,13 +1490,13 @@ export class Authenticator {
    *    - The resource has public access (role="none") for the requested permission, OR
    *    - The user's role has the required permission AND the resource belongs to user's workspace
    *
-   * 2. Governance-grant check:
+   * 2. Group permissions check (the `group_permissions` table):
    *    Applies when the resource declares a `resourceType`.
    *    Permission is granted if the user holds the requested permission as a grant verb on the
    *    resource's `(resourceType, resourceId)` AND the resource belongs to the user's workspace.
    *
-   * 3. Group-based permission check:
-   *    Applies when the resource has group-based permissions configured.
+   * 3. Legacy group permissions check (inline groups):
+   *    Applies when the resource lists inline group grants.
    *    Permission is granted if:
    *    - The user belongs to a group that has the required permission on this resource
    *
@@ -1524,10 +1524,11 @@ export class Authenticator {
         return true;
       }
 
-      // Second path: governance-grant check. When the resource declares a `resourceType`, the
-      // caller passes if they hold the requested permission — used directly as a grant verb, since
-      // `PermissionType` ⊆ `GrantVerb` — on this `(resourceType, resourceId)`. A type-wide grant
-      // satisfies the check for any instance (see `PermissionSet.has`).
+      // Second path: group permissions check (the `group_permissions` table). When the resource
+      // declares a `resourceType`, the caller passes if they hold the requested permission — used
+      // directly as a grant verb, since `PermissionType` ⊆ `GrantVerb` — on this
+      // `(resourceType, resourceId)`. A type-wide grant satisfies the check for any instance (see
+      // `PermissionSet.has`).
       if (
         resourcePermission.resourceType !== undefined &&
         workspace.id === resourcePermission.workspaceId &&
@@ -1541,7 +1542,7 @@ export class Authenticator {
       }
     }
 
-    // Third path: Group-based permission check.
+    // Third path: legacy group permissions check (inline groups).
     return this._groupModelIds.some((groupId) =>
       resourcePermission.groups.some(
         (gp) => gp.id === groupId && gp.permissions.includes(permission)

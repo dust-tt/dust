@@ -32,7 +32,7 @@ import {
 } from "@app/types/groups";
 import type {
   CombinedResourcePermissions,
-  GroupPermission,
+  LegacyGroupPermission,
 } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -1821,7 +1821,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               });
             }
             return acc;
-          }, [] as GroupPermission[]),
+          }, [] as LegacyGroupPermission[]),
         },
       ];
     }
@@ -1851,7 +1851,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               }
             }
             return acc;
-          }, [] as GroupPermission[]),
+          }, [] as LegacyGroupPermission[]),
         },
       ];
     }
@@ -1869,7 +1869,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             });
           }
           return acc;
-        }, [] as GroupPermission[]),
+        }, [] as LegacyGroupPermission[]),
       },
     ];
   }
