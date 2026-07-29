@@ -57,6 +57,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
       "publish:agent": adminsOnly("publish", "agent"),
       "create:skill": adminsOnly("create", "skill"),
       "publish:skill": adminsOnly("publish", "skill"),
+      "make_discoverable:skill": adminsOnly("make_discoverable", "skill"),
       "invite:frame": adminsOnly("invite", "frame"),
       "publish:frame": adminsOnly("publish", "frame"),
       "admin:billing": adminsOnly("admin", "billing"),
@@ -82,6 +83,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
       "publish:agent": adminsOnly("publish", "agent"),
       "create:skill": adminsOnly("create", "skill"),
       "publish:skill": adminsOnly("publish", "skill"),
+      "make_discoverable:skill": adminsOnly("make_discoverable", "skill"),
       "invite:frame": adminsOnly("invite", "frame"),
       "publish:frame": adminsOnly("publish", "frame"),
     });

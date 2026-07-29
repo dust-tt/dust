@@ -55,6 +55,22 @@ app.patch(
       });
     }
 
+    const canMakeDiscoverable = await auth.hasWorkspacePermission(
+      "make_discoverable",
+      "skill"
+    );
+
+    if (availability === "users_and_agents" && !canMakeDiscoverable) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "You don't have permission to make skills auto-discoverable.",
+        },
+      });
+    }
+
     // Code-defined skills have a fixed availability.
     const invalidSkillIds = skillIds.filter(
       (skillId) => !isResourceSId("skill", skillId)
@@ -83,6 +99,23 @@ app.patch(
           message: `Skills not found: ${missingSkillIds.join(", ")}.`,
         },
       });
+    }
+
+    // Changing an already auto-discoverable skill's availability also requires the
+    // make-discoverable permission.
+    if (availability !== "users_and_agents" && !canMakeDiscoverable) {
+      const autoDiscoverableSkillNames = skills
+        .filter((skill) => skill.availability === "users_and_agents")
+        .map((skill) => skill.name);
+      if (autoDiscoverableSkillNames.length > 0) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: `You don't have permission to change the availability of auto-discoverable skills: ${autoDiscoverableSkillNames.join(", ")}.`,
+          },
+        });
+      }
     }
 
     await SkillResource.updateAvailabilities(auth, skills, availability);

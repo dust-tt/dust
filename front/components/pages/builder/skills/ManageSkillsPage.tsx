@@ -276,6 +276,11 @@ export function ManageSkillsPage() {
     hasPermission("publish", "skill") &&
     activeTab !== "archived";
 
+  const canMakeSkillAutoDiscoverable = hasPermission(
+    "make_discoverable",
+    "skill"
+  );
+
   const knownSkillsById = useMemo(
     () =>
       new Map(
@@ -415,6 +420,7 @@ export function ManageSkillsPage() {
             <SkillsBatchEditBar
               selectedCount={selectedSkillIds.length}
               isUpdating={isBatchUpdating}
+              canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
               onClose={closeBatchEdition}
               onSelectAction={setPendingBatchAction}
             />
@@ -481,6 +487,7 @@ export function ManageSkillsPage() {
                   onAgentClick={setAgentId}
                   onUsedBySkillClick={handleUsedBySkillSelect}
                   showAvailability={hasSkillPublicationGovernance}
+                  canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
                   {...(isBatchEditionAvailable && isBatchEditing
                     ? { rowSelection, setRowSelection }
                     : {})}

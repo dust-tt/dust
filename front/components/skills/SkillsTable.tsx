@@ -214,6 +214,7 @@ type SkillsTableProps = {
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
   showAvailability?: boolean;
+  canMakeSkillAutoDiscoverable?: boolean;
   rowSelection?: RowSelectionState;
   setRowSelection?: (selection: RowSelectionState) => void;
 };
@@ -225,6 +226,7 @@ export function SkillsTable({
   onAgentClick,
   onUsedBySkillClick,
   showAvailability = false,
+  canMakeSkillAutoDiscoverable = false,
   rowSelection,
   setRowSelection,
 }: SkillsTableProps) {
@@ -338,10 +340,10 @@ export function SkillsTable({
           ? {
               rowSelection,
               setRowSelection,
-              // Dust-provided (code-defined) skills have a fixed availability and
-              // cannot be batch-edited.
               enableRowSelection: (row: Row<RowData>) =>
-                !isDustProvidedSkill(row.original),
+                !isDustProvidedSkill(row.original) &&
+                (canMakeSkillAutoDiscoverable ||
+                  row.original.availability !== "users_and_agents"),
               getRowId: (row: RowData) => row.sId,
             }
           : {})}

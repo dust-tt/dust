@@ -17,9 +17,10 @@ import {
 
 export type BatchAvailabilityAction = {
   label: string;
+  description?: string;
   availability: SkillAvailability;
   getDialogTitle: (count: number) => string;
-  dialogDescription: string;
+  dialogDescription: (count: number) => string;
 };
 
 const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
@@ -28,30 +29,36 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     availability: "editors",
     getDialogTitle: (count) =>
       `Make ${count} skill${pluralize(count)} editor only`,
-    dialogDescription:
-      "Non-editors won’t see these skills as options in the builder. Agents and skills that already use them won’t lose access.",
+    dialogDescription: (count) =>
+      count === 1
+        ? "Non-editors won’t see this skill as an option in the builder. Agents and skills that already use it won’t lose access."
+        : "Non-editors won’t see these skills as options in the builder. Agents and skills that already use them won’t lose access.",
   },
   {
     label: "Workspace members",
     availability: "workspace_users",
     getDialogTitle: (count) =>
       `Make ${count} skill${pluralize(count)} available to workspace members`,
-    dialogDescription:
-      "Every workspace member can add them to agents, other skills and use them directly.",
+    dialogDescription: (count) =>
+      count === 1
+        ? "Every workspace member can add it to agents, other skills and use it directly."
+        : "Every workspace member can add them to agents, other skills and use them directly.",
   },
   {
     label: "Auto-discoverable",
+    description:
+      "Available to workspace members and agents with Discover Skills",
     availability: "users_and_agents",
-    getDialogTitle: (count) =>
-      `Make ${count} skill${pluralize(count)} auto-discoverable`,
-    dialogDescription:
-      "Auto-discoverable skills are available to workspace members and can be automatically activated by agents with Discover Skills tools enabled.",
+    getDialogTitle: () => `This affects your entire workspace`,
+    dialogDescription: (count) =>
+      `Any agent with the Discover Skills tool, including Dust, can use ${count === 1 ? "this skill" : "these skills"} automatically.`,
   },
 ];
 
 interface SkillsBatchEditBarProps {
   selectedCount: number;
   isUpdating: boolean;
+  canMakeSkillAutoDiscoverable: boolean;
   onClose: () => void;
   onSelectAction: (action: BatchAvailabilityAction) => void;
 }
@@ -59,6 +66,7 @@ interface SkillsBatchEditBarProps {
 export function SkillsBatchEditBar({
   selectedCount,
   isUpdating,
+  canMakeSkillAutoDiscoverable,
   onClose,
   onSelectAction,
 }: SkillsBatchEditBarProps) {
@@ -82,14 +90,25 @@ export function SkillsBatchEditBar({
             disabled={selectedCount === 0 || isUpdating}
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          {BATCH_AVAILABILITY_ACTIONS.map((action) => (
-            <DropdownMenuItem
-              key={action.availability}
-              label={action.label}
-              onClick={() => onSelectAction(action)}
-            />
-          ))}
+        <DropdownMenuContent align="end">
+          {BATCH_AVAILABILITY_ACTIONS.map((action) => {
+            const isActionDisabled =
+              action.availability === "users_and_agents" &&
+              !canMakeSkillAutoDiscoverable;
+            return (
+              <DropdownMenuItem
+                key={action.availability}
+                label={action.label}
+                description={
+                  isActionDisabled
+                    ? "You don’t have permission to make skills auto-discoverable"
+                    : action.description
+                }
+                disabled={isActionDisabled}
+                onClick={() => onSelectAction(action)}
+              />
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -125,7 +144,7 @@ export function BatchAvailabilityDialog({
           <DialogTitle>{action.getDialogTitle(selectedCount)}</DialogTitle>
         </DialogHeader>
         <DialogContainer className="text-sm">
-          {action.dialogDescription}
+          {action.dialogDescription(selectedCount)}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
