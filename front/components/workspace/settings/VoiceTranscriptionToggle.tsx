@@ -6,7 +6,7 @@ import { SliderToggle } from "@dust-tt/sparkle";
 
 const LABEL = "Voice transcription";
 const DESCRIPTION =
-  "Whether members can use voice transcription in conversations.";
+  "Whether members can use voice transcription in conversations";
 
 export function VoiceTranscriptionToggle({ owner }: { owner: WorkspaceType }) {
   const { isEnabled, isChanging, doToggleVoiceTranscription } =
