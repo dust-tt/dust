@@ -83,7 +83,9 @@ export function FilePreviewProvider({
           fileId: file.fileId ?? null,
           thumbnailUrl: null,
           sizeBytes: 0,
-          lastModifiedMs: 0,
+          // No mtime here: stands in to cache-bust the per-URL cached PDF
+          // conversion, so an edited file stops rendering its stale one.
+          lastModifiedMs: Date.now(),
         },
         fileUrl,
         downloadUrl,
