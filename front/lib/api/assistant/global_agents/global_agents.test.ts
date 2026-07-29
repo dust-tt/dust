@@ -6,6 +6,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   CLAUDE_OPUS_5_MODEL_ID,
+  CLAUDE_SONNET_4_6_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
 import {
@@ -364,6 +365,25 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
 });
 
 describe("getGlobalAgents Deep Dive model routing", () => {
+  it("keeps Sonnet 4.6 as the Deep Dive primary model", async () => {
+    const workspace = await WorkspaceFactory.basic({
+      whiteListedProviders: ["anthropic", "openai"],
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [GLOBAL_AGENTS_SID.DEEP_DIVE],
+      "light"
+    );
+
+    expect(agents).toHaveLength(1);
+    expect(agents[0].model).toMatchObject({
+      modelId: CLAUDE_SONNET_4_6_MODEL_ID,
+      reasoningEffort: "light",
+    });
+  });
+
   it("falls back to Sol for Deep Dive while using Sol for planning and Luna high for tasks", async () => {
     const workspace = await WorkspaceFactory.enterprise({
       whiteListedProviders: ["openai"],
