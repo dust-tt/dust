@@ -22,6 +22,7 @@ import type {
   CallFunctionRequest,
   CommandResultMap,
   EditTextFn,
+  ScopedWorkspaceUserIdentity,
   UserIdentityState,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
@@ -85,36 +86,66 @@ interface WorkspaceAuthIdentity {
   workspace: { role: RoleType; sId: string };
 }
 
-export function getConversationFrameUserIdentity(
+export function getFrameUserIdentity(
   authContext: WorkspaceAuthIdentity | null,
   frameAccess: FrameAccess,
-  workspaceId: string
+  workspaceId: string,
+  publicUserIdentity?: ScopedWorkspaceUserIdentity
 ): UserIdentityState {
-  if (
-    frameAccess !== "conversation" ||
-    !authContext ||
-    authContext.workspace.sId !== workspaceId ||
-    authContext.workspace.role === "none"
-  ) {
-    return {
-      isAuthenticated: false,
-      isWorkspaceMember: false,
-      user: null,
-    };
-  }
+  switch (frameAccess) {
+    case "conversation": {
+      if (
+        !authContext ||
+        authContext.workspace.sId !== workspaceId ||
+        authContext.workspace.role === "none"
+      ) {
+        return {
+          isAuthenticated: false,
+          isWorkspaceMember: false,
+          user: null,
+        };
+      }
 
-  const { user } = authContext;
-  return {
-    isAuthenticated: true,
-    isWorkspaceMember: true,
-    user: {
-      sId: user.sId,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      fullName: user.fullName,
-      image: user.image,
-    },
-  };
+      const { user } = authContext;
+      return {
+        isAuthenticated: true,
+        isWorkspaceMember: true,
+        user: {
+          sId: user.sId,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          fullName: user.fullName,
+          image: user.image,
+        },
+      };
+    }
+    case "public-member":
+      if (publicUserIdentity?.workspaceId === workspaceId) {
+        return {
+          isAuthenticated: true,
+          isWorkspaceMember: true,
+          user: publicUserIdentity.user,
+        };
+      }
+      return {
+        isAuthenticated: false,
+        isWorkspaceMember: false,
+        user: null,
+      };
+    case "public-anonymous":
+      return {
+        isAuthenticated: false,
+        isWorkspaceMember: false,
+        user: null,
+      };
+    default:
+      assertNeverAndIgnore(frameAccess);
+      return {
+        isAuthenticated: false,
+        isWorkspaceMember: false,
+        user: null,
+      };
+  }
 }
 
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
@@ -581,6 +612,7 @@ interface VisualizationActionIframeProps {
   isEditable?: boolean;
   isInDrawer?: boolean;
   onEditText?: EditTextFn;
+  publicUserIdentity?: ScopedWorkspaceUserIdentity;
   frameAccess?: FrameAccess;
   spaceId?: string;
   visualization: Visualization;
@@ -667,6 +699,7 @@ export const VisualizationActionIframe = forwardRef<
     isEditable = false,
     isInDrawer = false,
     onEditText,
+    publicUserIdentity,
     spaceId,
     visualization,
     workspaceId,
@@ -675,12 +708,13 @@ export const VisualizationActionIframe = forwardRef<
 
   const authContext = useContext(AuthContext);
   const userIdentity = useMemo<UserIdentityState>(() => {
-    return getConversationFrameUserIdentity(
+    return getFrameUserIdentity(
       authContext,
       frameAccess,
-      workspaceId
+      workspaceId,
+      publicUserIdentity
     );
-  }, [authContext, frameAccess, workspaceId]);
+  }, [authContext, frameAccess, publicUserIdentity, workspaceId]);
 
   const isPublic = frameAccess !== "conversation";
 
