@@ -221,10 +221,9 @@ it with the authoritative mutation result afterward. Roll the optimistic value b
 fails. Only call \`mutate()\` without data when the mutation cannot return the affected state; do not
 make a blocking mutation-then-refetch sequence the default.
 
-Do not call \`callFunction\` from an effect for data that can use these hooks. Do not poll every
-second. Prefer event-driven invalidation; when polling is unavoidable, use an interval of at least
-5–10 seconds, pause while the document is hidden, add jitter/backoff, and never start a new request
-while the previous one is still running.
+Do not poll every second. Prefer event-driven invalidation; when polling is unavoidable, use an
+interval of at least 5–10 seconds, pause while the document is hidden, add jitter/backoff, and never
+start a new request while the previous one is still running.
 
 Call mutation handlers from a button or another supported in-Frame interaction. Do not model this
 as HTML form submission because forms cannot run inside the Frame iframe.
