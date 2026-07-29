@@ -94,8 +94,7 @@ export function SkillBuilderSettingsSection({
 
   const isAutoDiscoverableOn = availability === "users_and_agents";
 
-  // The make-discoverable permission gates every transition involving the
-  // auto-discoverable state: without it, an editor can neither turn a skill
+  // Without the make-discoverable permission, an editor can neither turn a skill
   // auto-discoverable nor change an already auto-discoverable skill's availability.
   const isAvailabilityLocked =
     isAutoDiscoverableOn && !canMakeSkillAutoDiscoverable;
@@ -155,20 +154,25 @@ export function SkillBuilderSettingsSection({
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                {AVAILABILITY_OPTIONS.map((option) => (
-                  <DropdownMenuItem
-                    key={option.label}
-                    label={option.label}
-                    onClick={() => {
-                      onChange(option.value);
-                    }}
-                    description={option.description}
-                    disabled={
-                      option.value === "users_and_agents" &&
-                      !canMakeSkillAutoDiscoverable
-                    }
-                  />
-                ))}
+                {AVAILABILITY_OPTIONS.map((option) => {
+                  const isOptionDisabled =
+                    option.value === "users_and_agents" && !canMakeSkillAutoDiscoverable;
+                  return (
+                    <DropdownMenuItem
+                      key={option.label}
+                      label={option.label}
+                      onClick={() => {
+                        onChange(option.value);
+                      }}
+                      description={
+                        isOptionDisabled
+                          ? "You don’t have permission to make skills auto-discoverable"
+                          : option.description
+                      }
+                      disabled={isOptionDisabled}
+                    />
+                  );
+                })}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
