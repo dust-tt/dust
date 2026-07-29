@@ -37,7 +37,10 @@ import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/mcp_server_view_helper";
+import {
+  destroyAgentMCPServerConfigurationsForViews,
+  destroyMCPServerViewDependencies,
+} from "@app/lib/models/agent/actions/mcp_server_view_helper";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -1138,6 +1141,47 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       editedAt: new Date(),
       editedByUserId: auth.getNonNullableUser().id,
     });
+    return new Ok(affectedCount);
+  }
+
+  public async updateIsRestrictedToSkills(
+    auth: Authenticator,
+    isRestrictedToSkills: boolean
+  ): Promise<Result<number, DustError<"unauthorized">>> {
+    const views = await MCPServerViewResource.listByMCPServer(
+      auth,
+      this.mcpServerId
+    );
+
+    if (views.some((view) => !view.canAdministrate(auth))) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Not allowed to update skill-only availability."
+        )
+      );
+    }
+
+    const [affectedCount] = await this.model.update(
+      {
+        isRestrictedToSkills,
+        editedAt: new Date(),
+        editedByUserId: auth.getNonNullableUser().id,
+      },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: { [Op.in]: views.map((view) => view.id) },
+        },
+      }
+    );
+
+    if (isRestrictedToSkills) {
+      await destroyAgentMCPServerConfigurationsForViews(auth, {
+        mcpServerViewIds: views.map((view) => view.id),
+      });
+    }
+
     return new Ok(affectedCount);
   }
 

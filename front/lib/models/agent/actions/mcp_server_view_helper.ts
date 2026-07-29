@@ -22,8 +22,46 @@ export async function destroyMCPServerViewDependencies(
     transaction?: Transaction;
   }
 ) {
-  // Delete all dependencies.
-  const agentConfigurationIds = (
+  await destroyAgentMCPServerConfigurationsForViews(auth, {
+    mcpServerViewIds,
+    transaction,
+  });
+
+  await ConversationMCPServerViewModel.destroy({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      mcpServerViewId: mcpServerViewIds,
+    },
+    transaction,
+  });
+
+  await SkillMCPServerConfigurationModel.destroy({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      mcpServerViewId: mcpServerViewIds,
+    },
+    transaction,
+  });
+
+  // Sandbox-function tool calls FK the view with RESTRICT, so their rows must go before the view.
+  // Routed through the resource so the output GCS objects are deleted alongside the rows.
+  await SandboxFunctionMCPActionResource.deleteAllForMCPServerViews(auth, {
+    mcpServerViewIds,
+    transaction,
+  });
+}
+
+export async function destroyAgentMCPServerConfigurationsForViews(
+  auth: Authenticator,
+  {
+    mcpServerViewIds,
+    transaction,
+  }: {
+    mcpServerViewIds: ModelId[];
+    transaction?: Transaction;
+  }
+) {
+  const agentMCPServerConfigurations =
     await AgentMCPServerConfigurationModel.findAll({
       attributes: ["id"],
       where: {
@@ -31,8 +69,10 @@ export async function destroyMCPServerViewDependencies(
         mcpServerViewId: mcpServerViewIds,
       },
       transaction,
-    })
-  ).map((view: AgentMCPServerConfigurationModel) => view.id);
+    });
+  const agentConfigurationIds = agentMCPServerConfigurations.map(
+    (view: AgentMCPServerConfigurationModel) => view.id
+  );
 
   await AgentDataSourceConfigurationModel.destroy({
     where: {
@@ -69,29 +109,6 @@ export async function destroyMCPServerViewDependencies(
       workspaceId: auth.getNonNullableWorkspace().id,
       mcpServerViewId: mcpServerViewIds,
     },
-    transaction,
-  });
-
-  await ConversationMCPServerViewModel.destroy({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      mcpServerViewId: mcpServerViewIds,
-    },
-    transaction,
-  });
-
-  await SkillMCPServerConfigurationModel.destroy({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      mcpServerViewId: mcpServerViewIds,
-    },
-    transaction,
-  });
-
-  // Sandbox-function tool calls FK the view with RESTRICT, so their rows must go before the view.
-  // Routed through the resource so the output GCS objects are deleted alongside the rows.
-  await SandboxFunctionMCPActionResource.deleteAllForMCPServerViews(auth, {
-    mcpServerViewIds,
     transaction,
   });
 }
