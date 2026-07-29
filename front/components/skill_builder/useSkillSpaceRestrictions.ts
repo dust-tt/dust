@@ -1,0 +1,153 @@
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type {
+  AttachedKnowledgeFormData,
+  ReferencedSkillFormData,
+  SkillBuilderFormData,
+} from "@app/components/skill_builder/SkillBuilderFormContext";
+import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
+import { useMemo } from "react";
+import { useWatch } from "react-hook-form";
+
+interface UseSkillSpaceRestrictionsParams {
+  initialRequestedSpaceIds?: string[];
+}
+
+export function useSkillSpaceRestrictions({
+  initialRequestedSpaceIds,
+}: UseSkillSpaceRestrictionsParams) {
+  const tools = useWatch<SkillBuilderFormData, "tools">({ name: "tools" });
+  const attachedKnowledge = useWatch<SkillBuilderFormData, "attachedKnowledge">(
+    {
+      name: "attachedKnowledge",
+    }
+  );
+  const referencedSkills = useWatch<SkillBuilderFormData, "referencedSkills">({
+    name: "referencedSkills",
+  });
+  const additionalSpaces = useWatch<SkillBuilderFormData, "additionalSpaces">({
+    name: "additionalSpaces",
+  });
+
+  const { mcpServerViews, isMCPServerViewsLoading } =
+    useMCPServerViewsContext();
+  const { spaces, owner, isSpacesLoading } = useSpacesContext();
+
+  const missingSpaceIds = useMemo(() => {
+    if (isSpacesLoading || !initialRequestedSpaceIds?.length) {
+      return [];
+    }
+
+    const existingSpaceIds = new Set(spaces.map((space) => space.sId));
+    return initialRequestedSpaceIds.filter((id) => !existingSpaceIds.has(id));
+  }, [isSpacesLoading, initialRequestedSpaceIds, spaces]);
+
+  const { spaces: missingSpaces } = useSpaceProjectsLookup({
+    workspaceId: owner.sId,
+    spaceIds: missingSpaceIds,
+  });
+
+  const allSpaces = useMemo(() => {
+    return [...spaces, ...missingSpaces];
+  }, [spaces, missingSpaces]);
+
+  const actionsBySpaceId = useMemo(() => {
+    return getSpaceIdToActionsMap(tools ?? [], mcpServerViews);
+  }, [tools, mcpServerViews]);
+
+  const spaceIdsFromKnowledge = useMemo(() => {
+    return new Set(attachedKnowledge?.map((k) => k.spaceId) ?? []);
+  }, [attachedKnowledge]);
+
+  const spaceIdsFromNestedSkills = useMemo(() => {
+    return new Set(
+      (referencedSkills ?? []).flatMap((skill) => skill.requestedSpaceIds)
+    );
+  }, [referencedSkills]);
+
+  const spaceIdsUsedBySkill = useMemo(() => {
+    const actionRequestedSpaceIds = Object.keys(actionsBySpaceId).filter(
+      (spaceId) => actionsBySpaceId[spaceId]?.length > 0
+    );
+
+    return new Set([
+      ...actionRequestedSpaceIds,
+      ...spaceIdsFromKnowledge,
+      ...spaceIdsFromNestedSkills,
+    ]);
+  }, [actionsBySpaceId, spaceIdsFromKnowledge, spaceIdsFromNestedSkills]);
+
+  const areSpaceRequirementsReady =
+    !isMCPServerViewsLoading &&
+    (!initialRequestedSpaceIds ||
+      (attachedKnowledge !== undefined && referencedSkills !== undefined));
+
+  const knowledgeBySpaceId = useMemo(() => {
+    const knowledgeBySpace: Record<string, AttachedKnowledgeFormData[]> = {};
+
+    for (const knowledge of attachedKnowledge ?? []) {
+      knowledgeBySpace[knowledge.spaceId] = (
+        knowledgeBySpace[knowledge.spaceId] ?? []
+      ).concat(knowledge);
+    }
+
+    return knowledgeBySpace;
+  }, [attachedKnowledge]);
+
+  const skillsBySpaceId = useMemo(() => {
+    const skillsBySpace: Record<string, ReferencedSkillFormData[]> = {};
+
+    for (const skill of referencedSkills ?? []) {
+      for (const spaceId of skill.requestedSpaceIds) {
+        skillsBySpace[spaceId] = (skillsBySpace[spaceId] ?? []).concat(skill);
+      }
+    }
+
+    return skillsBySpace;
+  }, [referencedSkills]);
+
+  const initialAdditionalSpaces = useMemo(() => {
+    if (!areSpaceRequirementsReady || !initialRequestedSpaceIds?.length) {
+      return [];
+    }
+
+    return initialRequestedSpaceIds.filter(
+      (spaceId) => !spaceIdsUsedBySkill.has(spaceId)
+    );
+  }, [
+    areSpaceRequirementsReady,
+    initialRequestedSpaceIds,
+    spaceIdsUsedBySkill,
+  ]);
+
+  const additionalSpaceIds = useMemo(() => {
+    return new Set(additionalSpaces ?? []);
+  }, [additionalSpaces]);
+
+  const nonGlobalSpacesWithRestrictions = useMemo(() => {
+    return allSpaces.filter(
+      (space) =>
+        space.kind !== "global" &&
+        (spaceIdsUsedBySkill.has(space.sId) ||
+          additionalSpaceIds.has(space.sId))
+    );
+  }, [additionalSpaceIds, allSpaces, spaceIdsUsedBySkill]);
+
+  const globalSpace = useMemo(() => {
+    return allSpaces.find((s) => s.kind === "global");
+  }, [allSpaces]);
+
+  return {
+    actionsBySpaceId,
+    allSpaces,
+    areSpaceRequirementsReady,
+    globalSpace,
+    initialAdditionalSpaces,
+    knowledgeBySpaceId,
+    missingSpaceIds,
+    nonGlobalSpacesWithRestrictions,
+    skillsBySpaceId,
+    spaceIdsUsedBySkill,
+  };
+}
