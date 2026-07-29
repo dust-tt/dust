@@ -23,7 +23,7 @@ import {
 } from "@app/types/memberships";
 import { mapToEnumValues } from "@app/types/poke/plugins";
 import { Err, Ok } from "@app/types/shared/result";
-import { ACTIVE_ROLES, isActiveRoleType } from "@app/types/user";
+import { ASSIGNABLE_ROLES, isAssignableRoleType } from "@app/types/user";
 
 // One email per line; trim, lowercase and dedupe.
 function parseEmails(raw: string): string[] {
@@ -76,7 +76,7 @@ export const batchUpdateMembersPlugin = createPlugin({
         label: "Role",
         description:
           "The role to assign (used when the action is 'Update role').",
-        values: mapToEnumValues(ACTIVE_ROLES, (role) => ({
+        values: mapToEnumValues(ASSIGNABLE_ROLES, (role) => ({
           label: role,
           value: role,
         })),
@@ -229,7 +229,7 @@ export const batchUpdateMembersPlugin = createPlugin({
 
       case "update_role": {
         const role = args.role[0];
-        if (!role || !isActiveRoleType(role)) {
+        if (!role || !isAssignableRoleType(role)) {
           return new Err(new Error("Please select a role."));
         }
 

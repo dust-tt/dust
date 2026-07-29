@@ -16,6 +16,7 @@ export type WorkspaceSegmentationType = "interesting" | null;
 
 export const ROLES = ["admin", "manager", "builder", "user", "none"] as const;
 export const ACTIVE_ROLES = ["admin", "manager", "builder", "user"] as const;
+export const ASSIGNABLE_ROLES = ["admin", "manager", "user"] as const;
 export const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
 
 export const MANAGER_ROLE_NAME = "manager";
@@ -42,6 +43,12 @@ export type ActiveRoleType = z.infer<typeof ActiveRoleSchema>;
 
 export function isActiveRoleType(role: string): role is ActiveRoleType {
   return ACTIVE_ROLES.includes(role as ActiveRoleType);
+}
+
+export type AssignableRoleType = (typeof ASSIGNABLE_ROLES)[number];
+
+export function isAssignableRoleType(role: string): role is AssignableRoleType {
+  return ASSIGNABLE_ROLES.includes(role as AssignableRoleType);
 }
 
 // Roles that can be assigned through the API (invitations, membership role updates). The
