@@ -29,12 +29,14 @@ app.get("/", async (ctx): HandlerResult<GetMCPServersResponseBody> => {
     )
   ).map((r) => r.toJSON());
 
-  const systemMCPServerViews =
-    await MCPServerViewResource.listForSystemSpace(auth);
+  const systemMCPServerViews = await MCPServerViewResource.listForSystemSpace(
+    auth,
+    {
+      where: { isRestrictedToSkills: true },
+    }
+  );
   const restrictedServerIds = new Set(
-    systemMCPServerViews
-      .filter((view) => view.isRestrictedToSkills)
-      .map((view) => view.mcpServerId)
+    systemMCPServerViews.map((view) => view.mcpServerId)
   );
 
   return ctx.json({

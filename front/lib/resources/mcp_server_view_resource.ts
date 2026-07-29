@@ -702,9 +702,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     {
       includeGlobalSpace = false,
       includeHeavyAttributes,
+      where,
     }: {
       includeGlobalSpace?: boolean;
       includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
+      where?: ResourceFindOptions<MCPServerViewModel>["where"];
     } = {}
   ): Promise<MCPServerViewResource[]> {
     const spaceModelIds = removeNulls(spaceIds.map(getResourceIdFromSId));
@@ -716,6 +718,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     const views = await this.baseFetch(
       auth,
       {
+        where,
         includes: [
           {
             model: SpaceResource.model,
@@ -793,15 +796,18 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     {
       includeGlobalSpace = false,
       includeHeavyAttributes,
+      where,
     }: {
       includeGlobalSpace?: boolean;
       includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
+      where?: ResourceFindOptions<MCPServerViewModel>["where"];
     } = {}
   ): Promise<MCPServerViewResource[]> {
     await this.unsafeEnsureAutoViewsForWorkspace(auth);
     return this.listBySpaceIds(auth, spaceIds, {
       includeGlobalSpace,
       includeHeavyAttributes,
+      where,
     });
   }
 

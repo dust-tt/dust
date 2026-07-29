@@ -50,7 +50,8 @@ app.get(
     // light serialization ships no remote tools, so no heavy attribute is fetched.
     const views = await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
       auth,
-      queryValidation.data.spaceIds
+      queryValidation.data.spaceIds,
+      { where: { isRestrictedToSkills: false } }
     );
 
     const serverViews = views
@@ -59,7 +60,6 @@ app.get(
         const { availability } = v.getServerDisplayMetadata();
         return availability === "manual" || availability === "auto";
       })
-      .filter((v) => !v.isRestrictedToSkills)
       .filter((v) => v.isJITAttachable())
       .map((v) => v.toJSONLight());
 

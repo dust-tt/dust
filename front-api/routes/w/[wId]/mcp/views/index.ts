@@ -65,6 +65,8 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
   }
 
   const query = queryValidation.data;
+  const includeRestrictedToSkills =
+    ctx.req.query("includeRestrictedToSkills") === "true";
 
   const views = await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
     auth,
@@ -77,15 +79,13 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
         "lastError",
         "sharedSecret",
       ],
+      where: includeRestrictedToSkills
+        ? undefined
+        : { isRestrictedToSkills: false },
     }
   );
 
   const flattenedServerViews = views
-    .filter(
-      (view) =>
-        ctx.req.query("includeRestrictedToSkills") === "true" ||
-        !view.isRestrictedToSkills
-    )
     .map((v) => v.toJSON())
     .filter(
       (v) =>

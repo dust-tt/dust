@@ -404,6 +404,57 @@ describe("MCPServerViewResource", () => {
   });
 
   describe("listBySpaceIds", () => {
+    it("can filter skills-only views in the database query", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, adminUser, {
+        role: "admin",
+      });
+      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+      const { globalSpace } = await SpaceFactory.defaults(adminAuth);
+
+      const availableServer = await RemoteMCPServerFactory.create(workspace, {
+        name: "Available Server",
+      });
+      const restrictedServer = await RemoteMCPServerFactory.create(workspace, {
+        name: "Skills-only Server",
+      });
+      const availableView = await MCPServerViewFactory.create(
+        workspace,
+        availableServer.sId,
+        globalSpace
+      );
+      const restrictedView = await MCPServerViewFactory.create(
+        workspace,
+        restrictedServer.sId,
+        globalSpace
+      );
+      const restrictionResult = await restrictedView.updateIsRestrictedToSkills(
+        adminAuth,
+        true
+      );
+      expect(restrictionResult.isOk()).toBe(true);
+
+      const allViews = await MCPServerViewResource.listBySpaceIds(adminAuth, [
+        globalSpace.sId,
+      ]);
+      expect(allViews.map((view) => view.sId).sort()).toEqual(
+        [availableView.sId, restrictedView.sId].sort()
+      );
+
+      const directlyAvailableViews = await MCPServerViewResource.listBySpaceIds(
+        adminAuth,
+        [globalSpace.sId],
+        { where: { isRestrictedToSkills: false } }
+      );
+      expect(directlyAvailableViews.map((view) => view.sId)).toEqual([
+        availableView.sId,
+      ]);
+    });
+
     it("includes global space views without fetching spaces", async () => {
       const workspace = await WorkspaceFactory.basic();
       const adminAuth = await Authenticator.internalAdminForWorkspace(
