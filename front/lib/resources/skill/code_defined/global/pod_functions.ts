@@ -141,12 +141,8 @@ Design the function contract around the Frame interaction, not individual databa
 
 - make reads idempotent and side-effect-free, and return one bounded screen snapshot instead of
   creating waterfalls or N+1 calls;
-- project only fields the Frame renders, apply explicit limits or pagination, and add indexes for
-  columns used by filters and ordering;
 - make mutations return the updated entity or screen snapshot so the Frame can update its cache
   without another function call;
-- do not shell out to \`dsbx tools\` from a hot read path when the same data can be stored or queried
-  directly;
 - keep write operations safe against duplicate interaction, using a stable idempotency key when a
   repeated request would otherwise create duplicate data.
 
