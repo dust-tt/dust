@@ -2329,6 +2329,14 @@ export type GetWorkspaceVerifiedDomainsResponseType = z.infer<
   typeof GetWorkspaceVerifiedDomainsResponseSchema
 >;
 
+export const GetWorkspaceExistsResponseSchema = z.object({
+  exists: z.literal(true),
+});
+
+export type GetWorkspaceExistsResponseType = z.infer<
+  typeof GetWorkspaceExistsResponseSchema
+>;
+
 export const GetWorkspaceFeatureFlagsResponseSchema = z.object({
   feature_flags: WhitelistableFeaturesSchema.array(),
 });
