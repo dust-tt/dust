@@ -1366,7 +1366,7 @@ mod tests {
         // Test case 1: Row with data types that should be perfectly bijective
         let simple_row_data = serde_json::Map::from_iter([
             ("integer_col".to_string(), 42.into()),
-            ("float_col".to_string(), 3.14.into()),
+            ("float_col".to_string(), 3.25.into()),
             ("string_col".to_string(), "hello world".into()),
             ("exponent_like_col".to_string(), "32E0134".into()),
             ("bool_col".to_string(), true.into()),
