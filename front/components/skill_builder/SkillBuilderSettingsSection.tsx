@@ -193,8 +193,8 @@ export function SkillBuilderSettingsSection({
           title="This skill has workspace-wide effects"
         >
           <p>
-            Any agent with Discover Skills, including Dust, can use
-            your skill automatically. See other auto-discoverable skills in{" "}
+            Any agent with Discover Skills, including Dust, can use your skill
+            automatically. See other auto-discoverable skills in{" "}
             <Hoverable
               href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
               target="_blank"
