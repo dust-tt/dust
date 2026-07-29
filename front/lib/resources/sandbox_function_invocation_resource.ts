@@ -10,9 +10,10 @@ import {
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxFunctionInvocationModel } from "@app/lib/resources/storage/models/sandbox_function";
@@ -55,6 +56,7 @@ const SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS = 2_048;
 const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
 const GCS_CONCURRENCY = 4;
 const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 2;
+const POD_USER_IDENTITY_ENV = "DUST_POD_USER_IDENTITY";
 
 // `code` is not narrowed to `SandboxFunctionCallErrorCode`: it is forwarded from whatever
 // classified the failure (runner, API error type, front), and a code introduced by a newer deploy
@@ -164,6 +166,40 @@ function buildSandboxFunctionRunCommand(slug: string): string {
   // dsbx resolves `function run <slug>` as `${DUST_FUNCTIONS_DIR}/<slug>.ts`, which is the
   // read-only mount of the pod's published bundles.
   return `${DSBX_BIN_PATH} function run ${shellEscape(slug)}`;
+}
+
+async function getSandboxFunctionUserIdentity(
+  auth: Authenticator,
+  invocation: SandboxFunctionInvocationResource
+) {
+  const workspace = auth.getNonNullableWorkspace();
+  const user = auth.user();
+  if (
+    !user ||
+    invocation.workspaceId !== workspace.id ||
+    invocation.userId !== user.id
+  ) {
+    return null;
+  }
+
+  const role = await MembershipResource.getActiveRoleForUserInWorkspace({
+    user,
+    workspace,
+  });
+  if (!Authenticator.isMember(role)) {
+    return null;
+  }
+
+  return {
+    workspaceId: workspace.sId,
+    user: {
+      sId: user.sId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: user.fullName(),
+      image: user.imageUrl,
+    },
+  };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -321,6 +357,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           : { body: JSON.stringify(this.input) }),
         encoding: "utf8",
       };
+      const userIdentity = await getSandboxFunctionUserIdentity(auth, this);
 
       const execResult = await ensureResult.value.sandbox.exec(auth, command, {
         workingDirectory: SANDBOX_FUNCTION_WORKING_DIRECTORY,
@@ -331,6 +368,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           ),
           ...podDatabaseExecEnvVars(),
           DUST_SANDBOX_TOKEN: token,
+          // Set this for every invocation so userless calls cannot inherit a sandbox-level value.
+          [POD_USER_IDENTITY_ENV]: userIdentity
+            ? JSON.stringify(userIdentity)
+            : "",
         },
         stdin: JSON.stringify(inputEnvelope),
         timeoutMs: SANDBOX_FUNCTION_EXEC_TIMEOUT_MS,
