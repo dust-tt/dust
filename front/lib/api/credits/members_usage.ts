@@ -364,6 +364,32 @@ async function fetchConsumedAwuCreditsByUserId({
   return consumedByUserId;
 }
 
+/**
+ * A single user's Elasticsearch-derived AWU consumption for the current billing
+ * cycle — the same figure the members table shows as "Consumed (ES)", scoped to
+ * one user (with the free/paid seat split applied). Used to lazily seed the
+ * per-user spend-cap counter on a Redis miss. Returns 0 when there is no usage
+ * or the analytics read fails.
+ */
+export async function getEsConsumedAwuCreditsForUser(
+  auth: Authenticator,
+  { user }: { user: UserResource }
+): Promise<number> {
+  const workspace = auth.getNonNullableWorkspace();
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  const freeSeatUserIds = membership?.seatType === "free" ? [user.sId] : [];
+  const consumedByUserId = await fetchConsumedAwuCreditsByUserId({
+    workspace,
+    userIds: [user.sId],
+    freeSeatUserIds,
+  });
+  return consumedByUserId.get(user.sId) ?? 0;
+}
+
 async function fetchPerUserUsageCreditsForMembersTableUncached({
   workspaceId,
   metronomeCustomerId,

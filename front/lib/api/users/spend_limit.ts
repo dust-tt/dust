@@ -6,7 +6,10 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
-import { getEffectiveSpendCapAwuCreditsForUser } from "@app/lib/api/credits/members_usage";
+import {
+  getEffectiveSpendCapAwuCreditsForUser,
+  getEsConsumedAwuCreditsForUser,
+} from "@app/lib/api/credits/members_usage";
 import { reconcileUser } from "@app/lib/api/metronome/reconcile_credit_state";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
@@ -26,6 +29,7 @@ import {
   addFixedWindowCount,
   type FixedWindowBounds,
   getFixedWindowCount,
+  setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
@@ -366,6 +370,50 @@ async function resolveSpendLimitCycleBounds(
 }
 
 /**
+ * Reads the per-user spend-cap counter, lazily seeding it from Elasticsearch
+ * whenever it reads as 0. A 0 count means the counter is absent — a brand-new
+ * cycle (ES ≈ 0, a harmless no-op), the flag just enabled mid-cycle, or the key
+ * evicted under Redis memory pressure — so nothing has been recorded that a
+ * re-seed could clobber. ES is scoped to the current cycle, so the seeded value
+ * is the correct cycle-to-date total in every case. A non-zero count is already
+ * live (the first recorded delta bumps it above 0), so it's used as-is with no
+ * ES read.
+ *
+ * Re-seeding on a 0 count is idempotent and cheap; `SET` (not `INCRBY`) makes
+ * concurrent first-message seeds converge on the same value instead of doubling.
+ * Recording (`recordUserSpendLimitUsage`) runs post-finalize, after this
+ * send-time seed, so it accrues on top of the seeded value.
+ *
+ * Returns the effective count, or `null` on a Redis read error (caller fails
+ * open). A seed write failure degrades to the ES value rather than throwing.
+ */
+async function readSpendLimitCountWithLazySeed(
+  auth: Authenticator,
+  {
+    user,
+    key,
+    bounds,
+  }: { user: UserResource; key: string; bounds: FixedWindowBounds }
+): Promise<number | null> {
+  const countResult = await getFixedWindowCount({ key, bounds });
+  if (countResult.isErr()) {
+    return null;
+  }
+  if (countResult.value > 0) {
+    return countResult.value;
+  }
+
+  const consumed = Math.max(
+    0,
+    Math.round(await getEsConsumedAwuCreditsForUser(auth, { user }))
+  );
+  if (consumed > 0) {
+    await setFixedWindowCount({ key, bounds, value: consumed, logger });
+  }
+  return consumed;
+}
+
+/**
  * Synchronous, Metronome-independent enforcement of the per-user spend cap, read
  * at message-send time from the Redis fixed-window counter over the current
  * contract billing cycle. The threshold is the user's *effective* cap resolved
@@ -391,23 +439,20 @@ export async function isUserSpendLimitRateCapReached(
     return false;
   }
 
-  const countResult = await getFixedWindowCount({
+  const count = await readSpendLimitCountWithLazySeed(auth, {
+    user,
     key: makeSpendLimitAwuCreditsRateLimitKeyForUser(workspace, user.toJSON()),
     bounds,
   });
-  if (countResult.isErr()) {
+  if (count === null) {
     logger.error(
-      {
-        workspaceId: workspace.sId,
-        userId: user.sId,
-        err: countResult.error,
-      },
+      { workspaceId: workspace.sId, userId: user.sId },
       "[SpendLimitRateCap] Failed to read fixed-window count; allowing message"
     );
     return false;
   }
 
-  return countResult.value >= threshold;
+  return count >= threshold;
 }
 
 /**
