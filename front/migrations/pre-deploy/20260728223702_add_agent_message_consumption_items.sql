@@ -25,16 +25,7 @@ CREATE TABLE "public"."agent_message_consumption_items" (
 	"directCreditAmountMicro" bigint,
 	"completedAt" timestamp with time zone,
 	"createdAt" timestamp with time zone NOT NULL,
-	"updatedAt" timestamp with time zone NOT NULL,
-	CONSTRAINT "agent_message_consumption_items_type_check" CHECK ("itemType" IN ('system', 'input', 'output', 'reasoning', 'tool')),
-	CONSTRAINT "agent_message_consumption_items_version_check" CHECK ("attributionVersion" >= 1),
-	CONSTRAINT "agent_message_consumption_items_input_tokens_check" CHECK ("inputTokensCount" IS NULL OR "inputTokensCount" >= 0),
-	CONSTRAINT "agent_message_consumption_items_output_tokens_check" CHECK ("outputTokensCount" IS NULL OR "outputTokensCount" >= 0),
-	CONSTRAINT "agent_message_consumption_items_gross_credits_check" CHECK ("grossAttributedCreditAmountMicro" >= 0),
-	CONSTRAINT "agent_message_consumption_items_direct_credits_check" CHECK ("directCreditAmountMicro" IS NULL OR "directCreditAmountMicro" >= 0),
-	CONSTRAINT "agent_message_consumption_items_reference_shape_check" CHECK (("itemType" = 'tool' AND "agentMCPActionId" IS NOT NULL) OR ("itemType" <> 'tool' AND "runUsageId" IS NOT NULL AND "agentMCPActionId" IS NULL)),
-	CONSTRAINT "agent_message_consumption_items_direct_shape_check" CHECK ("directCreditAmountMicro" IS NULL OR ("itemType" = 'tool' AND "grossAttributedCreditAmountMicro" >= "directCreditAmountMicro")),
-	CONSTRAINT "agent_message_consumption_items_token_shape_check" CHECK (("itemType" IN ('system', 'input') AND "outputTokensCount" IS NULL) OR ("itemType" IN ('output', 'reasoning') AND "inputTokensCount" IS NULL) OR "itemType" = 'tool')
+	"updatedAt" timestamp with time zone NOT NULL
 );
 
 SET SESSION statement_timeout = 1200000;
@@ -56,14 +47,6 @@ CREATE INDEX CONCURRENTLY agent_message_consumption_items_conversation_id ON pub
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
 CREATE INDEX CONCURRENTLY agent_message_consumption_items_agent_message_id ON public.agent_message_consumption_items USING btree ("agentMessageId");
-
-SET SESSION statement_timeout = 1200000;
-SET SESSION lock_timeout = 3000;
-CREATE INDEX CONCURRENTLY agent_message_consumption_items_run_usage_id ON public.agent_message_consumption_items USING btree ("runUsageId");
-
-SET SESSION statement_timeout = 1200000;
-SET SESSION lock_timeout = 3000;
-CREATE INDEX CONCURRENTLY agent_message_consumption_items_agent_m_c_p_action_id ON public.agent_message_consumption_items USING btree ("agentMCPActionId");
 
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
