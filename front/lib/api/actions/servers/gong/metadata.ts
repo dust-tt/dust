@@ -85,7 +85,7 @@ export const GONG_SERVER = {
       supported_use_cases: ["personal_actions", "platform_actions"] as const,
     },
     icon: "GongLogo",
-    documentationUrl: "https://docs.dust.tt/update/docs/gong-mcp",
+    documentationUrl: "https://docs.dust.tt/docs/gong-mcp",
   },
   tools: GONG_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

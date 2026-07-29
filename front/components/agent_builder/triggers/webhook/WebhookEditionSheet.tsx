@@ -120,7 +120,7 @@ function WebhookEditionExecutionLimit({
         quota.
         <br /> (
         <LinkWrapper
-          href="https://docs.dust.tt/update/docs/rate-limiting#/"
+          href="https://docs.dust.tt/docs/rate-limiting#/"
           target="_blank"
           rel="noreferrer"
           className="underline"
