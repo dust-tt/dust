@@ -31,7 +31,7 @@ const useButtonsSwitch = () => {
 const listStyles = cva(
   cn(
     "inline-flex items-center gap-1",
-    "box-border bg-muted border border-border"
+    "box-border bg-background border border-border-dark"
   ),
   {
     variants: {
