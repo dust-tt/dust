@@ -57,8 +57,9 @@ app.route("/:spaceId", spaceId);
 app.get("/", async (ctx): HandlerResult<GetPublicSpacesResponseBody> => {
   const auth = ctx.get("auth");
 
-  const allSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
-  const spaces = allSpaces.filter((space) => space.kind !== "conversations");
+  const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth, {
+    kinds: ["system", "global", "regular"],
+  });
 
   return ctx.json({
     spaces: spaces.map((space) => space.toJSON()),

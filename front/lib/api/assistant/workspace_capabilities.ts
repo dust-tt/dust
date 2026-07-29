@@ -101,8 +101,10 @@ export async function listActiveAgentsUsingNonRegionalModels(
 export async function listAvailableTools(
   auth: Authenticator
 ): Promise<AvailableTool[]> {
-  // Get all spaces the user is member of.
-  const userSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+  // Get all spaces the user is member of that can provide tools.
+  const userSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth, {
+    kinds: ["global", "regular"],
+  });
 
   // Fetch all MCP server views from those spaces.
   const mcpServerViews =
