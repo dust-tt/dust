@@ -439,7 +439,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     { name, memberIds }: { name: string; memberIds: string[] }
   ): Promise<
     Result<
-      GroupResource,
+      { group: GroupResource; addedUsers: UserType[] },
       DustError<
         | "unauthorized"
         | "name_conflict"
@@ -484,14 +484,15 @@ export class GroupResource extends BaseResource<GroupModel> {
         new DustError("user_not_found", "Some users were not found.")
       );
     }
+    const memberUsers = users.map((u) => u.toJSON());
     const addResult = await group.dangerouslyAddMembers(auth, {
-      users: users.map((u) => u.toJSON()),
+      users: memberUsers,
     });
     if (addResult.isErr()) {
       return new Err(addResult.error);
     }
 
-    return new Ok(group);
+    return new Ok({ group, addedUsers: memberUsers });
   }
 
   static async findAgentIdsForGroups(
@@ -1938,7 +1939,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
   ): Promise<
     Result<
-      undefined,
+      { addedUsers: UserType[]; removedUsers: UserType[] },
       DustError<
         | "unauthorized"
         | "user_not_found"
@@ -1981,7 +1982,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     }
 
-    return new Ok(undefined);
+    return new Ok({ addedUsers: usersToAdd, removedUsers: usersToRemove });
   }
 
   /**
@@ -2218,7 +2219,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     { name, memberIds }: { name?: string; memberIds?: string[] }
   ): Promise<
     Result<
-      undefined,
+      { addedUsers: UserType[]; removedUsers: UserType[] },
       DustError<
         | "unauthorized"
         | "name_conflict"
@@ -2276,9 +2277,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       if (setResult.isErr()) {
         return new Err(setResult.error);
       }
+
+      return new Ok(setResult.value);
     }
 
-    return new Ok(undefined);
+    return new Ok({ addedUsers: [], removedUsers: [] });
   }
 
   async deleteRegularManualGroup(

@@ -263,6 +263,36 @@ describe("GroupResource", () => {
     });
   });
 
+  describe("dangerouslySetMembers", () => {
+    it("returns the diff of added and removed users", async () => {
+      const keptUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, keptUser, { role: "user" });
+      const addedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, addedUser, { role: "user" });
+
+      const group = await GroupResource.makeNew({
+        name: "Set Members Test Group",
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+      });
+      await group.dangerouslyAddMembers(authenticator, {
+        users: [user.toJSON(), keptUser.toJSON()],
+      });
+
+      const result = await group.dangerouslySetMembers(authenticator, {
+        users: [keptUser.toJSON(), addedUser.toJSON()],
+      });
+
+      if (result.isErr()) {
+        throw new Error(`dangerouslySetMembers failed: ${result.error}`);
+      }
+      expect(result.value.addedUsers.map((u) => u.sId)).toEqual([
+        addedUser.sId,
+      ]);
+      expect(result.value.removedUsers.map((u) => u.sId)).toEqual([user.sId]);
+    });
+  });
+
   describe("suspendMembers", () => {
     it("suspends active members and returns affected user IDs", async () => {
       const regularGroup = await GroupResource.makeNew({

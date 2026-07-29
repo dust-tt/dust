@@ -31,6 +31,8 @@
   "file.moved": 1,
   "frame.authorized_files_updated": 1,
   "group.advanced_model_access_updated": 1,
+  "group.member_added": 1,
+  "group.member_removed": 1,
   "group.spend_limit_updated": 1,
   "invitation.revoked": 3,
   "invitation.role_updated": 3,

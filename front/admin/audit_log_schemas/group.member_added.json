@@ -1,0 +1,19 @@
+{
+  "action": "group.member_added",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "group"
+    },
+    {
+      "type": "user"
+    }
+  ],
+  "metadata": {
+    "group_name": "string",
+    "user_email": "string",
+    "actor_type": "string"
+  }
+}
