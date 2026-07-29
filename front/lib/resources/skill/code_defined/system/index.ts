@@ -3,10 +3,12 @@ import { discoverKnowledgeSkill } from "@app/lib/resources/skill/code_defined/sy
 import { discoverSkillsSkill } from "@app/lib/resources/skill/code_defined/system/discover_skills";
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/system/discover_tools";
 import { planModeSkill } from "@app/lib/resources/skill/code_defined/system/plan_mode";
+import { userMemorySkill } from "@app/lib/resources/skill/code_defined/system/user_memory";
 
 export const SYSTEM_SKILLS_ARRAY = ensureUniqueSIds([
   discoverKnowledgeSkill,
   discoverSkillsSkill,
   discoverToolsSkill,
   planModeSkill,
+  userMemorySkill,
 ] as const);
