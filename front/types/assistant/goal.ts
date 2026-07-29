@@ -16,6 +16,9 @@ export const GoalCreationSchema = z.object({
 });
 export type GoalCreation = z.infer<typeof GoalCreationSchema>;
 
+/**
+ * @swaggerschema PrivateGoal (swagger_private_schemas.ts)
+ */
 export type GoalType = {
   sId: string;
   objective: string;

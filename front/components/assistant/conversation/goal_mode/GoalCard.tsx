@@ -1,5 +1,5 @@
-import { useConversationGoal } from "@app/hooks/conversations/useGoal";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useConversationGoal } from "@app/lib/swr/conversation_goals";
 import type { GoalType } from "@app/types/assistant/goal";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ContentMessageInline, Target04 } from "@dust-tt/sparkle";

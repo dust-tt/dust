@@ -22,11 +22,11 @@ import {
   useAddDeleteConversationTool,
   useConversationTools,
 } from "@app/hooks/conversations";
-import { conversationGoalKey } from "@app/hooks/conversations/useGoal";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { conversationGoalKey } from "@app/lib/swr/conversation_goals";
 import {
   useAddConversationSelectedSpaces,
   useSelectableConversationSpaces,

@@ -1,4 +1,4 @@
-import { conversationGoalKey } from "@app/hooks/conversations/useGoal";
+import { conversationGoalKey } from "@app/lib/swr/conversation_goals";
 import { describe, expect, it } from "vitest";
 
 describe("conversationGoalKey", () => {

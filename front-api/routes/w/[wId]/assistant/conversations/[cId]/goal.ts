@@ -1,4 +1,4 @@
-import { getFeatureFlags } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationGoalResource } from "@app/lib/resources/conversation_goal_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -68,8 +68,7 @@ app.get(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
     const branchId = ctx.req.valid("query").branchId ?? null;
-    const featureFlags = await getFeatureFlags(auth);
-    if (!featureFlags.includes("goal_mode")) {
+    if (!(await hasFeatureFlag(auth, "goal_mode"))) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
