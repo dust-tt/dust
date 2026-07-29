@@ -1648,7 +1648,6 @@ describe("postUserMessage", () => {
     });
     expect(result.value.agentMessages).toHaveLength(1);
     expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-
   });
 
   it("rejects goal metadata when Goal Mode is not enabled", async () => {

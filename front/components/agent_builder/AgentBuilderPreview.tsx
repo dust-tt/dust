@@ -11,18 +11,16 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import type { InputBarSubmit } from "@app/components/assistant/conversation/input_bar/types";
 import type { VirtuosoMessageListContext } from "@app/components/assistant/conversation/types";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import type { DustError } from "@app/lib/error";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
-import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
-import type { Result } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
@@ -67,11 +65,7 @@ interface PreviewContentProps {
   owner: WorkspaceType;
   currentPanel: ConversationSidePanelType;
   resetConversation: () => void;
-  createConversation: (
-    input: string,
-    mentions: RichMention[],
-    contentFragments: ContentFragmentsType
-  ) => Promise<Result<undefined, DustError>>;
+  createConversation: InputBarSubmit;
   draftAgent: LightAgentConfigurationType | null;
   isSavingDraftAgent: boolean;
   isTrialPlan: boolean;

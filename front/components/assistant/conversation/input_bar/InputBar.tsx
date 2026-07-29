@@ -14,6 +14,7 @@ import {
   INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES,
   INPUT_BAR_COMPACT_PILL_CLASSES,
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
+import type { InputBarSubmit } from "@app/components/assistant/conversation/input_bar/types";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { PlanCard } from "@app/components/assistant/conversation/plan_mode/PlanCard";
 import {
@@ -23,7 +24,6 @@ import {
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useAddConversationSelectedSpaces,
@@ -40,13 +40,10 @@ import type {
   ConversationWithoutContentType,
   SelectableConversationSpaceType,
 } from "@app/types/assistant/conversation";
-import type { GoalCreation } from "@app/types/assistant/goal";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
-import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { isEqualNode } from "@app/types/data_source_view";
-import type { Result } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import uniqBy from "lodash/uniqBy";
@@ -78,15 +75,7 @@ function sameStringSet(a: string[], b: string[]) {
 interface InputBarProps {
   owner: WorkspaceType;
   user: UserType | null;
-  onSubmit: (
-    input: string,
-    mentions: RichMention[],
-    contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[],
-    selectedSpaceIds?: string[],
-    modelSelection?: ModelSelectionType,
-    goal?: GoalCreation
-  ) => Promise<Result<undefined, DustError>>;
+  onSubmit: InputBarSubmit;
   draftKey: string;
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
@@ -594,12 +583,15 @@ export const InputBar = React.memo(function InputBar({
             }),
             contentNodes: attachedNodes,
           },
-          // Only send the selectedMCPServerViewIds if we are creating a new conversation.
-          // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-          selectedMCPServerViews.map((sv) => sv.sId),
-          selectedSpaceIds,
-          modelSelectionRef.current,
-          goal
+          {
+            // Once created, server views are synced by the conversation tools hook.
+            selectedMCPServerViewIds: selectedMCPServerViews.map(
+              (serverView) => serverView.sId
+            ),
+            selectedSpaceIds,
+            modelSelection: modelSelectionRef.current,
+            goal,
+          }
         );
 
         if (r.isOk()) {
@@ -633,12 +625,11 @@ export const InputBar = React.memo(function InputBar({
             }),
             contentNodes: attachedNodes,
           },
-          // Existing conversation: MCP server views are synced via the
-          // conversationTools hook.
-          undefined,
-          selectedSpaceIds,
-          modelSelectionRef.current,
-          goal
+          {
+            selectedSpaceIds,
+            modelSelection: modelSelectionRef.current,
+            goal,
+          }
         );
 
         // Execute these operations in parallel with the submission.

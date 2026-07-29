@@ -1,6 +1,8 @@
+import { ConversationGoalResource } from "@app/lib/resources/conversation_goal_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -8,18 +10,26 @@ import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { assert, describe, expect, it, vi } from "vitest";
 
+vi.mock("@app/temporal/agent_loop/client", () => ({
+  launchAgentLoopWorkflow: vi.fn(),
+  launchCompactionWorkflow: vi.fn(),
+}));
+
 vi.mock("@app/lib/api/programmatic_usage/tracking", () => ({
   isProgrammaticUsage: () => false,
   checkProgrammaticUsageLimits: vi.fn(),
 }));
 
-async function setupTest(role: MembershipRoleType = "admin") {
+async function setupTest(
+  role: MembershipRoleType = "admin",
+  messagesCreatedAt = [new Date()]
+) {
   const { workspace, auth, globalSpace, user } =
     await createPrivateApiMockRequest({ role, method: "POST" });
 
   const conversation = await ConversationFactory.create(auth, {
     agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-    messagesCreatedAt: [new Date()],
+    messagesCreatedAt,
   });
 
   return { auth, conversation, globalSpace, user, workspace };
@@ -47,6 +57,40 @@ function getTools(workspace: { sId: string }, conversationId: string) {
 }
 
 describe("POST /api/w/:wId/assistant/conversations/:cId/messages", () => {
+  it("creates a goal with the first agent turn", async () => {
+    const { workspace, conversation, auth, user } = await setupTest(
+      "admin",
+      []
+    );
+    await FeatureFlagFactory.basic(auth, "goal_mode");
+
+    const response = await postMessage(workspace, conversation.sId, {
+      content: "Ship Goal Mode",
+      mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+      context: {
+        timezone: "Europe/Paris",
+        profilePictureUrl: user.imageUrl ?? null,
+      },
+      skipToolsValidation: true,
+      goal: { objective: "Ship Goal Mode" },
+    });
+
+    expect(response.status).toBe(200);
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    assert(conversationResource);
+    const goal = await ConversationGoalResource.fetchLatest(auth, {
+      conversation: conversationResource,
+      branchId: null,
+    });
+    expect(goal?.toJSON()).toMatchObject({
+      objective: "Ship Goal Mode",
+      status: "active",
+    });
+  });
+
   it("enables MCP server views when selectedMCPServerViewIds are provided", async () => {
     const { workspace, conversation, auth, globalSpace, user } =
       await setupTest("admin");

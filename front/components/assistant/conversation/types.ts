@@ -1,10 +1,10 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import type { InputBarSubmit } from "@app/components/assistant/conversation/input_bar/types";
 import type { AgentLoopToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import type { DustError } from "@app/lib/error";
 import type { AgentMCPActionType } from "@app/types/actions";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -26,10 +26,7 @@ import {
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 
-import type { RichMention } from "@app/types/assistant/mentions";
-import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
-import type { Result } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MutableRefObject } from "react";
@@ -115,11 +112,7 @@ export type VirtuosoMessageListContext = {
   owner: LightWorkspaceType;
   user: UserType;
   isOnboardingConversation: boolean;
-  handleSubmit: (
-    input: string,
-    mentions: RichMention[],
-    contentFragments: ContentFragmentsType
-  ) => Promise<Result<undefined, DustError>>;
+  handleSubmit: InputBarSubmit;
   draftKey: string;
   conversation?: ConversationWithoutContentType;
   agentBuilderContext?: {

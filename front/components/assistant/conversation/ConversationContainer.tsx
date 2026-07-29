@@ -8,6 +8,7 @@ import { AgentBrowserContainer } from "@app/components/assistant/conversation/Ag
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import type { InputBarSubmit } from "@app/components/assistant/conversation/input_bar/types";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useConversations } from "@app/hooks/conversations";
@@ -16,7 +17,6 @@ import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversati
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
-import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
@@ -26,15 +26,11 @@ import type {
   ConversationListItemType,
   SubmitMessageError,
 } from "@app/types/assistant/conversation";
-import type { RichMention } from "@app/types/assistant/mentions";
 import {
   toMentionType,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
-import type { ModelSelectionType } from "@app/types/assistant/models/types";
-import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { SubscriptionType } from "@app/types/plan";
-import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -129,15 +125,13 @@ export function ConversationContainerVirtuoso({
     [sendNotification]
   );
 
-  const handleConversationCreation = useCallback(
+  const handleConversationCreation = useCallback<InputBarSubmit>(
     async (
-      input: string,
-      mentions: RichMention[],
-      contentFragments: ContentFragmentsType,
-      selectedMCPServerViewIds?: string[],
-      selectedSpaceIds?: string[],
-      modelSelection?: ModelSelectionType
-    ): Promise<Result<undefined, DustError>> => {
+      input,
+      mentions,
+      contentFragments,
+      { selectedMCPServerViewIds, selectedSpaceIds, modelSelection, goal }
+    ) => {
       if (isSubmitting) {
         return new Err({
           code: "internal_error",
@@ -188,12 +182,10 @@ export function ConversationContainerVirtuoso({
           selectedSpaceIds,
           richMentions: mentions,
           modelSelection,
+          goal,
         },
-        // Navigate as soon as the conversation exists; the first message is posted
-        // in the background by useCreateConversationWithMessage. Background-post
-        // failures (e.g. no seat, credits) are surfaced through `onError` so the
-        // same blocking popup shows even though the conversation already exists.
-        deferMessage: true,
+        // Keep goal creation atomic with its first message.
+        deferMessage: !goal,
         onError: handleSubmitMessageError,
       });
 

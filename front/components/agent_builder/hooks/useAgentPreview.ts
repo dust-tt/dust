@@ -1,16 +1,13 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
+import type { InputBarSubmit } from "@app/components/assistant/conversation/input_bar/types";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import type { DustError } from "@app/lib/error";
 import { useFetcher } from "@app/lib/swr/swr";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
-import type { RichMention } from "@app/types/assistant/mentions";
-import type { ContentFragmentsType } from "@app/types/content_fragment";
-import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import isEqual from "lodash/isEqual";
 import { useCallback, useRef, useState } from "react";
@@ -122,12 +119,8 @@ export function useDraftConversation({
     user,
   });
 
-  const createConversation = useCallback(
-    async (
-      input: string,
-      mentions: RichMention[],
-      contentFragments: ContentFragmentsType
-    ): Promise<Result<undefined, DustError>> => {
+  const createConversation = useCallback<InputBarSubmit>(
+    async (input, mentions, contentFragments, { goal }) => {
       try {
         // Ensure we have a current draft agent before submitting
         const currentAgent = await getDraftAgent();
@@ -161,6 +154,7 @@ export function useDraftConversation({
           configurationId: mention.id,
         })),
         contentFragments,
+        goal,
       };
 
       const result = await createConversationWithMessage({

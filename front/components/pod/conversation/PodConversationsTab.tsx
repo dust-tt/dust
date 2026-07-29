@@ -1,5 +1,6 @@
 import { ActivationNextSteps } from "@app/components/assistant/conversation/ActivationNextSteps";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import type { InputBarSubmit } from "@app/components/assistant/conversation/input_bar/types";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
@@ -21,10 +22,6 @@ import type { PodConversationListItemType } from "@app/types/api/assistant/conve
 import type { GetSpaceResponseBody } from "@app/types/api/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
-import type { RichMention } from "@app/types/assistant/mentions";
-import type { ModelSelectionType } from "@app/types/assistant/models/types";
-import type { ContentFragmentsType } from "@app/types/content_fragment";
-import type { Result } from "@app/types/shared/result";
 import {
   resolveDefaultAgentId,
   type UserType,
@@ -67,14 +64,7 @@ interface PodConversationsTabProps {
   isPodEmpty: boolean;
   conversationFilter: PodConversationListFilter;
   onConversationFilterChange: (filter: PodConversationListFilter) => void;
-  onSubmit: (
-    input: string,
-    mentions: RichMention[],
-    contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[],
-    selectedSpaceIds?: string[],
-    modelSelection?: ModelSelectionType
-  ) => Promise<Result<undefined, any>>;
+  onSubmit: InputBarSubmit;
   onNavigateToTasks: () => void;
 }
 

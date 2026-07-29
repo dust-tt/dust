@@ -1100,13 +1100,10 @@ export async function postUserMessage(
           auth,
           {
             objective: goal.objective,
-            conversationId: conversation.id,
-            branchId: conversation.branchId
-              ? getResourceIdFromSId(conversation.branchId)
-              : null,
-            createdByUserId: user.id,
+            conversation: conversationResource,
+            branchId: conversation.branchId,
             agentConfigurationId: agentMessage.configuration.sId,
-            currentAgentMessageId: agentMessage.agentMessageId,
+            currentAgentMessageId: agentMessage.sId,
             maxTurns: DEFAULT_GOAL_MAX_TURNS,
           },
           t

@@ -14,6 +14,7 @@ import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conver
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { getModelWithReasoningEffortLabel } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import type { InputBarSubmit } from "@app/components/assistant/conversation/input_bar/types";
 import type {
   AgentMessageStateWithControlEvent,
   AgentMessageWithStreaming,
@@ -63,7 +64,6 @@ import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
@@ -79,20 +79,15 @@ import {
   isGlobalAgentWithFeedback,
 } from "@app/types/assistant/assistant";
 import { isLightAgentMessageType } from "@app/types/assistant/conversation";
-import type {
-  RichAgentMention,
-  RichMention,
-} from "@app/types/assistant/mentions";
+import type { RichAgentMention } from "@app/types/assistant/mentions";
 import {
   isAgentMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
-import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
   isInteractiveContentType,
   isSupportedImageContentType,
 } from "@app/types/files";
-import type { Result } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   LightWorkspaceType,
@@ -229,11 +224,7 @@ interface AgentMessageProps {
   triggeringUser: UserType | null;
   isOnboardingConversation: boolean;
   onCompletionStatusClick?: (messageId: string, actionId?: string) => void;
-  handleSubmit: (
-    input: string,
-    mentions: RichMention[],
-    contentFragments: ContentFragmentsType
-  ) => Promise<Result<undefined, DustError>>;
+  handleSubmit: InputBarSubmit;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   isAutoScrollEnabledRef: MutableRefObject<boolean>;
@@ -1035,10 +1026,15 @@ export function AgentMessage({
             description: "",
           };
 
-      const result = await handleSubmit(reply, [mention], {
-        uploaded: [],
-        contentNodes: [],
-      });
+      const result = await handleSubmit(
+        reply,
+        [mention],
+        {
+          uploaded: [],
+          contentNodes: [],
+        },
+        {}
+      );
 
       if (result.isErr()) {
         sendNotification({

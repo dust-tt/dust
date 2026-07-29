@@ -12,6 +12,7 @@ import {
   InputBarContext,
   type PendingConversationMessage,
 } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import type { InputBarSubmit } from "@app/components/assistant/conversation/input_bar/types";
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
@@ -54,7 +55,6 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
-import type { DustError } from "@app/lib/error";
 import {
   AgentMessageCompletedEvent,
   CompactionCompletedEvent,
@@ -72,15 +72,11 @@ import {
   isLightAgentMessageType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
-import type { RichMention } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
-import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { isActiveWakeUp } from "@app/types/assistant/wakeups";
-import type { ContentFragmentsType } from "@app/types/content_fragment";
-import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
@@ -1137,15 +1133,13 @@ export const ConversationViewer = ({
       initialListData.length > 0,
   });
 
-  const handleSubmit = useCallback(
+  const handleSubmit = useCallback<InputBarSubmit>(
     async (
-      input: string,
-      mentions: RichMention[],
-      contentFragments: ContentFragmentsType,
-      _selectedMCPServerViewIds?: string[],
-      selectedSpaceIds?: string[],
-      modelSelection?: ModelSelectionType
-    ): Promise<Result<undefined, DustError>> => {
+      input,
+      mentions,
+      contentFragments,
+      { selectedSpaceIds, modelSelection, goal }
+    ) => {
       if (!virtuosoMessageListRef?.current) {
         return new Err({
           code: "internal_error",
@@ -1175,6 +1169,7 @@ export const ConversationViewer = ({
           selectedSpaceIds,
           skipToolsValidation: agentBuilderContext?.skipToolsValidation,
           modelSelection,
+          goal,
         };
 
         const lastMessageRank = Math.max(

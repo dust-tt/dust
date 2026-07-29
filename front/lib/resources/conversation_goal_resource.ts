@@ -3,7 +3,10 @@ import {
   AgentMessageModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationGoalModel } from "@app/lib/models/agent/conversation_goal";
+import {
+  ConversationGoalModel,
+  UNFINISHED_GOAL_STATUSES,
+} from "@app/lib/models/agent/conversation_goal";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -218,15 +221,15 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: conversationModelId,
         branchId: branchId ? getResourceIdFromSId(branchId) : null,
-        status: { [Op.in]: ["active", "paused"] },
+        status: { [Op.in]: UNFINISHED_GOAL_STATUSES },
       },
       order: [
         ["createdAt", "DESC"],
         ["id", "DESC"],
       ],
       transaction,
-     });
-     return row ? new this(this.model, row.get()) : null;
+    });
+    return row ? new this(this.model, row.get()) : null;
   }
 
   static async fetchActiveForAgentLoop(

@@ -1,3 +1,4 @@
+import type { InputBarSubmit } from "@app/components/assistant/conversation/input_bar/types";
 import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { PodConversationsTab } from "@app/components/pod/conversation/PodConversationsTab";
@@ -13,15 +14,10 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import type { PodUiScopedPreferences } from "@app/hooks/useScopedUIPreferences";
 import type { PodTab } from "@app/hooks/useSpaceProjectTabs";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
 import type { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { RichMention } from "@app/types/assistant/mentions";
 import { toMentionType } from "@app/types/assistant/mentions";
-import type { ModelSelectionType } from "@app/types/assistant/models/types";
-import type { ContentFragmentsType } from "@app/types/content_fragment";
-import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { TabsContent } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
@@ -94,15 +90,13 @@ export function PodPageContent({
     });
   };
 
-  const handleConversationCreation = useCallback(
+  const handleConversationCreation = useCallback<InputBarSubmit>(
     async (
-      input: string,
-      mentions: RichMention[],
-      contentFragments: ContentFragmentsType,
-      selectedMCPServerViewIds?: string[],
-      _selectedSpaceIds?: string[],
-      modelSelection?: ModelSelectionType
-    ): Promise<Result<undefined, DustError>> => {
+      input,
+      mentions,
+      contentFragments,
+      { selectedMCPServerViewIds, modelSelection, goal }
+    ) => {
       if (isSubmitting) {
         return new Err({
           code: "internal_error",
@@ -122,11 +116,10 @@ export function PodPageContent({
           selectedMCPServerViewIds,
           richMentions: mentions,
           modelSelection,
+          goal,
         },
         spaceId: podInfo.sId,
-        // Navigate as soon as the conversation exists; the first message is posted
-        // in the background by useCreateConversationWithMessage.
-        deferMessage: true,
+        deferMessage: !goal,
       });
 
       setIsSubmitting(false);

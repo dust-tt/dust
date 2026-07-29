@@ -16,9 +16,12 @@ vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
 }));
 
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
+import { ConversationGoalResource } from "@app/lib/resources/conversation_goal_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -28,7 +31,7 @@ describe("POST /api/w/:wId/assistant/conversations", () => {
     vi.clearAllMocks();
   });
 
-  it("creates a conversation with content fragments when private conversation URLs are enabled", async () => {
+  it("creates a conversation with content fragments and an active goal", async () => {
     const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -46,6 +49,7 @@ describe("POST /api/w/:wId/assistant/conversations", () => {
         description: "Route behavior test agent",
       }
     );
+    await FeatureFlagFactory.basic(auth, "goal_mode");
 
     const dataSourceView = await DataSourceViewFactory.folder(
       workspace,
@@ -89,6 +93,7 @@ describe("POST /api/w/:wId/assistant/conversations", () => {
           timezone: "Europe/Paris",
           profilePictureUrl: null,
         },
+        goal: { objective: "Finish the route test" },
       },
     };
 
@@ -131,5 +136,18 @@ describe("POST /api/w/:wId/assistant/conversations", () => {
         (item: { type: string }) => item.type === "agent_message"
       )
     ).toBe(true);
+
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      responseData.conversation.sId
+    );
+    expect(conversation).not.toBeNull();
+    if (conversation) {
+      const goal = await ConversationGoalResource.fetchLatest(auth, {
+        conversation,
+        branchId: null,
+      });
+      expect(goal?.objective).toBe("Finish the route test");
+    }
   });
 });
