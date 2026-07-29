@@ -11,7 +11,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -307,25 +306,6 @@ async function resolveEditorUsersFromEmails(
   if (missingEmails.length > 0) {
     return new Err(
       new Error(`Editors not found in workspace: ${missingEmails.join(", ")}`)
-    );
-  }
-
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    users: editorUsers,
-    workspace,
-  });
-  const membershipByUserId = new Map(
-    memberships.map((membership) => [membership.userId, membership])
-  );
-  const nonBuilderEmails = editorUsers
-    .filter((user) => !membershipByUserId.get(user.id)?.isBuilder)
-    .map((user) => user.email);
-
-  if (nonBuilderEmails.length > 0) {
-    return new Err(
-      new Error(
-        `Editors must be workspace builders: ${nonBuilderEmails.join(", ")}`
-      )
     );
   }
 
