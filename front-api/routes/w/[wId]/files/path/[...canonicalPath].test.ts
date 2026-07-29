@@ -118,6 +118,35 @@ describe("GET /api/w/:wId/files/path/:canonicalPath", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/pdf");
     expect(response.headers.get("Content-Disposition")).toBeNull();
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+
+  it.each([
+    { fileName: "page.html", contentType: "text/html" },
+    { fileName: "logo.svg", contentType: "image/svg+xml" },
+    {
+      fileName: "blob.bin",
+      contentType: "application/x-something-unknown",
+    },
+    { fileName: "mixed.html", contentType: "TEXT/HTML; Charset=UTF-8" },
+  ])("forces unsafe content type $contentType to download as an attachment", async ({
+    fileName,
+    contentType,
+  }) => {
+    const { workspace, conversation } = await setup();
+
+    setExistingFiles([`/files/${fileName}`], { contentType, size: "42" });
+
+    const response = await request(
+      workspace,
+      `conversation-${conversation.sId}/${fileName}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Disposition")).toMatch(
+      /^attachment; filename=/
+    );
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
   });
 
   it("sets Content-Disposition when ?download=1", async () => {
@@ -137,6 +166,7 @@ describe("GET /api/w/:wId/files/path/:canonicalPath", () => {
     expect(response.headers.get("Content-Disposition")).toMatch(
       /attachment; filename=/
     );
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
   });
 });
 
@@ -177,6 +207,7 @@ describe("GET /api/w/:wId/files/path/:canonicalPath?thumbnail=1", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("image/png");
     expect(response.headers.get("Cache-Control")).toBe("private, max-age=3600");
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(spy).toHaveBeenCalled();
   });
 
@@ -224,6 +255,7 @@ describe("HEAD /api/w/:wId/files/path/:canonicalPath", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("text/csv");
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(fileStorageMock.readStreamCalls).toHaveLength(0);
   });
 
@@ -260,6 +292,7 @@ describe("HEAD /api/w/:wId/files/path/:canonicalPath", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe(frameContentType);
     expect(response.headers.get(DUST_FILE_ID_HEADER)).toBe(file.sId);
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
   });
 
   it("returns 404 when file does not exist", async () => {
