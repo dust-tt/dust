@@ -773,6 +773,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "reinforced_agents"
   | "self_improvement_beta_tester"
   | "legacy_billing"
+  | "goal_mode"
   | "plan_mode"
   | "pod_default_agent"
   | "pod_default_skills"
