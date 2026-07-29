@@ -32,6 +32,8 @@ const modelConfigMap = new Map<
   ])
 );
 
+type PriceUnit = "usd" | "credits";
+
 interface PricingRow {
   modelId: string;
   displayName: string;
@@ -41,10 +43,20 @@ interface PricingRow {
   outputPrice: number;
   cacheReadPrice: number | null;
   cacheWritePrice: number | null;
+  inputCredits: number;
+  outputCredits: number;
 }
 
 function applyMarkup(price: number): number {
   return price * (1 + DUST_MARKUP_PERCENT / 100);
+}
+
+// 1 credit = $0.0085 of raw model compute (margin baked in), rounded up.
+// Mirrors awuFromMicroUsd in front/lib/metronome/events.ts.
+const USD_PER_CREDIT = 0.0085;
+
+function creditsFromRawPrice(rawPriceDollars: number): number {
+  return Math.ceil(rawPriceDollars / USD_PER_CREDIT);
 }
 
 function formatPrice(price: number): string {
@@ -60,6 +72,13 @@ function formatPrice(price: number): string {
     return `$${price.toFixed(3)}`;
   }
   return `$${price.toFixed(2)}`;
+}
+
+function formatCredits(credits: number): string {
+  if (credits === 0) {
+    return "Free";
+  }
+  return new Intl.NumberFormat("en-US").format(credits);
 }
 
 function buildPricingData(): PricingRow[] {
@@ -89,6 +108,8 @@ function buildPricingData(): PricingRow[] {
       cacheWritePrice: pricing.cache_creation_input_tokens
         ? applyMarkup(pricing.cache_creation_input_tokens)
         : null,
+      inputCredits: creditsFromRawPrice(pricing.input),
+      outputCredits: creditsFromRawPrice(pricing.output),
     });
   }
 
@@ -113,9 +134,11 @@ export async function getStaticProps() {
 
 interface PricingTableProps {
   rows: PricingRow[];
+  unit: PriceUnit;
 }
 
-function PricingTable({ rows }: PricingTableProps) {
+function PricingTable({ rows, unit }: PricingTableProps) {
+  const isUsd = unit === "usd";
   if (rows.length === 0) {
     return (
       <div className="py-12 text-center text-muted-foreground">
@@ -167,22 +190,30 @@ function PricingTable({ rows }: PricingTableProps) {
               </td>
               <td className="px-4 py-3 text-right">
                 <span className="font-mono text-sm text-foreground">
-                  {formatPrice(row.inputPrice)}
+                  {isUsd
+                    ? formatPrice(row.inputPrice)
+                    : formatCredits(row.inputCredits)}
                 </span>
               </td>
               <td className="px-4 py-3 text-right">
                 <span className="font-mono text-sm text-foreground">
-                  {formatPrice(row.outputPrice)}
+                  {isUsd
+                    ? formatPrice(row.outputPrice)
+                    : formatCredits(row.outputCredits)}
                 </span>
               </td>
               <td className="hidden px-4 py-3 text-right md:table-cell">
                 <span className="font-mono text-sm text-muted-foreground">
-                  {row.cacheReadPrice ? formatPrice(row.cacheReadPrice) : "—"}
+                  {isUsd && row.cacheReadPrice
+                    ? formatPrice(row.cacheReadPrice)
+                    : "—"}
                 </span>
               </td>
               <td className="hidden px-4 py-3 text-right lg:table-cell">
                 <span className="font-mono text-sm text-muted-foreground">
-                  {row.cacheWritePrice ? formatPrice(row.cacheWritePrice) : "—"}
+                  {isUsd && row.cacheWritePrice
+                    ? formatPrice(row.cacheWritePrice)
+                    : "—"}
                 </span>
               </td>
             </tr>
@@ -199,6 +230,7 @@ export default function ApiPricingPage() {
   const [selectedProvider, setSelectedProvider] =
     useState<string>(ALL_PROVIDERS_LABEL);
   const [searchQuery, setSearchQuery] = useState("");
+  const [unit, setUnit] = useState<PriceUnit>("usd");
 
   const allPricingData = useMemo(() => buildPricingData(), []);
 
@@ -250,7 +282,11 @@ export default function ApiPricingPage() {
       <HeaderContentBlock
         title="API Pricing"
         hasCTA={false}
-        subtitle="Prices per million tokens. All prices are in USD."
+        subtitle={
+          unit === "usd"
+            ? "Prices per million tokens. All prices are in USD."
+            : "Credits per million tokens."
+        }
       />
       <Grid className="pb-24">
         <div className="col-span-12 flex flex-col gap-6 md:col-span-10 md:col-start-2">
@@ -267,13 +303,29 @@ export default function ApiPricingPage() {
                 />
               ))}
             </div>
-            <div className="w-full sm:w-64">
-              <SearchInput
-                name="model-search"
-                placeholder="Search models..."
-                value={searchQuery}
-                onChange={setSearchQuery}
-              />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div role="group" aria-label="Price unit" className="flex gap-2">
+                <Button
+                  label="USD"
+                  variant={unit === "usd" ? "primary" : "outline"}
+                  size="xs"
+                  onClick={() => setUnit("usd")}
+                />
+                <Button
+                  label="Credits"
+                  variant={unit === "credits" ? "primary" : "outline"}
+                  size="xs"
+                  onClick={() => setUnit("credits")}
+                />
+              </div>
+              <div className="w-full sm:w-64">
+                <SearchInput
+                  name="model-search"
+                  placeholder="Search models..."
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                />
+              </div>
             </div>
           </div>
 
@@ -283,7 +335,7 @@ export default function ApiPricingPage() {
           </div>
 
           {/* Pricing Table */}
-          <PricingTable rows={filteredData} />
+          <PricingTable rows={filteredData} unit={unit} />
 
           {/* Footer note */}
           <div className="rounded-lg border border-border bg-muted/20 p-4 text-sm text-muted-foreground">
@@ -292,6 +344,8 @@ export default function ApiPricingPage() {
               is available for models that support prompt caching. Input price
               applies to prompt tokens, output price applies to completion
               tokens.
+              {unit === "credits" &&
+                " These are intelligence credits only, excluding separate action credits. The figures are rounded up per model and execution, matching the codebase conversion logic."}
             </p>
           </div>
         </div>
