@@ -13,7 +13,6 @@ import {
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import type { AgentMessageConsumptionItemType } from "@app/types/assistant/agent_message_consumption";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
@@ -21,28 +20,12 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-type NonToolConsumptionItemType = Exclude<
-  AgentMessageConsumptionItemType,
-  "tool"
->;
-
-export type AgentMessageConsumptionItemSource =
-  | {
-      itemType: NonToolConsumptionItemType;
-      runUsageModelId: ModelId;
-    }
-  | {
-      itemType: "tool";
-      runUsageModelId: ModelId | null;
-      agentMCPActionModelId: ModelId;
-    };
-
 interface ConsumptionItemEvidenceBase {
   grossAttributedCreditAmountMicro: number;
   state: "pending" | "completed";
 }
 
-export type AgentMessageConsumptionItemEvidence =
+export type AgentMessageConsumptionItemRecord =
   | (ConsumptionItemEvidenceBase & {
       itemType: "system" | "input";
       runUsageModelId: ModelId;
@@ -86,33 +69,33 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     super(model, blob);
   }
 
-  private static itemKey(source: AgentMessageConsumptionItemSource): string {
-    switch (source.itemType) {
+  private static itemKey(record: AgentMessageConsumptionItemRecord): string {
+    switch (record.itemType) {
       case "system":
       case "input":
       case "output":
       case "reasoning":
-        return `run-usage:${source.runUsageModelId}:${source.itemType}`;
+        return `run-usage:${record.runUsageModelId}:${record.itemType}`;
 
       case "tool":
-        return `tool-action:${source.agentMCPActionModelId}`;
+        return `tool-action:${record.agentMCPActionModelId}`;
 
       default:
-        return assertNever(source);
+        return assertNever(record);
     }
   }
 
   private static evidenceAttributes(
-    evidence: AgentMessageConsumptionItemEvidence
+    record: AgentMessageConsumptionItemRecord
   ): ConsumptionItemEvidenceAttributes {
-    switch (evidence.itemType) {
+    switch (record.itemType) {
       case "system":
       case "input":
         return {
-          inputTokensCount: evidence.inputTokensCount,
+          inputTokensCount: record.inputTokensCount,
           outputTokensCount: null,
           grossAttributedCreditAmountMicro:
-            evidence.grossAttributedCreditAmountMicro,
+            record.grossAttributedCreditAmountMicro,
           directCreditAmountMicro: null,
         };
 
@@ -120,50 +103,50 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       case "reasoning":
         return {
           inputTokensCount: null,
-          outputTokensCount: evidence.outputTokensCount,
+          outputTokensCount: record.outputTokensCount,
           grossAttributedCreditAmountMicro:
-            evidence.grossAttributedCreditAmountMicro,
+            record.grossAttributedCreditAmountMicro,
           directCreditAmountMicro: null,
         };
 
       case "tool":
         return {
-          inputTokensCount: evidence.inputTokensCount,
-          outputTokensCount: evidence.outputTokensCount,
+          inputTokensCount: record.inputTokensCount,
+          outputTokensCount: record.outputTokensCount,
           grossAttributedCreditAmountMicro:
-            evidence.grossAttributedCreditAmountMicro,
-          directCreditAmountMicro: evidence.directCreditAmountMicro,
+            record.grossAttributedCreditAmountMicro,
+          directCreditAmountMicro: record.directCreditAmountMicro,
         };
 
       default:
-        return assertNever(evidence);
+        return assertNever(record);
     }
   }
 
   private static hasSameSource(
     item: AgentMessageConsumptionItemModel,
-    source: AgentMessageConsumptionItemSource
+    record: AgentMessageConsumptionItemRecord
   ): boolean {
-    switch (source.itemType) {
+    switch (record.itemType) {
       case "system":
       case "input":
       case "output":
       case "reasoning":
         return (
-          item.itemType === source.itemType &&
-          item.runUsageId === source.runUsageModelId &&
+          item.itemType === record.itemType &&
+          item.runUsageId === record.runUsageModelId &&
           item.agentMCPActionId === null
         );
 
       case "tool":
         return (
           item.itemType === "tool" &&
-          item.runUsageId === source.runUsageModelId &&
-          item.agentMCPActionId === source.agentMCPActionModelId
+          item.runUsageId === record.runUsageModelId &&
+          item.agentMCPActionId === record.agentMCPActionModelId
         );
 
       default:
-        return assertNever(source);
+        return assertNever(record);
     }
   }
 
@@ -185,12 +168,12 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     {
       conversationModelId,
       agentMessageModelId,
-      sources,
+      records,
       transaction,
     }: {
       conversationModelId: ModelId;
       agentMessageModelId: ModelId;
-      sources: AgentMessageConsumptionItemSource[];
+      records: AgentMessageConsumptionItemRecord[];
       transaction: Transaction;
     }
   ): Promise<void> {
@@ -217,8 +200,8 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
 
     const runUsageModelIds = [
       ...new Set(
-        sources.flatMap((source) =>
-          source.runUsageModelId === null ? [] : [source.runUsageModelId]
+        records.flatMap((record) =>
+          record.runUsageModelId === null ? [] : [record.runUsageModelId]
         )
       ),
     ];
@@ -254,8 +237,8 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
 
     const actionModelIds = [
       ...new Set(
-        sources.flatMap((source) =>
-          source.itemType === "tool" ? [source.agentMCPActionModelId] : []
+        records.flatMap((record) =>
+          record.itemType === "tool" ? [record.agentMCPActionModelId] : []
         )
       ),
     ];
@@ -276,52 +259,58 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }
   }
 
-  static async createPendingItems(
+  static async recordItems(
     auth: Authenticator,
     {
       conversationModelId,
       agentMessageModelId,
       attributionVersion,
-      sources,
+      records,
       transaction,
     }: {
       conversationModelId: ModelId;
       agentMessageModelId: ModelId;
       attributionVersion: number;
-      sources: AgentMessageConsumptionItemSource[];
+      records: AgentMessageConsumptionItemRecord[];
       transaction?: Transaction;
     }
   ): Promise<AgentMessageConsumptionItemResource[]> {
-    if (sources.length === 0) {
+    if (records.length === 0) {
       return [];
     }
 
     return withTransaction(async (currentTransaction) => {
+      const itemKeys = records.map((record) => this.itemKey(record));
+      if (new Set(itemKeys).size !== itemKeys.length) {
+        throw new Error("Consumption items contain duplicate identities");
+      }
+
       await this.validateOwnership(auth, {
         conversationModelId,
         agentMessageModelId,
-        sources,
+        records,
         transaction: currentTransaction,
       });
 
       const workspaceModelId = auth.getNonNullableWorkspace().id;
+      const completedAt = new Date();
       await this.model.bulkCreate(
-        sources.map((source) => ({
-          workspaceId: workspaceModelId,
-          conversationId: conversationModelId,
-          agentMessageId: agentMessageModelId,
-          runUsageId: source.runUsageModelId,
-          agentMCPActionId:
-            source.itemType === "tool" ? source.agentMCPActionModelId : null,
-          itemKey: this.itemKey(source),
-          itemType: source.itemType,
-          attributionVersion,
-          inputTokensCount: null,
-          outputTokensCount: null,
-          grossAttributedCreditAmountMicro: 0,
-          directCreditAmountMicro: null,
-          completedAt: null,
-        })),
+        records.map((record) => {
+          const attributes = this.evidenceAttributes(record);
+          return {
+            ...attributes,
+            workspaceId: workspaceModelId,
+            conversationId: conversationModelId,
+            agentMessageId: agentMessageModelId,
+            runUsageId: record.runUsageModelId,
+            agentMCPActionId:
+              record.itemType === "tool" ? record.agentMCPActionModelId : null,
+            itemKey: this.itemKey(record),
+            itemType: record.itemType,
+            attributionVersion,
+            completedAt: record.state === "completed" ? completedAt : null,
+          };
+        }),
         {
           ignoreDuplicates: true,
           transaction: currentTransaction,
@@ -334,79 +323,52 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           workspaceId: workspaceModelId,
           agentMessageId: agentMessageModelId,
           attributionVersion,
-          itemKey: { [Op.in]: sources.map((source) => this.itemKey(source)) },
+          itemKey: { [Op.in]: itemKeys },
         },
+        lock: currentTransaction.LOCK.UPDATE,
         order: [["id", "ASC"]],
         transaction: currentTransaction,
       });
       const itemByKey = new Map(items.map((item) => [item.itemKey, item]));
 
-      for (const source of sources) {
-        const item = itemByKey.get(this.itemKey(source));
+      for (const record of records) {
+        const itemKey = this.itemKey(record);
+        const item = itemByKey.get(itemKey);
         if (
           !item ||
           item.conversationId !== conversationModelId ||
-          !this.hasSameSource(item, source)
+          !this.hasSameSource(item, record)
         ) {
-          throw new Error(
-            `Conflicting consumption item identity ${this.itemKey(source)}`
-          );
+          throw new Error(`Conflicting consumption item identity ${itemKey}`);
         }
+        const attributes = this.evidenceAttributes(record);
+        if (item.completedAt !== null) {
+          if (
+            record.state === "completed" &&
+            !this.hasSameEvidence(item, attributes)
+          ) {
+            throw new Error(
+              `Completed consumption item ${itemKey} is immutable`
+            );
+          }
+          continue;
+        }
+
+        if (
+          record.state === "pending" &&
+          this.hasSameEvidence(item, attributes)
+        ) {
+          continue;
+        }
+
+        item.set({
+          ...attributes,
+          completedAt: record.state === "completed" ? completedAt : null,
+        });
+        await item.save({ transaction: currentTransaction });
       }
 
       return items.map((item) => new this(this.model, item.get()));
-    }, transaction);
-  }
-
-  static async setEvidence(
-    auth: Authenticator,
-    {
-      agentMessageModelId,
-      attributionVersion,
-      evidence,
-      transaction,
-    }: {
-      agentMessageModelId: ModelId;
-      attributionVersion: number;
-      evidence: AgentMessageConsumptionItemEvidence;
-      transaction?: Transaction;
-    }
-  ): Promise<AgentMessageConsumptionItemResource> {
-    return withTransaction(async (currentTransaction) => {
-      const workspaceModelId = auth.getNonNullableWorkspace().id;
-      const itemKey = this.itemKey(evidence);
-      const item = await this.model.findOne({
-        where: {
-          workspaceId: workspaceModelId,
-          agentMessageId: agentMessageModelId,
-          attributionVersion,
-          itemKey,
-        },
-        lock: currentTransaction.LOCK.UPDATE,
-        transaction: currentTransaction,
-      });
-      if (!item || !this.hasSameSource(item, evidence)) {
-        throw new Error(`Consumption item ${itemKey} was not initialized`);
-      }
-
-      const attributes = this.evidenceAttributes(evidence);
-      if (item.completedAt !== null) {
-        if (
-          evidence.state === "completed" &&
-          !this.hasSameEvidence(item, attributes)
-        ) {
-          throw new Error(`Completed consumption item ${itemKey} is immutable`);
-        }
-        return new this(this.model, item.get());
-      }
-
-      item.set({
-        ...attributes,
-        completedAt: evidence.state === "completed" ? new Date() : null,
-      });
-      await item.save({ transaction: currentTransaction });
-
-      return new this(this.model, item.get());
     }, transaction);
   }
 

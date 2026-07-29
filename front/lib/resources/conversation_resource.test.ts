@@ -825,15 +825,20 @@ describe("destroyConversation", () => {
       },
     });
 
-    await AgentMessageConsumptionItemResource.createPendingItems(auth, {
+    await AgentMessageConsumptionItemResource.recordItems(auth, {
       conversationModelId: conversation.id,
       agentMessageModelId: agentMessageId,
       attributionVersion: 1,
-      sources: [
+      records: [
         {
           itemType: "tool",
           runUsageModelId: null,
           agentMCPActionModelId: action.id,
+          inputTokensCount: null,
+          outputTokensCount: null,
+          grossAttributedCreditAmountMicro: 0,
+          directCreditAmountMicro: null,
+          state: "pending",
         },
       ],
     });

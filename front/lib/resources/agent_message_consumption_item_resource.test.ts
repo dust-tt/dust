@@ -72,105 +72,90 @@ async function setupMessageWithEvidence(
 }
 
 describe("AgentMessageConsumptionItemResource", () => {
-  it("creates pending facts idempotently and derives their identities", async () => {
+  it("records completed facts idempotently without rewriting them", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const context = await setupMessageWithEvidence(auth, workspace);
-    const sources = [
+    const records = [
       {
         itemType: "input" as const,
         runUsageModelId: context.runUsageModelId,
+        inputTokensCount: 100,
+        grossAttributedCreditAmountMicro: 300_000,
+        state: "completed" as const,
       },
       {
         itemType: "tool" as const,
         runUsageModelId: context.runUsageModelId,
         agentMCPActionModelId: context.action.id,
+        inputTokensCount: 40,
+        outputTokensCount: 12,
+        grossAttributedCreditAmountMicro: 2_000_000,
+        directCreditAmountMicro: 1_000_000,
+        state: "completed" as const,
       },
     ];
 
-    await AgentMessageConsumptionItemResource.createPendingItems(auth, {
-      ...context,
-      attributionVersion: 1,
-      sources,
-    });
-    await AgentMessageConsumptionItemResource.createPendingItems(auth, {
-      ...context,
-      attributionVersion: 1,
-      sources,
-    });
+    const initialItems = await AgentMessageConsumptionItemResource.recordItems(
+      auth,
+      {
+        ...context,
+        attributionVersion: 1,
+        records,
+      }
+    );
+    const retriedItems = await AgentMessageConsumptionItemResource.recordItems(
+      auth,
+      {
+        ...context,
+        attributionVersion: 1,
+        records,
+      }
+    );
 
-    const items =
-      await AgentMessageConsumptionItemResource.listByAgentMessageModelId(
-        auth,
-        {
-          agentMessageModelId: context.agentMessageModelId,
-          attributionVersion: 1,
-        }
-      );
-    expect(items).toHaveLength(2);
-    expect(items).toEqual(
+    expect(initialItems).toHaveLength(2);
+    expect(retriedItems).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           itemKey: `run-usage:${context.runUsageModelId}:input`,
           itemType: "input",
-          completedAt: null,
+          inputTokensCount: 100,
         }),
         expect.objectContaining({
           itemKey: `tool-action:${context.action.id}`,
           itemType: "tool",
-          completedAt: null,
+          inputTokensCount: 40,
+          outputTokensCount: 12,
+          directCreditAmountMicro: 1_000_000,
         }),
       ])
     );
-
-    await expect(
-      AgentMessageConsumptionItemResource.setEvidence(auth, {
-        agentMessageModelId: context.agentMessageModelId,
-        attributionVersion: 1,
-        evidence: {
-          itemType: "input",
-          runUsageModelId: context.runUsageModelId,
-          inputTokensCount: 100,
-          grossAttributedCreditAmountMicro: 300_000,
-          state: "completed",
-        },
-      })
-    ).resolves.toMatchObject({
-      inputTokensCount: 100,
-      outputTokensCount: null,
-      directCreditAmountMicro: null,
-    });
+    expect(retriedItems.every((item) => item.completedAt !== null)).toBe(true);
+    expect(retriedItems.map((item) => item.updatedAt)).toEqual(
+      initialItems.map((item) => item.updatedAt)
+    );
   });
 
-  it("enriches a pending fact and makes completed evidence immutable", async () => {
+  it("completes an approval-spanning fact and makes it immutable", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const context = await setupMessageWithEvidence(auth, workspace);
-    await AgentMessageConsumptionItemResource.createPendingItems(auth, {
-      ...context,
-      attributionVersion: 1,
-      sources: [
-        {
-          itemType: "tool",
-          runUsageModelId: context.runUsageModelId,
-          agentMCPActionModelId: context.action.id,
-        },
-      ],
-    });
-
-    const pending = await AgentMessageConsumptionItemResource.setEvidence(
+    const [pending] = await AgentMessageConsumptionItemResource.recordItems(
       auth,
       {
+        ...context,
         agentMessageModelId: context.agentMessageModelId,
         attributionVersion: 1,
-        evidence: {
-          itemType: "tool",
-          runUsageModelId: context.runUsageModelId,
-          agentMCPActionModelId: context.action.id,
-          inputTokensCount: null,
-          outputTokensCount: 12,
-          grossAttributedCreditAmountMicro: 400_000,
-          directCreditAmountMicro: null,
-          state: "pending",
-        },
+        records: [
+          {
+            itemType: "tool",
+            runUsageModelId: context.runUsageModelId,
+            agentMCPActionModelId: context.action.id,
+            inputTokensCount: null,
+            outputTokensCount: 12,
+            grossAttributedCreditAmountMicro: 400_000,
+            directCreditAmountMicro: null,
+            state: "pending",
+          },
+        ],
       }
     );
     expect(pending).toMatchObject({
@@ -180,7 +165,7 @@ describe("AgentMessageConsumptionItemResource", () => {
       completedAt: null,
     });
 
-    const finalEvidence = {
+    const finalRecord = {
       itemType: "tool" as const,
       runUsageModelId: context.runUsageModelId,
       agentMCPActionModelId: context.action.id,
@@ -190,12 +175,13 @@ describe("AgentMessageConsumptionItemResource", () => {
       directCreditAmountMicro: 1_000_000,
       state: "completed" as const,
     };
-    const completed = await AgentMessageConsumptionItemResource.setEvidence(
+    const [completed] = await AgentMessageConsumptionItemResource.recordItems(
       auth,
       {
+        ...context,
         agentMessageModelId: context.agentMessageModelId,
         attributionVersion: 1,
-        evidence: finalEvidence,
+        records: [finalRecord],
       }
     );
     expect(completed).toMatchObject({
@@ -207,21 +193,18 @@ describe("AgentMessageConsumptionItemResource", () => {
     expect(completed.completedAt).not.toBeNull();
 
     await expect(
-      AgentMessageConsumptionItemResource.setEvidence(auth, {
-        agentMessageModelId: context.agentMessageModelId,
+      AgentMessageConsumptionItemResource.recordItems(auth, {
+        ...context,
         attributionVersion: 1,
-        evidence: finalEvidence,
+        records: [finalRecord],
       })
-    ).resolves.toMatchObject({ id: completed.id });
+    ).resolves.toEqual([expect.objectContaining({ id: completed.id })]);
 
     await expect(
-      AgentMessageConsumptionItemResource.setEvidence(auth, {
-        agentMessageModelId: context.agentMessageModelId,
+      AgentMessageConsumptionItemResource.recordItems(auth, {
+        ...context,
         attributionVersion: 1,
-        evidence: {
-          ...finalEvidence,
-          inputTokensCount: 41,
-        },
+        records: [{ ...finalRecord, inputTokensCount: 41 }],
       })
     ).rejects.toThrow("Completed consumption item");
   });
@@ -232,15 +215,20 @@ describe("AgentMessageConsumptionItemResource", () => {
     const foreign = await setupMessageWithEvidence(auth, workspace);
 
     await expect(
-      AgentMessageConsumptionItemResource.createPendingItems(auth, {
+      AgentMessageConsumptionItemResource.recordItems(auth, {
         conversationModelId: owner.conversationModelId,
         agentMessageModelId: owner.agentMessageModelId,
         attributionVersion: 1,
-        sources: [
+        records: [
           {
             itemType: "tool",
             runUsageModelId: owner.runUsageModelId,
             agentMCPActionModelId: foreign.action.id,
+            inputTokensCount: null,
+            outputTokensCount: 12,
+            grossAttributedCreditAmountMicro: 400_000,
+            directCreditAmountMicro: null,
+            state: "pending",
           },
         ],
       })
@@ -249,14 +237,17 @@ describe("AgentMessageConsumptionItemResource", () => {
     );
 
     await expect(
-      AgentMessageConsumptionItemResource.createPendingItems(auth, {
+      AgentMessageConsumptionItemResource.recordItems(auth, {
         conversationModelId: owner.conversationModelId,
         agentMessageModelId: owner.agentMessageModelId,
         attributionVersion: 1,
-        sources: [
+        records: [
           {
             itemType: "input",
             runUsageModelId: foreign.runUsageModelId,
+            inputTokensCount: 100,
+            grossAttributedCreditAmountMicro: 300_000,
+            state: "completed",
           },
         ],
       })
@@ -276,14 +267,19 @@ describe("AgentMessageConsumptionItemResource", () => {
       runUsageModelId: ModelId;
       action: AgentMCPActionResource;
     }) {
-      await AgentMessageConsumptionItemResource.createPendingItems(auth, {
+      await AgentMessageConsumptionItemResource.recordItems(auth, {
         ...context,
         attributionVersion: 1,
-        sources: [
+        records: [
           {
             itemType: "tool",
             runUsageModelId: context.runUsageModelId,
             agentMCPActionModelId: context.action.id,
+            inputTokensCount: null,
+            outputTokensCount: 12,
+            grossAttributedCreditAmountMicro: 400_000,
+            directCreditAmountMicro: null,
+            state: "pending",
           },
         ],
       });
