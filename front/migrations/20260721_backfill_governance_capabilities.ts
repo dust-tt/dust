@@ -6,11 +6,14 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { CapabilityKey } from "@app/types/group_permissions";
 import { capabilityKey } from "@app/types/group_permissions";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface SeederCounts {
   seededEverybody: number;
@@ -69,117 +72,141 @@ makeScript(
         newCounts(),
       ])
     );
+    // A single workspace throwing must not abort the whole fleet: `runOnAllWorkspaces` runs the
+    // worker under `concurrentExecutor`, whose `Promise.all` would reject on the first throw and
+    // kill the run mid-fleet. Writes are committed per-capability, so a partial run leaves every
+    // workspace past the failure untouched and each rerun rediscovers them. Isolate failures per
+    // workspace, count them, and keep going so the backfill converges in one pass.
+    let failedWorkspaces = 0;
 
     await runOnAllWorkspaces(
       async (workspace) => {
-        const auth = await Authenticator.internalAdminForWorkspace(
-          workspace.sId
-        );
-
-        const states = await GroupPermissionResource.getCapabilitiesState(
-          auth,
-          CAPABILITY_SEEDERS.map((seeder) => seeder.capability)
-        );
-        // Fetched once per workspace (not per capability) for the "is this recognizably our own
-        // seeded output" check below.
-        const buildersGroup = await GroupResource.fetchManualBuildersGroup(
-          auth.getNonNullableWorkspace()
-        );
-
-        for (const seeder of CAPABILITY_SEEDERS) {
-          const key = capabilityKey(seeder.capability);
-          const counts = countsByCapability.get(key);
-          if (!counts) {
-            throw new Error(`Missing counters for capability ${key}.`);
-          }
-
-          const target = await seeder.resolveTarget(auth);
-          const effectiveTarget = await resolveEffectiveTarget(auth, target);
-
-          const current = states.get(key);
-
-          if (effectiveTarget === "admins_only") {
-            if (!current || current.scope === "admins_only") {
-              // Already the default state; nothing to do.
-              counts.alreadyAdminsOnly++;
-              continue;
-            }
-
-            // Legacy state no longer grants this capability (e.g. the flag got enabled, or the
-            // Builders group disappeared, since an earlier run) — actively revert, unlike the
-            // "everyone"/"builders" branch below, which preserves any existing configuration.
-            logger.info(
-              {
-                workspaceId: workspace.sId,
-                capability: key,
-                previousScope: current?.scope,
-              },
-              execute
-                ? "Reverting to admins_only."
-                : "Would revert to admins_only."
-            );
-            if (execute) {
-              await GroupPermissionResource.disable(auth, seeder.capability);
-            }
-            counts.seededAdminsOnly++;
-            continue;
-          }
-
-          if (effectiveTarget === "builders") {
-            const isRecognizedBuildersState =
-              current &&
-              current.scope === "groups" &&
-              !!buildersGroup &&
-              current.groups.length === 1 &&
-              current.groups[0].id === buildersGroup.id;
-
-            if (isRecognizedBuildersState) {
-              counts.alreadyBuilders++;
-              continue;
-            }
-          }
-
-          if (effectiveTarget === "everyone") {
-            if (current && current.scope === "everyone") {
-              counts.alreadyEverybody++;
-              continue;
-            }
-          }
-
-          const outcome = await applyCapabilityTarget(
-            auth,
-            seeder.capability,
-            target,
-            { dryRun: !execute }
+        try {
+          await backfillWorkspace(
+            workspace,
+            countsByCapability,
+            execute,
+            logger
           );
-
-          logger.info(
-            { workspaceId: workspace.sId, capability: key, target, outcome },
-            execute ? "Applied." : "Would apply."
+        } catch (err) {
+          failedWorkspaces++;
+          logger.error(
+            { workspaceId: workspace.sId, err: normalizeError(err) },
+            "Failed to backfill governance capabilities; continuing."
           );
-
-          switch (outcome) {
-            case "seeded_everybody":
-              counts.seededEverybody++;
-              break;
-            case "seeded_builders":
-              counts.seededBuilders++;
-              break;
-            case "skipped_admins_only":
-            case "skipped_no_builders_group":
-              // Does not happen, handled in effectiveTarget === "admins_only"
-              break;
-            default:
-              assertNeverAndIgnore(outcome);
-          }
         }
       },
       { wId, concurrency: WORKSPACE_CONCURRENCY }
     );
 
     logger.info(
-      Object.fromEntries(countsByCapability),
+      { ...Object.fromEntries(countsByCapability), failedWorkspaces },
       execute ? "Backfill completed." : "Dry run completed."
     );
   }
 );
+
+async function backfillWorkspace(
+  workspace: LightWorkspaceType,
+  countsByCapability: Map<CapabilityKey, SeederCounts>,
+  execute: boolean,
+  logger: Logger
+): Promise<void> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+  const states = await GroupPermissionResource.getCapabilitiesState(
+    auth,
+    CAPABILITY_SEEDERS.map((seeder) => seeder.capability)
+  );
+  // Fetched once per workspace (not per capability) for the "is this recognizably our own
+  // seeded output" check below.
+  const buildersGroup = await GroupResource.fetchManualBuildersGroup(
+    auth.getNonNullableWorkspace()
+  );
+
+  for (const seeder of CAPABILITY_SEEDERS) {
+    const key = capabilityKey(seeder.capability);
+    const counts = countsByCapability.get(key);
+    if (!counts) {
+      throw new Error(`Missing counters for capability ${key}.`);
+    }
+
+    const target = await seeder.resolveTarget(auth);
+    const effectiveTarget = await resolveEffectiveTarget(auth, target);
+
+    const current = states.get(key);
+
+    if (effectiveTarget === "admins_only") {
+      if (!current || current.scope === "admins_only") {
+        // Already the default state; nothing to do.
+        counts.alreadyAdminsOnly++;
+        continue;
+      }
+
+      // Legacy state no longer grants this capability (e.g. the flag got enabled, or the
+      // Builders group disappeared, since an earlier run) — actively revert, unlike the
+      // "everyone"/"builders" branch below, which preserves any existing configuration.
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          capability: key,
+          previousScope: current?.scope,
+        },
+        execute ? "Reverting to admins_only." : "Would revert to admins_only."
+      );
+      if (execute) {
+        await GroupPermissionResource.disable(auth, seeder.capability);
+      }
+      counts.seededAdminsOnly++;
+      continue;
+    }
+
+    if (effectiveTarget === "builders") {
+      const isRecognizedBuildersState =
+        current &&
+        current.scope === "groups" &&
+        !!buildersGroup &&
+        current.groups.length === 1 &&
+        current.groups[0].id === buildersGroup.id;
+
+      if (isRecognizedBuildersState) {
+        counts.alreadyBuilders++;
+        continue;
+      }
+    }
+
+    if (effectiveTarget === "everyone") {
+      if (current && current.scope === "everyone") {
+        counts.alreadyEverybody++;
+        continue;
+      }
+    }
+
+    const outcome = await applyCapabilityTarget(
+      auth,
+      seeder.capability,
+      target,
+      { dryRun: !execute }
+    );
+
+    logger.info(
+      { workspaceId: workspace.sId, capability: key, target, outcome },
+      execute ? "Applied." : "Would apply."
+    );
+
+    switch (outcome) {
+      case "seeded_everybody":
+        counts.seededEverybody++;
+        break;
+      case "seeded_builders":
+        counts.seededBuilders++;
+        break;
+      case "skipped_admins_only":
+      case "skipped_no_builders_group":
+        // Does not happen, handled in effectiveTarget === "admins_only"
+        break;
+      default:
+        assertNeverAndIgnore(outcome);
+    }
+  }
+}
