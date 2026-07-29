@@ -40,7 +40,7 @@ import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { labsTranscriptsProviders } from "@app/types/labs";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { isRoleType } from "@app/types/user";
+import { isAssignableRoleType } from "@app/types/user";
 import fs from "fs/promises";
 import parseArgs from "minimist";
 import path from "path";
@@ -789,9 +789,9 @@ async function apikeys(command: string, args: parseArgs.ParsedArgs) {
         throw new Error("Missing --name argument");
       }
 
-      if (!args.role || !isRoleType(args.role)) {
+      if (!args.role || !isAssignableRoleType(args.role)) {
         throw new Error(
-          "Missing or Incorrect --role argument. Must be admin | user | builder."
+          "Missing or Incorrect --role argument. Must be admin | manager | user."
         );
       }
 
