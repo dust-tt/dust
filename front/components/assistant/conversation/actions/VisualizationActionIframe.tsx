@@ -7,7 +7,6 @@ import type {
   SandboxFunctionMCPApproveExecutionEvent,
   SandboxFunctionToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
-import { AuthContext } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -35,7 +34,6 @@ import {
   assertNeverAndIgnore,
 } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { RoleType } from "@app/types/user";
 import {
   AlertCircle,
   Button,
@@ -55,7 +53,6 @@ import type { SetStateAction } from "react";
 import {
   forwardRef,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -79,73 +76,23 @@ type ProtectedVisualization = BaseVisualization & {
 
 export type Visualization = PublicVisualization | ProtectedVisualization;
 
-export type FrameAccess = "conversation" | "public-anonymous" | "public-member";
-
-interface WorkspaceAuthIdentity {
-  user: NonNullable<UserIdentityState["user"]>;
-  workspace: { role: RoleType; sId: string };
-}
-
 export function getFrameUserIdentity(
-  authContext: WorkspaceAuthIdentity | null,
-  frameAccess: FrameAccess,
   workspaceId: string,
-  publicUserIdentity?: ScopedWorkspaceUserIdentity
+  scopedUserIdentity?: ScopedWorkspaceUserIdentity
 ): UserIdentityState {
-  switch (frameAccess) {
-    case "conversation": {
-      if (
-        !authContext ||
-        authContext.workspace.sId !== workspaceId ||
-        authContext.workspace.role === "none"
-      ) {
-        return {
-          isAuthenticated: false,
-          isWorkspaceMember: false,
-          user: null,
-        };
-      }
-
-      const { user } = authContext;
-      return {
-        isAuthenticated: true,
-        isWorkspaceMember: true,
-        user: {
-          sId: user.sId,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          fullName: user.fullName,
-          image: user.image,
-        },
-      };
-    }
-    case "public-member":
-      if (publicUserIdentity?.workspaceId === workspaceId) {
-        return {
-          isAuthenticated: true,
-          isWorkspaceMember: true,
-          user: publicUserIdentity.user,
-        };
-      }
-      return {
-        isAuthenticated: false,
-        isWorkspaceMember: false,
-        user: null,
-      };
-    case "public-anonymous":
-      return {
-        isAuthenticated: false,
-        isWorkspaceMember: false,
-        user: null,
-      };
-    default:
-      assertNeverAndIgnore(frameAccess);
-      return {
-        isAuthenticated: false,
-        isWorkspaceMember: false,
-        user: null,
-      };
+  if (scopedUserIdentity?.workspaceId === workspaceId) {
+    return {
+      isAuthenticated: true,
+      isWorkspaceMember: true,
+      user: scopedUserIdentity.user,
+    };
   }
+
+  return {
+    isAuthenticated: false,
+    isWorkspaceMember: false,
+    user: null,
+  };
 }
 
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
@@ -606,14 +553,14 @@ export function CodeDrawer({
   );
 }
 
-interface VisualizationActionIframeProps {
+export interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
+  canInvokeFunctions: boolean;
   conversationId: string | null;
   isEditable?: boolean;
   isInDrawer?: boolean;
   onEditText?: EditTextFn;
-  publicUserIdentity?: ScopedWorkspaceUserIdentity;
-  frameAccess?: FrameAccess;
+  scopedUserIdentity?: ScopedWorkspaceUserIdentity;
   spaceId?: string;
   visualization: Visualization;
   vizUrl: string;
@@ -695,28 +642,22 @@ export const VisualizationActionIframe = forwardRef<
 
   const {
     agentConfigurationId,
+    canInvokeFunctions,
     conversationId,
     isEditable = false,
     isInDrawer = false,
     onEditText,
-    publicUserIdentity,
+    scopedUserIdentity,
     spaceId,
     visualization,
     workspaceId,
-    frameAccess = "conversation",
   } = props;
 
-  const authContext = useContext(AuthContext);
   const userIdentity = useMemo<UserIdentityState>(() => {
-    return getFrameUserIdentity(
-      authContext,
-      frameAccess,
-      workspaceId,
-      publicUserIdentity
-    );
-  }, [authContext, frameAccess, publicUserIdentity, workspaceId]);
+    return getFrameUserIdentity(workspaceId, scopedUserIdentity);
+  }, [scopedUserIdentity, workspaceId]);
 
-  const isPublic = frameAccess !== "conversation";
+  const isPublic = visualization.accessToken !== undefined;
 
   const getFileBlob = useCallback(
     async (fileId: string) => {
@@ -768,10 +709,10 @@ export const VisualizationActionIframe = forwardRef<
       Result<SandboxFunctionInvocationType, SandboxFunctionCallError>
     > => {
       try {
-        if (frameAccess === "public-anonymous") {
+        if (!canInvokeFunctions) {
           return new Err({
             code: "not_supported",
-            message: "Pod functions are not supported in shared frames.",
+            message: "Function calls are not available in this Frame.",
           });
         }
 
@@ -817,7 +758,7 @@ export const VisualizationActionIframe = forwardRef<
         });
       }
     },
-    [frameAccess, workspaceId]
+    [canInvokeFunctions, workspaceId]
   );
 
   useVisualizationDataHandler({
