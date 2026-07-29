@@ -17,7 +17,6 @@ import {
 
 export type BatchAvailabilityAction = {
   label: string;
-  // Matches the availability option descriptions shown in the skill builder.
   description?: string;
   availability: SkillAvailability;
   getDialogTitle: (count: number) => string;
