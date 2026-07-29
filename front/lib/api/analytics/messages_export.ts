@@ -205,7 +205,7 @@ export async function fetchMessageExportRows({
       modelId: doc.model?.model_id ?? "",
       modelProviderId: doc.model?.provider_id ?? "",
       modelResolutionMethod: doc.model?.resolution_method ?? "",
-      credits: Math.round(doc.cost?.full_awu ?? 0),
+      credits: Math.round(doc.cost?.billable_awu ?? 0),
     };
   });
 

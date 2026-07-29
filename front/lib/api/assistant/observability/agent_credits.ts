@@ -66,7 +66,7 @@ type AgentCreditAggs = {
   by_agent?: estypes.AggregationsMultiBucketAggregateBase<AgentBucket>;
 };
 
-// Per-agent AWU credits (cost.full_awu) over the last `days`: the agent's
+// Per-agent billed AWU credits (cost.billable_awu) over the last `days`: the agent's
 // current model and description, its message count, its top 3 users (by cost)
 // and top 3 skills (by execution count — skills carry no per-skill cost).
 // Ranked by credits desc.
@@ -114,7 +114,7 @@ export async function fetchAgentCreditBreakdown(
           ...(includeAgentIds ? { include: includeAgentIds } : {}),
         },
         aggs: {
-          credits: { sum: { field: "cost.full_awu" } },
+          credits: { sum: { field: "cost.billable_awu" } },
           top_users: {
             terms: {
               field: "user_id",
@@ -122,7 +122,7 @@ export async function fetchAgentCreditBreakdown(
               exclude: ["unknown"],
               order: { user_credits: "desc" },
             },
-            aggs: { user_credits: { sum: { field: "cost.full_awu" } } },
+            aggs: { user_credits: { sum: { field: "cost.billable_awu" } } },
           },
           top_skills: {
             nested: { path: "skills_used" },
