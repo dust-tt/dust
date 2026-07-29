@@ -1524,13 +1524,13 @@ export class Authenticator {
         return true;
       }
 
-      // Second path: group permissions check (the `group_permissions` table). When the resource
-      // declares a `resourceType`, the caller passes if they hold the requested permission — used
-      // directly as a grant verb, since `PermissionType` ⊆ `GrantVerb` — on this
-      // `(resourceType, resourceId)`. A type-wide grant satisfies the check for any instance (see
-      // `PermissionSet.has`).
+      // Second path: group permissions check (the `group_permissions` table). A
+      // GroupResourcePermission declares a `resourceType`; the caller passes if they hold the
+      // requested permission — used directly as a grant verb, since `PermissionType` ⊆ `GrantVerb`
+      // — on this `(resourceType, resourceId)`. A type-wide grant satisfies the check for any
+      // instance (see `PermissionSet.has`).
       if (
-        resourcePermission.resourceType !== undefined &&
+        "resourceType" in resourcePermission &&
         workspace.id === resourcePermission.workspaceId &&
         this._permissions.has(
           resourcePermission.resourceType,
@@ -1543,11 +1543,15 @@ export class Authenticator {
     }
 
     // Third path: legacy group permissions check (inline groups).
-    return this._groupModelIds.some((groupId) =>
-      resourcePermission.groups.some(
-        (gp) => gp.id === groupId && gp.permissions.includes(permission)
-      )
-    );
+    if ("groups" in resourcePermission) {
+      return this._groupModelIds.some((groupId) =>
+        resourcePermission.groups.some(
+          (gp) => gp.id === groupId && gp.permissions.includes(permission)
+        )
+      );
+    }
+
+    return false;
   }
 
   canAdministrate(resourcePermissions: ResourcePermission[]): boolean {

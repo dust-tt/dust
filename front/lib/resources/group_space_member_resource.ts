@@ -8,7 +8,7 @@ import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { GroupKind } from "@app/types/groups";
 import type {
-  CombinedResourcePermissions,
+  LegacyCombinedResourcePermissions,
   LegacyGroupPermission,
 } from "@app/types/resource_permissions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -161,7 +161,7 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
     return auth.canWrite(requestedPermissions);
   }
 
-  async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
+  async requestedPermissions(): Promise<LegacyCombinedResourcePermissions[]> {
     switch (this.space.kind) {
       case "system":
         return [

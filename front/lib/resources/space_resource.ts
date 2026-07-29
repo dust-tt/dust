@@ -31,7 +31,7 @@ import {
   SPACE_GROUP_PREFIX,
 } from "@app/types/groups";
 import type {
-  CombinedResourcePermissions,
+  LegacyCombinedResourcePermissions,
   LegacyGroupPermission,
 } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -1758,7 +1758,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    *
    * @returns Array of ResourcePermission objects based on space type
    */
-  requestedPermissions(): CombinedResourcePermissions[] {
+  requestedPermissions(): LegacyCombinedResourcePermissions[] {
     // System space.
     if (this.isSystem()) {
       return [
