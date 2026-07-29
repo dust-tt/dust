@@ -20,9 +20,14 @@ import type {
   AgentLoopArgs,
   AgentLoopExecutionData,
 } from "@app/types/assistant/agent_run";
-import type { GoalStatus, GoalType } from "@app/types/assistant/goal";
+import type {
+  GoalStatus,
+  GoalType,
+  GoalUserAction,
+} from "@app/types/assistant/goal";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -50,6 +55,7 @@ export class GoalTransitionError extends Error {
       | "goal_not_found"
       | "goal_conflict"
       | "forbidden"
+      | "agent_turn_in_progress"
       | "invalid_transition"
       | "wrong_agent"
   ) {
@@ -390,7 +396,7 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
-      if (!goalRow || goalRow.status !== "active") {
+      if (!goalRow) {
         return { type: "inactive" };
       }
 
@@ -416,23 +422,50 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
         return { type: "not_succeeded" };
       }
       if (goalRow.lastAgentMessageId === message.agentMessage.id) {
-        if (goalRow.currentAgentMessageId === message.agentMessage.id) {
+        if (
+          goalRow.status === "active" &&
+          goalRow.currentAgentMessageId === message.agentMessage.id
+        ) {
           return {
             type: "continue",
             goal: new this(this.model, goalRow.get()).toJSON(),
           };
         }
-        return {
-          type: "ensure_current",
-          goal: new this(this.model, goalRow.get()).toJSON(),
-        };
+        return goalRow.status === "active"
+          ? {
+              type: "ensure_current",
+              goal: new this(this.model, goalRow.get()).toJSON(),
+            }
+          : { type: "already_processed" };
+      }
+      if (goalRow.status !== "active") {
+        return { type: "inactive" };
       }
       if (
-        goalRow.currentAgentMessageId !== message.agentMessage.id ||
         goalRow.agentConfigurationId !==
-          message.agentMessage.agentConfigurationId
+        message.agentMessage.agentConfigurationId
       ) {
         return { type: "inactive" };
+      }
+      if (goalRow.currentAgentMessageId !== message.agentMessage.id) {
+        const currentMessage = await MessageModel.findOne({
+          attributes: ["rank"],
+          where: {
+            workspaceId: goalRow.workspaceId,
+            conversationId: goalRow.conversationId,
+            agentMessageId: goalRow.currentAgentMessageId,
+            branchId: conversationBranchId
+              ? getResourceIdFromSId(conversationBranchId)
+              : null,
+          },
+          transaction,
+        });
+        return currentMessage && message.rank < currentMessage.rank
+          ? {
+              type: "ensure_current",
+              goal: new this(this.model, goalRow.get()).toJSON(),
+            }
+          : { type: "inactive" };
       }
 
       const newerMessage = await MessageModel.findOne({
@@ -553,6 +586,59 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
     return row !== null;
   }
 
+  async lockForResume(
+    auth: Authenticator,
+    {
+      conversation,
+      branchId,
+      transaction,
+    }: {
+      conversation: ConversationResource;
+      branchId: string | null;
+      transaction: Transaction;
+    }
+  ): Promise<Result<ConversationGoalResource, GoalTransitionError>> {
+    const row = await this.model.findOne({
+      where: {
+        id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
+        branchId: branchId ? getResourceIdFromSId(branchId) : null,
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!row) {
+      return new Err(new GoalTransitionError("goal_not_found"));
+    }
+    if (row.createdByUserId !== auth.getNonNullableUser().id) {
+      return new Err(new GoalTransitionError("forbidden"));
+    }
+    if (row.status !== "paused" && row.status !== "blocked") {
+      return new Err(new GoalTransitionError("invalid_transition"));
+    }
+
+    const retryingAllocatedTurn = row.reason === "continuation_failed";
+    const turnCount = retryingAllocatedTurn ? row.turnCount : row.turnCount + 1;
+    await row.update(
+      {
+        status: "active",
+        reason: null,
+        terminalAt: null,
+        lastAgentMessageId: row.currentAgentMessageId,
+        turnCount,
+        maxTurns:
+          !retryingAllocatedTurn && turnCount > row.maxTurns
+            ? row.maxTurns + DEFAULT_GOAL_MAX_TURNS
+            : row.maxTurns,
+      },
+      { transaction }
+    );
+    return new Ok(
+      new ConversationGoalResource(ConversationGoalResource.model, row.get())
+    );
+  }
+
   static async pauseForAgentMessage(
     auth: Authenticator,
     {
@@ -628,14 +714,16 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
     });
   }
 
-  static async pauseByUser(
+  static async transitionByUser(
     auth: Authenticator,
     {
       conversation,
       branchId,
+      action,
     }: {
       conversation: ConversationResource;
       branchId: string | null;
+      action: GoalUserAction;
     }
   ): Promise<Result<ConversationGoalResource, GoalTransitionError>> {
     return withTransaction(async (transaction) => {
@@ -661,17 +749,44 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
         return new Err(new GoalTransitionError("forbidden"));
       }
 
-      if (goal.status === "paused") {
+      if (
+        (action === "pause" && goal.status === "paused") ||
+        (action === "cancel" && goal.status === "cancelled")
+      ) {
         return new Ok(goal);
       }
-      if (goal.status !== "active") {
-        return new Err(new GoalTransitionError("invalid_transition"));
+
+      let status: GoalStatus;
+      let reason: string | null;
+      let terminalAt: Date | null;
+      switch (action) {
+        case "pause":
+          if (goal.status !== "active") {
+            return new Err(new GoalTransitionError("invalid_transition"));
+          }
+          status = "paused";
+          reason = "paused_by_user";
+          terminalAt = null;
+          break;
+        case "resume":
+          return new Err(new GoalTransitionError("invalid_transition"));
+        case "cancel":
+          if (goal.status === "completed") {
+            return new Err(new GoalTransitionError("invalid_transition"));
+          }
+          status = "cancelled";
+          reason = "cancelled_by_user";
+          terminalAt = new Date();
+          break;
+        default:
+          return assertNever(action);
       }
 
       const [, rows] = await this.model.update(
         {
-          status: "paused",
-          reason: "paused_by_user",
+          status,
+          reason,
+          terminalAt,
         },
         {
           where: {

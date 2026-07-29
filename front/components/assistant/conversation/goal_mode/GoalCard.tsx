@@ -1,12 +1,14 @@
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useConversationGoal } from "@app/lib/swr/conversation_goals";
 import type { GoalType } from "@app/types/assistant/goal";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   ContentMessageAction,
   ContentMessageInline,
   PauseCircle,
+  Play,
   Target04,
+  Trash04,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -28,7 +30,8 @@ function getStatusLabel(goal: GoalType): string | null {
     case "cancelled":
       return null;
     default:
-      return assertNever(goal.status);
+      assertNeverAndIgnore(goal.status);
+      return null;
   }
 }
 
@@ -39,7 +42,7 @@ export const GoalCard = React.memo(function GoalCard({
 }: GoalCardProps) {
   const { hasFeature } = useFeatureFlags();
   const isGoalModeEnabled = hasFeature("goal_mode");
-  const { goal, canManage, isPausing, pauseGoal } = useConversationGoal({
+  const { goal, canManage, pendingAction, updateGoal } = useConversationGoal({
     conversationId: isGoalModeEnabled ? conversationId : null,
     workspaceId,
     branchId,
@@ -50,6 +53,8 @@ export const GoalCard = React.memo(function GoalCard({
   }
 
   const isRunning = goal.status === "active";
+  const canResume =
+    isRunning || goal.status === "paused" || goal.status === "blocked";
 
   return (
     <ContentMessageInline
@@ -69,9 +74,31 @@ export const GoalCard = React.memo(function GoalCard({
           variant="ghost"
           size="xs"
           tooltip="Pause future goal turns"
-          isLoading={isPausing}
-          disabled={isPausing}
-          onClick={() => void pauseGoal()}
+          isLoading={pendingAction === "pause"}
+          disabled={pendingAction !== null}
+          onClick={() => void updateGoal("pause")}
+        />
+      )}
+      {canManage && canResume && (
+        <ContentMessageAction
+          icon={Play}
+          variant="ghost"
+          size="xs"
+          tooltip={isRunning ? "Retry current goal turn" : "Resume goal"}
+          isLoading={pendingAction === "resume"}
+          disabled={pendingAction !== null}
+          onClick={() => void updateGoal("resume")}
+        />
+      )}
+      {canManage && (
+        <ContentMessageAction
+          icon={Trash04}
+          variant="ghost"
+          size="xs"
+          tooltip="Cancel future goal turns"
+          isLoading={pendingAction === "cancel"}
+          disabled={pendingAction !== null}
+          onClick={() => void updateGoal("cancel")}
         />
       )}
     </ContentMessageInline>

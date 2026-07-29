@@ -1779,7 +1779,38 @@ describe("postUserMessage", () => {
       reason: "user_interrupted",
     });
   });
-
+  it("steers an auto-mentioned message when a resumed turn wins the lock", async () => {
+    await FeatureFlagFactory.basic(auth, "goal_mode");
+    const user = auth.getNonNullableUser().toJSON();
+    const runningAgentSpy = vi
+      .spyOn(ConversationResource.prototype, "getRunningAgentMessage")
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        sId: "agent-message-resumed",
+        rank: 0,
+        agentMessageId: 1,
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      });
+    const result = await postUserMessage(auth, {
+      conversationResource,
+      content: "Continue from here",
+      mentions: [],
+      context: {
+        username: user.username,
+        timezone: "UTC",
+        fullName: user.fullName,
+        email: user.email,
+        profilePictureUrl: user.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+    });
+    runningAgentSpy.mockRestore();
+    expect(result).toMatchObject({
+      value: { userMessage: { visibility: "pending" }, agentMessages: [] },
+    });
+    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+  });
   it("rejects goal metadata when Goal Mode is not enabled", async () => {
     const user = auth.getNonNullableUser().toJSON();
 

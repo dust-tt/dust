@@ -6711,8 +6711,8 @@
         }
       },
       "patch": {
-        "summary": "Pause a conversation goal",
-        "description": "Pause automatic continuation for the latest active Goal Mode goal on a conversation branch.",
+        "summary": "Update a conversation goal",
+        "description": "Pause, resume, or cancel the latest Goal Mode goal on a conversation branch. Cancel prevents future goal turns but does not interrupt a turn that is already running.",
         "tags": [
           "Private Conversations"
         ],
@@ -6752,7 +6752,9 @@
                   "action": {
                     "type": "string",
                     "enum": [
-                      "pause"
+                      "pause",
+                      "resume",
+                      "cancel"
                     ]
                   },
                   "branchId": {
@@ -12225,7 +12227,11 @@
               "wakeup",
               "zapier",
               "zendesk",
-              "onboarding_conversation"
+              "onboarding_conversation",
+              "reinforced_skill_notification",
+              "reinforcement",
+              "branch_anchor",
+              "goal_continuation"
             ]
           },
           "selectedSpaceIds": {

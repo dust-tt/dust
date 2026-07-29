@@ -11,6 +11,9 @@ export const GOAL_STATUSES = [
 export const GoalStatusSchema = z.enum(GOAL_STATUSES);
 export type GoalStatus = z.infer<typeof GoalStatusSchema>;
 
+export const GoalUserActionSchema = z.enum(["pause", "resume", "cancel"]);
+export type GoalUserAction = z.infer<typeof GoalUserActionSchema>;
+
 export const GoalCreationSchema = z.object({
   objective: z.string().trim().min(1).max(4_000),
 });

@@ -1,15 +1,18 @@
-import { postUserMessage } from "@app/lib/api/assistant/conversation";
+import {
+  GOAL_RESUME_AGENT_RUNNING_MESSAGE,
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import {
   ConversationGoalResource,
-  type GoalTransitionError,
+  GoalTransitionError,
 } from "@app/lib/resources/conversation_goal_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
-import type { GoalType } from "@app/types/assistant/goal";
-import type { Result } from "@app/types/shared/result";
+import type { GoalType, GoalUserAction } from "@app/types/assistant/goal";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -19,6 +22,7 @@ export type GoalContinuationOutcome =
   | "inactive"
   | "newer_message"
   | "not_succeeded"
+  | "agent_turn_in_progress"
   | "paused";
 
 const GOAL_CONTINUATION_MESSAGE =
@@ -120,16 +124,23 @@ export async function startActiveGoalTurn(
   {
     conversation,
     goal,
+    resumeGoal = false,
   }: {
     conversation: ConversationResource;
     goal: GoalType;
+    resumeGoal?: boolean;
   }
 ): Promise<GoalContinuationOutcome> {
   const activeGoal = await ConversationGoalResource.fetchLatest(auth, {
     conversation,
     branchId: goal.branchId,
   });
-  if (activeGoal?.sId !== goal.sId || activeGoal.status !== "active") {
+  if (
+    activeGoal?.sId !== goal.sId ||
+    (resumeGoal
+      ? activeGoal.status !== "paused" && activeGoal.status !== "blocked"
+      : activeGoal.status !== "active")
+  ) {
     return "paused";
   }
   const expectedCurrentAgentMessageModelId = activeGoal.currentAgentMessageId;
@@ -153,12 +164,20 @@ export async function startActiveGoalTurn(
     skipDustAutoMention: true,
     doNotAssociateUser: true,
     continuationGoal: activeGoal,
+    resumeGoal,
     deferAgentLoopWorkflow: true,
   });
   const latest = await ConversationGoalResource.fetchLatest(auth, {
     conversation,
     branchId: goal.branchId,
   });
+  if (
+    resumeGoal &&
+    result.isErr() &&
+    result.error.api_error.message === GOAL_RESUME_AGENT_RUNNING_MESSAGE
+  ) {
+    return "agent_turn_in_progress";
+  }
   if (
     result.isOk() &&
     result.value.agentMessages.length === 1 &&
@@ -252,18 +271,77 @@ export async function continueActiveGoal(
     : startActiveGoalTurn(auth, { conversation, goal: decision.goal });
 }
 
-export function pauseGoalByUser(
+export async function updateGoalFromUser(
   auth: Authenticator,
   {
     conversation,
     branchId,
+    action,
   }: {
     conversation: ConversationResource;
     branchId: string | null;
+    action: GoalUserAction;
   }
 ): Promise<Result<ConversationGoalResource, GoalTransitionError>> {
-  return ConversationGoalResource.pauseByUser(auth, {
+  if (action === "resume") {
+    const goal = await ConversationGoalResource.fetchLatest(auth, {
+      conversation,
+      branchId,
+    });
+    if (!goal) {
+      return new Err(new GoalTransitionError("goal_not_found"));
+    }
+    if (goal.createdByUserId !== auth.getNonNullableUser().id) {
+      return new Err(new GoalTransitionError("forbidden"));
+    }
+
+    let outcome: GoalContinuationOutcome;
+    switch (goal.status) {
+      case "paused":
+      case "blocked":
+        outcome = await startActiveGoalTurn(auth, {
+          conversation,
+          goal: goal.toJSON(),
+          resumeGoal: true,
+        });
+        break;
+      case "active":
+        outcome =
+          goal.lastAgentMessageId === goal.currentAgentMessageId
+            ? await startActiveGoalTurn(auth, {
+                conversation,
+                goal: goal.toJSON(),
+              })
+            : await ensureCurrentGoalTurn(auth, {
+                conversation,
+                goal: goal.toJSON(),
+              });
+        break;
+      case "completed":
+      case "cancelled":
+        return new Err(new GoalTransitionError("invalid_transition"));
+      default:
+        return assertNever(goal.status);
+    }
+    if (outcome === "agent_turn_in_progress") {
+      return new Err(new GoalTransitionError("agent_turn_in_progress"));
+    }
+    return new Ok(
+      (await ConversationGoalResource.fetchLatest(auth, {
+        conversation,
+        branchId,
+      })) ?? goal
+    );
+  }
+
+  const transition = await ConversationGoalResource.transitionByUser(auth, {
     conversation,
     branchId,
+    action,
   });
+  if (transition.isErr()) {
+    return transition;
+  }
+
+  return transition;
 }

@@ -1,5 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationGoalResource } from "@app/lib/resources/conversation_goal_resource";
+import { ConversationGoalModel } from "@app/lib/models/agent/conversation_goal";
+import {
+  ConversationGoalResource,
+  DEFAULT_GOAL_MAX_TURNS,
+} from "@app/lib/resources/conversation_goal_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -57,7 +61,10 @@ describe("ConversationGoalResource", () => {
     return { message, agentMessageModelId };
   }
 
-  async function createGoal(currentAgentMessageId: string) {
+  async function createGoal(
+    currentAgentMessageId: string,
+    maxTurns = DEFAULT_GOAL_MAX_TURNS
+  ) {
     return withTransaction((transaction) =>
       ConversationGoalResource.makeNew(
         auth,
@@ -67,7 +74,7 @@ describe("ConversationGoalResource", () => {
           branchId: null,
           agentConfigurationId: agent.sId,
           currentAgentMessageId,
-          maxTurns: 25,
+          maxTurns,
         },
         transaction
       )
@@ -188,7 +195,91 @@ describe("ConversationGoalResource", () => {
         conversationBranchId: null,
         agentMessageId: message.sId,
       })
-    ).toEqual({ type: "inactive" });
+    ).toEqual({ type: "already_processed" });
+  });
+
+  it.each([
+    "turn_limit_reached",
+    "paused_by_user",
+    "blocked",
+  ] as const)("extends the safety budget when resuming from %s", async (reason) => {
+    const { message } = await createAgentMessage("succeeded");
+    const goal = await createGoal(message.sId, 1);
+
+    if (reason === "turn_limit_reached") {
+      expect(
+        await ConversationGoalResource.claimContinuation(auth, {
+          conversationId: conversation.sId,
+          conversationBranchId: null,
+          agentMessageId: message.sId,
+        })
+      ).toEqual({ type: "turn_limit_reached" });
+    } else if (reason === "paused_by_user") {
+      expect(
+        (
+          await ConversationGoalResource.transitionByUser(auth, {
+            conversation: conversationResource,
+            branchId: null,
+            action: "pause",
+          })
+        ).isOk()
+      ).toBe(true);
+    } else {
+      await ConversationGoalModel.update(
+        { status: "blocked", reason, terminalAt: new Date() },
+        { where: { id: goal.id } }
+      );
+      expect(
+        await ConversationGoalResource.fetchUnfinished(auth, {
+          conversationModelId: conversation.id,
+          branchId: null,
+        })
+      ).toMatchObject({ id: goal.id, status: "blocked" });
+    }
+
+    const resumed = await withTransaction((transaction) =>
+      goal.lockForResume(auth, {
+        conversation: conversationResource,
+        branchId: null,
+        transaction,
+      })
+    );
+    expect(resumed.isOk()).toBe(true);
+    if (resumed.isOk()) {
+      expect(resumed.value).toMatchObject({
+        status: "active",
+        turnCount: 2,
+        maxTurns: 1 + DEFAULT_GOAL_MAX_TURNS,
+      });
+    }
+  });
+
+  it("does not double-count a failed continuation retry", async () => {
+    const { message } = await createAgentMessage("succeeded");
+    const goal = await createGoal(message.sId);
+    await ConversationGoalResource.claimContinuation(auth, {
+      conversationId: conversation.sId,
+      conversationBranchId: null,
+      agentMessageId: message.sId,
+    });
+    await ConversationGoalResource.pauseForAgentMessage(auth, {
+      conversationId: conversation.sId,
+      conversationBranchId: null,
+      agentMessageId: message.sId,
+      reason: "continuation_failed",
+    });
+
+    const resumed = await withTransaction((transaction) =>
+      goal.lockForResume(auth, {
+        conversation: conversationResource,
+        branchId: null,
+        transaction,
+      })
+    );
+    expect(resumed.isOk()).toBe(true);
+    if (resumed.isOk()) {
+      expect(resumed.value.turnCount).toBe(2);
+    }
   });
 
   it("ignores a delayed failure from an older goal turn", async () => {

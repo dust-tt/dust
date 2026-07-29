@@ -5,12 +5,14 @@ import {
 } from "@app/lib/resources/conversation_goal_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import type { GoalUserAction } from "@app/types/assistant/goal";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/temporal/agent_loop/client", () => ({
   launchAgentLoopWorkflow: vi.fn(),
@@ -47,6 +49,7 @@ function getGoal(
 function patchGoal(
   workspaceId: string,
   conversationId: string,
+  action: GoalUserAction,
   branchId?: string
 ) {
   return honoApp.request(
@@ -54,12 +57,16 @@ function patchGoal(
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "pause", branchId }),
+      body: JSON.stringify({ action, branchId }),
     }
   );
 }
 
 describe("conversation goal API", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("is gated by the Goal Mode feature flag", async () => {
     const { workspace, conversation } = await setupTest(false);
     const response = await getGoal(workspace.sId, conversation.sId);
@@ -74,6 +81,10 @@ describe("conversation goal API", () => {
       rank: 0,
       agentConfigurationId: agent.sId,
     });
+    const agentMessageModelId = message.agentMessageId;
+    if (agentMessageModelId === null) {
+      throw new Error("Agent message not found");
+    }
     const conversationResource = await ConversationResource.fetchById(
       auth,
       conversation.sId
@@ -106,11 +117,70 @@ describe("conversation goal API", () => {
       },
     });
 
-    const paused = await patchGoal(workspace.sId, conversation.sId);
+    const paused = await patchGoal(workspace.sId, conversation.sId, "pause");
     expect(paused.status).toBe(200);
     expect((await paused.json()).goal).toMatchObject({
       status: "paused",
       reason: "paused_by_user",
+    });
+
+    const runningAgentSpy = vi
+      .spyOn(ConversationResource.prototype, "getRunningAgentMessage")
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        sId: message.sId,
+        rank: message.rank,
+        agentMessageId: agentMessageModelId,
+        agentConfigurationId: agent.sId,
+      });
+    const racedResume = await patchGoal(
+      workspace.sId,
+      conversation.sId,
+      "resume"
+    );
+    runningAgentSpy.mockRestore();
+    expect(racedResume.status).toBe(409);
+    expect(
+      await ConversationGoalResource.fetchLatest(auth, {
+        conversation: conversationResource,
+      })
+    ).toMatchObject({ status: "paused", turnCount: 1 });
+
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId,
+      status: "succeeded",
+    });
+    const resumed = await patchGoal(workspace.sId, conversation.sId, "resume");
+    expect(resumed.status).toBe(200);
+    expect((await resumed.json()).goal).toMatchObject({
+      status: "active",
+      turnCount: 2,
+    });
+    const resumedGoal = await ConversationGoalResource.fetchLatest(auth, {
+      conversation: conversationResource,
+    });
+    expect(resumedGoal?.currentAgentMessageId).not.toBe(agentMessageModelId);
+    expect(launchAgentLoopWorkflow).toHaveBeenCalledOnce();
+
+    vi.mocked(launchAgentLoopWorkflow).mockClear();
+    const retriedResume = await patchGoal(
+      workspace.sId,
+      conversation.sId,
+      "resume"
+    );
+    expect(retriedResume.status).toBe(200);
+    expect(launchAgentLoopWorkflow).toHaveBeenCalledOnce();
+
+    const cancelled = await patchGoal(
+      workspace.sId,
+      conversation.sId,
+      "cancel"
+    );
+    expect(cancelled.status).toBe(200);
+    expect((await cancelled.json()).goal).toMatchObject({
+      status: "cancelled",
+      reason: "cancelled_by_user",
     });
 
     await createPrivateApiMockRequest({
@@ -119,7 +189,9 @@ describe("conversation goal API", () => {
     });
     const nonOwnerView = await getGoal(workspace.sId, conversation.sId);
     expect((await nonOwnerView.json()).canManage).toBe(false);
-    expect((await patchGoal(workspace.sId, conversation.sId)).status).toBe(403);
+    expect(
+      (await patchGoal(workspace.sId, conversation.sId, "cancel")).status
+    ).toBe(403);
   });
 
   it("returns a branch goal and rejects a branch from another conversation", async () => {
@@ -168,7 +240,12 @@ describe("conversation goal API", () => {
     const response = await getGoal(workspace.sId, conversation.sId, branch.sId);
     expect(response.status).toBe(200);
     expect((await response.json()).goal.objective).toBe("Finish the branch");
-    const paused = await patchGoal(workspace.sId, conversation.sId, branch.sId);
+    const paused = await patchGoal(
+      workspace.sId,
+      conversation.sId,
+      "pause",
+      branch.sId
+    );
     expect(paused.status).toBe(200);
     expect((await paused.json()).goal.status).toBe("paused");
 

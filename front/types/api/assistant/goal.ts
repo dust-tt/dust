@@ -1,4 +1,4 @@
-import { GoalSchema } from "@app/types/assistant/goal";
+import { GoalSchema, GoalUserActionSchema } from "@app/types/assistant/goal";
 import { z } from "zod";
 
 export const GoalBranchSchema = z.object({
@@ -14,7 +14,7 @@ export type GetConversationGoalResponseBody = z.infer<
 >;
 
 export const PatchConversationGoalRequestBodySchema = GoalBranchSchema.extend({
-  action: z.literal("pause"),
+  action: GoalUserActionSchema,
 });
 
 export const PatchConversationGoalResponseBodySchema = z.object({

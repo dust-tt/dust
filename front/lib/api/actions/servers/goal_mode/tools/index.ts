@@ -54,6 +54,10 @@ const handlers: ToolHandlers<typeof GOAL_MODE_TOOLS_METADATA> = {
           return new Err(
             new MCPError("Only the user who created this goal can manage it.")
           );
+        case "agent_turn_in_progress":
+          return new Err(
+            new MCPError("The current goal turn is still running.")
+          );
         default:
           return assertNever(result.error.type);
       }

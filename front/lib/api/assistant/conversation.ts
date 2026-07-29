@@ -181,6 +181,8 @@ import { col } from "sequelize";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
+export const GOAL_RESUME_AGENT_RUNNING_MESSAGE =
+  "Wait for the current agent turn to finish before resuming this goal.";
 
 // Concurrency limits for pool-credit workspaces based on pool credit state.
 // Prevents close-to-0 attacks where many requests are sent simultaneously
@@ -541,6 +543,7 @@ export async function postUserMessage(
     modelSelection,
     goal,
     continuationGoal,
+    resumeGoal,
     deferAgentLoopWorkflow,
   }: {
     conversationResource: ConversationResource;
@@ -555,6 +558,7 @@ export async function postUserMessage(
     modelSelection?: ModelSelectionType;
     goal?: GoalCreation;
     continuationGoal?: ConversationGoalResource;
+    resumeGoal?: boolean;
     deferAgentLoopWorkflow?: boolean;
   }
 ): Promise<
@@ -635,8 +639,8 @@ export async function postUserMessage(
     }
   }
 
-  // Snapshot user-explicit agent mentions before any auto-injection. Steering and
-  // visibility decisions downstream depend on user intent, not on server-injected mentions.
+  // Snapshot user-explicit agent mentions before any auto-injection. Agent
+  // switching validation depends on user intent, not server-injected mentions.
   const explicitAgentMentions = mentions.filter(isAgentMention);
 
   // Auto-inject @dust for mention-less web/extension messages in single-user conversations.
@@ -878,14 +882,37 @@ export async function postUserMessage(
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
 
-    if (
-      continuationGoal &&
-      !(await continuationGoal.lockForContinuation(auth, {
-        conversation: conversationResource,
-        branchId: conversation.branchId,
-        transaction: t,
-      }))
-    ) {
+    if (resumeGoal) {
+      const lockedRunningAgentMessage =
+        await conversationResource.getRunningAgentMessage(auth, {
+          branchId: conversation.branchId,
+          transaction: t,
+        });
+      if (lockedRunningAgentMessage) {
+        return { continuationInFlight: true as const };
+      }
+    }
+
+    if (continuationGoal) {
+      const continuationLock = resumeGoal
+        ? await continuationGoal.lockForResume(auth, {
+            conversation: conversationResource,
+            branchId: conversation.branchId,
+            transaction: t,
+          })
+        : await continuationGoal.lockForContinuation(auth, {
+            conversation: conversationResource,
+            branchId: conversation.branchId,
+            transaction: t,
+          });
+      if (
+        typeof continuationLock === "boolean"
+          ? !continuationLock
+          : continuationLock.isErr()
+      ) {
+        return { continuationConflict: true as const };
+      }
+    } else if (resumeGoal) {
       return { continuationConflict: true as const };
     }
 
@@ -1028,21 +1055,14 @@ export async function postUserMessage(
       authMethod: auth.authMethod(),
     };
 
-    // Re-read the agent message status inside the critical section of the advisory lock. Between
-    // the initial check and acquiring the lock, the agent loop may have finalized — if so, clear
-    // runningAgentMessage so we fall through to the normal flow.
-    if (runningAgentMessage) {
-      const agentMessageRow = await AgentMessageModel.findOne({
-        where: {
-          id: runningAgentMessage.agentMessageId,
-          workspaceId: owner.id,
-        },
-        transaction: t,
-      });
-
-      if (agentMessageRow?.status !== "created") {
-        runningAgentMessage = undefined;
-      }
+    // Re-read under the message lock when steering or Goal Mode can start a
+    // competing turn. This closes the gap between the preflight and the lock.
+    if (runningAgentMessage || featureFlags.includes("goal_mode")) {
+      runningAgentMessage =
+        (await conversationResource.getRunningAgentMessage(auth, {
+          branchId: conversation.branchId,
+          transaction: t,
+        })) ?? undefined;
     }
 
     // We set the visibility of the user message to "pending" if steering is enabled, we have a
@@ -1050,7 +1070,11 @@ export async function postUserMessage(
     // over we don't attempt steering as the intent is to start a new agentic loop and stop the
     // parent one ASAP.
     const visibility: MessageVisibility =
-      runningAgentMessage && explicitAgentMentions.length > 0 && !isHandover
+      runningAgentMessage &&
+      (explicitAgentMentions.length > 0 ||
+        (featureFlags.includes("goal_mode") &&
+          mentions.some(isAgentMention))) &&
+      !isHandover
         ? "pending"
         : "visible";
 
@@ -1187,6 +1211,16 @@ export async function postUserMessage(
       api_error: {
         type: "invalid_request_error",
         message: "This goal continuation was already claimed by another turn.",
+      },
+    });
+  }
+
+  if ("continuationInFlight" in transactionResult) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message: GOAL_RESUME_AGENT_RUNNING_MESSAGE,
       },
     });
   }

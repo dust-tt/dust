@@ -1,4 +1,4 @@
-import { pauseGoalByUser } from "@app/lib/api/assistant/goal_mode";
+import { updateGoalFromUser } from "@app/lib/api/assistant/goal_mode";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import {
@@ -68,6 +68,15 @@ function apiErrorForTransition(
           message: "This goal cannot perform the requested transition.",
         },
       });
+    case "agent_turn_in_progress":
+      return apiError(ctx, {
+        status_code: 409,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Wait for the current agent turn to finish before resuming this goal.",
+        },
+      });
     default:
       return assertNever(error.type);
   }
@@ -118,8 +127,8 @@ function apiErrorForTransition(
  *       403:
  *         description: Goal Mode is not enabled for the workspace.
  *   patch:
- *     summary: Pause a conversation goal
- *     description: Pause automatic continuation for the latest active Goal Mode goal on a conversation branch.
+ *     summary: Update a conversation goal
+ *     description: Pause, resume, or cancel the latest Goal Mode goal on a conversation branch. Cancel prevents future goal turns but does not interrupt a turn that is already running.
  *     tags:
  *       - Private Conversations
  *     parameters:
@@ -145,7 +154,7 @@ function apiErrorForTransition(
  *             properties:
  *               action:
  *                 type: string
- *                 enum: [pause]
+ *                 enum: [pause, resume, cancel]
  *               branchId:
  *                 type: string
  *                 nullable: true
@@ -216,7 +225,7 @@ app.patch(
   async (ctx): HandlerResult<PatchConversationGoalResponseBody> => {
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
-    const { branchId: requestedBranchId } = ctx.req.valid("json");
+    const { action, branchId: requestedBranchId } = ctx.req.valid("json");
     const branchId = requestedBranchId ?? null;
 
     if (!(await hasFeatureFlag(auth, "goal_mode"))) {
@@ -240,9 +249,10 @@ app.patch(
       });
     }
 
-    const result = await pauseGoalByUser(auth, {
+    const result = await updateGoalFromUser(auth, {
       conversation,
       branchId,
+      action,
     });
     if (result.isErr()) {
       return apiErrorForTransition(ctx, result.error);
