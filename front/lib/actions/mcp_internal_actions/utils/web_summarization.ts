@@ -109,7 +109,7 @@ export function getModelConfigForWebSummarization(auth: Authenticator): {
   if (luna) {
     return {
       modelConfiguration: luna,
-      reasoningEffort: "medium",
+      reasoningEffort: "light",
     };
   }
 
