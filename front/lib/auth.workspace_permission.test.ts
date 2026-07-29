@@ -137,7 +137,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
     expect(await adminAuth.getWorkspacePermissions()).toEqual({
       ...emptyWorkspacePermissions(),
       agent: ["create", "publish"],
-      skill: ["create", "publish"],
+      skill: ["create", "publish", "make_discoverable"],
       frame: ["invite", "publish"],
       billing: ["admin"],
       security: ["admin"],
