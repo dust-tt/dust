@@ -24,8 +24,10 @@ process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
 
 export async function createSandboxTokenTestContext({
   disableComputerFeature = false,
+  useProjectSpaceForConversation = false,
 }: {
   disableComputerFeature?: boolean;
+  useProjectSpaceForConversation?: boolean;
 } = {}) {
   const user = await UserFactory.basic();
   const workspace = await WorkspaceFactory.basic();
@@ -36,6 +38,9 @@ export async function createSandboxTokenTestContext({
     workspace.sId
   );
   const { globalSpace } = await SpaceFactory.defaults(auth);
+  const conversationSpace = useProjectSpaceForConversation
+    ? await SpaceFactory.project(workspace, user.id)
+    : globalSpace;
 
   if (disableComputerFeature) {
     await FeatureFlagFactory.basic(auth, "disable_computer_feature");
@@ -47,7 +52,7 @@ export async function createSandboxTokenTestContext({
   const conversation = await ConversationFactory.create(auth, {
     agentConfigurationId: agentConfig.sId,
     messagesCreatedAt: [new Date()],
-    requestedSpaceIds: [globalSpace.id],
+    requestedSpaceIds: [conversationSpace.id],
   });
   const sandbox = await SandboxFactory.create(auth, conversation);
 

@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import type {
+  SandboxExecTokenPayload,
   SandboxFunctionInvocationTokenPayload,
   SandboxTokenPayload,
 } from "@app/lib/api/sandbox/access_tokens";
@@ -12,6 +13,7 @@ import {
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
@@ -600,9 +602,9 @@ export class Authenticator {
     const groupModelIdSets: ModelId[][] = [];
     if (isSandboxExecTokenPayload(claims)) {
       groupModelIdSets.push(
-        await this.restrictGroupsToConversationSpaces(
+        await this.restrictGroupsToSandboxExecSpaces(
           baseGroupModelIds,
-          claims.cId,
+          claims,
           workspace.id
         )
       );
@@ -668,29 +670,50 @@ export class Authenticator {
   }
 
   /**
-   * Given a user's full group IDs, restricts them to only the groups associated
-   * with the conversation's requested spaces. Falls back to the full set if the
-   * conversation is not found or has no requested spaces.
+   * Given a user's full group IDs, restricts them to the groups associated with
+   * the conversation and the agent's requested spaces. The agent can use tools
+   * backed by spaces that are not explicitly selected on the conversation.
+   *
+   * Falls back to the full set if the conversation is not found or has no
+   * requested spaces, preserving the existing behavior for legacy conversations.
    */
-  private static async restrictGroupsToConversationSpaces(
+  private static async restrictGroupsToSandboxExecSpaces(
     userGroupIds: ModelId[],
-    conversationId: string,
+    claims: SandboxExecTokenPayload,
     workspaceId: ModelId
   ): Promise<ModelId[]> {
-    const requestedSpaceIds =
-      await this.fetchRequestedSpaceIdsForSandboxTokenAuth({
-        workspaceId,
-        conversationId,
-      });
+    const [conversationRequestedSpaceIds, agentConfiguration] =
+      await Promise.all([
+        this.fetchRequestedSpaceIdsForSandboxTokenAuth({
+          workspaceId,
+          conversationId: claims.cId,
+        }),
+        AgentConfigurationModel.findOne({
+          where: {
+            sId: claims.aId,
+            workspaceId,
+          },
+          attributes: ["requestedSpaceIds"],
+          order: [["version", "DESC"]],
+        }),
+      ]);
 
-    if (requestedSpaceIds === null || requestedSpaceIds.length === 0) {
+    if (
+      conversationRequestedSpaceIds === null ||
+      conversationRequestedSpaceIds.length === 0
+    ) {
       return userGroupIds;
+    }
+
+    const requestedSpaceIds = new Set(conversationRequestedSpaceIds);
+    for (const spaceId of agentConfiguration?.requestedSpaceIds ?? []) {
+      requestedSpaceIds.add(spaceId);
     }
 
     const spaceGroups = await GroupSpaceModel.findAll({
       where: {
-        vaultId: requestedSpaceIds,
-        workspaceId: workspaceId,
+        vaultId: [...requestedSpaceIds],
+        workspaceId,
       },
       attributes: ["groupId"],
     });
