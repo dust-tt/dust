@@ -46,6 +46,7 @@ export async function createSandboxChildAction(
   {
     parentActionId,
     agentId,
+    agentVersion,
     conversationId,
     agentMessageId,
     serverViewId,
@@ -54,6 +55,7 @@ export async function createSandboxChildAction(
   }: {
     parentActionId: string;
     agentId: string;
+    agentVersion: number;
     conversationId: string;
     agentMessageId: string;
     serverViewId: string;
@@ -68,6 +70,7 @@ export async function createSandboxChildAction(
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId,
+    agentVersion,
     variant: "full",
   });
   if (!agentConfiguration) {

@@ -105,11 +105,12 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
       },
     });
   }
-  const { aId: agentId, cId } = claims;
+  const { aId: agentId, aV: agentVersion, cId } = claims;
 
   // Fetch agent accessible servers.
   const agentConfig = await getAgentConfiguration(auth, {
     agentId,
+    agentVersion,
     variant: "full",
   });
   if (!agentConfig) {

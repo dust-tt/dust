@@ -89,6 +89,7 @@ export class AgentConfigurationFactory {
       description: string;
       instructions: string;
       instructionsHtml: string | null;
+      requestedSpaceIds: ModelId[];
     }> = {}
   ): Promise<AgentConfigurationType> {
     const user = auth.user();
@@ -108,11 +109,11 @@ export class AgentConfigurationFactory {
         temperature: 0.7,
       },
       templateId: null,
-      requestedSpaceIds: [],
       tags: [],
       editors: [user.toJSON()],
       authorId: user.id,
       agentConfigurationId: agentId,
+      requestedSpaceIds: overrides.requestedSpaceIds ?? [],
     });
 
     if (result.isErr()) {

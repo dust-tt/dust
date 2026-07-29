@@ -9,10 +9,13 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -41,14 +44,41 @@ export async function createSandboxTokenTestContext({
   const conversationSpace = usePodSpaceForConversation
     ? await SpaceFactory.project(workspace, user.id)
     : globalSpace;
+  const agentSpace = usePodSpaceForConversation
+    ? await SpaceFactory.regular(workspace)
+    : globalSpace;
+
+  if (usePodSpaceForConversation) {
+    const addMemberResult = await agentSpace.addMembers(auth, {
+      userIds: [user.sId],
+    });
+    if (addMemberResult.isErr()) {
+      throw addMemberResult.error;
+    }
+  }
 
   if (disableComputerFeature) {
     await FeatureFlagFactory.basic(auth, "disable_computer_feature");
   }
 
   const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
-    requestedSpaceIds: [globalSpace.id],
+    requestedSpaceIds: [agentSpace.id],
   });
+  let agentServerView = null;
+  if (usePodSpaceForConversation) {
+    const agentServer = await RemoteMCPServerFactory.create(workspace, {
+      name: "agent_space_server",
+    });
+    agentServerView = await MCPServerViewFactory.create(
+      workspace,
+      agentServer.sId,
+      agentSpace
+    );
+    await AgentMCPServerConfigurationFactory.create(auth, agentSpace, {
+      agent: agentConfig,
+      mcpServerView: agentServerView,
+    });
+  }
   const conversation = await ConversationFactory.create(auth, {
     agentConfigurationId: agentConfig.sId,
     messagesCreatedAt: [new Date()],
@@ -109,6 +139,8 @@ export async function createSandboxTokenTestContext({
     auth,
     workspace,
     globalSpace,
+    agentSpace,
+    agentServerView,
     agentConfig,
     conversation,
     sandbox,

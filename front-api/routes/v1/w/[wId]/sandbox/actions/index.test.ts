@@ -1,10 +1,13 @@
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import {
   createSandboxFunctionInvocationTokenTestContext,
   createSandboxTokenTestContext,
 } from "@app/tests/utils/SandboxTokenFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
@@ -31,15 +34,66 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
   });
 
   it("returns server views when the agent and conversation use different spaces", async () => {
-    const { token, workspace } = await createSandboxTokenTestContext({
-      usePodSpaceForConversation: true,
+    const { agentServerView, token, workspace } =
+      await createSandboxTokenTestContext({
+        usePodSpaceForConversation: true,
+      });
+    expect(agentServerView).not.toBeNull();
+
+    const response = await getSandboxActions(workspace, token);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(
+      body.serverViews.map((serverView: { sId: string }) => serverView.sId)
+    ).toContain(agentServerView?.sId);
+  });
+
+  it("does not expose tools added to a later agent version", async () => {
+    const { agentConfig, agentServerView, auth, token, workspace } =
+      await createSandboxTokenTestContext({
+        usePodSpaceForConversation: true,
+      });
+    expect(agentServerView).not.toBeNull();
+
+    const laterSpace = await SpaceFactory.regular(workspace);
+    const addMemberResult = await laterSpace.addMembers(auth, {
+      userIds: [auth.getNonNullableUser().sId],
+    });
+    if (addMemberResult.isErr()) {
+      throw addMemberResult.error;
+    }
+    await auth.refresh();
+
+    const laterAgentConfig = await AgentConfigurationFactory.updateTestAgent(
+      auth,
+      agentConfig.sId,
+      {
+        requestedSpaceIds: [laterSpace.id],
+      }
+    );
+    const laterServer = await RemoteMCPServerFactory.create(workspace, {
+      name: "later_agent_space_server",
+    });
+    const laterServerView = await MCPServerViewFactory.create(
+      workspace,
+      laterServer.sId,
+      laterSpace
+    );
+    await AgentMCPServerConfigurationFactory.create(auth, laterSpace, {
+      agent: laterAgentConfig,
+      mcpServerView: laterServerView,
     });
 
     const response = await getSandboxActions(workspace, token);
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.serverViews.length).toBeGreaterThan(0);
+    const serverViewIds = body.serverViews.map(
+      (serverView: { sId: string }) => serverView.sId
+    );
+    expect(serverViewIds).toContain(agentServerView?.sId);
+    expect(serverViewIds).not.toContain(laterServerView.sId);
   });
 
   it("returns 403 when Computer is disabled", async () => {
