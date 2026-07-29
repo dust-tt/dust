@@ -3,6 +3,7 @@ import { loadAllModels } from "@app/admin/db";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -825,22 +826,20 @@ describe("destroyConversation", () => {
       },
     });
 
-    await AgentMessageConsumptionItemResource.insertItemsIdempotently(auth, {
-      conversationModelId: conversation.id,
-      agentMessageModelId: agentMessageId,
+    await AgentMessageConsumptionItemModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      conversationId: conversation.id,
+      agentMessageId,
+      runUsageId: null,
+      agentMCPActionId: action.id,
+      itemKey: `tool-action:${action.id}`,
+      itemType: "tool",
       attributionVersion: 1,
-      records: [
-        {
-          itemType: "tool",
-          runUsageModelId: null,
-          agentMCPActionModelId: action.id,
-          inputTokensCount: null,
-          outputTokensCount: null,
-          grossAttributedCreditAmountMicro: 0,
-          directCreditAmountMicro: null,
-          state: "pending",
-        },
-      ],
+      inputTokensCount: null,
+      outputTokensCount: null,
+      grossAttributedCreditAmountMicro: 0,
+      directCreditAmountMicro: null,
+      completedAt: null,
     });
 
     const result = await destroyConversation(auth, { conversation });

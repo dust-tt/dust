@@ -1,7 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { RunUsageModel } from "@app/lib/resources/storage/models/runs";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -62,9 +64,16 @@ async function setupMessageWithEvidence(
     conversationModelId: conversation.id,
     agentMessageModelId: agentMessage.agentMessageId,
   });
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversation.sId
+  );
+  if (!conversationResource) {
+    throw new Error("Conversation not found");
+  }
 
   return {
-    conversationModelId: conversation.id,
+    conversation: conversationResource,
     agentMessageModelId: agentMessage.agentMessageId,
     runUsageModelId: runUsage.id,
     action,
@@ -72,6 +81,31 @@ async function setupMessageWithEvidence(
 }
 
 describe("AgentMessageConsumptionItemResource", () => {
+  it("rejects pending non-tool items", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const context = await setupMessageWithEvidence(auth, workspace);
+
+    const item = AgentMessageConsumptionItemModel.build({
+      workspaceId: workspace.id,
+      conversationId: context.conversation.id,
+      agentMessageId: context.agentMessageModelId,
+      runUsageId: context.runUsageModelId,
+      agentMCPActionId: null,
+      itemKey: `run-usage:${context.runUsageModelId}:input`,
+      itemType: "input",
+      attributionVersion: 1,
+      inputTokensCount: 100,
+      outputTokensCount: null,
+      grossAttributedCreditAmountMicro: 300_000,
+      directCreditAmountMicro: null,
+      completedAt: null,
+    });
+
+    await expect(item.validate()).rejects.toThrow(
+      "Only tool attribution items may be pending"
+    );
+  });
+
   it("keeps the first completed facts when insertion is retried", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const context = await setupMessageWithEvidence(auth, workspace);
@@ -81,33 +115,39 @@ describe("AgentMessageConsumptionItemResource", () => {
         runUsageModelId: context.runUsageModelId,
         inputTokensCount: 100,
         grossAttributedCreditAmountMicro: 300_000,
-        state: "completed" as const,
       },
       {
         itemType: "tool" as const,
         runUsageModelId: context.runUsageModelId,
-        agentMCPActionModelId: context.action.id,
+        action: context.action,
         inputTokensCount: 40,
         outputTokensCount: 12,
         grossAttributedCreditAmountMicro: 2_000_000,
         directCreditAmountMicro: 1_000_000,
-        state: "completed" as const,
       },
     ];
 
-    await AgentMessageConsumptionItemResource.insertItemsIdempotently(auth, {
-      ...context,
-      attributionVersion: 1,
-      records,
-    });
-    await AgentMessageConsumptionItemResource.insertItemsIdempotently(auth, {
-      ...context,
-      attributionVersion: 1,
-      records: [
-        { ...records[0], inputTokensCount: 101 },
-        { ...records[1], inputTokensCount: 41 },
-      ],
-    });
+    await AgentMessageConsumptionItemResource.insertCompletedItemsIdempotently(
+      auth,
+      {
+        conversation: context.conversation,
+        agentMessageModelId: context.agentMessageModelId,
+        attributionVersion: 1,
+        records,
+      }
+    );
+    await AgentMessageConsumptionItemResource.insertCompletedItemsIdempotently(
+      auth,
+      {
+        conversation: context.conversation,
+        agentMessageModelId: context.agentMessageModelId,
+        attributionVersion: 1,
+        records: [
+          { ...records[0], inputTokensCount: 101 },
+          { ...records[1], inputTokensCount: 41 },
+        ],
+      }
+    );
 
     const items =
       await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
@@ -117,147 +157,77 @@ describe("AgentMessageConsumptionItemResource", () => {
           attributionVersion: 1,
         }
       );
-    expect(items).toHaveLength(2);
     expect(items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           itemKey: `run-usage:${context.runUsageModelId}:input`,
-          itemType: "input",
           inputTokensCount: 100,
         }),
         expect.objectContaining({
           itemKey: `tool-action:${context.action.id}`,
-          itemType: "tool",
           inputTokensCount: 40,
           outputTokensCount: 12,
           directCreditAmountMicro: 1_000_000,
         }),
       ])
     );
+    expect(items).toHaveLength(2);
     expect(items.every((item) => item.completedAt !== null)).toBe(true);
   });
 
-  it("completes an approval-spanning fact without rewriting completed evidence", async () => {
+  it("completes an approval-spanning tool once", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const context = await setupMessageWithEvidence(auth, workspace);
-    await AgentMessageConsumptionItemResource.insertItemsIdempotently(auth, {
-      ...context,
-      agentMessageModelId: context.agentMessageModelId,
-      attributionVersion: 1,
-      records: [
-        {
-          itemType: "tool",
-          runUsageModelId: context.runUsageModelId,
-          agentMCPActionModelId: context.action.id,
-          inputTokensCount: null,
+
+    await AgentMessageConsumptionItemResource.insertPendingToolItemIdempotently(
+      auth,
+      {
+        conversation: context.conversation,
+        attributionVersion: 1,
+        item: {
+          action: context.action,
+          runUsageModelId: null,
           outputTokensCount: 12,
           grossAttributedCreditAmountMicro: 400_000,
-          directCreditAmountMicro: null,
-          state: "pending",
         },
-      ],
-    });
-    const [pending] =
-      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
-        auth,
-        {
-          agentMessageModelIds: [context.agentMessageModelId],
-          attributionVersion: 1,
-        }
-      );
-    expect(pending).toMatchObject({
-      inputTokensCount: null,
-      outputTokensCount: 12,
-      grossAttributedCreditAmountMicro: 400_000,
-      completedAt: null,
-    });
+      }
+    );
 
-    const finalRecord = {
-      itemType: "tool" as const,
+    const completedItem = {
+      action: context.action,
       runUsageModelId: context.runUsageModelId,
-      agentMCPActionModelId: context.action.id,
       inputTokensCount: 40,
       outputTokensCount: 12,
       grossAttributedCreditAmountMicro: 2_000_000,
       directCreditAmountMicro: 1_000_000,
-      state: "completed" as const,
     };
-    await AgentMessageConsumptionItemResource.completeItemsIdempotently(auth, {
-      ...context,
-      attributionVersion: 1,
-      records: [finalRecord],
-    });
-    const [completed] =
-      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
-        auth,
-        {
-          agentMessageModelIds: [context.agentMessageModelId],
-          attributionVersion: 1,
-        }
-      );
-    expect(completed).toMatchObject({
-      inputTokensCount: 40,
-      outputTokensCount: 12,
-      grossAttributedCreditAmountMicro: 2_000_000,
-      directCreditAmountMicro: 1_000_000,
-    });
-    expect(completed.completedAt).not.toBeNull();
-
-    await AgentMessageConsumptionItemResource.completeItemsIdempotently(auth, {
-      ...context,
-      attributionVersion: 1,
-      records: [{ ...finalRecord, inputTokensCount: 41 }],
-    });
-    await AgentMessageConsumptionItemResource.insertItemsIdempotently(auth, {
-      ...context,
-      attributionVersion: 1,
-      records: [
-        {
-          ...finalRecord,
-          inputTokensCount: null,
-          grossAttributedCreditAmountMicro: 400_000,
-          directCreditAmountMicro: null,
-          state: "pending",
-        },
-      ],
-    });
-
-    const [unchanged] =
-      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
-        auth,
-        {
-          agentMessageModelIds: [context.agentMessageModelId],
-          attributionVersion: 1,
-        }
-      );
-    expect(unchanged).toMatchObject({
-      id: completed.id,
-      inputTokensCount: 40,
-      grossAttributedCreditAmountMicro: 2_000_000,
-      directCreditAmountMicro: 1_000_000,
-    });
-  });
-
-  it("inserts a completed fact when no pending row exists", async () => {
-    const { authenticator: auth, workspace } = await createResourceTest({});
-    const context = await setupMessageWithEvidence(auth, workspace);
-
-    await AgentMessageConsumptionItemResource.completeItemsIdempotently(auth, {
-      ...context,
-      attributionVersion: 1,
-      records: [
-        {
-          itemType: "tool",
+    await AgentMessageConsumptionItemResource.completePendingToolItemIdempotently(
+      auth,
+      {
+        attributionVersion: 1,
+        item: completedItem,
+      }
+    );
+    await AgentMessageConsumptionItemResource.completePendingToolItemIdempotently(
+      auth,
+      {
+        attributionVersion: 1,
+        item: { ...completedItem, inputTokensCount: 41 },
+      }
+    );
+    await AgentMessageConsumptionItemResource.insertPendingToolItemIdempotently(
+      auth,
+      {
+        conversation: context.conversation,
+        attributionVersion: 1,
+        item: {
+          action: context.action,
           runUsageModelId: context.runUsageModelId,
-          agentMCPActionModelId: context.action.id,
-          inputTokensCount: 40,
           outputTokensCount: 12,
-          grossAttributedCreditAmountMicro: 2_000_000,
-          directCreditAmountMicro: 1_000_000,
-          state: "completed",
+          grossAttributedCreditAmountMicro: 400_000,
         },
-      ],
-    });
+      }
+    );
 
     await expect(
       AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
@@ -267,11 +237,41 @@ describe("AgentMessageConsumptionItemResource", () => {
     ).resolves.toEqual([
       expect.objectContaining({
         itemKey: `tool-action:${context.action.id}`,
+        runUsageId: context.runUsageModelId,
         inputTokensCount: 40,
         outputTokensCount: 12,
+        grossAttributedCreditAmountMicro: 2_000_000,
+        directCreditAmountMicro: 1_000_000,
         completedAt: expect.any(Date),
       }),
     ]);
+  });
+
+  it("does not create a tool fact when no pending fact exists", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const context = await setupMessageWithEvidence(auth, workspace);
+
+    await AgentMessageConsumptionItemResource.completePendingToolItemIdempotently(
+      auth,
+      {
+        attributionVersion: 1,
+        item: {
+          action: context.action,
+          runUsageModelId: context.runUsageModelId,
+          inputTokensCount: 40,
+          outputTokensCount: 12,
+          grossAttributedCreditAmountMicro: 2_000_000,
+          directCreditAmountMicro: 1_000_000,
+        },
+      }
+    );
+
+    await expect(
+      AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+        agentMessageModelIds: [context.agentMessageModelId],
+        attributionVersion: 1,
+      })
+    ).resolves.toHaveLength(0);
   });
 
   it("deletes facts only for the requested owning messages", async () => {
@@ -280,36 +280,31 @@ describe("AgentMessageConsumptionItemResource", () => {
     const second = await setupMessageWithEvidence(auth, workspace);
 
     async function createToolFact(context: {
-      conversationModelId: ModelId;
+      conversation: ConversationResource;
       agentMessageModelId: ModelId;
       runUsageModelId: ModelId;
       action: AgentMCPActionResource;
     }) {
-      await AgentMessageConsumptionItemResource.insertItemsIdempotently(auth, {
-        ...context,
-        attributionVersion: 1,
-        records: [
-          {
-            itemType: "tool",
+      await AgentMessageConsumptionItemResource.insertPendingToolItemIdempotently(
+        auth,
+        {
+          conversation: context.conversation,
+          attributionVersion: 1,
+          item: {
+            action: context.action,
             runUsageModelId: context.runUsageModelId,
-            agentMCPActionModelId: context.action.id,
-            inputTokensCount: null,
             outputTokensCount: 12,
             grossAttributedCreditAmountMicro: 400_000,
-            directCreditAmountMicro: null,
-            state: "pending",
           },
-        ],
-      });
+        }
+      );
     }
     await createToolFact(first);
     await createToolFact(second);
 
     await AgentMessageConsumptionItemResource.deleteByAgentMessageModelIds(
       auth,
-      {
-        agentMessageModelIds: [first.agentMessageModelId],
-      }
+      { agentMessageModelIds: [first.agentMessageModelId] }
     );
 
     await expect(

@@ -31,6 +31,9 @@ function validateConsumptionItemShape(
   if (!isTool && this.directCreditAmountMicro !== null) {
     throw new Error("Only tool attribution items may contain direct credits");
   }
+  if (!isTool && this.completedAt === null) {
+    throw new Error("Only tool attribution items may be pending");
+  }
   if (
     this.directCreditAmountMicro !== null &&
     this.grossAttributedCreditAmountMicro < this.directCreditAmountMicro

@@ -1,7 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -9,40 +10,45 @@ import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op, QueryTypes } from "sequelize";
+import { Op } from "sequelize";
 
-type ConsumptionItemState = "pending" | "completed";
-
-interface ConsumptionItemEvidenceBase<
-  TState extends ConsumptionItemState = ConsumptionItemState,
-> {
+interface ConsumptionItemEvidenceBase {
   grossAttributedCreditAmountMicro: number;
-  state: TState;
 }
 
-export type AgentMessageConsumptionItemRecord<
-  TState extends ConsumptionItemState = ConsumptionItemState,
-> =
-  | (ConsumptionItemEvidenceBase<TState> & {
+export type CompletedAgentMessageConsumptionItem =
+  | (ConsumptionItemEvidenceBase & {
       itemType: "system" | "input";
       runUsageModelId: ModelId;
       inputTokensCount: number | null;
     })
-  | (ConsumptionItemEvidenceBase<TState> & {
+  | (ConsumptionItemEvidenceBase & {
       itemType: "output" | "reasoning";
       runUsageModelId: ModelId;
       outputTokensCount: number | null;
     })
-  | (ConsumptionItemEvidenceBase<TState> & {
-      itemType: "tool";
-      runUsageModelId: ModelId | null;
-      agentMCPActionModelId: ModelId;
-      /** Estimated tokens in the result returned by this tool execution */
-      inputTokensCount: number | null;
-      /** Estimated tokens in the model output that emitted the tool name and arguments */
-      outputTokensCount: number | null;
-      directCreditAmountMicro: number | null;
-    });
+  | CompletedToolConsumptionItem;
+
+export type CompletedToolConsumptionItem = CompletedToolConsumptionEvidence & {
+  itemType: "tool";
+};
+
+export type CompletedToolConsumptionEvidence = ConsumptionItemEvidenceBase & {
+  runUsageModelId: ModelId | null;
+  action: AgentMCPActionResource;
+  /** Estimated tokens in the result returned by this tool execution */
+  inputTokensCount: number | null;
+  /** Estimated tokens in the model output that emitted the tool name and arguments */
+  outputTokensCount: number | null;
+  directCreditAmountMicro: number | null;
+};
+
+export type PendingToolConsumptionItem = ConsumptionItemEvidenceBase & {
+  action: AgentMCPActionResource;
+  runUsageModelId: ModelId | null;
+  /** Estimated tokens in the model output that emitted the tool name and arguments */
+  outputTokensCount: number | null;
+};
 
 type ConsumptionItemEvidenceAttributes = Pick<
   Attributes<AgentMessageConsumptionItemModel>,
@@ -54,24 +60,6 @@ type ConsumptionItemEvidenceAttributes = Pick<
 
 type ConsumptionItemCreationAttributes =
   CreationAttributes<AgentMessageConsumptionItemModel>;
-
-const UPSERT_COLUMNS = [
-  "workspaceId",
-  "conversationId",
-  "agentMessageId",
-  "runUsageId",
-  "agentMCPActionId",
-  "itemKey",
-  "itemType",
-  "attributionVersion",
-  "inputTokensCount",
-  "outputTokensCount",
-  "grossAttributedCreditAmountMicro",
-  "directCreditAmountMicro",
-  "completedAt",
-  "createdAt",
-  "updatedAt",
-] as const satisfies ReadonlyArray<keyof ConsumptionItemCreationAttributes>;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMessageConsumptionItemResource
@@ -89,7 +77,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     super(model, blob);
   }
 
-  private static itemKey(record: AgentMessageConsumptionItemRecord): string {
+  private static itemKey(record: CompletedAgentMessageConsumptionItem): string {
     switch (record.itemType) {
       case "system":
       case "input":
@@ -98,7 +86,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         return `run-usage:${record.runUsageModelId}:${record.itemType}`;
 
       case "tool":
-        return `tool-action:${record.agentMCPActionModelId}`;
+        return `tool-action:${record.action.id}`;
 
       default:
         return assertNever(record);
@@ -106,7 +94,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   }
 
   private static evidenceAttributes(
-    record: AgentMessageConsumptionItemRecord
+    record: CompletedAgentMessageConsumptionItem
   ): ConsumptionItemEvidenceAttributes {
     switch (record.itemType) {
       case "system":
@@ -144,7 +132,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   }
 
   private static assertUniqueItemKeys(
-    records: AgentMessageConsumptionItemRecord[]
+    records: CompletedAgentMessageConsumptionItem[]
   ): void {
     const itemKeys = records.map((record) => this.itemKey(record));
     if (new Set(itemKeys).size !== itemKeys.length) {
@@ -164,7 +152,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       conversationModelId: ModelId;
       agentMessageModelId: ModelId;
       attributionVersion: number;
-      record: AgentMessageConsumptionItemRecord;
+      record: CompletedAgentMessageConsumptionItem;
       now: Date;
     }
   ): ConsumptionItemCreationAttributes {
@@ -174,34 +162,29 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       conversationId: conversationModelId,
       agentMessageId: agentMessageModelId,
       runUsageId: record.runUsageModelId,
-      agentMCPActionId:
-        record.itemType === "tool" ? record.agentMCPActionModelId : null,
+      agentMCPActionId: record.itemType === "tool" ? record.action.id : null,
       itemKey: this.itemKey(record),
       itemType: record.itemType,
       attributionVersion,
-      completedAt: record.state === "completed" ? now : null,
+      completedAt: now,
       createdAt: now,
       updatedAt: now,
     };
   }
 
-  /**
-   * Inserts initial attribution facts without changing an existing identity
-   * Normal executions insert completed facts while approval stops insert pending facts
-   */
-  static async insertItemsIdempotently(
+  static async insertCompletedItemsIdempotently(
     auth: Authenticator,
     {
-      conversationModelId,
+      conversation,
       agentMessageModelId,
       attributionVersion,
       records,
       transaction,
     }: {
-      conversationModelId: ModelId;
+      conversation: ConversationResource;
       agentMessageModelId: ModelId;
       attributionVersion: number;
-      records: AgentMessageConsumptionItemRecord[];
+      records: CompletedAgentMessageConsumptionItem[];
       transaction?: Transaction;
     }
   ): Promise<void> {
@@ -210,87 +193,113 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }
 
     this.assertUniqueItemKeys(records);
+    for (const record of records) {
+      if (
+        record.itemType === "tool" &&
+        record.action.agentMessageId !== agentMessageModelId
+      ) {
+        throw new Error("Tool consumption item has a different owner");
+      }
+    }
+
     const now = new Date();
     await this.model.bulkCreate(
       records.map((record) =>
         this.creationAttributes(auth.getNonNullableWorkspace().id, {
-          conversationModelId,
+          conversationModelId: conversation.id,
           agentMessageModelId,
           attributionVersion,
           record,
           now,
         })
       ),
-      { ignoreDuplicates: true, transaction, validate: true }
+      {
+        ignoreDuplicates: true,
+        returning: false,
+        transaction,
+        validate: true,
+      }
     );
   }
 
-  /**
-   * Completes approval-spanning facts
-   * A missing pending fact is inserted and an already completed fact stays immutable
-   */
-  static async completeItemsIdempotently(
+  static async insertPendingToolItemIdempotently(
     auth: Authenticator,
     {
-      conversationModelId,
-      agentMessageModelId,
+      conversation,
       attributionVersion,
-      records,
+      item,
       transaction,
     }: {
-      conversationModelId: ModelId;
-      agentMessageModelId: ModelId;
+      conversation: ConversationResource;
       attributionVersion: number;
-      records: AgentMessageConsumptionItemRecord<"completed">[];
+      item: PendingToolConsumptionItem;
       transaction?: Transaction;
     }
   ): Promise<void> {
-    if (records.length === 0) {
-      return;
-    }
-
-    this.assertUniqueItemKeys(records);
     const now = new Date();
-    const attributes = records.map((record) =>
-      this.creationAttributes(auth.getNonNullableWorkspace().id, {
-        conversationModelId,
-        agentMessageModelId,
-        attributionVersion,
-        record,
-        now,
-      })
+    await this.model.bulkCreate(
+      [
+        {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversation.id,
+          agentMessageId: item.action.agentMessageId,
+          runUsageId: item.runUsageModelId,
+          agentMCPActionId: item.action.id,
+          itemKey: `tool-action:${item.action.id}`,
+          itemType: "tool",
+          attributionVersion,
+          inputTokensCount: null,
+          outputTokensCount: item.outputTokensCount,
+          grossAttributedCreditAmountMicro:
+            item.grossAttributedCreditAmountMicro,
+          directCreditAmountMicro: null,
+          completedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      {
+        ignoreDuplicates: true,
+        returning: false,
+        transaction,
+        validate: true,
+      }
     );
-    for (const itemAttributes of attributes) {
-      await this.model.build(itemAttributes).validate();
+  }
+
+  static async completePendingToolItemIdempotently(
+    auth: Authenticator,
+    {
+      attributionVersion,
+      item,
+      transaction,
+    }: {
+      attributionVersion: number;
+      item: CompletedToolConsumptionEvidence;
+      transaction?: Transaction;
     }
-
-    const bind = attributes.flatMap((itemAttributes) =>
-      UPSERT_COLUMNS.map((column) => itemAttributes[column])
-    );
-    const valueTuples = attributes.map((_, rowIndex) => {
-      const firstParameterIndex = rowIndex * UPSERT_COLUMNS.length + 1;
-      return `(${UPSERT_COLUMNS.map(
-        (__, columnIndex) => `$${firstParameterIndex + columnIndex}`
-      ).join(", ")})`;
-    });
-    const quotedColumns = UPSERT_COLUMNS.map((column) => `"${column}"`).join(
-      ", "
-    );
-
-    // biome-ignore lint/plugin/noRawSql: Conditional upsert prevents pending completion races
-    await frontSequelize.query(
-      `INSERT INTO "agent_message_consumption_items" (${quotedColumns})
-       VALUES ${valueTuples.join(", ")}
-       ON CONFLICT ("workspaceId", "agentMessageId", "attributionVersion", "itemKey")
-       DO UPDATE SET
-         "inputTokensCount" = EXCLUDED."inputTokensCount",
-         "outputTokensCount" = EXCLUDED."outputTokensCount",
-         "grossAttributedCreditAmountMicro" = EXCLUDED."grossAttributedCreditAmountMicro",
-         "directCreditAmountMicro" = EXCLUDED."directCreditAmountMicro",
-         "completedAt" = EXCLUDED."completedAt",
-         "updatedAt" = EXCLUDED."updatedAt"
-       WHERE "agent_message_consumption_items"."completedAt" IS NULL`,
-      { bind, type: QueryTypes.INSERT, transaction }
+  ): Promise<void> {
+    await this.model.update(
+      {
+        itemType: "tool",
+        agentMCPActionId: item.action.id,
+        runUsageId: item.runUsageModelId,
+        inputTokensCount: item.inputTokensCount,
+        outputTokensCount: item.outputTokensCount,
+        grossAttributedCreditAmountMicro: item.grossAttributedCreditAmountMicro,
+        directCreditAmountMicro: item.directCreditAmountMicro,
+        completedAt: new Date(),
+      },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          agentMCPActionId: item.action.id,
+          attributionVersion,
+          itemType: "tool",
+          completedAt: { [Op.is]: null },
+        },
+        transaction,
+      }
     );
   }
 
