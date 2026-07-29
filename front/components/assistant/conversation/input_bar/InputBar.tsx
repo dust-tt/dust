@@ -1,6 +1,7 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { GoalCard } from "@app/components/assistant/conversation/goal_mode/GoalCard";
 import { parseGoalCommand } from "@app/components/assistant/conversation/goal_mode/utils";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
@@ -21,6 +22,7 @@ import {
   useAddDeleteConversationTool,
   useConversationTools,
 } from "@app/hooks/conversations";
+import { conversationGoalKey } from "@app/hooks/conversations/useGoal";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -55,6 +57,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useSWRConfig } from "swr";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -133,6 +136,7 @@ export const InputBar = React.memo(function InputBar({
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const [isShaking, setIsShaking] = useState(false);
   const { featureFlags } = useFeatureFlags();
+  const { mutate: mutateSWR } = useSWRConfig();
   const isGoalModeEnabled = featureFlags.includes("goal_mode");
 
   const [attachedNodes, setAttachedNodes] = useState<
@@ -638,7 +642,16 @@ export const InputBar = React.memo(function InputBar({
         fileUploaderService.resetUpload();
         setAttachedNodes([]);
 
-        await submitPromise;
+        const result = await submitPromise;
+        if (result.isOk() && goal) {
+          void mutateSWR(
+            conversationGoalKey({
+              workspaceId: owner.sId,
+              conversationId: conversation.sId,
+              branchId: conversation.branchId,
+            })
+          );
+        }
       } finally {
         setIsLocalSubmitting(false);
       }
@@ -681,6 +694,11 @@ export const InputBar = React.memo(function InputBar({
       )}
     >
       <InputBarUsageBanner owner={owner} />
+      <GoalCard
+        branchId={conversation?.branchId ?? null}
+        conversationId={conversation?.sId ?? null}
+        workspaceId={owner.sId}
+      />
       <PlanCard
         conversationId={conversation?.sId ?? null}
         workspaceId={owner.sId}

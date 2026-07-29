@@ -1942,6 +1942,37 @@
  *               type: string
  *         step:
  *           type: integer
+ *     PrivateGoal:
+ *       type: object
+ *       description: A branch-scoped autonomous Goal Mode execution.
+ *       required: [sId, objective, status, agentConfigurationId, branchId, turnCount, maxTurns, reason, createdAt, updatedAt, terminalAt]
+ *       properties:
+ *         sId:
+ *           type: string
+ *         objective:
+ *           type: string
+ *         status:
+ *           type: string
+ *           enum: [active, paused, blocked, completed, cancelled]
+ *         agentConfigurationId:
+ *           type: string
+ *         branchId:
+ *           type: string
+ *           nullable: true
+ *         turnCount:
+ *           type: integer
+ *         maxTurns:
+ *           type: integer
+ *         reason:
+ *           type: string
+ *           nullable: true
+ *         createdAt:
+ *           type: integer
+ *         updatedAt:
+ *           type: integer
+ *         terminalAt:
+ *           type: integer
+ *           nullable: true
  *     PrivateAgentContextPrunedEvent:
  *       type: object
  *       required: [type, created, configurationId, messageId]

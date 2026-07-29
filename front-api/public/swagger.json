@@ -6638,6 +6638,72 @@
         }
       }
     },
+    "/api/w/{wId}/assistant/conversations/{cId}/goal": {
+      "get": {
+        "summary": "Get the latest conversation goal",
+        "description": "Return the latest Goal Mode goal for the requested conversation branch.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "branchId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest goal, or null when the branch has no goal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "goal": {
+                      "type": "object",
+                      "nullable": true,
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/PrivateGoal"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Goal Mode is not enabled for the workspace."
+          }
+        }
+      }
+    },
     "/api/w/{wId}/assistant/conversations/{cId}": {
       "get": {
         "summary": "Get a conversation",
@@ -13248,6 +13314,68 @@
           },
           "step": {
             "type": "integer"
+          }
+        }
+      },
+      "PrivateGoal": {
+        "type": "object",
+        "description": "A branch-scoped autonomous Goal Mode execution.",
+        "required": [
+          "sId",
+          "objective",
+          "status",
+          "agentConfigurationId",
+          "branchId",
+          "turnCount",
+          "maxTurns",
+          "reason",
+          "createdAt",
+          "updatedAt",
+          "terminalAt"
+        ],
+        "properties": {
+          "sId": {
+            "type": "string"
+          },
+          "objective": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "paused",
+              "blocked",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "agentConfigurationId": {
+            "type": "string"
+          },
+          "branchId": {
+            "type": "string",
+            "nullable": true
+          },
+          "turnCount": {
+            "type": "integer"
+          },
+          "maxTurns": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "type": "integer"
+          },
+          "terminalAt": {
+            "type": "integer",
+            "nullable": true
           }
         }
       },
