@@ -1,6 +1,6 @@
 use crate::{
     databases::{
-        database::QueryResult, table::LocalTable,
+        database::QueryResult, table::LocalTable, table_schema::quote_sqlite_identifier,
         transient_database::get_transient_database_unique_table_names,
     },
     databases_store::{gcs::GoogleCloudStorageDatabasesStore, store::DatabasesStore},
@@ -260,6 +260,37 @@ fn authorize_user_query(context: AuthContext<'_>) -> Authorization {
     }
 }
 
+fn quote_sqlite_string_literal(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "''"))
+}
+
+fn create_csv_virtual_table(
+    conn: &Connection,
+    table_name: &str,
+    temp_file_path: &str,
+    create_sql: &str,
+) -> Result<()> {
+    let schema = format!(
+        "CREATE VIRTUAL TABLE {} USING csv(filename={}, header=yes, schema={})",
+        quote_sqlite_identifier(table_name),
+        quote_sqlite_string_literal(temp_file_path),
+        quote_sqlite_string_literal(create_sql)
+    );
+    let mut statements = Batch::new(conn, &schema);
+    let mut statement = statements
+        .next()?
+        .ok_or_else(|| anyhow!("Failed to prepare CSV virtual table statement"))?;
+
+    if statements.next()?.is_some() {
+        return Err(anyhow!(
+            "CSV virtual table schema must contain a single statement"
+        ));
+    }
+
+    statement.execute([])?;
+    Ok(())
+}
+
 async fn create_in_memory_sqlite_db_with_csv(
     conn: Arc<Mutex<Connection>>,
     tables: Vec<LocalTable>,
@@ -287,11 +318,13 @@ async fn create_in_memory_sqlite_db_with_csv(
                 .expect("Unreachable: table name not found in unique_table_names")
                 .clone();
 
+            // csvtab only uses the declared columns, so don't duplicate the user-controlled
+            // virtual table name inside its nested schema.
             let create_sql = table
                 .table
                 .schema_cached()
                 .unwrap()
-                .get_create_table_sql_string(&table_name);
+                .get_create_table_sql_string("x");
 
             if table.table.is_schema_stale() {
                 error!("Schema is stale for table {} but it should never happen as get_database_schema() should have been called first and recomputed the schema.", table.table.unique_id());
@@ -345,14 +378,11 @@ async fn create_in_memory_sqlite_db_with_csv(
         let conn = conn.lock(); // Lock inside the spawn_blocking
 
         for (table_name, temp_file, create_sql) in csv_results {
-            let temp_file_path = temp_file.path().to_str().unwrap().to_string();
-            let schema = format!(
-                r#"
-                CREATE VIRTUAL TABLE "{table_name}"
-                USING csv(filename='{temp_file_path}', header=yes, schema='{create_sql}')
-                "#
-            );
-            conn.execute_batch(schema.as_str())?;
+            let temp_file_path = temp_file
+                .path()
+                .to_str()
+                .ok_or_else(|| anyhow!("Temporary CSV file path is not valid UTF-8"))?;
+            create_csv_virtual_table(&conn, &table_name, temp_file_path, &create_sql)?;
             temporary_files.push(temp_file);
         }
         Ok::<_, anyhow::Error>(temporary_files)
@@ -370,6 +400,8 @@ async fn create_in_memory_sqlite_db_with_csv(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::databases::table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType};
+    use std::path::Path;
 
     fn create_test_database() -> Result<SqliteDatabase> {
         let conn = Connection::open_in_memory()?;
@@ -464,5 +496,70 @@ mod tests {
             Err(SqliteDatabaseError::QueryExecutionError(_))
         ));
         Ok(())
+    }
+
+    fn assert_csv_identifiers_are_safe(
+        table_name: &str,
+        column_name: &str,
+        marker_path: &Path,
+    ) -> Result<()> {
+        let conn = Connection::open_in_memory()?;
+        rusqlite::vtab::csvtab::load_module(&conn)?;
+        let mut csv_file = NamedTempFile::new()?;
+        {
+            let mut writer = csv::Writer::from_writer(csv_file.as_file_mut());
+            writer.write_record([column_name])?;
+            writer.write_record(["safe"])?;
+            writer.flush()?;
+        }
+        let schema = TableSchema::from_columns(vec![TableSchemaColumn::new(
+            column_name,
+            TableSchemaFieldType::Text,
+            None,
+            None,
+        )]);
+        let create_sql = schema.get_create_table_sql_string("x");
+        let csv_file_path = csv_file
+            .path()
+            .to_str()
+            .ok_or_else(|| anyhow!("Temporary CSV file path is not valid UTF-8"))?;
+
+        create_csv_virtual_table(&conn, table_name, csv_file_path, &create_sql)?;
+
+        let _value: String = conn.query_row(
+            &format!(
+                "SELECT {} FROM {} LIMIT 1",
+                quote_sqlite_identifier(column_name),
+                quote_sqlite_identifier(table_name)
+            ),
+            [],
+            |row| row.get(0),
+        )?;
+        assert!(!marker_path.exists());
+        Ok(())
+    }
+
+    #[test]
+    fn table_name_cannot_inject_setup_statements() -> Result<()> {
+        let output_directory = tempfile::tempdir()?;
+        let marker_path = output_directory.path().join("table-name-marker");
+        let table_name = format!(
+            "data\" USING csv(filename='/etc/hosts', header=no); ATTACH DATABASE '{}' AS injected; CREATE TABLE injected.t(c); --",
+            marker_path.display()
+        );
+
+        assert_csv_identifiers_are_safe(&table_name, "value", &marker_path)
+    }
+
+    #[test]
+    fn column_name_cannot_inject_setup_statements() -> Result<()> {
+        let output_directory = tempfile::tempdir()?;
+        let marker_path = output_directory.path().join("column-name-marker");
+        let column_name = format!(
+            "value\" TEXT)' ); ATTACH DATABASE '{}' AS injected; CREATE TABLE injected.t(c); --",
+            marker_path.display()
+        );
+
+        assert_csv_identifiers_are_safe("data", &column_name, &marker_path)
     }
 }

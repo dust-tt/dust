@@ -63,6 +63,10 @@ impl std::fmt::Display for TableSchemaFieldType {
 pub static TABLE_SCHEMA_POSSIBLE_VALUES_MAX_LEN: usize = 32;
 pub static TABLE_SCHEMA_POSSIBLE_VALUES_MAX_COUNT: usize = 16;
 
+pub(crate) fn quote_sqlite_identifier(identifier: &str) -> String {
+    format!("\"{}\"", identifier.replace('"', "\"\""))
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct TableSchemaColumn {
     pub name: String,
@@ -282,8 +286,8 @@ impl TableSchema {
 
     pub fn get_create_table_sql_string(&self, table_name: &str) -> String {
         format!(
-            "CREATE TABLE \"{}\" ({})",
-            table_name,
+            "CREATE TABLE {} ({})",
+            quote_sqlite_identifier(table_name),
             self.0
                 .iter()
                 .map(|column| {
@@ -295,7 +299,7 @@ impl TableSchema {
                         TableSchemaFieldType::DateTime => "TEXT",
                         TableSchemaFieldType::Reference(_) => "REFERENCE",
                     };
-                    format!("\"{}\" {}", column.name, sql_type)
+                    format!("{} {}", quote_sqlite_identifier(&column.name), sql_type)
                 })
                 .collect::<Vec<_>>()
                 .join(", ")
@@ -306,11 +310,11 @@ impl TableSchema {
         let field_names: Vec<&String> = self.0.iter().map(|c| &c.name).collect();
         (
             format!(
-                "INSERT INTO \"{}\" ({}) VALUES ({});",
-                table_name,
+                "INSERT INTO {} ({}) VALUES ({});",
+                quote_sqlite_identifier(table_name),
                 field_names
                     .iter()
-                    .map(|name| format!("\"{}\"", name))
+                    .map(|name| quote_sqlite_identifier(name))
                     .collect::<Vec<String>>()
                     .join(", "),
                 field_names
@@ -692,6 +696,36 @@ mod tests {
         } else {
             return Err(anyhow!("No rows found after insert"));
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_sqlite_identifiers_with_embedded_quotes() -> Result<()> {
+        let table_name = "table \"with quotes\"";
+        let column_name = "column \"with quotes\"";
+        let schema = TableSchema::from_columns(vec![TableSchemaColumn::new(
+            column_name,
+            TableSchemaFieldType::Text,
+            None,
+            None,
+        )]);
+        let conn = Connection::open_in_memory()?;
+
+        conn.execute_batch(&schema.get_create_table_sql_string(table_name))?;
+        let (insert_sql, _) = schema.get_insert_sql(table_name);
+        conn.execute(&insert_sql, ["safe"])?;
+
+        let value: String = conn.query_row(
+            &format!(
+                "SELECT {} FROM {}",
+                quote_sqlite_identifier(column_name),
+                quote_sqlite_identifier(table_name)
+            ),
+            [],
+            |row| row.get(0),
+        )?;
+        assert_eq!(value, "safe");
 
         Ok(())
     }
