@@ -22,6 +22,14 @@ export const SANDBOX_FUNCTION_AUTHENTICATION_POLICIES = [
 export type SandboxFunctionAuthenticationPolicy =
   (typeof SANDBOX_FUNCTION_AUTHENTICATION_POLICIES)[number];
 
+export function isSandboxFunctionAuthenticationPolicy(
+  value: unknown
+): value is SandboxFunctionAuthenticationPolicy {
+  return SANDBOX_FUNCTION_AUTHENTICATION_POLICIES.some(
+    (policy) => policy === value
+  );
+}
+
 // Lowercase alphanumeric with single hyphen separators (e.g. `greet`, `send-slack-message`).
 export const SANDBOX_FUNCTION_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
