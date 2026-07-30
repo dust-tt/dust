@@ -60,6 +60,7 @@ import type { ProvidersHealth } from "@app/types/provider_credential";
 import type {
   AccessControlList,
   GroupGrant,
+  WithAccessControl,
 } from "@app/types/resource_permissions";
 import { isDevelopment } from "@app/types/shared/env";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -1249,7 +1250,7 @@ export class Authenticator {
       return false;
     }
 
-    return this.hasPermission(verb, {
+    return this.hasPermissionForAcl(verb, {
       roles: [{ role: "admin", permissions: [verb] }],
       groups: this.getGroupPermissions(resourceType, WHOLE_TYPE_RESOURCE_ID),
       workspaceId: workspace.id,
@@ -1478,24 +1479,40 @@ export class Authenticator {
   }
 
   /**
-   * Checks whether the caller holds `verb` on EVERY one of the given ACLs (conjunction). The caller
-   * must pass each ACL for the check to succeed.
+   * Whether the caller holds `verb` on `target` — i.e. on EVERY access-control list the target
+   * declares (a resource may declare multiple ACLs that must all hold). `verb` is a grant verb
+   * (instance verbs like read/write/admin, or type-level capabilities like "create").
    */
-  hasPermissionForAll(verb: GrantVerb, acls: AccessControlList[]): boolean {
-    return acls.every((acl) => this.hasPermission(verb, acl));
+  hasPermission(verb: GrantVerb, target: WithAccessControl): boolean {
+    return this.hasPermissionForAcls(verb, target.getAccessControlLists(this));
   }
 
   /**
-   * Determines whether the caller holds `verb` on a single ACL. `verb` is a grant verb (instance
-   * verbs like read/write/admin, or type-level capabilities like "create"). Two paths (OR):
-   * 1. Role: the caller's workspace role grants `verb` (and the ACL is in the caller's workspace).
-   * 2. Group: the caller belongs to a listed group that grants `verb`.
-   *
-   * The group-membership check is kept even when the ACL's groups are already caller-scoped (built
-   * from `getGroupPermissions`): it lets the same checker also evaluate ACLs that list every group
-   * (e.g. legacy inline groups), filtering by membership at check time.
+   * Whether the caller holds `verb` on EVERY one of the given targets (conjunction).
    */
-  hasPermission(verb: GrantVerb, acl: AccessControlList): boolean {
+  hasPermissionForAll(verb: GrantVerb, targets: WithAccessControl[]): boolean {
+    return targets.every((target) => this.hasPermission(verb, target));
+  }
+
+  // Whether the caller holds `verb` on every ACL in the list (conjunction). Callers that already
+  // hold raw ACLs (e.g. `canRead`, the conversation space checks) use this directly.
+  private hasPermissionForAcls(
+    verb: GrantVerb,
+    acls: AccessControlList[]
+  ): boolean {
+    return acls.every((acl) => this.hasPermissionForAcl(verb, acl));
+  }
+
+  // Single-ACL check. Two paths (OR):
+  // 1. Role: the caller's workspace role grants `verb` (and the ACL is in the caller's workspace).
+  // 2. Group: the caller belongs to a listed group that grants `verb`.
+  // The group-membership check is kept even when the ACL's groups are already caller-scoped (built
+  // from `getGroupPermissions`): it lets the same checker also evaluate ACLs that list every group
+  // (e.g. legacy inline groups), filtering by membership at check time.
+  private hasPermissionForAcl(
+    verb: GrantVerb,
+    acl: AccessControlList
+  ): boolean {
     // Role path: gated to the caller's workspace (a role only applies within its own workspace).
     const grantedByRole =
       this.getNonNullableWorkspace().id === acl.workspaceId &&
@@ -1513,15 +1530,15 @@ export class Authenticator {
   }
 
   canAdministrate(acls: AccessControlList[]): boolean {
-    return this.hasPermissionForAll("admin", acls);
+    return this.hasPermissionForAcls("admin", acls);
   }
 
   canRead(acls: AccessControlList[]): boolean {
-    return this.hasPermissionForAll("read", acls);
+    return this.hasPermissionForAcls("read", acls);
   }
 
   canWrite(acls: AccessControlList[]): boolean {
-    return this.hasPermissionForAll("write", acls);
+    return this.hasPermissionForAcls("write", acls);
   }
 
   key(): KeyAuthType | null {

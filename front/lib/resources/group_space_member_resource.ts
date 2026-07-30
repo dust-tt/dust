@@ -141,8 +141,8 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
         return true;
       }
     }
-    const requestedPermissions = await this.requestedPermissions();
-    return auth.canWrite(requestedPermissions);
+    const acls = await this.getAccessControlLists(auth);
+    return auth.canWrite(acls);
   }
 
   async canRemoveMember(
@@ -157,11 +157,13 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
         return true;
       }
     }
-    const requestedPermissions = await this.requestedPermissions();
-    return auth.canWrite(requestedPermissions);
+    const acls = await this.getAccessControlLists(auth);
+    return auth.canWrite(acls);
   }
 
-  async requestedPermissions(): Promise<AccessControlList[]> {
+  async getAccessControlLists(
+    auth: Authenticator
+  ): Promise<AccessControlList[]> {
     switch (this.space.kind) {
       case "system":
         return [

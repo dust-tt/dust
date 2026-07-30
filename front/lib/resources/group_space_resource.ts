@@ -31,7 +31,9 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     super(GroupSpaceModel, blob);
   }
 
-  abstract requestedPermissions(): Promise<AccessControlList[]>;
+  abstract getAccessControlLists(
+    auth: Authenticator
+  ): Promise<AccessControlList[]>;
   abstract canAddMember(auth: Authenticator, userId: string): Promise<boolean>;
   abstract canRemoveMember(
     auth: Authenticator,

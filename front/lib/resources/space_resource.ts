@@ -1758,7 +1758,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    *
    * @returns Array of AccessControlList objects based on space type
    */
-  requestedPermissions(): AccessControlList[] {
+  getAccessControlLists(auth: Authenticator): AccessControlList[] {
     // System space.
     if (this.isSystem()) {
       return [
@@ -1899,15 +1899,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   canAdministrate(auth: Authenticator) {
-    return auth.canAdministrate(this.requestedPermissions());
+    return auth.canAdministrate(this.getAccessControlLists(auth));
   }
 
   canWrite(auth: Authenticator) {
-    return auth.canWrite(this.requestedPermissions());
+    return auth.canWrite(this.getAccessControlLists(auth));
   }
 
   canRead(auth: Authenticator) {
-    return auth.canRead(this.requestedPermissions());
+    return auth.canRead(this.getAccessControlLists(auth));
   }
 
   canReadOrAdministrate(auth: Authenticator) {
