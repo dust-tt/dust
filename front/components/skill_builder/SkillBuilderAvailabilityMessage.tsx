@@ -24,23 +24,22 @@ function getAvailabilityContent({
   }
 
   const spaceLinks = <SpaceLinks owner={owner} spaces={restrictedSpaces} />;
-  const spacesPhrase =
-    restrictedSpaces.length > 1 ? (
-      <>all of the following: {spaceLinks}</>
-    ) : (
-      spaceLinks
-    );
 
-  const gate = (
-    <>
-      Nobody can use this skill in any context unless they are a member of{" "}
-      {spacesPhrase}.
-    </>
-  );
+  const gate =
+    restrictedSpaces.length > 1 ? (
+      <>Only members of all the following can use this skill: {spaceLinks}.</>
+    ) : (
+      <>Only members of {spaceLinks} can use this skill.</>
+    );
 
   switch (availability) {
     case "editors":
-      return gate;
+      return (
+        <>
+          {gate} Members cannot find it via the input bar and agent builder
+          unless they are an editor.
+        </>
+      );
     case "workspace_users":
       return (
         <>{gate} Members can find it via the input bar and agent builder.</>
@@ -49,7 +48,8 @@ function getAvailabilityContent({
       return (
         <>
           {gate} Members can find it via the input bar and agent builder, and
-          agents with Discover Skills can use it automatically.
+          when members use agents with Discover Skills they can use it
+          automatically.
         </>
       );
     default:

@@ -45,7 +45,7 @@ const AVAILABILITY_OPTIONS: {
     value: "editors",
   },
   {
-    label: "All workspace members",
+    label: "Workspace members",
     value: "workspace_users",
   },
   {
@@ -210,8 +210,9 @@ export function SkillBuilderSettingsSection({
               size="lg"
             >
               <p>
-                Any agent with Discover Skills, including Dust, can use your
-                skill automatically. See other auto-discoverable skills in{" "}
+                Available to all workspace members. Any agent with Discover
+                Skills, including Dust, can use your skill automatically. See
+                other auto-discoverable skills in{" "}
                 <Hoverable
                   href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
                   target="_blank"
