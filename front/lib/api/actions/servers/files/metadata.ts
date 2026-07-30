@@ -191,12 +191,10 @@ const FILES_TOOLS_COMMON_METADATA = [
     name: FILES_CAT_ACTION_NAME,
     description:
       "Read the content of a file. " +
-      "For text files, returns lines with their line numbers. " +
+      "For text files, reads line by line, returning each line with its line number. " +
       "Use `offset` to start at a specific line and `limit` to control how many lines to return. " +
-      "When the output stops at a line boundary, the footer indicates the next `offset` to use. " +
-      "When the output is truncated inside a single oversized line, the footer indicates a `byte_offset` instead: " +
-      "pass it back (without `offset`) to continue reading from that exact position inside the line; " +
-      "using `offset` there would skip the rest of the line. " +
+      "When more content remains, the footer provides the `byte_offset` to pass back (without `offset`) " +
+      "to continue from the exact position where the response stopped, even inside an oversized line. " +
       "For images (JPEG, PNG, GIF), returns a vision block the model can inspect directly. " +
       "For binary documents (PDF, DOCX, PPTX, etc.), call " +
       `\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_EXTRACT_TEXT_ACTION_NAME)}\` first to extract their text content.`,
@@ -212,7 +210,8 @@ const FILES_TOOLS_COMMON_METADATA = [
         .min(1)
         .optional()
         .describe(
-          "Line number to start reading from (1-indexed, default 1). Do not combine with `byte_offset`."
+          "Line number to start reading from (1-indexed, default 1). Use for direct jumps to a line; " +
+            "continuation footers provide `byte_offset` instead. Do not combine with `byte_offset`."
         ),
       limit: z
         .number()

@@ -21,6 +21,62 @@ describe("readTextFilePage", () => {
     expect(page.parts).toEqual(["1: abc", "2: def"]);
     expect(page.hasMore).toBe(false);
     expect(page.endedMidLine).toBeNull();
+    expect(page.nextByteOffset).toBeNull();
+  });
+
+  it("returns a byte cursor pointing after both CRLF bytes at a line-boundary stop", async () => {
+    const content = "alpha\r\nbeta\r\n";
+    const fileSizeBytes = Buffer.byteLength(content, "utf8");
+    const first = await readTextFilePage(streamOf(content), {
+      startLine: 1,
+      byteOffset: null,
+      fileSizeBytes,
+      maxLines: 1,
+      budgetBytes: 1_000,
+    });
+
+    expect(first.parts).toEqual(["1: alpha"]);
+    // "alpha\r\n" is 7 bytes: the cursor must sit on the first byte of "beta".
+    expect(first.nextByteOffset).toBe(7);
+
+    const second = await readTextFilePage(streamOf(content), {
+      startLine: 1,
+      byteOffset: 7,
+      fileSizeBytes,
+      maxLines: 100,
+      budgetBytes: 1_000,
+    });
+    expect(second.parts).toEqual(["2: beta"]);
+    expect(second.startedMidLine).toBe(false);
+  });
+
+  it("returns a byte cursor when the next line does not fit the remaining budget", async () => {
+    const content = "aaa\n" + "b".repeat(50) + "\n";
+    const fileSizeBytes = Buffer.byteLength(content, "utf8");
+    const first = await readTextFilePage(streamOf(content), {
+      startLine: 1,
+      byteOffset: null,
+      fileSizeBytes,
+      maxLines: 100,
+      budgetBytes: 20,
+    });
+
+    expect(first.parts).toEqual(["1: aaa"]);
+    expect(first.stopReason).toBe("budget");
+    expect(first.endedMidLine).toBeNull();
+    // The cursor sits on the first byte of the unemitted line 2.
+    expect(first.nextByteOffset).toBe(4);
+
+    const second = await readTextFilePage(streamOf(content), {
+      startLine: 1,
+      byteOffset: 4,
+      fileSizeBytes,
+      maxLines: 100,
+      budgetBytes: 1_000,
+    });
+    expect(second.parts).toEqual([`2: ${"b".repeat(50)}`]);
+    expect(second.startedMidLine).toBe(false);
+    expect(second.nextByteOffset).toBeNull();
   });
 
   it("emits a first line that exactly fills the budget without a continuation", async () => {
@@ -40,6 +96,7 @@ describe("readTextFilePage", () => {
     expect(page.parts).toEqual([`1: ${line}`]);
     expect(page.endedMidLine).toBeNull();
     expect(page.hasMore).toBe(false);
+    expect(page.nextByteOffset).toBeNull();
   });
 
   it("emits an exact-budget line with a trailing newline without an empty continuation", async () => {
@@ -55,6 +112,7 @@ describe("readTextFilePage", () => {
     expect(page.parts).toEqual([`1: ${line}`]);
     expect(page.endedMidLine).toBeNull();
     expect(page.hasMore).toBe(false);
+    expect(page.nextByteOffset).toBeNull();
   });
 
   it("treats CRLF as a line boundary and strips the carriage return", async () => {
@@ -84,6 +142,8 @@ describe("readTextFilePage", () => {
       budgetBytes: 40,
     });
     assert(first.endedMidLine);
+    // Mid-line and line-boundary stops share the same continuation cursor.
+    expect(first.nextByteOffset).toBe(first.endedMidLine.pos);
 
     // Resume with the skipped prefix split across odd-sized chunks.
     const second = await readTextFilePage(

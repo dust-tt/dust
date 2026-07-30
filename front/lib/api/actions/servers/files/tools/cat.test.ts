@@ -66,7 +66,7 @@ function reconstruct(bodies: string[]): string {
   return lines.join("\n");
 }
 
-// Reads a whole file through catHandler, following byte_offset continuations and offsets
+// Reads a whole file through catHandler, following the byte_offset continuation footers
 // until exhaustion, and returns the reconstructed content.
 async function readAll(
   path: string,
@@ -74,7 +74,7 @@ async function readAll(
   { maxCalls = 20 }: { maxCalls?: number } = {}
 ): Promise<string> {
   const bodies: string[] = [];
-  let args: { path: string; offset?: number; byte_offset?: number } = { path };
+  let args: { path: string; byte_offset?: number } = { path };
 
   for (let call = 0; call < maxCalls; call++) {
     const text = textOf(await catHandler(args, extra));
@@ -87,11 +87,6 @@ async function readAll(
 
     if (footer?.includes("byte_offset=")) {
       args = { path, byte_offset: extractByteOffset(footer) };
-      continue;
-    }
-    const offsetMatch = footer?.match(/offset=(\d+) to read more/);
-    if (offsetMatch) {
-      args = { path, offset: Number(offsetMatch[1]) };
       continue;
     }
     return reconstruct(bodies);
@@ -119,7 +114,7 @@ describe("catHandler", () => {
     expect(text).toBe("1: alpha\n2: beta");
   });
 
-  it("paginates by lines with offset and suggests the next offset", async () => {
+  it("continues line pages via byte_offset and supports direct offset jumps", async () => {
     const { auth, conversation } = await setupProjectConversation();
     const content =
       Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join("\n") + "\n";
@@ -131,16 +126,50 @@ describe("catHandler", () => {
     expect(first).toContain("1: line 1");
     expect(first).toContain("4: line 4");
     expect(first).not.toContain("5: line 5");
-    expect(first).toContain("Use offset=5 to read more");
+    expect(first).toContain("Use byte_offset=");
 
     const second = textOf(
-      await catHandler({ path, offset: 5, limit: 4 }, extra)
+      await catHandler(
+        { path, byte_offset: extractByteOffset(first), limit: 4 },
+        extra
+      )
     );
     expect(second).toContain("5: line 5");
-    expect(second).toContain("Use offset=9 to read more");
+    expect(second).toContain("8: line 8");
+    expect(second).toContain("Use byte_offset=");
 
+    // Direct line jumps via offset still work; only the continuation footer changed.
     const third = textOf(await catHandler({ path, offset: 9 }, extra));
     expect(third).toBe("9: line 9\n10: line 10");
+  });
+
+  it("continues from a byte cursor after a direct offset jump", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    mockStoredFile("alpha\nbeta\ngamma\n", "text/plain");
+    const path = `conversation-${conversation.sId}/notes.txt`;
+    const extra = makeExtra(auth, conversation);
+
+    const first = textOf(
+      await catHandler({ path, offset: 2, limit: 1 }, extra)
+    );
+    expect(first).toContain("2: beta");
+    // "alpha\nbeta\n" is 11 bytes: the cursor sits on the first byte of "gamma".
+    expect(extractByteOffset(first)).toBe(11);
+
+    const second = textOf(await catHandler({ path, byte_offset: 11 }, extra));
+    expect(second).toBe("3: gamma");
+  });
+
+  it("reconstructs an ordinary multi-line file following only byte cursors", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    const content =
+      Array.from({ length: 250 }, (_, i) => `line ${i + 1}`).join("\n") + "\n";
+    mockStoredFile(content, "text/plain");
+    const path = `conversation-${conversation.sId}/long.txt`;
+    const extra = makeExtra(auth, conversation);
+
+    const reconstructed = await readAll(path, extra);
+    expect(reconstructed).toBe(content.slice(0, -1));
   });
 
   it("returns 'no lines' for an offset past the end of the file", async () => {
@@ -170,7 +199,7 @@ describe("catHandler", () => {
     );
     expect(first).toContain("Truncated inside line 1");
     expect(first).toContain(`File is ${30_001} bytes`);
-    expect(first).toContain("Do not use offset=2");
+    expect(first).toContain("to continue reading line 1");
     const byteOffset = extractByteOffset(first);
 
     const second = textOf(

@@ -3,12 +3,12 @@ import type { Readable } from "stream";
 import { z } from "zod";
 
 /**
- * Byte-accurate pagination for `cat`-style text file reads, shared by the agent-loop files
- * server and the public Dust MCP files tools.
+ * Byte-accurate pagination for `cat`-style text file reads.
  *
- * Line-based reads paginate with `offset` (1-indexed line number). When a single line
- * exceeds the whole byte budget of a page, the largest UTF-8-boundary-safe prefix is
- * emitted and the footer hands back a `byte_offset` to resume from inside the line.
+ * `offset` (1-indexed line number) starts a read at a specific line. Continuation is
+ * uniform: every truncated response's footer hands back the `byte_offset` of the next
+ * unread byte — the start of the next line when the page ended at a line boundary, or the
+ * position inside an oversized line when the page ended mid-line.
  */
 
 // The `files` server is exempt from tool-output offloading (see
@@ -30,13 +30,13 @@ export const BYTE_OFFSET_SCHEMA = z
   .min(1)
   .optional()
   .describe(
-    "Byte position to resume from, exactly as indicated by a previous response's truncation footer " +
-      "(`byte_offset=N`). Only for continuing a read that was truncated inside an oversized line. " +
-      "Never compute or invent this value. Do not combine with `offset`."
+    "Byte position from the immediately preceding response's continuation footer (`byte_offset=N`). " +
+      "Pass it back exactly to continue reading, whether the previous response ended at a line " +
+      "boundary or inside a line. Never compute or invent this value. Do not combine with `offset`."
   );
 
 export const OFFSET_EXCLUSIVITY_ERROR_MESSAGE =
-  "Provide either `offset` or `byte_offset`, not both. Use `byte_offset` only to continue a response that was truncated inside a line.";
+  "Provide either `offset` or `byte_offset`, not both. Use `byte_offset` to continue from a previous response's footer, and `offset` to start reading at a specific line.";
 
 export function byteOffsetBeyondEndMessage(
   path: string,
@@ -122,6 +122,11 @@ export type TextFilePage = {
   startedMidLine: boolean;
   /** Set when the page ends inside a line; `pos` is the absolute byte offset to resume from. */
   endedMidLine: { line: number; pos: number } | null;
+  /**
+   * Absolute byte position of the next unread byte — the continuation cursor for the
+   * footer, whether the page ended at a line boundary or inside a line. Null at end of file.
+   */
+  nextByteOffset: number | null;
   /** True when file content remains beyond this page. */
   hasMore: boolean;
   stopReason: "budget" | "max_lines" | null;
@@ -337,13 +342,16 @@ export async function readTextFilePage(
     handleCompleteLine(raw, false);
   }
 
+  const hasMore = endedMidLine !== null || consumedBytes < params.fileSizeBytes;
+
   return {
     parts,
     firstLine,
     lastLine,
     startedMidLine,
     endedMidLine,
-    hasMore: endedMidLine !== null || consumedBytes < params.fileSizeBytes,
+    nextByteOffset: hasMore ? consumedBytes : null,
+    hasMore,
     stopReason,
   };
 }
@@ -367,9 +375,9 @@ function describeShownRange(
 }
 
 /**
- * Renders a scanned page as the model-facing text, including the pagination footer that
- * tells the model how to continue (`offset` at line boundaries, `byte_offset` inside an
- * oversized line).
+ * Renders a scanned page as the model-facing text. Whenever more content remains, the
+ * footer returns the `byte_offset` to continue from; `offset` is only an input for direct
+ * line-based reads.
  */
 export function renderTextFilePage(
   page: TextFilePage,
@@ -403,22 +411,21 @@ export function renderTextFilePage(
 
   const kb = FILE_OFFLOAD_TEXT_SIZE_BYTES / 1024;
 
-  if (page.endedMidLine) {
+  if (page.endedMidLine && page.nextByteOffset !== null) {
     text +=
       `\n\n[Truncated inside line ${page.endedMidLine.line} (${kb}KB output cap). ` +
-      `File is ${fileSizeBytes} bytes; shown up to byte ${page.endedMidLine.pos}. ` +
-      `To continue reading line ${page.endedMidLine.line}, call again with byte_offset=${page.endedMidLine.pos} and no offset. ` +
-      `Do not use offset=${page.endedMidLine.line + 1}: it would skip the remainder of line ${page.endedMidLine.line}.]`;
-  } else if (page.hasMore) {
+      `File is ${fileSizeBytes} bytes. ` +
+      `Use byte_offset=${page.nextByteOffset} to continue reading line ${page.endedMidLine.line}.]`;
+  } else if (page.nextByteOffset !== null) {
     const rangeLabel = describeShownRange(
       firstLine,
       lastLine,
       page.startedMidLine
     );
     if (page.stopReason === "budget") {
-      text += `\n\n[Truncated at ${kb}KB. File is ${fileSizeBytes} bytes. ${rangeLabel} Use offset=${lastLine + 1} to read more.]`;
+      text += `\n\n[Truncated at ${kb}KB. File is ${fileSizeBytes} bytes. ${rangeLabel} Use byte_offset=${page.nextByteOffset} to read more.]`;
     } else {
-      text += `\n\n[${rangeLabel} Use offset=${lastLine + 1} to read more.]`;
+      text += `\n\n[${rangeLabel} Use byte_offset=${page.nextByteOffset} to read more.]`;
     }
   } else if (page.startedMidLine) {
     text += `\n\n[Reached end of file.]`;
