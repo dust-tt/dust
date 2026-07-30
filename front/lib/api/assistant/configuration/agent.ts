@@ -2109,10 +2109,7 @@ export async function filterAgentsByRequestedSpaces(
 
   const allowedBySpaceIds = validAgents.filter((agent) =>
     auth.canRead(
-      createResourcePermissionsFromSpacesWithMap(
-        spaceIdToGroupsMap,
-        agent.requestedSpaceIds
-      )
+      createResourcePermissionsFromSpacesWithMap(spaceIdToGroupsMap, agent.requestedSpaceIds, auth.getNonNullableWorkspace().id)
     )
   );
 

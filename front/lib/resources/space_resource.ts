@@ -30,8 +30,8 @@ import {
   SPACE_GROUP_PREFIX,
 } from "@app/types/groups";
 import type {
-  InlineGroupGrant,
-  LegacyAccessRule,
+  AccessControlList,
+  GroupGrant,
 } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -1543,9 +1543,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * - Read/Write: Group members
    * - Admin: Workspace admins
    *
-   * @returns Array of AccessRule objects based on space type
+   * @returns Array of AccessControlList objects based on space type
    */
-  requestedPermissions(): LegacyAccessRule[] {
+  requestedPermissions(): AccessControlList[] {
     // System space.
     if (this.isSystem()) {
       return [
@@ -1586,7 +1586,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     // Open space.
     // Currently only using global group for simplicity.
-    // TODO(2024-10-25 flav): Refactor to store a list of AccessRule on conversations and
+    // TODO(2024-10-25 flav): Refactor to store a list of AccessControlList on conversations and
     // agent_configurations. This will allow proper handling of multiple groups instead of only
     // using the global group as a temporary solution.
     if (this.isRegularAndOpen()) {
@@ -1608,7 +1608,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               });
             }
             return acc;
-          }, [] as InlineGroupGrant[]),
+          }, [] as GroupGrant[]),
         },
       ];
     }
@@ -1639,7 +1639,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               }
             }
             return acc;
-          }, [] as InlineGroupGrant[]),
+          }, [] as GroupGrant[]),
         },
       ];
     }
@@ -1657,7 +1657,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             });
           }
           return acc;
-        }, [] as InlineGroupGrant[]),
+        }, [] as GroupGrant[]),
       },
     ];
   }
