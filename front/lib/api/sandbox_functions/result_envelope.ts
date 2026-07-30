@@ -4,19 +4,16 @@ import { z } from "zod";
 
 export const SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSION = 3;
 
-export type SandboxFunctionResultDelivery = "stdout" | "callback";
-
 // Phase names are owned by the runner/CLI and grow over time (Workstream 6). Keep this a
 // bounded record of non-negative millisecond values rather than a closed field list.
 export type SandboxFunctionResultTimingsMs = Record<string, number>;
 
-export type NormalizedSandboxFunctionOutcome =
-  | { ok: true; output: unknown; timingsMs?: SandboxFunctionResultTimingsMs }
-  | {
-      ok: false;
-      error: SandboxFunctionCallError;
-      timingsMs?: SandboxFunctionResultTimingsMs;
-    };
+export type NormalizedSandboxFunctionOutcome = {
+  timingsMs?: SandboxFunctionResultTimingsMs;
+} & (
+  | { ok: true; output: unknown }
+  | { ok: false; error: SandboxFunctionCallError }
+);
 
 type JsonValue = null | boolean | number | string | object;
 const DefinedJsonValueSchema = z.custom<JsonValue>((v) => v !== undefined);
@@ -68,17 +65,25 @@ const LegacySandboxFunctionRunnerOutputSchema = z.discriminatedUnion("ok", [
 // One hour ceiling: runner phase timings above this are discarded as implausible rather than
 // failing the whole envelope.
 const MAX_TIMING_MS = 60 * 60 * 1000;
+const MAX_TIMING_KEYS = 32;
+const TIMING_KEY_REGEX = /^[a-zA-Z][a-zA-Z0-9_]{0,63}$/;
 
-const TimingsMsSchema = z.record(
-  z.string(),
-  z.number().finite().nonnegative().max(MAX_TIMING_MS)
-);
+const TimingsMsSchema = z
+  .record(
+    z.string().regex(TIMING_KEY_REGEX),
+    z.number().finite().nonnegative().max(MAX_TIMING_MS)
+  )
+  .refine((value) => Object.keys(value).length <= MAX_TIMING_KEYS, {
+    message: `timingsMs may contain at most ${MAX_TIMING_KEYS} keys`,
+  });
 
 // Deliberately not `.strict()`: the wrapper is a forward-compatibility seam, so a field added by
 // a newer dsbx must not fail the parse. Inner outcome schemas stay `.strict()`.
+// `delivery` is accepted as an opaque string until a consumer reads it; closing it to an enum
+// would break a future dsbx that adds a mode (e.g. spool) before front knows about it.
 const ResultEnvelopeV3Schema = z.object({
   protocolVersion: z.literal(SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSION),
-  delivery: z.enum(["stdout", "callback"]),
+  delivery: z.string().min(1),
   outcome: z.unknown(),
   timingsMs: z.unknown().optional(),
 });

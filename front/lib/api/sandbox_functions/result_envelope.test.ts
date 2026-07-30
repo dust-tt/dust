@@ -91,6 +91,35 @@ describe("normalizeSandboxFunctionResult", () => {
     });
   });
 
+  it("drops timingsMs with unbounded or invalid keys", () => {
+    const tooManyKeys = Object.fromEntries(
+      Array.from({ length: 33 }, (_, i) => [`phase${i}`, i])
+    );
+    expect(
+      normalizeSandboxFunctionResult({
+        protocolVersion: 3,
+        delivery: "stdout",
+        outcome: { ok: true, output: 1 },
+        timingsMs: tooManyKeys,
+      })
+    ).toEqual({
+      ok: true,
+      output: 1,
+    });
+
+    expect(
+      normalizeSandboxFunctionResult({
+        protocolVersion: 3,
+        delivery: "spool",
+        outcome: { ok: true, output: 1 },
+        timingsMs: { "bad-key!": 1 },
+      })
+    ).toEqual({
+      ok: true,
+      output: 1,
+    });
+  });
+
   it("accepts the current runner success and failure envelopes", () => {
     expect(
       normalizeSandboxFunctionResult({ ok: true, output: { hello: "world" } })

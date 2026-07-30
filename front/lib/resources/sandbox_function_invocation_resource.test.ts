@@ -451,6 +451,31 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledTimes(1);
   });
 
+  it("releases a won succeed claim when the terminal blob write fails", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+    fileStorageMock.setFileSaveFails(
+      (filePath) => filePath === invocation.gcsPath
+    );
+
+    await expect(
+      invocation.succeed({ commentId: "comment-1" })
+    ).rejects.toThrow();
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("created");
+    expect(publishSandboxFunctionInvocationEvent).not.toHaveBeenCalled();
+
+    fileStorageMock.setFileSaveFails(() => false);
+    expect(
+      await refetched!.fail(new Error("recoverable after gcs failure"))
+    ).toBe(true);
+    expect(refetched!.status).toBe("errored");
+  });
+
   it("migrates a v1 blob, which recorded the message only", async () => {
     const { authenticator, sandboxFunction, invocation } =
       await setupExecutionTest();

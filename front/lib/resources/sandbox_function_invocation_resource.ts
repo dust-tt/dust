@@ -282,6 +282,15 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       }
     );
     if (affectedCount === 0) {
+      logger.info(
+        {
+          workspaceModelId: this.workspaceId,
+          sandboxFunctionId: this.sandboxFunction.sId,
+          invocationId: this.sId,
+          attemptedStatus: status,
+        },
+        "Skipping terminal transition for an already-terminal Pod function invocation"
+      );
       return false;
     }
     const row = rows[0];
@@ -289,6 +298,40 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       Object.assign(this, row.get());
     }
     return true;
+  }
+
+  // Give the claim back if terminal blob persistence fails, so a later fail()/
+  // markCreatedAsErrored() path can still record the outcome.
+  private async releaseTerminalStatus(
+    from: Extract<SandboxFunctionInvocationStatus, "succeeded" | "errored">
+  ): Promise<void> {
+    const [affectedCount, rows] = await this.model.update(
+      { status: "created" },
+      {
+        where: {
+          id: this.id,
+          workspaceId: this.workspaceId,
+          status: from,
+        },
+        returning: true,
+      }
+    );
+    if (affectedCount === 0) {
+      logger.error(
+        {
+          workspaceModelId: this.workspaceId,
+          sandboxFunctionId: this.sandboxFunction.sId,
+          invocationId: this.sId,
+          fromStatus: from,
+        },
+        "Failed to release Pod function terminal claim after blob write failure"
+      );
+      return;
+    }
+    const row = rows[0];
+    if (row) {
+      Object.assign(this, row.get());
+    }
   }
 
   async fail(error: Error | SandboxFunctionCallError): Promise<boolean> {
@@ -299,14 +342,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
     const claimed = await this.claimTerminalStatus("errored");
     if (!claimed) {
-      logger.info(
-        {
-          workspaceId: this.workspaceId,
-          sandboxFunctionId: this.sandboxFunction.sId,
-          invocationId: this.sId,
-        },
-        "Skipping fail for an already-terminal Pod function invocation"
-      );
       return false;
     }
 
@@ -319,7 +354,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // record of a failure the stream classified precisely.
       error: callError,
     };
-    await this.writeDataToGcs();
+    try {
+      await this.writeDataToGcs();
+    } catch (err) {
+      await this.releaseTerminalStatus("errored");
+      throw err;
+    }
     await publishSandboxFunctionInvocationEvent(
       {
         type: "sandbox_function_invocation_error",
@@ -336,14 +376,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   async succeed(result: unknown): Promise<boolean> {
     const claimed = await this.claimTerminalStatus("succeeded");
     if (!claimed) {
-      logger.info(
-        {
-          workspaceId: this.workspaceId,
-          sandboxFunctionId: this.sandboxFunction.sId,
-          invocationId: this.sId,
-        },
-        "Skipping succeed for an already-terminal Pod function invocation"
-      );
       return false;
     }
 
@@ -353,7 +385,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       context: this.context,
       result,
     };
-    await this.writeDataToGcs();
+    try {
+      await this.writeDataToGcs();
+    } catch (err) {
+      await this.releaseTerminalStatus("succeeded");
+      throw err;
+    }
     await publishSandboxFunctionInvocationEvent(
       {
         type: "sandbox_function_invocation_result",

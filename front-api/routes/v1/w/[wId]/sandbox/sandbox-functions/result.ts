@@ -2,7 +2,6 @@ import { isSandboxFunctionInvocationTokenPayload } from "@app/lib/api/sandbox/ac
 import { normalizeSandboxFunctionResult } from "@app/lib/api/sandbox_functions/result_envelope";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import logger from "@app/logger/logger";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -70,17 +69,6 @@ app.post(
     }
 
     const normalized = normalizeSandboxFunctionResult(result);
-    if (normalized.timingsMs) {
-      logger.info(
-        {
-          invocationId: invocation.sId,
-          functionId: sandboxFunction.sId,
-          timingsMs: normalized.timingsMs,
-        },
-        "Pod function result timings"
-      );
-    }
-
     if (normalized.ok) {
       await invocation.succeed(normalized.output);
     } else {
