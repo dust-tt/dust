@@ -169,16 +169,18 @@ export function MCPServerDetails({
             {affectedAgents.map((agent) => (
               <div key={agent.sId} className="flex items-center gap-2">
                 <Avatar size="xs" visual={agent.pictureUrl} />
-                <span className="truncate">{agent.name}</span>
-                <a
-                  href={getAgentBuilderRoute(owner.sId, agent.sId)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Open ${agent.name} in Agent Builder`}
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
-                >
-                  <Icon visual={LinkExternal01} size="xs" />
-                </a>
+                <div className="flex min-w-0 items-center gap-1">
+                  <span className="truncate">{agent.name}</span>
+                  <a
+                    href={getAgentBuilderRoute(owner.sId, agent.sId)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Open ${agent.name} in Agent Builder`}
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                  >
+                    <Icon visual={LinkExternal01} size="xs" />
+                  </a>
+                </div>
               </div>
             ))}
           </div>
