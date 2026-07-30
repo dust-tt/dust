@@ -21,6 +21,29 @@ const JOIN_CHANNEL_USE_CASES = [
 ] as const;
 export type JoinChannelUseCaseType = (typeof JOIN_CHANNEL_USE_CASES)[number];
 
+/**
+ * Projection of a Slack webhook event, built by the webhook handler and carried
+ * to `slackWebhookEventWorkflow`. Only the fields the handlers read are kept:
+ * message text, blocks and attachments never leave the webhook.
+ */
+export interface SlackWebhookEventPayload {
+  type: string;
+  subtype?: "message_changed" | "message_deleted" | "channel_name";
+  channelType?: "channel" | "group" | "im" | "mpim";
+  // Always an id: `channel_created` carries an object that the webhook handler
+  // flattens.
+  channelId?: string;
+  // New channel name, on the `channel_name` message subtype.
+  channelName?: string;
+  // Team the channel belongs to, on `channel_created`. Differs from the webhook
+  // team id on shared channels.
+  contextTeamId?: string;
+  userId?: string;
+  ts?: string;
+  threadTs?: string;
+  deletedTs?: string;
+}
+
 // Dynamic activity creation with fresh routing evaluation (enables retry queue switching).
 function getSlackActivities() {
   const {
@@ -61,6 +84,22 @@ function getSlackActivities() {
       startToCloseTimeout: "60 minutes",
     });
 
+  // Bounded on purpose: this workflow carries no connector id, so the activity
+  // interceptor cannot pause a connector that keeps failing, and Slack keeps
+  // pushing events at us regardless. Retries buy us transient failures, not a
+  // recovery from a broken connector.
+  const { processSlackWebhookEventActivity } = proxyActivities<
+    typeof activities
+  >({
+    startToCloseTimeout: "10 minutes",
+    retry: {
+      initialInterval: "5s",
+      maximumInterval: "60s",
+      backoffCoefficient: 2,
+      maximumAttempts: 4,
+    },
+  });
+
   return {
     attemptChannelJoinActivity,
     autoReadChannelActivity,
@@ -69,6 +108,7 @@ function getSlackActivities() {
     getChannel,
     getChannelsToGarbageCollect,
     migrateChannelsFromLegacyBotToNewBotActivity,
+    processSlackWebhookEventActivity,
     reportInitialSyncProgressActivity,
     saveSuccessSyncActivity,
     syncChannel,
@@ -189,6 +229,23 @@ export async function syncOneChannel(
   if (updateSyncStatus) {
     await getSlackActivities().saveSuccessSyncActivity(connectorId);
   }
+}
+
+/**
+ * Entry point for a Slack webhook event: one workflow per event, so the webhook
+ * handler never touches the database. Resolving the connectors, validating the
+ * channel and dispatching the sync all happen in the activity. Coalescing is
+ * not this workflow's job — the sync workflows it dispatches to are already
+ * debounced per thread and per channel week.
+ */
+export async function slackWebhookEventWorkflow(
+  teamId: string,
+  event: SlackWebhookEventPayload
+) {
+  await getSlackActivities().processSlackWebhookEventActivity({
+    teamId,
+    event,
+  });
 }
 
 export async function syncOneThreadDebounced(
@@ -366,6 +423,15 @@ export function syncOneChanneWorkflowlId(
   channelId: string
 ) {
   return `slack-syncOneChannel-${connectorId}-${channelId}`;
+}
+
+/**
+ * Keyed on Slack's own event id, which makes a redelivery of the same event a
+ * no-op instead of a duplicate: Slack retries an event it believes we failed to
+ * acknowledge, and some handlers post messages to Slack.
+ */
+export function slackWebhookEventWorkflowId(eventId: string) {
+  return `slack-webhookEvent-${eventId}`;
 }
 
 export function syncOneThreadDebouncedWorkflowId(
