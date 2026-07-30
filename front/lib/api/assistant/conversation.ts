@@ -608,6 +608,35 @@ export async function postUserMessage(
   // visibility decisions downstream depend on user intent, not on server-injected mentions.
   const explicitAgentMentions = mentions.filter(isAgentMention);
 
+  // The "agent_sidekick" origin makes the whole message free (no LLM/tool AWU
+  // billing). It must therefore only ever route to the sidekick global agent —
+  // any other target would let a caller get a real agent's output for free.
+  // A message that reaches here with a non-sidekick mention is either a forged origin or a bug.
+  if (
+    context.origin === "agent_sidekick" &&
+    explicitAgentMentions.some(
+      (mention) => mention.configurationId !== GLOBAL_AGENTS_SID.SIDEKICK
+    )
+  ) {
+    logger.warn(
+      {
+        workspaceId: owner.sId,
+        conversationId: conversation.sId,
+        userId: user?.sId,
+        mentionedAgentIds: explicitAgentMentions.map((m) => m.configurationId),
+      },
+      "Message with agent_sidekick origin targets a non-sidekick agent; refusing to bill it as free."
+    );
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "The agent_sidekick origin can only target the sidekick agent.",
+      },
+    });
+  }
+
   // Auto-inject @dust for mention-less web/extension messages in single-user conversations.
   // Must run before the plan rate-limit check so the resulting agent message is counted.
   // Note: the per-pod default agent is applied client-side via the input bar sticky mention,

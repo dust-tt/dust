@@ -43,6 +43,9 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
   declare fileId: ForeignKey<FileModel["id"]>;
   declare slug: string;
   declare description: string;
+  // Non-null policies are introduced by the next deploy. This predecessor
+  // recognizes the column only so mixed-version instances can fail closed.
+  declare authentication: string | null;
   declare inputSchema: JSONSchema;
   declare outputSchema: JSONSchema;
 
@@ -94,6 +97,10 @@ SandboxFunctionModel.init(
     description: {
       type: DataTypes.STRING(255),
       allowNull: false,
+    },
+    authentication: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
     },
     inputSchema: {
       type: DataTypes.JSONB,

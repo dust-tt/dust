@@ -53,14 +53,13 @@ app.patch(
           },
         });
       }
-      // biome-ignore lint/plugin/noDirectRoleCheck: conditional — only checked when file is not project_context
-    } else if (!auth.isBuilder()) {
+    } else if (!auth.isManager()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
           message:
-            "Only users that are `builders` for the current workspace can modify files.",
+            "Only users that are `managers` for the current workspace can modify files.",
         },
       });
     }

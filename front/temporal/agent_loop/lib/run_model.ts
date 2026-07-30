@@ -365,6 +365,7 @@ export async function runModel(
     functionCallStepContentIds,
     durationRecorder,
     activityTimeoutDeadlineMs,
+    forceDisableToolUse = false,
   }: {
     runAgentData: AgentLoopExecutionData;
     runIds: string[];
@@ -372,12 +373,17 @@ export async function runModel(
     functionCallStepContentIds: Record<string, ModelId>;
     durationRecorder: DurationRecorder;
     activityTimeoutDeadlineMs: number;
+    // Set when the previous step came back empty: force the final generation.
+    forceDisableToolUse?: boolean;
   }
 ): Promise<{
   actions: AgentActionsEvent["actions"];
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
   stepContexts: StepContext[];
+  // The step produced nothing at all: the loop should run one more step with
+  // tool use disabled to force a final answer.
+  retryWithoutTools?: boolean;
 } | null> {
   const {
     agentConfiguration,
@@ -555,8 +561,8 @@ export async function runModel(
   // still sent, so the request keeps the same shape as previous steps (stable
   // tool definitions preserve prompt caching and keep tool references in the
   // replayed history resolvable), but the model is forbidden from calling them
-  // (tool choice "none").
-  const disableToolUse = isLastStep;
+  // (tool choice "none"). Same treatment after an empty step.
+  const disableToolUse = isLastStep || forceDisableToolUse;
   const availableActions = filteredMcpActions.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
@@ -1010,10 +1016,37 @@ export async function runModel(
     // Successful generation.
     const processedContent = contentParser.getContent() ?? "";
 
-    // No tool call and no text: the model produced no answer, either because it
-    // ran out of iterations or because the turn came back empty. Surface a
-    // retryable error, since publishing a success would silently end the run.
-    if (!processedContent.length) {
+    // The answer may have been streamed in an earlier step (text emitted before
+    // a tool call), so an empty step is not an empty message.
+    const answerSoFar = concatWithNewlineBoundary(
+      agentMessage.content,
+      processedContent
+    );
+
+    // No tool call and no text at all: the model produced no answer, either
+    // because it ran out of iterations or because the turn came back empty.
+    // Surface a retryable error, since publishing a success would silently end
+    // the run.
+    if (!answerSoFar.length) {
+      // Nothing at all came back: no tool call, no text here, no text in an
+      // earlier step. Rather than failing the message, run one more step with
+      // tool use disabled to force a final answer. The retry is a new step so
+      // it gets its own trace and run id.
+      if (!disableToolUse) {
+        localLogger.warn(
+          { modelId: modelConfig.modelId },
+          "Empty model turn, retrying in a new step without tool use."
+        );
+
+        return {
+          actions: [],
+          runId: dustRunId,
+          functionCallStepContentIds: updatedFunctionCallStepContentIds,
+          stepContexts: [],
+          retryWithoutTools: true,
+        };
+      }
+
       localLogger.warn(
         {
           modelId: modelConfig.modelId,
@@ -1057,10 +1090,7 @@ export async function runModel(
     const updatedAgentMessage = {
       ...agentMessage,
       chainOfThought: (agentMessage.chainOfThought ?? "") + chainOfThought,
-      content: concatWithNewlineBoundary(
-        agentMessage.content,
-        processedContent
-      ),
+      content: answerSoFar,
       completedTs,
       status: "succeeded",
       completionDurationMs: getCompletionDuration(

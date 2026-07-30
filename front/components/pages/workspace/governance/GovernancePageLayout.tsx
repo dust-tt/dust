@@ -10,7 +10,7 @@ export function GovernancePageLayout({ children }: GovernancePageLayoutProps) {
     <div className="flex flex-col gap-6">
       <Page.Header
         title="Settings & Governance"
-        description="Manage what members can do in your workspace."
+        description="Manage what members can do in your workspace"
         icon={Toggle01Left}
       />
       {children}

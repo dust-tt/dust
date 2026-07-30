@@ -21,6 +21,8 @@ import type {
   CallFunctionRequest,
   CommandResultMap,
   EditTextFn,
+  ScopedWorkspaceUserIdentity,
+  UserIdentityState,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types/assistant/visualization";
@@ -74,7 +76,32 @@ type ProtectedVisualization = BaseVisualization & {
 
 export type Visualization = PublicVisualization | ProtectedVisualization;
 
-export type FrameAccess = "conversation" | "public-anonymous" | "public-member";
+export function getFrameRuntimeAccess(
+  workspaceId: string,
+  canInvokeFunctions: boolean,
+  scopedUserIdentity?: ScopedWorkspaceUserIdentity
+): {
+  canInvokeFunctions: boolean;
+  userIdentity: UserIdentityState;
+} {
+  const userIdentity: UserIdentityState =
+    scopedUserIdentity?.workspaceId === workspaceId
+      ? {
+          isAuthenticated: true,
+          isWorkspaceMember: true,
+          user: scopedUserIdentity.user,
+        }
+      : {
+          isAuthenticated: false,
+          isWorkspaceMember: false,
+          user: null,
+        };
+
+  return {
+    canInvokeFunctions: canInvokeFunctions && userIdentity.isWorkspaceMember,
+    userIdentity,
+  };
+}
 
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   request: { command: T } & VisualizationRPCRequest,
@@ -311,6 +338,7 @@ function useVisualizationDataHandler({
   setErrorMessage,
   visualization,
   vizIframeRef,
+  userIdentity,
   waitForSandboxFunctionInvocationResult,
   workspaceId,
 }: {
@@ -326,6 +354,7 @@ function useVisualizationDataHandler({
   setErrorMessage: (v: SetStateAction<string | null>) => void;
   visualization: Visualization;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
+  userIdentity: UserIdentityState;
   waitForSandboxFunctionInvocationResult: (params: {
     functionId: string;
     invocationId: string;
@@ -417,6 +446,10 @@ function useVisualizationDataHandler({
           break;
         }
 
+        case "getUserIdentity":
+          sendResponseToIframe(data, userIdentity, event.source);
+          break;
+
         case "getFile":
           const fileBlob = await getFileBlob(data.params.fileId);
 
@@ -491,6 +524,7 @@ function useVisualizationDataHandler({
     setCodeDrawerOpened,
     visualization.identifier,
     vizIframeRef,
+    userIdentity,
     sendNotification,
     waitForSandboxFunctionInvocationResult,
     workspaceId,
@@ -527,13 +561,14 @@ export function CodeDrawer({
   );
 }
 
-interface VisualizationActionIframeProps {
+export interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
+  canInvokeFunctions: boolean;
   conversationId: string | null;
   isEditable?: boolean;
   isInDrawer?: boolean;
   onEditText?: EditTextFn;
-  frameAccess?: FrameAccess;
+  scopedUserIdentity?: ScopedWorkspaceUserIdentity;
   spaceId?: string;
   visualization: Visualization;
   vizUrl: string;
@@ -615,17 +650,26 @@ export const VisualizationActionIframe = forwardRef<
 
   const {
     agentConfigurationId,
+    canInvokeFunctions,
     conversationId,
     isEditable = false,
     isInDrawer = false,
     onEditText,
+    scopedUserIdentity,
     spaceId,
     visualization,
     workspaceId,
-    frameAccess = "conversation",
   } = props;
 
-  const isPublic = frameAccess !== "conversation";
+  const runtimeAccess = useMemo(() => {
+    return getFrameRuntimeAccess(
+      workspaceId,
+      canInvokeFunctions,
+      scopedUserIdentity
+    );
+  }, [canInvokeFunctions, scopedUserIdentity, workspaceId]);
+
+  const isPublic = visualization.accessToken !== undefined;
 
   const getFileBlob = useCallback(
     async (fileId: string) => {
@@ -677,10 +721,10 @@ export const VisualizationActionIframe = forwardRef<
       Result<SandboxFunctionInvocationType, SandboxFunctionCallError>
     > => {
       try {
-        if (frameAccess === "public-anonymous") {
+        if (!runtimeAccess.canInvokeFunctions) {
           return new Err({
             code: "not_supported",
-            message: "Pod functions are not supported in shared frames.",
+            message: "Function calls are not available in this Frame.",
           });
         }
 
@@ -726,7 +770,7 @@ export const VisualizationActionIframe = forwardRef<
         });
       }
     },
-    [frameAccess, workspaceId]
+    [runtimeAccess.canInvokeFunctions, workspaceId]
   );
 
   useVisualizationDataHandler({
@@ -739,6 +783,7 @@ export const VisualizationActionIframe = forwardRef<
     setErrorMessage,
     visualization,
     vizIframeRef,
+    userIdentity: runtimeAccess.userIdentity,
     waitForSandboxFunctionInvocationResult,
     workspaceId,
   });

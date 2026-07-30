@@ -258,16 +258,17 @@ export async function scrubSpaceActivity({
     },
   });
 
-  // Delete the activation pod record for this space. The FK to spaces is
-  // `onDelete: "RESTRICT"`, so this row must be removed before the space
-  // can be hard-deleted. Recommendations reference the pod with
-  // `onDelete: "RESTRICT"` too; they are owned by the user so they are
-  // detached, not deleted.
+  // Delete recommendations made in this Pod before deleting the activation
+  // pod record itself. The FK from activation_recommendations to
+  // activation_pods is `onDelete: "RESTRICT"`, so the recommendations must
+  // be removed first or the destroy below fails. The FK from spaces to
+  // activation_pods is `onDelete: "RESTRICT"` too, so this row must be
+  // removed before the space can be hard-deleted.
   const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
   if (activationPod) {
-    await ActivationRecommendationResource.detachActivationPod(
+    await ActivationRecommendationResource.deleteAllForActivationPod(
       auth,
-      activationPod.id
+      activationPod
     );
     const deletePodRes = await activationPod.delete(auth, {});
     if (deletePodRes.isErr()) {

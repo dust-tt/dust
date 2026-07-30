@@ -241,6 +241,9 @@ export async function agentLoopWorkflow({
     await executionScope.run(async () => {
       const syncStartTime = Date.now();
       let currentStep = startStep;
+      // Set when the previous step returned nothing at all: the next step runs with tool use
+      // disabled to force a final answer.
+      let forceDisableToolUse = false;
       let childWorkflowHandle: ChildWorkflowHandle<
         typeof agentLoopConversationTitleWorkflow
       > | null = null;
@@ -257,16 +260,20 @@ export async function agentLoopWorkflow({
 
         const stepStartTime = Date.now();
 
-        const { runId, shouldContinue } = await executeStepIteration({
-          authType,
-          agentLoopArgs: {
-            ...agentLoopArgs,
-            initialStartTime,
-          },
-          currentStep,
-          runIds,
-          startStep,
-        });
+        const { runId, shouldContinue, retryWithoutTools } =
+          await executeStepIteration({
+            authType,
+            agentLoopArgs: {
+              ...agentLoopArgs,
+              initialStartTime,
+            },
+            currentStep,
+            runIds,
+            startStep,
+            forceDisableToolUse,
+          });
+
+        forceDisableToolUse = retryWithoutTools ?? false;
 
         // Update state with results.
         if (runId) {
@@ -415,15 +422,18 @@ async function executeStepIteration({
   agentLoopArgs,
   runIds,
   startStep,
+  forceDisableToolUse,
 }: {
   authType: AuthenticatorType;
   currentStep: number;
   agentLoopArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   startStep: number;
+  forceDisableToolUse: boolean;
 }): Promise<{
   runId: string | null;
   shouldContinue: boolean;
+  retryWithoutTools?: boolean;
 }> {
   const result = await runModelAndCreateActionsActivity({
     authType,
@@ -431,6 +441,7 @@ async function executeStepIteration({
     runAgentArgs: agentLoopArgs,
     runIds,
     step: currentStep,
+    forceDisableToolUse,
   });
 
   if (!result) {
@@ -441,7 +452,7 @@ async function executeStepIteration({
     };
   }
 
-  const { runId, actionBlobs } = result;
+  const { runId, actionBlobs, retryWithoutTools = false } = result;
 
   // Generation completed or the loop unpaused and no new tools were generated.
   if (actionBlobs.length === 0) {
@@ -449,7 +460,10 @@ async function executeStepIteration({
       runId,
       // If runId is null that means we unpaused the loop with no new tools (eg: they were all
       // denied) and no LLM call, so we need to continue as the agent loop is not finished.
-      shouldContinue: runId === null,
+      // retryWithoutTools means the model returned nothing: run one more step with tool use
+      // disabled to force a final answer.
+      shouldContinue: runId === null || retryWithoutTools,
+      retryWithoutTools,
     };
   }
 

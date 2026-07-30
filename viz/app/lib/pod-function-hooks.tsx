@@ -2,6 +2,7 @@
 
 import { normalizeSandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
+import type { UserIdentityState } from "@viz/app/types";
 import {
   createContext,
   createElement,
@@ -13,7 +14,7 @@ import {
   useRef,
   useState,
 } from "react";
-import useSWR, { SWRConfig } from "swr";
+import useSWR, { type KeyedMutator, SWRConfig } from "swr";
 import useSWRMutation from "swr/mutation";
 
 interface PodFunctionContextValue {
@@ -29,7 +30,7 @@ export interface UsePodFunctionResult {
   error: Error | undefined;
   isLoading: boolean;
   isValidating: boolean;
-  mutate: () => Promise<unknown>;
+  mutate: KeyedMutator<unknown>;
 }
 
 export interface UsePodFunctionMutationResult {
@@ -40,8 +41,14 @@ export interface UsePodFunctionMutationResult {
   trigger: (input: unknown) => Promise<unknown>;
 }
 
+export type UseUserIdentityResult = UserIdentityState & {
+  error: Error | undefined;
+  isLoading: boolean;
+};
+
 type PodFunctionQueryKey = readonly ["pod-function", string, unknown];
 type PodFunctionMutationKey = readonly ["pod-function-mutation", string];
+const POD_FUNCTION_QUERY_DEDUPING_INTERVAL_MS = 2_000;
 
 const PodFunctionContext = createContext<PodFunctionContextValue | null>(null);
 
@@ -112,7 +119,7 @@ export function usePodFunction(
       }
     },
     {
-      dedupingInterval: 0,
+      dedupingInterval: POD_FUNCTION_QUERY_DEDUPING_INTERVAL_MS,
       errorRetryCount: 0,
       keepPreviousData: true,
       refreshInterval: 0,
@@ -130,6 +137,37 @@ export function usePodFunction(
     isLoading: key !== null && result.isLoading,
     isValidating: key !== null && result.isValidating,
     mutate,
+  };
+}
+
+export function useUserIdentity(): UseUserIdentityResult {
+  const { dataAPI } = usePodFunctionContext();
+  const result = useSWR<UserIdentityState, Error>(
+    "workspace-user-identity",
+    () => dataAPI.getUserIdentity(),
+    {
+      errorRetryCount: 0,
+      revalidateIfStale: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      shouldRetryOnError: false,
+    }
+  );
+
+  if (!result.data) {
+    return {
+      error: result.error,
+      isAuthenticated: false,
+      isWorkspaceMember: false,
+      isLoading: !result.error,
+      user: null,
+    };
+  }
+
+  return {
+    ...result.data,
+    error: result.error,
+    isLoading: false,
   };
 }
 

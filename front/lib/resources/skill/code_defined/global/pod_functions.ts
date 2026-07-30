@@ -135,7 +135,6 @@ tool, so \`fetch()\` calls from inside it only reach domains on the pod's egress
 workspace's \`DST_*\` (plain config) and \`DSEC_*\` (HTTPS secret placeholder) environment variables
 are available under the same substitution rules as the Computer.
 
-
 #### Calling other tools from a function
 
 \`dsbx\` is available inside a function's own process, the same way it is in the conversation's
@@ -175,6 +174,17 @@ A Frame calls published functions through the injected \`@dust/react-hooks\` mod
 \`${toolName("get")}\`. Never pass a bare slug or infer the function from the Frame's current Pod.
 This keeps the reference stable if the Frame is moved.
 
+##### Designing functions for a Frame
+
+Design the function contract around the Frame interaction, not individual database tables:
+
+- make reads idempotent and side-effect-free, and return one bounded screen snapshot instead of
+  creating waterfalls or N+1 calls;
+- make mutations return the updated entity or screen snapshot so the Frame can update its cache
+  without another function call;
+- keep write operations safe against duplicate interaction, using a stable idempotency key when a
+  repeated request would otherwise create duplicate data.
+
 Use \`usePodFunction\` for idempotent reads. It caches identical calls, deduplicates calls already
 in flight, and keeps previous data visible while revalidating. Pass \`null\` as the reference to
 disable the query.
@@ -190,7 +200,8 @@ const { data, error, isLoading, isValidating, mutate } = usePodFunction(
 
 Use \`usePodFunctionMutation\` for writes and other side effects. Mutations only run when
 \`trigger\` is called. They are not deduplicated and do not guess which cached queries they affect.
-Revalidate the affected read explicitly after the mutation succeeds.
+Prefer mutation functions whose output matches the affected read snapshot, then write that result
+to the query cache without revalidating.
 
 \`\`\`tsx
 import { usePodFunction, usePodFunctionMutation } from "@dust/react-hooks"
@@ -199,10 +210,15 @@ const comments = usePodFunction("<podId>/list-comments", { threadId })
 const addComment = usePodFunctionMutation("<podId>/post-comment")
 
 async function handleAddComment(body: string) {
-  await addComment.trigger({ threadId, body })
-  await comments.mutate()
+  const updatedComments = await addComment.trigger({ threadId, body })
+  await comments.mutate(updatedComments, { revalidate: false })
 }
 \`\`\`
+
+For immediate feedback, apply an optimistic cache update before triggering the mutation and replace
+it with the authoritative mutation result afterward. Roll the optimistic value back if the mutation
+fails. Only call \`mutate()\` without data when the mutation cannot return the affected state; do not
+make a blocking mutation-then-refetch sequence the default.
 
 Call mutation handlers from a button or another supported in-Frame interaction. Do not model this
 as HTML form submission because forms cannot run inside the Frame iframe.
@@ -221,11 +237,10 @@ fall back to a generic message for the rest. The ones worth branching on are \`i
 \`invalid_output\` for schema mismatches, \`threw\` when the function threw, \`http_error\` when the
 function's own request failed, \`sandbox_function_not_found\`, and \`not_supported\`.
 
-The existing imperative \`callFunction\` remains available unchanged for explicit calls and also
-takes \`<podId>/<slug>\` or a function id. Pod functions are only reachable from authenticated Pod
-Frames, not from public or shared Frames.`,
+Pod functions in shared Frames are available to authenticated members of the Pod's workspace;
+anonymous viewers cannot call them.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 4,
+  version: 5,
   icon: "PuzzleIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

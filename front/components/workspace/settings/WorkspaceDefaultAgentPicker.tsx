@@ -11,7 +11,7 @@ import { useContext } from "react";
 
 const LABEL = "Default agent";
 const DESCRIPTION =
-  "The agent pre-selected when anyone starts a new conversation in this workspace.";
+  "The agent pre-selected when anyone starts a new conversation in this workspace";
 
 interface WorkspaceDefaultAgentPickerProps {
   owner: WorkspaceType;

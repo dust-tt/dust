@@ -5974,6 +5974,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "kinds",
+            "required": false,
+            "description": "Comma-separated list of space kinds to filter on (e.g. `regular,global`).",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {

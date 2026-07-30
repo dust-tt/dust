@@ -132,13 +132,12 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
   private static async finalizeDestroyed(
     sandbox: SandboxResource,
-    ctx: { workspaceId: string },
     opts: { recordLifecycle: boolean }
   ): Promise<void> {
-    await sandbox.updateStatus("deleted", { ctx });
+    await sandbox.updateStatus("deleted");
     SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
     if (opts.recordLifecycle) {
-      recordLifecycleOperation("destroy", ctx);
+      recordLifecycleOperation("destroy");
     }
   }
 
@@ -217,9 +216,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
     const sandbox = await withTransaction(createSandbox, transaction);
 
-    recordLifecycleOperation("create", {
-      workspaceId: auth.getNonNullableWorkspace().sId,
-    });
+    recordLifecycleOperation("create");
 
     return new this(this.model, sandbox.get());
   }
@@ -284,7 +281,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   async updateStatus(
     newStatus: SandboxStatus,
     opts?: {
-      ctx?: { workspaceId: string };
       transaction?: Transaction;
     }
   ): Promise<void> {
@@ -294,9 +290,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return;
     }
 
-    if (opts?.ctx && this.statusChangedAt) {
+    if (this.statusChangedAt) {
       const durationMs = Date.now() - this.statusChangedAt.getTime();
-      recordStateDuration(previousStatus, durationMs, opts.ctx);
+      recordStateDuration(previousStatus, durationMs);
     }
 
     await this.update(
@@ -497,7 +493,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     );
 
     return this.withLifecycleLock(owner.lockKey, async (provider) => {
-      const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
       const existing = await owner.fetchSandbox();
 
@@ -693,13 +688,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         await existing.updateLastRuntimeRefreshAt(null);
       }
 
-      await existing.updateStatus("running", { ctx });
+      await existing.updateStatus("running");
       await existing.updateLastActivityAt();
 
       if (wokeFromSleep) {
-        recordLifecycleOperation("wake", ctx);
+        recordLifecycleOperation("wake");
       } else if (freshlyCreated) {
-        recordLifecycleOperation("create", ctx);
+        recordLifecycleOperation("create");
       }
 
       return new Ok({ sandbox: existing, freshlyCreated, wokeFromSleep });
@@ -726,7 +721,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
-      const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
 
       const checkResult = await this.runPreSleepCheck(
@@ -750,14 +744,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             { sandbox: sandbox.toLogJSON() },
             "Sandbox not found at provider during sleep — marking deleted."
           );
-          await sandbox.updateStatus("deleted", { ctx });
+          await sandbox.updateStatus("deleted");
           return new Ok(undefined);
         }
         return result;
       }
 
-      await sandbox.updateStatus("sleeping", { ctx });
-      recordLifecycleOperation("sleep", ctx);
+      await sandbox.updateStatus("sleeping");
+      recordLifecycleOperation("sleep");
       logger.info({ sandbox: sandbox.toLogJSON() }, "Sandbox put to sleep.");
       return new Ok(undefined);
     });
@@ -781,7 +775,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
-      const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
+      const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
 
       // The health check runs BEFORE the pending_approval DB flip on purpose:
       // a failure then leaves DB=running + SDK=running (nothing happened),
@@ -811,9 +805,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       // failure leaves DB=pending_approval + SDK=running, which is the
       // recoverable shape: ensureActive's pending_approval branch will wake
       // the (still-running) sandbox on the next call, idempotently.
-      await sandbox.updateStatus("pending_approval", { ctx });
+      await sandbox.updateStatus("pending_approval");
 
-      const sleepResult = await provider.sleep(sandbox.providerId, ctx);
+      const sleepResult = await provider.sleep(sandbox.providerId, tracingOpts);
       if (sleepResult.isErr()) {
         logger.error(
           {
@@ -848,8 +842,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
-      const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
-      await sandbox.updateStatus("sleeping", { ctx });
+      await sandbox.updateStatus("sleeping");
       logger.info(
         { sandbox: sandbox.toLogJSON() },
         "Pending-approval sandbox transitioned to sleeping."
@@ -873,7 +866,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
-      const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
 
       const result = await provider.destroy(sandbox.providerId, tracingOpts);
@@ -883,7 +875,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             { sandbox: sandbox.toLogJSON() },
             "Sandbox not found at provider during destroy — marking deleted."
           );
-          await SandboxResource.finalizeDestroyed(sandbox, ctx, {
+          await SandboxResource.finalizeDestroyed(sandbox, {
             recordLifecycle: false,
           });
           return new Ok(undefined);
@@ -891,7 +883,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return result;
       }
 
-      await SandboxResource.finalizeDestroyed(sandbox, ctx, {
+      await SandboxResource.finalizeDestroyed(sandbox, {
         recordLifecycle: true,
       });
 
@@ -1019,7 +1011,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
-      const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
 
       // Pre-destroy flush: kill-requested destroys (image rollouts) would
@@ -1048,7 +1039,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             { sandbox: sandbox.toLogJSON() },
             "Kill-requested sandbox not found at provider — marking deleted."
           );
-          await SandboxResource.finalizeDestroyed(sandbox, ctx, {
+          await SandboxResource.finalizeDestroyed(sandbox, {
             recordLifecycle: false,
           });
           return new Ok(undefined);
@@ -1056,7 +1047,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return result;
       }
 
-      await SandboxResource.finalizeDestroyed(sandbox, ctx, {
+      await SandboxResource.finalizeDestroyed(sandbox, {
         recordLifecycle: true,
       });
 

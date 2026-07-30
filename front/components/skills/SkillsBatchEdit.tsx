@@ -25,24 +25,24 @@ export type BatchAvailabilityAction = {
 
 const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
   {
-    label: "Editor only",
+    label: "Editors only",
     availability: "editors",
     getDialogTitle: (count) =>
-      `Make ${count} skill${pluralize(count)} editor only`,
-    dialogDescription: (count) =>
-      count === 1
-        ? "Non-editors won’t see this skill as an option in the builder. Agents and skills that already use it won’t lose access."
-        : "Non-editors won’t see these skills as options in the builder. Agents and skills that already use them won’t lose access.",
+      `Make ${count} skill${pluralize(count)} editors only`,
+    dialogDescription: (count) => {
+      const pronoun = count === 1 ? "it" : "them";
+      return `Non-editors can’t find or use ${pronoun} on their own, but they can still access ${pronoun} through any agent or skill that includes ${pronoun}.`;
+    },
   },
   {
     label: "Workspace members",
     availability: "workspace_users",
     getDialogTitle: (count) =>
       `Make ${count} skill${pluralize(count)} available to workspace members`,
-    dialogDescription: (count) =>
-      count === 1
-        ? "Every workspace member can add it to agents, other skills and use it directly."
-        : "Every workspace member can add them to agents, other skills and use them directly.",
+    dialogDescription: (count) => {
+      const pronoun = count === 1 ? "it" : "them";
+      return `Every workspace member can add ${pronoun} to agents or other skills and use ${pronoun} directly.`;
+    },
   },
   {
     label: "Auto-discoverable",

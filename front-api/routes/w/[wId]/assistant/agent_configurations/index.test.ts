@@ -1,5 +1,7 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -416,6 +418,78 @@ describe("POST /api/w/:wId/assistant/agent_configurations - additionalRequestedS
     const actualRequestedSpaceIds = data.agentConfiguration.requestedSpaceIds;
     expect(actualRequestedSpaceIds).toHaveLength(1);
     expect(actualRequestedSpaceIds).toContain(openSpace.sId);
+  });
+
+  it("filters skills-only tools when saving an agent", async () => {
+    const { workspace, user, auth, globalGroup } =
+      await createPrivateApiMockRequest({
+        role: "admin",
+        method: "POST",
+      });
+
+    await SpaceFactory.defaults(auth);
+
+    const openSpace = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    const remoteMCPServer = await RemoteMCPServerFactory.create(workspace);
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        remoteMCPServer.sId
+      );
+    if (!systemView) {
+      throw new Error("Expected system MCP server view.");
+    }
+
+    const { view: mcpServerView } = await MCPServerViewResource.create(auth, {
+      systemView,
+      space: openSpace,
+    });
+    const [updatedViewCount] = await MCPServerViewModel.update(
+      { isRestrictedToSkills: true },
+      { where: { id: mcpServerView.id } }
+    );
+    expect(updatedViewCount).toBe(1);
+
+    const response = await postAgent(workspace, {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        name: "Test Agent with Skills-only Tool",
+        actions: [
+          {
+            type: "mcp_server_configuration",
+            mcpServerViewId: mcpServerView.sId,
+            name: "search",
+            description: "Search data",
+            dataSources: null,
+            tables: null,
+            childAgentId: null,
+            timeFrame: null,
+            jsonSchema: null,
+            additionalConfiguration: {},
+            dustAppConfiguration: null,
+            secretName: null,
+            dustProject: null,
+          },
+        ],
+        editors: [{ sId: user.sId }],
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.agentConfiguration.actions).toEqual([]);
+    expect(data.agentConfiguration.requestedSpaceIds).not.toContain(
+      openSpace.sId
+    );
+    const agentMCPServerConfigurationCount =
+      await AgentMCPServerConfigurationModel.count({
+        where: {
+          workspaceId: workspace.id,
+          agentConfigurationId: data.agentConfiguration.id,
+        },
+      });
+    expect(agentMCPServerConfigurationCount).toBe(0);
   });
 });
 

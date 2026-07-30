@@ -207,6 +207,11 @@ ConversationParticipantModel.init(
         name: "conversation_participants_conversation_id",
         concurrently: true,
       },
+      {
+        fields: ["workspaceId", "conversationId", "actionRequired"],
+        name: "conversation_participants_workspace_conversation_action_idx",
+        concurrently: true,
+      },
     ],
   }
 );

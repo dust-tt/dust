@@ -52,6 +52,7 @@ import type {
   Result,
   SearchRequestBodyType,
   SearchWarningCode,
+  SpaceType,
   ValidateActionRequestBodyType,
   ValidateActionResponseType,
 } from "./types";
@@ -80,6 +81,7 @@ import {
   GetSpaceConversationsForDataSourceResponseSchema,
   GetSpaceMetadataResponseSchema,
   GetSpacesResponseSchema,
+  GetWorkspaceExistsResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
   HeartbeatMCPResponseSchema,
@@ -1815,6 +1817,29 @@ export class DustAPI {
     return new Ok(r.value.emails);
   }
 
+  /**
+   * Probes the workspace behind the credentials. Errors when the workspace
+   * does not exist, has been relocated or is in maintenance. The endpoint does
+   * no work beyond authentication, so this is the cheapest availability check
+   * available on the public API.
+   */
+  async exists() {
+    const res = await this.request({
+      method: "GET",
+      path: "exists",
+    });
+
+    const r = await this._resultFromResponse(
+      GetWorkspaceExistsResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(r.value.exists);
+  }
+
   async getWorkspaceVerifiedDomains() {
     const res = await this.request({
       method: "GET",
@@ -1914,10 +1939,13 @@ export class DustAPI {
     return new Ok(r.value.apps);
   }
 
-  async getSpaces() {
+  async getSpaces(options?: { kinds?: SpaceType["kind"][] }) {
     const res = await this.request({
       method: "GET",
       path: "spaces",
+      query: options?.kinds
+        ? new URLSearchParams({ kinds: options.kinds.join(",") })
+        : undefined,
     });
 
     const r = await this._resultFromResponse(GetSpacesResponseSchema, res);

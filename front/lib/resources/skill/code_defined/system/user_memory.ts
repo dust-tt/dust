@@ -4,6 +4,7 @@ import {
   USER_MEMORY_READ_TOOL_NAME,
   USER_MEMORY_SERVER_NAME,
 } from "@app/lib/api/actions/servers/user_memory/metadata";
+import { isUserMemoryEnabled } from "@app/lib/api/user_memory";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
@@ -50,7 +51,11 @@ export const userMemorySkill = {
   icon: "ActionLightbulbIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
-    return !flags.includes("user_memory");
+    if (!flags.includes("user_memory")) {
+      return true;
+    }
+    const enabled = await isUserMemoryEnabled(auth);
+    return !enabled;
   },
   getAutoEnabledOrEquippedForAgentLoop: () => "enabled",
 } as const satisfies SystemSkillDefinition;

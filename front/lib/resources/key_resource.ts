@@ -53,6 +53,10 @@ export interface KeyAuthType {
 export const DEFAULT_SYSTEM_KEY_NAME = "DustSystemKey";
 export const SECRET_KEY_PREFIX = "sk-";
 
+// "Last used" is only shown coarsely in the UI; skip DB writes within this window
+// to avoid row-lock contention on hot API keys.
+export const MARK_AS_USED_MIN_INTERVAL_MS = 60 * 60 * 1000;
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface KeyResource extends ReadonlyAttributesType<KeyModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -267,14 +271,16 @@ export class KeyResource extends BaseResource<KeyModel> {
   }
 
   async markAsUsed() {
-    return this.model.update(
-      { lastUsedAt: new Date() },
-      {
-        where: {
-          id: this.id,
-        },
-      }
-    );
+    if (
+      this.lastUsedAt &&
+      Date.now() - this.lastUsedAt.getTime() < MARK_AS_USED_MIN_INTERVAL_MS
+    ) {
+      return;
+    }
+
+    // Use `this.update` (not `model.update`) so the instance and Redis secret
+    // cache stay consistent — otherwise every cached hit would keep writing.
+    return this.update({ lastUsedAt: new Date() });
   }
 
   async setIsDisabled() {

@@ -36,6 +36,10 @@ export class RPCDataAPI implements VisualizationDataAPI {
     }
   }
 
+  async getUserIdentity() {
+    return this.sendMessage("getUserIdentity", null);
+  }
+
   async fetchFile(fileId: string): Promise<File | null> {
     try {
       console.log(">> RPCDataAPI: Fetching file via RPC", fileId);

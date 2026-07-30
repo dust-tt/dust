@@ -12,7 +12,6 @@ import {
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   areDataSourcesConfigured,
-  isClientSideMCPToolConfiguration,
   isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
 import {
@@ -73,7 +72,7 @@ function constructContextSection({
 
   const { modelConfig } = modelInfo.endpoint;
   if (modelConfig.formattingMetaPrompt && !disableFormattingPrompt) {
-    context += `# RESPONSE FORMAT\n${modelConfig.formattingMetaPrompt}\n`;
+    context += `\n# RESPONSE FORMAT\n${modelConfig.formattingMetaPrompt}\n`;
   }
 
   return context;
@@ -109,46 +108,23 @@ function constructBranchContextSection({
   );
 }
 
-function constructPlatformSpecificContextSection({
-  userMessage,
-  serverToolsAndInstructions,
-}: {
-  userMessage: UserMessageType;
-  serverToolsAndInstructions?: ServerToolsAndInstructions[];
-}): string {
-  // Extension-originated messages are currently the only client messages where
-  // we inject instructions for ambient platform-specific context.
-  if (userMessage.context.origin !== "extension") {
-    return "";
-  }
-
-  const hasClientSideTools =
-    serverToolsAndInstructions?.some((server) =>
-      server.tools.some((tool) => isClientSideMCPToolConfiguration(tool))
-    ) ?? false;
-
-  if (!hasClientSideTools) {
-    return "";
-  }
-
+function constructPlatformSpecificContextSection(): string {
   return (
     "# PLATFORM-SPECIFIC CONTEXT\n\n" +
-    "This conversation is connected to a Dust client that can provide platform-specific context through tools. " +
-    "When the user refers to local, visible, or current platform context, look for tools that could be relevant " +
-    "to the user's inquiry before asking the user to paste it.\n"
+    "When the current user message's `<dust_system>` metadata identifies its source as `extension`, " +
+    "platform-specific tools may be available to access local, visible, or current browser context. " +
+    "Look for relevant tools before asking the user to paste that context.\n"
   );
 }
 
 function constructToolsSection({
   hasAvailableActions,
   modelInfo,
-  agentConfiguration,
   conversation,
   serverToolsAndInstructions,
 }: {
   hasAvailableActions: boolean;
   modelInfo: AgentLoopExecutionData["modelInfo"];
-  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
   conversation?: ConversationWithoutContentType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
 }): string {
@@ -441,15 +417,11 @@ export function constructPromptMultiActions(
   });
   const branchContextSection = constructBranchContextSection({ conversation });
   const platformSpecificContextSection =
-    constructPlatformSpecificContextSection({
-      userMessage,
-      serverToolsAndInstructions,
-    });
+    constructPlatformSpecificContextSection();
 
   const toolsSection = constructToolsSection({
     hasAvailableActions,
     modelInfo,
-    agentConfiguration,
     conversation,
     serverToolsAndInstructions,
   });
@@ -472,11 +444,11 @@ export function constructPromptMultiActions(
     // change without the agent configuration changing and must stay out of this tier.
     //
     // Shared context (short cache): workspace-scoped data shared across users, covering tool-use
-    // directives, date, toolsets, and workspace info. A cache breakpoint here lets different
-    // users in the same workspace share this prefix.
+    // directives, date, platform-specific context, toolsets, and workspace info. A cache
+    // breakpoint here lets different users in the same workspace share this prefix.
     //
     // Ephemeral context (no breakpoint): per-call data, covering selected-space-scoped skill
-    // instructions, branch lineage, platform-specific context, and user profile.
+    // instructions, branch lineage, and user profile.
     const fullInstructions = [
       instructionsContent,
       ...(hasSelectedSpacesOutsideAgentScope ? [] : [skillsSection]),
@@ -492,6 +464,7 @@ export function constructPromptMultiActions(
     const sharedContext: SystemPromptContext[] = [
       { role: "context" as const, content: toolsSection },
       { role: "context" as const, content: contextSection },
+      { role: "context" as const, content: platformSpecificContextSection },
       { role: "context" as const, content: toolsetsContext ?? "" },
       { role: "context" as const, content: workspaceContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
@@ -503,7 +476,6 @@ export function constructPromptMultiActions(
           ] satisfies SystemPromptContext[])
         : []),
       { role: "context" as const, content: branchContextSection },
-      { role: "context" as const, content: platformSpecificContextSection },
       { role: "context" as const, content: userContext ?? "" },
       { role: "context" as const, content: projectContext ?? "" },
     ].filter((s) => s.content.trim() !== "");

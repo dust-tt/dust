@@ -103,6 +103,24 @@ describe("POST /api/w/:wId/skills/similar", () => {
     expect(runMultiActionsAgent).not.toHaveBeenCalled();
   });
 
+  it("ignores unpublished (editors-only) skills", async () => {
+    const { workspace, auth } = await setup();
+
+    await SkillFactory.create(auth, {
+      name: "Unpublished Skill",
+      availability: "editors",
+    });
+
+    const response = await post(workspace, {
+      naturalDescription: "Create GitHub issues for support",
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ similar_skills: [] });
+    // Never calls runMultiActionsAgent because there is no published skill to check
+    expect(runMultiActionsAgent).not.toHaveBeenCalled();
+  });
+
   it("batches skills into multiple LLM calls and merges deduplicated results", async () => {
     const { workspace, auth } = await setup();
     await createSkills(auth, SKILLS_PER_LLM_CALL + 1);

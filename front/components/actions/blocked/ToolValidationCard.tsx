@@ -5,9 +5,11 @@ import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import {
   EDIT_INFORMATION_TOOL_NAME,
   POD_MANAGER_SERVER_NAME,
+  SET_DEFAULT_AGENT_TOOL_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import {
+  isPodManagerDefaultAgentInput,
   isPodManagerEditInformationInput,
   isPodManagerUpdateMembersInput,
 } from "@app/lib/api/actions/servers/pod_manager/types";
@@ -146,6 +148,18 @@ const MCP_TOOL_OVERRIDES: Partial<
         return `Allow agent to ${parts.join(" and ")} Pod user${addCount + removeCount === 1 ? "" : "s"}?`;
       },
       alwaysAllowLabel: () => `Always allow agent to update Pod members`,
+    },
+    [SET_DEFAULT_AGENT_TOOL_NAME]: {
+      title: (inputs) => {
+        if (!isPodManagerDefaultAgentInput(inputs)) {
+          return `Allow agent to set the Pod default agent?`;
+        }
+        if (inputs.agentName === null) {
+          return `Allow agent to reset the Pod default agent to @dust?`;
+        }
+        return `Allow agent to set the Pod default agent to @${inputs.agentName}?`;
+      },
+      alwaysAllowLabel: () => "Always allow agent to set the Pod default agent",
     },
   },
   [WAKEUPS_SERVER_NAME]: {

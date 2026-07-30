@@ -7,17 +7,16 @@ import {
   USER_MEMORY_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/user_memory/metadata";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { SCOPED_PREFIX_USER } from "@app/lib/api/file_system/types";
 import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
+import {
+  exceedsUserMemoryLimit,
+  MAX_USER_MEMORY_CHARS,
+  MEMORY_CONTENT_TYPE,
+  userMemoryPath,
+} from "@app/lib/api/user_memory";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-
-const MEMORY_CONTENT_TYPE = "text/markdown";
-
-function userMemoryPath(userId: string): string {
-  return `${SCOPED_PREFIX_USER}${userId}/MEMORY.md`;
-}
 
 async function openUserMemory(
   auth: Authenticator
@@ -127,6 +126,15 @@ const handlers: ToolHandlers<typeof USER_MEMORY_TOOLS_METADATA> = {
       }
 
       nextContent = updatedContent;
+    }
+
+    if (exceedsUserMemoryLimit(nextContent)) {
+      return new Err(
+        new MCPError(
+          `Memory would exceed the ${MAX_USER_MEMORY_CHARS} character limit. Shorten the content first.`,
+          { tracked: false }
+        )
+      );
     }
 
     const writeResult = await fs.write(path, nextContent, MEMORY_CONTENT_TYPE);

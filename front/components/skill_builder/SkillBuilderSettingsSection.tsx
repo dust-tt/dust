@@ -1,3 +1,5 @@
+import { SpaceRestrictionMessage } from "@app/components/shared/SpaceRestrictionMessage";
+import { SkillBuilderAvailabilityMessage } from "@app/components/skill_builder/SkillBuilderAvailabilityMessage";
 import { SkillBuilderEnableSuggestionsSection } from "@app/components/skill_builder/SkillBuilderEnableSuggestionsSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderIconSection } from "@app/components/skill_builder/SkillBuilderIconSection";
@@ -5,6 +7,7 @@ import { SkillBuilderIsDefaultSection } from "@app/components/skill_builder/Skil
 import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuilderNameSection";
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
 import { SkillEditorsSheetWithButton } from "@app/components/skill_builder/SkillEditorsSheetWithButton";
+import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
@@ -42,7 +45,7 @@ const AVAILABILITY_OPTIONS: {
     value: "editors",
   },
   {
-    label: "All workspace members",
+    label: "Workspace members",
     value: "workspace_users",
   },
   {
@@ -88,11 +91,22 @@ export function SkillBuilderSettingsSection({
   );
   const githubSkillFolderUrl = getGitHubSkillFolderUrl(skill);
 
+  const { nonGlobalSpacesWithRestrictions } =
+    useSkillSpaceRestrictionsContext();
+
   const currentOption = AVAILABILITY_OPTIONS.find(
     (option) => option.value === availability
   );
 
   const isAutoDiscoverableOn = availability === "users_and_agents";
+
+  const hasSpaceRestrictions = nonGlobalSpacesWithRestrictions.length > 0;
+
+  // Auto-discoverable, workspace-wide skills get a dedicated "workspace-wide
+  // effects" message instead of the generic "who can use this skill?" one, so
+  // the two are mutually exclusive.
+  const showWorkspaceWideEffectsMessage =
+    isSkillPublicationEnabled && isAutoDiscoverableOn && !hasSpaceRestrictions;
 
   // Without the make-discoverable permission, an editor can neither turn a skill
   // auto-discoverable nor change an already auto-discoverable skill's availability.
@@ -187,24 +201,42 @@ export function SkillBuilderSettingsSection({
           </div>
         )}
       </div>
-      {isSkillPublicationEnabled && isAutoDiscoverableOn && (
-        <ContentMessage
-          icon={InfoCircle}
-          title="This skill has workspace-wide effects"
-        >
-          <p>
-            Any agent with Discover Skills, including Dust, can use your skill
-            automatically. See other auto-discoverable skills in{" "}
-            <Hoverable
-              href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
-              target="_blank"
-              className="inline-flex items-center gap-1 underline"
+      {isSkillPublicationEnabled ? (
+        <>
+          {showWorkspaceWideEffectsMessage ? (
+            <ContentMessage
+              icon={InfoCircle}
+              title="This skill has workspace-wide effects"
+              size="lg"
             >
-              Manage Skills page
-              <Icon visual={LinkExternal01} size="xs" />
-            </Hoverable>
-          </p>
-        </ContentMessage>
+              <p>
+                Available to all workspace members. Any agent with Discover
+                Skills, including Dust, can use your skill automatically. See
+                other auto-discoverable skills in{" "}
+                <Hoverable
+                  href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
+                  target="_blank"
+                  className="inline-flex items-center gap-1 underline"
+                >
+                  Manage Skills page
+                  <Icon visual={LinkExternal01} size="xs" />
+                </Hoverable>
+              </p>
+            </ContentMessage>
+          ) : (
+            <SkillBuilderAvailabilityMessage
+              availability={availability}
+              owner={owner}
+              restrictedSpaces={nonGlobalSpacesWithRestrictions}
+            />
+          )}
+        </>
+      ) : (
+        <SpaceRestrictionMessage
+          entityName="skill"
+          owner={owner}
+          spaces={nonGlobalSpacesWithRestrictions}
+        />
       )}
 
       {hasSelfImprovingSkills && (

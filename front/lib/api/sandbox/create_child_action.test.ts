@@ -179,6 +179,7 @@ describe("createSandboxChildAction", () => {
     return createSandboxChildAction(auth, {
       parentActionId,
       agentId: agentConfig.sId,
+      agentVersion: agentConfig.version,
       conversationId: conversation.sId,
       agentMessageId: agentMessage.sId,
       serverViewId,
@@ -294,6 +295,29 @@ describe("createSandboxChildAction", () => {
       result.value.actionId
     );
     expect(child?.status).toBe("ready_allowed_implicitly");
+    expect(vi.mocked(launchSandboxChildToolWorkflow)).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the agent version that issued the sandbox token", async () => {
+    await setToolPermission("never_ask");
+    await AgentConfigurationFactory.updateTestAgent(auth, agentConfig.sId);
+
+    const latestConfig = await getAgentConfiguration(auth, {
+      agentId: agentConfig.sId,
+      variant: "full",
+    });
+    expect(
+      latestConfig?.actions
+        .filter(isServerSideMCPServerConfiguration)
+        .some((action) => action.mcpServerViewId === view.sId)
+    ).toBe(false);
+
+    const result = await callChildTool();
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value.pauseSandbox).toBeUndefined();
     expect(vi.mocked(launchSandboxChildToolWorkflow)).toHaveBeenCalledTimes(1);
   });
 

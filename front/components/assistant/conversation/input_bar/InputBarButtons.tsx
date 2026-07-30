@@ -7,7 +7,7 @@ import type useCustomEditor from "@app/components/editor/input_bar/useCustomEdit
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useAppRouter } from "@app/lib/platform";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -105,7 +105,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   onAttachmentsPickerOpenChange,
 }: InputBarButtonsProps) {
   const router = useAppRouter();
-  const isWidthConstrained = useIsMobile() || clientType === "extension";
+  const isWidthConstrained = useIsWidthConstrained();
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 

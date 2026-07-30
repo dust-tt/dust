@@ -14,13 +14,13 @@ const POD_KNOWLEDGE_POLICIES = [
   {
     value: "enabled",
     label: "Manual updates allowed",
-    description: "Members can manually add files to Pod.",
+    description: "Members can manually add files to Pod",
     allowManualProjectKnowledgeManagement: true,
   },
   {
     value: "disabled",
     label: "Manual updates disabled",
-    description: "Members cannot manually add files to Pod.",
+    description: "Members cannot manually add files to Pod",
     allowManualProjectKnowledgeManagement: false,
   },
 ] as const;
@@ -28,7 +28,7 @@ const POD_KNOWLEDGE_POLICIES = [
 type PodKnowledgePolicy = (typeof POD_KNOWLEDGE_POLICIES)[number];
 
 const LABEL = "Pod files";
-const DESCRIPTION = "Whether members can manually add files to Pods.";
+const DESCRIPTION = "Whether members can manually add files to Pods";
 
 export function PodKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
   const {

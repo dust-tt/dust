@@ -117,3 +117,7 @@ export function conversationScopedPath({
 export function podScopedPath(spaceId: string, rel: string): string {
   return `${SCOPED_PREFIX_POD}${spaceId}/${rel}`;
 }
+
+export function userScopedPath(userId: string, rel: string): string {
+  return `${SCOPED_PREFIX_USER}${userId}/${rel}`;
+}

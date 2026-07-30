@@ -41,6 +41,7 @@ import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/serve
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { MAX_WORKSPACES_TO_DOWNGRADE_PER_RUN } from "@app/temporal/scrub_workspace/config";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -419,7 +420,9 @@ export async function endSubscriptionFreeEndedWorkspacesActivity(): Promise<{
   workspaceIds: string[];
 }> {
   const { workspaces } =
-    await SubscriptionResource.internalFetchWorkspacesWithFreeEndedSubscriptions();
+    await SubscriptionResource.internalFetchWorkspacesWithFreeEndedSubscriptions(
+      { limit: MAX_WORKSPACES_TO_DOWNGRADE_PER_RUN }
+    );
 
   await concurrentExecutor(
     workspaces,
