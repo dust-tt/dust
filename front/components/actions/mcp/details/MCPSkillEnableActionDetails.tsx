@@ -77,6 +77,19 @@ export function MCPSkillEnableActionDetails({
     >
       {showSidebarDetails && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
+          {outputItems.length > 0 && (
+            <div>
+              <span className="font-medium text-foreground">Output</span>
+              <div className="my-2 flex flex-col gap-2">
+                {outputItems.map((o, index) => (
+                  <ContentMessage key={index} variant="primary" size="lg">
+                    {getOutputText(o) ?? ""}
+                  </ContentMessage>
+                ))}
+              </div>
+            </div>
+          )}
+
           {hasDescription && (
             <div>
               <span className="font-medium text-foreground">Description</span>
@@ -90,19 +103,6 @@ export function MCPSkillEnableActionDetails({
                     isLastMessage={false}
                   />
                 </ContentMessage>
-              </div>
-            </div>
-          )}
-
-          {outputItems.length > 0 && (
-            <div>
-              <span className="font-medium text-foreground">Output</span>
-              <div className="my-2 flex flex-col gap-2">
-                {outputItems.map((o, index) => (
-                  <ContentMessage key={index} variant="primary" size="lg">
-                    {getOutputText(o) ?? ""}
-                  </ContentMessage>
-                ))}
               </div>
             </div>
           )}
