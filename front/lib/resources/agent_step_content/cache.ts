@@ -5,7 +5,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import groupBy from "lodash/groupBy";
 
-export const AGENT_STEP_CONTENT_CACHE_TTL_MS = 15 * 60 * 1000;
+export const AGENT_STEP_CONTENT_CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 // Bump the `:v1` suffix any time the cached value shape changes, so stale entries
 // from previous formats are orphaned instead of mis-parsed.
@@ -91,7 +91,51 @@ export async function warmAgentStepContentCache(
 export async function warmAgentStepContentCacheMany(
   contents: CachedAgentStepContent[]
 ): Promise<void> {
-  await Promise.all(contents.map((c) => warmAgentStepContentCache(c)));
+  if (contents.length === 0) {
+    return;
+  }
+  if (contents.length === 1) {
+    await warmAgentStepContentCache(contents[0]);
+    return;
+  }
+
+  const byKey = groupBy(contents, (c) =>
+    agentStepContentCacheKey({
+      workspaceId: c.workspaceId,
+      agentMessageId: c.agentMessageId,
+    })
+  );
+
+  try {
+    const redis = await getRedisCacheClient({
+      origin: "agent_step_content_cache",
+    });
+
+    for (const [key, group] of Object.entries(byKey)) {
+      const multi = redis.multi();
+      for (const content of group) {
+        multi.hSet(
+          key,
+          agentStepContentHashField({
+            step: content.step,
+            index: content.index,
+          }),
+          JSON.stringify(content)
+        );
+      }
+      multi.pExpire(key, AGENT_STEP_CONTENT_CACHE_TTL_MS);
+      await multi.exec();
+    }
+  } catch (err) {
+    logger.warn(
+      {
+        err: normalizeError(err),
+        count: contents.length,
+        agentMessageIds: [...new Set(contents.map((c) => c.agentMessageId))],
+      },
+      "Failed to warm agent step content cache (bulk)"
+    );
+  }
 }
 
 function isCachedAgentStepContent(
