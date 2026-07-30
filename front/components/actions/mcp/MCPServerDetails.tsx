@@ -109,8 +109,9 @@ export function MCPServerDetails({
   const { mcpServers } = useMCPServers({
     owner,
     disabled: !isOpen || readOnly,
-    // The admin tools list loads this exact SWR key before the details sheet opens.
-    // Reuse that cached response instead of repeating the expensive full listing.
+    // This sheet opens from AdminActionsList, whose useMCPServers call uses the same
+    // workspace-derived SWR key. Listing every MCP server is expensive, so reuse that
+    // cached response. SWR still fetches normally if the cache is unexpectedly empty.
     revalidateIfStale: false,
   });
 
