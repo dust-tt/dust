@@ -2,7 +2,7 @@ import { formatSandboxFunctionInvocations } from "@app/lib/api/actions/servers/s
 import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -50,6 +50,14 @@ vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
   };
 });
 
+vi.mock("@app/lib/auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/auth")>();
+  return {
+    ...actual,
+    hasFeatureFlag: vi.fn(),
+  };
+});
+
 const inputSchema: JSONSchema = {
   type: "object",
   properties: {
@@ -69,6 +77,7 @@ const outputSchema: JSONSchema = {
 beforeEach(() => {
   vi.clearAllMocks();
   fileStorageMock.reset();
+  vi.mocked(hasFeatureFlag).mockResolvedValue(false);
 });
 
 async function setupExecutionTest(
@@ -948,4 +957,68 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(result.error.message).toContain("exit code 2");
     expect(result.error.message).toContain("boom from stdout");
   });
+
+  it("persists a stdout envelope when the flag is enabled", async () => {
+    const { authenticator, sandboxFunction, sandbox, invocation } =
+      await setupExecutionTest();
+    vi.mocked(hasFeatureFlag).mockResolvedValue(true);
+    const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout:
+          JSON.stringify({
+            protocolVersion: 3,
+            delivery: "stdout",
+            outcome: { ok: true, output: { commentId: "from-stdout" } },
+          }) + "\n",
+        stderr: "",
+      })
+    );
+
+    const executionResult = await invocation.execute(authenticator);
+    expect(executionResult.isOk()).toBe(true);
+
+    const [, command] = execSpy.mock.calls[0]!;
+    expect(command).toBe(
+      "/opt/bin/dsbx function run --result-delivery stdout -- 'add-comment'"
+    );
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("succeeded");
+    expect(refetched?.result).toEqual({ commentId: "from-stdout" });
+  });
+
+  it("persists structured runner errors from stdout envelopes with exit 0", async () => {
+    const { authenticator, sandboxFunction, sandbox, invocation } =
+      await setupExecutionTest();
+    vi.mocked(hasFeatureFlag).mockResolvedValue(true);
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          protocolVersion: 3,
+          delivery: "stdout",
+          outcome: {
+            ok: false,
+            error: { code: "threw", message: "boom" },
+          },
+        }),
+        stderr: "",
+      })
+    );
+
+    const executionResult = await invocation.execute(authenticator);
+    expect(executionResult.isOk()).toBe(true);
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("errored");
+    expect(refetched?.error).toEqual({ code: "threw", message: "boom" });
+  });
+
 });
