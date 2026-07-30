@@ -141,7 +141,9 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
     return false;
   }
 
-  async requestedPermissions(): Promise<AccessControlList[]> {
+  async getAccessControlLists(
+    auth: Authenticator
+  ): Promise<AccessControlList[]> {
     assert(
       this.space.isProject(),
       "Viewer permissions only apply to project spaces"

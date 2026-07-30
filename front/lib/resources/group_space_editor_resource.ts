@@ -143,8 +143,8 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
   }
 
   async canAddMember(auth: Authenticator, _userId: string): Promise<boolean> {
-    const requestedPermissions = await this.requestedPermissions();
-    return auth.canWrite(requestedPermissions);
+    const acls = await this.getAccessControlLists(auth);
+    return auth.canWrite(acls);
   }
 
   async canRemoveMember(
@@ -156,11 +156,13 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
     if (!skipCheckLastMember && editorsCount <= 1) {
       return false;
     }
-    const requestedPermissions = await this.requestedPermissions();
-    return auth.canWrite(requestedPermissions);
+    const acls = await this.getAccessControlLists(auth);
+    return auth.canWrite(acls);
   }
 
-  async requestedPermissions(): Promise<AccessControlList[]> {
+  async getAccessControlLists(
+    auth: Authenticator
+  ): Promise<AccessControlList[]> {
     if (this.space.isProject()) {
       // Only gets the editor groups correponding to the space management mode
       const editorGroupSpaces = await this.getEditorGroupSpaces(true);

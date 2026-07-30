@@ -2192,7 +2192,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     newName: string
   ): Promise<Result<undefined, Error>> {
-    if (!auth.canAdministrate(this.requestedPermissions())) {
+    if (!auth.canAdministrate(this.getAccessControlLists(auth))) {
       return new Err(new Error("Only admins can update group names."));
     }
 
@@ -2305,7 +2305,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     poolCapAwuCredits: number | null
   ): Promise<Result<undefined, Error>> {
-    if (!auth.canAdministrate(this.requestedPermissions())) {
+    if (!auth.canAdministrate(this.getAccessControlLists(auth))) {
       return new Err(new Error("Only admins can update group spend limits."));
     }
 
@@ -2433,7 +2433,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * @returns Array of AccessControlList objects defining the default access
    * configuration
    */
-  requestedPermissions(): AccessControlList[] {
+  getAccessControlLists(auth: Authenticator): AccessControlList[] {
     if (this.kind === "agent_editors" || this.kind === "skill_editors") {
       return [
         {
@@ -2531,15 +2531,15 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   canRead(auth: Authenticator): boolean {
-    return auth.canRead(this.requestedPermissions());
+    return auth.canRead(this.getAccessControlLists(auth));
   }
 
   canWrite(auth: Authenticator): boolean {
-    return auth.canWrite(this.requestedPermissions());
+    return auth.canWrite(this.getAccessControlLists(auth));
   }
 
   canAdministrate(auth: Authenticator): boolean {
-    return auth.canAdministrate(this.requestedPermissions());
+    return auth.canAdministrate(this.getAccessControlLists(auth));
   }
 
   isSystem(): boolean {

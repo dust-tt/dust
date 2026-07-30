@@ -43,12 +43,12 @@ export function getDataSourceViewIdsFromActions(
   );
 }
 
-export function groupsFromRequestedPermissions(
-  requestedPermissions: AccessControlList[]
+export function groupsFromAccessControlLists(
+  accessControlLists: AccessControlList[]
 ) {
   return (
-    requestedPermissions
-      .flatMap((rp) => rp.groups.map((g) => g.id))
+    accessControlLists
+      .flatMap((acl) => acl.groups.map((g) => g.id))
       // Sort to ensure consistent ordering.
       .sort((a, b) => a - b)
   );
@@ -122,7 +122,9 @@ export async function getContentFragmentGroupIds(
     throw new Error(`Unexpected dataSourceView not found`);
   }
 
-  const groups = groupsFromRequestedPermissions(dsView.requestedPermissions());
+  const groups = groupsFromAccessControlLists(
+    dsView.getAccessControlLists(auth)
+  );
 
   return [groups].filter((arr) => arr.length > 0);
 }

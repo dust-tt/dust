@@ -1,3 +1,5 @@
+import type { Authenticator } from "@app/lib/auth";
+
 import type { GrantVerb } from "./group_permissions";
 import type { ModelId } from "./shared/model_id";
 import type { RoleType } from "./user";
@@ -42,3 +44,13 @@ export type AccessControlList = {
   groups: GroupGrant[];
   workspaceId: ModelId;
 };
+
+/**
+ * A resource whose access is governed by one or more access-control lists. The caller passes when
+ * they satisfy every ACL returned by `getAccessControlLists(auth)` (see
+ * `Authenticator.hasPermission`). `auth` is passed so a resource can build its ACL from the caller's
+ * governance grants (`auth.getGroupPermissions`) — e.g. the per-workspace flip.
+ */
+export interface WithAccessControl {
+  getAccessControlLists(auth: Authenticator): AccessControlList[];
+}
