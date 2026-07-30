@@ -1,5 +1,9 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import {
+  getSmallWhitelistedModel,
+  getWhitelistedProviders,
+} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { GPT_5_4_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
@@ -63,7 +67,10 @@ export async function getCronTimezoneGeneration(
 ): Promise<Result<ScheduleConfig, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = GPT_5_4_MINI_MODEL_CONFIG;
+  const providers = getWhitelistedProviders(auth);
+  const model = providers.has("openai")
+    ? GPT_5_4_MINI_MODEL_CONFIG
+    : getSmallWhitelistedModel(auth);
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate cron rule")
