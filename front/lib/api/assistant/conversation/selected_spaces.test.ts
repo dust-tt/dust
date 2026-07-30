@@ -128,13 +128,19 @@ describe("selected conversation Spaces", () => {
       workspaceId: workspace.id,
       kind: "regular_auto",
     });
+    // Pass an admin auth so makeNew writes the space's group_permissions (enforcement source).
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
     return SpaceResource.makeNew(
       {
         name: "Open Space",
         kind: "regular",
         workspaceId: workspace.id,
       },
-      { members: [memberGroup, globalGroup] }
+      { members: [memberGroup, globalGroup] },
+      undefined,
+      adminAuth
     );
   }
 

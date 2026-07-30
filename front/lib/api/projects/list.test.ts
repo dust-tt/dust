@@ -115,6 +115,7 @@ describe("listPodsForScope", () => {
     });
     expect(betaPodRes.isOk()).toBe(true);
 
+    await adminAuth.refresh();
     const { pods, total } = await listPodsForScope(adminAuth, {
       access: "open",
       q: "alpha",
@@ -145,6 +146,7 @@ describe("listPodsForScope", () => {
     });
     expect(cafePodRes.isOk()).toBe(true);
 
+    await adminAuth.refresh();
     const { pods, total } = await listPodsForScope(adminAuth, {
       access: "open",
       q: "cafe",

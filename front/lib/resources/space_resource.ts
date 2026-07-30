@@ -23,7 +23,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import type { GrantType, GrantVerb } from "@app/types/group_permissions";
+import type { GrantType } from "@app/types/group_permissions";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
@@ -1583,7 +1583,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * @returns Array of AccessControlList objects based on space type
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
-    const groups = this.spaceGroupGrants();
+    // Group access is enforced from the group_permissions table (#9480): the caller's grants on
+    // this space. The per-kind role rules below are unchanged. `writeGroupPermissions` keeps the
+    // table in sync from the `group_vaults` associations (see `spaceGroupGrants`).
+    const groups = auth.getGroupPermissions("space", this.id);
 
     // System space.
     if (this.isSystem()) {
@@ -1772,16 +1775,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await GroupPermissionResource.grantMany(auth, { grants, transaction });
   }
 
-  // Backfill entry (#9478): (re-)derive this space's `group_permissions` from its `group_vaults`
-  // associations. Delegates to `writeGroupPermissions` — the same logic the mutation paths use — so
-  // the one-off backfill and the ongoing writes can never disagree. Idempotent; safe to re-run.
-  async reconcileGroupPermissions(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    return this.writeGroupPermissions(auth, { transaction });
-  }
-
   async canAddMember(auth: Authenticator, userId: string): Promise<boolean> {
     // Only regular spaces and projects can have manual members.
     if (!this.isRegular() && !this.isProject()) {
@@ -1807,53 +1800,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   canAdministrate(auth: Authenticator) {
-    const perms = this.getAccessControlLists(auth);
-    this.shadowCompareSpacePermission(auth, perms, "admin");
-    return auth.hasPermissionForAcls("admin", perms);
+    return auth.hasPermission("admin", this);
   }
 
   canWrite(auth: Authenticator) {
-    const perms = this.getAccessControlLists(auth);
-    this.shadowCompareSpacePermission(auth, perms, "write");
-    return auth.hasPermissionForAcls("write", perms);
+    return auth.hasPermission("write", this);
   }
 
   canRead(auth: Authenticator) {
-    const perms = this.getAccessControlLists(auth);
-    this.shadowCompareSpacePermission(auth, perms, "read");
-    return auth.hasPermissionForAcls("read", perms);
-  }
-
-  // Shadow-compare (#9479): while the `group_permissions_shadow` flag is on for the workspace, check
-  // whether routing group access through the group_permissions table yields the same decision as the
-  // legacy inline-group ACL, once composed with the (unchanged) code role rules. The served ACL is
-  // `getAccessControlLists(auth)` (legacy inline groups); the candidate keeps the same roles but
-  // takes its groups from `auth.getGroupPermissions("space", id)` (the table). Delegates the flag
-  // lookup + compare + log to the Authenticator as fire-and-forget — never changes the served
-  // result. Kept off system/global/conversations spaces, which stay code-ruled and are not part of
-  // the migration.
-  private shadowCompareSpacePermission(
-    auth: Authenticator,
-    legacyAcls: AccessControlList[],
-    permission: GrantVerb
-  ): void {
-    if (this.isSystem() || this.isGlobal() || this.isConversations()) {
-      return;
-    }
-
-    const candidateAcls: AccessControlList[] = legacyAcls.map((acl) => ({
-      roles: acl.roles,
-      groups: auth.getGroupPermissions("space", this.id),
-      workspaceId: acl.workspaceId,
-    }));
-
-    auth.shadowComparePermission(permission, legacyAcls, candidateAcls, {
-      resource: "space",
-      spaceId: this.sId,
-      spaceKind: this.kind,
-      permission,
-      workspaceId: this.workspaceId,
-    });
+    return auth.hasPermission("read", this);
   }
 
   canReadOrAdministrate(auth: Authenticator) {

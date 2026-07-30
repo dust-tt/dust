@@ -1,4 +1,4 @@
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -33,24 +33,30 @@ export class SpaceFactory {
   }
 
   static async global(workspace: WorkspaceType, globalGroup?: GroupResource) {
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     return SpaceResource.makeNew(
       {
         name: "space " + faker.string.alphanumeric(8),
         kind: "global",
         workspaceId: workspace.id,
       },
-      { members: removeNulls([globalGroup]) } // TODO: Add groups
+      { members: removeNulls([globalGroup]) }, // TODO: Add groups
+      undefined,
+      auth
     );
   }
 
   static async system(workspace: WorkspaceType, systemGroup?: GroupResource) {
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     return SpaceResource.makeNew(
       {
         name: "space " + faker.string.alphanumeric(8),
         kind: "system",
         workspaceId: workspace.id,
       },
-      { members: removeNulls([systemGroup]) } // TODO: Add groups
+      { members: removeNulls([systemGroup]) }, // TODO: Add groups
+      undefined,
+      auth
     );
   }
 
@@ -62,24 +68,30 @@ export class SpaceFactory {
       kind: "regular_auto",
     });
 
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     return SpaceResource.makeNew(
       {
         name,
         kind: "regular",
         workspaceId: workspace.id,
       },
-      { members: [group] }
+      { members: [group] },
+      undefined,
+      auth
     );
   }
 
   static async conversations(workspace: WorkspaceType) {
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     return SpaceResource.makeNew(
       {
         name: "space " + faker.string.alphanumeric(8),
         kind: "conversations",
         workspaceId: workspace.id,
       },
-      { members: [] }
+      { members: [] },
+      undefined,
+      auth
     );
   }
 
@@ -104,13 +116,16 @@ export class SpaceFactory {
       }
     );
 
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     return SpaceResource.makeNew(
       {
         name,
         kind: "project",
         workspaceId: workspace.id,
       },
-      { members: [group], editors: [editorGroup] }
+      { members: [group], editors: [editorGroup] },
+      undefined,
+      auth
     );
   }
 }
