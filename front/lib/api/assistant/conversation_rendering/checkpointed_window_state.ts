@@ -80,6 +80,7 @@ function pruneImagesBeyondLimit(
       imageMessage = message;
       content = message.content;
       break;
+
     case "function":
       if (!Array.isArray(message.content)) {
         return {
@@ -92,6 +93,7 @@ function pruneImagesBeyondLimit(
       imageMessage = message;
       content = message.content;
       break;
+
     case "assistant":
     case "compaction":
       return {
@@ -100,6 +102,7 @@ function pruneImagesBeyondLimit(
         retainedImageCount: 0,
         tokenSavings: 0,
       };
+
     default:
       return assertNever(message);
   }
@@ -183,6 +186,7 @@ export class CheckpointedConversationWindowState {
   private retainedTokens = 0;
   private totalTokensBefore = 0;
   private prunedTokens = 0;
+  private prunedImageCount = 0;
   private fitted = false;
 
   private pendingToolResults: PendingToolResult[] = [];
@@ -324,6 +328,7 @@ export class CheckpointedConversationWindowState {
           node.message = result.message;
           this.retainedTokens -= result.tokenSavings;
           this.prunedTokens += result.tokenSavings;
+          this.prunedImageCount += result.prunedImageCount;
         }
         imagesToKeep -= result.retainedImageCount;
       }
@@ -400,6 +405,7 @@ export class CheckpointedConversationWindowState {
       totalTokensAfterPruning,
       pruningBudget: this.options.pruningBudget,
       budgetForInteractions: this.options.budgetForInteractions,
+      prunedImageCount: this.prunedImageCount,
     };
   }
 }

@@ -218,6 +218,7 @@ describe("CheckpointedConversationWindowState", () => {
     expect(result.value.stats.totalTokensAfterPruning).toBe(
       input.tokenCount - IMAGE_CONTENT_TOKEN_COUNT
     );
+    expect(result.value.stats.prunedImageCount).toBe(1);
     expect(result.value.prunedContext).toBe(false);
     expect(input.content.filter(isImageContent)).toHaveLength(2);
   });
