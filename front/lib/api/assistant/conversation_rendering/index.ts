@@ -204,7 +204,6 @@ export async function renderConversationForModel(
     state.append(interaction);
   }
   const pruneRes = state.fit();
-  const imagePruningStats = state.imagePruningStats();
   if (pruneRes.isErr()) {
     if (metricsCaller) {
       emitConversationRenderingError({
@@ -299,7 +298,6 @@ export async function renderConversationForModel(
   if (metricsCaller) {
     emitConversationRenderingMetrics({
       stats: pruningStats,
-      imageStats: imagePruningStats,
       caller: metricsCaller,
       providerId: model.providerId,
       modelId: model.modelId,

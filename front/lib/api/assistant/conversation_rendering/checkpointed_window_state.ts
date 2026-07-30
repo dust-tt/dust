@@ -58,12 +58,6 @@ export const MINIMUM_PRUNING_BATCH_TOKENS = 5_000;
 // Fixed number of tokens assumed for image contents during message tokenization.
 export const IMAGE_CONTENT_TOKEN_COUNT = 3_100;
 
-export type ConversationImagePruningStats = {
-  imageCountLimit?: number;
-  prunedImageCount: number;
-  nonToolImageCount: number;
-};
-
 type ToolImageReference = {
   node: ToolResultNode;
   contentIndex: number;
@@ -235,14 +229,6 @@ export class CheckpointedConversationWindowState {
       prunedContext: this.latestInteractionHasPrunedToolResults(),
       stats: this.stats(),
     });
-  }
-
-  imagePruningStats(): ConversationImagePruningStats {
-    return {
-      imageCountLimit: this.options.maxInputImages,
-      prunedImageCount: this.prunedImageCount,
-      nonToolImageCount: this.nonToolImageCount,
-    };
   }
 
   private latestInteractionHasPrunedToolResults(): boolean {
@@ -429,6 +415,9 @@ export class CheckpointedConversationWindowState {
       totalTokensAfterPruning,
       pruningBudget: this.options.pruningBudget,
       budgetForInteractions: this.options.budgetForInteractions,
+      imageCountLimit: this.options.maxInputImages,
+      prunedImageCount: this.prunedImageCount,
+      nonToolImageCount: this.nonToolImageCount,
     };
   }
 }

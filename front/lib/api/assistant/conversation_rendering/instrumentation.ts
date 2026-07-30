@@ -5,7 +5,6 @@
  * assert on data instead of mocking a metrics client.
  */
 
-import type { ConversationImagePruningStats } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import type { ConversationPruningStats } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type {
@@ -53,7 +52,6 @@ export type ConversationRenderingMetricsCaller = "agent_loop";
 
 export function emitConversationRenderingMetrics({
   stats,
-  imageStats,
   caller,
   providerId,
   modelId,
@@ -61,7 +59,6 @@ export function emitConversationRenderingMetrics({
   tokensUsed,
 }: {
   stats: ConversationPruningStats;
-  imageStats?: ConversationImagePruningStats;
   caller: ConversationRenderingMetricsCaller;
   providerId: ModelProviderIdType;
   modelId: ModelIdType;
@@ -98,20 +95,20 @@ export function emitConversationRenderingMetrics({
       [...baseTags, "layer:proactive"]
     );
   }
-  if (imageStats?.prunedImageCount) {
+  if (stats.prunedImageCount) {
     statsD.distribution(
       "conversation_rendering.pruned_images",
-      imageStats.prunedImageCount,
+      stats.prunedImageCount,
       [...baseTags, "layer:input_limit"]
     );
   }
   if (
-    imageStats?.imageCountLimit !== undefined &&
-    imageStats.nonToolImageCount >= imageStats.imageCountLimit
+    stats.imageCountLimit !== undefined &&
+    stats.nonToolImageCount >= stats.imageCountLimit
   ) {
     statsD.distribution(
       "conversation_rendering.unprunable_images",
-      imageStats.nonToolImageCount,
+      stats.nonToolImageCount,
       baseTags
     );
   }

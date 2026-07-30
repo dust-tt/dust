@@ -175,11 +175,15 @@ describe("CheckpointedConversationWindowState image limits", () => {
     ]);
     expect(user.content).toEqual([image("user-upload")]);
     expect(third.content).toEqual([image("third", "conversation/third.png")]);
-    expect(state.imagePruningStats()).toEqual({
-      imageCountLimit: 2,
-      prunedImageCount: 2,
-      nonToolImageCount: 1,
-    });
+    const result = state.fit();
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.stats).toMatchObject({
+        imageCountLimit: 2,
+        prunedImageCount: 2,
+        nonToolImageCount: 1,
+      });
+    }
     expect(firstInteraction.messages[0].content).toEqual([
       image("first", "conversation/first.png"),
     ]);
@@ -209,7 +213,11 @@ describe("CheckpointedConversationWindowState image limits", () => {
     expect(isPruned(first.content)).toBe(true);
     expect(second.content).toEqual([image("second")]);
     expect(third.content).toEqual([image("third")]);
-    expect(state.imagePruningStats().prunedImageCount).toBe(0);
+    const result = state.fit();
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.stats.prunedImageCount).toBe(0);
+    }
   });
 });
 
