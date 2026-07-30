@@ -450,7 +450,7 @@ export async function ensurePodStateHealthOnSleep(
       if (refreshResult.error instanceof SandboxNotFoundError) {
         return new Ok(undefined);
       }
-      recordPodStateHealth("failure", ctx);
+      recordPodStateHealth("failure");
       childLogger.error(
         { err: refreshResult.error },
         "Pod state pre-sleep: GCS credential refresh failed — not pausing"
@@ -467,7 +467,7 @@ export async function ensurePodStateHealthOnSleep(
     if (livenessResult.error instanceof SandboxNotFoundError) {
       return new Ok(undefined);
     }
-    recordPodStateHealth("failure", ctx);
+    recordPodStateHealth("failure");
     childLogger.error(
       { err: livenessResult.error },
       "Pod state pre-sleep: replica mount is not a live FUSE mount — not pausing"
@@ -484,7 +484,7 @@ export async function ensurePodStateHealthOnSleep(
     if (namesResult.error instanceof SandboxNotFoundError) {
       return new Ok(undefined);
     }
-    recordPodStateHealth("failure", ctx);
+    recordPodStateHealth("failure");
     childLogger.error(
       { err: namesResult.error },
       "Pod state pre-sleep: database enumeration failed — not pausing"
@@ -506,7 +506,7 @@ export async function ensurePodStateHealthOnSleep(
     if (daemonResult.error instanceof SandboxNotFoundError) {
       return new Ok(undefined);
     }
-    recordPodStateHealth("failure", ctx);
+    recordPodStateHealth("failure");
     childLogger.error(
       { err: daemonResult.error },
       "Pod state pre-sleep: litestream daemon is not active — not pausing"
@@ -542,7 +542,7 @@ export async function ensurePodStateHealthOnSleep(
       if (failure instanceof SandboxNotFoundError) {
         return new Ok(undefined);
       }
-      recordPodStateHealth("failure", ctx);
+      recordPodStateHealth("failure");
       childLogger.error(
         { err: failure, database: name },
         "Pod state pre-sleep: litestream sync failed — restarting daemon, not pausing"
@@ -560,7 +560,7 @@ export async function ensurePodStateHealthOnSleep(
     }
   }
 
-  recordPodStateHealth("success", ctx);
+  recordPodStateHealth("success");
 
   return new Ok(undefined);
 }

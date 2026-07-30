@@ -102,19 +102,15 @@ describe("SandboxResource.updateStatus", () => {
       statusChangedAt: new Date(Date.now() - 60_000),
     });
 
-    const ctx = { workspaceId: authenticator.getNonNullableWorkspace().sId };
-    await sandbox.updateStatus("sleeping", { ctx });
+    await sandbox.updateStatus("sleeping");
 
     expect(mockDistribution).toHaveBeenCalledWith(
       "sandbox.lifecycle.duration",
       expect.any(Number),
-      expect.arrayContaining([
+      [
         expect.stringMatching(/^region:/),
         "status:running",
-      ])
-    );
-    expect(mockDistribution.mock.calls[0][2]).not.toEqual(
-      expect.arrayContaining([expect.stringMatching(/^workspace_id:/)])
+      ]
     );
 
     const durationArg = mockDistribution.mock.calls[0][1];
@@ -128,8 +124,7 @@ describe("SandboxResource.updateStatus", () => {
       statusChangedAt: null,
     });
 
-    const ctx = { workspaceId: authenticator.getNonNullableWorkspace().sId };
-    await sandbox.updateStatus("sleeping", { ctx });
+    await sandbox.updateStatus("sleeping");
 
     expect(mockDistribution).not.toHaveBeenCalled();
   });
@@ -141,8 +136,7 @@ describe("SandboxResource.updateStatus", () => {
     });
 
     const originalStatusChangedAt = sandbox.statusChangedAt;
-    const ctx = { workspaceId: authenticator.getNonNullableWorkspace().sId };
-    await sandbox.updateStatus("running", { ctx });
+    await sandbox.updateStatus("running");
 
     expect(mockDistribution).not.toHaveBeenCalled();
 
@@ -162,9 +156,8 @@ describe("SandboxResource.updateStatus", () => {
       statusChangedAt: originalTime,
     });
 
-    const ctx = { workspaceId: authenticator.getNonNullableWorkspace().sId };
     const beforeTransition = Date.now();
-    await sandbox.updateStatus("sleeping", { ctx });
+    await sandbox.updateStatus("sleeping");
     const afterTransition = Date.now();
 
     const reloaded = await ConversationSandboxAdapter.fetchSandbox(

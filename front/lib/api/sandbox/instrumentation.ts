@@ -6,12 +6,8 @@ import tracer from "@app/logger/tracer";
 // Intentionally NOT tagged by workspace_id: region (+ operation/status) is
 // what matters for aggregates, and workspace_id multiplies cardinality past
 // Datadog custom-metric limits. Per-workspace drill-down stays in APM traces.
-interface MetricContext {
-  region?: string;
-}
-
-function buildTags(ctx?: MetricContext): string[] {
-  return [`region:${ctx?.region ?? regionConfig.getCurrentRegion()}`];
+function regionTag(): string {
+  return `region:${regionConfig.getCurrentRegion()}`;
 }
 
 // Semantic phases of the "zero to first executed command" startup path, in
@@ -89,30 +85,26 @@ export function recordSandboxStartupTotal(
   status: "success" | "error"
 ): void {
   getStatsDClient().distribution("sandbox.startup.total.duration", durationMs, [
-    ...buildTags({ region }),
+    `region:${region ?? regionConfig.getCurrentRegion()}`,
     `cold:${cold}`,
     `status:${status}`,
   ]);
 }
 
 export function recordLifecycleOperation(
-  operation: "create" | "wake" | "sleep" | "destroy",
-  ctx?: MetricContext
+  operation: "create" | "wake" | "sleep" | "destroy"
 ): void {
-  getStatsDClient().increment(
-    `sandbox.lifecycle.${operation}`,
-    1,
-    buildTags(ctx)
-  );
+  getStatsDClient().increment(`sandbox.lifecycle.${operation}`, 1, [
+    regionTag(),
+  ]);
 }
 
 export function recordStateDuration(
   previousStatus: SandboxStatus,
-  durationMs: number,
-  ctx?: MetricContext
+  durationMs: number
 ): void {
   getStatsDClient().distribution("sandbox.lifecycle.duration", durationMs, [
-    ...buildTags(ctx),
+    regionTag(),
     `status:${previousStatus}`,
   ]);
 }
@@ -131,12 +123,9 @@ export function recordToolDuration(
 // Health of the pod-state pre-sleep flush: a success/failure counter. Datadog
 // monitors page on the failure count; the stable logger.error message next to
 // each failing call site carries the cause.
-export function recordPodStateHealth(
-  status: "success" | "failure",
-  ctx?: MetricContext
-): void {
+export function recordPodStateHealth(status: "success" | "failure"): void {
   getStatsDClient().increment("sandbox.pod_state.health", 1, [
-    ...buildTags(ctx),
+    regionTag(),
     `status:${status}`,
   ]);
 }
