@@ -109,13 +109,11 @@ export function MCPServerDetails({
 
   const defaults = useMemo<MCPServerFormValues>(() => {
     if (mcpServerView) {
-      return {
-        ...getMCPServerFormDefaults(
-          mcpServerView,
-          mcpServerWithViews ?? undefined,
-          spaces
-        ),
-      };
+      return getMCPServerFormDefaults(
+        mcpServerView,
+        mcpServerWithViews ?? undefined,
+        spaces
+      );
     }
     return {
       name: "",
