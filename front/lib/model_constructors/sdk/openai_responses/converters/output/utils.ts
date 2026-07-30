@@ -482,6 +482,7 @@ export async function* rawOutputToEvents(
 ): AsyncGenerator<ModelResponseEvent> {
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
   let usage: ResponseUsage | null = null;
+  let stopReason: string | null = null;
 
   while (true) {
     let result: IteratorResult<ResponseStreamEvent>;
@@ -540,6 +541,10 @@ export async function* rawOutputToEvents(
         break;
       case "response.completed":
         usage = event.response.usage ?? null;
+        // Recorded for diagnostics: the Responses API has no stop reason, so the
+        // response status is the closest signal for a turn that came back with
+        // nothing usable (`incomplete` surfaces as an error event below).
+        stopReason = event.response.status ?? null;
         break;
       case "response.failed":
         yield converters.streamErrorToErrorEvent(
@@ -632,7 +637,11 @@ export async function* rawOutputToEvents(
     yield converters.usageToTokenUsageEvent(metadata, usage);
   }
 
-  yield { type: "success", content: { aggregated }, metadata };
+  yield {
+    type: "success",
+    content: { aggregated, ...(stopReason ? { stopReason } : {}) },
+    metadata,
+  };
 }
 
 // -- Non-streaming entry point: a complete batch response → events --

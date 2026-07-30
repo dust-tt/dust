@@ -186,6 +186,7 @@ export async function* rawOutputToEvents(
   const toolCalls = new Map<number, ToolCallAccumulator>();
   let hasYieldedResponseId = false;
   let usage: ChatCompletionChunk["usage"];
+  let stopReason: string | null = null;
 
   while (true) {
     let result: IteratorResult<ChatCompletionChunk>;
@@ -266,6 +267,7 @@ export async function* rawOutputToEvents(
     if (!finishReason) {
       continue;
     }
+    stopReason = finishReason;
     switch (finishReason) {
       case "stop":
         for (const e of flushAccumulated(acc, metadata, aggregated)) {
@@ -319,5 +321,9 @@ export async function* rawOutputToEvents(
   }
 
   yield usageToTokenUsageEvent(metadata, usage);
-  yield { type: "success", content: { aggregated }, metadata };
+  yield {
+    type: "success",
+    content: { aggregated, ...(stopReason ? { stopReason } : {}) },
+    metadata,
+  };
 }
