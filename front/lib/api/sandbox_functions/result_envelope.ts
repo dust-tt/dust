@@ -1,6 +1,7 @@
 import logger from "@app/logger/logger";
 import type { SandboxFunctionCallError } from "@app/types/api/sandbox_functions";
 import { SANDBOX_FUNCTION_RUNNER_ERROR_CODES } from "@app/types/api/sandbox_functions";
+import { truncate } from "@app/types/shared/utils/string_utils";
 import { z } from "zod";
 
 // Current wire version dsbx emits. Parsing accepts the supported set below so a future bump
@@ -10,6 +11,9 @@ export const SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSION = 3;
 export const SUPPORTED_SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSIONS = [
   SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSION,
 ] as const;
+
+// Cap on the rejected-payload snippet included in logs.
+const REJECTED_ENVELOPE_LOG_SNIPPET_MAX_CHARS = 512;
 
 export type NormalizedSandboxFunctionOutcome =
   | { ok: true; output: unknown }
@@ -106,7 +110,12 @@ function normalizeRunnerOutcome(
 
   const legacy = LegacySandboxFunctionRunnerOutputSchema.safeParse(result);
   if (!legacy.success) {
-    return invalidResultEnvelope("unrecognized_runner_outcome");
+    return invalidResultEnvelope("unrecognized_runner_outcome", {
+      resultSnippet: truncate(
+        JSON.stringify(result) ?? "undefined",
+        REJECTED_ENVELOPE_LOG_SNIPPET_MAX_CHARS
+      ),
+    });
   }
 
   if (!legacy.data.ok) {
@@ -186,6 +195,10 @@ export function normalizeSandboxFunctionResult(
     if (!v3.success) {
       return invalidResultEnvelope("malformed_v3_envelope", {
         protocolVersion,
+        resultSnippet: truncate(
+          JSON.stringify(result) ?? "undefined",
+          REJECTED_ENVELOPE_LOG_SNIPPET_MAX_CHARS
+        ),
       });
     }
 
