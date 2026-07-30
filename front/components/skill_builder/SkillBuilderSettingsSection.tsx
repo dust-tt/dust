@@ -52,7 +52,7 @@ const AVAILABILITY_OPTIONS: {
     label: "Members and agents",
     value: "users_and_agents",
     description:
-      "Available to workspace members and agents with Discover Skills, including @Dust",
+      "Available to workspace members and agents with Discover Skills",
   },
 ];
 
@@ -221,7 +221,7 @@ export function SkillBuilderSettingsSection({
                   Any agent with Discover Skills, including Dust, can use it
                   automatically. See other skills available to agents in{" "}
                   <Hoverable
-                    href={`/w/${owner.sId}/builder/skills#?selectedTab=users_and_agents`}
+                    href={`/w/${owner.sId}/builder/skills#?availability=users_and_agents`}
                     target="_blank"
                     className="inline-flex items-center gap-1 underline"
                   >

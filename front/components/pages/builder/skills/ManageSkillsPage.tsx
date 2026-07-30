@@ -63,8 +63,7 @@ export type SkillManagerTabType =
   | "active"
   | "editable_by_me"
   | "default"
-  | "archived"
-  | SkillAvailability;
+  | "archived";
 
 interface SkillManagerTab {
   id: SkillManagerTabType;
@@ -78,31 +77,27 @@ const ALL_SKILLS_TAB: SkillManagerTab = {
   description: "All active skills",
 };
 
+const EDITABLE_BY_ME_TAB: SkillManagerTab = {
+  id: "editable_by_me",
+  label: "Editable by me",
+  description: "Skills you can edit",
+};
+
 const ARCHIVED_TAB: SkillManagerTab = {
   id: "archived",
   label: "Archived",
   description: "Archived skills",
 };
 
-// With skill publication governance, active skills are split by availability so each publication
-// level gets its own tab. The labels/tooltips mirror the availability chips shown in the table.
 const GOVERNANCE_SKILL_MANAGER_TABS: SkillManagerTab[] = [
   ALL_SKILLS_TAB,
-  ...SKILL_AVAILABILITIES.map((availability) => ({
-    id: availability,
-    label: SKILL_AVAILABILITY_DISPLAY[availability].label,
-    description: SKILL_AVAILABILITY_DISPLAY[availability].tooltip,
-  })),
+  EDITABLE_BY_ME_TAB,
   ARCHIVED_TAB,
 ];
 
 const LEGACY_SKILL_MANAGER_TABS: SkillManagerTab[] = [
   ALL_SKILLS_TAB,
-  {
-    id: "editable_by_me",
-    label: "Editable by me",
-    description: "Skills you can edit",
-  },
+  EDITABLE_BY_ME_TAB,
   {
     id: "default",
     label: "Default",
@@ -111,17 +106,30 @@ const LEGACY_SKILL_MANAGER_TABS: SkillManagerTab[] = [
   ARCHIVED_TAB,
 ];
 
-const ALL_TAB_IDS: SkillManagerTabType[] = [
-  "active",
-  "editable_by_me",
-  "default",
-  "archived",
-  ...SKILL_AVAILABILITIES,
-];
-
 function isValidTab(tab: string): tab is SkillManagerTabType {
-  return ALL_TAB_IDS.some((id) => id === tab);
+  return [...GOVERNANCE_SKILL_MANAGER_TABS, ...LEGACY_SKILL_MANAGER_TABS].some(
+    (t) => t.id === tab
+  );
 }
+
+type AvailabilityFilter = SkillAvailability | "all";
+
+function isAvailabilityFilter(
+  value: string | undefined
+): value is SkillAvailability {
+  return SKILL_AVAILABILITIES.some((a) => a === value);
+}
+
+const AVAILABILITY_FILTER_OPTIONS: {
+  value: AvailabilityFilter;
+  label: string;
+}[] = [
+  { value: "all", label: "All availabilities" },
+  ...SKILL_AVAILABILITIES.map((availability) => ({
+    value: availability,
+    label: SKILL_AVAILABILITY_DISPLAY[availability].label,
+  })),
+];
 
 function getSkillSearchString(
   skill: SkillWithoutInstructionsAndToolsWithRelationsType
@@ -154,6 +162,22 @@ export function ManageSkillsPage() {
   const [pendingBatchAction, setPendingBatchAction] =
     useState<BatchAvailabilityAction | null>(null);
   const [bypassEditorVisibility, setBypassEditorVisibility] = useState(false);
+  const [availabilityParam, setAvailabilityParam] =
+    useHashParam("availability");
+  const availabilityFilter: AvailabilityFilter = isAvailabilityFilter(
+    availabilityParam
+  )
+    ? availabilityParam
+    : "all";
+  // Clear the param on "all" so the default state keeps the URL clean.
+  const setAvailabilityFilter = (value: AvailabilityFilter) =>
+    setAvailabilityParam(value === "all" ? undefined : value);
+
+  // Switching tabs resets the availability filter to avoid carrying it across lists.
+  const handleTabChange = (tabId: SkillManagerTabType) => {
+    setSelectedTab(tabId);
+    setAvailabilityFilter("all");
+  };
 
   const hasSkillPublicationGovernance = hasFeature(
     "admin_governance_skill_publication"
@@ -253,16 +277,20 @@ export function ManageSkillsPage() {
         return a.name.localeCompare(b.name);
       });
 
-    const byAvailability = (availability: SkillAvailability) =>
-      filteredList(
-        sortedActiveSkills.filter((s) => s.availability === availability)
-      );
+    const byAvailabilityFilter = (
+      skills: SkillWithoutInstructionsAndToolsWithRelationsType[]
+    ) =>
+      availabilityFilter === "all"
+        ? skills
+        : skills.filter((s) => s.availability === availabilityFilter);
 
     return {
-      active: filteredList(sortedActiveSkills),
+      active: filteredList(byAvailabilityFilter(sortedActiveSkills)),
       editable_by_me: filteredList(
-        sortedActiveSkills.filter((s) =>
-          s.relations.editors?.some((e) => e.sId === user?.sId)
+        byAvailabilityFilter(
+          sortedActiveSkills.filter((s) =>
+            s.relations.editors?.some((e) => e.sId === user?.sId)
+          )
         )
       ),
       // Legacy (no governance) tab: auto-discoverable skills plus Dust-provided ones.
@@ -274,18 +302,16 @@ export function ManageSkillsPage() {
           )
         )
       ),
-      editors: byAvailability("editors"),
-      workspace_users: byAvailability("workspace_users"),
-      users_and_agents: filteredList(
-        sortDustProvidedFirst(
-          sortedActiveSkills.filter(
-            (s) => s.availability === "users_and_agents"
-          )
-        )
-      ),
-      archived: filteredList(sortedArchivedSkills),
+      archived: filteredList(byAvailabilityFilter(sortedArchivedSkills)),
     };
-  }, [activeSkills, archivedSkills, skillSearch, user, isSearchActive]);
+  }, [
+    activeSkills,
+    archivedSkills,
+    skillSearch,
+    user,
+    isSearchActive,
+    availabilityFilter,
+  ]);
 
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
@@ -502,29 +528,57 @@ export function ManageSkillsPage() {
                     key={tab.id}
                     value={tab.id}
                     label={tab.label}
-                    onClick={() => setSelectedTab(tab.id)}
+                    onClick={() => handleTabChange(tab.id)}
                     tooltip={tab.description}
                     isCounter={tab.id !== "archived"}
                     counterValue={`${skillsByTab[tab.id].length}`}
                   />
                 ))}
-                {canBypassEditorVisibility && (
+                {hasSkillPublicationGovernance && (
                   <div className="ml-auto flex flex-row items-center gap-2 self-center text-sm text-muted-foreground">
-                    <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
-                      <Checkbox
-                        checked={bypassEditorVisibility}
-                        onCheckedChange={(checked) =>
-                          setBypassEditorVisibility(checked === true)
-                        }
-                      />
-                      Show hidden skills
-                    </label>
-                    <Tooltip
-                      label="Shows skills you can access as an admin, even if you’re not an editor"
-                      trigger={
-                        <InfoCircle className="h-4 w-4 text-muted-foreground" />
-                      }
-                    />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          isSelect
+                          className="w-48 justify-between"
+                          label={
+                            AVAILABILITY_FILTER_OPTIONS.find(
+                              (o) => o.value === availabilityFilter
+                            )?.label ?? "All availabilities"
+                          }
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {AVAILABILITY_FILTER_OPTIONS.map((option) => (
+                          <DropdownMenuItem
+                            key={option.value}
+                            label={option.label}
+                            onClick={() => setAvailabilityFilter(option.value)}
+                          />
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    {canBypassEditorVisibility && (
+                      <>
+                        <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
+                          <Checkbox
+                            checked={bypassEditorVisibility}
+                            onCheckedChange={(checked) =>
+                              setBypassEditorVisibility(checked === true)
+                            }
+                          />
+                          Show hidden skills
+                        </label>
+                        <Tooltip
+                          label="Shows skills you can access as an admin, even if you’re not an editor"
+                          trigger={
+                            <InfoCircle className="h-4 w-4 text-muted-foreground" />
+                          }
+                        />
+                      </>
+                    )}
                   </div>
                 )}
               </TabsList>
@@ -535,14 +589,16 @@ export function ManageSkillsPage() {
               </div>
             ) : (
               <>
-                {activeTab === "active" && suggestedSkills.length > 0 && (
-                  <SuggestedSkillsSection
-                    skills={sortSkillsByName(suggestedSkills)}
-                    onSkillClick={handleSkillSelect}
-                    owner={owner}
-                    user={user}
-                  />
-                )}
+                {activeTab === "active" &&
+                  availabilityFilter === "all" &&
+                  suggestedSkills.length > 0 && (
+                    <SuggestedSkillsSection
+                      skills={sortSkillsByName(suggestedSkills)}
+                      onSkillClick={handleSkillSelect}
+                      owner={owner}
+                      user={user}
+                    />
+                  )}
                 <SkillsTable
                   owner={owner}
                   skills={skillsByTab[activeTab]}
