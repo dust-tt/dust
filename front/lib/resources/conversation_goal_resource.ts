@@ -1,8 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentMessageModel,
-  MessageModel,
-} from "@app/lib/models/agent/conversation";
 import { ConversationGoalModel } from "@app/lib/models/agent/conversation_goal";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -51,45 +47,20 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
     {
       objective,
       conversation,
-      currentAgentMessageId,
     }: {
       objective: string;
       conversation: ConversationResource;
-      currentAgentMessageId: string;
     },
     transaction: Transaction
   ): Promise<ConversationGoalResource> {
     const workspace = auth.getNonNullableWorkspace();
-    const message = await MessageModel.findOne({
-      where: {
-        workspaceId: workspace.id,
-        conversationId: conversation.id,
-        branchId: null,
-        sId: currentAgentMessageId,
-      },
-      include: [
-        {
-          model: AgentMessageModel,
-          as: "agentMessage",
-          required: true,
-        },
-      ],
-      transaction,
-    });
-    if (!message?.agentMessage) {
-      throw new Error("Invalid root agent message for conversation goal.");
-    }
-
     const row = await this.model.create(
       {
         workspaceId: workspace.id,
         objective,
         conversationId: conversation.id,
-        branchId: null,
         createdByUserId: auth.getNonNullableUser().id,
-        currentAgentMessageId: message.agentMessage.id,
         status: "active",
-        lastAgentMessageId: null,
         statusReason: null,
         terminalAt: null,
       },
@@ -110,7 +81,6 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: conversation.id,
-        branchId: null,
       },
       order: [
         ["createdAt", "DESC"],

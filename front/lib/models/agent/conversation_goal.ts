@@ -1,8 +1,4 @@
-import {
-  AgentMessageModel,
-  ConversationModel,
-} from "@app/lib/models/agent/conversation";
-import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
   DANGEROUSLY_UNBOUNDED_TEXT,
@@ -30,16 +26,10 @@ export class ConversationGoalModel extends WorkspaceAwareModel<ConversationGoalM
   declare terminalAt: Date | null;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
-  declare branchId: ForeignKey<ConversationBranchModel["id"]> | null;
   declare createdByUserId: ForeignKey<UserModel["id"]>;
-  declare currentAgentMessageId: ForeignKey<AgentMessageModel["id"]>;
-  declare lastAgentMessageId: ForeignKey<AgentMessageModel["id"]> | null;
 
   declare conversation?: NonAttribute<ConversationModel>;
-  declare branch?: NonAttribute<ConversationBranchModel | null>;
   declare createdByUser?: NonAttribute<UserModel>;
-  declare currentAgentMessage?: NonAttribute<AgentMessageModel>;
-  declare lastAgentMessage?: NonAttribute<AgentMessageModel | null>;
 }
 
 ConversationGoalModel.init(
@@ -81,40 +71,15 @@ ConversationGoalModel.init(
         concurrently: true,
       },
       {
-        fields: ["branchId"],
-        name: "conversation_goals_branch_id",
-        concurrently: true,
-      },
-      {
         fields: ["createdByUserId"],
         name: "conversation_goals_created_by_user_id",
         concurrently: true,
       },
       {
-        fields: ["currentAgentMessageId"],
-        name: "conversation_goals_current_agent_message_id",
-        concurrently: true,
-      },
-      {
-        fields: ["lastAgentMessageId"],
-        name: "conversation_goals_last_agent_message_id",
-        concurrently: true,
-      },
-      {
         unique: true,
         fields: ["workspaceId", "conversationId"],
-        name: "conversation_goals_one_unfinished_root",
+        name: "conversation_goals_one_unfinished",
         where: {
-          branchId: null,
-          status: { [Op.in]: UNFINISHED_GOAL_STATUSES },
-        },
-      },
-      {
-        unique: true,
-        fields: ["workspaceId", "conversationId", "branchId"],
-        name: "conversation_goals_one_unfinished_branch",
-        where: {
-          branchId: { [Op.not]: null },
           status: { [Op.in]: UNFINISHED_GOAL_STATUSES },
         },
       },
@@ -130,38 +95,10 @@ ConversationGoalModel.belongsTo(ConversationModel, {
   foreignKey: { name: "conversationId", allowNull: false },
 });
 
-ConversationBranchModel.hasMany(ConversationGoalModel, {
-  foreignKey: { name: "branchId", allowNull: true },
-  onDelete: "RESTRICT",
-});
-ConversationGoalModel.belongsTo(ConversationBranchModel, {
-  foreignKey: { name: "branchId", allowNull: true },
-});
-
 UserModel.hasMany(ConversationGoalModel, {
   foreignKey: { name: "createdByUserId", allowNull: false },
   onDelete: "RESTRICT",
 });
 ConversationGoalModel.belongsTo(UserModel, {
   foreignKey: { name: "createdByUserId", allowNull: false },
-});
-
-AgentMessageModel.hasMany(ConversationGoalModel, {
-  as: "currentConversationGoals",
-  foreignKey: { name: "currentAgentMessageId", allowNull: false },
-  onDelete: "RESTRICT",
-});
-ConversationGoalModel.belongsTo(AgentMessageModel, {
-  as: "currentAgentMessage",
-  foreignKey: { name: "currentAgentMessageId", allowNull: false },
-});
-
-AgentMessageModel.hasMany(ConversationGoalModel, {
-  as: "lastConversationGoals",
-  foreignKey: { name: "lastAgentMessageId", allowNull: true },
-  onDelete: "RESTRICT",
-});
-ConversationGoalModel.belongsTo(AgentMessageModel, {
-  as: "lastAgentMessage",
-  foreignKey: { name: "lastAgentMessageId", allowNull: true },
 });

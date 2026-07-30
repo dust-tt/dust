@@ -650,17 +650,12 @@ describe("destroyConversation", () => {
       conversationType.sId
     );
     assert(conversation, "Conversation should exist");
-    const agentMessage = conversationType.content
-      .flat()
-      .find((message) => message.type === "agent_message");
-    assert(agentMessage, "Agent message should exist");
     await withTransaction((transaction) =>
       ConversationGoalResource.makeNew(
         auth,
         {
           objective: "Delete this conversation",
           conversation,
-          currentAgentMessageId: agentMessage.sId,
         },
         transaction
       )
