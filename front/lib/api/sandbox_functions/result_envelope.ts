@@ -1,6 +1,19 @@
+import logger from "@app/logger/logger";
 import type { SandboxFunctionCallError } from "@app/types/api/sandbox_functions";
 import { SANDBOX_FUNCTION_RUNNER_ERROR_CODES } from "@app/types/api/sandbox_functions";
 import { z } from "zod";
+
+// Current wire version dsbx emits. Parsing accepts the supported set below so a future bump
+// does not instantly fail long-lived baked pod images still on an older version.
+export const SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSION = 3;
+
+export const SUPPORTED_SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSIONS = [
+  SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSION,
+] as const;
+
+export type NormalizedSandboxFunctionOutcome =
+  | { ok: true; output: unknown }
+  | { ok: false; error: SandboxFunctionCallError };
 
 type JsonValue = null | boolean | number | string | object;
 const DefinedJsonValueSchema = z.custom<JsonValue>((v) => v !== undefined);
@@ -12,7 +25,12 @@ const SandboxFunctionRunnerOutputSchema = z.discriminatedUnion("ok", [
       ok: z.literal(false),
       error: z
         .object({
-          code: z.enum(SANDBOX_FUNCTION_RUNNER_ERROR_CODES),
+          // Accept runner codes and front/dsbx-minted codes (e.g. invocation_failed).
+          // Stored paths already treat code as an opaque string for the same reason.
+          code: z.union([
+            z.enum(SANDBOX_FUNCTION_RUNNER_ERROR_CODES),
+            z.enum(["invocation_failed", "transport_error", "not_supported"]),
+          ]),
           message: z.string(),
           status: z.number().int().optional(),
         })
@@ -49,15 +67,36 @@ const LegacySandboxFunctionRunnerOutputSchema = z.discriminatedUnion("ok", [
     .strict(),
 ]);
 
-export type NormalizedSandboxFunctionOutcome =
-  | { ok: true; output: unknown }
-  | { ok: false; error: SandboxFunctionCallError };
+// Mirrors ResultEnvelope in cli/dust-sandbox/src/commands/function/envelope.rs.
+// Deliberately not `.strict()`: the wrapper is a forward-compatibility seam, so a field added by
+// a newer dsbx must not fail the parse. Inner outcome schemas stay `.strict()`.
+// `delivery` is optional and opaque until a consumer reads it.
+const ResultEnvelopeV3Schema = z.object({
+  protocolVersion: z.literal(SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSION),
+  delivery: z.string().min(1).optional(),
+  outcome: z.unknown(),
+  timingsMs: z.unknown().optional(),
+});
 
-/**
- * Normalize a Pod function result payload from the HTTP callback body into one
- * classified outcome. Lifted from the callback route with no behavior change.
- */
-export function normalizeSandboxFunctionResult(
+const ProtocolVersionProbeSchema = z.object({
+  protocolVersion: z.number(),
+});
+
+function invalidResultEnvelope(
+  reason: string,
+  details?: Record<string, unknown>
+): NormalizedSandboxFunctionOutcome {
+  logger.warn({ reason, ...details }, "Rejected Pod function result envelope");
+  return {
+    ok: false,
+    error: {
+      code: "invocation_failed",
+      message: "Sandbox function returned an invalid result envelope.",
+    },
+  };
+}
+
+function normalizeRunnerOutcome(
   result: unknown
 ): NormalizedSandboxFunctionOutcome {
   const current = SandboxFunctionRunnerOutputSchema.safeParse(result);
@@ -67,13 +106,7 @@ export function normalizeSandboxFunctionResult(
 
   const legacy = LegacySandboxFunctionRunnerOutputSchema.safeParse(result);
   if (!legacy.success) {
-    return {
-      ok: false,
-      error: {
-        code: "invocation_failed",
-        message: "Sandbox function returned an invalid result envelope.",
-      },
-    };
+    return invalidResultEnvelope("unrecognized_runner_outcome");
   }
 
   if (!legacy.data.ok) {
@@ -113,4 +146,52 @@ export function normalizeSandboxFunctionResult(
       },
     };
   }
+}
+
+function isSupportedProtocolVersion(version: number): boolean {
+  return (
+    Number.isInteger(version) &&
+    (
+      SUPPORTED_SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSIONS as readonly number[]
+    ).includes(version)
+  );
+}
+
+/**
+ * Normalize a Pod function result payload from either the HTTP callback body or a
+ * worker-owned stdout envelope into one classified outcome.
+ */
+export function normalizeSandboxFunctionResult(
+  result: unknown
+): NormalizedSandboxFunctionOutcome {
+  const versionProbe = ProtocolVersionProbeSchema.safeParse(result);
+  if (versionProbe.success) {
+    const { protocolVersion } = versionProbe.data;
+    if (!Number.isInteger(protocolVersion)) {
+      return invalidResultEnvelope("non_integer_protocol_version", {
+        protocolVersion,
+      });
+    }
+    if (!isSupportedProtocolVersion(protocolVersion)) {
+      return {
+        ok: false,
+        error: {
+          code: "invocation_failed",
+          message: `Unsupported Pod function result protocol version ${protocolVersion}.`,
+        },
+      };
+    }
+
+    const v3 = ResultEnvelopeV3Schema.safeParse(result);
+    if (!v3.success) {
+      return invalidResultEnvelope("malformed_v3_envelope", {
+        protocolVersion,
+      });
+    }
+
+    // timingsMs is accepted on the wire for forward compatibility but not consumed yet.
+    return normalizeRunnerOutcome(v3.data.outcome);
+  }
+
+  return normalizeRunnerOutcome(result);
 }

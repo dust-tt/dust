@@ -203,4 +203,76 @@ describe("POST /api/v1/w/[wId]/sandbox/sandbox-functions/result", () => {
     });
     expect(publishSandboxFunctionInvocationEvent).not.toHaveBeenCalled();
   });
+
+  it("accepts protocol v3 success envelopes", async () => {
+    const { auth, token, workspace, sandboxFunction, invocation } =
+      await createPersistedSandboxFunctionInvocationTokenTestContext();
+
+    const response = await postSandboxFunctionResult(workspace, token, {
+      result: {
+        protocolVersion: 3,
+        delivery: "callback",
+        outcome: { ok: true, output: { hello: "v3" } },
+        timingsMs: { total: 10, runner: 4 },
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const refetchedInvocation =
+      await SandboxFunctionInvocationResource.fetchById(auth, {
+        sandboxFunction,
+        invocationId: invocation.sId,
+      });
+    expect(refetchedInvocation?.status).toBe("succeeded");
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
+      {
+        type: "sandbox_function_invocation_result",
+        created: expect.any(Number),
+        invocationId: invocation.sId,
+        functionId: sandboxFunction.sId,
+        result: { hello: "v3" },
+      },
+      { invocationId: invocation.sId }
+    );
+  });
+
+  it("publishes protocol v3 runner errors as invocation errors", async () => {
+    const { auth, token, workspace, sandboxFunction, invocation } =
+      await createPersistedSandboxFunctionInvocationTokenTestContext();
+
+    const response = await postSandboxFunctionResult(workspace, token, {
+      result: {
+        protocolVersion: 3,
+        delivery: "stdout",
+        outcome: {
+          ok: false,
+          error: {
+            code: "threw",
+            message: "boom",
+          },
+        },
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const refetchedInvocation =
+      await SandboxFunctionInvocationResource.fetchById(auth, {
+        sandboxFunction,
+        invocationId: invocation.sId,
+      });
+    expect(refetchedInvocation?.status).toBe("errored");
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
+      {
+        type: "sandbox_function_invocation_error",
+        created: expect.any(Number),
+        invocationId: invocation.sId,
+        functionId: sandboxFunction.sId,
+        error: {
+          code: "threw",
+          message: "boom",
+        },
+      },
+      { invocationId: invocation.sId }
+    );
+  });
 });
