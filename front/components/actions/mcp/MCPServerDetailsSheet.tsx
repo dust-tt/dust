@@ -46,6 +46,9 @@ interface MCPServerDetailsSheetProps {
   spaces: SpaceType[];
   readOnly?: boolean;
   sensitivityLabelsController?: SensitivityLabelsController;
+  confirmSkillsRestrictionChange: (
+    isRestrictedToSkills: boolean
+  ) => Promise<boolean>;
 }
 
 export function MCPServerDetailsSheet({
@@ -58,6 +61,7 @@ export function MCPServerDetailsSheet({
   spaces,
   readOnly = false,
   sensitivityLabelsController,
+  confirmSkillsRestrictionChange,
 }: MCPServerDetailsSheetProps) {
   const [selectedTab, setSelectedTab] = useState<TabType>("info");
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
@@ -207,6 +211,9 @@ export function MCPServerDetailsSheet({
                         owner={owner}
                         sensitivityLabelsController={
                           sensitivityLabelsController
+                        }
+                        confirmSkillsRestrictionChange={
+                          confirmSkillsRestrictionChange
                         }
                       />
                     </div>

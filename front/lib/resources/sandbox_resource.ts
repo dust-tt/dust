@@ -79,6 +79,10 @@ export type SandboxTimestampCursor = {
   timestamp: Date;
 };
 
+export type KillRequestedSandboxesOrder =
+  | "killRequestedAtAsc"
+  | "lastActivityAtDesc";
+
 export type SandboxDeleteOwner = SandboxLifecycleOwner & {
   deleteSandbox: (
     sandbox: SandboxResource,
@@ -957,30 +961,54 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * kill-requester workflow marks rows; the reaper (and the bash path) is
    * responsible for actually destroying them.
    *
+   * `statuses` narrows the sweep: the reaper prioritizes awake sandboxes
+   * (running / pending_approval) and sweeps sleeping ones separately, most
+   * recently active first (`lastActivityAtDesc`). Sleepers are already
+   * flushed from pause time; destroying recently active ones first takes
+   * the provider destroy off the user's lazy recreate path.
+   *
    * WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
    */
   static async dangerouslyGetKillRequestedSandboxes(opts: {
     limit: number;
     after?: SandboxTimestampCursor;
+    statuses?: SandboxStatus[];
+    order?: KillRequestedSandboxesOrder;
   }): Promise<SandboxResource[]> {
+    const order = opts.order ?? "killRequestedAtAsc";
     const rows = await this.model.findAll({
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         killRequestedAt: { [Op.ne]: null },
-        status: { [Op.ne]: "deleted" },
+        status: opts.statuses
+          ? { [Op.in]: opts.statuses }
+          : { [Op.ne]: "deleted" },
         ...(opts.after && {
-          [Op.and]: where(
-            fn("ROW", col("killRequestedAt"), col("id")),
-            Op.gt,
-            fn("ROW", opts.after.timestamp, opts.after.sandboxModelId)
-          ),
+          [Op.and]:
+            order === "lastActivityAtDesc"
+              ? where(
+                  fn("ROW", col("lastActivityAt"), col("id")),
+                  Op.lt,
+                  fn("ROW", opts.after.timestamp, opts.after.sandboxModelId)
+                )
+              : where(
+                  fn("ROW", col("killRequestedAt"), col("id")),
+                  Op.gt,
+                  fn("ROW", opts.after.timestamp, opts.after.sandboxModelId)
+                ),
         }),
       },
-      order: [
-        ["killRequestedAt", "ASC"],
-        ["id", "ASC"],
-      ],
+      order:
+        order === "lastActivityAtDesc"
+          ? [
+              ["lastActivityAt", "DESC"],
+              ["id", "DESC"],
+            ]
+          : [
+              ["killRequestedAt", "ASC"],
+              ["id", "ASC"],
+            ],
       limit: opts.limit,
     });
 

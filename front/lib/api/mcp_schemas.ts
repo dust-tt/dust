@@ -77,6 +77,7 @@ export const MCPServerViewSchema = z.object({
   server: MCPServerSchema,
   oAuthUseCase: z.enum(MCP_OAUTH_USE_CASES).nullable(),
   editedByUser: EditedByUserSchema.nullable(),
+  isRestrictedToSkills: z.boolean(),
   toolsMetadata: z.array(ToolsMetadataSchema).optional(),
 });
 

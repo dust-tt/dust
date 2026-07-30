@@ -593,6 +593,7 @@ export function convertToOldEvent(
         textGenerated,
         reasoningGenerated,
         toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+        stopReason: event.content.stopReason,
         metadata,
       };
     }

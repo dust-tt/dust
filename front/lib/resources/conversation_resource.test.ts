@@ -14,6 +14,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { getReinforcedSkillsMetadata } from "@app/lib/reinforcement/types";
+import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationGoalResource } from "@app/lib/resources/conversation_goal_resource";
@@ -881,13 +882,11 @@ describe("destroyConversation", () => {
       })
     ).resolves.toBe(0);
     await expect(
-      AgentMessageConsumptionItemModel.count({
-        where: {
-          agentMessageId,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
+      AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+        agentMessageModelIds: [agentMessageId],
+        attributionVersion: 1,
       })
-    ).resolves.toBe(0);
+    ).resolves.toHaveLength(0);
   });
 
   it("should delete selected spaces before deleting a conversation", async () => {

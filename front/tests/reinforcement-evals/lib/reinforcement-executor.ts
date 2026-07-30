@@ -108,6 +108,7 @@ function makeSkillType(config: MockSkillConfig): SkillType {
       },
       oAuthUseCase: null,
       editedByUser: null,
+      isRestrictedToSkills: false,
     })),
     fileAttachments: [],
     canWrite: false,

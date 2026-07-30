@@ -283,6 +283,11 @@ const config = {
         permanent: true,
       },
       {
+        source: "/credits",
+        destination: "/home/credits",
+        permanent: true,
+      },
+      {
         source: "/security",
         destination: "/home/security",
         permanent: true,

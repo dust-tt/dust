@@ -1320,10 +1320,24 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return res.length > 0 ? res[0] : null;
   }
 
-  static async fetchByIdsWithReadState(auth: Authenticator, sIds: string[]) {
-    const conversations = await this.fetchByIds(auth, sIds);
+  static async fetchByIdsWithReadState(
+    auth: Authenticator,
+    sIds: string[],
+    options?: FetchConversationOptions
+  ) {
+    const conversations = await this.fetchByIds(auth, sIds, options);
     await this.enrichWithReadState(auth, conversations);
     return conversations;
+  }
+
+  static async fetchByIdWithReadState(
+    auth: Authenticator,
+    sId: string,
+    options?: FetchConversationOptions
+  ): Promise<ConversationResource | null> {
+    const res = await this.fetchByIdsWithReadState(auth, [sId], options);
+
+    return res.length > 0 ? res[0] : null;
   }
 
   /**

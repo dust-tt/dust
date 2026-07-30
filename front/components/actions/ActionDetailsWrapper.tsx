@@ -184,6 +184,7 @@ export function ActionDetailsWrapper({
         >
           {actionName}
         </span>
+        {headerAction}
         {hasDuration && (
           <DurationLabel
             durationMs={displayedDurationMs}
@@ -191,7 +192,6 @@ export function ActionDetailsWrapper({
             size="sm"
           />
         )}
-        {headerAction}
       </div>
       {children}
     </>

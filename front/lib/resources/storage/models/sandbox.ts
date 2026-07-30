@@ -92,6 +92,16 @@ SandboxModel.init(
         },
       },
       {
+        // Low-priority reaper sweep: kill-requested sleeping sandboxes are
+        // destroyed most-recently-active first.
+        fields: ["lastActivityAt", "id"],
+        name: "sandboxes_reaper_kill_requested_sleeping_idx",
+        where: {
+          killRequestedAt: { [Op.ne]: null },
+          status: "sleeping",
+        },
+      },
+      {
         fields: ["status", "lastActivityAt", "id"],
         name: "sandboxes_reaper_stale_idx",
         where: { killRequestedAt: { [Op.is]: null } },

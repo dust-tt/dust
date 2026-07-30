@@ -264,6 +264,7 @@ export async function* rawOutputToEvents(
   };
   let hasYieldedResponseId = false;
   let usage: UsageInfo | undefined;
+  let stopReason: string | null = null;
 
   while (true) {
     let result: IteratorResult<CompletionEvent>;
@@ -313,6 +314,7 @@ export async function* rawOutputToEvents(
     if (!finishReason) {
       continue;
     }
+    stopReason = finishReason;
     switch (finishReason) {
       case CompletionResponseStreamChoiceFinishReason.Length:
         yield buildErrorEvent({
@@ -338,7 +340,11 @@ export async function* rawOutputToEvents(
   }
 
   yield usageToTokenUsageEvent(metadata, usage);
-  yield { type: "success", content: { aggregated }, metadata };
+  yield {
+    type: "success",
+    content: { aggregated, ...(stopReason ? { stopReason } : {}) },
+    metadata,
+  };
 }
 
 // -- Non-streaming entry point: a complete batch response → events --

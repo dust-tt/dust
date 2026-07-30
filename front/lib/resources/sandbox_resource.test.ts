@@ -497,6 +497,86 @@ describe("SandboxResource.dangerouslyGetKillRequestedSandboxes", () => {
     expect(secondPage).toHaveLength(1);
     expect(secondPage[0]?.id).not.toBe(firstSandbox.id);
   });
+
+  it("filters by statuses when provided", async () => {
+    const secondConversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId,
+      messagesCreatedAt: [new Date()],
+    });
+    const runningSandbox = await SandboxFactory.create(
+      authenticator,
+      conversation,
+      {
+        status: "running",
+        killRequestedAt: new Date(),
+      }
+    );
+    const sleepingSandbox = await SandboxFactory.create(
+      authenticator,
+      secondConversation,
+      {
+        status: "sleeping",
+        killRequestedAt: new Date(),
+      }
+    );
+
+    const awakeRows =
+      await SandboxResource.dangerouslyGetKillRequestedSandboxes({
+        limit: 10,
+        statuses: ["running", "pending_approval"],
+      });
+    expect(awakeRows.map((r) => r.id)).toEqual([runningSandbox.id]);
+
+    const sleepingRows =
+      await SandboxResource.dangerouslyGetKillRequestedSandboxes({
+        limit: 10,
+        statuses: ["sleeping"],
+      });
+    expect(sleepingRows.map((r) => r.id)).toEqual([sleepingSandbox.id]);
+  });
+
+  it("orders by lastActivityAt descending and paginates when requested", async () => {
+    const secondConversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId,
+      messagesCreatedAt: [new Date()],
+    });
+    const olderActivityAt = new Date(Date.now() - 60 * 60 * 1000);
+    const recentActivityAt = new Date();
+    const older = await SandboxFactory.create(authenticator, conversation, {
+      status: "sleeping",
+      killRequestedAt: new Date(),
+      lastActivityAt: olderActivityAt,
+    });
+    const recent = await SandboxFactory.create(
+      authenticator,
+      secondConversation,
+      {
+        status: "sleeping",
+        killRequestedAt: new Date(),
+        lastActivityAt: recentActivityAt,
+      }
+    );
+
+    const firstPage =
+      await SandboxResource.dangerouslyGetKillRequestedSandboxes({
+        limit: 1,
+        statuses: ["sleeping"],
+        order: "lastActivityAtDesc",
+      });
+    expect(firstPage.map((r) => r.id)).toEqual([recent.id]);
+
+    const secondPage =
+      await SandboxResource.dangerouslyGetKillRequestedSandboxes({
+        limit: 1,
+        statuses: ["sleeping"],
+        order: "lastActivityAtDesc",
+        after: {
+          sandboxModelId: recent.id,
+          timestamp: recentActivityAt,
+        },
+      });
+    expect(secondPage.map((r) => r.id)).toEqual([older.id]);
+  });
 });
 
 describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {

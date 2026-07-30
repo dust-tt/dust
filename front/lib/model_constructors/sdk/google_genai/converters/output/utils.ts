@@ -435,6 +435,7 @@ export async function* rawOutputToEvents(
   };
   let hasYieldedResponseId = false;
   let usage: GenerateContentResponseUsageMetadata | undefined;
+  let stopReason: string | null = null;
 
   while (true) {
     let result: IteratorResult<GenerateContentResponse>;
@@ -477,6 +478,7 @@ export async function* rawOutputToEvents(
     }
 
     if (candidate.finishReason) {
+      stopReason = candidate.finishReason;
       const errorEvent = converters.finishReasonToErrorEvent(
         metadata,
         candidate.finishReason
@@ -505,7 +507,7 @@ export async function* rawOutputToEvents(
   // the success metadata to be echoed back on the next request.
   yield {
     type: "success",
-    content: { aggregated },
+    content: { aggregated, ...(stopReason ? { stopReason } : {}) },
     metadata: {
       ...metadata,
       ...(acc.thoughtSignature

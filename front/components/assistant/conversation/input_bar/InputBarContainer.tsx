@@ -230,9 +230,7 @@ export interface InputBarContainerProps {
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   onMCPServerViewDeselect: (serverView: MCPServerViewLightType) => void;
   onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
-  onModelSelectionChange?: (
-    modelSelection: ModelSelectionType | undefined
-  ) => void;
+  modelSelectionRef?: React.MutableRefObject<ModelSelectionType | undefined>;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onResetMCPServerViews: () => void;
@@ -292,7 +290,7 @@ const InputBarContainer = ({
   onNodeUnselect,
   attachedNodes,
   onMCPServerViewSelect,
-  onModelSelectionChange,
+  modelSelectionRef,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
   selectedSpaceIds = EMPTY_SPACE_IDS,
@@ -1770,7 +1768,7 @@ const InputBarContainer = ({
                       lastRequestedModel={lastRequestedModel}
                       onAgentRemove={() => setSelectedSingleAgent(null)}
                       onMCPServerViewSelect={onMCPServerViewSelect}
-                      onModelSelectionChange={onModelSelectionChange}
+                      modelSelectionRef={modelSelectionRef}
                       onNodeSelect={onNodeSelect}
                       onNodeUnselect={onNodeUnselect}
                       onSkillSelect={handleSkillSelect}

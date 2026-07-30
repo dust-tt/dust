@@ -878,6 +878,8 @@
  *           example: 150
  *     MCPServerView:
  *       type: object
+ *       required:
+ *         - isRestrictedToSkills
  *       properties:
  *         id:
  *           type: integer
@@ -992,6 +994,10 @@
  *           enum: ["platform_actions", "personal_actions"]
  *           description: OAuth use case for the MCP server view
  *           example: "platform_actions"
+ *         isRestrictedToSkills:
+ *           type: boolean
+ *           description: Whether the MCP server view can only be used through skills
+ *           example: false
  *         editedByUser:
  *           type: object
  *           nullable: true

@@ -77,6 +77,6 @@ describe("GET /api/w/:wId/mcp/views", () => {
       (v: MCPServerViewType) => v.sId === view.sId
     );
     expect(skillBuilderView).toBeDefined();
-    expect(skillBuilderView).not.toHaveProperty("isRestrictedToSkills");
+    expect(skillBuilderView.isRestrictedToSkills).toBe(true);
   });
 });

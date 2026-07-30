@@ -1,5 +1,5 @@
 import {
-  buildClientTools,
+  buildTools,
   type ClientToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
@@ -57,7 +57,7 @@ export function registerAllTools(
     [INTERACT_WITH_PAGE_TOOL_NAME]: (params) => interactWithPageTool(params),
   };
 
-  const tools = buildClientTools(CHROME_TOOLS_METADATA, handlers);
+  const tools = buildTools(CHROME_TOOLS_METADATA, handlers);
 
   for (const tool of tools) {
     server.registerTool(
@@ -75,8 +75,8 @@ export function registerAllTools(
           },
         },
       },
-      async (params) => {
-        const result = await tool.handler(params);
+      async (params, extra) => {
+        const result = await tool.handler(params, extra);
         if (result.isErr()) {
           return {
             isError: true,
