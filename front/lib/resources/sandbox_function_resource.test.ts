@@ -495,7 +495,6 @@ describe("SandboxFunctionResource", () => {
       sandboxFunction.sId
     );
     expect(fetched?.userIdentity).toBe("workspace_user_required");
-    expect(fetched?.legacyAuthentication).toBe("workspace_user_required");
     expect(fetched?.description).toBe("First.");
   });
 

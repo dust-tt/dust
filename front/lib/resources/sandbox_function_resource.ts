@@ -144,7 +144,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         fileId: file.id,
         slug,
         description,
-        legacyAuthentication: userIdentity,
         userIdentity,
         inputSchema,
         outputSchema,
@@ -200,16 +199,12 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
             // Commit a stricter policy before exposing its bundle. If the
             // upload fails, the old bundle remains callable only under the
             // stricter policy.
-            await this.update({
-              legacyAuthentication: userIdentity,
-              userIdentity,
-            });
+            await this.update({ userIdentity });
           }
 
           await this.file.uploadContent(auth, bundleCode);
           await this.update({
             description,
-            legacyAuthentication: userIdentity,
             userIdentity,
             inputSchema,
             outputSchema,
