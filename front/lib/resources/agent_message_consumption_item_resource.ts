@@ -13,9 +13,9 @@ import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-interface ConsumptionItemEvidenceBase {
+type ConsumptionItemEvidenceBase = {
   grossAttributedCreditAmountMicro: number;
-}
+};
 
 export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
   itemType: "tool";
@@ -42,17 +42,21 @@ export type PendingToolConsumptionItem = ConsumptionItemEvidenceBase & {
   outputTokensCount: number | null;
 };
 
+type CompletedRunInputConsumptionItem = ConsumptionItemEvidenceBase & {
+  itemType: "system" | "input";
+  runUsageModelId: ModelId;
+  inputTokensCount: number | null;
+};
+
+type CompletedRunOutputConsumptionItem = ConsumptionItemEvidenceBase & {
+  itemType: "output" | "reasoning";
+  runUsageModelId: ModelId;
+  outputTokensCount: number | null;
+};
+
 export type CompletedAgentMessageConsumptionItem =
-  | (ConsumptionItemEvidenceBase & {
-      itemType: "system" | "input";
-      runUsageModelId: ModelId;
-      inputTokensCount: number | null;
-    })
-  | (ConsumptionItemEvidenceBase & {
-      itemType: "output" | "reasoning";
-      runUsageModelId: ModelId;
-      outputTokensCount: number | null;
-    })
+  | CompletedRunInputConsumptionItem
+  | CompletedRunOutputConsumptionItem
   | CompletedToolConsumptionItem;
 
 type ConsumptionItemEvidenceAttributes = Pick<
@@ -148,7 +152,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   }
 
   private static creationAttributes(
-    workspaceModelId: ModelId,
+    auth: Authenticator,
     {
       conversationModelId,
       agentMessageModelId,
@@ -165,7 +169,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   ): ConsumptionItemCreationAttributes {
     return {
       ...this.evidenceAttributes(record),
-      workspaceId: workspaceModelId,
+      workspaceId: auth.getNonNullableWorkspace().id,
       conversationId: conversationModelId,
       agentMessageId: agentMessageModelId,
       runUsageId: record.runUsageModelId,
@@ -174,8 +178,6 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       itemType: record.itemType,
       attributionVersion,
       completedAt: now,
-      createdAt: now,
-      updatedAt: now,
     };
   }
 
@@ -212,7 +214,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     const now = new Date();
     await this.model.bulkCreate(
       records.map((record) =>
-        this.creationAttributes(auth.getNonNullableWorkspace().id, {
+        this.creationAttributes(auth, {
           conversationModelId: conversation.id,
           agentMessageModelId,
           attributionVersion,
@@ -224,6 +226,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         ignoreDuplicates: true,
         returning: false,
         transaction,
+        // Sequelize disables validation by default for bulkCreate.
         validate: true,
       }
     );
@@ -269,6 +272,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         ignoreDuplicates: true,
         returning: false,
         transaction,
+        // Sequelize disables validation by default for bulkCreate.
         validate: true,
       }
     );
