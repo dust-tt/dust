@@ -532,8 +532,6 @@ export function createProjectManagerTools(
           );
         }
 
-        // A null or empty skillNames clears the defaults so new conversations no
-        // longer get any skill pre-inserted.
         const requestedNames = [...new Set(skillNames ?? [])];
 
         let skills: SkillResource[] = [];
@@ -562,8 +560,9 @@ export function createProjectManagerTools(
         }
         await metadata.setDefaultSkills(auth, skills);
 
-        // setDefaultSkills silently drops skills that are scoped to a specific
-        // space, so report back what actually got applied.
+        // setDefaultSkills drops skills that are not scoped to the correct space
+        // (only workspace wide or restricted to this specific pod allowed).
+        // Report back what actually got applied.
         const appliedNames = skills
           .filter((skill) => metadata.defaultSkillIds.includes(skill.sId))
           .map((skill) => skill.name);
@@ -580,7 +579,7 @@ export function createProjectManagerTools(
                 ? `Pod default skills set to: ${appliedNames.join(", ")}.`
                 : "Pod default skills cleared.") +
               (skippedNames.length > 0
-                ? ` Skipped (not workspace-wide skills): ${skippedNames.join(", ")}.`
+                ? ` Skipped (not workspace-wide or scoped to this Pod): ${skippedNames.join(", ")}.`
                 : ""),
           })
         );

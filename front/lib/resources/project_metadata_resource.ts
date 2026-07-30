@@ -229,12 +229,15 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     transaction?: Transaction
   ): Promise<void> {
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    const globalSpaceSkills = skills.filter((skill) =>
-      skill.requestedSpaceIds.every((id) => id === globalSpace.id)
+    // Follows the default skills rules: only skills that are workspace-wide or scoped
+    // to this specific pod can be set as Pod defaults.
+    const eligibleSpaceIds = new Set([globalSpace.id, this.spaceId]);
+    const eligibleSkills = skills.filter((skill) =>
+      skill.requestedSpaceIds.every((id) => eligibleSpaceIds.has(id))
     );
 
     const defaultSkillsIds = [
-      ...new Map(globalSpaceSkills.map((s) => [s.sId, s])).keys(),
+      ...new Map(eligibleSkills.map((s) => [s.sId, s])).keys(),
     ];
 
     await this.update(

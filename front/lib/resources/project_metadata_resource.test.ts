@@ -211,6 +211,31 @@ describe("ProjectMetadataResource", () => {
       expect(reloaded!.defaultSkillIds).toEqual([globalSkill.sId]);
     });
 
+    it("keeps skills scoped to the Pod's own space", async () => {
+      const { workspace: skillWorkspace, authenticator } =
+        await createResourceTest({ role: "admin" });
+      const space = await SpaceFactory.project(skillWorkspace);
+
+      const podSkill = await SkillFactory.create(authenticator, {
+        name: "pod-scoped",
+        requestedSpaceIds: [space.id],
+      });
+
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+
+      await metadata.setDefaultSkills(authenticator, [podSkill]);
+
+      const reloaded = await ProjectMetadataResource.fetchBySpace(
+        authenticator,
+        space
+      );
+      expect(reloaded!.defaultSkillIds).toEqual([podSkill.sId]);
+    });
+
     it("de-duplicates skills", async () => {
       const { workspace: skillWorkspace, authenticator } =
         await createResourceTest({ role: "admin" });
