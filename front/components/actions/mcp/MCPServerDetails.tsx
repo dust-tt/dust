@@ -21,6 +21,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import {
   useMCPServer,
   useMCPServers,
+  useMCPServerViewsFromSpaces,
   useMutateMCPServersViewsForAdmin,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
@@ -58,10 +59,30 @@ export function MCPServerDetails({
   onClose,
   readOnly = false,
 }: MCPServerDetailsProps) {
-  const { spaces } = useSpacesAsAdmin({
+  const { spaces, isSpacesLoading, isSpacesError } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: !isOpen || !isAdmin(owner),
   });
+
+  const {
+    serverViews: directlyAvailableMCPServerViews,
+    isLoading: isDirectAvailabilityLoading,
+    isError: isDirectAvailabilityError,
+    mutateServerViews: mutateDirectlyAvailableMCPServerViews,
+  } = useMCPServerViewsFromSpaces(owner, spaces, {
+    disabled: !isOpen || readOnly,
+  });
+  const isSkillsRestrictionReady =
+    !isSpacesLoading &&
+    !isSpacesError &&
+    !isDirectAvailabilityLoading &&
+    !isDirectAvailabilityError;
+  const isRestrictedToSkills =
+    isSkillsRestrictionReady &&
+    mcpServerView !== null &&
+    !directlyAvailableMCPServerViews.some(
+      (view) => view.server.sId === mcpServerView.server.sId
+    );
 
   const { server: mcpServerWithViews, mutateMCPServer } = useMCPServer({
     owner,
@@ -105,19 +126,23 @@ export function MCPServerDetails({
 
   const defaults = useMemo<MCPServerFormValues>(() => {
     if (mcpServerView) {
-      return getMCPServerFormDefaults(
-        mcpServerView,
-        mcpServerWithViews ?? undefined,
-        spaces
-      );
+      return {
+        ...getMCPServerFormDefaults(
+          mcpServerView,
+          mcpServerWithViews ?? undefined,
+          spaces
+        ),
+        isRestrictedToSkills,
+      };
     }
     return {
       name: "",
       description: "",
+      isRestrictedToSkills: false,
       toolSettings: {},
       sharingSettings: {},
     };
-  }, [mcpServerView, mcpServerWithViews, spaces]);
+  }, [isRestrictedToSkills, mcpServerView, mcpServerWithViews, spaces]);
 
   const form = useForm<MCPServerFormValues>({
     values: defaults,
@@ -217,12 +242,14 @@ export function MCPServerDetails({
 
   const applyInfoChanges = async (diff: {
     serverView?: { name: string; description: string };
+    isRestrictedToSkills?: boolean;
     icon?: string;
     authSharedSecret?: string;
     authCustomHeaders?: any;
     authMeta?: Record<string, string> | null;
   }) => {
     const hasServerViewChanges = diff.serverView !== undefined;
+    const hasSkillsOnlyChanges = diff.isRestrictedToSkills !== undefined;
     const hasIconChanges = diff.icon !== undefined;
     const hasSecretChanges = diff.authSharedSecret !== undefined;
     const hasHeaderChanges = diff.authCustomHeaders !== undefined;
@@ -230,7 +257,7 @@ export function MCPServerDetails({
     const hasRemoteChanges =
       hasIconChanges || hasSecretChanges || hasHeaderChanges || hasMetaChanges;
 
-    if (!hasServerViewChanges && !hasRemoteChanges) {
+    if (!hasServerViewChanges && !hasSkillsOnlyChanges && !hasRemoteChanges) {
       return;
     }
 
@@ -242,6 +269,23 @@ export function MCPServerDetails({
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(diff.serverView),
+        }
+      );
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(body.error?.message ?? "Failed to update server view");
+      }
+    }
+
+    if (hasSkillsOnlyChanges) {
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/mcp/views/${mcpServerView?.sId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            isRestrictedToSkills: diff.isRestrictedToSkills,
+          }),
         }
       );
       if (!response.ok) {
@@ -357,6 +401,7 @@ export function MCPServerDetails({
           // Revalidate caches.
           await mutateMCPServersViewsForAdmin();
           await mutateMCPServer();
+          await mutateDirectlyAvailableMCPServerViews();
 
           sendNotification({
             type: "success",
@@ -442,6 +487,7 @@ export function MCPServerDetails({
         spaces={spaces}
         readOnly={readOnly}
         sensitivityLabelsController={sensitivityLabelsController}
+        isSkillsRestrictionReady={isSkillsRestrictionReady}
       />
     </FormProvider>
   );

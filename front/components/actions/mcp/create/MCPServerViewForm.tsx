@@ -1,15 +1,23 @@
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { Input } from "@dust-tt/sparkle";
-import { useFormContext } from "react-hook-form";
+import { CheckBoxWithTextAndDescription, Input } from "@dust-tt/sparkle";
+import { useController, useFormContext } from "react-hook-form";
 
 interface MCPServerViewFormProps {
   mcpServerView: MCPServerViewType;
+  isSkillsRestrictionReady: boolean;
 }
 
-export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
+export function MCPServerViewForm({
+  mcpServerView,
+  isSkillsRestrictionReady,
+}: MCPServerViewFormProps) {
   const form = useFormContext<MCPServerFormValues>();
+  const { field: isRestrictedToSkillsField } = useController({
+    name: "isRestrictedToSkills",
+    control: form.control,
+  });
 
   return (
     <div className="space-y-5 text-foreground">
@@ -35,6 +43,16 @@ export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
           placeholder={getMcpServerViewDescription(mcpServerView)}
         />
       </div>
+
+      <CheckBoxWithTextAndDescription
+        text="Restrict this tool to skills"
+        description="Use this when the tool should always be accompanied by workspace context or safety rules from a skill."
+        checked={isRestrictedToSkillsField.value}
+        disabled={!isSkillsRestrictionReady}
+        onCheckedChange={(checked) => {
+          isRestrictedToSkillsField.onChange(checked === true);
+        }}
+      />
     </div>
   );
 }
