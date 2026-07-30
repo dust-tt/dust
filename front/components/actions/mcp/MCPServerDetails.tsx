@@ -21,12 +21,15 @@ import { clientFetch } from "@app/lib/egress/client";
 import {
   useMCPServer,
   useMCPServers,
+  useMCPServersUsage,
   useMutateMCPServersViewsForAdmin,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import { Avatar, buttonVariants, Icon, LinkExternal01 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useContext, useMemo } from "react";
 import { useForm } from "react-hook-form";
@@ -93,6 +96,10 @@ export function MCPServerDetails({
     // cached response. SWR still fetches normally if the cache is unexpectedly empty.
     revalidateIfStale: false,
   });
+  const { usage, mutate: mutateMCPServersUsage } = useMCPServersUsage({
+    owner,
+    disabled: !isOpen || readOnly,
+  });
 
   // Collect all effective view names from other servers (excluding the current one).
   const existingViewNames = useMemo(
@@ -140,6 +147,61 @@ export function MCPServerDetails({
         )
       : undefined,
   });
+
+  const confirmSkillsRestrictionChange = async (
+    isRestrictedToSkills: boolean
+  ): Promise<boolean> => {
+    if (!isRestrictedToSkills || !mcpServerView) {
+      return true;
+    }
+
+    const affectedAgents = usage?.[mcpServerView.server.sId]?.agents ?? [];
+    if (affectedAgents.length === 0) {
+      return true;
+    }
+
+    return confirm({
+      title: "Remove this tool from agents?",
+      message: (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Saving will remove the tool from the following agents:
+          </p>
+          <div className="divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background">
+            {affectedAgents.map((agent) => (
+              <div
+                key={agent.sId}
+                className="flex items-center gap-3 px-3 py-2.5"
+              >
+                <Avatar size="xs" visual={agent.pictureUrl} />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                  {agent.name}
+                </span>
+                <a
+                  href={getAgentBuilderRoute(owner.sId, agent.sId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Open ${agent.name} in Agent Builder`}
+                  className={buttonVariants({
+                    variant: "ghost-secondary",
+                    size: "xs",
+                    isIconOnly: true,
+                  })}
+                >
+                  <Icon visual={LinkExternal01} size="xs" />
+                </a>
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Skills using this tool will not be affected.
+          </p>
+        </div>
+      ),
+      validateLabel: "Continue",
+      validateVariant: "warning",
+    });
+  };
 
   const applyToolChanges = async (
     toolChanges: Array<{
@@ -381,6 +443,7 @@ export function MCPServerDetails({
           // Revalidate caches.
           await mutateMCPServersViewsForAdmin();
           await mutateMCPServer();
+          await mutateMCPServersUsage();
 
           sendNotification({
             type: "success",
@@ -466,6 +529,7 @@ export function MCPServerDetails({
         spaces={spaces}
         readOnly={readOnly}
         sensitivityLabelsController={sensitivityLabelsController}
+        confirmSkillsRestrictionChange={confirmSkillsRestrictionChange}
       />
     </FormProvider>
   );
