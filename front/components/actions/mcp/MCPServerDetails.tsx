@@ -29,7 +29,7 @@ import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
-import { Avatar, Icon, LinkExternal01 } from "@dust-tt/sparkle";
+import { Avatar, buttonVariants, Icon, LinkExternal01 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useContext, useMemo } from "react";
 import { useForm } from "react-hook-form";
@@ -163,30 +163,39 @@ export function MCPServerDetails({
     return confirm({
       title: "Remove this tool from agents?",
       message: (
-        <div className="space-y-2">
-          <p>Saving will remove the tool from the following agents:</p>
-          <div className="space-y-1">
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Saving will remove the tool from the following agents:
+          </p>
+          <div className="divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background">
             {affectedAgents.map((agent) => (
-              <div key={agent.sId} className="flex items-center gap-2">
+              <div
+                key={agent.sId}
+                className="flex items-center gap-3 px-3 py-2.5"
+              >
                 <Avatar size="xs" visual={agent.pictureUrl} />
-                <div className="flex min-w-0 items-center gap-1">
-                  <span className="truncate text-sm font-medium text-foreground">
-                    {agent.name}
-                  </span>
-                  <a
-                    href={getAgentBuilderRoute(owner.sId, agent.sId)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`Open ${agent.name} in Agent Builder`}
-                    className="shrink-0 text-muted-foreground hover:text-foreground"
-                  >
-                    <Icon visual={LinkExternal01} size="xs" />
-                  </a>
-                </div>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                  {agent.name}
+                </span>
+                <a
+                  href={getAgentBuilderRoute(owner.sId, agent.sId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Open ${agent.name} in Agent Builder`}
+                  className={buttonVariants({
+                    variant: "ghost-secondary",
+                    size: "xs",
+                    isIconOnly: true,
+                  })}
+                >
+                  <Icon visual={LinkExternal01} size="xs" />
+                </a>
               </div>
             ))}
           </div>
-          <p>Skills using this tool will not be affected.</p>
+          <p className="text-sm text-muted-foreground">
+            Skills using this tool will not be affected.
+          </p>
         </div>
       ),
       validateLabel: "Continue",
