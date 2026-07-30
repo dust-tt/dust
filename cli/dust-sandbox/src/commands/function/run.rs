@@ -24,9 +24,8 @@ const NON_JSON_SNIPPET_MAX_CHARS: usize = 512;
 ///   worker keeps structured errors. Never POSTs the callback.
 pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Result<()> {
     let started = Instant::now();
-    let runner_started = Instant::now();
     let (code, captured) = spawn_function("run", name, true, true).await?;
-    let runner_ms = runner_started.elapsed().as_millis() as u64;
+    let runner_ms = started.elapsed().as_millis() as u64;
     let response = captured.unwrap_or_default();
 
     match result_delivery {
