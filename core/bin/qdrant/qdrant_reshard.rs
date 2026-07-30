@@ -211,6 +211,36 @@ struct TelemetryResult {
     memory: Option<MemoryTelemetry>,
 }
 
+// Minimal structures for the /telemetry?details_level=3 JSON response — the level at which
+// telemetry starts including per-collection `transfers` and `resharding` entries.
+#[derive(Deserialize, Debug)]
+struct DetailedTelemetryResult {
+    collections: CollectionsTelemetry,
+}
+
+#[derive(Deserialize, Debug)]
+struct CollectionsTelemetry {
+    collections: Option<Vec<CollectionTelemetry>>,
+}
+
+#[derive(Deserialize, Debug)]
+struct CollectionTelemetry {
+    id: String,
+    transfers: Option<Vec<ShardTransferInfo>>,
+    resharding: Option<Vec<ReshardingTelemetry>>,
+}
+
+// Resharding entry of a peer's detailed telemetry. `stage` is the resharding driver's stage
+// (init -> migrate_points -> replicate -> commit_read_hash_ring -> commit_write_hash_ring ->
+// propagate_deletes -> finalize). Only the peer driving the operation reports it, and only on
+// builds with an internal driver (Qdrant Cloud): OSS >= 1.18 lists the operation without it.
+#[derive(Deserialize, Debug)]
+struct ReshardingTelemetry {
+    shard_id: u32,
+    peer_id: u64,
+    stage: Option<String>,
+}
+
 // New shards are only placed on peers using less than half of their RAM: resharding adds a
 // shard's worth of resident memory to the target peer, and peers above this line are the ones
 // we're trying to relieve in the first place.
@@ -618,19 +648,103 @@ fn shard_counts_per_key(info: &ClusterInfoResult) -> BTreeMap<String, usize> {
         .collect()
 }
 
-fn describe_resharding_ops(ops: &[ReshardingInfo]) -> String {
+#[derive(Debug, Default)]
+struct ReshardingProgress {
+    // (shard_id, peer_id) -> driver stage of the resharding operation.
+    stages: BTreeMap<(u32, u64), String>,
+    // shard_id -> transfer progress comment.
+    transfer_comments: BTreeMap<u32, String>,
+}
+
+// Sweeps every peer's /telemetry?details_level=3 for the collection's resharding stage and
+// transfer progress. Both are peer-local: only the peer driving the resharding reports a stage,
+// and only a transfer's source peer reports a progress comment, so the (load-balanced) /cluster
+// view of a single peer misses them most of the time. Unreachable peers are skipped: this powers
+// the watch loop, which must survive partial telemetry.
+async fn gather_resharding_progress(
+    qdrant: &QdrantHttp,
+    collection: &str,
+    peer_url_overrides: &[(u64, String)],
+) -> ReshardingProgress {
+    let mut progress = ReshardingProgress::default();
+    let peer_urls = match qdrant.peer_urls(peer_url_overrides).await {
+        Ok(peer_urls) => peer_urls,
+        Err(_) => return progress,
+    };
+    for peer_url in peer_urls.values() {
+        let telemetry: DetailedTelemetryResult =
+            match qdrant.get_at(peer_url, "/telemetry?details_level=3").await {
+                Ok(telemetry) => telemetry,
+                Err(_) => continue,
+            };
+        let collection_telemetry = telemetry
+            .collections
+            .collections
+            .unwrap_or_default()
+            .into_iter()
+            .find(|c| c.id == collection);
+        let Some(collection_telemetry) = collection_telemetry else {
+            continue;
+        };
+        for op in collection_telemetry.resharding.unwrap_or_default() {
+            if let Some(stage) = op.stage {
+                progress.stages.insert((op.shard_id, op.peer_id), stage);
+            }
+        }
+        for transfer in collection_telemetry.transfers.unwrap_or_default() {
+            if let Some(comment) = transfer.comment {
+                progress
+                    .transfer_comments
+                    .entry(transfer.shard_id)
+                    .or_insert(comment);
+            }
+        }
+    }
+    progress
+}
+
+fn describe_resharding_ops(
+    ops: &[ReshardingInfo],
+    stages: &BTreeMap<(u32, u64), String>,
+) -> String {
     ops.iter()
         .map(|op| {
             format!(
-                "{} shard {} on peer {} (shard_key {})",
+                "{} shard {} on peer {} (shard_key {}{})",
                 op.direction,
                 op.shard_id,
                 op.peer_id,
-                shard_key_label(&op.shard_key).unwrap_or_else(|| "<none>".to_string())
+                shard_key_label(&op.shard_key).unwrap_or_else(|| "<none>".to_string()),
+                match stages.get(&(op.shard_id, op.peer_id)) {
+                    Some(stage) => format!(", stage {}", stage),
+                    None => String::new(),
+                }
             )
         })
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+// One entry per in-flight transfer, with the source peer's progress comment when one was found
+// (in the seed's cluster view or in the per-peer telemetry sweep).
+fn describe_transfers(
+    transfers: &[ShardTransferInfo],
+    telemetry_comments: &BTreeMap<u32, String>,
+) -> String {
+    transfers
+        .iter()
+        .map(|t| {
+            match t
+                .comment
+                .as_ref()
+                .or_else(|| telemetry_comments.get(&t.shard_id))
+            {
+                Some(comment) => format!("shard {}: {}", t.shard_id, comment),
+                None => format!("shard {} (no progress reported)", t.shard_id),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("; ")
 }
 
 // Waits until the collection has no in-flight resharding operation, logging progress on every
@@ -658,16 +772,8 @@ async fn wait_for_no_resharding(
                     last_transfer_seen = std::time::Instant::now();
                 }
                 let topology = KeyTopology::from_cluster_info(&info, shard_key);
-                let transfers = info
-                    .shard_transfers
-                    .iter()
-                    .filter_map(|t| {
-                        t.comment
-                            .as_ref()
-                            .map(|c| format!("shard {}: {}", t.shard_id, c))
-                    })
-                    .collect::<Vec<_>>()
-                    .join("; ");
+                let progress =
+                    gather_resharding_progress(qdrant, collection, peer_url_overrides).await;
                 // This watch never gives up on its own: the operation belongs to whoever drives
                 // it (the cloud operator on managed clusters) and only a human decides to stop
                 // (ctrl-c, --abort). Transfer inactivity is surfaced as data on the poll line.
@@ -675,7 +781,7 @@ async fn wait_for_no_resharding(
                     "[{}] [{}elapsed] resharding: {} | {}{}",
                     shard_key,
                     format_elapsed(started.elapsed()),
-                    describe_resharding_ops(ops),
+                    describe_resharding_ops(ops, &progress.stages),
                     topology.describe(),
                     if info.shard_transfers.is_empty() {
                         format!(
@@ -683,7 +789,10 @@ async fn wait_for_no_resharding(
                             format_elapsed(last_transfer_seen.elapsed()).trim_end()
                         )
                     } else {
-                        format!(" | transfers: {}", transfers)
+                        format!(
+                            " | transfers: {}",
+                            describe_transfers(&info.shard_transfers, &progress.transfer_comments)
+                        )
                     }
                 );
 
@@ -842,28 +951,18 @@ async fn wait_for_no_transfers(
     qdrant: &QdrantHttp,
     collection: &str,
     poll_interval: Duration,
+    peer_url_overrides: &[(u64, String)],
 ) -> Result<()> {
     loop {
         let info = qdrant.cluster_info(collection).await?;
         if info.shard_transfers.is_empty() {
             return Ok(());
         }
-        let transfers = info
-            .shard_transfers
-            .iter()
-            .map(|t| {
-                format!(
-                    "shard {}{}",
-                    t.shard_id,
-                    t.comment
-                        .as_ref()
-                        .map(|c| format!(" ({})", c))
-                        .unwrap_or_default()
-                )
-            })
-            .collect::<Vec<_>>()
-            .join(", ");
-        println!("  transfer in progress: {}", transfers);
+        let progress = gather_resharding_progress(qdrant, collection, peer_url_overrides).await;
+        println!(
+            "  transfer in progress: {}",
+            describe_transfers(&info.shard_transfers, &progress.transfer_comments)
+        );
         tokio::time::sleep(poll_interval).await;
     }
 }
@@ -928,7 +1027,7 @@ async fn drive_resharding(
             )
             .await?;
         if started {
-            wait_for_no_transfers(qdrant, collection, poll_interval).await?;
+            wait_for_no_transfers(qdrant, collection, poll_interval, peer_url_overrides).await?;
             let ops = qdrant.cluster_info(collection).await?.resharding_operations;
             if ops.as_deref().unwrap_or(&[]).is_empty() {
                 return Err(anyhow!(
@@ -1071,7 +1170,7 @@ async fn main() -> Result<()> {
         println!(
             "In-flight resharding on {}: {}",
             args.collection,
-            describe_resharding_ops(ops)
+            describe_resharding_ops(ops, &BTreeMap::new())
         );
         qdrant
             .post_cluster_operation(
@@ -1142,9 +1241,10 @@ async fn main() -> Result<()> {
         );
     }
     if !ops.is_empty() {
+        let progress = gather_resharding_progress(&qdrant, &args.collection, &args.peer_urls).await;
         println!(
             "NOTE: in-flight resharding operation: {}. It will be awaited before proceeding.",
-            describe_resharding_ops(ops)
+            describe_resharding_ops(ops, &progress.stages)
         );
         let in_flight_key = ops.first().and_then(|op| shard_key_label(&op.shard_key));
         if !plan
