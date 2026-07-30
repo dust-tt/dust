@@ -31,9 +31,8 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
       `Make ${count} skill${pluralize(count)} editors only`,
     dialogDescription: (count) => {
       const pronoun = count === 1 ? "it" : "them";
-      return `Non-editors can’t find or use ${pronoun} on their own, but they can still access ${pronoun} through any agent or skill that includes ${pronoun}.`
-    }
-     
+      return `Non-editors can’t find or use ${pronoun} on their own, but they can still access ${pronoun} through any agent or skill that includes ${pronoun}.`;
+    },
   },
   {
     label: "Workspace members",
@@ -42,10 +41,8 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
       `Make ${count} skill${pluralize(count)} available to workspace members`,
     dialogDescription: (count) => {
       const pronoun = count === 1 ? "it" : "them";
-        return `Every workspace member can add ${pronoun} to agents or other skills and use ${pronoun} directly.`
-  
-    }
-    
+      return `Every workspace member can add ${pronoun} to agents or other skills and use ${pronoun} directly.`;
+    },
   },
   {
     label: "Auto-discoverable",

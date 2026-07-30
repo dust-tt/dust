@@ -37,7 +37,12 @@ function getAvailabilityContent({
 
   switch (availability) {
     case "editors":
-      return <>{gate} Members cannot find it via the input bar and agent builder unless they are an editor.</>;
+      return (
+        <>
+          {gate} Members cannot find it via the input bar and agent builder
+          unless they are an editor.
+        </>
+      );
     case "workspace_users":
       return (
         <>{gate} Members can find it via the input bar and agent builder.</>
@@ -46,7 +51,8 @@ function getAvailabilityContent({
       return (
         <>
           {gate} Members can find it via the input bar and agent builder, and
-          when members use agents with Discover Skills they can use it automatically.
+          when members use agents with Discover Skills they can use it
+          automatically.
         </>
       );
     default:
