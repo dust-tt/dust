@@ -3,16 +3,15 @@ import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import tracer from "@app/logger/tracer";
 
+// Intentionally NOT tagged by workspace_id: region (+ operation/status) is
+// what matters for aggregates, and workspace_id multiplies cardinality past
+// Datadog custom-metric limits. Per-workspace drill-down stays in APM traces.
 interface MetricContext {
-  workspaceId: string;
   region?: string;
 }
 
-function buildTags(ctx: MetricContext): string[] {
-  return [
-    `workspace_id:${ctx.workspaceId}`,
-    `region:${ctx.region ?? regionConfig.getCurrentRegion()}`,
-  ];
+function buildTags(ctx?: MetricContext): string[] {
+  return [`region:${ctx?.region ?? regionConfig.getCurrentRegion()}`];
 }
 
 // Semantic phases of the "zero to first executed command" startup path, in
@@ -81,22 +80,16 @@ export function traceSandboxStartupPhase<T>(
   });
 }
 
-// The single net-new aggregate metric: the headline "0 -> first command" wall
-// time for one sandbox readiness run, split cold (fresh create path) vs warm
-// (wake/reuse). This is NOT covered by sandbox.tools.duration, whose timer
-// starts only once setup is already done and times the user command alone.
-//
-// Intentionally NOT tagged by workspace_id: the cold/warm split per region is
-// what matters for latency, and workspace_id would multiply cardinality on a
-// per-readiness-run distribution. Per-workspace drill-down stays available
-// via APM traces.
+// Headline "0 -> first command" wall time for one sandbox readiness run,
+// split cold (fresh create) vs warm (wake/reuse). Not covered by
+// sandbox.tools.duration, which starts only once setup is done.
 export function recordSandboxStartupTotal(
   durationMs: number,
   { region, cold }: { region?: string; cold: boolean },
   status: "success" | "error"
 ): void {
   getStatsDClient().distribution("sandbox.startup.total.duration", durationMs, [
-    `region:${region ?? regionConfig.getCurrentRegion()}`,
+    ...buildTags({ region }),
     `cold:${cold}`,
     `status:${status}`,
   ]);
@@ -104,7 +97,7 @@ export function recordSandboxStartupTotal(
 
 export function recordLifecycleOperation(
   operation: "create" | "wake" | "sleep" | "destroy",
-  ctx: MetricContext
+  ctx?: MetricContext
 ): void {
   getStatsDClient().increment(
     `sandbox.lifecycle.${operation}`,
@@ -116,7 +109,7 @@ export function recordLifecycleOperation(
 export function recordStateDuration(
   previousStatus: SandboxStatus,
   durationMs: number,
-  ctx: MetricContext
+  ctx?: MetricContext
 ): void {
   getStatsDClient().distribution("sandbox.lifecycle.duration", durationMs, [
     ...buildTags(ctx),
@@ -140,7 +133,7 @@ export function recordToolDuration(
 // each failing call site carries the cause.
 export function recordPodStateHealth(
   status: "success" | "failure",
-  ctx: MetricContext
+  ctx?: MetricContext
 ): void {
   getStatsDClient().increment("sandbox.pod_state.health", 1, [
     ...buildTags(ctx),

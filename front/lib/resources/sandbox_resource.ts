@@ -217,9 +217,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
     const sandbox = await withTransaction(createSandbox, transaction);
 
-    recordLifecycleOperation("create", {
-      workspaceId: auth.getNonNullableWorkspace().sId,
-    });
+    recordLifecycleOperation("create");
 
     return new this(this.model, sandbox.get());
   }
