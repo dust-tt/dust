@@ -82,8 +82,9 @@ export async function* runToolWithStreaming(
         }),
   });
 
-  // Sandbox function actions are created in running status.
-  if (isAgentLoopRunContext(runContext)) {
+  // Sandbox function actions and auto-allowed agent-loop actions are created in running
+  // status; only approved or resumed actions still carry a pre-run status to transition.
+  if (isAgentLoopRunContext(runContext) && status !== "running") {
     await runContext.action.updateStatus("running");
   }
   const startDate = performance.now();

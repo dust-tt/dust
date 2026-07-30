@@ -223,12 +223,18 @@ export async function createSandboxChildAction(
     },
   });
 
+  // Auto-allowed child actions are launched right after creation: persist them as
+  // "running" directly (like sandbox function actions) instead of rewriting the row at
+  // execution start.
+  const persistedStatus =
+    status === "ready_allowed_implicitly" ? "running" : status;
+
   const action = await createMCPAction(auth, {
     actionConfiguration: fullToolConfiguration,
     agentMessage,
     augmentedInputs: rawInputs,
     conversation,
-    status,
+    status: persistedStatus,
     stepContent: parentAction.stepContent,
     stepContext: {
       ...parentAction.stepContext,

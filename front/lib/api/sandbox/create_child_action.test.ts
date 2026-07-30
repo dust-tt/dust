@@ -272,7 +272,7 @@ describe("createSandboxChildAction", () => {
       auth,
       result.value.actionId
     );
-    expect(child?.status).toBe("ready_allowed_implicitly");
+    expect(child?.status).toBe("running");
     // The child configuration must carry the same function-call name as direct
     // calls so approval checks and recordings share one key.
     expect(child?.toolConfiguration.name).toBe(directCallToolName);
@@ -294,7 +294,7 @@ describe("createSandboxChildAction", () => {
       auth,
       result.value.actionId
     );
-    expect(child?.status).toBe("ready_allowed_implicitly");
+    expect(child?.status).toBe("running");
     expect(vi.mocked(launchSandboxChildToolWorkflow)).toHaveBeenCalledTimes(1);
   });
 
@@ -389,7 +389,7 @@ describe("createSandboxChildAction", () => {
       auth,
       result.value.actionId
     );
-    expect(child?.status).toBe("ready_allowed_implicitly");
+    expect(child?.status).toBe("running");
     expect(child?.toolConfiguration.name).toBe(disambiguatedKey);
   });
 
