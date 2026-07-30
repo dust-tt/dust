@@ -64,7 +64,6 @@ import { listPodsForScope } from "@app/lib/api/projects/list";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_tasks";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -430,16 +429,6 @@ export function createProjectManagerTools(
           return new Err(
             new MCPError(
               "You do not have permission to edit this Pod's default agent",
-              { tracked: false }
-            )
-          );
-        }
-
-        const featureFlags = await getFeatureFlags(auth);
-        if (!featureFlags.includes("pod_default_agent")) {
-          return new Err(
-            new MCPError(
-              "Setting a Pod default agent is not enabled for this workspace.",
               { tracked: false }
             )
           );

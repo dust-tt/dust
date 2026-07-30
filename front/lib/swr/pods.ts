@@ -10,7 +10,6 @@ import type {
   GetProjectContextResponseBody,
   PostProjectContextContentNodeResponseBody as PostPodContextContentNodeResponseBody,
 } from "@app/lib/api/projects/context";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { flattenPodTasksWithStableAssigneeOrder } from "@app/lib/project_task/display_order";
 import type { PostSeedInitialPodTasksResponseBody } from "@app/lib/project_task/seed_initial_pod_tasks";
@@ -1102,25 +1101,18 @@ export function usePodDefaultSkills({
   podId: string;
   disabled?: boolean;
 }) {
-  const { hasFeature } = useFeatureFlags();
-  const hasPodDefaultSkillsFeature = hasFeature("pod_default_skills");
-  const enabled = hasPodDefaultSkillsFeature && !disabled;
-
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
     podId,
-    disabled: !enabled,
+    disabled,
   });
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
-    disabled: !enabled,
+    disabled,
   });
 
   const defaultSkills = useMemo(() => {
-    if (!hasPodDefaultSkillsFeature) {
-      return undefined;
-    }
     const skillBySId = new Map(skills.map((skill) => [skill.sId, skill]));
     // Preserve the stored order.
     return (podMetadata?.defaultSkillIds ?? []).flatMap((skillId) => {
@@ -1129,7 +1121,7 @@ export function usePodDefaultSkills({
         ? [{ sId: skill.sId, name: skill.name, icon: skill.icon }]
         : [];
     });
-  }, [hasPodDefaultSkillsFeature, skills, podMetadata?.defaultSkillIds]);
+  }, [skills, podMetadata?.defaultSkillIds]);
 
   return {
     defaultSkills,

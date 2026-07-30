@@ -131,18 +131,12 @@ async function resolveDefaultAgentIdForTask(
   const hasWorkspaceDefaultAgent = featureFlags.includes(
     "workspace_default_agent"
   );
-  const hasPodDefaultAgent = featureFlags.includes("pod_default_agent");
-  let podDefaultAgentId: string | null = null;
-  if (hasPodDefaultAgent || hasWorkspaceDefaultAgent) {
-    const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
-    podDefaultAgentId = metadata?.defaultAgentId ?? null;
-  }
+  const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
 
   const candidateId = resolveDefaultAgentId({
     owner: auth.getNonNullableWorkspace(),
-    podDefaultAgentId,
+    podDefaultAgentId: metadata?.defaultAgentId ?? null,
     hasWorkspaceDefaultAgentFeature: hasWorkspaceDefaultAgent,
-    hasPodDefaultAgentFeature: hasPodDefaultAgent,
   });
   if (!candidateId || candidateId === GLOBAL_AGENTS_SID.DUST) {
     return GLOBAL_AGENTS_SID.DUST;
