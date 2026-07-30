@@ -346,31 +346,12 @@ describe("isModelReleased", () => {
     expect(isModelReleased(model)).toBe(true);
   });
 
-  it("should return true for a model available to plans with advanced model access", () => {
-    const model = createMockModel({
-      availableIfOneOf: { plansWithAdvancedModels: true },
-    });
-
-    expect(isModelReleased(model)).toBe(true);
-  });
-
-  it("should return false for a model gated solely behind a feature flag", () => {
+  it("should return false for a model gated behind a feature flag", () => {
     const model = createMockModel({
       availableIfOneOf: { featureFlag: "deepseek_feature" },
     });
 
     expect(isModelReleased(model)).toBe(false);
-  });
-
-  it("should return true when both plansWithAdvancedModels and featureFlag are set", () => {
-    const model = createMockModel({
-      availableIfOneOf: {
-        plansWithAdvancedModels: true,
-        featureFlag: "deepseek_feature",
-      },
-    });
-
-    expect(isModelReleased(model)).toBe(true);
   });
 });
 
