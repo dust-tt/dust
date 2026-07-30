@@ -672,7 +672,13 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     },
     transaction: Transaction
   ): Promise<void> {
-    const key = `group_permissions:${auth.getNonNullableWorkspace().id}:${resourceType}:${resourceId}:${grantType}`;
+    // Type-wide (-1) transitions keep the pre-resourceId key format so pods running older code
+    // mutually exclude with newer ones across a rolling deploy or rollback.
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const key =
+      resourceId === WHOLE_TYPE_RESOURCE_ID
+        ? `group_permissions:${workspaceId}:${resourceType}:${grantType}`
+        : `group_permissions:${workspaceId}:${resourceType}:${resourceId}:${grantType}`;
     // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
     await frontSequelize.query("SELECT pg_advisory_xact_lock(hashtext(:key))", {
       replacements: { key },
