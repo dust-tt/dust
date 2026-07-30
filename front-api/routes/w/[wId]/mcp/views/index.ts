@@ -81,6 +81,11 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
   );
 
   const flattenedServerViews = views
+    .filter(
+      (view) =>
+        ctx.req.query("includeRestrictedToSkills") === "true" ||
+        !view.isRestrictedToSkills
+    )
     .map((v) => v.toJSON())
     .filter(
       (v) =>

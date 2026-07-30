@@ -59,6 +59,7 @@ app.get(
         const { availability } = v.getServerDisplayMetadata();
         return availability === "manual" || availability === "auto";
       })
+      .filter((v) => !v.isRestrictedToSkills)
       .filter((v) => v.isJITAttachable())
       .map((v) => v.toJSONLight());
 

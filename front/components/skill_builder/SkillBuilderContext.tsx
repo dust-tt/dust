@@ -71,7 +71,7 @@ export function SkillBuilderProvider({
   return (
     <SkillBuilderContext.Provider value={value}>
       <SpacesProvider owner={owner}>
-        <MCPServerViewsProvider owner={owner}>
+        <MCPServerViewsProvider owner={owner} includeRestrictedToSkills>
           {children}
         </MCPServerViewsProvider>
       </SpacesProvider>
