@@ -10,10 +10,13 @@ import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 
 export type EnabledSkill = SkillResource;
 
-function renderSystemSkillMessage(text: string): UserMessageTypeModel {
+function renderSkillMessage(
+  text: string,
+  name: "system" | "user"
+): UserMessageTypeModel {
   return {
     role: "user",
-    name: "system",
+    name,
     content: [{ type: "text", text }],
   };
 }
@@ -34,10 +37,11 @@ export function getEnabledSkillInstructions(
   return `<${skill.name}>\n${modelInstructions}\n</${skill.name}>`;
 }
 
-export function renderEquippedSkillsUserMessage(
-  equippedSkills: SkillResource[]
+function renderAvailableSkillsUserMessage(
+  skills: Pick<SkillResource, "name" | "agentFacingDescription">[],
+  name: "system" | "user"
 ): UserMessageTypeModel | null {
-  if (equippedSkills.length === 0) {
+  if (skills.length === 0) {
     return null;
   }
 
@@ -46,12 +50,12 @@ export function renderEquippedSkillsUserMessage(
   // a literal is copied verbatim far more reliably than prose. Workspaces tend to develop their own
   // naming conventions, and models otherwise regenerate names to fit the pattern they infer from
   // the list instead of copying them, which never resolves.
-  const lines = equippedSkills.map(
+  const lines = skills.map(
     ({ name, agentFacingDescription }) =>
       `- \`${name}\`: ${agentFacingDescription.replaceAll("\n", "\n  ")}`
   );
 
-  return renderSystemSkillMessage(
+  return renderSkillMessage(
     `<dust_system>\n` +
       `The following skills are available for use with the ${enableSkillToolName} tool:\n\n` +
       `${lines.join("\n")}\n\n` +
@@ -59,8 +63,22 @@ export function renderEquippedSkillsUserMessage(
       `same case, same spacing, same punctuation, same prefixes and suffixes. Copy the name ` +
       `rather than retyping it, and do not adjust it to match how other skills in the list are ` +
       `named. Names are matched exactly, so a modified name will not be found.\n` +
-      `</dust_system>`
+      `</dust_system>`,
+    name
   );
+}
+
+export function renderEquippedSkillsUserMessage(
+  equippedSkills: SkillResource[]
+): UserMessageTypeModel | null {
+  return renderAvailableSkillsUserMessage(equippedSkills, "system");
+}
+
+export function renderFavoriteSkillsUserMessage(
+  favoriteSkills: SkillResource[]
+): UserMessageTypeModel | null {
+  // Only a leading name: "system" message receives the skills cache breakpoint.
+  return renderAvailableSkillsUserMessage(favoriteSkills, "user");
 }
 
 export function renderEnabledSkillUserMessageFromInstructions({
@@ -70,7 +88,8 @@ export function renderEnabledSkillUserMessageFromInstructions({
 }): UserMessageTypeModel {
   const skillInstructions = getEnabledSkillInstructions(skill);
 
-  return renderSystemSkillMessage(
-    `<dust_system>\n${skillInstructions}\n</dust_system>`
+  return renderSkillMessage(
+    `<dust_system>\n${skillInstructions}\n</dust_system>`,
+    "system"
   );
 }

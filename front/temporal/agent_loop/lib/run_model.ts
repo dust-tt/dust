@@ -34,7 +34,10 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
-import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import {
+  renderEquippedSkillsUserMessage,
+  renderFavoriteSkillsUserMessage,
+} from "@app/lib/api/assistant/skills_rendering";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
@@ -488,6 +491,7 @@ export async function runModel(
     enabledSkills,
     systemSkills,
     equippedSkills,
+    favoriteSkills,
     serverToolsAndInstructions: mcpActions,
     hasSelectedSpacesOutsideAgentScope,
   } = await startActiveObservation("resolve-tools", async () => {
@@ -513,6 +517,7 @@ export async function runModel(
       enabledSkills,
       systemSkills,
       equippedSkills,
+      favoriteSkills,
       hasSelectedSpacesOutsideAgentScope,
     } = await SkillResource.listForAgentLoop(auth, runAgentData);
 
@@ -542,6 +547,7 @@ export async function runModel(
       hasSelectedSpacesOutsideAgentScope,
       enabledSkills,
       equippedSkills,
+      favoriteSkills,
       systemSkills,
       serverToolsAndInstructions,
     };
@@ -642,6 +648,7 @@ export async function runModel(
   });
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),
+    renderFavoriteSkillsUserMessage(favoriteSkills),
   ]);
 
   const modelConfig = modelInfo.endpoint.modelConfig;

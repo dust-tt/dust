@@ -48,8 +48,13 @@ async function findAvailableSkillForAgentLoop({
   agentLoopData: AgentLoopExecutionData;
   skillName: string;
 }): Promise<SkillResource | null> {
-  const { effectiveSpaceIds, enabledSkills, equippedSkills, systemSkills } =
-    await SkillResource.listForAgentLoop(auth, agentLoopData);
+  const {
+    effectiveSpaceIds,
+    enabledSkills,
+    equippedSkills,
+    favoriteSkills,
+    systemSkills,
+  } = await SkillResource.listForAgentLoop(auth, agentLoopData);
   const userMessageSkills = await SkillResource.fetchByIds(
     auth,
     extractSkillIdsFromConversationMessages(agentLoopData),
@@ -58,6 +63,7 @@ async function findAvailableSkillForAgentLoop({
   const directlyAllowedSkills = [
     ...enabledSkills,
     ...equippedSkills,
+    ...favoriteSkills,
     ...userMessageSkills,
   ];
 
@@ -69,10 +75,12 @@ async function findAvailableSkillForAgentLoop({
   }
 
   const parentSkillById = new Map(
-    [...systemSkills, ...enabledSkills, ...equippedSkills].map((skill) => [
-      skill.sId,
-      skill,
-    ])
+    [
+      ...systemSkills,
+      ...enabledSkills,
+      ...equippedSkills,
+      ...favoriteSkills,
+    ].map((skill) => [skill.sId, skill])
   );
   const candidate = await SkillResource.fetchByName(auth, skillName, {
     agentLoopData,

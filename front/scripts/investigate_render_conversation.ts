@@ -8,7 +8,10 @@ import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
-import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import {
+  renderEquippedSkillsUserMessage,
+  renderFavoriteSkillsUserMessage,
+} from "@app/lib/api/assistant/skills_rendering";
 import { legacyModelIdToModel } from "@app/lib/api/llm";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { Authenticator } from "@app/lib/auth";
@@ -117,6 +120,7 @@ makeScript(
       enabledSkills,
       systemSkills,
       equippedSkills,
+      favoriteSkills,
       hasSelectedSpacesOutsideAgentScope,
     } = await SkillResource.listForAgentLoop(auth, {
       agentConfiguration,
@@ -211,6 +215,7 @@ makeScript(
     const prompt = systemPromptToText(promptSections);
     const leadingMessages = removeNulls([
       renderEquippedSkillsUserMessage(equippedSkills),
+      renderFavoriteSkillsUserMessage(favoriteSkills),
     ]);
 
     const specifications = availableActions.map((t) =>

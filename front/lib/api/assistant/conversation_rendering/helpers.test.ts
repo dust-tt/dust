@@ -1,5 +1,8 @@
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
-import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import {
+  renderEquippedSkillsUserMessage,
+  renderFavoriteSkillsUserMessage,
+} from "@app/lib/api/assistant/skills_rendering";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -225,6 +228,25 @@ Pass \`skillName\` exactly as written between backticks above, character for cha
 </dust_system>`,
         },
       ],
+    });
+  });
+
+  it("renders favorite skills as a separate non-cacheable user message", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const favoriteSkill = await SkillFactory.create(authenticator, {
+      name: "favorite-skill",
+      agentFacingDescription: "Use my favorite skill.",
+    });
+
+    const message = renderFavoriteSkillsUserMessage([favoriteSkill]);
+
+    expect(message).toMatchObject({
+      role: "user",
+      name: "user",
+    });
+    expect(message?.content[0]).toMatchObject({
+      type: "text",
+      text: expect.stringContaining("`favorite-skill`"),
     });
   });
 
