@@ -1062,7 +1062,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     auth: Authenticator;
     planCode: string;
     endDate: Date | null;
-  }) {
+  }): Promise<Result<undefined, Error>> {
     const owner = auth.getNonNullableWorkspace();
 
     if (!auth.isDustSuperUser()) {
@@ -1074,8 +1074,12 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     // We search for an active subscription for this workspace
     const activeSubscription = auth.subscriptionResource();
     if (activeSubscription && activeSubscription.plan.code === newPlan.code) {
+      const hasSameEndDate =
+        activeSubscription.endDate && endDate
+          ? activeSubscription.endDate.getTime() === endDate.getTime()
+          : activeSubscription.endDate === endDate;
       // If you are already on this free plan and you want to change the end date, we let you do it.
-      if (isFreePlan(newPlan.code) && activeSubscription.endDate !== endDate) {
+      if (isFreePlan(newPlan.code) && !hasSameEndDate) {
         await SubscriptionModel.update(
           { endDate },
           {
@@ -1083,17 +1087,19 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           }
         );
         await SubscriptionResource.invalidateSubscriptionCache(owner.id);
-        return;
+        return new Ok(undefined);
       }
-      throw new Error(
-        `Cannot subscribe to plan ${planCode}: already subscribed.`
+      return new Err(
+        new Error(`Cannot subscribe to plan ${planCode}: already subscribed.`)
       );
     }
 
     // Ugrade to Enterprise is not allowed through this function.
     if (isEnterprisePlanPrefix(newPlan.code)) {
-      throw new Error(
-        `Cannot subscribe to plan ${planCode}: Enterprise Plans requires a special process.`
+      return new Err(
+        new Error(
+          `Cannot subscribe to plan ${planCode}: Enterprise Plans requires a special process.`
+        )
       );
     }
 
@@ -1105,8 +1111,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         !activeSubscription.sId ||
         !activeSubscription.stripeSubscriptionId
       ) {
-        throw new Error(
-          `Cannot subscribe to ${planCode}: Workspace has no subscription. It needs to be on Pro Plan already (stripe checkout session must be done on the product).`
+        return new Err(
+          new Error(
+            `Cannot subscribe to ${planCode}: Workspace has no subscription. It needs to be on Pro Plan already (stripe checkout session must be done on the product).`
+          )
         );
       }
 
@@ -1114,8 +1122,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         await activeSubscription.isSubscriptionOnProOrBusinessPlan(owner);
 
       if (!isAlreadyOnProPlan) {
-        throw new Error(
-          `Cannot subscribe to ${planCode}: Workspace has a subscription but it's not a Pro Plan.`
+        return new Err(
+          new Error(
+            `Cannot subscribe to ${planCode}: Workspace has a subscription but it's not a Pro Plan.`
+          )
         );
       }
 
@@ -1129,7 +1139,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       );
 
       await SubscriptionResource.invalidateSubscriptionCache(owner.id);
-      return;
+      return new Ok(undefined);
     }
 
     const newSubscription = await this.internalSubscribeWorkspaceToFreePlan({
@@ -1141,6 +1151,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     if (isUpgraded(newSubscription.getPlan())) {
       await getOrCreateWorkOSOrganization(owner);
     }
+
+    return new Ok(undefined);
   }
 
   /**
