@@ -109,9 +109,12 @@ describe("SandboxResource.updateStatus", () => {
       "sandbox.lifecycle.duration",
       expect.any(Number),
       expect.arrayContaining([
-        `workspace_id:${ctx.workspaceId}`,
+        expect.stringMatching(/^region:/),
         "status:running",
       ])
+    );
+    expect(mockDistribution.mock.calls[0][2]).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/^workspace_id:/)])
     );
 
     const durationArg = mockDistribution.mock.calls[0][1];
