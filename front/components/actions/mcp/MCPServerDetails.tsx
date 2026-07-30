@@ -164,7 +164,7 @@ export function MCPServerDetails({
       message: (
         <div className="space-y-2">
           <p>
-            Saving this change will remove the tool from the following agents:
+            Saving will remove the tool from the following agents:
           </p>
           <ul className="list-disc space-y-1 pl-5">
             {affectedAgents.map((agent) => (
