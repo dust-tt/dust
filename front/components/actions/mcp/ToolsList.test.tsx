@@ -179,6 +179,16 @@ function renderToolsList({
 }
 
 describe("ToolsList", () => {
+  it("uses the MCP server view's skills restriction as the form default", () => {
+    const restrictedView = MCPServerViewTypeFactory.build({
+      isRestrictedToSkills: true,
+    });
+
+    expect(getMCPServerFormDefaults(restrictedView).isRestrictedToSkills).toBe(
+      true
+    );
+  });
+
   it("keeps persisted medium selected but hides it from unscoped options", () => {
     const defaults = getMCPServerFormDefaults(unscopedMediumMcpServerView);
     expect(

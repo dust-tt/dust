@@ -78,6 +78,7 @@ describe("getDefaultConfiguration", () => {
       },
       oAuthUseCase: null,
       editedByUser: null,
+      isRestrictedToSkills: false,
       toolsMetadata: [],
     };
 

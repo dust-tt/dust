@@ -51,6 +51,7 @@ function toolSuggestion({
     },
     oAuthUseCase: null,
     editedByUser: null,
+    isRestrictedToSkills: false,
     label,
   };
 }

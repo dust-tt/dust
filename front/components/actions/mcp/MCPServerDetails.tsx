@@ -88,6 +88,10 @@ export function MCPServerDetails({
   const { mcpServers } = useMCPServers({
     owner,
     disabled: !isOpen || readOnly,
+    // This sheet opens from AdminActionsList, whose useMCPServers call uses the same
+    // workspace-derived SWR key. Listing every MCP server is expensive, so reuse that
+    // cached response. SWR still fetches normally if the cache is unexpectedly empty.
+    revalidateIfStale: false,
   });
 
   // Collect all effective view names from other servers (excluding the current one).
@@ -114,6 +118,7 @@ export function MCPServerDetails({
     return {
       name: "",
       description: "",
+      isRestrictedToSkills: false,
       toolSettings: {},
       sharingSettings: {},
     };
@@ -217,12 +222,14 @@ export function MCPServerDetails({
 
   const applyInfoChanges = async (diff: {
     serverView?: { name: string; description: string };
+    isRestrictedToSkills?: boolean;
     icon?: string;
     authSharedSecret?: string;
     authCustomHeaders?: any;
     authMeta?: Record<string, string> | null;
   }) => {
     const hasServerViewChanges = diff.serverView !== undefined;
+    const hasSkillsOnlyChanges = diff.isRestrictedToSkills !== undefined;
     const hasIconChanges = diff.icon !== undefined;
     const hasSecretChanges = diff.authSharedSecret !== undefined;
     const hasHeaderChanges = diff.authCustomHeaders !== undefined;
@@ -230,7 +237,7 @@ export function MCPServerDetails({
     const hasRemoteChanges =
       hasIconChanges || hasSecretChanges || hasHeaderChanges || hasMetaChanges;
 
-    if (!hasServerViewChanges && !hasRemoteChanges) {
+    if (!hasServerViewChanges && !hasSkillsOnlyChanges && !hasRemoteChanges) {
       return;
     }
 
@@ -242,6 +249,23 @@ export function MCPServerDetails({
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(diff.serverView),
+        }
+      );
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(body.error?.message ?? "Failed to update server view");
+      }
+    }
+
+    if (hasSkillsOnlyChanges) {
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/mcp/views/${mcpServerView?.sId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            isRestrictedToSkills: diff.isRestrictedToSkills,
+          }),
         }
       );
       if (!response.ok) {

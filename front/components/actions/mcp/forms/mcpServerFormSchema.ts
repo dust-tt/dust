@@ -60,6 +60,7 @@ function decodeToolSettingsFromForm(
 export type ServerSettings = {
   name: string;
   description: string;
+  isRestrictedToSkills: boolean;
   icon?: string;
   sharedSecret?: string;
   customHeaders?: HeaderRow[] | null;
@@ -161,6 +162,7 @@ export function getMCPServerFormDefaults(
   const defaults: MCPServerFormValues = {
     name: view.name ?? view.server.name,
     description: getMcpServerViewDescription(view),
+    isRestrictedToSkills: view.isRestrictedToSkills,
     toolSettings: encodeToolSettingsForForm(toolSettings),
     sharingSettings,
   };
@@ -209,6 +211,7 @@ export function getMCPServerFormSchema(
         { message: "This name is already in use." }
       ),
     description: z.string().min(1, "Description is required."),
+    isRestrictedToSkills: z.boolean(),
     toolSettings: z.record(
       z.object({
         enabled: z.boolean(),
@@ -248,6 +251,7 @@ export function getMCPServerFormSchema(
 
 type FormDiffType = {
   serverView?: { name: string; description: string };
+  isRestrictedToSkills?: boolean;
   icon?: string;
   authSharedSecret?: string;
   authCustomHeaders?: HeaderRow[] | null;
@@ -285,6 +289,10 @@ export function diffMCPServerForm(
       name: current.name,
       description: current.description,
     };
+  }
+
+  if (current.isRestrictedToSkills !== initial.isRestrictedToSkills) {
+    out.isRestrictedToSkills = current.isRestrictedToSkills;
   }
 
   // Check remote-specific changes.
