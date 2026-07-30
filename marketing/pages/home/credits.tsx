@@ -2,7 +2,8 @@
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
-import { classNames } from "@marketing/lib/utils";
+import type { PublicModelCredit } from "@marketing/lib/api/model_credits";
+import { fetchPublicModelCredits } from "@marketing/lib/api/model_credits";
 import {
   AnthropicLogo,
   ChevronDown,
@@ -10,251 +11,96 @@ import {
   DeepseekLogo,
   GeminiLogo,
   GrokLogo,
+  MinimaxLogo,
   MistralLogo,
   MoonshotLogo,
   OpenaiLogo,
   ZaiLogo,
 } from "@dust-tt/sparkle";
-import { AnimatePresence, MotionConfig, motion } from "framer-motion";
+import {
+  AnimatePresence,
+  domAnimation,
+  LazyMotion,
+  m,
+  MotionConfig,
+} from "framer-motion";
+import type { GetStaticProps } from "next";
 import { useRouter } from "next/router";
 import type React from "react";
 import type { ReactElement } from "react";
 import { useState } from "react";
 
-export async function getStaticProps() {
+// Model credits data changes only when a new model is added or its pricing
+// changes, so a build-once page would go stale for days between deploys.
+// Revalidate periodically instead of on every request.
+const MODEL_CREDITS_REVALIDATE_SECONDS = 60 * 60;
+
+interface CreditsPageProps {
+  gtmTrackingId: string | null;
+  providerSections: ProviderSection[];
+}
+
+export const getStaticProps: GetStaticProps<CreditsPageProps> = async () => {
+  const models = await fetchPublicModelCredits();
+
   return {
     props: {
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      providerSections: groupByModelMaker(models),
     },
+    revalidate: MODEL_CREDITS_REVALIDATE_SECONDS,
   };
-}
+};
 
 // ---------- Types ----------
 
-interface ModelCreditRow {
-  model: string;
-  inputCreditsPerMTokens: string;
-  outputCreditsPerMTokens: string;
-}
-
 interface ProviderSection {
   provider: string;
-  Logo: React.ComponentType<{ className?: string }>;
-  rows: ModelCreditRow[];
+  modelMaker: string;
+  rows: PublicModelCredit[];
 }
 
 // ---------- Data ----------
 
-const PROVIDER_SECTIONS: ProviderSection[] = [
-  {
-    provider: "OpenAI",
-    Logo: OpenaiLogo,
-    rows: [
-      {
-        model: "GPT 5",
-        inputCreditsPerMTokens: "148",
-        outputCreditsPerMTokens: "1,177",
-      },
-      {
-        model: "GPT 5.1",
-        inputCreditsPerMTokens: "148",
-        outputCreditsPerMTokens: "1,177",
-      },
-      {
-        model: "GPT 5.2",
-        inputCreditsPerMTokens: "206",
-        outputCreditsPerMTokens: "1,648",
-      },
-      {
-        model: "GPT 5.4",
-        inputCreditsPerMTokens: "295",
-        outputCreditsPerMTokens: "1,765",
-      },
-      {
-        model: "GPT 5.5",
-        inputCreditsPerMTokens: "589",
-        outputCreditsPerMTokens: "3,530",
-      },
-      {
-        model: "GPT 5.6 Luna",
-        inputCreditsPerMTokens: "118",
-        outputCreditsPerMTokens: "706",
-      },
-      {
-        model: "GPT 5.6 Sol",
-        inputCreditsPerMTokens: "589",
-        outputCreditsPerMTokens: "3,530",
-      },
-      {
-        model: "GPT 5.6 Terra",
-        inputCreditsPerMTokens: "295",
-        outputCreditsPerMTokens: "1,765",
-      },
-      {
-        model: "GPT-5 Mini",
-        inputCreditsPerMTokens: "30",
-        outputCreditsPerMTokens: "236",
-      },
-      {
-        model: "GPT-5 Nano",
-        inputCreditsPerMTokens: "6",
-        outputCreditsPerMTokens: "48",
-      },
-      {
-        model: "GPT-5.4 Mini",
-        inputCreditsPerMTokens: "89",
-        outputCreditsPerMTokens: "530",
-      },
-      {
-        model: "GPT-5.4 Nano",
-        inputCreditsPerMTokens: "24",
-        outputCreditsPerMTokens: "148",
-      },
-    ],
-  },
-  {
-    provider: "Anthropic",
-    Logo: AnthropicLogo,
-    rows: [
-      {
-        model: "Claude 4.5 Haiku",
-        inputCreditsPerMTokens: "118",
-        outputCreditsPerMTokens: "589",
-      },
-      {
-        model: "Claude Fable 5",
-        inputCreditsPerMTokens: "1,177",
-        outputCreditsPerMTokens: "5,883",
-      },
-      {
-        model: "Claude Opus 4.6",
-        inputCreditsPerMTokens: "589",
-        outputCreditsPerMTokens: "2,942",
-      },
-      {
-        model: "Claude Opus 4.7",
-        inputCreditsPerMTokens: "589",
-        outputCreditsPerMTokens: "2,942",
-      },
-      {
-        model: "Claude Opus 4.8",
-        inputCreditsPerMTokens: "589",
-        outputCreditsPerMTokens: "2,942",
-      },
-      {
-        model: "Claude Opus 5",
-        inputCreditsPerMTokens: "589",
-        outputCreditsPerMTokens: "2,942",
-      },
-      {
-        model: "Claude Sonnet 4.6",
-        inputCreditsPerMTokens: "353",
-        outputCreditsPerMTokens: "1,765",
-      },
-      {
-        model: "Claude Sonnet 5",
-        inputCreditsPerMTokens: "236",
-        outputCreditsPerMTokens: "1,177",
-      },
-    ],
-  },
-  {
-    provider: "DeepSeek",
-    Logo: DeepseekLogo,
-    rows: [
-      {
-        model: "DeepSeek V4 Pro, Fireworks",
-        inputCreditsPerMTokens: "205",
-        outputCreditsPerMTokens: "410",
-      },
-    ],
-  },
-  {
-    provider: "Z.ai",
-    Logo: ZaiLogo,
-    rows: [
-      {
-        model: "GLM-5.2, Fireworks",
-        inputCreditsPerMTokens: "165",
-        outputCreditsPerMTokens: "518",
-      },
-    ],
-  },
-  {
-    provider: "Moonshot AI",
-    Logo: MoonshotLogo,
-    rows: [
-      {
-        model: "Kimi K2.5, Fireworks",
-        inputCreditsPerMTokens: "71",
-        outputCreditsPerMTokens: "353",
-      },
-      {
-        model: "Kimi K2.6, Fireworks",
-        inputCreditsPerMTokens: "112",
-        outputCreditsPerMTokens: "471",
-      },
-    ],
-  },
-  {
-    provider: "Google",
-    Logo: GeminiLogo,
-    rows: [
-      {
-        model: "Gemini 3.1 Flash Lite",
-        inputCreditsPerMTokens: "30",
-        outputCreditsPerMTokens: "177",
-      },
-      {
-        model: "Gemini 3.1 Pro",
-        inputCreditsPerMTokens: "471",
-        outputCreditsPerMTokens: "2,118",
-      },
-      {
-        model: "Gemini 3.5 Flash",
-        inputCreditsPerMTokens: "177",
-        outputCreditsPerMTokens: "1,059",
-      },
-    ],
-  },
-  {
-    provider: "Mistral",
-    Logo: MistralLogo,
-    rows: [
-      {
-        model: "Mistral Codestral",
-        inputCreditsPerMTokens: "106",
-        outputCreditsPerMTokens: "330",
-      },
-      {
-        model: "Mistral Large",
-        inputCreditsPerMTokens: "236",
-        outputCreditsPerMTokens: "706",
-      },
-      {
-        model: "Mistral Medium 3.5",
-        inputCreditsPerMTokens: "177",
-        outputCreditsPerMTokens: "883",
-      },
-      {
-        model: "Mistral Small",
-        inputCreditsPerMTokens: "106",
-        outputCreditsPerMTokens: "330",
-      },
-    ],
-  },
-  {
-    provider: "xAI",
-    Logo: GrokLogo,
-    rows: [
-      {
-        model: "Grok 4.5",
-        inputCreditsPerMTokens: "236",
-        outputCreditsPerMTokens: "706",
-      },
-    ],
-  },
-];
+const LOGO_BY_MODEL_MAKER: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
+  openai: OpenaiLogo,
+  anthropic: AnthropicLogo,
+  mistral: MistralLogo,
+  google_ai_studio: GeminiLogo,
+  deepseek: DeepseekLogo,
+  xai: GrokLogo,
+  zai: ZaiLogo,
+  moonshot: MoonshotLogo,
+  minimax: MinimaxLogo,
+};
+
+function groupByModelMaker(models: PublicModelCredit[]): ProviderSection[] {
+  const sectionByMaker = new Map<string, ProviderSection>();
+
+  for (const model of models) {
+    let section = sectionByMaker.get(model.modelMaker);
+    if (!section) {
+      section = {
+        provider: model.modelMakerDisplayName,
+        modelMaker: model.modelMaker,
+        rows: [],
+      };
+      sectionByMaker.set(model.modelMaker, section);
+    }
+    section.rows.push(model);
+  }
+
+  const sections = Array.from(sectionByMaker.values());
+  for (const section of sections) {
+    section.rows.sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }
+  sections.sort((a, b) => a.provider.localeCompare(b.provider));
+
+  return sections;
+}
 
 // ---------- Subcomponents ----------
 
@@ -262,7 +108,7 @@ function Hero() {
   return (
     <section className="-mx-6 flex flex-col items-center px-4 pt-6 text-center md:mx-0 md:px-0 md:pt-10 lg:pt-14">
       <h1
-        className={classNames(
+        className={cn(
           "heading-5xl md:heading-6xl lg:heading-7xl",
           "mb-5 max-w-3xl text-balance text-foreground"
         )}
@@ -278,9 +124,13 @@ function Hero() {
   );
 }
 
-function ModelCreditsTable() {
+interface ModelCreditsTableProps {
+  providerSections: ProviderSection[];
+}
+
+function ModelCreditsTable({ providerSections }: ModelCreditsTableProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(PROVIDER_SECTIONS.map((s) => [s.provider, true]))
+    () => Object.fromEntries(providerSections.map((s) => [s.provider, true]))
   );
 
   const toggleSection = (provider: string) => {
@@ -311,9 +161,9 @@ function ModelCreditsTable() {
             </th>
           </tr>
         </thead>
-        {PROVIDER_SECTIONS.map((section) => {
+        {providerSections.map((section) => {
           const isOpen = openSections[section.provider] ?? true;
-          const Logo = section.Logo;
+          const Logo = LOGO_BY_MODEL_MAKER[section.modelMaker] ?? null;
           return (
             <tbody
               key={section.provider}
@@ -334,7 +184,7 @@ function ModelCreditsTable() {
                     className="group flex w-full items-center justify-between gap-2 px-2 py-6 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   >
                     <span className="flex items-center gap-3">
-                      <Logo className="h-6 w-6 flex-shrink-0" />
+                      {Logo && <Logo className="h-6 w-6 flex-shrink-0" />}
                       <span className="heading-2xl font-semibold text-foreground">
                         {section.provider}
                       </span>
@@ -351,8 +201,8 @@ function ModelCreditsTable() {
               <AnimatePresence initial={false}>
                 {isOpen &&
                   section.rows.map((row, idx) => (
-                    <motion.tr
-                      key={`${section.provider}:${row.model}`}
+                    <m.tr
+                      key={`${section.provider}:${row.modelId}`}
                       data-row="model"
                       className={cn(
                         "grid grid-cols-2 md:table-row",
@@ -367,20 +217,20 @@ function ModelCreditsTable() {
                     >
                       <td className="col-span-2 block px-2 pb-1.5 pt-3.5 align-middle md:table-cell md:py-3.5 md:pb-3.5">
                         <span className="copy-sm block max-w-[560px] font-medium text-foreground">
-                          {row.model}
+                          {row.displayName}
                         </span>
                       </td>
                       <td className="block px-2 pb-3.5 pt-1.5 text-center align-middle tabular-nums md:table-cell md:w-[240px] md:px-5 md:py-3.5 md:pt-3.5">
                         <span className="copy-sm text-foreground">
-                          {row.inputCreditsPerMTokens}
+                          {row.inputCreditsPerMTokens.toLocaleString("en-US")}
                         </span>
                       </td>
                       <td className="block px-2 pb-3.5 pt-1.5 text-center align-middle tabular-nums md:table-cell md:w-[240px] md:px-5 md:py-3.5 md:pt-3.5">
                         <span className="copy-sm text-foreground">
-                          {row.outputCreditsPerMTokens}
+                          {row.outputCreditsPerMTokens.toLocaleString("en-US")}
                         </span>
                       </td>
-                    </motion.tr>
+                    </m.tr>
                   ))}
               </AnimatePresence>
             </tbody>
@@ -394,19 +244,21 @@ function ModelCreditsTable() {
 // ---------- Page ----------
 
 // biome-ignore lint/plugin/nextjsPageComponentNaming: matches pricing page pattern
-export default function Credits() {
+export default function Credits({ providerSections }: CreditsPageProps) {
   const router = useRouter();
 
   return (
-    <MotionConfig reducedMotion="user">
-      <PageMetadata
-        title="Dust Credits: Model Credit Consumption"
-        description="Intelligence credit consumption per model on Dust, in credits per million input and output tokens."
-        pathname={router.asPath}
-      />
-      <Hero />
-      <ModelCreditsTable />
-    </MotionConfig>
+    <LazyMotion features={domAnimation}>
+      <MotionConfig reducedMotion="user">
+        <PageMetadata
+          title="Dust Credits: Model Credit Consumption"
+          description="Intelligence credit consumption per model on Dust, in credits per million input and output tokens."
+          pathname={router.asPath}
+        />
+        <Hero />
+        <ModelCreditsTable providerSections={providerSections} />
+      </MotionConfig>
+    </LazyMotion>
   );
 }
 
