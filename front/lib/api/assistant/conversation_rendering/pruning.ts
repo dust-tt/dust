@@ -17,10 +17,6 @@ const PRUNED_TOOL_RESULT_TOKENS = 24;
 // Fixed number of tokens assumed for image contents during message tokenization.
 export const IMAGE_CONTENT_TOKEN_COUNT = 3_100;
 
-// Fixed token estimate for the text that replaces a pruned image preview, covering the
-// placeholder sentence and the recovery hint with its file path.
-export const PRUNED_IMAGE_PREVIEW_TOKENS = 128;
-
 const FILES_CAT_TOOL_NAME = getPrefixedToolName(
   FILES_SERVER_NAME,
   FILES_CAT_ACTION_NAME
@@ -63,7 +59,7 @@ export function pruneToolResultImagePreview(
   const content = [...message.content];
   const preview = content[contentIndex];
   const filePath = isImageContent(preview) ? preview.file_path : undefined;
-  content[contentIndex] = {
+  const replacement = {
     type: "text" as const,
     text:
       `[This image preview is no longer displayed because the conversation exceeds the ${maxInputImages}-image limit.` +
@@ -71,6 +67,7 @@ export function pruneToolResultImagePreview(
         ? ` Use \`${FILES_CAT_TOOL_NAME}\` with path \`${filePath}\` to display it again.]`
         : " Re-run the tool to display it again.]"),
   };
+  content[contentIndex] = replacement;
 
   return {
     ...message,
@@ -78,7 +75,7 @@ export function pruneToolResultImagePreview(
     tokenCount: Math.max(
       message.tokenCount -
         IMAGE_CONTENT_TOKEN_COUNT +
-        PRUNED_IMAGE_PREVIEW_TOKENS,
+        Buffer.byteLength(replacement.text),
       0
     ),
   };
