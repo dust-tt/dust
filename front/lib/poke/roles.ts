@@ -22,6 +22,8 @@ export const POKE_ROLES_FILE = "poke-roles.json";
 
 let cachedRoles: RolesConfig | null = null;
 let cachedGeneration: number | null = null;
+let developmentRoles: RolesConfig = {};
+let developmentGeneration = 0;
 
 const ALL_ROLES: PokeRole[] = PokeRoleSchema.options;
 
@@ -56,6 +58,16 @@ export function normalizeRolesConfig(config: RolesConfig): RolesConfig {
   return normalized;
 }
 
+function shouldUseDevelopmentRolesStore(): boolean {
+  return isDevelopment() && !process.env.DUST_POKE_USER_CONFIG_BUCKET;
+}
+
+function cloneRolesConfig(config: RolesConfig): RolesConfig {
+  return Object.fromEntries(
+    Object.entries(config).map(([email, roles]) => [email, [...roles]])
+  );
+}
+
 export function invalidateRolesCache(): void {
   cachedRoles = null;
   cachedGeneration = null;
@@ -66,6 +78,13 @@ export async function loadRolesWithGeneration(): Promise<{
   roles: RolesConfig;
   generation: number;
 }> {
+  if (shouldUseDevelopmentRolesStore()) {
+    const roles = cloneRolesConfig(developmentRoles);
+    cachedRoles = roles;
+    cachedGeneration = developmentGeneration;
+    return { roles, generation: developmentGeneration };
+  }
+
   const bucket = getPokeUserConfigBucket({ useServiceAccount: false });
   const gcsFile = bucket.file(POKE_ROLES_FILE);
 
@@ -89,6 +108,11 @@ export async function loadRolesWithGeneration(): Promise<{
 }
 
 export async function loadRolesForAuth(): Promise<RolesConfig> {
+  if (shouldUseDevelopmentRolesStore()) {
+    const { roles } = await loadRolesWithGeneration();
+    return roles;
+  }
+
   const bucket = getPokeUserConfigBucket({ useServiceAccount: false });
   const gcsFile = bucket.file(POKE_ROLES_FILE);
 
@@ -120,6 +144,22 @@ export async function writeRoles(
   }
 
   const normalizedConfig = normalizeRolesConfig(validation.data);
+
+  if (shouldUseDevelopmentRolesStore()) {
+    if (generation !== developmentGeneration) {
+      return new Err({
+        type: "conflict",
+        message: "Concurrent modification detected in development roles.",
+      });
+    }
+
+    developmentRoles = cloneRolesConfig(normalizedConfig);
+    developmentGeneration += 1;
+    cachedRoles = cloneRolesConfig(developmentRoles);
+    cachedGeneration = developmentGeneration;
+    return new Ok(undefined);
+  }
+
   const serialized = JSON.stringify(normalizedConfig, null, 2);
 
   try {

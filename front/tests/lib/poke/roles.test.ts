@@ -13,7 +13,15 @@ import {
   writeRoles,
 } from "@app/lib/poke/roles";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type Mock,
+  vi,
+} from "vitest";
 
 vi.mock("@app/logger/logger", () => ({
   default: {
@@ -22,6 +30,10 @@ vi.mock("@app/logger/logger", () => ({
     error: vi.fn(),
   },
 }));
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 function seedRolesConfig(config: RolesConfig): void {
   fileStorageMock.reset();
@@ -333,6 +345,42 @@ describe("writeRoles", () => {
 
     const reloaded = await loadRolesWithGeneration();
     expect(reloaded.roles).toEqual({ "other@example.com": ["support"] });
+  });
+});
+
+describe("development roles store", () => {
+  beforeEach(() => {
+    invalidateRolesCache();
+    fileStorageMock.reset();
+    vi.stubEnv("IS_DEVELOPMENT", "true");
+    vi.stubEnv("DUST_POKE_USER_CONFIG_BUCKET", "");
+  });
+
+  it("supports versioned reads and writes without GCS", async () => {
+    const initial = await loadRolesWithGeneration();
+    expect(initial).toEqual({ roles: {}, generation: 0 });
+
+    const writeResult = await writeRoles(
+      { "user@example.com": ["admin"] },
+      initial.generation
+    );
+    expect(writeResult.isOk()).toBe(true);
+
+    const updated = await loadRolesWithGeneration();
+    expect(updated).toEqual({
+      roles: { "user@example.com": ["admin"] },
+      generation: 1,
+    });
+
+    const staleWrite = await writeRoles(
+      { "other@example.com": ["support"] },
+      initial.generation
+    );
+    expect(staleWrite.isErr()).toBe(true);
+    if (staleWrite.isErr()) {
+      expect(staleWrite.error.type).toBe("conflict");
+    }
+    expect(getPokeUserConfigBucket).not.toHaveBeenCalled();
   });
 });
 
