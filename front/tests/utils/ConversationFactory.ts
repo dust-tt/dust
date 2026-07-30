@@ -436,6 +436,7 @@ export class ConversationFactory {
       conversation,
       agentConfig,
       mcpAction,
+      runIds = null,
     }: {
       workspace: WorkspaceType;
       conversation:
@@ -446,6 +447,7 @@ export class ConversationFactory {
       mcpAction?: {
         toolConfiguration: LightServerSideMCPToolConfigurationType;
       };
+      runIds?: string[] | null;
     }
   ): Promise<{
     messageRow: MessageModel;
@@ -459,6 +461,7 @@ export class ConversationFactory {
       conversationId: conversation.id,
       workspaceId: workspace.id,
       skipToolsValidation: false,
+      runIds,
     });
 
     const messageRow = await MessageModel.create({
