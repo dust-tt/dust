@@ -185,7 +185,7 @@ export class TmuxAdapter implements MultiplexerAdapter {
 
     // Build the shell command that runs in the main window
     const initialInputCommand = initialInput
-      ? `(sleep 3; tmux send-keys -t "$TMUX_PANE" ${shellQuote(initialInput)} Enter) & `
+      ? `(sleep 3; tmux send-keys -t "$TMUX_PANE" ${shellQuote(initialInput)}; sleep 1; tmux send-keys -t "$TMUX_PANE" Enter) & `
       : "";
     const shellCommand = initialCommand
       ? `source ${shellQuote(envShPath)} && ${initialInputCommand}${initialCommand}; exec ${shellQuote(shellPath)}`
