@@ -29,7 +29,7 @@ import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
-import { Avatar } from "@dust-tt/sparkle";
+import { Avatar, Icon, LinkExternal01 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useContext, useMemo } from "react";
 import { useForm } from "react-hook-form";
@@ -167,16 +167,19 @@ export function MCPServerDetails({
           <p>Saving will remove the tool from the following agents:</p>
           <div className="space-y-1">
             {affectedAgents.map((agent) => (
-              <a
-                key={agent.sId}
-                href={getAgentBuilderRoute(owner.sId, agent.sId)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 underline-offset-2 hover:underline"
-              >
+              <div key={agent.sId} className="flex items-center gap-2">
                 <Avatar size="xs" visual={agent.pictureUrl} />
-                <span>{agent.name}</span>
-              </a>
+                <span className="truncate">{agent.name}</span>
+                <a
+                  href={getAgentBuilderRoute(owner.sId, agent.sId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Open ${agent.name} in Agent Builder`}
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                >
+                  <Icon visual={LinkExternal01} size="xs" />
+                </a>
+              </div>
             ))}
           </div>
           <p>Skills using this tool will not be affected.</p>
