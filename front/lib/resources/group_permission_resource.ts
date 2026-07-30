@@ -153,7 +153,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   }
 
   // Find the regular_auto group that already holds an instance-level grant for the given tuple.
-  // At most one such group is expected per (grantType, resourceType, resourceId).
+  // At most one such group exists per (grantType, resourceType, resourceId): grantToUser and
+  // revokeFromUser serialize on the grant-tuple advisory lock (getGrantLock).
   private static async findRegularAutoGroupForGrant(
     auth: Authenticator,
     {
@@ -191,13 +192,16 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   }
 
   // Grant a user access to a resource by adding them to the regular_auto group that holds the
-  // grant. Creates the group and calls grant() on first use. Idempotent for repeat grants to the
-  // same user.
+  // grant. Creates the group and calls grant() on first use — the grant-tuple lock serializes
+  // concurrent first grants so only one regular_auto group is ever created. Idempotent for repeat
+  // grants to the same user.
   static async grantToUser(
     auth: Authenticator,
     { user, grantType, resourceType, resourceId, transaction }: UserGrantSpec
   ): Promise<Result<undefined, Error>> {
     return withTransaction(async (t) => {
+      await this.getGrantLock(auth, { grantType, resourceType, resourceId }, t);
+
       let group = await this.findRegularAutoGroupForGrant(auth, {
         grantType,
         resourceType,
@@ -243,6 +247,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     { user, grantType, resourceType, resourceId, transaction }: UserGrantSpec
   ): Promise<Result<undefined, Error>> {
     return withTransaction(async (t) => {
+      await this.getGrantLock(auth, { grantType, resourceType, resourceId }, t);
+
       const group = await this.findRegularAutoGroupForGrant(auth, {
         grantType,
         resourceType,
@@ -646,15 +652,27 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     });
   }
 
-  // Serialize concurrent transitions for the same capability. Without this, two transactions can
-  // each clear the -1 rows and then insert, leaving both the everybody row and specific-group rows
-  // (overgranting). The transaction-scoped advisory lock releases on commit/rollback.
-  private static async getCapabilityLock(
+  // Serialize concurrent writes on the same grant tuple. The transaction-scoped advisory lock
+  // releases on commit/rollback. Two uses:
+  //   - capability transitions (resourceId = -1): without it, two transactions can each clear the
+  //     -1 rows and then insert, leaving both the everybody row and specific-group rows
+  //     (overgranting);
+  //   - user-level grants: serializes grantToUser's find-or-create against itself and against
+  //     revokeFromUser's delete-when-empty, guaranteeing at most one regular_auto group per tuple.
+  private static async getGrantLock(
     auth: Authenticator,
-    { grantType, resourceType }: CapabilitySpec,
+    {
+      grantType,
+      resourceType,
+      resourceId,
+    }: {
+      grantType: GrantType;
+      resourceType: GroupPermissionResourceType;
+      resourceId: number;
+    },
     transaction: Transaction
   ): Promise<void> {
-    const key = `group_permissions:${auth.getNonNullableWorkspace().id}:${resourceType}:${grantType}`;
+    const key = `group_permissions:${auth.getNonNullableWorkspace().id}:${resourceType}:${resourceId}:${grantType}`;
     // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
     await frontSequelize.query("SELECT pg_advisory_xact_lock(hashtext(:key))", {
       replacements: { key },
@@ -674,7 +692,11 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     assert(globalGroup, "Workspace is missing its global group.");
 
     await withTransaction(async (t) => {
-      await this.getCapabilityLock(auth, capability, t);
+      await this.getGrantLock(
+        auth,
+        { ...capability, resourceId: WHOLE_TYPE_RESOURCE_ID },
+        t
+      );
       await this.disable(auth, capability, { transaction: t });
       await this.grantTypeWide(auth, {
         group: globalGroup,
@@ -705,7 +727,11 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
 
     await withTransaction(async (t) => {
-      await this.getCapabilityLock(auth, capability, t);
+      await this.getGrantLock(
+        auth,
+        { ...capability, resourceId: WHOLE_TYPE_RESOURCE_ID },
+        t
+      );
       await this.disable(auth, capability, { transaction: t });
       await this.grantTypeWideForGroups(auth, {
         groups,
