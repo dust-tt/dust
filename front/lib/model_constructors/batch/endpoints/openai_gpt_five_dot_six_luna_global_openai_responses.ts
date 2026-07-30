@@ -10,8 +10,8 @@ export class OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesBatch extends WithOpenA
   // Batch pricing is half the standard OpenAI rate.
   // https://developers.openai.com/api/docs/models/gpt-5.6-luna
   static readonly tokenPricing = {
-    standardInput: 0.5,
-    standardOutput: 3.0,
+    standardInput: 0.1,
+    standardOutput: 0.6,
   };
 
   static readonly region = GLOBAL;

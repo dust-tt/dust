@@ -9,9 +9,9 @@ export class OpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream extends WithOpe
 ) {
   // https://developers.openai.com/api/docs/models/gpt-5.6-terra
   static readonly tokenPricing = {
-    cacheHit: 0.25,
-    standardInput: 2.5,
-    standardOutput: 15.0,
+    cacheHit: 0.2,
+    standardInput: 2.0,
+    standardOutput: 12.0,
   };
 
   static readonly region = GLOBAL;
