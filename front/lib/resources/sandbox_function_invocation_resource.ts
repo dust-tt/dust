@@ -286,11 +286,88 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return this.data.error;
   }
 
-  async fail(error: Error | SandboxFunctionCallError): Promise<void> {
+  // Compare-and-set: only the caller that flips `created` owns the outcome. Guards the
+  // double-delivery window (worker stdout + late HTTP callback) without a lock.
+  // BaseResource.update() only keys on `id`, so the predicate goes on the model here
+  // (cf. ConversationForkResource.markFileCopied).
+  private async claimTerminalStatus(
+    status: Extract<SandboxFunctionInvocationStatus, "succeeded" | "errored">
+  ): Promise<boolean> {
+    const [affectedCount, rows] = await this.model.update(
+      { status },
+      {
+        where: {
+          id: this.id,
+          workspaceId: this.workspaceId,
+          status: "created",
+        },
+        returning: true,
+      }
+    );
+    if (affectedCount === 0) {
+      logger.info(
+        {
+          workspaceModelId: this.workspaceId,
+          sandboxFunctionId: this.sandboxFunction.sId,
+          invocationId: this.sId,
+          attemptedStatus: status,
+        },
+        "Skipping terminal transition for an already-terminal Pod function invocation"
+      );
+      return false;
+    }
+    const row = rows[0];
+    if (row) {
+      Object.assign(this, row.get());
+    }
+    return true;
+  }
+
+  // Give the claim back if terminal blob persistence fails, so a later fail()/
+  // markCreatedAsErrored() path can still record the outcome.
+  private async releaseTerminalStatus(
+    from: Extract<SandboxFunctionInvocationStatus, "succeeded" | "errored">
+  ): Promise<void> {
+    const [affectedCount, rows] = await this.model.update(
+      { status: "created" },
+      {
+        where: {
+          id: this.id,
+          workspaceId: this.workspaceId,
+          status: from,
+        },
+        returning: true,
+      }
+    );
+    if (affectedCount === 0) {
+      logger.error(
+        {
+          workspaceModelId: this.workspaceId,
+          sandboxFunctionId: this.sandboxFunction.sId,
+          invocationId: this.sId,
+          fromStatus: from,
+        },
+        "Failed to release Pod function terminal claim after blob write failure"
+      );
+      return;
+    }
+    const row = rows[0];
+    if (row) {
+      Object.assign(this, row.get());
+    }
+  }
+
+  async fail(error: Error | SandboxFunctionCallError): Promise<boolean> {
     const callError: SandboxFunctionCallError =
       error instanceof Error
         ? { code: "invocation_failed", message: error.message }
         : error;
+
+    const claimed = await this.claimTerminalStatus("errored");
+    if (!claimed) {
+      return false;
+    }
+
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
@@ -300,8 +377,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // record of a failure the stream classified precisely.
       error: callError,
     };
-    await this.writeDataToGcs();
-    await this.update({ status: "errored" });
+    try {
+      await this.writeDataToGcs();
+    } catch (err) {
+      await this.releaseTerminalStatus("errored");
+      throw err;
+    }
     await publishSandboxFunctionInvocationEvent(
       {
         type: "sandbox_function_invocation_error",
@@ -312,17 +393,27 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       },
       { invocationId: this.sId }
     );
+    return true;
   }
 
-  async succeed(result: unknown): Promise<void> {
+  async succeed(result: unknown): Promise<boolean> {
+    const claimed = await this.claimTerminalStatus("succeeded");
+    if (!claimed) {
+      return false;
+    }
+
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
       context: this.context,
       result,
     };
-    await this.writeDataToGcs();
-    await this.update({ status: "succeeded" });
+    try {
+      await this.writeDataToGcs();
+    } catch (err) {
+      await this.releaseTerminalStatus("succeeded");
+      throw err;
+    }
     await publishSandboxFunctionInvocationEvent(
       {
         type: "sandbox_function_invocation_result",
@@ -333,6 +424,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       },
       { invocationId: this.sId }
     );
+    return true;
   }
 
   async execute(auth: Authenticator): Promise<Result<undefined, Error>> {
@@ -632,10 +724,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   async markCreatedAsErrored(
     error: SandboxFunctionCallError
   ): Promise<boolean> {
-    if (this.status !== "created") {
+    const claimed = await this.claimTerminalStatus("errored");
+    if (!claimed) {
       return false;
     }
-    await this.update({ status: "errored" });
 
     // Do not overwrite the invocation blob here. This path only records that
     // execution failed before the runner could return a structured result.
