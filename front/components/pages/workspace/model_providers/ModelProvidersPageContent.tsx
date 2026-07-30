@@ -8,7 +8,7 @@ import { isModelAvailable } from "@app/lib/assistant";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { useAppRouter } from "@app/lib/platform";
-import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
@@ -44,7 +44,7 @@ export function ModelProvidersPageContent({
   // Filter models based on feature flags and build modelProviders dynamically
   const filteredModels = uniqBy(USED_MODEL_CONFIGS, (m) => m.modelId).filter(
     (model) =>
-      model.modelId !== AUTO_MODEL_ID &&
+      !isModelStreamId(model.modelId) &&
       !model.isLegacy &&
       isModelAvailable(model, {
         featureFlags,

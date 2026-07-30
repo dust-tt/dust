@@ -146,16 +146,10 @@ export const InputBar = React.memo(function InputBar({
     DataSourceViewContentNode[]
   >([]);
 
-  // Latest model-picker selection, kept in a ref so the picker's change events
-  // don't re-render the whole input bar; read at submit time. `undefined` means
+  // Latest model-picker selection. The picker writes into this ref so we can
+  // read it at submit without re-rendering the input bar. `undefined` means
   // no override (run the agent's configured model).
   const modelSelectionRef = useRef<ModelSelectionType | undefined>(undefined);
-  const handleModelSelectionChange = useCallback(
-    (modelSelection: ModelSelectionType | undefined) => {
-      modelSelectionRef.current = modelSelection;
-    },
-    []
-  );
 
   const {
     getAndClearSelectedAgent,
@@ -776,7 +770,7 @@ export const InputBar = React.memo(function InputBar({
             isSelectableSpacesLoading={isSelectableSpacesLoading}
             onSelectedSpaceIdsChange={handleSelectedSpaceIdsChange}
             onMCPServerViewSelect={handleMCPServerViewSelect}
-            onModelSelectionChange={handleModelSelectionChange}
+            modelSelectionRef={modelSelectionRef}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
             onResetMCPServerViews={handleResetMCPServerViews}
             isAgentBuilder={isAgentBuilder}
