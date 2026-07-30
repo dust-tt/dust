@@ -107,10 +107,7 @@ describe("SandboxResource.updateStatus", () => {
     expect(mockDistribution).toHaveBeenCalledWith(
       "sandbox.lifecycle.duration",
       expect.any(Number),
-      [
-        expect.stringMatching(/^region:/),
-        "status:running",
-      ]
+      [expect.stringMatching(/^region:/), "status:running"]
     );
 
     const durationArg = mockDistribution.mock.calls[0][1];
