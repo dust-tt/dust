@@ -56,7 +56,6 @@ import {
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
   MembershipSeatType,
@@ -242,7 +241,7 @@ async function fetchCreditsResetAt(
 }
 
 // Per-user consumed AWU credits for the current billing cycle, summed from the
-// analytics index (`cost.full_awu`, precomputed at index time) by Elasticsearch.
+// analytics index (`cost.billable_awu`, precomputed at index time) by Elasticsearch.
 // This replaces the per-user Metronome usage scan that previously dominated the
 // members-table load.
 //
@@ -253,9 +252,12 @@ async function fetchCreditsResetAt(
 // drops the user's pre-upgrade free usage (its docs stay `is_free_seat: true`),
 // while paid→paid changes (pro→max) keep counting (all `is_free_seat: false`).
 //
-// Filtered to the billed message statuses so the consumed total matches Metronome
-// (failed messages are indexed with a cost but never billed). Returns an empty
-// map on any failure so the table still renders (the consumed column shows 0).
+// Sums `cost.billable_awu` (= the message's `costCredits`), which already encodes
+// the billing policy per execution: every non-error execution counts, the errored
+// terminal execution does not — so failed-terminal messages contribute their
+// non-error work (0 when the only/last execution errored). This matches Metronome
+// without a status filter. Returns an empty map on any failure so the table still
+// renders (the consumed column shows 0).
 async function fetchConsumedAwuCreditsByUserId({
   workspace,
   userIds,
@@ -292,13 +294,9 @@ async function fetchConsumedAwuCreditsByUserId({
         filter: [
           { term: { workspace_id: workspace.sId } },
           { terms: { user_id: userIds } },
-          // Mirror the billing-side filter: Metronome only emits usage events
-          // and credits for these statuses (see usage_queue activities and
-          // credit_cost), so failed messages carry a non-zero `cost.full_awu`
-          // in the index but are never billed. Without this filter the consumed
-          // total over-counts failed runs (e.g. failed triggers) and diverges
-          // from Metronome.
-          { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
+          // No status filter: `cost.billable_awu` is already 0 for the non-billable
+          // (errored terminal execution) part, so failed-terminal messages
+          // contribute only their non-error work — matching Metronome per execution.
           {
             range: {
               timestamp: {
@@ -329,11 +327,11 @@ async function fetchConsumedAwuCreditsByUserId({
               filter: {
                 bool: { must_not: [{ term: { is_free_seat: true } }] },
               },
-              aggs: { credits: { sum: { field: "cost.full_awu" } } },
+              aggs: { credits: { sum: { field: "cost.billable_awu" } } },
             },
             free_credits: {
               filter: { term: { is_free_seat: true } },
-              aggs: { credits: { sum: { field: "cost.full_awu" } } },
+              aggs: { credits: { sum: { field: "cost.billable_awu" } } },
             },
           },
         },

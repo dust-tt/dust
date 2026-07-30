@@ -46,7 +46,7 @@ type UserCreditAggs = {
   by_user?: estypes.AggregationsMultiBucketAggregateBase<UserBucket>;
 };
 
-// Per-user AWU credits (cost.full_awu) over the last `days`: message count,
+// Per-user billed AWU credits (cost.billable_awu) over the last `days`: message count,
 // credits, and the user's top 3 agents (with each agent's current model and
 // description). Ranked by credits desc. Non-free scope and the programmatic
 // "unknown" user (no attributable person) are excluded to keep this a
@@ -90,14 +90,14 @@ export async function fetchUserCreditBreakdown(
           ...(includeUserIds ? { include: includeUserIds } : {}),
         },
         aggs: {
-          credits: { sum: { field: "cost.full_awu" } },
+          credits: { sum: { field: "cost.billable_awu" } },
           top_agents: {
             terms: {
               field: "agent_id",
               size: 3,
               order: { agent_credits: "desc" },
             },
-            aggs: { agent_credits: { sum: { field: "cost.full_awu" } } },
+            aggs: { agent_credits: { sum: { field: "cost.billable_awu" } } },
           },
         },
       },

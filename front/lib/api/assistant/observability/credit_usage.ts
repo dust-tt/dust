@@ -107,7 +107,7 @@ type CreditUsageTypeAggs = {
 };
 
 const creditSubAggs = {
-  total_cost: { sum: { field: "cost.full_awu" } },
+  total_cost: { sum: { field: "cost.billable_awu" } },
 } satisfies Record<string, estypes.AggregationsAggregationContainer>;
 
 function totalCreditsFromSlice(slice: CreditSlice): number {
@@ -255,10 +255,10 @@ function buildCreditDateHistogram({
   };
 }
 
-// Sums the per-message AWU credits (cost.full_awu) precomputed at index time
-// with the billing pipeline's conversion. Still an estimate vs the billed
+// Sums the per-message billed AWU credits (cost.billable_awu) precomputed at index
+// time with the billing pipeline's conversion. Still an estimate vs the billed
 // figure on the usage page (indexing lag, docs indexed before the cost fields
-// shipped). Groups are ranked exactly by cost.full_awu inside ES.
+// shipped). Groups are ranked exactly by cost.billable_awu inside ES.
 export async function fetchCreditUsage(
   auth: Authenticator,
   {
@@ -357,7 +357,7 @@ type TopConversationsAggs = {
   by_conversation?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
 };
 
-// Conversations ranked by summed per-message AWU credits (cost.full_awu) over
+// Conversations ranked by summed per-message billed AWU credits (cost.billable_awu) over
 // the window. Same source and scope as fetchCreditUsage; scope to a user via
 // `userIds` so the ranking only counts that user's messages. Conversations
 // that can no longer be fetched (deleted, or the caller lost access) are
