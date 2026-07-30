@@ -392,6 +392,65 @@ describe("SandboxFunctionInvocationResource", () => {
     });
   });
 
+  it("makes succeed a compare-and-set so a second delivery is a no-op", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+    const result = { commentId: "comment-1" };
+
+    expect(await invocation.succeed(result)).toBe(true);
+    expect(await invocation.succeed({ commentId: "comment-2" })).toBe(false);
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("succeeded");
+    expect(refetched?.result).toEqual(result);
+    expect(fileStorageMock.getObject(invocation.gcsPath!)).toContain(
+      '"commentId":"comment-1"'
+    );
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects fail after succeed without overwriting the result", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+    const result = { commentId: "comment-1" };
+
+    expect(await invocation.succeed(result)).toBe(true);
+    expect(await invocation.fail(new Error("late failure"))).toBe(false);
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("succeeded");
+    expect(refetched?.result).toEqual(result);
+    expect(refetched?.error).toBeUndefined();
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects markCreatedAsErrored after succeed", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+
+    expect(await invocation.succeed({ commentId: "comment-1" })).toBe(true);
+    expect(
+      await invocation.markCreatedAsErrored({
+        code: "invocation_failed",
+        message: "activity timed out",
+      })
+    ).toBe(false);
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("succeeded");
+    expect(refetched?.result).toEqual({ commentId: "comment-1" });
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledTimes(1);
+  });
+
   it("migrates a v1 blob, which recorded the message only", async () => {
     const { authenticator, sandboxFunction, invocation } =
       await setupExecutionTest();
