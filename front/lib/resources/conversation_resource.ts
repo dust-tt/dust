@@ -1147,7 +1147,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const spaceBasedAccessible = validConversations.filter((c) =>
       auth.canRead(
-        createResourcePermissionsFromSpacesWithMap(spaceIdToGroupsMap, c.requestedSpaceIds, auth.getNonNullableWorkspace().id)
+        createResourcePermissionsFromSpacesWithMap(
+          spaceIdToGroupsMap,
+          c.requestedSpaceIds,
+          auth.getNonNullableWorkspace().id
+        )
       )
     );
 
@@ -1262,7 +1266,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
 
     return auth.canRead(
-      createResourcePermissionsFromSpacesWithMap(spaceIdToGroupsMap, conversation.requestedSpaceIds, auth.getNonNullableWorkspace().id)
+      createResourcePermissionsFromSpacesWithMap(
+        spaceIdToGroupsMap,
+        conversation.requestedSpaceIds,
+        auth.getNonNullableWorkspace().id
+      )
     );
   }
 
