@@ -7171,6 +7171,7 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
 });
 
 const KNOWN_CONVERSATION_RELATED_MODELS = [
+  "agent_message_consumption_item",
   "agent_message_skills",
   "agent_message_feedback",
   "agent_step_content_tool_execution",

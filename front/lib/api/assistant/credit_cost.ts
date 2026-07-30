@@ -28,6 +28,7 @@ import type {
 } from "@app/types/assistant/analytics";
 import {
   AGENT_MESSAGE_STATUSES_TO_TRACK,
+  type AgentMessageStatus,
   type UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 
@@ -55,6 +56,7 @@ export interface AgentMessageCreditsBreakdown {
 
 export interface StoredAgentMessageCredits {
   costCredits: number | null;
+  agentMessageStatus: AgentMessageStatus | null;
   directToolCreditAmounts: {
     actionModelId: number;
     directCreditAmountMicro: number | null;
@@ -233,14 +235,22 @@ export async function computeAndStoreAgentMessageCreditsWithBreakdown(
       { workspaceId: auth.getNonNullableWorkspace().sId, agentMessageId },
       "[Credits] Agent message not found while computing costCredits."
     );
-    return { costCredits: null, directToolCreditAmounts: [] };
+    return {
+      costCredits: null,
+      agentMessageStatus: null,
+      directToolCreditAmounts: [],
+    };
   }
 
   const { agentMessageModelId, status, runIds, triggeringUserMessageOrigin } =
     creditContext;
 
   if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(status)) {
-    return { costCredits: null, directToolCreditAmounts: [] };
+    return {
+      costCredits: null,
+      agentMessageStatus: status,
+      directToolCreditAmounts: [],
+    };
   }
 
   // Tag this execution's runs with their runKey before recomputing, so the
@@ -321,7 +331,7 @@ export async function computeAndStoreAgentMessageCreditsWithBreakdown(
     });
   }
 
-  return { costCredits, directToolCreditAmounts };
+  return { costCredits, agentMessageStatus: status, directToolCreditAmounts };
 }
 
 export async function computeAndStoreAgentMessageCredits(

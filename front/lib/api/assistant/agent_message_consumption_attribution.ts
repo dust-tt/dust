@@ -1,474 +1,389 @@
-import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import {
   AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
   attributedCreditsForTokens,
-  buildPendingRunAttributionItems,
+  buildRunAttribution,
   getRunTokenRates,
-  normalizeTokenMeasurements,
   type RunUsageWithIdentity,
   serializeToolCallForAttribution,
   serializeToolResultForAttribution,
+  type ToolCallAttributionEvidence,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/domain";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
+import {
+  AgentMessageConsumptionItemResource,
+  type CompletedAgentMessageConsumptionItem,
+  type CompletedToolConsumptionItem,
+  type PendingToolConsumptionCompletion,
+  type PendingToolConsumptionItem,
+} from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { AgentMessageConsumptionAttribution } from "@app/types/assistant/agent_message_consumption";
+import type {
+  AgentMessageConsumptionEvidence,
+  AgentMessageDirectToolCreditAmount,
+} from "@app/types/assistant/agent_run";
+import {
+  type AgentMessageStatus,
+  UNRESUMABLE_AGENT_MESSAGE_STATUSES,
+} from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { Transaction } from "sequelize";
 
 export { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION };
 
-async function listRunUsagesForMessage(
-  auth: Authenticator,
-  runIds: string[] | null
-): Promise<{
+type MessageRunEvidence = {
+  runs: RunResource[];
   runUsages: RunUsageWithIdentity[];
   hasAllRuns: boolean;
-}> {
+};
+
+async function listRunEvidenceForMessage(
+  auth: Authenticator,
+  runIds: string[] | null
+): Promise<MessageRunEvidence> {
   const dustRunIds = [...new Set(runIds ?? [])];
   if (dustRunIds.length === 0) {
-    return { runUsages: [], hasAllRuns: true };
+    return { runs: [], runUsages: [], hasAllRuns: true };
   }
 
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
   return {
+    runs,
     runUsages: await RunResource.listRunUsagesForRuns(auth, { runs }),
     hasAllRuns: runs.length === dustRunIds.length,
   };
 }
 
-export async function recordAgentMessageModelCallEvidence(
+async function measureTokens(
   auth: Authenticator,
-  {
-    agentMessageId,
-    dustRunId,
-    actionModelIds,
-  }: {
-    agentMessageId: string;
-    dustRunId: string | null;
-    actionModelIds: ModelId[];
+  usage: RunUsageWithIdentity,
+  texts: string[]
+): Promise<number[]> {
+  if (texts.length === 0) {
+    return [];
   }
-): Promise<Result<undefined, Error>> {
-  try {
-    const creditContext =
-      await ConversationResource.fetchAgentMessageCreditContext(auth, {
-        agentMessageId,
-      });
-    if (!creditContext) {
-      return new Err(
-        new Error("Attribution context does not own the agent message")
-      );
-    }
-    if (dustRunId !== null && !creditContext.runIds?.includes(dustRunId)) {
-      return new Err(
-        new Error("Attribution run does not belong to the agent message")
-      );
-    }
 
-    const run = dustRunId
-      ? await RunResource.fetchByDustRunId(auth, { dustRunId })
+  const model = getModelConfigByModelId(usage.modelId);
+  if (!model || model.providerId !== usage.providerId) {
+    throw new Error(
+      `Unsupported model for consumption attribution: ${usage.providerId}/${usage.modelId}`
+    );
+  }
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
+  const result = await tokenCountForTexts(texts, model, credentials);
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  return result.value;
+}
+
+function resolveEmittingUsageByActionId({
+  evidence,
+  actions,
+  runs,
+  runUsages,
+  existingItems,
+}: {
+  evidence: AgentMessageConsumptionEvidence[];
+  actions: AgentMCPActionResource[];
+  runs: RunResource[];
+  runUsages: RunUsageWithIdentity[];
+  existingItems: AgentMessageConsumptionItemResource[];
+}): Map<ModelId, RunUsageWithIdentity | null> {
+  const actionByModelId = new Map(
+    actions.map((action) => [action.id, action] as const)
+  );
+  const runByDustRunId = new Map(
+    runs.map((run) => [run.dustRunId, run] as const)
+  );
+  const usageByModelId = new Map(
+    runUsages.map((usage) => [usage.runUsageModelId, usage] as const)
+  );
+  const usagesByRunModelId = new Map<ModelId, RunUsageWithIdentity[]>();
+  for (const usage of runUsages) {
+    const usages = usagesByRunModelId.get(usage.runModelId) ?? [];
+    usages.push(usage);
+    usagesByRunModelId.set(usage.runModelId, usages);
+  }
+
+  const usageByActionId = new Map<ModelId, RunUsageWithIdentity | null>();
+  for (const modelCall of evidence) {
+    const run = modelCall.dustRunId
+      ? runByDustRunId.get(modelCall.dustRunId)
       : null;
-    if (dustRunId !== null && !run) {
-      return new Err(new Error(`Run not found for dust run ${dustRunId}`));
-    }
-
-    const runUsages = run
-      ? await RunResource.listRunUsagesForRuns(auth, { runs: [run] })
-      : [];
-    if (dustRunId !== null && runUsages.length === 0) {
-      return new Err(
-        new Error(`Run usage not found for dust run ${dustRunId}`)
+    if (modelCall.dustRunId && !run) {
+      throw new Error(
+        `Attribution run does not belong to the agent message: ${modelCall.dustRunId}`
       );
     }
-    if (
-      dustRunId !== null &&
-      actionModelIds.length > 0 &&
-      runUsages.length !== 1
-    ) {
-      return new Err(
-        new Error(
-          `Expected one run usage for a model call emitting tools, found ${runUsages.length}`
-        )
+    const usages = run ? (usagesByRunModelId.get(run.id) ?? []) : [];
+    if (run && modelCall.actionModelIds.length > 0 && usages.length !== 1) {
+      throw new Error(
+        `Expected one run usage for a model call emitting tools, found ${usages.length}`
       );
     }
-    const fetchedActions = await AgentMCPActionResource.fetchByModelIds(
-      auth,
-      actionModelIds
-    );
-    const actionByModelId = new Map(
-      fetchedActions.map((action) => [action.id, action])
-    );
-    const actions = actionModelIds.flatMap((actionModelId) => {
-      const action = actionByModelId.get(actionModelId);
-      return action ? [action] : [];
-    });
-    if (actions.length !== actionModelIds.length) {
-      return new Err(new Error("Cannot resolve all emitted tool actions"));
-    }
-    if (
-      actions.some(
-        (action) => action.agentMessageId !== creditContext.agentMessageModelId
-      )
-    ) {
-      return new Err(
-        new Error("Cannot attribute actions owned by another agent message")
-      );
-    }
+    const usage = usages[0] ?? null;
 
-    await withTransaction(async (transaction: Transaction) => {
-      for (const usage of runUsages) {
-        await AgentMessageConsumptionItemResource.createIdempotently(
-          auth,
-          buildPendingRunAttributionItems({
-            conversationModelId: creditContext.conversationModelId,
-            agentMessageModelId: creditContext.agentMessageModelId,
-            usage,
-          }),
-          { transaction }
-        );
-
-        if (runUsages.length === 1) {
-          await AgentMessageConsumptionItemResource.createIdempotently(
-            auth,
-            actions.map((action) => {
-              return {
-                conversationId: creditContext.conversationModelId,
-                agentMessageId: creditContext.agentMessageModelId,
-                runUsageId: usage.runUsageModelId,
-                agentMCPActionId: action.id,
-                itemKey: `tool-action:${action.id}`,
-                itemType: "tool" as const,
-                attributionVersion:
-                  AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-                inputTokensCount: null,
-                outputTokensCount: null,
-                grossAttributedCreditAmountMicro: 0,
-                directCreditAmountMicro: null,
-                completedAt: null,
-              };
-            }),
-            { transaction }
-          );
-        }
+    for (const actionModelId of modelCall.actionModelIds) {
+      if (!actionByModelId.has(actionModelId)) {
+        throw new Error("Cannot resolve all emitted tool actions");
       }
-
-      if (runUsages.length === 0) {
-        await AgentMessageConsumptionItemResource.createIdempotently(
-          auth,
-          actions.map((action) => ({
-            conversationId: creditContext.conversationModelId,
-            agentMessageId: creditContext.agentMessageModelId,
-            runUsageId: null,
-            agentMCPActionId: action.id,
-            itemKey: `tool-action:${action.id}`,
-            itemType: "tool" as const,
-            attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-            inputTokensCount: null,
-            outputTokensCount: null,
-            grossAttributedCreditAmountMicro: 0,
-            directCreditAmountMicro: null,
-            completedAt: null,
-          })),
-          { transaction }
-        );
+      const previousUsage = usageByActionId.get(actionModelId);
+      if (
+        usageByActionId.has(actionModelId) &&
+        previousUsage?.runUsageModelId !== usage?.runUsageModelId
+      ) {
+        throw new Error("A tool action has conflicting emitting run evidence");
       }
-    });
-
-    return new Ok(undefined);
-  } catch (error) {
-    return new Err(normalizeError(error));
+      usageByActionId.set(actionModelId, usage);
+    }
   }
-}
 
-async function materializeModelCallAttribution(
-  auth: Authenticator,
-  {
-    usage,
-    items,
-    actionByModelId,
-  }: {
-    usage: RunUsageWithIdentity;
-    items: AgentMessageConsumptionItemResource[];
-    actionByModelId: Map<ModelId, AgentMCPActionResource>;
-  }
-): Promise<Result<undefined, Error>> {
-  try {
-    const usageItems = items.filter(
-      (item) => item.runUsageId === usage.runUsageModelId
-    );
-    const outputItem = usageItems.find((item) => item.itemType === "output");
-    if (!outputItem) {
-      return new Err(
-        new Error(
-          `Output attribution missing for usage ${usage.runUsageModelId}`
-        )
-      );
+  for (const item of existingItems) {
+    if (item.itemType !== "tool" || item.agentMCPActionId === null) {
+      continue;
     }
-    if (outputItem.completedAt !== null) {
-      return new Ok(undefined);
-    }
-
-    const toolItems = usageItems.filter((item) => item.itemType === "tool");
-    const actions = toolItems.map((item) => {
-      const action = item.agentMCPActionId
-        ? actionByModelId.get(item.agentMCPActionId)
-        : null;
-      if (!action) {
-        throw new Error("Tool attribution action is missing");
-      }
-      return action;
-    });
-
-    let measuredToolOutputTokensCounts: number[] = [];
-    if (actions.length > 0) {
-      const model = getModelConfigByModelId(usage.modelId);
-      if (!model || model.providerId !== usage.providerId) {
-        return new Err(
-          new Error(
-            `Unsupported model for consumption attribution: ${usage.providerId}/${usage.modelId}`
-          )
-        );
-      }
-      const credentials = await getLlmCredentials(auth, {
-        skipEmbeddingApiKeyRequirement: true,
-      });
-      const tokenCountsResult = await tokenCountForTexts(
-        actions.map(serializeToolCallForAttribution),
-        model,
-        credentials
-      );
-      if (tokenCountsResult.isErr()) {
-        return tokenCountsResult;
-      }
-      measuredToolOutputTokensCounts = tokenCountsResult.value;
-    }
-
-    const reasoningTokensCount = usage.reasoningTokens ?? 0;
-    const availableTokensCount = Math.max(
-      usage.completionTokens - reasoningTokensCount,
-      0
-    );
-    const toolOutputTokensCounts = normalizeTokenMeasurements(
-      measuredToolOutputTokensCounts,
-      availableTokensCount
-    );
-    const toolOutputTokensCount = toolOutputTokensCounts.reduce(
-      (total, count) => total + count,
-      0
-    );
-    const outputTokensCount = availableTokensCount - toolOutputTokensCount;
-    const rates = getRunTokenRates(usage);
-
-    await withTransaction(async (transaction: Transaction) => {
-      const outputUpdatedCount =
-        await AgentMessageConsumptionItemResource.updatePendingOutputItem(
-          auth,
-          {
-            runUsageModelId: usage.runUsageModelId,
-            attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-            outputTokensCount,
-            grossAttributedCreditAmountMicro: attributedCreditsForTokens({
-              tokensCount: outputTokensCount,
-              costMicroUsdPerToken: rates.outputCostMicroUsdPerToken,
-            }),
-            transaction,
-          }
-        );
-      if (outputUpdatedCount !== 1) {
-        throw new Error("Model output attribution changed concurrently");
-      }
-
-      for (const [index, action] of actions.entries()) {
-        const tokensCount = toolOutputTokensCounts[index];
-        const toolUpdatedCount =
-          await AgentMessageConsumptionItemResource.updatePendingToolOutput(
-            auth,
-            {
-              agentMCPActionModelId: action.id,
-              attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-              outputTokensCount: tokensCount,
-              grossAttributedCreditAmountMicro: attributedCreditsForTokens({
-                tokensCount,
-                costMicroUsdPerToken: rates.outputCostMicroUsdPerToken,
-              }),
-              transaction,
-            }
-          );
-        if (toolUpdatedCount !== 1) {
-          throw new Error("Tool output attribution changed concurrently");
-        }
-      }
-    });
-
-    return new Ok(undefined);
-  } catch (error) {
-    return new Err(normalizeError(error));
-  }
-}
-
-async function recordAgentMessageToolActionAttribution(
-  auth: Authenticator,
-  {
-    agentMessageId,
-    action,
-    directCreditAmountMicro: capturedDirectCreditAmountMicro,
-  }: {
-    agentMessageId: string;
-    action: AgentMCPActionResource;
-    directCreditAmountMicro: number | null | undefined;
-  }
-): Promise<Result<undefined, Error>> {
-  try {
-    const item = await AgentMessageConsumptionItemResource.findToolItem(auth, {
-      agentMCPActionModelId: action.id,
-      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-    });
-    if (!item) {
-      return new Err(
-        new Error(`Consumption attribution item not found for ${action.sId}`)
-      );
-    }
-    if (item.completedAt !== null) {
-      return new Ok(undefined);
-    }
-    if (item.runUsageId !== null && item.outputTokensCount === null) {
-      return new Err(
-        new Error(`Tool output attribution is incomplete for ${action.sId}`)
-      );
-    }
-    const creditContext =
-      await ConversationResource.fetchAgentMessageCreditContext(auth, {
-        agentMessageId,
-      });
-    if (
-      !creditContext ||
-      creditContext.agentMessageModelId !== action.agentMessageId
-    ) {
-      return new Err(
-        new Error("Tool attribution does not belong to the agent message")
-      );
-    }
-
     const usage = item.runUsageId
-      ? await RunResource.fetchRunUsageByModelId(auth, {
-          runUsageModelId: item.runUsageId,
-        })
+      ? (usageByModelId.get(item.runUsageId) ?? null)
       : null;
-    let inputTokensCount: number | null = null;
-    if (usage) {
-      const model = getModelConfigByModelId(usage.modelId);
-      if (!model || model.providerId !== usage.providerId) {
-        return new Err(
-          new Error(
-            `Unsupported model for consumption attribution: ${usage.providerId}/${usage.modelId}`
-          )
-        );
-      }
-      const outputItemsByActionId =
-        await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
-          actionIds: [action.id],
-          ignoreContent: false,
-        });
-      const outputItems = outputItemsByActionId.get(action.id) ?? [];
-      if (outputItems.length > 0) {
-        const credentials = await getLlmCredentials(auth, {
-          skipEmbeddingApiKeyRequirement: true,
-        });
-        const tokenCountsResult = await tokenCountForTexts(
-          [
-            serializeToolResultForAttribution({
-              action,
-              output: outputItems.map((outputItem) => outputItem.content),
-            }),
-          ],
-          model,
-          credentials
-        );
-        if (tokenCountsResult.isErr()) {
-          return tokenCountsResult;
-        }
-        inputTokensCount = tokenCountsResult.value[0];
+    if (item.runUsageId !== null && !usage) {
+      throw new Error("A tool item references an unknown run usage");
+    }
+    const previousUsage = usageByActionId.get(item.agentMCPActionId);
+    if (
+      usageByActionId.has(item.agentMCPActionId) &&
+      previousUsage?.runUsageModelId !== usage?.runUsageModelId
+    ) {
+      throw new Error("Stored and current emitting run evidence conflict");
+    }
+    usageByActionId.set(item.agentMCPActionId, usage);
+  }
+
+  for (const action of actions) {
+    if (!usageByActionId.has(action.id)) {
+      if (isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)) {
+        usageByActionId.set(action.id, null);
+      } else {
+        throw new Error(`Emitting run evidence is missing for ${action.sId}`);
       }
     }
+  }
 
-    const isFinal = isToolExecutionStatusFinal(action.status);
-    if (isFinal && capturedDirectCreditAmountMicro === undefined) {
-      return new Err(
-        new Error(`Direct credit evidence is missing for ${action.sId}`)
+  return usageByActionId;
+}
+
+async function buildAttributionRecords(
+  auth: Authenticator,
+  {
+    actions,
+    runUsages,
+    usageByActionId,
+    existingItems,
+    directToolCreditAmounts,
+    messageStatus,
+  }: {
+    actions: AgentMCPActionResource[];
+    runUsages: RunUsageWithIdentity[];
+    usageByActionId: Map<ModelId, RunUsageWithIdentity | null>;
+    existingItems: AgentMessageConsumptionItemResource[];
+    directToolCreditAmounts: AgentMessageDirectToolCreditAmount[];
+    messageStatus: AgentMessageStatus | null;
+  }
+): Promise<{
+  completedItems: CompletedAgentMessageConsumptionItem[];
+  pendingToolItems: PendingToolConsumptionItem[];
+  completedPendingTools: PendingToolConsumptionCompletion[];
+}> {
+  const actionsByUsageId = new Map<ModelId, AgentMCPActionResource[]>();
+  for (const action of actions) {
+    const usage = usageByActionId.get(action.id);
+    if (usage) {
+      const usageActions = actionsByUsageId.get(usage.runUsageModelId) ?? [];
+      usageActions.push(action);
+      actionsByUsageId.set(usage.runUsageModelId, usageActions);
+    }
+  }
+
+  const existingToolItemByActionId = new Map(
+    existingItems.flatMap((item) =>
+      item.itemType === "tool" && item.agentMCPActionId !== null
+        ? ([[item.agentMCPActionId, item] as const] as const)
+        : []
+    )
+  );
+  const completedItems: CompletedAgentMessageConsumptionItem[] = [];
+  const toolCallEvidenceByActionId = new Map<
+    ModelId,
+    ToolCallAttributionEvidence
+  >();
+  for (const usage of runUsages) {
+    const usageActions = actionsByUsageId.get(usage.runUsageModelId) ?? [];
+    if (
+      hasCompleteRunAttribution({ usage, items: existingItems }) &&
+      usageActions.every((action) => existingToolItemByActionId.has(action.id))
+    ) {
+      continue;
+    }
+    const measuredToolOutputTokensCounts = await measureTokens(
+      auth,
+      usage,
+      usageActions.map(serializeToolCallForAttribution)
+    );
+    const runAttribution = buildRunAttribution({
+      usage,
+      actions: usageActions,
+      measuredToolOutputTokensCounts,
+    });
+    completedItems.push(...runAttribution.completedItems);
+    for (const toolEvidence of runAttribution.toolCallEvidence) {
+      toolCallEvidenceByActionId.set(toolEvidence.action.id, toolEvidence);
+    }
+  }
+
+  const directCreditByActionId = new Map(
+    directToolCreditAmounts.map(
+      ({ actionModelId, directCreditAmountMicro }) =>
+        [actionModelId, directCreditAmountMicro] as const
+    )
+  );
+  const actionsNeedingResultEvidence = actions.filter((action) => {
+    const existingItem = existingToolItemByActionId.get(action.id);
+    return (
+      directCreditByActionId.has(action.id) &&
+      (!existingItem || existingItem.completedAt === null) &&
+      usageByActionId.get(action.id) !== null
+    );
+  });
+  const outputItemsByActionId =
+    await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+      actionIds: actionsNeedingResultEvidence.map((action) => action.id),
+      ignoreContent: false,
+    });
+  const inputTokensCountByActionId = new Map<ModelId, number>();
+  for (const usage of runUsages) {
+    const resultActions = actionsNeedingResultEvidence.filter(
+      (action) =>
+        usageByActionId.get(action.id)?.runUsageModelId ===
+          usage.runUsageModelId &&
+        (outputItemsByActionId.get(action.id)?.length ?? 0) > 0
+    );
+    const measuredResultTokensCounts = await measureTokens(
+      auth,
+      usage,
+      resultActions.map((action) =>
+        serializeToolResultForAttribution({
+          action,
+          output: (outputItemsByActionId.get(action.id) ?? []).map(
+            (outputItem) => outputItem.content
+          ),
+        })
+      )
+    );
+    for (const [index, action] of resultActions.entries()) {
+      inputTokensCountByActionId.set(
+        action.id,
+        measuredResultTokensCounts[index]
       );
     }
-    const directCreditAmountMicro = isFinal
-      ? (capturedDirectCreditAmountMicro ?? null)
-      : null;
+  }
+
+  const pendingToolItems: PendingToolConsumptionItem[] = [];
+  const completedPendingTools: PendingToolConsumptionCompletion[] = [];
+  for (const action of actions) {
+    const existingItem = existingToolItemByActionId.get(action.id);
+    if (existingItem && existingItem.completedAt !== null) {
+      continue;
+    }
+
+    const usage = usageByActionId.get(action.id) ?? null;
+    const toolCallEvidence = toolCallEvidenceByActionId.get(action.id);
+    const outputTokensCount = existingItem
+      ? existingItem.outputTokensCount
+      : (toolCallEvidence?.outputTokensCount ?? null);
+    const outputCreditAmountMicro =
+      existingItem?.grossAttributedCreditAmountMicro ??
+      toolCallEvidence?.grossAttributedCreditAmountMicro ??
+      0;
+    const isTerminalWithoutToolCompletion =
+      messageStatus !== null &&
+      UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(messageStatus);
+    if (
+      !directCreditByActionId.has(action.id) &&
+      !isTerminalWithoutToolCompletion
+    ) {
+      if (!existingItem) {
+        pendingToolItems.push({
+          action,
+          runUsageModelId: usage?.runUsageModelId ?? null,
+          outputTokensCount,
+          grossAttributedCreditAmountMicro: outputCreditAmountMicro,
+        });
+      }
+      continue;
+    }
+
+    const directCreditAmountMicro =
+      directCreditByActionId.get(action.id) ?? null;
+    const inputTokensCount = inputTokensCountByActionId.get(action.id) ?? null;
     const rates = usage ? getRunTokenRates(usage) : null;
     const inputCreditAmountMicro =
-      inputTokensCount === null || rates === null
-        ? 0
-        : attributedCreditsForTokens({
+      inputTokensCount !== null && rates
+        ? attributedCreditsForTokens({
             tokensCount: inputTokensCount,
             costMicroUsdPerToken: rates.inputCostMicroUsdPerToken,
-          });
-    const outputCreditAmountMicro = rates
-      ? attributedCreditsForTokens({
-          tokensCount: item.outputTokensCount ?? 0,
-          costMicroUsdPerToken: rates.outputCostMicroUsdPerToken,
-        })
-      : 0;
-    const grossAttributedCreditAmountMicro =
-      outputCreditAmountMicro +
-      inputCreditAmountMicro +
-      (directCreditAmountMicro ?? 0);
-
-    const updatedCount =
-      await AgentMessageConsumptionItemResource.updatePendingToolItem(auth, {
-        agentMCPActionModelId: action.id,
-        attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          })
+        : 0;
+    const completedTool: Omit<CompletedToolConsumptionItem, "itemType"> = {
+      action,
+      runUsageModelId: usage?.runUsageModelId ?? null,
+      inputTokensCount,
+      outputTokensCount,
+      grossAttributedCreditAmountMicro:
+        outputCreditAmountMicro +
+        inputCreditAmountMicro +
+        (directCreditAmountMicro ?? 0),
+      directCreditAmountMicro,
+    };
+    if (existingItem) {
+      completedPendingTools.push({
+        action,
         inputTokensCount,
-        grossAttributedCreditAmountMicro,
+        grossAttributedCreditAmountMicro:
+          completedTool.grossAttributedCreditAmountMicro,
         directCreditAmountMicro,
-        completedAt: isFinal ? new Date() : null,
       });
-    if (updatedCount !== 1) {
-      const currentItem =
-        await AgentMessageConsumptionItemResource.findToolItem(auth, {
-          agentMCPActionModelId: action.id,
-          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-        });
-      if (!currentItem || currentItem.completedAt === null) {
-        return new Err(
-          new Error(`Failed to update tool attribution ${action.sId}`)
-        );
-      }
+    } else {
+      completedItems.push({ itemType: "tool", ...completedTool });
     }
-
-    return new Ok(undefined);
-  } catch (error) {
-    return new Err(normalizeError(error));
   }
+
+  return { completedItems, pendingToolItems, completedPendingTools };
 }
 
 export async function materializeAgentMessageConsumptionAttribution(
   auth: Authenticator,
   {
     agentMessageId,
+    evidence = [],
     directToolCreditAmounts = [],
+    messageStatus = null,
   }: {
     agentMessageId: string;
-    directToolCreditAmounts?: {
-      actionModelId: ModelId;
-      directCreditAmountMicro: number | null;
-    }[];
+    evidence?: AgentMessageConsumptionEvidence[];
+    directToolCreditAmounts?: AgentMessageDirectToolCreditAmount[];
+    messageStatus?: AgentMessageStatus | null;
   }
 ): Promise<Result<undefined, Error>> {
   try {
@@ -479,128 +394,110 @@ export async function materializeAgentMessageConsumptionAttribution(
     if (!creditContext) {
       return new Ok(undefined);
     }
+    const [conversation] = await ConversationResource.fetchByModelIds(auth, [
+      creditContext.conversationModelId,
+    ]);
+    if (!conversation) {
+      return new Err(new Error("Attribution conversation not found"));
+    }
 
-    const [actions, runUsageEvidence, initialItems] = await Promise.all([
+    const [actions, runEvidence, existingItems] = await Promise.all([
       AgentMCPActionResource.listByAgentMessageIds(auth, [
         creditContext.agentMessageModelId,
       ]),
-      listRunUsagesForMessage(auth, creditContext.runIds),
-      AgentMessageConsumptionItemResource.listByAgentMessage(auth, {
-        agentMessageModelId: creditContext.agentMessageModelId,
+      listRunEvidenceForMessage(auth, creditContext.runIds),
+      AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+        agentMessageModelIds: [creditContext.agentMessageModelId],
         attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
       }),
     ]);
-    if (!runUsageEvidence.hasAllRuns) {
+    if (!runEvidence.hasAllRuns) {
       return new Err(new Error("Cannot resolve all runs for attribution"));
     }
-    const { runUsages } = runUsageEvidence;
-    const representedRunUsageIds = new Set(
-      initialItems.flatMap((item) =>
-        item.itemType !== "tool" && item.runUsageId !== null
-          ? [item.runUsageId]
-          : []
-      )
-    );
-    for (const usage of runUsages) {
-      if (representedRunUsageIds.has(usage.runUsageModelId)) {
-        continue;
+
+    const usageByActionId = resolveEmittingUsageByActionId({
+      evidence,
+      actions,
+      runs: runEvidence.runs,
+      runUsages: runEvidence.runUsages,
+      existingItems,
+    });
+    const records = await buildAttributionRecords(auth, {
+      actions,
+      runUsages: runEvidence.runUsages,
+      usageByActionId,
+      existingItems,
+      directToolCreditAmounts,
+      messageStatus,
+    });
+
+    await AgentMessageConsumptionItemResource.insertCompletedItemsIdempotently(
+      auth,
+      {
+        conversation,
+        agentMessageModelId: creditContext.agentMessageModelId,
+        attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        records: records.completedItems,
       }
-      await AgentMessageConsumptionItemResource.createIdempotently(
+    );
+    for (const item of records.pendingToolItems) {
+      await AgentMessageConsumptionItemResource.insertPendingToolItemIdempotently(
         auth,
-        buildPendingRunAttributionItems({
-          conversationModelId: creditContext.conversationModelId,
-          agentMessageModelId: creditContext.agentMessageModelId,
-          usage,
-        })
+        {
+          conversation,
+          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          item,
+        }
       );
     }
-    const itemActionIds = new Set(
-      initialItems.flatMap((item) =>
-        item.agentMCPActionId ? [item.agentMCPActionId] : []
-      )
-    );
-    const sandboxChildActions = actions.filter(
-      (action) =>
-        !itemActionIds.has(action.id) &&
-        isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
-    );
-    await AgentMessageConsumptionItemResource.createIdempotently(
-      auth,
-      sandboxChildActions.map((action) => ({
-        conversationId: creditContext.conversationModelId,
-        agentMessageId: creditContext.agentMessageModelId,
-        runUsageId: null,
-        agentMCPActionId: action.id,
-        itemKey: `tool-action:${action.id}`,
-        itemType: "tool" as const,
-        attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-        inputTokensCount: null,
-        outputTokensCount: null,
-        grossAttributedCreditAmountMicro: 0,
-        directCreditAmountMicro: null,
-        completedAt: null,
-      }))
-    );
-
-    const items =
-      sandboxChildActions.length > 0 ||
-      representedRunUsageIds.size < runUsages.length
-        ? await AgentMessageConsumptionItemResource.listByAgentMessage(auth, {
-            agentMessageModelId: creditContext.agentMessageModelId,
-            attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-          })
-        : initialItems;
-    const actionByModelId = new Map(
-      actions.map((action) => [action.id, action])
-    );
-    const directCreditByActionId = new Map(
-      directToolCreditAmounts.map((item) => [
-        item.actionModelId,
-        item.directCreditAmountMicro,
-      ])
-    );
-    let firstError: Error | null = null;
-    const failedRunUsageIds = new Set<ModelId>();
-    for (const usage of runUsages) {
-      const result = await materializeModelCallAttribution(auth, {
-        usage,
-        items,
-        actionByModelId,
-      });
-      if (result.isErr() && firstError === null) {
-        firstError = result.error;
-      }
-      if (result.isErr()) {
-        failedRunUsageIds.add(usage.runUsageModelId);
-      }
+    for (const item of records.completedPendingTools) {
+      await AgentMessageConsumptionItemResource.completePendingToolItemIdempotently(
+        auth,
+        {
+          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          item,
+        }
+      );
     }
-    const toolItemByActionId = new Map(
-      items.flatMap((item) =>
+
+    const storedItems =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [creditContext.agentMessageModelId],
+          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+    const storedToolItemByActionId = new Map(
+      storedItems.flatMap((item) =>
         item.itemType === "tool" && item.agentMCPActionId !== null
-          ? [[item.agentMCPActionId, item] as const]
+          ? ([[item.agentMCPActionId, item] as const] as const)
           : []
       )
     );
-    for (const action of actions) {
-      const toolItem = toolItemByActionId.get(action.id);
-      if (
-        toolItem?.runUsageId !== null &&
-        toolItem?.runUsageId !== undefined &&
-        failedRunUsageIds.has(toolItem.runUsageId)
-      ) {
-        continue;
-      }
-      const result = await recordAgentMessageToolActionAttribution(auth, {
-        agentMessageId,
-        action,
-        directCreditAmountMicro: directCreditByActionId.get(action.id),
-      });
-      if (result.isErr() && firstError === null) {
-        firstError = result.error;
-      }
+    const completedActionIds = new Set(
+      directToolCreditAmounts.map(({ actionModelId }) => actionModelId)
+    );
+    const isUnresumableMessage =
+      messageStatus !== null &&
+      UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(messageStatus);
+    if (
+      runEvidence.runUsages.some(
+        (usage) => !hasCompleteRunAttribution({ usage, items: storedItems })
+      ) ||
+      actions.some((action) => {
+        const item = storedToolItemByActionId.get(action.id);
+        return (
+          !item ||
+          ((completedActionIds.has(action.id) || isUnresumableMessage) &&
+            item.completedAt === null)
+        );
+      })
+    ) {
+      return new Err(new Error("Consumption attribution is incomplete"));
     }
 
-    return firstError ? new Err(firstError) : new Ok(undefined);
+    return new Ok(undefined);
   } catch (error) {
     return new Err(normalizeError(error));
   }
@@ -658,20 +555,20 @@ export async function getAgentMessageConsumptionAttribution(
       return new Ok(null);
     }
 
-    const [items, actions, runUsageEvidence] = await Promise.all([
-      AgentMessageConsumptionItemResource.listByAgentMessage(auth, {
-        agentMessageModelId: creditContext.agentMessageModelId,
+    const [items, actions, runEvidence] = await Promise.all([
+      AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+        agentMessageModelIds: [creditContext.agentMessageModelId],
         attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
       }),
       AgentMCPActionResource.listByAgentMessageIds(auth, [
         creditContext.agentMessageModelId,
       ]),
-      listRunUsagesForMessage(auth, creditContext.runIds),
+      listRunEvidenceForMessage(auth, creditContext.runIds),
     ]);
-    if (!runUsageEvidence.hasAllRuns) {
+    if (!runEvidence.hasAllRuns) {
       return new Ok(null);
     }
-    const { runUsages } = runUsageEvidence;
+    const { runUsages } = runEvidence;
     if (items.length === 0 || items.some((item) => item.completedAt === null)) {
       return new Ok(null);
     }

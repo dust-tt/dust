@@ -36,6 +36,6 @@ _Avoid_: Attribution item, billing adjustment row
 
 The attribution module owns semantic partitioning, normalization, cache-naive pricing, completion checks, and the read projection. The resource owns workspace-scoped persistence, idempotency, and pending-to-complete transitions.
 
-An item identity is append-only during normal operation. Evidence fields may be enriched while `completedAt` is null. Once completed, the row is immutable. Owner hard deletion may cascade to attribution rows.
+An item identity is append-only during normal operation. Only a tool item interrupted before execution may be pending. Its emitted-call footprint and run provenance stay fixed while result and direct-credit evidence are added when the tool becomes final. Once completed, the row is immutable. Conversation deletion removes attribution rows explicitly before deleting their owners.
 
-The agent loop returns only the association between an emitted tool action and its `RunUsage`. Temporal carries that evidence to the existing background analytics workflow. Database writes, remote tokenization, and result inspection happen there and retry independently from execution and billing.
+The agent loop returns only the association between an emitted tool action and its `RunUsage`. Temporal carries that evidence, the message lifecycle snapshot, and historical direct-credit evidence to the existing background analytics workflow. Database writes, remote tokenization, and result inspection happen there and retry independently from execution and billing. The lifecycle snapshot prevents a delayed approval materialization from interpreting newer mutable action state as evidence from its own execution.

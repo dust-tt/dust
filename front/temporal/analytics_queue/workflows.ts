@@ -41,6 +41,7 @@ export async function storeAgentAnalyticsWorkflow(
       agentMessageId: agentLoopArgs.agentMessageId,
       evidence: agentLoopArgs.consumptionAttributionEvidence,
       directToolCreditAmounts: agentLoopArgs.directToolCreditAmounts,
+      messageStatus: agentLoopArgs.consumptionAttributionMessageStatus,
     }).catch(() => undefined);
   await Promise.all([
     storeAgentAnalyticsActivity(authType, { agentLoopArgs }),

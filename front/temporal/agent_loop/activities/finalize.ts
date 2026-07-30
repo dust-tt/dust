@@ -32,9 +32,10 @@ async function launchAnalyticsAfterCredits(
     typeof computeAndStoreAgentMessageCreditsWithBreakdown
   >
 ): Promise<void> {
-  const { directToolCreditAmounts } = await creditsPromise;
+  const { agentMessageStatus, directToolCreditAmounts } = await creditsPromise;
   await launchAgentMessageAnalytics(auth, {
     ...agentLoopArgs,
+    consumptionAttributionMessageStatus: agentMessageStatus,
     directToolCreditAmounts,
   });
 }

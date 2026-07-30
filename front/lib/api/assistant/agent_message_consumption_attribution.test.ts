@@ -1,7 +1,6 @@
 import {
   getAgentMessageConsumptionAttribution,
   materializeAgentMessageConsumptionAttribution,
-  recordAgentMessageModelCallEvidence,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
@@ -13,7 +12,6 @@ import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import { RunUsageModel } from "@app/lib/resources/storage/models/runs";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -40,7 +38,7 @@ describe("agent message consumption attribution", () => {
     vi.mocked(tokenCountForTexts).mockReset();
   });
 
-  it("materializes a complete, idempotent model attribution", async () => {
+  it("inserts a complete model attribution once", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
     const conversation = await ConversationFactory.create(auth, {
@@ -56,35 +54,20 @@ describe("agent message consumption attribution", () => {
       completionTokens: 20,
       reasoningTokens: 5,
     });
-
     await attachRunToMessage(agentMessage, run.dustRunId, workspace.id);
 
-    const firstResult = await recordAgentMessageModelCallEvidence(auth, {
-      agentMessageId: agentMessage.sId,
-      dustRunId: run.dustRunId,
-      actionModelIds: [],
-    });
-    const secondResult = await recordAgentMessageModelCallEvidence(auth, {
-      agentMessageId: agentMessage.sId,
-      dustRunId: run.dustRunId,
-      actionModelIds: [],
-    });
+    const firstResult = await materializeAgentMessageConsumptionAttribution(
+      auth,
+      { agentMessageId: agentMessage.sId }
+    );
+    const secondResult = await materializeAgentMessageConsumptionAttribution(
+      auth,
+      { agentMessageId: agentMessage.sId }
+    );
 
     expect(firstResult.isOk()).toBe(true);
     expect(secondResult.isOk()).toBe(true);
-    const materializeResult =
-      await materializeAgentMessageConsumptionAttribution(auth, {
-        agentMessageId: agentMessage.sId,
-      });
-    expect(materializeResult.isOk()).toBe(true);
-
-    const items = await AgentMessageConsumptionItemResource.listByAgentMessage(
-      auth,
-      {
-        agentMessageModelId: agentMessage.agentMessageId,
-        attributionVersion: 1,
-      }
-    );
+    const items = await listItems(auth, agentMessage.agentMessageId);
     expect(items).toHaveLength(3);
     expect(items.map((item) => item.itemType)).toEqual([
       "input",
@@ -100,6 +83,7 @@ describe("agent message consumption attribution", () => {
     expect(
       items.find((item) => item.itemType === "reasoning")?.outputTokensCount
     ).toBe(5);
+    expect(items.every((item) => item.completedAt !== null)).toBe(true);
 
     const readResult = await getAgentMessageConsumptionAttribution(auth, {
       agentMessageId: agentMessage.sId,
@@ -108,14 +92,10 @@ describe("agent message consumption attribution", () => {
     if (readResult.isErr()) {
       throw readResult.error;
     }
-    expect(readResult.value).not.toBeNull();
     expect(readResult.value?.items).toHaveLength(3);
-    expect(readResult.value?.grossAttributedCreditAmountMicro).toBeGreaterThan(
-      0
-    );
   });
 
-  it("uses the model boundary for tool input and output token semantics", async () => {
+  it("maps tool input to its result and output to its emitted call", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: generateRandomModelSId(),
@@ -132,58 +112,33 @@ describe("agent message consumption attribution", () => {
       completionTokens: 20,
       reasoningTokens: 5,
     });
-
     await attachRunToMessage(agentMessage, run.dustRunId, workspace.id);
+    await createToolOutput(workspace.id, action.id);
     vi.mocked(tokenCountForTexts)
       .mockResolvedValueOnce(new Ok([8]))
       .mockResolvedValueOnce(new Ok([12]));
 
-    const modelResult = await recordAgentMessageModelCallEvidence(auth, {
+    const result = await materializeAgentMessageConsumptionAttribution(auth, {
       agentMessageId: agentMessage.sId,
-      dustRunId: run.dustRunId,
-      actionModelIds: [action.id],
+      evidence: [emittingEvidence(run, [action])],
+      directToolCreditAmounts: [
+        { actionModelId: action.id, directCreditAmountMicro: 3_000_000 },
+      ],
     });
-    expect(modelResult.isOk()).toBe(true);
-
-    await AgentMCPActionOutputItemModel.create({
-      workspaceId: workspace.id,
-      agentMCPActionId: action.id,
-      content: { type: "text", text: "tool result" },
-      contentGcsPath: null,
-      fileId: null,
-      citations: null,
-      generatedFilePath: null,
-      generatedFileContentType: null,
-    });
-
-    const toolResult = await materializeAgentMessageConsumptionAttribution(
-      auth,
-      {
-        agentMessageId: agentMessage.sId,
-        directToolCreditAmounts: [
-          { actionModelId: action.id, directCreditAmountMicro: 3_000_000 },
-        ],
-      }
-    );
-    if (toolResult.isErr()) {
-      throw toolResult.error;
+    if (result.isErr()) {
+      throw result.error;
     }
 
-    const items = await AgentMessageConsumptionItemResource.listByAgentMessage(
-      auth,
-      {
-        agentMessageModelId: agentMessage.agentMessageId,
-        attributionVersion: 1,
-      }
-    );
+    const items = await listItems(auth, agentMessage.agentMessageId);
     const toolItem = items.find((item) => item.itemType === "tool");
     expect(toolItem).toMatchObject({
       inputTokensCount: 12,
       outputTokensCount: 8,
+      directCreditAmountMicro: 3_000_000,
     });
     expect(toolItem?.completedAt).not.toBeNull();
     expect(toolItem?.grossAttributedCreditAmountMicro).toBeGreaterThanOrEqual(
-      toolItem?.directCreditAmountMicro ?? 0
+      3_000_000
     );
 
     const tokenizedToolCall: unknown = JSON.parse(
@@ -200,12 +155,9 @@ describe("agent message consumption attribution", () => {
       name: "test_tool",
       result: [{ type: "text", text: "tool result" }],
     });
-
-    const outputTokensCount = items.reduce(
-      (total, item) => total + (item.outputTokensCount ?? 0),
-      0
-    );
-    expect(outputTokensCount).toBe(20);
+    expect(
+      items.reduce((total, item) => total + (item.outputTokensCount ?? 0), 0)
+    ).toBe(20);
 
     const readResult = await getAgentMessageConsumptionAttribution(auth, {
       agentMessageId: agentMessage.sId,
@@ -223,13 +175,11 @@ describe("agent message consumption attribution", () => {
         actionId: action.sId,
         displayName: "Test Tool",
         functionCallName: "test_tool",
-        internalMCPServerName: null,
-        toolName: "test_tool",
       },
     });
   });
 
-  it("normalizes parallel tool calls together within the provider completion total", async () => {
+  it("normalizes parallel tool calls within the provider completion total", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: generateRandomModelSId(),
@@ -239,6 +189,7 @@ describe("agent message consumption attribution", () => {
       await AgentMCPActionFactory.createWithAgentMessage(auth, {
         workspace,
         conversation,
+        status: "succeeded",
       });
     const remainingActions: AgentMCPActionResource[] = [];
     for (let index = 0; index < 4; index++) {
@@ -246,6 +197,7 @@ describe("agent message consumption attribution", () => {
         workspace,
         conversationModelId: conversation.id,
         agentMessageModelId: agentMessage.agentMessageId,
+        status: "succeeded",
       });
       remainingActions.push(action);
     }
@@ -255,36 +207,23 @@ describe("agent message consumption attribution", () => {
       completionTokens: 25,
       reasoningTokens: 5,
     });
+    await attachRunToMessage(agentMessage, run.dustRunId, workspace.id);
     vi.mocked(tokenCountForTexts).mockResolvedValueOnce(
       new Ok([10, 10, 10, 10, 10])
     );
-    await attachRunToMessage(agentMessage, run.dustRunId, workspace.id);
 
-    const result = await recordAgentMessageModelCallEvidence(auth, {
+    const result = await materializeAgentMessageConsumptionAttribution(auth, {
       agentMessageId: agentMessage.sId,
-      dustRunId: run.dustRunId,
-      actionModelIds: actions.map((action) => action.id),
+      evidence: [emittingEvidence(run, actions)],
+      directToolCreditAmounts: actions.map((action) => ({
+        actionModelId: action.id,
+        directCreditAmountMicro: null,
+      })),
     });
     expect(result.isOk()).toBe(true);
-    const materializeResult =
-      await materializeAgentMessageConsumptionAttribution(auth, {
-        agentMessageId: agentMessage.sId,
-        directToolCreditAmounts: actions.map((action) => ({
-          actionModelId: action.id,
-          directCreditAmountMicro: 3_000_000,
-        })),
-      });
-    expect(materializeResult.isOk()).toBe(true);
 
-    const items = await AgentMessageConsumptionItemResource.listByAgentMessage(
-      auth,
-      {
-        agentMessageModelId: agentMessage.agentMessageId,
-        attributionVersion: 1,
-      }
-    );
+    const items = await listItems(auth, agentMessage.agentMessageId);
     const toolItems = items.filter((item) => item.itemType === "tool");
-    expect(toolItems).toHaveLength(5);
     expect(toolItems.map((item) => item.outputTokensCount)).toEqual([
       4, 4, 4, 4, 4,
     ]);
@@ -293,7 +232,174 @@ describe("agent message consumption attribution", () => {
     ).toBe(25);
   });
 
-  it("completes a denied tool without inventing result input tokens", async () => {
+  it("preserves approval evidence when the tool advances before analytics", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: generateRandomModelSId(),
+      messagesCreatedAt: [],
+    });
+    const { agentMessage, action } =
+      await AgentMCPActionFactory.createWithAgentMessage(auth, {
+        workspace,
+        conversation,
+        status: "blocked_validation_required",
+      });
+    const run = await createRunWithUsage(auth, workspace.id, {
+      promptTokens: 100,
+      completionTokens: 20,
+      reasoningTokens: 5,
+    });
+    await attachRunToMessage(agentMessage, run.dustRunId, workspace.id);
+    vi.mocked(tokenCountForTexts).mockResolvedValue(new Ok([8]));
+    await AgentMCPActionModel.update(
+      { status: "succeeded" },
+      { where: { id: action.id, workspaceId: workspace.id } }
+    );
+
+    const firstResult = await materializeAgentMessageConsumptionAttribution(
+      auth,
+      {
+        agentMessageId: agentMessage.sId,
+        evidence: [emittingEvidence(run, [action])],
+      }
+    );
+    expect(firstResult.isOk()).toBe(true);
+    const pendingItems = await listItems(auth, agentMessage.agentMessageId);
+    expect(
+      pendingItems.filter((item) => item.completedAt === null)
+    ).toHaveLength(1);
+    expect(
+      pendingItems.find((item) => item.completedAt === null)
+    ).toMatchObject({
+      itemType: "tool",
+      inputTokensCount: null,
+      outputTokensCount: 8,
+      directCreditAmountMicro: null,
+    });
+
+    await createToolOutput(workspace.id, action.id);
+    vi.mocked(tokenCountForTexts)
+      .mockReset()
+      .mockResolvedValueOnce(new Ok([12]));
+    const resumedResult = await materializeAgentMessageConsumptionAttribution(
+      auth,
+      {
+        agentMessageId: agentMessage.sId,
+        directToolCreditAmounts: [
+          { actionModelId: action.id, directCreditAmountMicro: null },
+        ],
+      }
+    );
+    expect(resumedResult.isOk()).toBe(true);
+
+    const completedItems = await listItems(auth, agentMessage.agentMessageId);
+    expect(completedItems.filter((item) => item.completedAt === null)).toEqual(
+      []
+    );
+    expect(
+      completedItems.find((item) => item.itemType === "tool")
+    ).toMatchObject({
+      inputTokensCount: 12,
+      outputTokensCount: 8,
+    });
+    expect(tokenCountForTexts).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not write partial facts when tokenization fails", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: generateRandomModelSId(),
+      messagesCreatedAt: [],
+    });
+    const { agentMessage, action } =
+      await AgentMCPActionFactory.createWithAgentMessage(auth, {
+        workspace,
+        conversation,
+        status: "succeeded",
+      });
+    const run = await createRunWithUsage(auth, workspace.id, {
+      promptTokens: 100,
+      completionTokens: 20,
+      reasoningTokens: 5,
+    });
+    await attachRunToMessage(agentMessage, run.dustRunId, workspace.id);
+    const evidence = [emittingEvidence(run, [action])];
+    const directToolCreditAmounts = [
+      { actionModelId: action.id, directCreditAmountMicro: null },
+    ];
+    vi.mocked(tokenCountForTexts).mockResolvedValueOnce(
+      new Err(new Error("tokenizer unavailable"))
+    );
+
+    const firstResult = await materializeAgentMessageConsumptionAttribution(
+      auth,
+      { agentMessageId: agentMessage.sId, evidence, directToolCreditAmounts }
+    );
+    expect(firstResult.isErr()).toBe(true);
+    expect(await listItems(auth, agentMessage.agentMessageId)).toEqual([]);
+
+    vi.mocked(tokenCountForTexts).mockResolvedValueOnce(new Ok([8]));
+    const retryResult = await materializeAgentMessageConsumptionAttribution(
+      auth,
+      { agentMessageId: agentMessage.sId, evidence, directToolCreditAmounts }
+    );
+    expect(retryResult.isOk()).toBe(true);
+    expect(await listItems(auth, agentMessage.agentMessageId)).toHaveLength(4);
+  });
+
+  it("completes output-only tools when the message cannot resume", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: generateRandomModelSId(),
+      messagesCreatedAt: [],
+    });
+    const { agentMessage, action } =
+      await AgentMCPActionFactory.createWithAgentMessage(auth, {
+        workspace,
+        conversation,
+        status: "blocked_validation_required",
+      });
+    const run = await createRunWithUsage(auth, workspace.id, {
+      promptTokens: 100,
+      completionTokens: 20,
+      reasoningTokens: 5,
+    });
+    await attachRunToMessage(agentMessage, run.dustRunId, workspace.id);
+    vi.mocked(tokenCountForTexts).mockResolvedValueOnce(new Ok([8]));
+
+    const pendingResult = await materializeAgentMessageConsumptionAttribution(
+      auth,
+      {
+        agentMessageId: agentMessage.sId,
+        evidence: [emittingEvidence(run, [action])],
+        messageStatus: "created",
+      }
+    );
+    expect(pendingResult.isOk()).toBe(true);
+    expect(
+      (await listItems(auth, agentMessage.agentMessageId)).find(
+        (item) => item.itemType === "tool"
+      )?.completedAt
+    ).toBeNull();
+
+    const result = await materializeAgentMessageConsumptionAttribution(auth, {
+      agentMessageId: agentMessage.sId,
+      messageStatus: "cancelled",
+    });
+    expect(result.isOk()).toBe(true);
+
+    const toolItem = (await listItems(auth, agentMessage.agentMessageId)).find(
+      (item) => item.itemType === "tool"
+    );
+    expect(toolItem).toMatchObject({
+      inputTokensCount: null,
+      outputTokensCount: 8,
+      directCreditAmountMicro: null,
+    });
+    expect(toolItem?.completedAt).not.toBeNull();
+  });
+
+  it("completes a denied tool without inventing result input", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: generateRandomModelSId(),
@@ -313,40 +419,28 @@ describe("agent message consumption attribution", () => {
     await attachRunToMessage(agentMessage, run.dustRunId, workspace.id);
     vi.mocked(tokenCountForTexts).mockResolvedValueOnce(new Ok([8]));
 
-    const modelResult = await recordAgentMessageModelCallEvidence(auth, {
+    const result = await materializeAgentMessageConsumptionAttribution(auth, {
       agentMessageId: agentMessage.sId,
-      dustRunId: run.dustRunId,
-      actionModelIds: [action.id],
+      evidence: [emittingEvidence(run, [action])],
+      directToolCreditAmounts: [
+        { actionModelId: action.id, directCreditAmountMicro: null },
+      ],
     });
-    expect(modelResult.isOk()).toBe(true);
+    expect(result.isOk()).toBe(true);
 
-    const completionResult =
-      await materializeAgentMessageConsumptionAttribution(auth, {
-        agentMessageId: agentMessage.sId,
-        directToolCreditAmounts: [
-          { actionModelId: action.id, directCreditAmountMicro: 3_000_000 },
-        ],
-      });
-    expect(completionResult.isOk()).toBe(true);
-
-    const items = await AgentMessageConsumptionItemResource.listByAgentMessage(
-      auth,
-      {
-        agentMessageModelId: agentMessage.agentMessageId,
-        attributionVersion: 1,
-      }
+    const toolItem = (await listItems(auth, agentMessage.agentMessageId)).find(
+      (item) => item.itemType === "tool"
     );
-    expect(items.find((item) => item.itemType === "tool")).toMatchObject({
+    expect(toolItem).toMatchObject({
       inputTokensCount: null,
       outputTokensCount: 8,
+      directCreditAmountMicro: null,
     });
-    expect(
-      items.find((item) => item.itemType === "tool")?.completedAt
-    ).not.toBeNull();
+    expect(toolItem?.completedAt).not.toBeNull();
     expect(tokenCountForTexts).toHaveBeenCalledTimes(1);
   });
 
-  it("does not complete a tool before a failed model partition can retry", async () => {
+  it("rejects emitting run evidence owned by another message", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: generateRandomModelSId(),
@@ -356,124 +450,21 @@ describe("agent message consumption attribution", () => {
       await AgentMCPActionFactory.createWithAgentMessage(auth, {
         workspace,
         conversation,
-        status: "succeeded",
       });
-    const run = await createRunWithUsage(auth, workspace.id, {
-      promptTokens: 100,
-      completionTokens: 20,
-      reasoningTokens: 5,
-    });
-    await attachRunToMessage(agentMessage, run.dustRunId, workspace.id);
-    const evidenceResult = await recordAgentMessageModelCallEvidence(auth, {
-      agentMessageId: agentMessage.sId,
-      dustRunId: run.dustRunId,
-      actionModelIds: [action.id],
-    });
-    expect(evidenceResult.isOk()).toBe(true);
-    vi.mocked(tokenCountForTexts)
-      .mockResolvedValueOnce(new Err(new Error("tokenizer unavailable")))
-      .mockResolvedValueOnce(new Ok([8]));
-
-    const directToolCreditAmounts = [
-      { actionModelId: action.id, directCreditAmountMicro: 3_000_000 },
-    ];
-    const firstResult = await materializeAgentMessageConsumptionAttribution(
-      auth,
-      { agentMessageId: agentMessage.sId, directToolCreditAmounts }
-    );
-    expect(firstResult.isErr()).toBe(true);
-    const pendingItem = await AgentMessageConsumptionItemResource.findToolItem(
-      auth,
-      {
-        agentMCPActionModelId: action.id,
-        attributionVersion: 1,
-      }
-    );
-    expect(pendingItem?.completedAt).toBeNull();
-    expect(pendingItem?.outputTokensCount).toBeNull();
-
-    const retryResult = await materializeAgentMessageConsumptionAttribution(
-      auth,
-      { agentMessageId: agentMessage.sId, directToolCreditAmounts }
-    );
-    expect(retryResult.isOk()).toBe(true);
-    const completedItem =
-      await AgentMessageConsumptionItemResource.findToolItem(auth, {
-        agentMCPActionModelId: action.id,
-        attributionVersion: 1,
-      });
-    expect(completedItem?.completedAt).not.toBeNull();
-    expect(completedItem?.outputTokensCount).toBe(8);
-  });
-
-  it("rebuilds model-only attribution in the background", async () => {
-    const { authenticator: auth, workspace } = await createResourceTest({});
-    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agentConfig.sId,
-      messagesCreatedAt: [],
-    });
-    const { agentMessage } = await ConversationFactory.createAgentMessage(
-      auth,
-      { workspace, conversation, agentConfig }
-    );
-    const run = await createRunWithUsage(auth, workspace.id, {
-      promptTokens: 50,
-      completionTokens: 10,
-      reasoningTokens: 2,
-    });
-    await attachRunToMessage(agentMessage, run.dustRunId, workspace.id);
-
-    const result = await materializeAgentMessageConsumptionAttribution(auth, {
-      agentMessageId: agentMessage.sId,
-    });
-    expect(result.isOk()).toBe(true);
-
-    const readResult = await getAgentMessageConsumptionAttribution(auth, {
-      agentMessageId: agentMessage.sId,
-    });
-    expect(readResult.isOk() && readResult.value).not.toBeNull();
-  });
-
-  it("rejects a run owned by another agent message", async () => {
-    const { authenticator: auth, workspace } = await createResourceTest({});
-    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agentConfig.sId,
-      messagesCreatedAt: [],
-    });
-    const { agentMessage: firstMessage } =
-      await ConversationFactory.createAgentMessage(auth, {
-        workspace,
-        conversation,
-        agentConfig,
-      });
-    const secondConversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agentConfig.sId,
-      messagesCreatedAt: [],
-    });
-    const { agentMessage: secondMessage } =
-      await ConversationFactory.createAgentMessage(auth, {
-        workspace,
-        conversation: secondConversation,
-        agentConfig,
-      });
-    const run = await createRunWithUsage(auth, workspace.id, {
+    const foreignRun = await createRunWithUsage(auth, workspace.id, {
       promptTokens: 50,
       completionTokens: 10,
       reasoningTokens: 0,
     });
-    await attachRunToMessage(secondMessage, run.dustRunId, workspace.id);
 
-    const result = await recordAgentMessageModelCallEvidence(auth, {
-      agentMessageId: firstMessage.sId,
-      dustRunId: run.dustRunId,
-      actionModelIds: [],
+    const result = await materializeAgentMessageConsumptionAttribution(auth, {
+      agentMessageId: agentMessage.sId,
+      evidence: [emittingEvidence(foreignRun, [action])],
     });
     expect(result.isErr()).toBe(true);
   });
 
-  it("attributes sandbox child actions without an emitting model usage", async () => {
+  it("attributes a sandbox child action without an emitting model usage", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: generateRandomModelSId(),
@@ -503,24 +494,18 @@ describe("agent message consumption attribution", () => {
     });
     expect(result.isOk()).toBe(true);
 
-    const items = await AgentMessageConsumptionItemResource.listByAgentMessage(
-      auth,
-      {
-        agentMessageModelId: agentMessage.agentMessageId,
-        attributionVersion: 1,
-      }
-    );
+    const items = await listItems(auth, agentMessage.agentMessageId);
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({
       itemType: "tool",
       runUsageId: null,
       inputTokensCount: null,
       outputTokensCount: null,
+      directCreditAmountMicro: 3_000_000,
     });
-    expect(items[0].completedAt).not.toBeNull();
   });
 
-  it("cascades attribution when its run usage is hard deleted", async () => {
+  it("prevents non-tool pending rows at the ORM boundary", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
     const conversation = await ConversationFactory.create(auth, {
@@ -532,28 +517,66 @@ describe("agent message consumption attribution", () => {
       { workspace, conversation, agentConfig }
     );
     const run = await createRunWithUsage(auth, workspace.id, {
-      promptTokens: 50,
-      completionTokens: 10,
+      promptTokens: 10,
+      completionTokens: 5,
       reasoningTokens: 0,
     });
-    await attachRunToMessage(agentMessage, run.dustRunId, workspace.id);
-    const materializeResult =
-      await materializeAgentMessageConsumptionAttribution(auth, {
-        agentMessageId: agentMessage.sId,
-      });
-    expect(materializeResult.isOk()).toBe(true);
-
-    await RunUsageModel.destroy({
-      where: { runId: run.id, workspaceId: workspace.id },
+    const [usage] = await RunResource.listRunUsagesForRuns(auth, {
+      runs: [run],
     });
-    const remainingItems =
-      await AgentMessageConsumptionItemResource.listByAgentMessage(auth, {
-        agentMessageModelId: agentMessage.agentMessageId,
+    if (!usage) {
+      throw new Error("Run usage not found");
+    }
+
+    await expect(
+      AgentMessageConsumptionItemResource.model.create({
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        agentMessageId: agentMessage.agentMessageId,
+        runUsageId: usage.runUsageModelId,
+        agentMCPActionId: null,
+        itemKey: `run-usage:${usage.runUsageModelId}:input`,
+        itemType: "input",
         attributionVersion: 1,
-      });
-    expect(remainingItems).toHaveLength(0);
+        inputTokensCount: 10,
+        outputTokensCount: null,
+        grossAttributedCreditAmountMicro: 1,
+        directCreditAmountMicro: null,
+        completedAt: null,
+      })
+    ).rejects.toThrow("Only tool attribution items may be pending");
   });
 });
+
+function emittingEvidence(run: RunResource, actions: AgentMCPActionResource[]) {
+  return {
+    dustRunId: run.dustRunId,
+    actionModelIds: actions.map((action) => action.id),
+  };
+}
+
+async function listItems(auth: Authenticator, agentMessageModelId: ModelId) {
+  return AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+    agentMessageModelIds: [agentMessageModelId],
+    attributionVersion: 1,
+  });
+}
+
+async function createToolOutput(
+  workspaceModelId: ModelId,
+  actionModelId: ModelId
+): Promise<void> {
+  await AgentMCPActionOutputItemModel.create({
+    workspaceId: workspaceModelId,
+    agentMCPActionId: actionModelId,
+    content: { type: "text", text: "tool result" },
+    contentGcsPath: null,
+    fileId: null,
+    citations: null,
+    generatedFilePath: null,
+    generatedFileContentType: null,
+  });
+}
 
 async function createRunWithUsage(
   auth: Authenticator,

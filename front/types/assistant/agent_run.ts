@@ -20,6 +20,7 @@ import type {
   GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import type {
+  AgentMessageStatus,
   AgentMessageType,
   ConversationType,
   UserMessageOrigin,
@@ -135,6 +136,8 @@ export type AgentLoopArgs = {
 
   consumptionAttributionEvidence?: AgentMessageConsumptionEvidence[];
   directToolCreditAmounts?: AgentMessageDirectToolCreditAmount[];
+  consumptionAttributionMessageStatus?: AgentMessageStatus | null;
+  agentLoopExecutionId?: string;
 };
 
 export type AgentMessageConsumptionEvidence = {

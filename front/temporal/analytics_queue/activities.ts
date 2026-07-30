@@ -9,10 +9,7 @@ import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_action
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
-import {
-  materializeAgentMessageConsumptionAttribution,
-  recordAgentMessageModelCallEvidence,
-} from "@app/lib/api/assistant/agent_message_consumption_attribution";
+import { materializeAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import {
   AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,
@@ -164,25 +161,20 @@ export async function materializeAgentMessageConsumptionAttributionActivity(
     agentMessageId,
     evidence,
     directToolCreditAmounts,
+    messageStatus,
   }: {
     agentMessageId: string;
     evidence: AgentLoopArgs["consumptionAttributionEvidence"];
     directToolCreditAmounts: AgentLoopArgs["directToolCreditAmounts"];
+    messageStatus: AgentLoopArgs["consumptionAttributionMessageStatus"];
   }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
-  for (const modelCallEvidence of evidence ?? []) {
-    const evidenceResult = await recordAgentMessageModelCallEvidence(auth, {
-      agentMessageId,
-      ...modelCallEvidence,
-    });
-    if (evidenceResult.isErr()) {
-      throw evidenceResult.error;
-    }
-  }
   const result = await materializeAgentMessageConsumptionAttribution(auth, {
     agentMessageId,
+    evidence,
     directToolCreditAmounts,
+    messageStatus,
   });
   if (result.isErr()) {
     throw result.error;

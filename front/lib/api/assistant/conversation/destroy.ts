@@ -17,6 +17,7 @@ import {
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
@@ -257,6 +258,10 @@ export async function destroyConversation(
         })
       );
 
+      await AgentMessageConsumptionItemResource.deleteByAgentMessageModelIds(
+        auth,
+        { agentMessageModelIds: agentMessageIds }
+      );
       await destroyActionsRelatedResources(auth, agentMessageIds);
 
       await UserMessageModel.destroy({

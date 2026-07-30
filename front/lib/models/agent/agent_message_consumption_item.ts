@@ -1,16 +1,16 @@
-import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import {
   AgentMessageModel,
   ConversationModel,
 } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
-import { RunUsageModel } from "@app/lib/resources/storage/models/runs";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import {
   AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES,
   type AgentMessageConsumptionItemType,
 } from "@app/types/assistant/agent_message_consumption";
+import type { ModelId } from "@app/types/shared/model_id";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { Op } from "sequelize";
 
@@ -30,6 +30,18 @@ function validateConsumptionItemShape(
   }
   if (!isTool && this.directCreditAmountMicro !== null) {
     throw new Error("Only tool attribution items may contain direct credits");
+  }
+  if (!isTool && this.completedAt === null) {
+    throw new Error("Only tool attribution items may be pending");
+  }
+  if (
+    isTool &&
+    this.completedAt === null &&
+    (this.inputTokensCount !== null || this.directCreditAmountMicro !== null)
+  ) {
+    throw new Error(
+      "Pending tool attribution items cannot contain result or direct credit evidence"
+    );
   }
   if (
     this.directCreditAmountMicro !== null &&
@@ -53,6 +65,9 @@ function validateConsumptionItemShape(
       break;
     case "tool":
       break;
+
+    default:
+      assertNever(this.itemType);
   }
 }
 
@@ -62,8 +77,8 @@ export class AgentMessageConsumptionItemModel extends WorkspaceAwareModel<AgentM
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
-  declare runUsageId: ForeignKey<RunUsageModel["id"]> | null;
-  declare agentMCPActionId: ForeignKey<AgentMCPActionModel["id"]> | null;
+  declare runUsageId: ModelId | null;
+  declare agentMCPActionId: ModelId | null;
   declare itemKey: string;
   declare itemType: AgentMessageConsumptionItemType;
   declare attributionVersion: number;
@@ -105,18 +120,10 @@ AgentMessageConsumptionItemModel.init(
     runUsageId: {
       type: DataTypes.BIGINT,
       allowNull: true,
-      references: {
-        model: RunUsageModel,
-        key: "id",
-      },
     },
     agentMCPActionId: {
       type: DataTypes.BIGINT,
       allowNull: true,
-      references: {
-        model: AgentMCPActionModel,
-        key: "id",
-      },
     },
     itemKey: {
       type: DataTypes.STRING(256),
@@ -177,24 +184,11 @@ AgentMessageConsumptionItemModel.init(
       },
       {
         concurrently: true,
-        fields: ["workspaceId", "conversationId", "agentMessageId"],
-        name: "agent_message_consumption_items_conversation_message",
-      },
-      {
-        concurrently: true,
         fields: ["conversationId"],
       },
       {
         concurrently: true,
         fields: ["agentMessageId"],
-      },
-      {
-        concurrently: true,
-        fields: ["runUsageId"],
-      },
-      {
-        concurrently: true,
-        fields: ["agentMCPActionId"],
       },
       {
         unique: true,
@@ -219,36 +213,18 @@ AgentMessageConsumptionItemModel.init(
 
 ConversationModel.hasMany(AgentMessageConsumptionItemModel, {
   foreignKey: { name: "conversationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentMessageConsumptionItemModel.belongsTo(ConversationModel, {
   foreignKey: { name: "conversationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 
 AgentMessageModel.hasMany(AgentMessageConsumptionItemModel, {
   foreignKey: { name: "agentMessageId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentMessageConsumptionItemModel.belongsTo(AgentMessageModel, {
   foreignKey: { name: "agentMessageId", allowNull: false },
-  onDelete: "CASCADE",
-});
-
-RunUsageModel.hasMany(AgentMessageConsumptionItemModel, {
-  foreignKey: { name: "runUsageId", allowNull: true },
-  onDelete: "CASCADE",
-});
-AgentMessageConsumptionItemModel.belongsTo(RunUsageModel, {
-  foreignKey: { name: "runUsageId", allowNull: true },
-  onDelete: "CASCADE",
-});
-
-AgentMCPActionModel.hasMany(AgentMessageConsumptionItemModel, {
-  foreignKey: { name: "agentMCPActionId", allowNull: true },
-  onDelete: "CASCADE",
-});
-AgentMessageConsumptionItemModel.belongsTo(AgentMCPActionModel, {
-  foreignKey: { name: "agentMCPActionId", allowNull: true },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });

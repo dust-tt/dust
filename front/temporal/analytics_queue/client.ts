@@ -63,6 +63,7 @@ export async function launchStoreAgentAnalyticsWorkflow({
     conversationId,
     dustRunIds,
     startStep,
+    agentLoopExecutionId,
   } = agentLoopArgs;
 
   const client = await getTemporalClientForFrontNamespace();
@@ -71,7 +72,9 @@ export async function launchStoreAgentAnalyticsWorkflow({
     agentMessageId,
     conversationId,
     workspaceId,
-    executionKey: `${agentMessageVersion}-${startStep ?? 0}-${computeRunKey(dustRunIds ?? [])}`,
+    executionKey:
+      agentLoopExecutionId ??
+      `${agentMessageVersion}-${startStep ?? 0}-${computeRunKey(dustRunIds ?? [])}`,
   });
 
   try {

@@ -1,11 +1,10 @@
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import type { AgentMessageConsumptionItemCreate } from "@app/lib/resources/agent_message_consumption_item_resource";
+import type { CompletedAgentMessageConsumptionItem } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type {
   RunResource,
   RunUsageType,
 } from "@app/lib/resources/run_resource";
-import type { ModelId } from "@app/types/shared/model_id";
 
 export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 1;
 const CREDIT_AMOUNT_MICRO_PER_CREDIT = 1_000_000;
@@ -122,70 +121,90 @@ export function serializeToolResultForAttribution({
   });
 }
 
-export function buildPendingRunAttributionItems({
-  conversationModelId,
-  agentMessageModelId,
+export type ToolCallAttributionEvidence = {
+  action: AgentMCPActionResource;
+  runUsageModelId: RunUsageWithIdentity["runUsageModelId"];
+  outputTokensCount: number;
+  grossAttributedCreditAmountMicro: number;
+};
+
+export function buildRunAttribution({
   usage,
+  actions,
+  measuredToolOutputTokensCounts,
 }: {
-  conversationModelId: ModelId;
-  agentMessageModelId: ModelId;
   usage: RunUsageWithIdentity;
-}): AgentMessageConsumptionItemCreate[] {
+  actions: AgentMCPActionResource[];
+  measuredToolOutputTokensCounts: number[];
+}): {
+  completedItems: CompletedAgentMessageConsumptionItem[];
+  toolCallEvidence: ToolCallAttributionEvidence[];
+} {
+  if (actions.length !== measuredToolOutputTokensCounts.length) {
+    throw new Error("Tool actions and token measurements do not match");
+  }
+
   const rates = getRunTokenRates(usage);
   const reasoningTokensCount = usage.reasoningTokens ?? 0;
+  const availableTokensCount = Math.max(
+    usage.completionTokens - reasoningTokensCount,
+    0
+  );
+  const toolOutputTokensCounts = normalizeTokenMeasurements(
+    measuredToolOutputTokensCounts,
+    availableTokensCount
+  );
+  const toolOutputTokensCount = toolOutputTokensCounts.reduce(
+    (total, count) => total + count,
+    0
+  );
+  const outputTokensCount = availableTokensCount - toolOutputTokensCount;
 
-  return [
-    {
-      conversationId: conversationModelId,
-      agentMessageId: agentMessageModelId,
-      runUsageId: usage.runUsageModelId,
-      agentMCPActionId: null,
-      itemKey: `run-usage:${usage.runUsageModelId}:input`,
-      itemType: "input",
-      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-      inputTokensCount: usage.promptTokens,
-      outputTokensCount: null,
-      grossAttributedCreditAmountMicro: attributedCreditsForTokens({
-        tokensCount: usage.promptTokens,
-        costMicroUsdPerToken: rates.inputCostMicroUsdPerToken,
-      }),
-      directCreditAmountMicro: null,
-      completedAt: new Date(),
-    },
-    {
-      conversationId: conversationModelId,
-      agentMessageId: agentMessageModelId,
-      runUsageId: usage.runUsageModelId,
-      agentMCPActionId: null,
-      itemKey: `run-usage:${usage.runUsageModelId}:output`,
-      itemType: "output",
-      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-      inputTokensCount: null,
-      outputTokensCount: null,
-      grossAttributedCreditAmountMicro: 0,
-      directCreditAmountMicro: null,
-      completedAt: null,
-    },
-    ...(usage.reasoningTokens !== null
-      ? [
-          {
-            conversationId: conversationModelId,
-            agentMessageId: agentMessageModelId,
-            runUsageId: usage.runUsageModelId,
-            agentMCPActionId: null,
-            itemKey: `run-usage:${usage.runUsageModelId}:reasoning`,
-            itemType: "reasoning" as const,
-            attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-            inputTokensCount: null,
-            outputTokensCount: reasoningTokensCount,
-            grossAttributedCreditAmountMicro: attributedCreditsForTokens({
-              tokensCount: reasoningTokensCount,
-              costMicroUsdPerToken: rates.outputCostMicroUsdPerToken,
-            }),
-            directCreditAmountMicro: null,
-            completedAt: new Date(),
-          },
-        ]
-      : []),
-  ];
+  return {
+    completedItems: [
+      {
+        itemType: "input",
+        runUsageModelId: usage.runUsageModelId,
+        inputTokensCount: usage.promptTokens,
+        grossAttributedCreditAmountMicro: attributedCreditsForTokens({
+          tokensCount: usage.promptTokens,
+          costMicroUsdPerToken: rates.inputCostMicroUsdPerToken,
+        }),
+      },
+      {
+        itemType: "output",
+        runUsageModelId: usage.runUsageModelId,
+        outputTokensCount,
+        grossAttributedCreditAmountMicro: attributedCreditsForTokens({
+          tokensCount: outputTokensCount,
+          costMicroUsdPerToken: rates.outputCostMicroUsdPerToken,
+        }),
+      },
+      ...(usage.reasoningTokens !== null
+        ? [
+            {
+              itemType: "reasoning" as const,
+              runUsageModelId: usage.runUsageModelId,
+              outputTokensCount: reasoningTokensCount,
+              grossAttributedCreditAmountMicro: attributedCreditsForTokens({
+                tokensCount: reasoningTokensCount,
+                costMicroUsdPerToken: rates.outputCostMicroUsdPerToken,
+              }),
+            },
+          ]
+        : []),
+    ],
+    toolCallEvidence: actions.map((action, index) => {
+      const outputTokensCount = toolOutputTokensCounts[index];
+      return {
+        action,
+        runUsageModelId: usage.runUsageModelId,
+        outputTokensCount,
+        grossAttributedCreditAmountMicro: attributedCreditsForTokens({
+          tokensCount: outputTokensCount,
+          costMicroUsdPerToken: rates.outputCostMicroUsdPerToken,
+        }),
+      };
+    }),
+  };
 }

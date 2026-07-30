@@ -1,22 +1,75 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-export type AgentMessageConsumptionItemCreate = Omit<
-  CreationAttributes<AgentMessageConsumptionItemModel>,
-  "workspaceId"
+interface ConsumptionItemEvidenceBase {
+  grossAttributedCreditAmountMicro: number;
+}
+
+export type CompletedAgentMessageConsumptionItem =
+  | (ConsumptionItemEvidenceBase & {
+      itemType: "system" | "input";
+      runUsageModelId: ModelId;
+      inputTokensCount: number | null;
+    })
+  | (ConsumptionItemEvidenceBase & {
+      itemType: "output" | "reasoning";
+      runUsageModelId: ModelId;
+      outputTokensCount: number | null;
+    })
+  | CompletedToolConsumptionItem;
+
+export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
+  itemType: "tool";
+  runUsageModelId: ModelId | null;
+  action: AgentMCPActionResource;
+  /** Estimated tokens in the result returned by this tool execution */
+  inputTokensCount: number | null;
+  /** Estimated tokens in the model output that emitted the tool name and arguments */
+  outputTokensCount: number | null;
+  directCreditAmountMicro: number | null;
+};
+
+export type PendingToolConsumptionCompletion = ConsumptionItemEvidenceBase & {
+  action: AgentMCPActionResource;
+  /** Estimated tokens in the result returned by this tool execution */
+  inputTokensCount: number | null;
+  directCreditAmountMicro: number | null;
+};
+
+export type PendingToolConsumptionItem = ConsumptionItemEvidenceBase & {
+  action: AgentMCPActionResource;
+  runUsageModelId: ModelId | null;
+  /** Estimated tokens in the model output that emitted the tool name and arguments */
+  outputTokensCount: number | null;
+};
+
+type ConsumptionItemEvidenceAttributes = Pick<
+  Attributes<AgentMessageConsumptionItemModel>,
+  | "inputTokensCount"
+  | "outputTokensCount"
+  | "grossAttributedCreditAmountMicro"
+  | "directCreditAmountMicro"
 >;
 
+type ConsumptionItemCreationAttributes =
+  CreationAttributes<AgentMessageConsumptionItemModel>;
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMessageConsumptionItemResource
   extends ReadonlyAttributesType<AgentMessageConsumptionItemModel> {}
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessageConsumptionItemModel> {
   static model: ModelStaticWorkspaceAware<AgentMessageConsumptionItemModel> =
     AgentMessageConsumptionItemModel;
@@ -28,252 +81,290 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     super(model, blob);
   }
 
-  async delete(): Promise<Result<undefined, Error>> {
-    return new Err(
-      new Error("Agent message consumption items cannot be deleted directly")
-    );
+  private static itemKey(record: CompletedAgentMessageConsumptionItem): string {
+    switch (record.itemType) {
+      case "system":
+      case "input":
+      case "output":
+      case "reasoning":
+        return `run-usage:${record.runUsageModelId}:${record.itemType}`;
+
+      case "tool":
+        return `tool-action:${record.action.id}`;
+
+      default:
+        return assertNever(record);
+    }
   }
 
-  static async createIdempotently(
+  private static evidenceAttributes(
+    record: CompletedAgentMessageConsumptionItem
+  ): ConsumptionItemEvidenceAttributes {
+    switch (record.itemType) {
+      case "system":
+      case "input":
+        return {
+          inputTokensCount: record.inputTokensCount,
+          outputTokensCount: null,
+          grossAttributedCreditAmountMicro:
+            record.grossAttributedCreditAmountMicro,
+          directCreditAmountMicro: null,
+        };
+
+      case "output":
+      case "reasoning":
+        return {
+          inputTokensCount: null,
+          outputTokensCount: record.outputTokensCount,
+          grossAttributedCreditAmountMicro:
+            record.grossAttributedCreditAmountMicro,
+          directCreditAmountMicro: null,
+        };
+
+      case "tool":
+        return {
+          inputTokensCount: record.inputTokensCount,
+          outputTokensCount: record.outputTokensCount,
+          grossAttributedCreditAmountMicro:
+            record.grossAttributedCreditAmountMicro,
+          directCreditAmountMicro: record.directCreditAmountMicro,
+        };
+
+      default:
+        return assertNever(record);
+    }
+  }
+
+  private static assertUniqueItemKeys(
+    records: CompletedAgentMessageConsumptionItem[]
+  ): void {
+    const itemKeys = records.map((record) => this.itemKey(record));
+    if (new Set(itemKeys).size !== itemKeys.length) {
+      throw new Error("Consumption items contain duplicate identities");
+    }
+  }
+
+  private static creationAttributes(
+    workspaceModelId: ModelId,
+    {
+      conversationModelId,
+      agentMessageModelId,
+      attributionVersion,
+      record,
+      now,
+    }: {
+      conversationModelId: ModelId;
+      agentMessageModelId: ModelId;
+      attributionVersion: number;
+      record: CompletedAgentMessageConsumptionItem;
+      now: Date;
+    }
+  ): ConsumptionItemCreationAttributes {
+    return {
+      ...this.evidenceAttributes(record),
+      workspaceId: workspaceModelId,
+      conversationId: conversationModelId,
+      agentMessageId: agentMessageModelId,
+      runUsageId: record.runUsageModelId,
+      agentMCPActionId: record.itemType === "tool" ? record.action.id : null,
+      itemKey: this.itemKey(record),
+      itemType: record.itemType,
+      attributionVersion,
+      completedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  static async insertCompletedItemsIdempotently(
     auth: Authenticator,
-    items: AgentMessageConsumptionItemCreate[],
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      conversation,
+      agentMessageModelId,
+      attributionVersion,
+      records,
+      transaction,
+    }: {
+      conversation: ConversationResource;
+      agentMessageModelId: ModelId;
+      attributionVersion: number;
+      records: CompletedAgentMessageConsumptionItem[];
+      transaction?: Transaction;
+    }
   ): Promise<void> {
-    if (items.length === 0) {
+    if (records.length === 0) {
       return;
     }
 
+    this.assertUniqueItemKeys(records);
+    for (const record of records) {
+      if (
+        record.itemType === "tool" &&
+        record.action.agentMessageId !== agentMessageModelId
+      ) {
+        throw new Error("Tool consumption item has a different owner");
+      }
+    }
+
+    const now = new Date();
     await this.model.bulkCreate(
-      items.map((item) => ({
-        ...item,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      })),
+      records.map((record) =>
+        this.creationAttributes(auth.getNonNullableWorkspace().id, {
+          conversationModelId: conversation.id,
+          agentMessageModelId,
+          attributionVersion,
+          record,
+          now,
+        })
+      ),
       {
         ignoreDuplicates: true,
+        returning: false,
         transaction,
         validate: true,
       }
     );
-
-    const agentMessageModelIds = items.flatMap((item) =>
-      item.agentMessageId === undefined ? [] : [item.agentMessageId]
-    );
-    const storedItems = await this.model.findAll({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        agentMessageId: { [Op.in]: agentMessageModelIds },
-        attributionVersion: {
-          [Op.in]: items.map((item) => item.attributionVersion),
-        },
-        itemKey: { [Op.in]: items.map((item) => item.itemKey) },
-      },
-      transaction,
-    });
-    const storedByIdentity = new Map(
-      storedItems.map((item) => [
-        `${item.agentMessageId}:${item.attributionVersion}:${item.itemKey}`,
-        item,
-      ])
-    );
-    for (const item of items) {
-      const stored = storedByIdentity.get(
-        `${item.agentMessageId}:${item.attributionVersion}:${item.itemKey}`
-      );
-      if (
-        !stored ||
-        stored.conversationId !== item.conversationId ||
-        stored.runUsageId !== (item.runUsageId ?? null) ||
-        stored.agentMCPActionId !== (item.agentMCPActionId ?? null) ||
-        stored.itemType !== item.itemType
-      ) {
-        throw new Error(
-          `Conflicting consumption attribution item ${item.itemKey}`
-        );
-      }
-    }
   }
 
-  static async listByAgentMessage(
+  static async insertPendingToolItemIdempotently(
     auth: Authenticator,
     {
-      agentMessageModelId,
+      conversation,
+      attributionVersion,
+      item,
+      transaction,
+    }: {
+      conversation: ConversationResource;
+      attributionVersion: number;
+      item: PendingToolConsumptionItem;
+      transaction?: Transaction;
+    }
+  ): Promise<void> {
+    const now = new Date();
+    await this.model.bulkCreate(
+      [
+        {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversation.id,
+          agentMessageId: item.action.agentMessageId,
+          runUsageId: item.runUsageModelId,
+          agentMCPActionId: item.action.id,
+          itemKey: `tool-action:${item.action.id}`,
+          itemType: "tool",
+          attributionVersion,
+          inputTokensCount: null,
+          outputTokensCount: item.outputTokensCount,
+          grossAttributedCreditAmountMicro:
+            item.grossAttributedCreditAmountMicro,
+          directCreditAmountMicro: null,
+          completedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      {
+        ignoreDuplicates: true,
+        returning: false,
+        transaction,
+        validate: true,
+      }
+    );
+  }
+
+  static async completePendingToolItemIdempotently(
+    auth: Authenticator,
+    {
+      attributionVersion,
+      item,
+      transaction,
+    }: {
+      attributionVersion: number;
+      item: PendingToolConsumptionCompletion;
+      transaction?: Transaction;
+    }
+  ): Promise<void> {
+    await this.model.update(
+      {
+        itemType: "tool",
+        agentMCPActionId: item.action.id,
+        inputTokensCount: item.inputTokensCount,
+        grossAttributedCreditAmountMicro: item.grossAttributedCreditAmountMicro,
+        directCreditAmountMicro: item.directCreditAmountMicro,
+        completedAt: new Date(),
+      },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          agentMCPActionId: item.action.id,
+          attributionVersion,
+          itemType: "tool",
+          completedAt: { [Op.is]: null },
+        },
+        transaction,
+      }
+    );
+  }
+
+  static async listByAgentMessageModelIds(
+    auth: Authenticator,
+    {
+      agentMessageModelIds,
       attributionVersion,
       transaction,
     }: {
-      agentMessageModelId: ModelId;
+      agentMessageModelIds: ModelId[];
       attributionVersion: number;
       transaction?: Transaction;
     }
   ): Promise<AgentMessageConsumptionItemResource[]> {
+    if (agentMessageModelIds.length === 0) {
+      return [];
+    }
+
     const items = await this.model.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        agentMessageId: agentMessageModelId,
+        agentMessageId: { [Op.in]: agentMessageModelIds },
         attributionVersion,
       },
-      order: [["id", "ASC"]],
+      order: [
+        ["agentMessageId", "ASC"],
+        ["id", "ASC"],
+      ],
       transaction,
     });
 
     return items.map((item) => new this(this.model, item.get()));
   }
 
-  static async findToolItem(
+  static async deleteByAgentMessageModelIds(
     auth: Authenticator,
     {
-      agentMCPActionModelId,
-      attributionVersion,
+      agentMessageModelIds,
       transaction,
     }: {
-      agentMCPActionModelId: ModelId;
-      attributionVersion: number;
+      agentMessageModelIds: ModelId[];
       transaction?: Transaction;
     }
-  ): Promise<AgentMessageConsumptionItemResource | null> {
-    const item = await this.model.findOne({
+  ): Promise<number> {
+    if (agentMessageModelIds.length === 0) {
+      return 0;
+    }
+
+    return this.model.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        agentMCPActionId: agentMCPActionModelId,
-        attributionVersion,
-        itemType: "tool",
+        agentMessageId: { [Op.in]: agentMessageModelIds },
       },
       transaction,
     });
-
-    return item ? new this(this.model, item.get()) : null;
   }
 
-  static async updatePendingToolItem(
-    auth: Authenticator,
-    {
-      agentMCPActionModelId,
-      attributionVersion,
-      inputTokensCount,
-      grossAttributedCreditAmountMicro,
-      directCreditAmountMicro,
-      completedAt,
-      transaction,
-    }: {
-      agentMCPActionModelId: ModelId;
-      attributionVersion: number;
-      inputTokensCount: number | null;
-      grossAttributedCreditAmountMicro: number;
-      directCreditAmountMicro: number | null;
-      completedAt: Date | null;
-      transaction?: Transaction;
-    }
-  ): Promise<number> {
-    if (inputTokensCount !== null && inputTokensCount < 0) {
-      throw new Error("Tool input tokens cannot be negative");
-    }
-    if (grossAttributedCreditAmountMicro < 0) {
-      throw new Error("Gross attributed credits cannot be negative");
-    }
-    if (
-      directCreditAmountMicro !== null &&
-      (directCreditAmountMicro < 0 ||
-        directCreditAmountMicro > grossAttributedCreditAmountMicro)
-    ) {
-      throw new Error(
-        "Direct credits must fit within gross attributed credits"
-      );
-    }
-
-    const [updatedCount] = await this.model.update(
-      {
-        inputTokensCount,
-        grossAttributedCreditAmountMicro,
-        directCreditAmountMicro,
-        completedAt,
-      },
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          agentMCPActionId: agentMCPActionModelId,
-          attributionVersion,
-          itemType: "tool",
-          completedAt: { [Op.is]: null },
-        },
-        validate: false,
-        transaction,
-      }
+  async delete(): Promise<Result<undefined, Error>> {
+    return new Err(
+      new Error(
+        "Consumption items can only be deleted with their owning agent message"
+      )
     );
-
-    return updatedCount;
-  }
-
-  static async updatePendingOutputItem(
-    auth: Authenticator,
-    {
-      runUsageModelId,
-      attributionVersion,
-      outputTokensCount,
-      grossAttributedCreditAmountMicro,
-      transaction,
-    }: {
-      runUsageModelId: ModelId;
-      attributionVersion: number;
-      outputTokensCount: number;
-      grossAttributedCreditAmountMicro: number;
-      transaction?: Transaction;
-    }
-  ): Promise<number> {
-    const [updatedCount] = await this.model.update(
-      {
-        outputTokensCount,
-        grossAttributedCreditAmountMicro,
-        completedAt: new Date(),
-      },
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          runUsageId: runUsageModelId,
-          attributionVersion,
-          itemType: "output",
-          completedAt: { [Op.is]: null },
-        },
-        validate: false,
-        transaction,
-      }
-    );
-
-    return updatedCount;
-  }
-
-  static async updatePendingToolOutput(
-    auth: Authenticator,
-    {
-      agentMCPActionModelId,
-      attributionVersion,
-      outputTokensCount,
-      grossAttributedCreditAmountMicro,
-      transaction,
-    }: {
-      agentMCPActionModelId: ModelId;
-      attributionVersion: number;
-      outputTokensCount: number;
-      grossAttributedCreditAmountMicro: number;
-      transaction?: Transaction;
-    }
-  ): Promise<number> {
-    const [updatedCount] = await this.model.update(
-      {
-        outputTokensCount,
-        grossAttributedCreditAmountMicro,
-      },
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          agentMCPActionId: agentMCPActionModelId,
-          attributionVersion,
-          itemType: "tool",
-          completedAt: { [Op.is]: null },
-        },
-        validate: false,
-        transaction,
-      }
-    );
-
-    return updatedCount;
   }
 }
