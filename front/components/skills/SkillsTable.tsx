@@ -50,7 +50,7 @@ export const SKILL_AVAILABILITY_DISPLAY: Record<
 > = {
   editors: { label: "Editors only", color: "primary" },
   workspace_users: { label: "Workspace members", color: "success" },
-  users_and_agents: { label: "Auto-discoverable", color: "highlight" },
+  users_and_agents: { label: "Members and agents", color: "highlight" },
 };
 
 const nameColumn = {

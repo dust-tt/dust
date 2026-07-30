@@ -45,9 +45,9 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     },
   },
   {
-    label: "Auto-discoverable",
+    label: "Members and agents",
     description:
-      "Available to workspace members and agents with Discover Skills",
+      "Available to workspace members and agents with Discover Skills, including @Dust",
     availability: "users_and_agents",
     getDialogTitle: () => `This affects your entire workspace`,
     dialogDescription: (count) =>

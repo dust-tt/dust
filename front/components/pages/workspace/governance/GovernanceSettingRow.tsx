@@ -46,9 +46,9 @@ const GOVERNANCE_SETTING_METADATA: Partial<
     description: "Who can make skills available across the workspace",
   },
   "make_discoverable:skill": {
-    label: "Make skills auto-discoverable",
+    label: "Make skills discoverable to agents",
     description:
-      "Who can make skills auto-discoverable by @Dust and agents with Discover Skills",
+      "Who can make skills discoverable to @Dust and agents with Discover Skills",
   },
   "invite:frame": {
     label: "Invite people by email",

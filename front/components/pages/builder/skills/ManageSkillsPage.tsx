@@ -434,7 +434,7 @@ export function ManageSkillsPage() {
                     value={tab.id}
                     label={
                       tab.id === "default" && hasSkillPublicationGovernance
-                        ? "Auto-discoverable"
+                        ? "Members and agents"
                         : tab.label
                     }
                     onClick={() => setSelectedTab(tab.id)}
