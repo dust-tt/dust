@@ -18,6 +18,7 @@ import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_int
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { LinkWrapper } from "@app/lib/platform";
 import {
   useMCPServer,
   useMCPServers,
@@ -25,6 +26,7 @@ import {
   useMutateMCPServersViewsForAdmin,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
@@ -167,7 +169,15 @@ export function MCPServerDetails({
           </p>
           <ul className="list-disc space-y-1 pl-5">
             {affectedAgents.map((agent) => (
-              <li key={agent.sId}>{agent.name}</li>
+              <li key={agent.sId}>
+                <LinkWrapper
+                  href={getAgentBuilderRoute(owner.sId, agent.sId)}
+                  target="_blank"
+                  className="underline underline-offset-2"
+                >
+                  {agent.name}
+                </LinkWrapper>
+              </li>
             ))}
           </ul>
           <p>Skills using this tool will not be affected.</p>
