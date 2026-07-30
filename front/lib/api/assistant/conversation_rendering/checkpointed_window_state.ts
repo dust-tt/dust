@@ -26,6 +26,8 @@ type ToolResultNode = {
   kind: "tool_result";
   message: Extract<MessageWithTokens, { role: "function" }>;
   tokenSavings: number;
+  // Whether tokenSavings is currently included in eligibleToolResultTokenSavings.
+  tokenSavingsAccounted: boolean;
   pruned: boolean;
   imageReferences: ToolImageReference[];
 };
@@ -62,6 +64,7 @@ function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
       kind: "tool_result",
       message,
       tokenSavings: getToolResultTokenSavings(message),
+      tokenSavingsAccounted: false,
       pruned: false,
       imageReferences: [],
     };
@@ -100,6 +103,7 @@ export class CheckpointedConversationWindowState {
   private eligibleToolResultTokenSavings = 0;
 
   private toolImages: ToolImageReference[] = [];
+  private nextToolImageIndex = 0;
   private retainedImageCount = 0;
   private totalImageCount = 0;
   private nonToolImageCount = 0;
@@ -153,6 +157,7 @@ export class CheckpointedConversationWindowState {
       }
 
       this.registerImages(node);
+      this.capToolImagePreviews();
 
       if (this.isModelInputCheckpoint(message, nextMessage)) {
         this.applyBufferedPruning();
@@ -168,8 +173,6 @@ export class CheckpointedConversationWindowState {
 
   fit(): Result<ConversationWindowResult, Error> {
     const { budgetForInteractions, logDetails, maxInputImages } = this.options;
-
-    this.capToolImagePreviews();
 
     if (
       maxInputImages !== undefined &&
@@ -263,10 +266,13 @@ export class CheckpointedConversationWindowState {
       return;
     }
 
-    for (const reference of this.toolImages) {
-      if (this.retainedImageCount <= maxInputImages) {
-        return;
-      }
+    while (
+      this.retainedImageCount > maxInputImages &&
+      this.nextToolImageIndex < this.toolImages.length
+    ) {
+      const reference = this.toolImages[this.nextToolImageIndex];
+      this.nextToolImageIndex += 1;
+
       if (!reference.retained) {
         continue;
       }
@@ -277,6 +283,7 @@ export class CheckpointedConversationWindowState {
 
       const { node } = reference;
       const previousTokenCount = node.message.tokenCount;
+      const previousTokenSavings = node.tokenSavings;
       node.message = pruneToolResultImagePreview(
         node.message,
         reference.contentIndex,
@@ -287,6 +294,10 @@ export class CheckpointedConversationWindowState {
       const tokenDelta = node.message.tokenCount - previousTokenCount;
       this.retainedTokens += tokenDelta;
       this.totalTokensBefore += tokenDelta;
+      if (node.tokenSavingsAccounted) {
+        this.eligibleToolResultTokenSavings +=
+          node.tokenSavings - previousTokenSavings;
+      }
     }
   }
 
@@ -316,6 +327,7 @@ export class CheckpointedConversationWindowState {
   private makePendingToolResultsEligible(): void {
     for (const { node } of this.pendingToolResults) {
       if (node.tokenSavings > 0) {
+        node.tokenSavingsAccounted = true;
         this.eligibleToolResults.push({ phase: "eligible", node });
         this.eligibleToolResultTokenSavings += node.tokenSavings;
       }
@@ -358,6 +370,7 @@ export class CheckpointedConversationWindowState {
       this.retainedTokens -= node.tokenSavings;
       this.prunedTokens += node.tokenSavings;
       this.eligibleToolResultTokenSavings -= node.tokenSavings;
+      node.tokenSavingsAccounted = false;
       this.nextEligibleToolResultIndex += 1;
     }
   }

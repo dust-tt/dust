@@ -10,6 +10,7 @@ import type {
   ImageContent,
   ModelMessageTypeMultiActions,
 } from "@app/types/assistant/generation";
+import { isImageContent } from "@app/types/assistant/generation";
 import { describe, expect, it } from "vitest";
 
 function withTokens<T extends ModelMessageTypeMultiActions>(
@@ -117,7 +118,7 @@ function functionImageMessage(
 }
 
 describe("CheckpointedConversationWindowState image limits", () => {
-  it("prunes the oldest tool images when fitting the window", () => {
+  it("prunes the oldest tool images as interactions are appended", () => {
     const state = makeState({ maxInputImages: 2 });
     const firstInteraction = {
       messages: [
@@ -174,6 +175,44 @@ describe("CheckpointedConversationWindowState image limits", () => {
     expect(firstInteraction.messages[0].content).toEqual([
       image("first", "conversation/first.png"),
     ]);
+  });
+
+  it("caps image previews before deciding whether to prune a tool result", () => {
+    const state = makeState({
+      pruningBudget: 10_000,
+      budgetForInteractions: 100_000,
+      maxInputImages: 6,
+    });
+    const imageResult = withTokens(
+      {
+        role: "function" as const,
+        name: "image_result",
+        function_call_id: "image_result_call",
+        content: Array.from({ length: 7 }, (_, index) =>
+          image(`image-${index}`)
+        ),
+      },
+      7 * IMAGE_CONTENT_TOKEN_COUNT + 5
+    );
+
+    state.append(
+      interaction([
+        userMessage("question", 10),
+        assistantMessage("call_images"),
+        imageResult,
+        assistantMessage("answer"),
+      ])
+    );
+    state.append(interaction([userMessage("follow_up", 10)]));
+
+    const [result] = toolResults(state);
+    expect(isPruned(result.content)).toBe(false);
+    expect(Array.isArray(result.content)).toBe(true);
+    if (!Array.isArray(result.content)) {
+      return;
+    }
+    expect(result.content.filter(isImageContent)).toHaveLength(6);
+    expect(result.content[0]).toMatchObject({ type: "text" });
   });
 
   it("does not count images removed by tool-result pruning", () => {
