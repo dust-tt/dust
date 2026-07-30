@@ -16,10 +16,12 @@ import type {
 } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape, z } from "zod";
 
-export type ToolHandlerExtra = RequestHandlerExtra<
+export type BaseToolHandlerExtra = RequestHandlerExtra<
   ServerRequest,
   ServerNotification
-> & {
+>;
+
+export type ToolHandlerExtra = BaseToolHandlerExtra & {
   auth: Authenticator;
   runContext: ToolRunContext;
 };
@@ -30,27 +32,26 @@ export type ToolHandlers<
   ToolsList extends readonly ToolMeta[],
   // Keep tool names as a separate generic so that generic consumers don't widen them to strings.
   ToolNames extends string = ToolsList[number]["name"],
+  THandlerExtra = ToolHandlerExtra,
 > = {
   [ToolName in ToolNames]: (
     // Type the params with the type inferred from the zod schema (z.ZodObject because it's a zod shape, not a schema).
     params: z.infer<
       z.ZodObject<Extract<ToolsList[number], { name: ToolName }>["schema"]>
     >,
-    extra: ToolHandlerExtra
+    extra: THandlerExtra
   ) => Promise<ToolHandlerResult>;
 };
 
 export type ClientToolHandlers<
-  T extends Record<string, { schema: ZodRawShape }>,
-> = {
-  [K in keyof T]: (
-    params: z.infer<z.ZodObject<T[K]["schema"]>>
-  ) => Promise<ToolHandlerResult>;
-};
+  ToolsList extends readonly ToolMeta[],
+  ToolNames extends string = ToolsList[number]["name"],
+> = ToolHandlers<ToolsList, ToolNames, BaseToolHandlerExtra>;
 
 export interface ToolDefinition<
   TName extends string = string,
   TSchema extends ZodRawShape = ZodRawShape,
+  THandlerExtra = ToolHandlerExtra,
 > {
   name: TName;
   enableAlerting?: boolean;
@@ -63,30 +64,13 @@ export interface ToolDefinition<
   displayLabels: ToolDisplayLabels;
   toolCostCategory: ToolCostCategory;
   freeUsage: boolean;
-  handler(
-    params: z.infer<z.ZodObject<TSchema>>,
-    extra: ToolHandlerExtra
-  ): Promise<ToolHandlerResult>;
-}
-
-interface ClientToolDefinition<
-  TName extends string = string,
-  TSchema extends ZodRawShape = ZodRawShape,
-> {
-  name: TName;
-  enableAlerting?: boolean;
-  description: string;
-  schema: TSchema;
-  stake: MCPToolStakeLevelType;
-  displayLabels: ToolDisplayLabels;
-  toolCostCategory: ToolCostCategory;
-  freeUsage: boolean;
-  argumentsRequiringApproval?: Array<
+  argumentsRequiringApproval?: ReadonlyArray<
     Extract<keyof z.infer<z.ZodObject<TSchema>>, string>
   >;
-  handler: (
-    params: z.infer<z.ZodObject<TSchema>>
-  ) => Promise<ToolHandlerResult>;
+  handler(
+    params: z.infer<z.ZodObject<TSchema>>,
+    extra: THandlerExtra
+  ): Promise<ToolHandlerResult>;
 }
 
 export type ToolMeta<
@@ -94,43 +78,24 @@ export type ToolMeta<
   TSchema extends ZodRawShape = ZodRawShape,
 > = Omit<ToolDefinition<TName, TSchema>, "handler">;
 
-export type ClientToolMeta<
-  TName extends string = string,
-  TSchema extends ZodRawShape = ZodRawShape,
-> = Omit<ClientToolDefinition<TName, TSchema>, "handler">;
-
-export function createClientToolsRecord<
-  T extends {
-    [K in keyof T]: T[K] extends { schema: infer S extends ZodRawShape }
-      ? Omit<ClientToolMeta<string, S>, "name">
-      : Omit<ClientToolMeta, "name">;
-  },
->(tools: T): { [K in keyof T]: T[K] & { name: K } } {
-  return Object.fromEntries(
-    Object.entries(tools).map(([key, value]) => [
-      key,
-      { ...(value as object), name: key },
-    ])
-  ) as { [K in keyof T]: T[K] & { name: K } };
-}
-
-export function buildClientTools<T extends Record<string, ClientToolMeta>>(
-  metadata: T,
-  handlers: ClientToolHandlers<T>
-): ClientToolDefinition[] {
-  return (Object.keys(metadata) as (keyof T & string)[]).map(
-    (key) =>
-      ({
-        ...metadata[key],
-        handler: handlers[key],
-      }) as unknown as ClientToolDefinition
-  );
-}
+// Type that ties the values in `argumentsRequiringApproval` with the actual parameter names in the schema.
+type ValidToolMetadata<T extends readonly ToolMeta[]> = {
+  [K in keyof T]: {
+    argumentsRequiringApproval?: ReadonlyArray<
+      Extract<keyof z.infer<z.ZodObject<T[K]["schema"]>>, string>
+    >;
+  };
+};
 
 export function buildTools<
   const TName extends string,
   const T extends readonly ToolMeta<TName>[],
->(metadata: T, handlers: ToolHandlers<T, TName>): ToolDefinition[] {
+  // Internal tools always receive auth and runContext, while client-side tools do not.
+  THandlerExtra = ToolHandlerExtra,
+>(
+  metadata: T & ValidToolMetadata<T>,
+  handlers: ToolHandlers<T, TName, THandlerExtra>
+): ToolDefinition<TName, ZodRawShape, THandlerExtra>[] {
   return metadata.map((tool) => ({
     ...tool,
     handler: handlers[tool.name],

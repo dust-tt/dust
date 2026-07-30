@@ -1,4 +1,3 @@
-import { createClientToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { z } from "zod";
 
@@ -41,8 +40,9 @@ export function getBrowserMCPServerInstructions({
   );
 }
 
-export const CHROME_TOOLS_METADATA = createClientToolsRecord({
-  [ATTACH_TABS_TEXT_TOOL_NAME]: {
+export const CHROME_TOOLS_METADATA = [
+  {
+    name: ATTACH_TABS_TEXT_TOOL_NAME,
     description:
       "Extracts the title, URL, and text content of a browser tab. " +
       "Use this to read and understand the specific content the user is viewing, including ordinary HTML pages, rendered emails or threads, search results, filtered lists, and other visible browser state. " +
@@ -67,7 +67,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [TAKE_SCREENSHOT_OR_ATTACH_FILE_TOOL_NAME]: {
+  {
+    name: TAKE_SCREENSHOT_OR_ATTACH_FILE_TOOL_NAME,
     description:
       "Captures or attaches visual or file content from a browser tab. " +
       "For PDF pages, uploads the file and returns the full extracted text so you can read it. " +
@@ -93,7 +94,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [LIST_BROWSER_TABS_TOOL_NAME]: {
+  {
+    name: LIST_BROWSER_TABS_TOOL_NAME,
     description:
       "Lists all open tabs in the current browser window with their tab ID, title, URL, and whether they are active. " +
       "The active tab (what the user is currently looking at) is marked with an asterisk (*). " +
@@ -108,7 +110,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [SWITCH_TO_BROWSER_TAB_TOOL_NAME]: {
+  {
+    name: SWITCH_TO_BROWSER_TAB_TOOL_NAME,
     description:
       "Switches to the specified browser tab, making it the active tab. " +
       `Use ${LIST_BROWSER_TABS_TOOL_NAME} to discover tab IDs.`,
@@ -123,7 +126,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [CLOSE_BROWSER_TAB_TOOL_NAME]: {
+  {
+    name: CLOSE_BROWSER_TAB_TOOL_NAME,
     description: `Closes the specified browser tab. Use ${LIST_BROWSER_TABS_TOOL_NAME} to discover tab IDs.`,
     schema: {
       tabId: z.number().describe("The tab ID to close."),
@@ -136,7 +140,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [OPEN_BROWSER_TAB_TOOL_NAME]: {
+  {
+    name: OPEN_BROWSER_TAB_TOOL_NAME,
     description: "Opens a new browser tab with the specified URL.",
     schema: {
       url: z.string().url().describe("The URL to open in a new tab."),
@@ -149,7 +154,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [MOVE_BROWSER_TAB_TOOL_NAME]: {
+  {
+    name: MOVE_BROWSER_TAB_TOOL_NAME,
     description:
       "Moves a browser tab to a new position (index) in the tab bar. " +
       `Use ${LIST_BROWSER_TABS_TOOL_NAME} to discover tab IDs and current order.`,
@@ -169,7 +175,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [RELOAD_BROWSER_TAB_TOOL_NAME]: {
+  {
+    name: RELOAD_BROWSER_TAB_TOOL_NAME,
     description:
       "Reloads the specified browser tab. Useful after server-side actions that modify page content. " +
       `Use ${LIST_BROWSER_TABS_TOOL_NAME} to discover tab IDs.`,
@@ -184,7 +191,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [INTERACT_WITH_PAGE_TOOL_NAME]: {
+  {
+    name: INTERACT_WITH_PAGE_TOOL_NAME,
     description: `Interact with a browser tab of the user's browser window.
 
 Available actions:
@@ -205,7 +213,7 @@ type_text automatically focuses the element before typing.
 delete_text automatically focuses the element before deleting the text.
 For the above reasons in most cases you do NOT need to click an element before calling type_text or delete_text.
 Avoid unnecessary actions.`,
-    schema: z.object({
+    schema: {
       action: z
         .enum(["get_elements", "click_element", "type_text", "delete_text"])
         .describe("Action to perform."),
@@ -231,7 +239,7 @@ Avoid unnecessary actions.`,
         .describe(
           "A human-readable description of the interaction being performed. Describe the tab, the element, and the action clearly, e.g. 'Click the Submit button on the Login tab' or 'Type \"hello\" into the search input on the Google tab'."
         ),
-    }).shape,
+    },
     argumentsRequiringApproval: ["tabId"],
     stake: "medium",
     displayLabels: {
@@ -241,4 +249,4 @@ Avoid unnecessary actions.`,
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const;
