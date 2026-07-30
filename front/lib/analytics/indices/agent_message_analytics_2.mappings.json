@@ -103,6 +103,9 @@
         },
         "tool_awu": {
           "type": "integer"
+        },
+        "billable_awu": {
+          "type": "integer"
         }
       }
     },

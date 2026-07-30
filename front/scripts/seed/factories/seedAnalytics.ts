@@ -138,6 +138,7 @@ export async function seedAnalytics(
         full_awu: 0,
         llm_awu: 0,
         tool_awu: 0,
+        billable_awu: 0,
       },
       context_origin: "web",
       latency_ms: agentMessage.modelInteractionDurationMs ?? 0,
