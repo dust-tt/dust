@@ -10,6 +10,7 @@ import { createHash } from "crypto";
 
 import { getMetronomeIngestAlias } from "./client";
 import {
+  MODEL_COST_MICRO_USD_PER_AWU_CREDIT,
   toFreeMetronomeUserId,
   USAGE_TYPE_FREE,
   USAGE_TYPE_GROUP_KEY,
@@ -148,10 +149,9 @@ export function computeRunKey(dustRunIds: string[]): string {
 // the displayed credits always match what is billed.
 
 // Convert a raw model-compute cost in microUSD into AWU credits.
-// 1 AWU credit = $0.0085 of compute (margin baked in), so 1 credit = 8500
-// microUSD. Rounded up, matching the Metronome event conversion.
+// Rounded up, matching the Metronome event conversion.
 export function awuFromMicroUsd(microUsd: number): number {
-  return Math.ceil(microUsd / 0.85 / 10_000);
+  return Math.ceil(microUsd / MODEL_COST_MICRO_USD_PER_AWU_CREDIT);
 }
 
 // Intelligence (AI compute) credits for a *single execution's* run usages.
