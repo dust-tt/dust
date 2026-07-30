@@ -2,6 +2,7 @@ import {
   computeTokensCostForUsageInMicroUsd,
   MODEL_PRICING,
 } from "@app/lib/api/assistant/token_pricing";
+import { isModelReleased } from "@app/lib/assistant";
 import { awuFromMicroUsd } from "@app/lib/metronome/events";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import {
@@ -41,6 +42,14 @@ export function buildPublicModelCredits(): PublicModelCredit[] {
 
   for (const model of SUPPORTED_MODEL_CONFIGS) {
     if (EXCLUDED_PROVIDER_IDS.has(model.providerId)) {
+      continue;
+    }
+
+    if (model.isLegacy) {
+      continue;
+    }
+
+    if (!isModelReleased(model)) {
       continue;
     }
 
