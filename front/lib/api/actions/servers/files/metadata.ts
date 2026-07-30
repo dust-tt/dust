@@ -6,6 +6,7 @@ import {
   INTERACTIVE_CONTENT_SERVER_NAME,
   PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { BYTE_OFFSET_SCHEMA } from "@app/lib/api/files/text_file_pagination";
 import { FILE_PREVIEW_DIRECTIVE_EXAMPLE } from "@app/lib/markdown/file_preview";
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import { z } from "zod";
@@ -190,9 +191,12 @@ const FILES_TOOLS_COMMON_METADATA = [
     name: FILES_CAT_ACTION_NAME,
     description:
       "Read the content of a file. " +
-      "For text files, returns lines with their line numbers." +
+      "For text files, returns lines with their line numbers. " +
       "Use `offset` to start at a specific line and `limit` to control how many lines to return. " +
-      "When the output is truncated, a footer indicates the next offset to use. " +
+      "When the output stops at a line boundary, the footer indicates the next `offset` to use. " +
+      "When the output is truncated inside a single oversized line, the footer indicates a `byte_offset` instead: " +
+      "pass it back (without `offset`) to continue reading from that exact position inside the line; " +
+      "using `offset` there would skip the rest of the line. " +
       "For images (JPEG, PNG, GIF), returns a vision block the model can inspect directly. " +
       "For binary documents (PDF, DOCX, PPTX, etc.), call " +
       `\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_EXTRACT_TEXT_ACTION_NAME)}\` first to extract their text content.`,
@@ -207,7 +211,9 @@ const FILES_TOOLS_COMMON_METADATA = [
         .int()
         .min(1)
         .optional()
-        .describe("Line number to start reading from (1-indexed, default 1)"),
+        .describe(
+          "Line number to start reading from (1-indexed, default 1). Do not combine with `byte_offset`."
+        ),
       limit: z
         .number()
         .int()
@@ -217,6 +223,7 @@ const FILES_TOOLS_COMMON_METADATA = [
         .describe(
           `Maximum number of lines to return (default ${CAT_LINES_DEFAULT}, max ${CAT_LINES_MAX})`
         ),
+      byte_offset: BYTE_OFFSET_SCHEMA,
     },
     stake: "never_ask" as const,
     eager: true,
