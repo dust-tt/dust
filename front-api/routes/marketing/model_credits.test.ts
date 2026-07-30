@@ -18,4 +18,27 @@ describe("GET /api/marketing/model-credits", () => {
     expect(typeof model.inputCreditsPerMTokens).toBe("number");
     expect(typeof model.outputCreditsPerMTokens).toBe("number");
   });
+
+  it("excludes models still gated behind an on-demand feature flag", async () => {
+    const response = await honoApp.request("/api/marketing/model-credits");
+    const body = await response.json();
+    const modelIds = body.models.map(
+      (model: { modelId: string }) => model.modelId
+    );
+
+    // Entirely feature-flagged providers (no GA model yet).
+    expect(modelIds).not.toContain("deepseek-chat");
+    expect(modelIds).not.toContain("grok-4.5");
+    expect(modelIds).not.toContain("o1");
+  });
+
+  it("excludes legacy models", async () => {
+    const response = await honoApp.request("/api/marketing/model-credits");
+    const body = await response.json();
+    const modelIds = body.models.map(
+      (model: { modelId: string }) => model.modelId
+    );
+
+    expect(modelIds).not.toContain("claude-3-opus-20240229");
+  });
 });

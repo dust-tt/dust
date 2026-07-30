@@ -18,6 +18,13 @@ export function getAdvancedModels(): ModelConfigurationType[] {
   return SUPPORTED_MODEL_CONFIGS.filter(isAdvancedModel);
 }
 
+// True unless the model is only reachable via an on-demand/dust-only feature flag (not GA).
+export function isModelReleased(m: ModelConfigurationType): boolean {
+  return (
+    !m.availableIfOneOf || m.availableIfOneOf.plansWithAdvancedModels === true
+  );
+}
+
 // Returns true if the model is available to the workspace for build.
 export function isModelAvailable(
   m: ModelConfigurationType,

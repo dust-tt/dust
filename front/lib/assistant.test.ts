@@ -1,5 +1,9 @@
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
-import { filterEnabledModels, isModelAvailable } from "@app/lib/assistant";
+import {
+  filterEnabledModels,
+  isModelAvailable,
+  isModelReleased,
+} from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
   FREE_NO_PLAN_CODE,
@@ -332,6 +336,41 @@ describe("isModelAvailable", () => {
         region: TEST_REGION,
       })
     ).toBe(false);
+  });
+});
+
+describe("isModelReleased", () => {
+  it("should return true for a model with no availability restriction", () => {
+    const model = createMockModel({ availableIfOneOf: undefined });
+
+    expect(isModelReleased(model)).toBe(true);
+  });
+
+  it("should return true for a model available to plans with advanced model access", () => {
+    const model = createMockModel({
+      availableIfOneOf: { plansWithAdvancedModels: true },
+    });
+
+    expect(isModelReleased(model)).toBe(true);
+  });
+
+  it("should return false for a model gated solely behind a feature flag", () => {
+    const model = createMockModel({
+      availableIfOneOf: { featureFlag: "deepseek_feature" },
+    });
+
+    expect(isModelReleased(model)).toBe(false);
+  });
+
+  it("should return true when both plansWithAdvancedModels and featureFlag are set", () => {
+    const model = createMockModel({
+      availableIfOneOf: {
+        plansWithAdvancedModels: true,
+        featureFlag: "deepseek_feature",
+      },
+    });
+
+    expect(isModelReleased(model)).toBe(true);
   });
 });
 
