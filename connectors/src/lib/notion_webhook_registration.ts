@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 
 import { NotionWebhookRegistrationModel } from "@connectors/lib/models/notion_webhook_registration";
 import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 const NOTION_WEBHOOK_REGISTRATION_TTL_MS = 15 * 60 * 1000;
 
@@ -60,7 +62,9 @@ export async function redeemNotionWebhookRegistration({
   registrationToken: string;
   signingSecret: string;
   storeSigningSecret: () => Promise<void>;
-}): Promise<{ alreadyRedeemed: boolean }> {
+}): Promise<
+  Result<{ alreadyRedeemed: boolean }, NotionWebhookRegistrationError>
+> {
   return withTransaction(async (transaction) => {
     const registration = await NotionWebhookRegistrationModel.findOne({
       where: { notionWorkspaceId },
@@ -72,7 +76,7 @@ export async function redeemNotionWebhookRegistration({
       !registration ||
       !hashesMatch(registration.tokenHash, hash(registrationToken))
     ) {
-      throw new NotionWebhookRegistrationError("invalid");
+      return new Err(new NotionWebhookRegistrationError("invalid"));
     }
 
     const signingSecretHash = hash(signingSecret);
@@ -81,13 +85,15 @@ export async function redeemNotionWebhookRegistration({
         registration.signingSecretHash &&
         hashesMatch(registration.signingSecretHash, signingSecretHash)
       ) {
-        return { alreadyRedeemed: true };
+        return new Ok({ alreadyRedeemed: true });
       }
-      throw new NotionWebhookRegistrationError("used_with_different_secret");
+      return new Err(
+        new NotionWebhookRegistrationError("used_with_different_secret")
+      );
     }
 
     if (registration.expiresAt.getTime() <= now.getTime()) {
-      throw new NotionWebhookRegistrationError("expired");
+      return new Err(new NotionWebhookRegistrationError("expired"));
     }
 
     await storeSigningSecret();
@@ -99,6 +105,6 @@ export async function redeemNotionWebhookRegistration({
       { transaction }
     );
 
-    return { alreadyRedeemed: false };
+    return new Ok({ alreadyRedeemed: false });
   });
 }

@@ -35,25 +35,29 @@ describe("Notion webhook registration", () => {
     });
     const storeSigningSecret = vi.fn(async () => {});
 
-    await expect(
-      redeemNotionWebhookRegistration({
-        notionWorkspaceId,
-        now: issuedAt,
-        registrationToken: first.registrationToken,
-        signingSecret: "notion-signing-secret",
-        storeSigningSecret,
-      })
-    ).rejects.toMatchObject({ code: "invalid" });
+    const firstResult = await redeemNotionWebhookRegistration({
+      notionWorkspaceId,
+      now: issuedAt,
+      registrationToken: first.registrationToken,
+      signingSecret: "notion-signing-secret",
+      storeSigningSecret,
+    });
+    expect(firstResult.isErr()).toBe(true);
+    if (firstResult.isErr()) {
+      expect(firstResult.error.code).toBe("invalid");
+    }
 
-    await expect(
-      redeemNotionWebhookRegistration({
-        notionWorkspaceId,
-        now: issuedAt,
-        registrationToken: second.registrationToken,
-        signingSecret: "notion-signing-secret",
-        storeSigningSecret,
-      })
-    ).resolves.toEqual({ alreadyRedeemed: false });
+    const secondResult = await redeemNotionWebhookRegistration({
+      notionWorkspaceId,
+      now: issuedAt,
+      registrationToken: second.registrationToken,
+      signingSecret: "notion-signing-secret",
+      storeSigningSecret,
+    });
+    expect(secondResult.isOk()).toBe(true);
+    if (secondResult.isOk()) {
+      expect(secondResult.value).toEqual({ alreadyRedeemed: false });
+    }
     expect(storeSigningSecret).toHaveBeenCalledTimes(1);
   });
 
@@ -65,25 +69,29 @@ describe("Notion webhook registration", () => {
     const firstStore = vi.fn(async () => {});
     const retryStore = vi.fn(async () => {});
 
-    await expect(
-      redeemNotionWebhookRegistration({
-        notionWorkspaceId,
-        now: issuedAt,
-        registrationToken,
-        signingSecret: "notion-signing-secret",
-        storeSigningSecret: firstStore,
-      })
-    ).resolves.toEqual({ alreadyRedeemed: false });
+    const firstResult = await redeemNotionWebhookRegistration({
+      notionWorkspaceId,
+      now: issuedAt,
+      registrationToken,
+      signingSecret: "notion-signing-secret",
+      storeSigningSecret: firstStore,
+    });
+    expect(firstResult.isOk()).toBe(true);
+    if (firstResult.isOk()) {
+      expect(firstResult.value).toEqual({ alreadyRedeemed: false });
+    }
 
-    await expect(
-      redeemNotionWebhookRegistration({
-        notionWorkspaceId,
-        now: issuedAt,
-        registrationToken,
-        signingSecret: "notion-signing-secret",
-        storeSigningSecret: retryStore,
-      })
-    ).resolves.toEqual({ alreadyRedeemed: true });
+    const retryResult = await redeemNotionWebhookRegistration({
+      notionWorkspaceId,
+      now: issuedAt,
+      registrationToken,
+      signingSecret: "notion-signing-secret",
+      storeSigningSecret: retryStore,
+    });
+    expect(retryResult.isOk()).toBe(true);
+    if (retryResult.isOk()) {
+      expect(retryResult.value).toEqual({ alreadyRedeemed: true });
+    }
     expect(firstStore).toHaveBeenCalledTimes(1);
     expect(retryStore).not.toHaveBeenCalled();
   });
@@ -103,15 +111,17 @@ describe("Notion webhook registration", () => {
     });
     const secondStore = vi.fn(async () => {});
 
-    await expect(
-      redeemNotionWebhookRegistration({
-        notionWorkspaceId,
-        now: issuedAt,
-        registrationToken,
-        signingSecret: "different-signing-secret",
-        storeSigningSecret: secondStore,
-      })
-    ).rejects.toMatchObject({ code: "used_with_different_secret" });
+    const secondResult = await redeemNotionWebhookRegistration({
+      notionWorkspaceId,
+      now: issuedAt,
+      registrationToken,
+      signingSecret: "different-signing-secret",
+      storeSigningSecret: secondStore,
+    });
+    expect(secondResult.isErr()).toBe(true);
+    if (secondResult.isErr()) {
+      expect(secondResult.error.code).toBe("used_with_different_secret");
+    }
     expect(secondStore).not.toHaveBeenCalled();
   });
 
@@ -122,15 +132,17 @@ describe("Notion webhook registration", () => {
     });
     const storeSigningSecret = vi.fn(async () => {});
 
-    await expect(
-      redeemNotionWebhookRegistration({
-        notionWorkspaceId,
-        now: new Date(issuedAt.getTime() + 16 * 60 * 1000),
-        registrationToken,
-        signingSecret: "notion-signing-secret",
-        storeSigningSecret,
-      })
-    ).rejects.toMatchObject({ code: "expired" });
+    const result = await redeemNotionWebhookRegistration({
+      notionWorkspaceId,
+      now: new Date(issuedAt.getTime() + 16 * 60 * 1000),
+      registrationToken,
+      signingSecret: "notion-signing-secret",
+      storeSigningSecret,
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("expired");
+    }
     expect(storeSigningSecret).not.toHaveBeenCalled();
   });
 });
