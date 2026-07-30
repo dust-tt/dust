@@ -47,7 +47,6 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
   declare fileId: ForeignKey<FileModel["id"]>;
   declare slug: string;
   declare description: string;
-  declare legacyAuthentication: string | null;
   declare userIdentity: SandboxFunctionUserIdentityPolicy | null;
   declare inputSchema: JSONSchema;
   declare outputSchema: JSONSchema;
@@ -100,11 +99,6 @@ SandboxFunctionModel.init(
     description: {
       type: DataTypes.STRING(255),
       allowNull: false,
-    },
-    legacyAuthentication: {
-      field: "authentication",
-      type: DataTypes.STRING(64),
-      allowNull: true,
     },
     userIdentity: {
       type: DataTypes.STRING(64),
