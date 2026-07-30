@@ -3,7 +3,7 @@ import {
   getInitialEffort,
   getModelEffortTier,
   isPremiumModel,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+} from "@app/components/model_picker/modelPickerUtils";
 import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_MODEL_ID,

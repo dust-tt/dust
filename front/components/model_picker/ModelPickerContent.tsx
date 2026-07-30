@@ -1,16 +1,16 @@
-import { ModelPickerMoreModels } from "@app/components/assistant/conversation/input_bar/ModelPickerMoreModels";
-import { ModelPickerSelectionIndicator } from "@app/components/assistant/conversation/input_bar/ModelPickerSelectionIndicator";
+import { ModelPickerMoreModels } from "@app/components/model_picker/ModelPickerMoreModels";
+import { ModelPickerSelectionIndicator } from "@app/components/model_picker/ModelPickerSelectionIndicator";
 import type {
   MakerGroup,
   ModelTierId,
   Selection,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+} from "@app/components/model_picker/modelPickerUtils";
 import {
   isTierDisplayed,
   isTierLocked,
   MODEL_TIERS,
   PREMIUM_MODEL_LOCKED_TOOLTIP,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+} from "@app/components/model_picker/modelPickerUtils";
 import type {
   ModelConfigurationType,
   ModelMakerIdType,

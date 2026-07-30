@@ -1,12 +1,12 @@
 import type {
   EffortStop,
   ModelLockReason,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+} from "@app/components/model_picker/modelPickerUtils";
 import {
   getEffortStopTooltip,
   getModelLockTooltip,
   getReasoningEffortLabel,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+} from "@app/components/model_picker/modelPickerUtils";
 import { classNames } from "@app/lib/utils";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { SliderSteps, Tooltip } from "@dust-tt/sparkle";

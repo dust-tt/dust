@@ -1,10 +1,10 @@
-import { ModelPickerSelectionIndicator } from "@app/components/assistant/conversation/input_bar/ModelPickerSelectionIndicator";
+import { ModelPickerSelectionIndicator } from "@app/components/model_picker/ModelPickerSelectionIndicator";
 import type {
   EffortStop,
   ModelLockReason,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { getModelLockTooltip } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { ReasoningEffortSlider } from "@app/components/assistant/conversation/input_bar/ReasoningEffortSlider";
+} from "@app/components/model_picker/modelPickerUtils";
+import { getModelLockTooltip } from "@app/components/model_picker/modelPickerUtils";
+import { ReasoningEffortSlider } from "@app/components/model_picker/ReasoningEffortSlider";
 import type {
   ModelConfigurationType,
   ReasoningEffort,
