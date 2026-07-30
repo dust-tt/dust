@@ -18,6 +18,11 @@ vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
   }),
 }));
 
+// Mock the ancestor resume so we can assert on it without launching workflows
+vi.mock("@app/lib/api/assistant/conversation/retry_blocked_actions", () => ({
+  retryBlockedActions: vi.fn(),
+}));
+
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
@@ -33,6 +38,7 @@ import {
 } from "@app/lib/api/assistant/conversation/mentions";
 import { createAgentMessages } from "@app/lib/api/assistant/conversation/messages";
 import { resolveAuthentication } from "@app/lib/api/assistant/conversation/resolve_authentication";
+import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import {
   publishAgentMessagesEvents,
@@ -65,6 +71,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isRichUserMention } from "@app/types/assistant/mentions";
+import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 
 describe("dismissMention", () => {
@@ -1182,6 +1189,78 @@ describe("validateAction", () => {
 
       // Verify agent loop was launched
       expect(vi.mocked(launchAgentLoopWorkflow)).toHaveBeenCalled();
+    });
+  });
+
+  describe("sub-agent conversations", () => {
+    it("should resume the calling conversation whatever the approval surface", async () => {
+      // The caller (e.g. an orchestrator running `run_agent`) sits in
+      // `blocked_child_action_input_required` until its loop is relaunched. Resuming it must not
+      // depend on the client that approved: Slack, Teams and the public API all land here.
+      const parentConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: "test-agent",
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+      });
+      const parentAgentMessage =
+        await ConversationFactory.createAgentMessageWithRank({
+          workspace,
+          conversationId: parentConversation.id,
+          rank: 0,
+          agentConfigurationId: "test-agent",
+        });
+
+      // The sub-agent conversation: its user message points back at the caller's agent message.
+      const { messageRow: childUserMessage } =
+        await ConversationFactory.createUserMessage({
+          auth,
+          workspace,
+          conversation,
+          content: "Prepare the brief",
+          agenticMessageType: "run_agent",
+          agenticOriginMessageId: parentAgentMessage.sId,
+        });
+
+      const childAgentMessageRow = await AgentMessageModel.create({
+        conversationId: conversation.id,
+        workspaceId: workspace.id,
+        status: "created",
+        agentConfigurationId: "test-agent",
+        agentConfigurationVersion: 0,
+        skipToolsValidation: false,
+      });
+      const childAgentMessage = await MessageModel.create({
+        workspaceId: workspace.id,
+        sId: generateRandomModelSId(),
+        conversationId: conversation.id,
+        rank: 1,
+        parentId: childUserMessage.id,
+        agentMessageId: childAgentMessageRow.id,
+      });
+
+      const { actionId } = await createBlockedAction({
+        agentMessageId: childAgentMessageRow.id,
+      });
+
+      vi.mocked(retryBlockedActions).mockResolvedValue(new Ok(undefined));
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+
+      const result = await validateAction(auth, conversationResource!, {
+        actionId,
+        approvalState: "approved",
+        messageId: childAgentMessage.sId,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(vi.mocked(retryBlockedActions)).toHaveBeenCalledWith(
+        auth,
+        expect.objectContaining({ sId: parentConversation.sId }),
+        expect.objectContaining({ messageId: parentAgentMessage.sId })
+      );
     });
   });
 

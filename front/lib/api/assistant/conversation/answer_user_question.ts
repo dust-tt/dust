@@ -3,6 +3,7 @@ import type { UserQuestionAnswer } from "@app/lib/actions/types";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
+import { resumeAncestorConversations } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { resolveSandboxChildBlock } from "@app/lib/api/sandbox/sandbox_child_block";
@@ -193,5 +194,6 @@ export async function registerUserAnswer(
     "User question answered, agent loop resumed"
   );
 
-  return new Ok(undefined);
+  // A sub-agent's caller sits in `blocked_child_action_input_required` until we relaunch it.
+  return resumeAncestorConversations(auth, conversation, { agentMessageId });
 }
