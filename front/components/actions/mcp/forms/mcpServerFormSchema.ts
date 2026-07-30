@@ -162,8 +162,6 @@ export function getMCPServerFormDefaults(
   const defaults: MCPServerFormValues = {
     name: view.name ?? view.server.name,
     description: getMcpServerViewDescription(view),
-    // The backend propagates this restriction to every view for the MCP server,
-    // so the selected view's serialized value is the checkbox source of truth.
     isRestrictedToSkills: view.isRestrictedToSkills,
     toolSettings: encodeToolSettingsForForm(toolSettings),
     sharingSettings,
