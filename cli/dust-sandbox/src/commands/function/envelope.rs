@@ -82,7 +82,7 @@ mod tests {
             }),
         );
 
-        let json = serde_json::to_value(&envelope).unwrap();
+        let json = serde_json::to_value(&envelope).expect("ResultEnvelope serializes to JSON");
         assert_eq!(
             json,
             serde_json::json!({
@@ -97,7 +97,7 @@ mod tests {
     #[test]
     fn serializes_invocation_failed_without_timings() {
         let envelope = ResultEnvelope::stdout_invocation_failed("boom");
-        let json = serde_json::to_value(&envelope).unwrap();
+        let json = serde_json::to_value(&envelope).expect("ResultEnvelope serializes to JSON");
         assert_eq!(
             json,
             serde_json::json!({
