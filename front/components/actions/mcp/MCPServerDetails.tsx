@@ -115,9 +115,6 @@ export function MCPServerDetails({
           mcpServerWithViews ?? undefined,
           spaces
         ),
-        // The backend propagates this restriction to every view for the MCP server,
-        // so the selected view's serialized value is the checkbox source of truth.
-        isRestrictedToSkills: mcpServerView.isRestrictedToSkills ?? false,
       };
     }
     return {

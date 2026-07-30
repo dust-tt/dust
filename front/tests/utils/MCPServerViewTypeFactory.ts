@@ -24,6 +24,7 @@ export class MCPServerViewTypeFactory {
       serverType: "remote",
       oAuthUseCase: null,
       editedByUser: null,
+      isRestrictedToSkills: false,
       createdAt: 0,
       updatedAt: 0,
       toolsMetadata: undefined,

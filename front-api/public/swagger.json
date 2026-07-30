@@ -14502,6 +14502,9 @@
       },
       "MCPServerView": {
         "type": "object",
+        "required": [
+          "isRestrictedToSkills"
+        ],
         "properties": {
           "id": {
             "type": "integer",

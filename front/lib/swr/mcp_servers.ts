@@ -1039,6 +1039,7 @@ const getOptimisticDataForCreate = (
               serverType: "internal" as const,
               server,
               editedByUser: null,
+              isRestrictedToSkills: false,
               spaceId: space.sId,
               oAuthUseCase: null,
             },

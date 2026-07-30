@@ -878,6 +878,8 @@
  *           example: 150
  *     MCPServerView:
  *       type: object
+ *       required:
+ *         - isRestrictedToSkills
  *       properties:
  *         id:
  *           type: integer

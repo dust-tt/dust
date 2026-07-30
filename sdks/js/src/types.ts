@@ -3616,7 +3616,7 @@ const MCPServerViewTypeSchema = z.object({
   server: MCPServerTypeSchema,
   oAuthUseCase: z.enum(["personal_actions", "platform_actions"]).nullable(),
   editedByUser: EditedByUserSchema.nullable(),
-  isRestrictedToSkills: z.boolean().optional(),
+  isRestrictedToSkills: z.boolean(),
 });
 
 export type MCPServerViewType = z.infer<typeof MCPServerViewTypeSchema>;
