@@ -7,7 +7,6 @@ import {
   type CachedAgentStepContent,
   toCachedAgentStepContent,
   tryHydrateAgentStepContentsFromCache,
-  warmAgentStepContentCache,
   warmAgentStepContentCacheMany,
 } from "@app/lib/resources/agent_step_content/cache";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -15,7 +14,6 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type {
@@ -126,17 +124,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     return agentMessages
       .filter((a) => allowedAgentIds.has(a.agentConfigurationId))
       .map((a) => a.id);
-  }
-
-  private static async makeNew(
-    blob: CreationAttributes<AgentStepContentModel>,
-    transaction?: Transaction
-  ): Promise<AgentStepContentResource> {
-    const agentStepContent = await this.model.create(blob, {
-      transaction,
-    });
-
-    return new AgentStepContentResource(this.model, agentStepContent.get());
   }
 
   public static async fetchByModelIds(
@@ -495,52 +482,77 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     };
   }
 
-  static async createNewVersion({
-    agentMessageId,
-    workspaceId,
-    step,
-    index,
-    type,
-    value,
-  }: Omit<
-    CreationAttributes<AgentStepContentModel>,
-    "version"
-  >): Promise<AgentStepContentResource> {
-    const resource = await withTransaction(async (transaction: Transaction) => {
-      const existingContent = await this.model.findAll({
-        where: {
-          agentMessageId,
-          step,
-          index,
-          workspaceId,
-        },
-        order: [["version", "DESC"]],
-        attributes: ["version"],
-        limit: 1,
-        transaction,
-      });
+  static async createNewVersion(
+    blob: Omit<CreationAttributes<AgentStepContentModel>, "version">
+  ): Promise<AgentStepContentResource> {
+    const [resource] = await this.createNewVersions([blob]);
+    return resource;
+  }
 
-      const currentMaxVersion =
-        existingContent.length > 0 ? existingContent[0].version + 1 : 0;
+  /**
+   * Bulk-insert step contents with correct per-(step, index) versioning
+   * (one version lookup + one INSERT). Prefer this over looping
+   * `createNewVersion` when persisting multiple contents for a step.
+   */
+  static async createNewVersions(
+    blobs: Omit<CreationAttributes<AgentStepContentModel>, "version">[]
+  ): Promise<AgentStepContentResource[]> {
+    if (blobs.length === 0) {
+      return [];
+    }
 
-      return this.makeNew(
-        {
-          agentMessageId,
-          workspaceId,
-          step,
-          index,
-          version: currentMaxVersion,
-          type,
-          value,
-        },
-        transaction
-      );
+    const { workspaceId, agentMessageId, step } = blobs[0];
+    assert(
+      blobs.every(
+        (blob) =>
+          blob.workspaceId === workspaceId &&
+          blob.agentMessageId === agentMessageId &&
+          blob.step === step
+      ),
+      "createNewVersions requires all blobs to share the same workspaceId, agentMessageId, and step"
+    );
+
+    const indexes = [...new Set(blobs.map((blob) => blob.index))];
+    const existingContent = await this.model.findAll({
+      where: {
+        workspaceId,
+        agentMessageId,
+        step,
+        index: { [Op.in]: indexes },
+      },
+      attributes: ["index", "version"],
     });
 
-    // Warm after commit so readers never see uncommitted rows in Redis.
-    await warmAgentStepContentCache(toCachedAgentStepContent(resource));
+    const maxVersionByIndex = new Map<number, number>();
+    for (const row of existingContent) {
+      const current = maxVersionByIndex.get(row.index);
+      if (current === undefined || row.version > current) {
+        maxVersionByIndex.set(row.index, row.version);
+      }
+    }
 
-    return resource;
+    const rowsToCreate = blobs.map((blob) => {
+      const maxVersion = maxVersionByIndex.get(blob.index);
+      const version = maxVersion !== undefined ? maxVersion + 1 : 0;
+      // Advance so duplicate indexes in the same batch get consecutive versions.
+      maxVersionByIndex.set(blob.index, version);
+      return { ...blob, version };
+    });
+
+    const created = await this.model.bulkCreate(rowsToCreate, {
+      validate: true,
+      returning: true,
+    });
+
+    const resources = created.map(
+      (row) => new AgentStepContentResource(this.model, row.get())
+    );
+
+    await warmAgentStepContentCacheMany(
+      resources.map((r) => toCachedAgentStepContent(r))
+    );
+
+    return resources;
   }
 
   get sId(): string {

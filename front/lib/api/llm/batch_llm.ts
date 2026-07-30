@@ -253,21 +253,25 @@ export async function storeLlmResult(
     });
 
   // Create step content entries from LLM events.
-  let index = 0;
-  for (const event of events) {
+  const stepContentBlobs = events.flatMap((event) => {
     const stepContent = eventToStoredStepContent(event);
-    if (stepContent) {
-      await AgentStepContentResource.createNewVersion({
+    if (!stepContent) {
+      return [];
+    }
+    return [
+      {
         agentMessageId: agentMessageModel.id,
         workspaceId: workspace.id,
         step: 0,
-        index,
         type: stepContent.type,
         value: stepContent,
-      });
-      index++;
-    }
-  }
+      },
+    ];
+  });
+
+  await AgentStepContentResource.createNewVersions(
+    stepContentBlobs.map((blob, index) => ({ ...blob, index }))
+  );
 
   return {
     agentMessageModelId: agentMessageModel.id,
