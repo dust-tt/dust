@@ -15,6 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -46,7 +47,15 @@ export async function createOrUpgradeAgentConfiguration({
   agentConfigurationId?: string;
   authorId?: ModelId;
 }): Promise<Result<AgentConfigurationType, Error>> {
-  const { actions } = assistant;
+  const skillsOnlyViews = await MCPServerViewResource.fetchByIds(
+    auth,
+    assistant.actions.map((action) => action.mcpServerViewId),
+    { isRestrictedToSkills: true }
+  );
+  const skillsOnlyViewIds = new Set(skillsOnlyViews.map((view) => view.sId));
+  const actions = assistant.actions.filter(
+    (action) => !skillsOnlyViewIds.has(action.mcpServerViewId)
+  );
 
   // Tools mode:
   // Enforce that every action has a name and a description and that every name is unique.

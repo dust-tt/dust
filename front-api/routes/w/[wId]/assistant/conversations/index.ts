@@ -387,7 +387,8 @@ app.post(
       if (message.context.selectedMCPServerViewIds) {
         const mcpServerViews = await MCPServerViewResource.fetchByIds(
           auth,
-          message.context.selectedMCPServerViewIds
+          message.context.selectedMCPServerViewIds,
+          { isRestrictedToSkills: false }
         );
 
         const r = await ConversationResource.upsertMCPServerViews(auth, {

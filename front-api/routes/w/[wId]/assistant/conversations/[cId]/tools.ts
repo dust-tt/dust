@@ -102,6 +102,17 @@ app.post(
       });
     }
 
+    if (action === "add" && mcpServerView.isRestrictedToSkills) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "This MCP server is restricted to skills and cannot be added directly to a conversation.",
+        },
+      });
+    }
+
     const upsertResult = await ConversationResource.upsertMCPServerViews(auth, {
       conversation,
       mcpServerViews: [mcpServerView],

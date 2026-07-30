@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -140,6 +141,46 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/tools", () => {
       );
       expect(relationship).toHaveLength(1);
       expect(relationship[0].enabled).toBe(true);
+    });
+
+    it("should reject a skills-only tool", async () => {
+      const { workspace, conversation, auth, globalSpace } =
+        await setupTest("admin");
+
+      const remoteMCPServer = await RemoteMCPServerFactory.create(workspace);
+      const systemView =
+        await MCPServerViewResource.getMCPServerViewForSystemSpace(
+          auth,
+          remoteMCPServer.sId
+        );
+      assert(systemView, "MCP server view not found");
+      const { view: mcpServerView } = await MCPServerViewResource.create(auth, {
+        systemView,
+        space: globalSpace,
+      });
+      const [updatedViewCount] = await MCPServerViewModel.update(
+        { isRestrictedToSkills: true },
+        { where: { id: mcpServerView.id } }
+      );
+      expect(updatedViewCount).toBe(1);
+
+      const response = await postTools(workspace, conversation.sId, {
+        action: "add",
+        mcp_server_view_id: mcpServerView.sId,
+      });
+
+      expect(response.status).toBe(403);
+      const body = await response.json();
+      expect(body.error.type).toBe("invalid_request_error");
+      expect(body.error.message).toBe(
+        "This MCP server is restricted to skills and cannot be added directly to a conversation."
+      );
+
+      const relationships = await ConversationResource.fetchMCPServerViews(
+        auth,
+        conversation
+      );
+      expect(relationships).toEqual([]);
     });
 
     it("should enable existing disabled tool", async () => {
