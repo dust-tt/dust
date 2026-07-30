@@ -71,9 +71,10 @@ async fn run() -> anyhow::Result<()> {
         Commands::Healthcheck(args) => commands::cmd_healthcheck(args)?,
         Commands::Env(args) => commands::cmd_env(args)?,
         Commands::Function { command } => match command {
-            commands::function::FunctionCommand::Run { name } => {
-                commands::cmd_function_run(&name).await?
-            }
+            commands::function::FunctionCommand::Run {
+                name,
+                result_delivery,
+            } => commands::cmd_function_run(&name, result_delivery).await?,
             commands::function::FunctionCommand::Get { name } => {
                 commands::cmd_function_get(&name).await?
             }
@@ -185,7 +186,45 @@ mod tests {
         let cli = Cli::try_parse_from(["dsbx", "function", "run", "greet"]).expect("parse");
         match cli.command {
             Commands::Function { command } => match command {
-                commands::function::FunctionCommand::Run { name } => assert_eq!(name, "greet"),
+                commands::function::FunctionCommand::Run {
+                    name,
+                    result_delivery,
+                } => {
+                    assert_eq!(name, "greet");
+                    assert_eq!(
+                        result_delivery,
+                        commands::function::ResultDelivery::Callback
+                    );
+                }
+                _ => panic!("expected run"),
+            },
+            _ => panic!("expected function"),
+        }
+    }
+
+    #[test]
+    fn function_run_parses_stdout_result_delivery() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "function",
+            "run",
+            "--result-delivery",
+            "stdout",
+            "greet",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Function { command } => match command {
+                commands::function::FunctionCommand::Run {
+                    name,
+                    result_delivery,
+                } => {
+                    assert_eq!(name, "greet");
+                    assert_eq!(
+                        result_delivery,
+                        commands::function::ResultDelivery::Stdout
+                    );
+                }
                 _ => panic!("expected run"),
             },
             _ => panic!("expected function"),

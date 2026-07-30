@@ -1,0 +1,119 @@
+use serde::{Deserialize, Serialize};
+
+pub const RESULT_PROTOCOL_VERSION: u32 = 3;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum, Default)]
+#[value(rename_all = "lowercase")]
+pub enum ResultDelivery {
+    #[default]
+    Callback,
+    Stdout,
+}
+
+impl ResultDelivery {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Callback => "callback",
+            Self::Stdout => "stdout",
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ResultEnvelope {
+    pub protocol_version: u32,
+    pub delivery: String,
+    pub outcome: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timings_ms: Option<TimingsMs>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TimingsMs {
+    pub total: u64,
+    pub runner: u64,
+}
+
+impl ResultEnvelope {
+    pub fn stdout_outcome(
+        outcome: serde_json::Value,
+        timings_ms: Option<TimingsMs>,
+    ) -> Self {
+        Self {
+            protocol_version: RESULT_PROTOCOL_VERSION,
+            delivery: ResultDelivery::Stdout.as_str().to_string(),
+            outcome,
+            timings_ms,
+        }
+    }
+
+    pub fn stdout_invocation_failed(message: impl Into<String>) -> Self {
+        Self::stdout_outcome(
+            serde_json::json!({
+                "ok": false,
+                "error": {
+                    "code": "invocation_failed",
+                    "message": message.into(),
+                }
+            }),
+            None,
+        )
+    }
+
+    pub fn write_to_stdout(&self) {
+        println!(
+            "{}",
+            serde_json::to_string(self).expect("ResultEnvelope serializes")
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serializes_the_pinned_v3_shape() {
+        // Cross-language pin with front/lib/api/sandbox_functions/result_envelope.test.ts.
+        let envelope = ResultEnvelope::stdout_outcome(
+            serde_json::json!({ "ok": true, "output": { "hello": "world" } }),
+            Some(TimingsMs {
+                total: 12,
+                runner: 8,
+            }),
+        );
+
+        let json = serde_json::to_value(&envelope).unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "protocolVersion": 3,
+                "delivery": "stdout",
+                "outcome": { "ok": true, "output": { "hello": "world" } },
+                "timingsMs": { "total": 12, "runner": 8 },
+            })
+        );
+    }
+
+    #[test]
+    fn serializes_invocation_failed_without_timings() {
+        let envelope = ResultEnvelope::stdout_invocation_failed("boom");
+        let json = serde_json::to_value(&envelope).unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "protocolVersion": 3,
+                "delivery": "stdout",
+                "outcome": {
+                    "ok": false,
+                    "error": {
+                        "code": "invocation_failed",
+                        "message": "boom",
+                    }
+                },
+            })
+        );
+    }
+}
