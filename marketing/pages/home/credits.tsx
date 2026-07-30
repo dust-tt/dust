@@ -24,23 +24,24 @@ import {
   m,
   MotionConfig,
 } from "framer-motion";
-import type { GetStaticProps } from "next";
+import type { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
 import type React from "react";
 import type { ReactElement } from "react";
 import { useState } from "react";
-
-// Model credits data changes only when a new model is added or its pricing
-// changes, so a build-once page would go stale for days between deploys.
-// Revalidate periodically instead of on every request.
-const MODEL_CREDITS_REVALIDATE_SECONDS = 60 * 60;
 
 interface CreditsPageProps {
   gtmTrackingId: string | null;
   providerSections: ProviderSection[];
 }
 
-export const getStaticProps: GetStaticProps<CreditsPageProps> = async () => {
+// Server-rendered (like /integrations) rather than statically generated:
+// a build-time getStaticProps would call the live API at `next build` time,
+// which fails whenever this page ships before the API endpoint it depends
+// on has been deployed.
+export const getServerSideProps: GetServerSideProps<
+  CreditsPageProps
+> = async () => {
   const models = await fetchPublicModelCredits();
 
   return {
@@ -48,7 +49,6 @@ export const getStaticProps: GetStaticProps<CreditsPageProps> = async () => {
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       providerSections: groupByModelMaker(models),
     },
-    revalidate: MODEL_CREDITS_REVALIDATE_SECONDS,
   };
 };
 
