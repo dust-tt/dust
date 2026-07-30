@@ -30,6 +30,8 @@ async function createPatchableAgent({
 
   const space = await SpaceFactory.regular(workspace);
   await GroupSpaceFactory.associate(space, globalGroup);
+  await space.writeGroupPermissions(auth);
+  await auth.refresh();
 
   const tag = await TagFactory.create(workspace, { name: "yaml-import-test" });
   const template = await TemplateFactory.published();
@@ -364,6 +366,8 @@ describe("patchAgentConfigurationFromJSON", () => {
 
     const space = await SpaceFactory.regular(workspace);
     await GroupSpaceFactory.associate(space, globalGroup);
+    await space.writeGroupPermissions(authenticator);
+    await authenticator.refresh();
 
     const createResult = await createAgentConfiguration(authenticator, {
       name: "YAML export test agent",

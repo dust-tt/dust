@@ -251,6 +251,8 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
       const otherRestrictedSpace = await SpaceFactory.project(workspace);
 
+      await auth.refresh();
+
       const conversation = await ConversationFactory.create(auth, {
         agentConfigurationId: "test-agent",
         messagesCreatedAt: [],

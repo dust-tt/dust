@@ -25,7 +25,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import type { GrantVerb } from "@app/types/group_permissions";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
@@ -35,7 +34,6 @@ import {
 } from "@app/types/groups";
 import type {
   AccessControlList,
-  GroupGrant,
   RoleGrant,
 } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -1814,23 +1812,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       {
         workspaceId: this.workspaceId,
         roles: this.spaceRoleGrants(),
-        groups: this.legacySpaceGroupGrants(),
-      },
-    ];
-  }
-
-  /**
-   * The space's access-control list built from governance data: the code role rules plus the groups
-   *  held in `group_permissions`. At the flip this becomes the served `getAccessControlLists(auth)`
-   *  and `legacySpaceGroupGrants` is deleted without touching it.
-   *
-   * Until then it is the shadow-compare candidate.
-   */
-  governanceAcls(auth: Authenticator): AccessControlList[] {
-    return [
-      {
-        workspaceId: this.workspaceId,
-        roles: this.spaceRoleGrants(),
+        // Group access is enforced from the group_permissions table (#9480): the caller's grants
+        // on this space. The per-kind role rules above are unchanged. `writeGroupPermissions`
+        // keeps the table in sync from the `group_vaults` associations (see `spaceGroupRoles`).
         groups: auth.getGroupPermissions("space", this.id),
       },
     ];
@@ -1928,65 +1912,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }));
   }
 
-  // The group grants this space confers, derived from its `group_vaults` associations in code, with
-  // the verbs stated literally as `GroupResource.getAccessControlLists` does. This is the legacy
-  // path: what `getAccessControlLists` serves until the flip.
-  private legacySpaceGroupGrants(): GroupGrant[] {
-    // System space: its groups manage the workspace's connections.
-    if (this.isSystem()) {
-      return this.groups.map((group) => ({
-        id: group.groupId,
-        permissions: ["read", "write"],
-      }));
-    }
-
-    // Global Workspace space and Conversations space: write comes from the role grants.
-    if (this.isGlobal() || this.isConversations()) {
-      return this.groups.map((group) => ({
-        id: group.groupId,
-        permissions: ["read"],
-      }));
-    }
-
-    // Provisioned groups do not carry grants on manually-managed spaces.
-    const groups =
-      this.managementMode === "manual"
-        ? this.groups.filter((group) => !group.isProvisioned())
-        : this.groups;
-
-    // Open regular space: every group only reads; write comes from the role grants.
-    if (this.isRegularAndOpen()) {
-      return groups.map((group) => ({
-        id: group.groupId,
-        permissions: ["read"],
-      }));
-    }
-
-    if (this.isProject()) {
-      return groups.map((group) => {
-        switch (group.groupSpaceKind) {
-          case "project_editor":
-            return {
-              id: group.groupId,
-              permissions: ["admin", "read", "write"],
-            };
-          case "member":
-            return { id: group.groupId, permissions: ["read", "write"] };
-          case "project_viewer":
-            return { id: group.groupId, permissions: ["read"] };
-          default:
-            assertNever(group.groupSpaceKind);
-        }
-      });
-    }
-
-    // Restricted regular space.
-    return groups.map((group) => ({
-      id: group.groupId,
-      permissions: ["read", "write"],
-    }));
-  }
-
   // Writes this space's `group_permissions` rows from the roles its `group_vaults` associations
   // confer (see `spaceGroupRoles`). The space mutation paths call this to keep the table in sync as
   // the source of truth. Idempotent — it clears the space's instance grants then re-inserts the
@@ -2079,46 +2004,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   canAdministrate(auth: Authenticator) {
-    const perms = this.getAccessControlLists(auth);
-    this.shadowCompareSpacePermission(auth, perms, "admin");
-    return auth.hasPermissionForAcls("admin", perms);
+    return auth.hasPermission("admin", this);
   }
 
   canWrite(auth: Authenticator) {
-    const perms = this.getAccessControlLists(auth);
-    this.shadowCompareSpacePermission(auth, perms, "write");
-    return auth.hasPermissionForAcls("write", perms);
+    return auth.hasPermission("write", this);
   }
 
   canRead(auth: Authenticator) {
-    const perms = this.getAccessControlLists(auth);
-    this.shadowCompareSpacePermission(auth, perms, "read");
-    return auth.hasPermissionForAcls("read", perms);
-  }
-
-  // Shadow-compare: while the `group_permissions_shadow` flag is on for the workspace, check
-  // whether the governance ACL yields the same decision as the legacy inline-group ACL. Legacy is
-  // the served `getAccessControlLists(auth)` (groups from the `group_vaults` associations); the
-  // candidate is `governanceAcls`, built independently from the table. Delegates the flag lookup +
-  // compare + log to the Authenticator as fire-and-forget — never changes the served result.
-  private shadowCompareSpacePermission(
-    auth: Authenticator,
-    legacyAcls: AccessControlList[],
-    permission: GrantVerb
-  ): void {
-    auth.shadowComparePermission(
-      permission,
-      legacyAcls,
-      this.governanceAcls(auth),
-      {
-        resource: "space",
-        spaceId: this.sId,
-        permission,
-        workspaceId: this.workspaceId,
-        // Null for non-user callers (API keys, internal auth).
-        userId: auth.user()?.sId ?? null,
-      }
-    );
+    return auth.hasPermission("read", this);
   }
 
   canReadOrAdministrate(auth: Authenticator) {

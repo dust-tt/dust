@@ -50,7 +50,7 @@ async function backfillWorkspaceSpaceGroupPermissions(
         return;
       }
 
-      // One transaction per space so a space is never left without its grants mid-reconcile.
+      // One transaction per space so a space is never left without its grants mid-write.
       await frontSequelize.transaction(async (transaction) => {
         await space.writeGroupPermissions(auth, { transaction });
       });

@@ -827,6 +827,9 @@ describe("SkillResource", () => {
         skill1OnlySpace,
         testContext.globalGroup
       );
+      await sharedSpace.writeGroupPermissions(testContext.authenticator);
+      await skill1OnlySpace.writeGroupPermissions(testContext.authenticator);
+      await testContext.authenticator.refresh();
 
       const skill1 = await SkillFactory.create(testContext.authenticator, {
         name: "Skill 1",
@@ -1519,6 +1522,8 @@ describe("SkillResource", () => {
         restrictedSpace,
         testContext.globalGroup
       );
+      await restrictedSpace.writeGroupPermissions(testContext.authenticator);
+      await testContext.authenticator.refresh();
 
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Space To Archive",
@@ -1564,6 +1569,8 @@ describe("SkillResource", () => {
     it("keeps a space on the agent when archiving a skill if another active skill still requires it", async () => {
       const sharedSpace = await SpaceFactory.regular(testContext.workspace);
       await GroupSpaceFactory.associate(sharedSpace, testContext.globalGroup);
+      await sharedSpace.writeGroupPermissions(testContext.authenticator);
+      await testContext.authenticator.refresh();
 
       const skill1 = await SkillFactory.create(testContext.authenticator, {
         name: "Skill 1 Sharing Space",
@@ -1805,6 +1812,8 @@ describe("SkillResource", () => {
     it("should return skills that use any of the given MCP server view IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
       await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await space.writeGroupPermissions(testContext.authenticator);
+      await testContext.authenticator.refresh();
 
       const server = await RemoteMCPServerFactory.create(testContext.workspace);
       const serverView = await MCPServerViewFactory.create(
@@ -1854,6 +1863,8 @@ describe("SkillResource", () => {
     it("should return skills that use any of the given data source view IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
       await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await space.writeGroupPermissions(testContext.authenticator);
+      await testContext.authenticator.refresh();
 
       const dsv1 = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -2268,6 +2279,8 @@ describe("SkillResource", () => {
     it("should return attached knowledge from data source configurations", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
       await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await space.writeGroupPermissions(testContext.authenticator);
+      await testContext.authenticator.refresh();
 
       const dsv = await DataSourceViewFactory.folder(
         testContext.workspace,

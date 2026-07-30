@@ -946,6 +946,11 @@ describe("createAgentMessages", () => {
       expect(refreshedOpenSpace).not.toBeNull();
       expect(refreshedOpenSpace?.isOpen()).toBe(true);
 
+      // `GroupSpaceFactory.associate` writes only the legacy group_vaults row; materialize the
+      // space's group_permissions (as the mutation paths do) and refresh the stale participant auth.
+      await refreshedOpenSpace!.writeGroupPermissions(adminAuth);
+      await auth.refresh();
+
       // Create a user who can access the space (all users can access open spaces)
       const mentionedUser = await UserFactory.basic();
       await MembershipFactory.associate(workspace, mentionedUser, {
