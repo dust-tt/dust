@@ -11,7 +11,10 @@ import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
-import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
+import {
+  authorizeSandboxFunctionInvocation,
+  getAuthenticatedWorkspaceUser,
+} from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -63,6 +66,8 @@ const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
 const GCS_CONCURRENCY = 4;
 const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 2;
 const POD_USER_IDENTITY_ENV = "DUST_POD_USER_IDENTITY";
+
+type SandboxFunctionInvocationReadAccess = "viewer" | "system";
 
 // `code` is not narrowed to `SandboxFunctionCallErrorCode`: it is forwarded from whatever
 // classified the failure (runner, API error type, front), and a code introduced by a newer deploy
@@ -629,17 +634,42 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     auth: Authenticator,
     {
       sandboxFunction,
+      access = "viewer",
     }: {
       sandboxFunction: SandboxFunctionResource;
+      access?: SandboxFunctionInvocationReadAccess;
     },
     options?: ResourceFindOptions<SandboxFunctionInvocationModel>
   ): Promise<SandboxFunctionInvocationResource[]> {
     const { where, ...rest } = options ?? {};
+    // User-facing reads expose the caller's invocations, or every invocation to a Pod
+    // administrator. Execution and callback paths use the explicit system access after validating
+    // their server-owned invocation token or workflow input.
+    let viewerModelId: ModelId | undefined;
+    switch (access) {
+      case "viewer": {
+        const viewer = await getAuthenticatedWorkspaceUser(auth);
+        if (!viewer) {
+          return [];
+        }
+        viewerModelId = sandboxFunction.space.canAdministrate(auth)
+          ? undefined
+          : viewer.id;
+        break;
+      }
+      case "system":
+        viewerModelId = undefined;
+        break;
+      default:
+        return assertNever(access);
+    }
+
     const invocations = await this.model.findAll({
       where: {
         ...where,
         sandboxFunctionId: sandboxFunction.id,
         workspaceId: auth.getNonNullableWorkspace().id,
+        ...(viewerModelId !== undefined ? { userId: viewerModelId } : {}),
       },
       ...rest,
     });
@@ -661,9 +691,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     {
       sandboxFunction,
       invocationId,
+      access = "viewer",
     }: {
       sandboxFunction: SandboxFunctionResource;
       invocationId: string;
+      access?: SandboxFunctionInvocationReadAccess;
     }
   ): Promise<SandboxFunctionInvocationResource | null> {
     if (!isResourceSId("sandbox_function_invocation", invocationId)) {
@@ -677,7 +709,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
     const [invocation] = await this.baseFetch(
       auth,
-      { sandboxFunction },
+      { sandboxFunction, access },
       {
         where: {
           id: invocationModelId,

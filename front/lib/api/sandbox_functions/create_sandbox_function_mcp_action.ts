@@ -182,6 +182,7 @@ export async function createSandboxFunctionMCPAction(
   const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
     sandboxFunction,
     invocationId,
+    access: "system",
   });
   if (!invocation) {
     return new Err(
