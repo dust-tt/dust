@@ -20,9 +20,7 @@ import {
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { useClientType } from "@app/lib/context/clientType";
 import { useModels } from "@app/lib/swr/models";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getModelMaker } from "@app/types/assistant/models/providers";
@@ -82,9 +80,6 @@ export function InputBarModelPicker({
   const { stickyModelOverride, setStickyModelOverride } =
     useContext(InputBarContext);
   const { isDark } = useTheme();
-  const isMobile = useIsMobile();
-  const clientType = useClientType();
-  const isWidthConstrained = isMobile || clientType === "extension";
 
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -288,7 +283,6 @@ export function InputBarModelPicker({
         allModels={allModels}
         search={search}
         onSearchChange={setSearch}
-        isWidthConstrained={isWidthConstrained}
         moreModelsExpanded={moreModelsExpanded}
         onToggleMoreModels={() => setMoreModelsExpanded((v) => !v)}
         expandedMaker={expandedMaker}

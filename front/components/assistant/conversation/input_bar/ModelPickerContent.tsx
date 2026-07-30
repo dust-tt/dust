@@ -48,7 +48,6 @@ interface ModelPickerContentProps {
   allModels: ModelConfigurationType[];
   search: string;
   onSearchChange: (value: string) => void;
-  isWidthConstrained: boolean;
   moreModelsExpanded: boolean;
   onToggleMoreModels: () => void;
   expandedMaker: ModelMakerIdType | null;
@@ -70,7 +69,6 @@ export function ModelPickerContent({
   allModels,
   search,
   onSearchChange,
-  isWidthConstrained,
   moreModelsExpanded,
   onToggleMoreModels,
   expandedMaker,
@@ -140,7 +138,6 @@ export function ModelPickerContent({
         lockPremiumEfforts={lockPremiumEfforts}
         search={search}
         onSearchChange={onSearchChange}
-        isWidthConstrained={isWidthConstrained}
         isExpanded={moreModelsExpanded}
         onToggleExpanded={onToggleMoreModels}
         expandedMaker={expandedMaker}
