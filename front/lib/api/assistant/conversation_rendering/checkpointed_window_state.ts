@@ -9,6 +9,7 @@ import type {
 } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import {
   getToolResultTokenSavings,
+  IMAGE_CONTENT_TOKEN_COUNT,
   PRUNING_CHECKPOINT_TOKENS,
   pruneToolResultMessage,
 } from "@app/lib/api/assistant/conversation_rendering/pruning";
@@ -31,19 +32,8 @@ type ToolResultNode = {
   kind: "tool_result";
   message: Extract<MessageWithTokens, { role: "function" }>;
   tokenSavings: number;
-  pruned: boolean;
-  eligible: boolean;
+  phase: "pending" | "eligible" | "pruned";
   imageReferences: ToolImageReference[];
-};
-
-type PendingToolResult = {
-  phase: "pending";
-  node: ToolResultNode;
-};
-
-type EligibleToolResult = {
-  phase: "eligible";
-  node: ToolResultNode;
 };
 
 // Interactions own these nodes. The pending and eligible queues only hold references to the same
@@ -55,8 +45,6 @@ type WindowInteraction = {
 };
 
 export const MINIMUM_PRUNING_BATCH_TOKENS = 5_000;
-// Fixed number of tokens assumed for image contents during message tokenization.
-export const IMAGE_CONTENT_TOKEN_COUNT = 3_100;
 
 type ToolImageReference = {
   node: ToolResultNode;
@@ -76,8 +64,7 @@ function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
       kind: "tool_result",
       message,
       tokenSavings: getToolResultTokenSavings(message),
-      pruned: false,
-      eligible: false,
+      phase: "pending",
       imageReferences: [],
     };
   }
@@ -108,8 +95,8 @@ export class CheckpointedConversationWindowState {
   private totalTokensBefore = 0;
   private prunedTokens = 0;
 
-  private pendingToolResults: PendingToolResult[] = [];
-  private eligibleToolResults: EligibleToolResult[] = [];
+  private pendingToolResults: ToolResultNode[] = [];
+  private eligibleToolResults: ToolResultNode[] = [];
   private nextEligibleToolResultIndex = 0;
   private eligibleToolResultTokenSavings = 0;
 
@@ -164,7 +151,7 @@ export class CheckpointedConversationWindowState {
       this.totalTokensBefore += message.tokenCount;
 
       if (node.kind === "tool_result") {
-        this.pendingToolResults.push({ phase: "pending", node });
+        this.pendingToolResults.push(node);
       }
 
       this.registerImages(node);
@@ -235,7 +222,7 @@ export class CheckpointedConversationWindowState {
     const latestInteraction = this.interactions[this.interactions.length - 1];
 
     return latestInteraction.messages.some(
-      (node) => node.kind === "tool_result" && node.pruned
+      (node) => node.kind === "tool_result" && node.phase === "pruned"
     );
   }
 
@@ -327,7 +314,7 @@ export class CheckpointedConversationWindowState {
       const tokenDelta = node.message.tokenCount - previousTokenCount;
       this.retainedTokens += tokenDelta;
       this.totalTokensBefore += tokenDelta;
-      if (node.eligible) {
+      if (node.phase === "eligible") {
         this.eligibleToolResultTokenSavings +=
           node.tokenSavings - previousTokenSavings;
       }
@@ -358,10 +345,10 @@ export class CheckpointedConversationWindowState {
   }
 
   private makePendingToolResultsEligible(): void {
-    for (const { node } of this.pendingToolResults) {
+    for (const node of this.pendingToolResults) {
+      node.phase = "eligible";
       if (node.tokenSavings > 0) {
-        node.eligible = true;
-        this.eligibleToolResults.push({ phase: "eligible", node });
+        this.eligibleToolResults.push(node);
         this.eligibleToolResultTokenSavings += node.tokenSavings;
       }
     }
@@ -394,12 +381,11 @@ export class CheckpointedConversationWindowState {
       this.retainedTokens > targetTokens &&
       this.nextEligibleToolResultIndex < this.eligibleToolResults.length
     ) {
-      const { node } =
-        this.eligibleToolResults[this.nextEligibleToolResultIndex];
+      const node = this.eligibleToolResults[this.nextEligibleToolResultIndex];
 
       this.releaseToolResultImages(node);
       node.message = pruneToolResultMessage(node.message);
-      node.pruned = true;
+      node.phase = "pruned";
       this.retainedTokens -= node.tokenSavings;
       this.prunedTokens += node.tokenSavings;
       this.eligibleToolResultTokenSavings -= node.tokenSavings;

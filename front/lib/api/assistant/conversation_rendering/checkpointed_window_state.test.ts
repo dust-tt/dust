@@ -1,9 +1,11 @@
 import {
   CheckpointedConversationWindowState,
-  IMAGE_CONTENT_TOKEN_COUNT,
   MINIMUM_PRUNING_BATCH_TOKENS,
 } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
-import type { InteractionWithTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
+import {
+  IMAGE_CONTENT_TOKEN_COUNT,
+  type InteractionWithTokens,
+} from "@app/lib/api/assistant/conversation_rendering/pruning";
 import type {
   ImageContent,
   ModelMessageTypeMultiActions,

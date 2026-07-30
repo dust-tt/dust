@@ -13,12 +13,12 @@ import { ANTHROPIC_MAX_INPUT_IMAGES } from "@app/types/assistant/models/anthropi
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  IMAGE_CONTENT_TOKEN_COUNT,
   renderConversationForModel,
   TOKENS_MARGIN,
   TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR,
 } from "./index";
 import { renderAllMessages } from "./message_rendering";
+import { IMAGE_CONTENT_TOKEN_COUNT } from "./pruning";
 
 vi.mock(
   "@app/lib/api/assistant/conversation_rendering/message_rendering",
