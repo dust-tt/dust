@@ -12,6 +12,7 @@
     "build:watch": "tsc --watch",
     "start": "npm run build && firebase emulators:start --only functions,storage,database",
     "dev": "npm run start",
+    "test": "npm run build && node --test test/*.test.mjs",
     "deploy": "./deploy.sh"
   },
   "author": "Dust",
