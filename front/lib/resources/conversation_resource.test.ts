@@ -1354,7 +1354,11 @@ describe("createResourcePermissionsFromSpacesWithMap", () => {
   });
 
   it("should resolve space ids to group permissions", () => {
-    const permissions = createResourcePermissionsFromSpacesWithMap(spaceIdToGroupsMap, [globalSpace.id], auth.getNonNullableWorkspace().id);
+    const permissions = createResourcePermissionsFromSpacesWithMap(
+      spaceIdToGroupsMap,
+      [globalSpace.id],
+      auth.getNonNullableWorkspace().id
+    );
 
     expect(permissions).toBeDefined();
     expect(Array.isArray(permissions)).toBe(true);
@@ -1363,7 +1367,11 @@ describe("createResourcePermissionsFromSpacesWithMap", () => {
   });
 
   it("should handle multiple space ids", () => {
-    const permissions = createResourcePermissionsFromSpacesWithMap(spaceIdToGroupsMap, [globalSpace.id, regularSpace.id], auth.getNonNullableWorkspace().id);
+    const permissions = createResourcePermissionsFromSpacesWithMap(
+      spaceIdToGroupsMap,
+      [globalSpace.id, regularSpace.id],
+      auth.getNonNullableWorkspace().id
+    );
 
     expect(permissions).toBeDefined();
     expect(permissions.length).toBeGreaterThan(0);
@@ -1382,7 +1390,9 @@ describe("createResourcePermissionsFromSpacesWithMap", () => {
   it("should handle empty space ids array", () => {
     const permissions = createResourcePermissionsFromSpacesWithMap(
       spaceIdToGroupsMap,
-      [], auth.getNonNullableWorkspace().id);
+      [],
+      auth.getNonNullableWorkspace().id
+    );
 
     expect(permissions).toBeDefined();
     expect(permissions).toEqual([]);
