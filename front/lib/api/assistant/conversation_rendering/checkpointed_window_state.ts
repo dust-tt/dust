@@ -17,7 +17,7 @@ import type {
   ConversationWindowResult,
 } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import logger from "@app/logger/logger";
-import type { Content, ImageContent } from "@app/types/assistant/generation";
+import type { ImageContent } from "@app/types/assistant/generation";
 import { isImageContent } from "@app/types/assistant/generation";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -66,7 +66,6 @@ export type ConversationImagePruningStats = {
 
 type ToolImageReference = {
   node: ToolResultNode;
-  content: Content[];
   contentIndex: number;
   image: ImageContent;
   retained: boolean;
@@ -79,14 +78,10 @@ const FILES_CAT_TOOL_NAME = getPrefixedToolName(
 
 function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
   if (message.role === "function") {
-    const nodeMessage = Array.isArray(message.content)
-      ? { ...message, content: [...message.content] }
-      : message;
-
     return {
       kind: "tool_result",
-      message: nodeMessage,
-      tokenSavings: getToolResultTokenSavings(nodeMessage),
+      message,
+      tokenSavings: getToolResultTokenSavings(message),
       pruned: false,
       eligible: false,
       imageReferences: [],
@@ -279,7 +274,6 @@ export class CheckpointedConversationWindowState {
       if (node.kind === "tool_result") {
         const reference = {
           node,
-          content: message.content,
           contentIndex,
           image: content,
           retained: true,
@@ -309,7 +303,10 @@ export class CheckpointedConversationWindowState {
         continue;
       }
 
-      const { node, content, contentIndex, image } = reference;
+      const { node, contentIndex, image } = reference;
+      if (!Array.isArray(node.message.content)) {
+        throw new Error("Expected structured tool content");
+      }
       const replacement = {
         type: "text" as const,
         text:
@@ -318,7 +315,6 @@ export class CheckpointedConversationWindowState {
             ? ` Use \`${FILES_CAT_TOOL_NAME}\` with path \`${image.file_path}\` to display it again.]`
             : " Re-run the tool to display it again.]"),
       };
-      content[contentIndex] = replacement;
       reference.retained = false;
       this.retainedImageCount -= 1;
       this.prunedImageCount += 1;
@@ -328,8 +324,11 @@ export class CheckpointedConversationWindowState {
       // UTF-8 bytes are a conservative token estimate that also covers the variable file path
       // without introducing another tokenizer call during replay.
       const replacementTokenCount = Buffer.byteLength(replacement.text);
+      const content = [...node.message.content];
+      content[contentIndex] = replacement;
       node.message = {
         ...node.message,
+        content,
         tokenCount: Math.max(
           previousTokenCount -
             IMAGE_CONTENT_TOKEN_COUNT +
