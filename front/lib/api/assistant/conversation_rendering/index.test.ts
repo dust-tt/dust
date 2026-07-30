@@ -250,7 +250,7 @@ describe("renderConversationForModel", () => {
     expect(res.value.prunedContext).toBe(false);
   });
 
-  it("replaces oldest tool image previews before counting model context", async () => {
+  it("replaces oldest tool image previews while replaying model context", async () => {
     const userUpload = image("user-upload");
     vi.mocked(renderAllMessages).mockResolvedValue([
       {
@@ -302,13 +302,21 @@ describe("renderConversationForModel", () => {
         ),
       },
     ]);
+    if (!Array.isArray(oldestToolResult.content)) {
+      throw new Error("Expected structured tool content");
+    }
+    const replacement = oldestToolResult.content[0];
+    if (!isTextContent(replacement)) {
+      throw new Error("Expected an image replacement");
+    }
     expect(res.value.tokensUsed).toBe(
       TOKENS_MARGIN +
         10 +
         Math.floor(10 * TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR) +
         10 +
         ANTHROPIC_MAX_INPUT_IMAGES * 5 +
-        ANTHROPIC_MAX_INPUT_IMAGES * IMAGE_CONTENT_TOKEN_COUNT
+        ANTHROPIC_MAX_INPUT_IMAGES * IMAGE_CONTENT_TOKEN_COUNT +
+        Buffer.byteLength(replacement.text)
     );
   });
 

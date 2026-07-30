@@ -1,6 +1,6 @@
 import {
   CheckpointedConversationWindowState,
-  ConversationImagePruningState,
+  IMAGE_CONTENT_TOKEN_COUNT,
   MINIMUM_PRUNING_BATCH_TOKENS,
 } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import type { InteractionWithTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
@@ -73,13 +73,16 @@ function isPruned(content: unknown): boolean {
 function makeState({
   pruningBudget = 30_000,
   budgetForInteractions = 100_000,
+  maxInputImages,
 }: {
   pruningBudget?: number;
   budgetForInteractions?: number;
+  maxInputImages?: number;
 } = {}) {
   return CheckpointedConversationWindowState.empty({
     pruningBudget,
     budgetForInteractions,
+    maxInputImages,
     logDetails: {},
   });
 }
@@ -98,28 +101,31 @@ function image(url: string, filePath?: string): ImageContent {
 function functionImageMessage(
   name: string,
   url: string,
-  filePath?: string
-): ModelMessageTypeMultiActions {
-  return {
-    role: "function",
-    name,
-    function_call_id: `${name}_call`,
-    content: [image(url, filePath)],
-  };
+  filePath?: string,
+  tokenCount = IMAGE_CONTENT_TOKEN_COUNT + 5
+): InteractionWithTokens["messages"][number] {
+  return withTokens(
+    {
+      role: "function",
+      name,
+      function_call_id: `${name}_call`,
+      content: [image(url, filePath)],
+    },
+    tokenCount
+  );
 }
 
-function imagePruningResultMessages(state: ConversationImagePruningState) {
+function imagePruningResultMessages(
+  state: CheckpointedConversationWindowState
+) {
   return state
-    .result()
-    .interactions.flatMap((interaction) => interaction.messages);
+    .renderedInteractions()
+    .flatMap((interaction) => interaction.messages);
 }
 
-describe("ConversationImagePruningState", () => {
+describe("CheckpointedConversationWindowState image limits", () => {
   it("prunes the oldest tool images as interactions are appended", () => {
-    const state = ConversationImagePruningState.empty({
-      maxInputImages: 2,
-      logDetails: {},
-    });
+    const state = makeState({ maxInputImages: 2 });
     const firstInteraction = {
       messages: [
         functionImageMessage("first", "first", "conversation/first.png"),
@@ -142,6 +148,7 @@ describe("ConversationImagePruningState", () => {
           role: "user",
           name: "user",
           content: [image("user-upload")],
+          tokenCount: IMAGE_CONTENT_TOKEN_COUNT + 5,
         },
       ],
     });
@@ -151,10 +158,9 @@ describe("ConversationImagePruningState", () => {
       ],
     });
 
-    const result = state.result();
-    const [first, second, user, third] = result.interactions.flatMap(
-      (item) => item.messages
-    );
+    const [first, second, user, third] = state
+      .renderedInteractions()
+      .flatMap((item) => item.messages);
     expect(first.content).toEqual([
       {
         type: "text",
@@ -169,7 +175,7 @@ describe("ConversationImagePruningState", () => {
     ]);
     expect(user.content).toEqual([image("user-upload")]);
     expect(third.content).toEqual([image("third", "conversation/third.png")]);
-    expect(result.stats).toEqual({
+    expect(state.imagePruningStats()).toEqual({
       imageCountLimit: 2,
       prunedImageCount: 2,
       nonToolImageCount: 1,
@@ -177,6 +183,33 @@ describe("ConversationImagePruningState", () => {
     expect(firstInteraction.messages[0].content).toEqual([
       image("first", "conversation/first.png"),
     ]);
+  });
+
+  it("does not count images removed by tool-result pruning", () => {
+    const state = makeState({
+      pruningBudget: 10_000,
+      maxInputImages: 2,
+    });
+    state.append(
+      interaction([
+        userMessage("question", 10),
+        assistantMessage("first_call"),
+        functionImageMessage("first", "first", undefined, 25_000),
+      ])
+    );
+    state.append(
+      interaction([
+        assistantMessage("second_call"),
+        functionImageMessage("second", "second"),
+      ])
+    );
+    state.append(interaction([functionImageMessage("third", "third")]));
+
+    const [first, second, third] = toolResults(state);
+    expect(isPruned(first.content)).toBe(true);
+    expect(second.content).toEqual([image("second")]);
+    expect(third.content).toEqual([image("third")]);
+    expect(state.imagePruningStats().prunedImageCount).toBe(0);
   });
 });
 

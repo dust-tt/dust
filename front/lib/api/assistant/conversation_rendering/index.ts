@@ -1,7 +1,7 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
 import {
   CheckpointedConversationWindowState,
-  ConversationImagePruningState,
+  IMAGE_CONTENT_TOKEN_COUNT,
 } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import type { ConversationRenderingMetricsCaller } from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import {
@@ -9,12 +9,8 @@ import {
   emitConversationRenderingMetrics,
 } from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
-import type {
-  InteractionWithTokens,
-  MessageWithTokens,
-} from "@app/lib/api/assistant/conversation_rendering/pruning";
+import type { MessageWithTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import { sumInteractionTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
-import type { ConversationWindowResult } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -39,8 +35,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-// Fixed number of tokens assumed for image contents
-export const IMAGE_CONTENT_TOKEN_COUNT = 3100;
+export { IMAGE_CONTENT_TOKEN_COUNT };
 export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
 
@@ -53,35 +48,6 @@ export const PREVIOUS_INTERACTIONS_TO_PRESERVE = 3;
 // otherwise leave pruning inactive until compaction has already fired. Applies to the whole
 // conversation, current interaction included. No separate, looser budget for it.
 export const PRUNING_TARGET_CONTEXT_UTILIZATION = 0.6;
-
-/**
- * Replays the conversation chronologically so consumed tool results are pruned at stable
- * checkpoints without removing complete interactions.
- */
-function pruneConversationToBudget(
-  interactions: InteractionWithTokens[],
-  {
-    pruningBudget,
-    budgetForInteractions,
-    logDetails,
-  }: {
-    pruningBudget: number;
-    budgetForInteractions: number;
-    logDetails: Record<string, unknown>;
-  }
-): Result<ConversationWindowResult, Error> {
-  const state = CheckpointedConversationWindowState.empty({
-    pruningBudget,
-    budgetForInteractions,
-    logDetails,
-  });
-
-  for (const interaction of interactions) {
-    state.append(interaction);
-  }
-
-  return state.fit();
-}
 
 export async function renderConversationForModel(
   auth: Authenticator,
@@ -138,28 +104,7 @@ export async function renderConversationForModel(
     agentConfiguration,
     enabledSkills,
   });
-  const imagePruningState = ConversationImagePruningState.empty({
-    maxInputImages: model.maxInputImages,
-    logDetails: {
-      workspaceId: conversation.owner.sId,
-      conversationId: conversation.sId,
-      modelId: model.modelId,
-      providerId: model.providerId,
-    },
-  });
-  const renderedInteractions = groupMessagesIntoInteractions([
-    ...leadingMessages,
-    ...renderedMessages,
-  ]);
-  for (const interaction of renderedInteractions) {
-    imagePruningState.append(interaction);
-  }
-  // Apply model input limits before tokenization so replacement text is counted.
-  const { interactions: imagePrunedInteractions, stats: imagePruningStats } =
-    imagePruningState.result();
-  const messages = imagePrunedInteractions.flatMap(
-    (interaction) => interaction.messages
-  );
+  const messages = [...leadingMessages, ...renderedMessages];
   const renderAllMessagesMs = Date.now() - stepStart;
   stepStart = Date.now();
 
@@ -249,11 +194,17 @@ export async function renderConversationForModel(
     pokeUrl: `https://poke.dust.tt/${conversation.owner.sId}/conversation/${conversation.sId}`,
   };
 
-  const pruneRes = pruneConversationToBudget(interactions, {
+  const state = CheckpointedConversationWindowState.empty({
     pruningBudget,
     budgetForInteractions,
+    maxInputImages: model.maxInputImages,
     logDetails,
   });
+  for (const interaction of interactions) {
+    state.append(interaction);
+  }
+  const pruneRes = state.fit();
+  const imagePruningStats = state.imagePruningStats();
   if (pruneRes.isErr()) {
     if (metricsCaller) {
       emitConversationRenderingError({
