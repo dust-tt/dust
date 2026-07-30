@@ -46,7 +46,6 @@ interface MCPServerDetailsSheetProps {
   spaces: SpaceType[];
   readOnly?: boolean;
   sensitivityLabelsController?: SensitivityLabelsController;
-  isSkillsRestrictionReady: boolean;
 }
 
 export function MCPServerDetailsSheet({
@@ -59,7 +58,6 @@ export function MCPServerDetailsSheet({
   spaces,
   readOnly = false,
   sensitivityLabelsController,
-  isSkillsRestrictionReady,
 }: MCPServerDetailsSheetProps) {
   const [selectedTab, setSelectedTab] = useState<TabType>("info");
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
@@ -210,7 +208,6 @@ export function MCPServerDetailsSheet({
                         sensitivityLabelsController={
                           sensitivityLabelsController
                         }
-                        isSkillsRestrictionReady={isSkillsRestrictionReady}
                       />
                     </div>
                   )}

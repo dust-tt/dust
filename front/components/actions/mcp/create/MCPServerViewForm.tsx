@@ -6,13 +6,9 @@ import { useController, useFormContext } from "react-hook-form";
 
 interface MCPServerViewFormProps {
   mcpServerView: MCPServerViewType;
-  isSkillsRestrictionReady: boolean;
 }
 
-export function MCPServerViewForm({
-  mcpServerView,
-  isSkillsRestrictionReady,
-}: MCPServerViewFormProps) {
+export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
   const form = useFormContext<MCPServerFormValues>();
   const { field: isRestrictedToSkillsField } = useController({
     name: "isRestrictedToSkills",
@@ -48,7 +44,6 @@ export function MCPServerViewForm({
         text="Restrict this tool to skills"
         description="Use this when the tool should always be accompanied by workspace context or safety rules from a skill."
         checked={isRestrictedToSkillsField.value}
-        disabled={!isSkillsRestrictionReady}
         onCheckedChange={(checked) => {
           isRestrictedToSkillsField.onChange(checked === true);
         }}

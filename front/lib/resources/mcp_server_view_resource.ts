@@ -1814,6 +1814,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       serverType: this.serverType,
       server: serverWithScope,
       oAuthUseCase: this.oAuthUseCase,
+      isRestrictedToSkills: this.isRestrictedToSkills,
       editedByUser: this.makeEditedBy(
         this.editedByUser,
         this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt

@@ -21,7 +21,6 @@ import { clientFetch } from "@app/lib/egress/client";
 import {
   useMCPServer,
   useMCPServers,
-  useMCPServerViewsFromSpaces,
   useMutateMCPServersViewsForAdmin,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
@@ -59,30 +58,10 @@ export function MCPServerDetails({
   onClose,
   readOnly = false,
 }: MCPServerDetailsProps) {
-  const { spaces, isSpacesLoading, isSpacesError } = useSpacesAsAdmin({
+  const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: !isOpen || !isAdmin(owner),
   });
-
-  const {
-    serverViews: directlyAvailableMCPServerViews,
-    isLoading: isDirectAvailabilityLoading,
-    isError: isDirectAvailabilityError,
-    mutateServerViews: mutateDirectlyAvailableMCPServerViews,
-  } = useMCPServerViewsFromSpaces(owner, spaces, {
-    disabled: !isOpen || readOnly,
-  });
-  const isSkillsRestrictionReady =
-    !isSpacesLoading &&
-    !isSpacesError &&
-    !isDirectAvailabilityLoading &&
-    !isDirectAvailabilityError;
-  const isRestrictedToSkills =
-    isSkillsRestrictionReady &&
-    mcpServerView !== null &&
-    !directlyAvailableMCPServerViews.some(
-      (view) => view.server.sId === mcpServerView.server.sId
-    );
 
   const { server: mcpServerWithViews, mutateMCPServer } = useMCPServer({
     owner,
@@ -136,7 +115,9 @@ export function MCPServerDetails({
           mcpServerWithViews ?? undefined,
           spaces
         ),
-        isRestrictedToSkills,
+        // The backend propagates this restriction to every view for the MCP server,
+        // so the selected view's serialized value is the checkbox source of truth.
+        isRestrictedToSkills: mcpServerView.isRestrictedToSkills ?? false,
       };
     }
     return {
@@ -146,7 +127,7 @@ export function MCPServerDetails({
       toolSettings: {},
       sharingSettings: {},
     };
-  }, [isRestrictedToSkills, mcpServerView, mcpServerWithViews, spaces]);
+  }, [mcpServerView, mcpServerWithViews, spaces]);
 
   const form = useForm<MCPServerFormValues>({
     values: defaults,
@@ -405,7 +386,6 @@ export function MCPServerDetails({
           // Revalidate caches.
           await mutateMCPServersViewsForAdmin();
           await mutateMCPServer();
-          await mutateDirectlyAvailableMCPServerViews();
 
           sendNotification({
             type: "success",
@@ -491,7 +471,6 @@ export function MCPServerDetails({
         spaces={spaces}
         readOnly={readOnly}
         sensitivityLabelsController={sensitivityLabelsController}
-        isSkillsRestrictionReady={isSkillsRestrictionReady}
       />
     </FormProvider>
   );

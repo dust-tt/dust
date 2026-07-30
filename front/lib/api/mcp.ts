@@ -110,6 +110,8 @@ export interface MCPServerViewType {
   server: MCPServerType;
   oAuthUseCase: MCPOAuthUseCase | null;
   editedByUser: EditedByUser | null;
+  // Optional for compatibility with private API responses from older deployments.
+  isRestrictedToSkills?: boolean;
   toolsMetadata?: {
     toolName: string;
     permission: MCPToolStakeLevelType;
