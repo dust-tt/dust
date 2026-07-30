@@ -14,23 +14,15 @@ const { reapSandboxPhaseActivity, reapStaleSandboxesActivity } =
     },
   });
 
-// Legacy phase order, kept for replay of pre-patch executions.
-const REAPER_PHASES_V1 = [
-  "kill_requested",
-  "running",
-  "pending_approval",
-  "sleeping",
-] satisfies ReaperPhase[];
-
 // Priority order: concurrency-freeing work first, then storage cleanup.
 // Awake kill-requested sandboxes burn E2B capacity and sit on the user
 // recreate path, so they are destroyed first. Stale running sandboxes are
 // paused next (same concurrency win, non-destructive). pending_approval is
 // cheap DB-only bookkeeping (already paused). Kill-requested sleepers are
-// storage/rollout cleanup ahead of cold sleeping destroy — they free no
+// storage/rollout cleanup ahead of cold sleeping destroy - they free no
 // concurrency, but taking the provider destroy off ensureActive is hotter
 // than 4-day-stale sleepers.
-const REAPER_PHASES_V2 = [
+const REAPER_PHASES = [
   "kill_requested",
   "running",
   "pending_approval",
@@ -54,15 +46,7 @@ export async function sandboxReaperWorkflow(): Promise<void> {
     return;
   }
 
-  // Patch for prioritized phases: pre-patch executions replay the legacy phase
-  // order. After deploy, pause the schedule, terminate any open
-  // sandboxReaperWorkflow, wait for the worker rollout to finish, then remove
-  // REAPER_PHASES_V1 and this patched() call immediately.
-  const phases = patched("sandbox-reaper-prioritized-phases")
-    ? REAPER_PHASES_V2
-    : REAPER_PHASES_V1;
-
-  for (const phase of phases) {
+  for (const phase of REAPER_PHASES) {
     let cursor: ReaperCursor | null = null;
     let processedBatches = 0;
 
