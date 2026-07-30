@@ -307,7 +307,6 @@ export interface MembershipUpgradeRequestType {
   status: MembershipUpgradeRequestStatus;
   createdAt: number;
   resolvedAt: number | null;
-  // Why the member needs the raised limit - Optional
   reason: string | null;
   requester: {
     sId: string;

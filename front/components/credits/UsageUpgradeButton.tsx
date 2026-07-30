@@ -139,7 +139,7 @@ export function UsageUpgradeButton({
             <DialogContainer>
               <div className="flex flex-col gap-4">
                 <p className="text-sm text-muted-foreground">
-                  Your workspace admins will review this request.
+                  Your workspace admins and managers will review this request.
                 </p>
                 <BaseFormFieldSection<HTMLTextAreaElement>
                   fieldName="reason"
