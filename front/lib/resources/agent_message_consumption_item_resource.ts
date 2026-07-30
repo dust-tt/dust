@@ -29,17 +29,21 @@ export type CompletedAgentMessageConsumptionItem =
     })
   | CompletedToolConsumptionItem;
 
-export type CompletedToolConsumptionItem = CompletedToolConsumptionEvidence & {
+export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
   itemType: "tool";
-};
-
-export type CompletedToolConsumptionEvidence = ConsumptionItemEvidenceBase & {
   runUsageModelId: ModelId | null;
   action: AgentMCPActionResource;
   /** Estimated tokens in the result returned by this tool execution */
   inputTokensCount: number | null;
   /** Estimated tokens in the model output that emitted the tool name and arguments */
   outputTokensCount: number | null;
+  directCreditAmountMicro: number | null;
+};
+
+export type PendingToolConsumptionCompletion = ConsumptionItemEvidenceBase & {
+  action: AgentMCPActionResource;
+  /** Estimated tokens in the result returned by this tool execution */
+  inputTokensCount: number | null;
   directCreditAmountMicro: number | null;
 };
 
@@ -275,7 +279,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       transaction,
     }: {
       attributionVersion: number;
-      item: CompletedToolConsumptionEvidence;
+      item: PendingToolConsumptionCompletion;
       transaction?: Transaction;
     }
   ): Promise<void> {
@@ -283,9 +287,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       {
         itemType: "tool",
         agentMCPActionId: item.action.id,
-        runUsageId: item.runUsageModelId,
         inputTokensCount: item.inputTokensCount,
-        outputTokensCount: item.outputTokensCount,
         grossAttributedCreditAmountMicro: item.grossAttributedCreditAmountMicro,
         directCreditAmountMicro: item.directCreditAmountMicro,
         completedAt: new Date(),
