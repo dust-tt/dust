@@ -65,6 +65,7 @@ export interface DeleteUserApprovalsResponseBody {
 
 const USER_METADATA_COMMA_SEPARATOR = ",";
 const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
+const USER_MEMORY_ENABLED_METADATA_KEY = "userMemoryEnabled";
 const TOOLS_VALIDATION_WILDCARD = "*";
 const USER_SEARCH_DB_BATCH_SIZE = 1000;
 
@@ -719,6 +720,22 @@ export class UserResource extends BaseResource<UserModel> {
     }
 
     await metadata.update({ value });
+  }
+
+  async isMemoryEnabled(auth: Authenticator): Promise<boolean> {
+    const metadata = await this.getMetadata(
+      USER_MEMORY_ENABLED_METADATA_KEY,
+      auth.getNonNullableWorkspace().id
+    );
+    return metadata?.value !== "false";
+  }
+
+  async setMemoryEnabled(auth: Authenticator, enabled: boolean): Promise<void> {
+    await this.setMetadata(
+      USER_MEMORY_ENABLED_METADATA_KEY,
+      enabled ? "true" : "false",
+      auth.getNonNullableWorkspace().id
+    );
   }
 
   async deleteMetadata(where: WhereOptions<UserMetadataModel>) {
