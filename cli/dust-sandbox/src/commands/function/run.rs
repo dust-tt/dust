@@ -7,6 +7,7 @@ use super::{emit_error, spawn_function};
 use crate::api::DustApiClient;
 
 const SANDBOX_TOKEN_ENV: &str = "DUST_SANDBOX_TOKEN";
+const NON_JSON_SNIPPET_MAX_CHARS: usize = 512;
 
 /// Execute a function and deliver its response.
 ///
@@ -23,8 +24,9 @@ const SANDBOX_TOKEN_ENV: &str = "DUST_SANDBOX_TOKEN";
 ///   worker keeps structured errors. Never POSTs the callback.
 pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Result<()> {
     let started = Instant::now();
+    let runner_started = Instant::now();
     let (code, captured) = spawn_function("run", name, true, true).await?;
-    let runner_ms = started.elapsed().as_millis() as u64;
+    let runner_ms = runner_started.elapsed().as_millis() as u64;
     let response = captured.unwrap_or_default();
 
     match result_delivery {
@@ -32,6 +34,7 @@ pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Re
         ResultDelivery::Stdout => {
             deliver_stdout(
                 &response,
+                code,
                 TimingsMs {
                     total: started.elapsed().as_millis() as u64,
                     runner: runner_ms,
@@ -52,16 +55,17 @@ async fn deliver_callback(name: &str, code: i32, response: &str) -> Result<()> {
         std::process::exit(code);
     }
 
+    let line = last_non_empty_line(response);
     // Sandbox: deliver the response to the Dust result API instead of stdout.
-    if response.trim().is_empty() {
+    if line.is_empty() {
         return Err(emit_error(anyhow!(
             "function produced no output to deliver to the result API"
         )));
     }
-    // The runner always emits a single JSON line; forward it as structured JSON
-    // (fall back to a string if it somehow isn't valid JSON).
-    let result: serde_json::Value = serde_json::from_str(response.trim())
-        .unwrap_or_else(|_| serde_json::Value::String(response.to_string()));
+    // The runner emits a JSON line; take the last non-empty line so incidental
+    // console.log output on the same fd does not poison the callback body.
+    let result: serde_json::Value =
+        serde_json::from_str(line).unwrap_or_else(|_| serde_json::Value::String(line.to_string()));
 
     let client = DustApiClient::from_env()?;
     client
@@ -71,27 +75,121 @@ async fn deliver_callback(name: &str, code: i32, response: &str) -> Result<()> {
     std::process::exit(0);
 }
 
-fn deliver_stdout(response: &str, timings_ms: TimingsMs) -> ! {
-    let trimmed = response.trim();
-    if trimmed.is_empty() {
-        ResultEnvelope::stdout_invocation_failed("function produced no output").write_to_stdout();
-        // Exit 0 after any well-formed envelope so the worker keeps structured errors.
-        std::process::exit(0);
+fn deliver_stdout(response: &str, runner_exit_code: i32, timings_ms: TimingsMs) -> ! {
+    let (envelope, code) = stdout_result(response, runner_exit_code, timings_ms);
+    envelope.write_to_stdout();
+    std::process::exit(code);
+}
+
+/// Build the stdout delivery envelope and process exit code.
+///
+/// Exit is always 0 when a well-formed envelope is produced so the worker can
+/// classify from `outcome` instead of treating the process as a hard failure.
+fn stdout_result(
+    response: &str,
+    runner_exit_code: i32,
+    timings_ms: TimingsMs,
+) -> (ResultEnvelope, i32) {
+    let line = last_non_empty_line(response);
+    if line.is_empty() {
+        return (
+            ResultEnvelope::stdout_invocation_failed(format!(
+                "function produced no output (runner exit {runner_exit_code})"
+            )),
+            0,
+        );
     }
 
-    match serde_json::from_str::<serde_json::Value>(trimmed) {
-        Ok(outcome) => {
-            ResultEnvelope::stdout_outcome(outcome, Some(timings_ms)).write_to_stdout();
-            // Exit 0 even when the runner reported ok:false, so the worker keeps
-            // the structured error instead of a generic non-zero exit path.
-            std::process::exit(0);
-        }
+    match serde_json::from_str::<serde_json::Value>(line) {
+        Ok(outcome) => (ResultEnvelope::stdout_outcome(outcome, Some(timings_ms)), 0),
         Err(_) => {
-            ResultEnvelope::stdout_invocation_failed(
-                "function produced non-JSON output that could not be wrapped as a result envelope",
+            let snippet = truncate_chars(line, NON_JSON_SNIPPET_MAX_CHARS);
+            (
+                ResultEnvelope::stdout_invocation_failed(format!(
+                    "function produced non-JSON output (runner exit {runner_exit_code}): {snippet}"
+                )),
+                0,
             )
-            .write_to_stdout();
-            std::process::exit(0);
         }
+    }
+}
+
+fn last_non_empty_line(response: &str) -> &str {
+    response
+        .lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .map(str::trim)
+        .unwrap_or("")
+}
+
+fn truncate_chars(value: &str, max_chars: usize) -> String {
+    let mut out = String::new();
+    for (i, ch) in value.chars().enumerate() {
+        if i >= max_chars {
+            out.push('…');
+            break;
+        }
+        out.push(ch);
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stdout_result_wraps_valid_json_and_exits_0() {
+        let (envelope, code) = stdout_result(
+            "noise\n{\"ok\":true,\"output\":1}\n",
+            0,
+            TimingsMs {
+                total: 12,
+                runner: 8,
+            },
+        );
+        assert_eq!(code, 0);
+        assert_eq!(envelope.delivery, ResultDelivery::Stdout);
+        assert_eq!(
+            envelope.outcome,
+            serde_json::json!({ "ok": true, "output": 1 })
+        );
+    }
+
+    #[test]
+    fn stdout_result_exits_0_for_empty_and_non_json() {
+        let (empty, empty_code) = stdout_result(
+            "",
+            7,
+            TimingsMs {
+                total: 1,
+                runner: 1,
+            },
+        );
+        assert_eq!(empty_code, 0);
+        assert_eq!(
+            empty.outcome["error"]["message"],
+            "function produced no output (runner exit 7)"
+        );
+
+        let (bad, bad_code) = stdout_result(
+            "not-json\n",
+            1,
+            TimingsMs {
+                total: 1,
+                runner: 1,
+            },
+        );
+        assert_eq!(bad_code, 0);
+        let message = bad.outcome["error"]["message"].as_str().unwrap();
+        assert!(message.contains("runner exit 1"));
+        assert!(message.contains("not-json"));
+    }
+
+    #[test]
+    fn last_non_empty_line_skips_trailing_blank_lines() {
+        assert_eq!(last_non_empty_line("a\n\n"), "a");
+        assert_eq!(last_non_empty_line("   \n"), "");
     }
 }
