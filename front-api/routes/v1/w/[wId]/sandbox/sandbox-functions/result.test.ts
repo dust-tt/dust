@@ -310,4 +310,28 @@ describe("POST /api/v1/w/[wId]/sandbox/sandbox-functions/result", () => {
       { invocationId: invocation.sId }
     );
   });
+
+  it("treats a second callback for an already-succeeded invocation as a no-op", async () => {
+    const { auth, token, workspace, sandboxFunction, invocation } =
+      await createPersistedSandboxFunctionInvocationTokenTestContext();
+
+    const first = await postSandboxFunctionResult(workspace, token, {
+      result: { ok: true, output: { hello: "first" } },
+    });
+    expect(first.status).toBe(200);
+
+    const second = await postSandboxFunctionResult(workspace, token, {
+      result: { ok: true, output: { hello: "second" } },
+    });
+    expect(second.status).toBe(200);
+
+    const refetchedInvocation =
+      await SandboxFunctionInvocationResource.fetchById(auth, {
+        sandboxFunction,
+        invocationId: invocation.sId,
+      });
+    expect(refetchedInvocation?.status).toBe("succeeded");
+    expect(refetchedInvocation?.result).toEqual({ hello: "first" });
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledTimes(1);
+  });
 });
