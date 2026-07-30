@@ -49,10 +49,10 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   },
   // https://openai.com/api/pricing
   "gpt-5.6-luna": {
-    input: 1.0,
-    output: 6.0,
-    cache_creation_input_tokens: 1.25,
-    cache_read_input_tokens: 0.1,
+    input: 0.2,
+    output: 1.2,
+    cache_creation_input_tokens: 0.25,
+    cache_read_input_tokens: 0.02,
   },
   // https://openai.com/api/pricing
   "gpt-5.5": {
