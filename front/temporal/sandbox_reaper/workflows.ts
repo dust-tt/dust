@@ -22,17 +22,20 @@ const REAPER_PHASES_V1 = [
   "sleeping",
 ] satisfies ReaperPhase[];
 
-// Priority order: pausing stale awake sandboxes and destroying awake
-// kill-requested sandboxes directly cap cluster concurrency, so they run
-// first. Kill-requested sleeping sandboxes are pure storage cleanup (they are
-// destroyed lazily on user access) and are swept last, when higher-priority
-// phases leave room in the run.
+// Priority order: concurrency-freeing work first, then storage cleanup.
+// Awake kill-requested sandboxes burn E2B capacity and sit on the user
+// recreate path, so they are destroyed first. Stale running sandboxes are
+// paused next (same concurrency win, non-destructive). pending_approval is
+// cheap DB-only bookkeeping (already paused). Kill-requested sleepers are
+// storage/rollout cleanup ahead of cold sleeping destroy — they free no
+// concurrency, but taking the provider destroy off ensureActive is hotter
+// than 4-day-stale sleepers.
 const REAPER_PHASES_V2 = [
+  "kill_requested",
   "running",
   "pending_approval",
-  "kill_requested",
-  "sleeping",
   "kill_requested_sleeping",
+  "sleeping",
 ] satisfies ReaperPhase[];
 
 const MAX_BATCHES_PER_PHASE = 200;

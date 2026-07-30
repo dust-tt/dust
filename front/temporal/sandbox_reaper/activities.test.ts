@@ -210,7 +210,7 @@ describe("reapSandboxPhaseActivity", () => {
     expect(sandbox?.status).toBe("deleted");
   });
 
-  it("defers kill-requested sleeping sandboxes to the low-priority phase", async () => {
+  it("skips kill-requested sleeping sandboxes in the awake kill phase", async () => {
     mockGetSandboxImage.mockReturnValue(
       new Ok({
         toCreateConfig: () => ({
