@@ -311,7 +311,7 @@ export function SkillInstructionsEditorContent({
   return (
     <>
       {isReadOnly ? (
-        <div className={cn(className, readOnlyStyles)}>
+        <div className={cn(readOnlyStyles, className)}>
           <EditorContent editor={editor} className="leading-7" />
         </div>
       ) : (

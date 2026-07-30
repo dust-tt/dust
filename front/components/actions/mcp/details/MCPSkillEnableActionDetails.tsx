@@ -81,7 +81,7 @@ export function MCPSkillEnableActionDetails({
       visual={SKILL_ICON}
     >
       {showSidebarDetails && (
-        <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
+        <div className="dd-privacy-mask flex flex-col gap-5 py-4 pl-6">
           {outputItems.length > 0 && (
             <div className="flex flex-col gap-2 text-sm text-muted-foreground">
               {outputItems.map((o, index) => (
@@ -94,14 +94,14 @@ export function MCPSkillEnableActionDetails({
 
           {showSkillDetails && (
             <div className="flex flex-col gap-4">
-              <div className="heading-sm text-foreground">Skill details</div>
+              <div className="heading-base text-foreground">Skill details</div>
 
-              {hasDescription && (
-                <div>
-                  <span className="font-medium text-foreground">
-                    Description
-                  </span>
-                  <div className="my-2">
+              <div className="flex flex-col gap-5">
+                {hasDescription && (
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-medium text-foreground">
+                      Description
+                    </span>
                     <ContentMessage variant="primary" size="lg">
                       <Markdown
                         content={description}
@@ -112,24 +112,22 @@ export function MCPSkillEnableActionDetails({
                       />
                     </ContentMessage>
                   </div>
-                </div>
-              )}
+                )}
 
-              {hasTools && (
-                <div>
-                  <span className="font-medium text-foreground">Tools</span>
-                  <div className="my-2">
+                {hasTools && (
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-medium text-foreground">
+                      Tools
+                    </span>
                     <SkillToolsList tools={tools} />
                   </div>
-                </div>
-              )}
+                )}
 
-              {showInstructionsSection && (
-                <div>
-                  <span className="font-medium text-foreground">
-                    Instructions
-                  </span>
-                  <div className="my-2">
+                {showInstructionsSection && (
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-medium text-foreground">
+                      Instructions
+                    </span>
                     {isSkillLoading ? (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Spinner size="xs" />
@@ -144,12 +142,12 @@ export function MCPSkillEnableActionDetails({
                         content={instructions}
                         htmlContent={skill?.instructionsHtml ?? ""}
                         owner={owner}
-                        className="max-h-150 overflow-y-auto"
+                        className="min-h-0 max-h-150 overflow-y-auto"
                       />
                     ) : null}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
         </div>
