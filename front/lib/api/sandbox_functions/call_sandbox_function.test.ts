@@ -1,6 +1,6 @@
 import { callSandboxFunction } from "@app/lib/api/sandbox_functions/call_sandbox_function";
 import type { SandboxFunctionInvocationStreamEvent } from "@app/lib/api/sandbox_functions/events";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -72,7 +72,8 @@ function mockResult(result: unknown, invocationId: string): void {
 
 async function makeFunction(
   auth: Authenticator,
-  space: SpaceResource
+  space: SpaceResource,
+  userIdentity: "optional" | "workspace_user_required" = "optional"
 ): Promise<SandboxFunctionResource> {
   const file = await FileFactory.create(auth, null, {
     contentType: sandboxFunctionContentType,
@@ -87,6 +88,7 @@ async function makeFunction(
     file,
     slug: "greet",
     description: "Greet a user by name.",
+    userIdentity,
     inputSchema,
     outputSchema,
   });
@@ -165,7 +167,7 @@ describe("callSandboxFunction", () => {
 
   it("fails closed on a policy introduced by a newer application version", async () => {
     const { auth, fn } = await setup();
-    Object.assign(fn, { authentication: "future_policy" });
+    Object.assign(fn, { userIdentity: "future_policy" });
 
     const result = await callSandboxFunction(auth, fn, { name: "x" });
 
@@ -173,7 +175,58 @@ describe("callSandboxFunction", () => {
     if (result.isOk()) {
       return;
     }
-    expect(result.error.code).toBe("invocation_failed");
+    expect(result.error.code).toBe("user_authentication_required");
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+  });
+
+  it("rejects an authenticator from another workspace", async () => {
+    const { fn } = await setup();
+    const { authenticator: otherWorkspaceAuth } = await createResourceTest({
+      role: "admin",
+    });
+
+    const result = await fn.invoke(otherWorkspaceAuth, {
+      input: { name: "Soupinou" },
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.message).toBe(
+      "This Pod Function belongs to another workspace."
+    );
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("rejects a workspace-user-required function without creating an invocation", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const fn = await makeFunction(
+      authenticator,
+      space,
+      "workspace_user_required"
+    );
+    const userlessAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const result = await callSandboxFunction(userlessAuth, fn, {
+      name: "Soupinou",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error).toEqual({
+      code: "user_authentication_required",
+      message:
+        "This Pod Function requires a logged-in user from its workspace.",
+    });
     expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
     expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
   });

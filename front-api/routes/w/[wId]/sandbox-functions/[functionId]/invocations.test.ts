@@ -1,5 +1,6 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -87,9 +88,11 @@ afterEach(() => {
 async function setupSandboxFunction({
   addCallerToSpace = true,
   withSandboxFunctionsFeatureFlag = true,
+  userIdentity = "optional",
 }: {
   addCallerToSpace?: boolean;
   withSandboxFunctionsFeatureFlag?: boolean;
+  userIdentity?: "optional" | "workspace_user_required";
 } = {}) {
   const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
     role: "admin",
@@ -112,6 +115,7 @@ async function setupSandboxFunction({
     file,
     slug: "run-function",
     description: "Run the function.",
+    userIdentity,
     inputSchema,
     outputSchema,
   });
@@ -314,6 +318,45 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       },
       { invocationId: invocation.sId }
     );
+  });
+
+  it("allows a workspace member to invoke a workspace-user-required function", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction({
+      userIdentity: "workspace_user_required",
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  it("returns a typed authentication error when the function rejects the caller", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction();
+    vi.spyOn(SandboxFunctionResource.prototype, "invoke").mockResolvedValueOnce(
+      new Err(
+        new SandboxFunctionInvocationError(
+          "This Pod Function requires a logged-in user from its workspace."
+        )
+      )
+    );
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+      error: {
+        type: "user_authentication_required",
+        message:
+          "This Pod Function requires a logged-in user from its workspace.",
+      },
+    });
   });
 
   it("creates an invocation by pod id and function slug", async () => {

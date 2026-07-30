@@ -373,6 +373,52 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
       },
     });
   });
+
+  it("should reject deleting a file referenced by skill history", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "user",
+    });
+    const skill = await SkillFactory.create(auth);
+    const file = await FileFactory.create(auth, user, {
+      contentType: "text/plain",
+      fileName: "template.txt",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "skill_attachment",
+    });
+    const skillUpdate = {
+      agentFacingDescription: skill.agentFacingDescription,
+      attachedKnowledge: [],
+      icon: skill.icon,
+      instructions: skill.instructions,
+      mcpServerViews: [],
+      name: skill.name,
+      requestedSpaceIds: skill.requestedSpaceIds,
+      userFacingDescription: skill.userFacingDescription,
+    };
+    await skill.updateSkill(auth, {
+      ...skillUpdate,
+      fileAttachments: [file],
+    });
+    await skill.updateSkill(auth, {
+      ...skillUpdate,
+      fileAttachments: [],
+    });
+
+    const response = await honoApp.request(fileUrl(workspace, file.sId), {
+      method: "DELETE",
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message:
+          "Files referenced by a skill or its version history cannot be deleted.",
+      },
+    });
+  });
 });
 
 describe("POST /api/w/:wId/files/:fileId", () => {

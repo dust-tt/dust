@@ -9,9 +9,9 @@ export class OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream extends WithOpen
 ) {
   // https://developers.openai.com/api/docs/models/gpt-5.6-luna
   static readonly tokenPricing = {
-    cacheHit: 0.1,
-    standardInput: 1.0,
-    standardOutput: 6.0,
+    cacheHit: 0.02,
+    standardInput: 0.2,
+    standardOutput: 1.2,
   };
 
   static readonly region = GLOBAL;

@@ -11,8 +11,8 @@ export class OpenAIGptFiveDotSixLunaEuropeOpenAIResponsesBatch extends WithOpenA
   // regional uplift for models released on or after March 5, 2026.
   // https://developers.openai.com/api/docs/models/gpt-5.6-luna
   static readonly tokenPricing = {
-    standardInput: 0.55,
-    standardOutput: 3.3,
+    standardInput: 0.11,
+    standardOutput: 0.66,
   };
 
   static readonly region = EUROPE;

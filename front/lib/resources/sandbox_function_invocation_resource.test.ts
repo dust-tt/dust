@@ -8,13 +8,14 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -67,7 +68,9 @@ beforeEach(() => {
   fileStorageMock.reset();
 });
 
-async function setupExecutionTest() {
+async function setupExecutionTest(
+  userIdentity: SandboxFunctionUserIdentityPolicy = "optional"
+) {
   const { authenticator, workspace } = await createResourceTest({
     role: "admin",
   });
@@ -85,6 +88,7 @@ async function setupExecutionTest() {
     file,
     slug: "add-comment",
     description: "Add a comment.",
+    userIdentity,
     inputSchema,
     outputSchema,
   });
@@ -631,20 +635,61 @@ describe("SandboxFunctionInvocationResource", () => {
   it("fails closed when a newer application persisted an unknown policy", async () => {
     const { authenticator, sandbox, sandboxFunction, invocation } =
       await setupExecutionTest();
-    await SandboxFunctionModel.update(
-      { authentication: "future_policy" },
+    await frontSequelize.getQueryInterface().bulkUpdate(
+      "sandbox_functions",
+      { userIdentity: "future_policy" },
       {
-        where: {
-          id: sandboxFunction.id,
-          workspaceId: sandboxFunction.workspaceId,
-        },
+        id: sandboxFunction.id,
+        workspaceId: sandboxFunction.workspaceId,
       }
     );
+
     const execSpy = vi.spyOn(sandbox, "exec");
 
     const executionResult = await invocation.execute(authenticator);
 
     expect(executionResult.isErr()).toBe(true);
+    expect(execSpy).not.toHaveBeenCalled();
+  });
+
+  it("blocks execution with an authenticator from another workspace", async () => {
+    const { sandbox, invocation } = await setupExecutionTest();
+    const { authenticator: otherWorkspaceAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const execSpy = vi.spyOn(sandbox, "exec");
+
+    const executionResult = await invocation.execute(otherWorkspaceAuth);
+
+    expect(executionResult.isErr()).toBe(true);
+    if (executionResult.isOk()) {
+      return;
+    }
+    expect(executionResult.error.message).toBe(
+      "This Pod Function belongs to another workspace."
+    );
+    expect(execSpy).not.toHaveBeenCalled();
+  });
+
+  it("blocks a required invocation when membership is revoked before execution", async () => {
+    const { authenticator, sandbox, invocation } = await setupExecutionTest(
+      "workspace_user_required"
+    );
+    vi.spyOn(
+      MembershipResource,
+      "getActiveRoleForUserInWorkspace"
+    ).mockResolvedValueOnce("none");
+    const execSpy = vi.spyOn(sandbox, "exec");
+
+    const executionResult = await invocation.execute(authenticator);
+
+    expect(executionResult.isErr()).toBe(true);
+    if (executionResult.isOk()) {
+      return;
+    }
+    expect(executionResult.error.message).toContain(
+      "requires a logged-in user"
+    );
     expect(execSpy).not.toHaveBeenCalled();
   });
 

@@ -16,17 +16,36 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
         .string()
         .max(60)
         .describe(
-          "Short action label shown in the recommendations list (3-5 words, keep it tight). " +
-            "Be specific enough that the user knows exactly what they would be doing. " +
-            "Example: 'Ask about Slack decisions'."
+          "Action label shown in the 'Recommendations for you' list and on the " +
+            "recommendation card (4-6 words). Name BOTH the " +
+            "concrete outcome from the user's real work AND the Dust feature " +
+            "that delivers it, in plain user language — a stranger reading only " +
+            "this line should know exactly what they get and how. Do NOT use " +
+            "meta, internal, or advanced framing that hides the value or the " +
+            "feature. Never a vague verb like 'Explore', 'Try', or 'Get started'. " +
+            "Good: 'Share a frame of the latest US forecast review' (outcome = " +
+            "the forecast review; feature = a frame). " +
+            "Good: 'Build an agent that pings you on each new PR' (outcome = PR " +
+            "pings; feature = an agent + trigger). " +
+            "Bad: 'Build activation review brief' (meta — hides both the value " +
+            "and the feature being learned). " +
+            "Bad: 'Try a HubSpot use case'."
         ),
       content: z
         .string()
-        .max(100)
+        .max(80)
         .describe(
-          "Very brief subtitle shown under the title in the recommendations list (6-8 words max). " +
-            "Explain the 'how' or 'why' in plain language. " +
-            "Example: 'Find past decisions in Slack fast'."
+          "One-line subtitle under the title . Be explicit " +
+            "about (1) what you get out of it — the concrete payoff — and (2) why it " +
+            "was suggested for THIS user — the evidence from their real work (role, " +
+            "habit, peer pattern, personal usage). Plain language; complements the " +
+            "title, never restates it or hides behind meta/internal framing. " +
+            "Good (with title 'Share a frame of the latest US forecast review'): " +
+            "'Skip rebuilding the Monday deck — peers in your role already do this'. " +
+            "Good (with title 'Build an agent that pings you on each new PR'): " +
+            "'Catch every review request without watching Slack all day'. " +
+            "Bad: 'A useful HubSpot recommendation'. " +
+            "Bad: 'Learn more about frames and agents'."
         ),
     },
     stake: "never_ask",

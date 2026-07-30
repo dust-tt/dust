@@ -14,6 +14,22 @@ export const SANDBOX_FUNCTION_INVOCATION_STATUSES = [
 export type SandboxFunctionInvocationStatus =
   (typeof SANDBOX_FUNCTION_INVOCATION_STATUSES)[number];
 
+export const SANDBOX_FUNCTION_USER_IDENTITY_POLICIES = [
+  "optional",
+  "workspace_user_required",
+] as const;
+
+export type SandboxFunctionUserIdentityPolicy =
+  (typeof SANDBOX_FUNCTION_USER_IDENTITY_POLICIES)[number];
+
+export function isSandboxFunctionUserIdentityPolicy(
+  value: unknown
+): value is SandboxFunctionUserIdentityPolicy {
+  return SANDBOX_FUNCTION_USER_IDENTITY_POLICIES.some(
+    (policy) => policy === value
+  );
+}
+
 // Lowercase alphanumeric with single hyphen separators (e.g. `greet`, `send-slack-message`).
 export const SANDBOX_FUNCTION_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 

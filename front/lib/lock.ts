@@ -5,16 +5,16 @@ import tracer from "@app/logger/tracer";
 // Returns the lock value if the lock is acquired, that can be used to unlock, otherwise undefined.
 export async function distributedLock(
   redisCli: RedisClientType,
-  key: string
+  key: string,
+  lockTtlMs: number = 5_000
 ): Promise<string | undefined> {
   const lockKey = `lock:${key}`;
   const lockValue = `${Date.now()}-${Math.random()}`;
-  const lockTimeout = 5000; // 5 seconds timeout
 
   // Try to acquire the lock using SET with NX and PX options
   const result = await redisCli.set(lockKey, lockValue, {
     NX: true,
-    PX: lockTimeout,
+    PX: lockTtlMs,
   });
 
   if (result !== "OK") {
@@ -58,7 +58,10 @@ export const executeWithLock = async <T>(
   // `lock.acquire` APM span with this resource, so contention/wait time is
   // visible separately from the time spent holding the lock. Off by default so
   // existing callers are unchanged and we don't span every lock app-wide.
-  { traceAcquireResource }: { traceAcquireResource?: string } = {}
+  {
+    lockTtlMs = 5_000,
+    traceAcquireResource,
+  }: { lockTtlMs?: number; traceAcquireResource?: string } = {}
 ): Promise<T> => {
   const client = await getRedisStreamClient({ origin: "lock" });
 
@@ -67,7 +70,7 @@ export const executeWithLock = async <T>(
     let acquired: string | undefined;
     while (Date.now() - startMs < timeoutMs) {
       // Try to acquire the lock
-      acquired = await distributedLock(client, lockName);
+      acquired = await distributedLock(client, lockName, lockTtlMs);
       if (acquired) {
         break;
       }

@@ -169,7 +169,7 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  *         description: File not found
  *   delete:
  *     summary: Delete a file
- *     description: Delete a file from the workspace.
+ *     description: Delete a file from the workspace. Files referenced by a skill or its version history cannot be deleted.
  *     tags:
  *       - Private Files
  *     parameters:
@@ -190,6 +190,8 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  *     responses:
  *       204:
  *         description: File deleted
+ *       400:
+ *         description: File is referenced by a skill or its version history
  *       403:
  *         description: Permission denied
  *       404:
@@ -279,16 +281,23 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
       },
     });
   } else if (file.useCase === "skill_attachment") {
-    const skillResource = await SkillResource.fetchById(
-      auth,
-      file.useCaseMetadata?.skillId ?? ""
-    );
-    if (!skillResource || !skillResource.canWrite(auth)) {
+    if (!(await canWriteSkillFile(auth, file))) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
           message: "Only skill editors can modify files attached to a skill.",
+        },
+      });
+    }
+    const { isReferenced } = await SkillResource.fetchFileSkills(auth, file);
+    if (isReferenced) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Files referenced by a skill or its version history cannot be deleted.",
         },
       });
     }

@@ -1,5 +1,8 @@
 import type { PokePodFunction } from "@app/lib/api/poke/projects";
+import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
+import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
+import { executeWithLock } from "@app/lib/lock";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -18,11 +21,15 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import type { PostSandboxFunctionInvocationRequestBody } from "@app/types/api/sandbox_functions";
+import type {
+  PostSandboxFunctionInvocationRequestBody,
+  SandboxFunctionUserIdentityPolicy,
+} from "@app/types/api/sandbox_functions";
 import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -31,6 +38,21 @@ import type { Attributes, Transaction } from "sequelize";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxFunctionResource
   extends ReadonlyAttributesType<SandboxFunctionModel> {}
+
+const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
+
+function userIdentityPolicyStrength(
+  policy: SandboxFunctionUserIdentityPolicy
+): number {
+  switch (policy) {
+    case "optional":
+      return 0;
+    case "workspace_user_required":
+      return 1;
+    default:
+      return assertNever(policy);
+  }
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> {
@@ -75,6 +97,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       file,
       slug,
       description,
+      userIdentity = "optional",
       inputSchema,
       outputSchema,
     }: {
@@ -82,6 +105,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       file: FileResource;
       slug: string;
       description: string;
+      userIdentity?: SandboxFunctionUserIdentityPolicy;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     },
@@ -120,6 +144,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         fileId: file.id,
         slug,
         description,
+        userIdentity,
         inputSchema,
         outputSchema,
       },
@@ -140,23 +165,59 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     {
       bundleCode,
       description,
+      userIdentity = this.userIdentity ?? "optional",
       inputSchema,
       outputSchema,
     }: {
       bundleCode: string;
       description: string;
+      userIdentity?: SandboxFunctionUserIdentityPolicy;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     }
   ): Promise<Result<undefined, Error>> {
     try {
-      await this.file.uploadContent(auth, bundleCode);
-      await this.update({ description, inputSchema, outputSchema });
+      return await executeWithLock(
+        `sandbox_function:publish:${this.sId}`,
+        async () => {
+          const currentFunction = await this.model.findOne({
+            where: {
+              id: this.id,
+              workspaceId: auth.getNonNullableWorkspace().id,
+            },
+          });
+          if (!currentFunction) {
+            return new Err(new Error("The Pod Function no longer exists."));
+          }
+
+          const currentUserIdentity =
+            currentFunction.userIdentity ?? "optional";
+          if (
+            userIdentityPolicyStrength(userIdentity) >
+            userIdentityPolicyStrength(currentUserIdentity)
+          ) {
+            // Commit a stricter policy before exposing its bundle. If the
+            // upload fails, the old bundle remains callable only under the
+            // stricter policy.
+            await this.update({ userIdentity });
+          }
+
+          await this.file.uploadContent(auth, bundleCode);
+          await this.update({
+            description,
+            userIdentity,
+            inputSchema,
+            outputSchema,
+          });
+
+          return new Ok(undefined);
+        },
+        30_000,
+        { lockTtlMs: SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS }
+      );
     } catch (error) {
       return new Err(normalizeError(error));
     }
-
-    return new Ok(undefined);
   }
 
   private static async baseFetch(
@@ -346,10 +407,20 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     auth: Authenticator,
     body: PostSandboxFunctionInvocationRequestBody
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
-    if (this.authentication !== null) {
+    if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
-        new Error(
-          "This Pod Function uses an authentication policy unsupported by this application version."
+        new SandboxFunctionInvocationError(
+          "This Pod Function belongs to another workspace."
+        )
+      );
+    }
+    const authorization = await authorizeSandboxFunctionInvocation(auth, {
+      userIdentity: this.userIdentity,
+    });
+    if (!authorization.authorized) {
+      return new Err(
+        new SandboxFunctionInvocationError(
+          "This Pod Function requires a logged-in user from its workspace."
         )
       );
     }

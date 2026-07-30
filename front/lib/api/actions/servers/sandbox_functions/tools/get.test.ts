@@ -59,6 +59,7 @@ describe("formatSandboxFunction", () => {
     const out = formatSandboxFunction(fn);
 
     expect(out).toContain("greet: Greet a user by name.");
+    expect(out).toContain("userIdentity: optional");
     expect(out).toContain(`input: ${JSON.stringify(fn.inputSchema)}`);
     expect(out).toContain(`output: ${JSON.stringify(fn.outputSchema)}`);
   });

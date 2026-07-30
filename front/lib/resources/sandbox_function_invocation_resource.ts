@@ -9,11 +9,12 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
+import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
-import { Authenticator } from "@app/lib/auth";
+import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
+import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import {
@@ -28,6 +29,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor, withRetry } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -171,25 +173,17 @@ function buildSandboxFunctionRunCommand(slug: string): string {
   return `${DSBX_BIN_PATH} function run ${shellEscape(slug)}`;
 }
 
-async function getSandboxFunctionUserIdentity(
+function getSandboxFunctionUserIdentity(
   auth: Authenticator,
+  user: UserResource | null,
   invocation: SandboxFunctionInvocationResource
 ) {
   const workspace = auth.getNonNullableWorkspace();
-  const user = auth.user();
   if (
     !user ||
     invocation.workspaceId !== workspace.id ||
     invocation.userId !== user.id
   ) {
-    return null;
-  }
-
-  const role = await MembershipResource.getActiveRoleForUserInWorkspace({
-    user,
-    workspace,
-  });
-  if (!Authenticator.isMember(role)) {
     return null;
   }
 
@@ -328,16 +322,29 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
     try {
       const { sandboxFunction } = this;
+      if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
+        return new Err(
+          new SandboxFunctionInvocationError(
+            "This Pod Function belongs to another workspace."
+          )
+        );
+      }
       const persistedFunction = await SandboxFunctionModel.findOne({
         where: {
           id: this.sandboxFunctionId,
           workspaceId: this.workspaceId,
         },
       });
-      if (!persistedFunction || persistedFunction.authentication !== null) {
+      if (!persistedFunction) {
+        return new Err(new Error("The Pod Function no longer exists."));
+      }
+      const authorization = await authorizeSandboxFunctionInvocation(auth, {
+        userIdentity: persistedFunction.userIdentity,
+      });
+      if (!authorization.authorized) {
         return new Err(
-          new Error(
-            "This Pod Function cannot execute with an unsupported authentication policy."
+          new SandboxFunctionInvocationError(
+            "This Pod Function requires a logged-in user from its workspace."
           )
         );
       }
@@ -374,7 +381,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           : { body: JSON.stringify(this.input) }),
         encoding: "utf8",
       };
-      const userIdentity = await getSandboxFunctionUserIdentity(auth, this);
+      const userIdentity = getSandboxFunctionUserIdentity(
+        auth,
+        authorization.user,
+        this
+      );
 
       const execResult = await ensureResult.value.sandbox.exec(auth, command, {
         workingDirectory: SANDBOX_FUNCTION_WORKING_DIRECTORY,
