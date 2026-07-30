@@ -40,7 +40,7 @@ import {
   DropdownMenu,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
+import type { ComponentType, MutableRefObject } from "react";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 const TIER_BUTTON_ICON: Record<ModelTierId, ComponentType> = {
@@ -49,19 +49,13 @@ const TIER_BUTTON_ICON: Record<ModelTierId, ComponentType> = {
   complex: BarFull,
 };
 
-interface InputBarModelPickerProps {
-  agentModel: AgentModelConfigurationType | null;
-  agentId: string | null;
-  lastRequestedModel: ModelSelectionType | null;
-  owner: LightWorkspaceType;
-  buttonSize: "xs" | "sm";
-  // Which side the dropdown opens toward. Mirrors the agent picker: "top" in an
-  // active conversation (input bar pinned to the bottom), "bottom" on the new
-  // conversation screen where there is room below.
-  side?: "top" | "bottom";
-  disabled?: boolean;
-  onSelectionChange?: (modelSelection: ModelSelectionType | undefined) => void;
-}
+type InputBarModelPickerProps = Omit<
+  ModelPickerProps,
+  | "buttonVariant"
+  | "showLabel"
+  | "setStickyModelOverride"
+  | "stickyModelOverride"
+>;
 
 export function InputBarModelPicker({
   agentModel,
@@ -71,14 +65,75 @@ export function InputBarModelPicker({
   buttonSize,
   side = "top",
   disabled,
+  selectionRef,
   onSelectionChange,
 }: InputBarModelPickerProps) {
+  const { stickyModelOverride, setStickyModelOverride } =
+    useContext(InputBarContext);
+
+  return (
+    <ModelPicker
+      agentModel={agentModel}
+      agentId={agentId}
+      lastRequestedModel={lastRequestedModel}
+      owner={owner}
+      buttonVariant={"ghost-secondary"}
+      buttonSize={buttonSize}
+      showLabel={false}
+      side={side}
+      disabled={disabled}
+      selectionRef={selectionRef}
+      onSelectionChange={onSelectionChange}
+      stickyModelOverride={stickyModelOverride}
+      setStickyModelOverride={setStickyModelOverride}
+    />
+  );
+}
+
+interface ModelPickerProps {
+  agentModel: AgentModelConfigurationType | null;
+  agentId: string | null;
+  lastRequestedModel: ModelSelectionType | null;
+  owner: LightWorkspaceType;
+  buttonVariant: "outline" | "ghost-secondary";
+  buttonSize: "xs" | "sm";
+  showLabel: boolean;
+  // Which side the dropdown opens toward. Mirrors the agent picker: "top" in an
+  // active conversation (input bar pinned to the bottom), "bottom" on the new
+  // conversation screen where there is room below.
+  side?: "top" | "bottom";
+  disabled?: boolean;
+  // Read-at-submit sink. The picker writes the current toSend here (including
+  // derived changes like agent switches); never triggers a parent re-render.
+  selectionRef?: MutableRefObject<ModelSelectionType | undefined>;
+  // Fired only on intentional user picks / revert — safe to setState.
+  onSelectionChange?: (modelSelection: ModelSelectionType | undefined) => void;
+  stickyModelOverride?: ModelSelectionType | undefined;
+  setStickyModelOverride?: (
+    modelSelection: ModelSelectionType | undefined
+  ) => void;
+}
+
+export function ModelPicker({
+  agentModel,
+  agentId,
+  lastRequestedModel,
+  owner,
+  buttonVariant,
+  buttonSize,
+  showLabel,
+  side = "top",
+  disabled,
+  selectionRef,
+  onSelectionChange,
+  stickyModelOverride,
+  setStickyModelOverride,
+}: ModelPickerProps) {
   const { hasFeature } = useFeatureFlags();
   const hasModelsPicker = hasFeature("models_picker");
   const { subscription } = useAuth();
   const lockPremiumEfforts = !isCreditPricedPlan(subscription.plan);
-  const { stickyModelOverride, setStickyModelOverride } =
-    useContext(InputBarContext);
+
   const { isDark } = useTheme();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -117,22 +172,20 @@ export function InputBarModelPicker({
     }
     prevAgentIdRef.current = agentId;
     setUserOverride(null);
-    setStickyModelOverride(undefined);
+    setStickyModelOverride?.(undefined);
   }, [agentId, setStickyModelOverride]);
 
   const shown: Selection = userOverride ?? baseSelection;
   const shownModelSelection = shown.toSend;
 
-  const canRevert = !isSameSelection(shown.display, agentDefault.display);
+  // Keep the send-time ref current — including agent switches / sticky
+  // resolution where the user didn't pick anything. Mutating a ref during
+  // render is fine and avoids any parent re-render.
+  if (selectionRef) {
+    selectionRef.current = hasModelsPicker ? shownModelSelection : undefined;
+  }
 
-  // Keep the parent's send-time selection in sync. `onSelectionChange` only
-  // stashes the value in a parent ref, so this triggers no parent re-render.
-  useEffect(() => {
-    if (!hasModelsPicker) {
-      return;
-    }
-    onSelectionChange?.(shownModelSelection);
-  }, [hasModelsPicker, onSelectionChange, shownModelSelection]);
+  const canRevert = !isSameSelection(shown.display, agentDefault.display);
 
   // Concrete, selectable models (meta-models are surfaced as tiers instead).
   const allModels = useMemo<ModelConfigurationType[]>(
@@ -166,12 +219,12 @@ export function InputBarModelPicker({
     if (isSameSelection(selection.display, agentDefault.display)) {
       // Exactly the agent default: keep no override so we defer to the agent's
       // own config (toSend undefined).
-      setUserOverride(agentDefault);
-      setStickyModelOverride(undefined);
-      return;
+      setStickyModelOverride?.(undefined);
+    } else {
+      setStickyModelOverride?.(selection.toSend);
     }
     setUserOverride(selection);
-    setStickyModelOverride(selection.toSend);
+    onSelectionChange?.(selection.toSend);
   };
 
   // Picking a concrete model (or nudging its effort slider) must keep the menu
@@ -227,7 +280,8 @@ export function InputBarModelPicker({
 
   const onRevert = () => {
     setUserOverride(agentDefault);
-    setStickyModelOverride(undefined);
+    setStickyModelOverride?.(undefined);
+    onSelectionChange?.(undefined);
   };
 
   if (!hasModelsPicker) {
@@ -239,7 +293,7 @@ export function InputBarModelPicker({
       ? TIER_BUTTON_ICON[shown.display.tierId]
       : getModelMakerLogo(getModelMaker(shown.display.model), isDark);
 
-  const tooltip =
+  const label =
     shown.display.kind === "tier"
       ? getModelTier(shown.display.tierId).name
       : getModelWithReasoningEffortLabel(shown.display);
@@ -265,10 +319,11 @@ export function InputBarModelPicker({
       <DropdownMenuTrigger asChild>
         <Button
           className="px-2"
-          variant="ghost-secondary"
+          variant={buttonVariant}
           size={buttonSize}
           icon={buttonIcon}
-          tooltip={tooltip}
+          label={showLabel ? label : undefined}
+          tooltip={showLabel ? undefined : label}
           disabled={disabled}
         />
       </DropdownMenuTrigger>

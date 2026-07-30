@@ -57,9 +57,9 @@ interface InputBarButtonsProps {
   lastRequestedModel: ModelSelectionType | null;
   onAgentRemove: () => void;
   onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
-  onModelSelectionChange?: (
-    modelSelection: ModelSelectionType | undefined
-  ) => void;
+  // Read-at-submit sink for the model picker; prefer over a change callback
+  // when the parent only needs the value at submit time.
+  modelSelectionRef?: React.MutableRefObject<ModelSelectionType | undefined>;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
@@ -91,7 +91,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   lastRequestedModel,
   onAgentRemove,
   onMCPServerViewSelect,
-  onModelSelectionChange,
+  modelSelectionRef,
   onNodeSelect,
   onNodeUnselect,
   onSkillSelect,
@@ -258,7 +258,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       buttonSize={buttonSize}
       side={conversation ? "top" : "bottom"}
       disabled={isInputDisabled}
-      onSelectionChange={onModelSelectionChange}
+      selectionRef={modelSelectionRef}
     />
   );
 

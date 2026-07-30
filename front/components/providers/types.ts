@@ -7,7 +7,7 @@ import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import {
   AnthropicLogo,
   DeepseekLogo,
-  DustLogo,
+  DustLogoSquare,
   FireworksLogo,
   GeminiLogo,
   GrokLogo,
@@ -52,16 +52,16 @@ const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
     light: GrokLogo,
   },
   noop: {
-    light: DustLogo,
+    light: DustLogoSquare,
   },
   auto: {
-    light: DustLogo,
+    light: DustLogoSquare,
   },
   auto_fast: {
-    light: DustLogo,
+    light: DustLogoSquare,
   },
   auto_complex: {
-    light: DustLogo,
+    light: DustLogoSquare,
   },
 };
 
