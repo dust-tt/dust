@@ -1,6 +1,7 @@
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";
+import { SkillToolsList } from "@app/components/skills/SkillToolsList";
 import {
   getOutputText,
   isResourceContentWithText,
@@ -51,13 +52,18 @@ export function MCPSkillEnableActionDetails({
 
   const description = skill?.userFacingDescription.trim() ?? "";
   const hasDescription = description.length > 0;
+  const tools = skill?.tools ?? [];
+  const hasTools = tools.length > 0;
   const instructions = skill?.instructions ?? "";
   const hasInstructions = instructions.trim().length > 0;
   const showInstructionsSection =
     shouldFetchSkill && (isSkillLoading || isSkillError || hasInstructions);
   const showSidebarDetails =
     displayContext !== "conversation" &&
-    (hasDescription || showInstructionsSection || outputItems.length > 0);
+    (hasDescription ||
+      hasTools ||
+      showInstructionsSection ||
+      outputItems.length > 0);
 
   return (
     <ActionDetailsWrapper
@@ -103,6 +109,15 @@ export function MCPSkillEnableActionDetails({
                     isLastMessage={false}
                   />
                 </ContentMessage>
+              </div>
+            </div>
+          )}
+
+          {hasTools && (
+            <div>
+              <span className="font-medium text-foreground">Tools</span>
+              <div className="my-2">
+                <SkillToolsList tools={tools} />
               </div>
             </div>
           )}
