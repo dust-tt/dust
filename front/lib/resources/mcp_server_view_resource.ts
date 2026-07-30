@@ -37,13 +37,13 @@ import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import {
-  destroyAgentMCPServerConfigurationsForViews,
-  destroyMCPServerViewDependencies,
-} from "@app/lib/models/agent/actions/mcp_server_view_helper";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import {
+  destroyAgentMCPServerConfigurationsForViews,
+  destroyMCPServerViewDependencies,
+} from "@app/lib/resources/mcp_server_view_helper";
 import type { RemoteMCPServerHeavyAttributeType } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
