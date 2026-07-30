@@ -57,6 +57,7 @@ app.post(
     const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
       sandboxFunction,
       invocationId: sandboxClaims.invocationId,
+      access: "system",
     });
     if (!invocation) {
       return apiError(ctx, {

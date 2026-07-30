@@ -706,7 +706,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
     });
   });
 
-  it("rejects validation from a user who did not initiate the invocation", async () => {
+  it("hides validation for another user's invocation", async () => {
     const { workspace, sandboxFunction, invocation, action } =
       await setupBlockedAction({ invocationOwnedByOtherMember: true });
 
@@ -718,14 +718,14 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       body: { approved: "approved" },
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({
-      error: { type: "invalid_request_error" },
+      error: { type: "action_not_found" },
     });
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
 
-  it("rejects validation when the invocation has no initiating user", async () => {
+  it("hides validation for a userless invocation", async () => {
     const { workspace, sandboxFunction, invocation, action } =
       await setupBlockedAction({ invocationOwnerless: true });
     expect(invocation.userId).toBeNull();
@@ -738,9 +738,9 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       body: { approved: "approved" },
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({
-      error: { type: "invalid_request_error" },
+      error: { type: "action_not_found" },
     });
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
@@ -889,7 +889,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
     });
   });
 
-  it("rejects authentication resolution from a user who did not initiate the invocation", async () => {
+  it("hides authentication resolution for another user's invocation", async () => {
     const { workspace, sandboxFunction, invocation, action } =
       await setupBlockedAction({
         blockedStatus: "blocked_authentication_required",
@@ -904,14 +904,14 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       body: { outcome: "completed" },
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({
-      error: { type: "invalid_request_error" },
+      error: { type: "action_not_found" },
     });
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
 
-  it("rejects authentication resolution when the invocation has no initiating user", async () => {
+  it("hides authentication resolution for a userless invocation", async () => {
     const { workspace, sandboxFunction, invocation, action } =
       await setupBlockedAction({
         blockedStatus: "blocked_authentication_required",
@@ -927,9 +927,9 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       body: { outcome: "completed" },
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({
-      error: { type: "invalid_request_error" },
+      error: { type: "action_not_found" },
     });
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });

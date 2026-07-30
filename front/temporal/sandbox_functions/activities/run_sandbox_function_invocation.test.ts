@@ -1,10 +1,13 @@
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { runSandboxFunctionInvocationActivity } from "@app/temporal/sandbox_functions/activities/run_sandbox_function_invocation";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -24,11 +27,11 @@ vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
 const schema: JSONSchema = { type: "object" };
 
 async function setup() {
-  const { authenticator, workspace } = await createResourceTest({
+  const { authenticator: adminAuth, workspace } = await createResourceTest({
     role: "admin",
   });
   const space = await SpaceFactory.project(workspace);
-  const file = await FileFactory.create(authenticator, null, {
+  const file = await FileFactory.create(adminAuth, null, {
     contentType: sandboxFunctionContentType,
     fileName: "function.ts",
     fileSize: 100,
@@ -36,7 +39,7 @@ async function setup() {
     useCase: "project_context",
     useCaseMetadata: { spaceId: space.sId },
   });
-  const sandboxFunction = await SandboxFunctionResource.makeNew(authenticator, {
+  const sandboxFunction = await SandboxFunctionResource.makeNew(adminAuth, {
     space,
     file,
     slug: "run-function",
@@ -44,12 +47,33 @@ async function setup() {
     inputSchema: schema,
     outputSchema: schema,
   });
+  const member = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, member, { role: "user" });
+  const [memberGroup] = await space.fetchGroupResources(adminAuth, {
+    groupReferences: space.groups.filter((group) => group.isRegularAuto()),
+  });
+  if (!memberGroup) {
+    throw new Error("Expected the Pod member group to exist.");
+  }
+  const addMemberResult = await memberGroup.dangerouslyAddMember(adminAuth, {
+    user: member.toJSON(),
+  });
+  if (addMemberResult.isErr()) {
+    throw addMemberResult.error;
+  }
+  const authenticator = await Authenticator.fromUserIdAndWorkspaceId(
+    member.sId,
+    workspace.sId
+  );
+  const userlessAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
   const invocation = await SandboxFunctionInvocationResource.makeNew(
-    authenticator,
+    userlessAuth,
     { sandboxFunction, input: { message: "hello" } }
   );
 
-  return { authenticator, sandboxFunction, invocation };
+  return { adminAuth, authenticator, sandboxFunction, invocation };
 }
 
 beforeEach(() => {
@@ -63,6 +87,12 @@ afterEach(() => {
 describe("runSandboxFunctionInvocationActivity", () => {
   it("executes the existing invocation", async () => {
     const { authenticator, sandboxFunction, invocation } = await setup();
+    await expect(
+      SandboxFunctionInvocationResource.fetchById(authenticator, {
+        sandboxFunction,
+        invocationId: invocation.sId,
+      })
+    ).resolves.toBeNull();
     const executeSpy = vi
       .spyOn(SandboxFunctionInvocationResource.prototype, "execute")
       .mockImplementation(async function (
@@ -81,7 +111,8 @@ describe("runSandboxFunctionInvocationActivity", () => {
   });
 
   it("fails the invocation when execution fails", async () => {
-    const { authenticator, sandboxFunction, invocation } = await setup();
+    const { adminAuth, authenticator, sandboxFunction, invocation } =
+      await setup();
     vi.spyOn(
       SandboxFunctionInvocationResource.prototype,
       "execute"
@@ -95,7 +126,7 @@ describe("runSandboxFunctionInvocationActivity", () => {
     ).rejects.toThrow("sandbox unavailable");
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
-      authenticator,
+      adminAuth,
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.status).toBe("errored");

@@ -332,6 +332,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         id: invocation.id,
         workspaceId: invocation.workspaceId,
       }),
+      access: "system",
     });
   }
 

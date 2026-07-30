@@ -206,6 +206,101 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(formatted).toContain('"updatedAt":');
   });
 
+  it("shows readers only their invocations while Pod administrators see all", async () => {
+    const { authenticator, workspace, space, sandboxFunction, invocation } =
+      await setupExecutionTest();
+    const reader = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, reader, { role: "user" });
+    const [memberGroup] = await space.fetchGroupResources(authenticator, {
+      groupReferences: space.groups.filter((group) => group.isRegularAuto()),
+    });
+    expect(memberGroup).toBeDefined();
+    if (!memberGroup) {
+      return;
+    }
+    const addResult = await memberGroup.dangerouslyAddMember(authenticator, {
+      user: reader.toJSON(),
+    });
+    expect(addResult.isOk()).toBe(true);
+    const readerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      reader.sId,
+      workspace.sId
+    );
+    const readerInvocation = await SandboxFunctionInvocationResource.makeNew(
+      readerAuth,
+      {
+        sandboxFunction,
+        input: { message: "reader-owned" },
+      }
+    );
+
+    const readerInvocations =
+      await SandboxFunctionInvocationResource.listRecent(readerAuth, {
+        sandboxFunction,
+        limit: 10,
+      });
+    expect(readerInvocations.map(({ sId }) => sId)).toEqual([
+      readerInvocation.sId,
+    ]);
+    await expect(
+      SandboxFunctionInvocationResource.fetchById(readerAuth, {
+        sandboxFunction,
+        invocationId: invocation.sId,
+      })
+    ).resolves.toBeNull();
+
+    const administratorInvocations =
+      await SandboxFunctionInvocationResource.listRecent(authenticator, {
+        sandboxFunction,
+        limit: 10,
+      });
+    expect(administratorInvocations.map(({ sId }) => sId)).toEqual([
+      readerInvocation.sId,
+      invocation.sId,
+    ]);
+  });
+
+  it("hides userless invocations from readers but allows administrator and system reads", async () => {
+    const { authenticator, workspace, sandboxFunction } =
+      await setupExecutionTest();
+    const userlessAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const userlessInvocation = await SandboxFunctionInvocationResource.makeNew(
+      userlessAuth,
+      {
+        sandboxFunction,
+        input: { message: "userless" },
+      }
+    );
+    const reader = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, reader, { role: "user" });
+    const readerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      reader.sId,
+      workspace.sId
+    );
+
+    await expect(
+      SandboxFunctionInvocationResource.fetchById(readerAuth, {
+        sandboxFunction,
+        invocationId: userlessInvocation.sId,
+      })
+    ).resolves.toBeNull();
+    await expect(
+      SandboxFunctionInvocationResource.fetchById(authenticator, {
+        sandboxFunction,
+        invocationId: userlessInvocation.sId,
+      })
+    ).resolves.toMatchObject({ sId: userlessInvocation.sId });
+    await expect(
+      SandboxFunctionInvocationResource.fetchById(userlessAuth, {
+        sandboxFunction,
+        invocationId: userlessInvocation.sId,
+        access: "system",
+      })
+    ).resolves.toMatchObject({ sId: userlessInvocation.sId });
+  });
+
   it("formats an explicit message when a function has no invocations", () => {
     expect(formatSandboxFunctionInvocations("never-called", [])).toBe(
       'No invocations found for pod function "never-called".'
