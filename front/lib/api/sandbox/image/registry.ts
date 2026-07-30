@@ -39,6 +39,11 @@ const APPLY_PATCH_VERSION = "0.1.0";
 const BUN_VERSION = "1.3.14";
 // dbt Cloud CLI (closed-source; github.com/dbt-labs/dbt-cli). Invoked as `dbt`.
 const DBT_CLI_VERSION = "0.40.18";
+// Snowflake CLI (github.com/snowflakedb/snowflake-cli). Invoked as `snow`.
+// Linux x86_64 .deb from https://sfc-repo.snowflakecomputing.com/snowflake-cli/
+const SNOWFLAKE_CLI_VERSION = "3.23.0";
+const SNOWFLAKE_CLI_DEB_SHA256 =
+  "bb1a3e645c171f43dac44965daa4047c256424bf47c954fef8b2a00d38e84775";
 // LibreOffice "Fresh" PPA. The Ubuntu 24.04 base ships LibreOffice 24.2, whose
 // PDF layout engine places text differently from a current desktop LibreOffice
 // (26.x). Since the pptx QA reads word positions off the soffice-rendered PDF to
@@ -517,6 +522,22 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     version: DBT_CLI_VERSION,
     description:
       "dbt Cloud CLI for running dbt commands against a dbt platform project",
+    runtime: "system",
+  })
+  .runCmd(
+    `curl -fsSL https://sfc-repo.snowflakecomputing.com/snowflake-cli/linux_x86_64/${SNOWFLAKE_CLI_VERSION}/snowflake-cli-${SNOWFLAKE_CLI_VERSION}.x86_64.deb -o /tmp/snowflake-cli.deb && ` +
+      `echo "${SNOWFLAKE_CLI_DEB_SHA256}  /tmp/snowflake-cli.deb" | sha256sum -c - && ` +
+      "apt-get install -y /tmp/snowflake-cli.deb && " +
+      "ln -sf /usr/lib/snowflake/snowflake-cli/snow /opt/bin/snow && " +
+      "chown -h root:root /opt/bin/snow && " +
+      "rm -f /tmp/snowflake-cli.deb",
+    { user: "root" }
+  )
+  .registerTool({
+    name: "snow",
+    version: SNOWFLAKE_CLI_VERSION,
+    description:
+      "Snowflake CLI for managing Snowflake accounts, objects, and apps",
     runtime: "system",
   })
   .runCmd(
