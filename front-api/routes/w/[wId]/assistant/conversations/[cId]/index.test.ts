@@ -182,6 +182,36 @@ describe("GET /api/w/:wId/assistant/conversations/:cId", () => {
     expect(response.status).toBe(404);
     expect((await response.json()).error.type).toBe("conversation_not_found");
   });
+
+  it("hydrates read state on the returned conversation", async () => {
+    const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "GET",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      requestedSpaceIds: [globalSpace.id],
+      messagesCreatedAt: [new Date()],
+    });
+
+    const unreadResponse = await getConversation(workspace, conversation.sId);
+    expect(unreadResponse.status).toBe(200);
+    const unreadBody = await unreadResponse.json();
+    expect(unreadBody.conversation.unread).toBe(true);
+    expect(unreadBody.conversation.lastReadMs).toBeNull();
+
+    const patchResponse = await patchConversation(workspace, conversation.sId, {
+      read: true,
+    });
+    expect(patchResponse.status).toBe(200);
+
+    const readResponse = await getConversation(workspace, conversation.sId);
+    expect(readResponse.status).toBe(200);
+    const readBody = await readResponse.json();
+    expect(readBody.conversation.unread).toBe(false);
+    expect(readBody.conversation.lastReadMs).toEqual(expect.any(Number));
+  });
 });
 
 describe("PATCH /api/w/:wId/assistant/conversations/:cId", () => {
@@ -230,5 +260,85 @@ describe("PATCH /api/w/:wId/assistant/conversations/:cId", () => {
     });
 
     expect(response.status).toBe(400);
+  });
+
+  it("marks an unread conversation as read", async () => {
+    const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "PATCH",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      requestedSpaceIds: [globalSpace.id],
+      messagesCreatedAt: [new Date()],
+    });
+
+    const before =
+      await ConversationResource.fetchConversationWithParticipantState(
+        auth,
+        conversation.sId
+      );
+    assert(before.isOk(), "Expected conversation to be fetched");
+    expect(before.value.unread).toBe(true);
+
+    const response = await patchConversation(workspace, conversation.sId, {
+      read: true,
+    });
+    expect(response.status).toBe(200);
+
+    const after =
+      await ConversationResource.fetchConversationWithParticipantState(
+        auth,
+        conversation.sId
+      );
+    assert(after.isOk(), "Expected conversation to be fetched");
+    expect(after.value.unread).toBe(false);
+    expect(after.value.lastReadMs).not.toBeNull();
+  });
+
+  it("skips the lastReadAt write when the conversation is already read", async () => {
+    const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "PATCH",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      requestedSpaceIds: [globalSpace.id],
+      messagesCreatedAt: [new Date()],
+    });
+
+    const firstResponse = await patchConversation(workspace, conversation.sId, {
+      read: true,
+    });
+    expect(firstResponse.status).toBe(200);
+
+    const firstState =
+      await ConversationResource.fetchConversationWithParticipantState(
+        auth,
+        conversation.sId
+      );
+    assert(firstState.isOk(), "Expected conversation to be fetched");
+    const firstLastReadMs = firstState.value.lastReadMs;
+    expect(firstLastReadMs).not.toBeNull();
+
+    // Ensure a second write would produce a different lastReadAt.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const secondResponse = await patchConversation(
+      workspace,
+      conversation.sId,
+      { read: true }
+    );
+    expect(secondResponse.status).toBe(200);
+
+    const secondState =
+      await ConversationResource.fetchConversationWithParticipantState(
+        auth,
+        conversation.sId
+      );
+    assert(secondState.isOk(), "Expected conversation to be fetched");
+    expect(secondState.value.lastReadMs).toBe(firstLastReadMs);
   });
 });

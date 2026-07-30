@@ -200,9 +200,13 @@ app.get(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
-    const conversation = await ConversationResource.fetchById(auth, cId, {
-      includeForkingData: true,
-    });
+    // Read state must be hydrated: without it the serialized conversation always
+    // reports `unread: true` / `lastReadMs: null`.
+    const conversation = await ConversationResource.fetchByIdWithReadState(
+      auth,
+      cId,
+      { includeForkingData: true }
+    );
 
     if (!conversation) {
       // Distinguish between "not found" and "access restricted" for the UI.
@@ -286,9 +290,14 @@ app.patch(
 
     if ("read" in data) {
       if (data.read) {
-        await ConversationResource.markAsReadForAuthUser(auth, {
-          conversation,
-        });
+        // Clients re-send this on many triggers: skip the write when the conversation is
+        // already read up to its latest activity. This also preserves future-dated
+        // `lastReadAt` stamps (see markAsReadForAuthUser) instead of clobbering them.
+        if (conversation.unread) {
+          await ConversationResource.markAsReadForAuthUser(auth, {
+            conversation,
+          });
+        }
 
         // A stale `actionRequired` flag (e.g. left behind by a manual tool approval whose
         // message got interrupted before blocked actions were resolved on termination) would
