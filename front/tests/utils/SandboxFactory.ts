@@ -15,6 +15,7 @@ export class SandboxFactory {
     opts?: {
       status?: SandboxStatus;
       statusChangedAt?: Date | null;
+      lastActivityAt?: Date;
       baseImage?: string;
       version?: string;
       killRequestedAt?: Date | null;
@@ -43,6 +44,13 @@ export class SandboxFactory {
     if (opts?.killRequestedAt !== undefined) {
       await SandboxModel.update(
         { killRequestedAt: opts.killRequestedAt } as Partial<SandboxModel>,
+        { where: { id: sandbox.id } }
+      );
+    }
+
+    if (opts?.lastActivityAt !== undefined) {
+      await SandboxModel.update(
+        { lastActivityAt: opts.lastActivityAt } as Partial<SandboxModel>,
         { where: { id: sandbox.id } }
       );
     }

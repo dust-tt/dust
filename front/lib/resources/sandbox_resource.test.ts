@@ -540,9 +540,12 @@ describe("SandboxResource.dangerouslyGetKillRequestedSandboxes", () => {
       agentConfigurationId,
       messagesCreatedAt: [new Date()],
     });
+    const olderActivityAt = new Date(Date.now() - 60 * 60 * 1000);
+    const recentActivityAt = new Date();
     const older = await SandboxFactory.create(authenticator, conversation, {
       status: "sleeping",
       killRequestedAt: new Date(),
+      lastActivityAt: olderActivityAt,
     });
     const recent = await SandboxFactory.create(
       authenticator,
@@ -550,17 +553,8 @@ describe("SandboxResource.dangerouslyGetKillRequestedSandboxes", () => {
       {
         status: "sleeping",
         killRequestedAt: new Date(),
+        lastActivityAt: recentActivityAt,
       }
-    );
-    const olderActivityAt = new Date(Date.now() - 60 * 60 * 1000);
-    const recentActivityAt = new Date();
-    await SandboxModel.update(
-      { lastActivityAt: olderActivityAt } as Partial<SandboxModel>,
-      { where: { id: older.id } }
-    );
-    await SandboxModel.update(
-      { lastActivityAt: recentActivityAt } as Partial<SandboxModel>,
-      { where: { id: recent.id } }
     );
 
     const firstPage =
