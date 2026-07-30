@@ -25,7 +25,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.60";
+const DUST_BASE_IMAGE_VERSION = "0.8.61";
 const DSBX_CLI_VERSION = "0.1.38";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
@@ -37,6 +37,8 @@ const APPLY_PATCH_VERSION = "0.1.0";
 // Modern x86_64 build (requires AVX2). Switch to the baseline variant if a
 // future sandbox CPU lacks it.
 const BUN_VERSION = "1.3.14";
+// dbt Cloud CLI (closed-source; github.com/dbt-labs/dbt-cli). Invoked as `dbt`.
+const DBT_CLI_VERSION = "0.40.18";
 // LibreOffice "Fresh" PPA. The Ubuntu 24.04 base ships LibreOffice 24.2, whose
 // PDF layout engine places text differently from a current desktop LibreOffice
 // (26.x). Since the pptx QA reads word positions off the soffice-rendered PDF to
@@ -499,6 +501,23 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     name: "bun",
     description: "Fast JavaScript/TypeScript runtime and package manager",
     runtime: "node",
+  })
+  .runCmd(
+    `curl -fsSL https://github.com/dbt-labs/dbt-cli/releases/download/v${DBT_CLI_VERSION}/dbt_${DBT_CLI_VERSION}_linux_amd64.tar.gz -o /tmp/dbt.tar.gz && ` +
+      `curl -fsSL https://github.com/dbt-labs/dbt-cli/releases/download/v${DBT_CLI_VERSION}/dbt_checksums.txt -o /tmp/dbt-checksums.txt && ` +
+      `grep "dbt_${DBT_CLI_VERSION}_linux_amd64.tar.gz" /tmp/dbt-checksums.txt | awk '{print $1 "  /tmp/dbt.tar.gz"}' | sha256sum -c - && ` +
+      "tar -xzf /tmp/dbt.tar.gz -C /tmp dbt && " +
+      "rm /tmp/dbt.tar.gz /tmp/dbt-checksums.txt && " +
+      "mv /tmp/dbt /opt/bin/dbt && " +
+      "chown root:root /opt/bin/dbt && chmod 755 /opt/bin/dbt",
+    { user: "root" }
+  )
+  .registerTool({
+    name: "dbt",
+    version: DBT_CLI_VERSION,
+    description:
+      "dbt Cloud CLI for running dbt commands against a dbt platform project",
+    runtime: "system",
   })
   .runCmd(
     `curl -fsSL https://github.com/benbjohnson/litestream/releases/download/v${LITESTREAM_VERSION}/litestream-${LITESTREAM_VERSION}-linux-x86_64.tar.gz -o /tmp/litestream.tar.gz && ` +

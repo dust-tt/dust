@@ -96,7 +96,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.60",
+      tag: "0.8.61",
     });
   });
 
@@ -399,6 +399,28 @@ describe("sandbox image registry", () => {
         expect.stringContaining(
           "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"
         ),
+      ])
+    );
+  });
+
+  test("installs the pinned dbt Cloud CLI release to /opt/bin", () => {
+    const operations = getDustBaseImageOperations();
+    const runCommands = getRunCommands(operations);
+    const image = getDustBaseImage();
+    const installCommand = runCommands.find((command) =>
+      command.includes("dbt-labs/dbt-cli/releases/download")
+    );
+
+    expect(installCommand).toBeDefined();
+    expect(installCommand).toContain(
+      "https://github.com/dbt-labs/dbt-cli/releases/download/v0.40.18/dbt_0.40.18_linux_amd64.tar.gz"
+    );
+    expect(installCommand).toContain(
+      "chown root:root /opt/bin/dbt && chmod 755 /opt/bin/dbt"
+    );
+    expect(image.tools).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "dbt", version: "0.40.18" }),
       ])
     );
   });
