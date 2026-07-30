@@ -1,8 +1,3 @@
-import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import type {
   PartialFailureState,
@@ -20,7 +15,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { hasPokeRole, PokeRoleSchema } from "@app/lib/poke/roles";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { auditLog } from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { PokeCtx } from "@front-api/middlewares/ctx";
 import { pokeApp } from "@front-api/middlewares/ctx";
@@ -135,32 +130,26 @@ function emitSuperuserAuditEvent({
   currentDriftState,
   remediation,
 }: EmitSuperuserAuditEventArgs): void {
-  void emitAuditLogEvent({
-    auth,
-    action,
-    targets: [
-      buildAuditLogTarget(
-        "workspace",
-        renderLightWorkspaceType({
-          workspace: auth.getNonNullableWorkspace(),
-        })
-      ),
-      buildAuditLogTarget("user", target),
-    ],
-    context: getAuditLogContext(auth),
-    metadata: {
-      previous_roles: previousState.pokeRoles.join(","),
-      new_roles: currentState.pokeRoles.join(","),
-      previous_is_dust_super_user: String(previousState.isDustSuperUser),
-      new_is_dust_super_user: String(currentState.isDustSuperUser),
+  auditLog(
+    {
+      author: auth.getNonNullableUser().toJSON(),
+      action,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      targetUserId: target.sId,
+      targetUserName: target.name,
+      previousRoles: previousState.pokeRoles,
+      newRoles: currentState.pokeRoles,
+      previousIsDustSuperUser: previousState.isDustSuperUser,
+      newIsDustSuperUser: currentState.isDustSuperUser,
       region: config.getRegion() ?? "unknown",
       outcome,
-      roles_written: String(rolesWritten),
-      db_updated: String(dbUpdated),
-      current_drift_state: currentDriftState,
+      rolesWritten,
+      dbUpdated,
+      currentDriftState,
       remediation,
     },
-  });
+    "[Security] Poke superuser permissions changed"
+  );
 }
 
 function mapMutationError(

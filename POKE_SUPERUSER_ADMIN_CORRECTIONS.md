@@ -46,18 +46,14 @@ as untrusted: some tests currently codify unsafe behavior.
    Poke `admin` role. Server-side admin authorization remains mandatory on every
    list and mutation route. Add endpoint-level tests proving 403 for every method.
 
-9. Audit events must contain actor and workspace/user targets plus before/after
-   DB and role state, region, outcome, and partial-failure information where a
-   state-changing operation only partially succeeds. Schema metadata and emit
-   metadata must match exactly. Use fire-and-forget emission after the relevant
-   state change and follow AUDIT1–AUDIT10.
+9. Internal audit records must contain actor, workspace and target user IDs,
+   before/after DB and role state, region, outcome, and partial-failure
+   information where a state-changing operation only partially succeeds. Emit
+   them through the structured `auditLog()` trail collected in Datadog after the
+   relevant state change. Do not expose Poke-only actions through WorkOS.
 
-10. Never hand-write guessed WorkOS schema versions. Remove the four manually
-    added `version: 1` entries unless the real registration command produces
-    them. Run the dry-run validation. If WorkOS credentials are available, run
-    `npx tsx front/admin/register_audit_log_schemas.ts --execute --changed` and
-    commit its generated `schema_versions.json`; otherwise leave registration as
-    an explicit pre-merge blocker and do not falsify the map.
+10. Do not add WorkOS schemas or schema-version entries for these internal
+    Poke actions. They are not customer audit-log events.
 
 11. Keep every new internal endpoint annotated with `@ignoreswagger` and run the
     Swagger annotation lint. Do not change any existing private API contract.

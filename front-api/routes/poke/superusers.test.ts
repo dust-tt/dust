@@ -4,25 +4,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockEmitAuditLogEvent = vi.fn();
-const mockBuildAuditLogTarget = vi.fn(
-  (type: string, resource: { sId: string; name: string }) => ({
-    type,
-    id: resource.sId,
-    name: resource.name,
-  })
-);
-const mockGetAuditLogContext = vi.fn(() => ({ location: "127.0.0.1" }));
-
-vi.mock("@app/lib/api/audit/workos_audit", () => ({
-  emitAuditLogEvent: (...args: unknown[]) => mockEmitAuditLogEvent(...args),
-  buildAuditLogTarget: (
-    type: string,
-    resource: { sId: string; name: string }
-  ) => mockBuildAuditLogTarget(type, resource),
-  getAuditLogContext: () => mockGetAuditLogContext(),
-  AUDIT_ACTIONS: [],
-}));
+const mockAuditLog = vi.fn();
 
 const mockGrantSuperuser = vi.fn();
 const mockRevokeSuperuser = vi.fn();
@@ -40,7 +22,10 @@ vi.mock("@app/lib/api/poke/superusers", () => ({
 
 const fakeAuth = {
   getNonNullableWorkspace: () => ({ sId: "ws-sid-1", name: "Test Workspace" }),
-  getNonNullableUser: () => ({ email: "admin@example.com" }),
+  getNonNullableUser: () => ({
+    email: "admin@example.com",
+    toJSON: () => ({ sId: "admin-sid-1", email: "admin@example.com" }),
+  }),
   clientIp: () => "127.0.0.1",
 } as unknown as Authenticator;
 
@@ -80,6 +65,7 @@ vi.mock("@app/lib/poke/roles", async (importOriginal) => {
 
 vi.mock("@app/logger/logger", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  auditLog: (...args: unknown[]) => mockAuditLog(...args),
 }));
 
 vi.mock("@app/lib/resources/membership_resource", () => ({
@@ -130,9 +116,7 @@ describe("Audit event emission from route handlers", () => {
   let app: Hono;
 
   beforeEach(async () => {
-    mockEmitAuditLogEvent.mockReset();
-    mockBuildAuditLogTarget.mockClear();
-    mockGetAuditLogContext.mockClear();
+    mockAuditLog.mockReset();
     mockGrantSuperuser.mockReset();
     mockRevokeSuperuser.mockReset();
     mockUpdateSuperuserRoles.mockReset();
@@ -161,33 +145,30 @@ describe("Audit event emission from route handlers", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(mockEmitAuditLogEvent).toHaveBeenCalledOnce();
+    expect(mockAuditLog).toHaveBeenCalledOnce();
 
-    const call = mockEmitAuditLogEvent.mock.calls[0][0];
+    const call = mockAuditLog.mock.calls[0][0];
     expect(call.action).toBe("superuser.granted");
-    expect(call.targets).toHaveLength(2);
-    expect(call.targets[0]).toEqual({
-      type: "workspace",
-      id: "ws-sid-1",
-      name: "Test Workspace",
-    });
-    expect(call.targets[1]).toEqual({
-      type: "user",
-      id: "user-sid-1",
-      name: "Alice User",
-    });
-    expect(call.metadata).toEqual({
-      previous_roles: "",
-      new_roles: "admin,engineering",
-      previous_is_dust_super_user: "false",
-      new_is_dust_super_user: "true",
+    expect(call).toEqual({
+      author: { sId: "admin-sid-1", email: "admin@example.com" },
+      action: "superuser.granted",
+      workspaceId: "ws-sid-1",
+      targetUserId: "user-sid-1",
+      targetUserName: "Alice User",
+      previousRoles: [],
+      newRoles: ["admin", "engineering"],
+      previousIsDustSuperUser: false,
+      newIsDustSuperUser: true,
       region: "us-central1",
       outcome: "success",
-      roles_written: "true",
-      db_updated: "true",
-      current_drift_state: "ok",
+      rolesWritten: true,
+      dbUpdated: true,
+      currentDriftState: "ok",
       remediation: "",
     });
+    expect(mockAuditLog.mock.calls[0][1]).toBe(
+      "[Security] Poke superuser permissions changed"
+    );
   });
 
   it("emits superuser.revoked with correct targets and metadata", async () => {
@@ -207,31 +188,22 @@ describe("Audit event emission from route handlers", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(mockEmitAuditLogEvent).toHaveBeenCalledOnce();
+    expect(mockAuditLog).toHaveBeenCalledOnce();
 
-    const call = mockEmitAuditLogEvent.mock.calls[0][0];
+    const call = mockAuditLog.mock.calls[0][0];
     expect(call.action).toBe("superuser.revoked");
-    expect(call.targets).toHaveLength(2);
-    expect(call.targets[0]).toEqual({
-      type: "workspace",
-      id: "ws-sid-1",
-      name: "Test Workspace",
-    });
-    expect(call.targets[1]).toEqual({
-      type: "user",
-      id: "user-sid-1",
-      name: "Alice User",
-    });
-    expect(call.metadata).toEqual({
-      previous_roles: "admin,engineering",
-      new_roles: "",
-      previous_is_dust_super_user: "true",
-      new_is_dust_super_user: "false",
+    expect(call).toMatchObject({
+      targetUserId: "user-sid-1",
+      targetUserName: "Alice User",
+      previousRoles: ["admin", "engineering"],
+      newRoles: [],
+      previousIsDustSuperUser: true,
+      newIsDustSuperUser: false,
       region: "us-central1",
       outcome: "success",
-      roles_written: "true",
-      db_updated: "true",
-      current_drift_state: "none",
+      rolesWritten: true,
+      dbUpdated: true,
+      currentDriftState: "none",
       remediation: "",
     });
   });
@@ -256,26 +228,22 @@ describe("Audit event emission from route handlers", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(mockEmitAuditLogEvent).toHaveBeenCalledOnce();
+    expect(mockAuditLog).toHaveBeenCalledOnce();
 
-    const call = mockEmitAuditLogEvent.mock.calls[0][0];
+    const call = mockAuditLog.mock.calls[0][0];
     expect(call.action).toBe("superuser.roles_updated");
-    expect(call.targets).toHaveLength(2);
-    expect(call.targets[1]).toEqual({
-      type: "user",
-      id: "user-sid-1",
-      name: "Alice User",
-    });
-    expect(call.metadata).toEqual({
-      previous_roles: "admin",
-      new_roles: "admin,engineering,support",
-      previous_is_dust_super_user: "true",
-      new_is_dust_super_user: "true",
+    expect(call).toMatchObject({
+      targetUserId: "user-sid-1",
+      targetUserName: "Alice User",
+      previousRoles: ["admin"],
+      newRoles: ["admin", "engineering", "support"],
+      previousIsDustSuperUser: true,
+      newIsDustSuperUser: true,
       region: "us-central1",
       outcome: "success",
-      roles_written: "true",
-      db_updated: "false",
-      current_drift_state: "ok",
+      rolesWritten: true,
+      dbUpdated: false,
+      currentDriftState: "ok",
       remediation: "",
     });
   });
@@ -294,21 +262,20 @@ describe("Audit event emission from route handlers", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(mockEmitAuditLogEvent).toHaveBeenCalledOnce();
+    expect(mockAuditLog).toHaveBeenCalledOnce();
 
-    const call = mockEmitAuditLogEvent.mock.calls[0][0];
+    const call = mockAuditLog.mock.calls[0][0];
     expect(call.action).toBe("superuser.drift_repaired");
-    expect(call.targets).toHaveLength(2);
-    expect(call.metadata).toEqual({
-      previous_roles: "",
-      new_roles: "admin",
-      previous_is_dust_super_user: "true",
-      new_is_dust_super_user: "true",
+    expect(call).toMatchObject({
+      previousRoles: [],
+      newRoles: ["admin"],
+      previousIsDustSuperUser: true,
+      newIsDustSuperUser: true,
       region: "us-central1",
       outcome: "success",
-      roles_written: "true",
-      db_updated: "false",
-      current_drift_state: "ok",
+      rolesWritten: true,
+      dbUpdated: false,
+      currentDriftState: "ok",
       remediation: "",
     });
   });
@@ -330,13 +297,13 @@ describe("Audit event emission from route handlers", () => {
     });
 
     expect(res.status).toBe(200);
-    const call = mockEmitAuditLogEvent.mock.calls[0][0];
-    expect(call.metadata).toMatchObject({
-      previous_is_dust_super_user: "false",
-      new_is_dust_super_user: "true",
-      roles_written: "false",
-      db_updated: "true",
-      current_drift_state: "ok",
+    const call = mockAuditLog.mock.calls[0][0];
+    expect(call).toMatchObject({
+      previousIsDustSuperUser: false,
+      newIsDustSuperUser: true,
+      rolesWritten: false,
+      dbUpdated: true,
+      currentDriftState: "ok",
       outcome: "success",
     });
   });
@@ -367,19 +334,19 @@ describe("Audit event emission from route handlers", () => {
     });
 
     expect(res.status).toBe(500);
-    expect(mockEmitAuditLogEvent).toHaveBeenCalledOnce();
-    const call = mockEmitAuditLogEvent.mock.calls[0][0];
+    expect(mockAuditLog).toHaveBeenCalledOnce();
+    const call = mockAuditLog.mock.calls[0][0];
     expect(call.action).toBe("superuser.granted");
-    expect(call.metadata).toEqual({
-      previous_roles: "",
-      new_roles: "admin",
-      previous_is_dust_super_user: "false",
-      new_is_dust_super_user: "false",
+    expect(call).toMatchObject({
+      previousRoles: [],
+      newRoles: ["admin"],
+      previousIsDustSuperUser: false,
+      newIsDustSuperUser: false,
       region: "us-central1",
       outcome: "partial_failure",
-      roles_written: "true",
-      db_updated: "false",
-      current_drift_state: "roles_only",
+      rolesWritten: true,
+      dbUpdated: false,
+      currentDriftState: "roles_only",
       remediation: "Use repair-drift to sync DB with GCS roles",
     });
   });
@@ -413,16 +380,16 @@ describe("Audit event emission from route handlers", () => {
     });
 
     expect(res.status).toBe(500);
-    expect(mockEmitAuditLogEvent).toHaveBeenCalledOnce();
-    const call = mockEmitAuditLogEvent.mock.calls[0][0];
+    expect(mockAuditLog).toHaveBeenCalledOnce();
+    const call = mockAuditLog.mock.calls[0][0];
     expect(call.action).toBe("superuser.revoked");
-    expect(call.metadata).toMatchObject({
+    expect(call).toMatchObject({
       outcome: "partial_failure",
-      roles_written: "false",
-      db_updated: "true",
-      current_drift_state: "roles_only",
-      previous_is_dust_super_user: "true",
-      new_is_dust_super_user: "false",
+      rolesWritten: false,
+      dbUpdated: true,
+      currentDriftState: "roles_only",
+      previousIsDustSuperUser: true,
+      newIsDustSuperUser: false,
     });
   });
 
@@ -440,7 +407,7 @@ describe("Audit event emission from route handlers", () => {
     });
 
     expect(res.status).toBe(404);
-    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+    expect(mockAuditLog).not.toHaveBeenCalled();
   });
 
   it("does NOT emit audit event when revoke fails", async () => {
@@ -457,7 +424,7 @@ describe("Audit event emission from route handlers", () => {
     });
 
     expect(res.status).toBe(400);
-    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+    expect(mockAuditLog).not.toHaveBeenCalled();
   });
 
   it("does NOT emit audit event when update-roles fails", async () => {
@@ -474,7 +441,7 @@ describe("Audit event emission from route handlers", () => {
     });
 
     expect(res.status).toBe(400);
-    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+    expect(mockAuditLog).not.toHaveBeenCalled();
   });
 
   it("does NOT emit audit event when repair fails", async () => {
@@ -491,7 +458,7 @@ describe("Audit event emission from route handlers", () => {
     });
 
     expect(res.status).toBe(400);
-    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+    expect(mockAuditLog).not.toHaveBeenCalled();
   });
 
   it("repair passes roles from body to business function", async () => {

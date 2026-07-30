@@ -67,8 +67,9 @@ The UI must expose disagreement between these sources and support safe remediati
 
 - Record grant, role update, revoke, and repair with actor, target, before/after
   state, region, outcome, and failure information.
-- This dedicated page should use established WorkOS audit events. Follow the
-  repository `dust-audit-log-event` skill exactly.
+- These are Dust-internal Poke operations, so record them with the structured
+  internal `auditLog()` trail collected in Datadog. Do not register them as
+  customer-facing WorkOS audit actions.
 
 ## UI and API
 
