@@ -78,13 +78,23 @@ export type ToolMeta<
   TSchema extends ZodRawShape = ZodRawShape,
 > = Omit<ToolDefinition<TName, TSchema>, "handler">;
 
+type ValidToolMetadata<T extends readonly ToolMeta[]> = {
+  [K in Extract<keyof T, `${number}`>]: T[K] extends ToolMeta
+    ? {
+        argumentsRequiringApproval?: ReadonlyArray<
+          Extract<keyof z.infer<z.ZodObject<T[K]["schema"]>>, string>
+        >;
+      }
+    : T[K];
+};
+
 export function buildTools<
   const TName extends string,
   const T extends readonly ToolMeta<TName>[],
   // Internal tools always receive auth and runContext, while client-side tools do not.
   THandlerExtra = ToolHandlerExtra,
 >(
-  metadata: T,
+  metadata: T & ValidToolMetadata<NoInfer<T>>,
   handlers: ToolHandlers<T, TName, THandlerExtra>
 ): ToolDefinition<TName, ZodRawShape, THandlerExtra>[] {
   return metadata.map((tool) => ({

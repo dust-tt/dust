@@ -213,7 +213,7 @@ type_text automatically focuses the element before typing.
 delete_text automatically focuses the element before deleting the text.
 For the above reasons in most cases you do NOT need to click an element before calling type_text or delete_text.
 Avoid unnecessary actions.`,
-    schema: z.object({
+    schema: {
       action: z
         .enum(["get_elements", "click_element", "type_text", "delete_text"])
         .describe("Action to perform."),
@@ -239,7 +239,7 @@ Avoid unnecessary actions.`,
         .describe(
           "A human-readable description of the interaction being performed. Describe the tab, the element, and the action clearly, e.g. 'Click the Submit button on the Login tab' or 'Type \"hello\" into the search input on the Google tab'."
         ),
-    }).shape,
+    },
     argumentsRequiringApproval: ["tabId"],
     stake: "medium",
     displayLabels: {
