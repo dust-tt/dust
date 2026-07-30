@@ -18,6 +18,7 @@ import {
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import {
   useAuth,
   useFeatureFlags,
@@ -71,45 +72,27 @@ interface SkillManagerTab {
   description: string;
 }
 
-const ALL_SKILLS_TAB: SkillManagerTab = {
-  id: "active",
-  label: "All",
-  description: "All active skills",
-};
-
-const EDITABLE_BY_ME_TAB: SkillManagerTab = {
-  id: "editable_by_me",
-  label: "Editable by me",
-  description: "Skills you can edit",
-};
-
-const ARCHIVED_TAB: SkillManagerTab = {
-  id: "archived",
-  label: "Archived",
-  description: "Archived skills",
-};
-
-const GOVERNANCE_SKILL_MANAGER_TABS: SkillManagerTab[] = [
-  ALL_SKILLS_TAB,
-  EDITABLE_BY_ME_TAB,
-  ARCHIVED_TAB,
-];
-
-const LEGACY_SKILL_MANAGER_TABS: SkillManagerTab[] = [
-  ALL_SKILLS_TAB,
-  EDITABLE_BY_ME_TAB,
+const SKILL_MANAGER_TABS: SkillManagerTab[] = [
+  { id: "active", label: "All", description: "All active skills" },
+  {
+    id: "editable_by_me",
+    label: "Editable by me",
+    description: "Skills you can edit",
+  },
   {
     id: "default",
     label: "Default",
     description: "Default skills provided by Dust",
   },
-  ARCHIVED_TAB,
+  { id: "archived", label: "Archived", description: "Archived skills" },
 ];
 
+const GOVERNANCE_SKILL_MANAGER_TABS = SKILL_MANAGER_TABS.filter(
+  (t) => t.id !== "default"
+);
+
 function isValidTab(tab: string): tab is SkillManagerTabType {
-  return [...GOVERNANCE_SKILL_MANAGER_TABS, ...LEGACY_SKILL_MANAGER_TABS].some(
-    (t) => t.id === tab
-  );
+  return SKILL_MANAGER_TABS.some((t) => t.id === tab);
 }
 
 type AvailabilityFilter = SkillAvailability | "all";
@@ -119,6 +102,8 @@ function isAvailabilityFilter(
 ): value is SkillAvailability {
   return SKILL_AVAILABILITIES.some((a) => a === value);
 }
+
+const AVAILABILITY_QUERY_PARAMS = ["availability"];
 
 const AVAILABILITY_FILTER_OPTIONS: {
   value: AvailabilityFilter;
@@ -130,6 +115,13 @@ const AVAILABILITY_FILTER_OPTIONS: {
     label: SKILL_AVAILABILITY_DISPLAY[availability].label,
   })),
 ];
+
+function getAvailabilityFilterLabel(filter: AvailabilityFilter): string {
+  return (
+    AVAILABILITY_FILTER_OPTIONS.find((o) => o.value === filter)?.label ??
+    "All availabilities"
+  );
+}
 
 function getSkillSearchString(
   skill: SkillWithoutInstructionsAndToolsWithRelationsType
@@ -162,16 +154,17 @@ export function ManageSkillsPage() {
   const [pendingBatchAction, setPendingBatchAction] =
     useState<BatchAvailabilityAction | null>(null);
   const [bypassEditorVisibility, setBypassEditorVisibility] = useState(false);
-  const [availabilityParam, setAvailabilityParam] =
-    useHashParam("availability");
+  const { availability: availabilityParam } = useQueryParams(
+    AVAILABILITY_QUERY_PARAMS
+  );
   const availabilityFilter: AvailabilityFilter = isAvailabilityFilter(
-    availabilityParam
+    availabilityParam.value
   )
-    ? availabilityParam
+    ? availabilityParam.value
     : "all";
   // Clear the param on "all" so the default state keeps the URL clean.
   const setAvailabilityFilter = (value: AvailabilityFilter) =>
-    setAvailabilityParam(value === "all" ? undefined : value);
+    availabilityParam.setParam(value === "all" ? undefined : value);
 
   // Switching tabs resets the availability filter to avoid carrying it across lists.
   const handleTabChange = (tabId: SkillManagerTabType) => {
@@ -193,7 +186,7 @@ export function ManageSkillsPage() {
 
   const visibleTabs = hasSkillPublicationGovernance
     ? GOVERNANCE_SKILL_MANAGER_TABS
-    : LEGACY_SKILL_MANAGER_TABS;
+    : SKILL_MANAGER_TABS;
 
   const activeTab = useMemo<SkillManagerTabType>(() => {
     if (
@@ -544,11 +537,7 @@ export function ManageSkillsPage() {
                           size="sm"
                           isSelect
                           className="w-48 justify-between"
-                          label={
-                            AVAILABILITY_FILTER_OPTIONS.find(
-                              (o) => o.value === availabilityFilter
-                            )?.label ?? "All availabilities"
-                          }
+                          label={getAvailabilityFilterLabel(availabilityFilter)}
                         />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="w-48">
