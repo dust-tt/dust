@@ -78,15 +78,20 @@ export function MCPSkillEnableActionDetails({
       {showSidebarDetails && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
           {hasDescription && (
-            <ContentMessage title="Description" variant="primary" size="lg">
-              <Markdown
-                content={description}
-                isStreaming={false}
-                forcedTextSize="text-sm"
-                textColor="text-muted-foreground"
-                isLastMessage={false}
-              />
-            </ContentMessage>
+            <div>
+              <span className="font-medium text-foreground">Description</span>
+              <div className="my-2">
+                <ContentMessage variant="primary" size="lg">
+                  <Markdown
+                    content={description}
+                    isStreaming={false}
+                    forcedTextSize="text-sm"
+                    textColor="text-muted-foreground"
+                    isLastMessage={false}
+                  />
+                </ContentMessage>
+              </div>
+            </div>
           )}
 
           {outputItems.length > 0 && (
