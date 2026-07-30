@@ -179,6 +179,11 @@ export function ManageSkillsPage() {
     setAvailabilityFilter("all");
   };
 
+  const handleShowHiddenChange = (checked: boolean) => {
+    setBypassEditorVisibility(checked);
+    setAvailabilityFilter(checked ? "editors" : "all");
+  };
+
   const hasSkillPublicationGovernance = hasFeature(
     "admin_governance_skill_publication"
   );
@@ -534,7 +539,7 @@ export function ManageSkillsPage() {
                     counterValue={`${skillsByTab[tab.id].length}`}
                   />
                 ))}
-                {hasSkillPublicationGovernance && (
+                {hasSkillPublicationGovernance && activeTab === "active" && (
                   <div className="ml-auto flex flex-row items-center gap-2 self-center text-sm text-muted-foreground">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -566,7 +571,7 @@ export function ManageSkillsPage() {
                           <Checkbox
                             checked={bypassEditorVisibility}
                             onCheckedChange={(checked) =>
-                              setBypassEditorVisibility(checked === true)
+                              handleShowHiddenChange(checked === true)
                             }
                           />
                           Show hidden skills
