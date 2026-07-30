@@ -13,8 +13,10 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
@@ -1908,5 +1910,123 @@ describe("SpaceResource cleanup on delete", () => {
       // Verify they match exactly
       expect(modelsWithSpaceFK).toEqual(knownModels);
     });
+  });
+});
+
+describe("SpaceResource group_permissions shadow-compare", () => {
+  let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+  let adminAuth: Authenticator;
+  let memberUser: UserResource;
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    const adminUser = await UserFactory.basic();
+    memberUser = await UserFactory.basic();
+
+    const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
+    await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
+    await MembershipFactory.associate(workspace, memberUser, { role: "user" });
+
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceResource.makeDefaultsForWorkspace(internalAdminAuth, {
+      globalGroup,
+      systemGroup,
+    });
+
+    adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      workspace.sId
+    );
+  });
+
+  // A restricted regular space grants its member group [read, write]; the member's role ("user")
+  // grants nothing, so access flows purely through the group — isolating the group-vs-table check.
+  async function setupRestrictedSpaceWithMember(): Promise<SpaceResource> {
+    const space = await SpaceFactory.regular(workspace);
+    const memberGroupRef = space.groups.find((g) => g.isRegularAuto());
+    expect(memberGroupRef).toBeDefined();
+    const [memberGroup] = await GroupResource.fetchByModelIds(adminAuth, [
+      memberGroupRef!.groupId,
+    ]);
+    expect(memberGroup).toBeDefined();
+    await memberGroup.dangerouslyAddMember(adminAuth, {
+      user: memberUser.toJSON(),
+    });
+    return space;
+  }
+
+  it("logs a mismatch when the table diverges from the group rules", async () => {
+    // No reconcile: the table grants nothing, but the member group still grants read via code.
+    const space = await setupRestrictedSpaceWithMember();
+    await FeatureFlagFactory.basic(adminAuth, "group_permissions_shadow");
+
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      memberUser.sId,
+      workspace.sId
+    );
+    const warn = vi.spyOn(logger, "warn");
+
+    // Served result is unchanged (legacy: role OR group grants read).
+    expect(space.canRead(memberAuth)).toBe(true);
+
+    await vi.waitFor(() =>
+      expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          resource: "space",
+          spaceId: space.sId,
+          permission: "read",
+        }),
+        "group_permissions_shadow_mismatch"
+      )
+    );
+  });
+
+  it("reaches parity once the grants are backfilled", async () => {
+    const space = await setupRestrictedSpaceWithMember();
+    await space.reconcileGroupPermissions(adminAuth, {});
+
+    // Build the auth AFTER reconcile so its PermissionSet snapshot includes the grants.
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      memberUser.sId,
+      workspace.sId
+    );
+
+    // Legacy: the served ACLs (roles + inline groups). Candidate: same roles, groups from the
+    // group_permissions table — mirroring shadowCompareSpacePermission.
+    const legacyAcls = space.getAccessControlLists(adminAuth);
+    const candidateAcls = legacyAcls.map((acl) => ({
+      roles: acl.roles,
+      groups: memberAuth.getGroupPermissions("space", space.id),
+      workspaceId: acl.workspaceId,
+    }));
+
+    for (const permission of ["read", "write", "admin"] as const) {
+      expect(memberAuth.hasPermissionForAcls(permission, candidateAcls)).toBe(
+        memberAuth.hasPermissionForAcls(permission, legacyAcls)
+      );
+    }
+  });
+
+  it("never logs a mismatch while the flag is off", async () => {
+    // Divergent data (no reconcile) but the flag is off, so the compare never runs.
+    const space = await setupRestrictedSpaceWithMember();
+
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      memberUser.sId,
+      workspace.sId
+    );
+    const warn = vi.spyOn(logger, "warn");
+
+    expect(space.canRead(memberAuth)).toBe(true);
+
+    // Flush the fire-and-forget; with the flag off it short-circuits before comparing.
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(warn).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "group_permissions_shadow_mismatch"
+    );
   });
 });
