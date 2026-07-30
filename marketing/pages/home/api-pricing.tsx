@@ -104,11 +104,8 @@ function buildPricingData(): PricingRow[] {
 }
 
 export async function getStaticProps() {
-  return {
-    props: {
-      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
-    },
-  };
+  // Page removed from the site; kept in code in case we bring it back.
+  return { notFound: true };
 }
 
 interface PricingTableProps {
