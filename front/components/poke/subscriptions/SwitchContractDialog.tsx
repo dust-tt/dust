@@ -8,6 +8,8 @@ import { amountCents } from "@app/lib/metronome/amounts";
 import { isPaygEligibleTier } from "@app/lib/metronome/types";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
+  CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
+  isBusinessPlanPrefix,
   isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
@@ -323,10 +325,10 @@ export default function SwitchContractDialog({
     }
   }, [resolvedCurrency, selectedPackage, form]);
 
-  // When the operator picks a package, derive (Business) or reset
-  // (Enterprise) the plan code. The full list of ENT_* plans is offered for
-  // enterprise; business maps to a single plan code. Both tiers use the same
-  // operator-chosen start moment.
+  // When the operator picks a package, default the plan code for the tier. The
+  // full list of CP_BUSINESS_* / CP_ENT_* plans is offered for the matching
+  // tier (see business/enterprise plan options), each defaulting to its tier's
+  // canonical plan code. Both tiers use the same operator-chosen start moment.
   useEffect(() => {
     if (selectedTier === "business") {
       form.setValue("planCode", CREDIT_PRICED_BUSINESS_PLAN_CODE);
@@ -334,7 +336,7 @@ export default function SwitchContractDialog({
       form.setValue("paygEnabled", false);
       form.setValue("topUpEnabled", false);
     } else if (selectedTier === "enterprise") {
-      form.setValue("planCode", "");
+      form.setValue("planCode", CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE);
     }
     if (selectedTier) {
       form.setValue("startingAt", defaultStartingAtUTC);
@@ -410,6 +412,19 @@ export default function SwitchContractDialog({
         .filter(
           (plan) =>
             isEnterprisePlanPrefix(plan.code) && isCreditPricedPlan(plan)
+        )
+        .map((plan) => ({
+          value: plan.code,
+          display: `${plan.name} (${plan.code})`,
+        })),
+    [plans]
+  );
+
+  const businessPlanOptions = useMemo(
+    () =>
+      plans
+        .filter(
+          (plan) => isBusinessPlanPrefix(plan.code) && isCreditPricedPlan(plan)
         )
         .map((plan) => ({
           value: plan.code,
@@ -842,6 +857,18 @@ export default function SwitchContractDialog({
                           />
                         </>
                       )}
+                      {selectedTier === "business" && (
+                        <>
+                          <Label className="text-sm">Business plan</Label>
+                          <SelectField
+                            control={form.control}
+                            name="planCode"
+                            hideLabel
+                            mountPortalContainer={portalContainer}
+                            options={businessPlanOptions}
+                          />
+                        </>
+                      )}
                       {(selectedTier === "enterprise" ||
                         selectedTier === "business") && (
                         <>
@@ -896,14 +923,6 @@ export default function SwitchContractDialog({
                             )}
                           </div>
                         </>
-                      )}
-                      {selectedTier === "business" && (
-                        <div className="col-span-2 text-sm text-muted-foreground">
-                          Target plan:{" "}
-                          <span className="font-mono">
-                            {form.watch("planCode")}
-                          </span>
-                        </div>
                       )}
                     </div>
                     {selectedTier && (
