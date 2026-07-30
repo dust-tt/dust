@@ -963,8 +963,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    *
    * `statuses` narrows the sweep: the reaper prioritizes awake sandboxes
    * (running / pending_approval) and sweeps sleeping ones separately, most
-   * recently active first (`lastActivityAtDesc`), since those are the most
-   * likely to be woken by a returning user.
+   * recently active first (`lastActivityAtDesc`). Recently active sleepers
+   * are the most likely to be woken by a returning user, so destroying them
+   * first runs their pre-destroy flush before the user hits the lazy
+   * recreate path.
    *
    * WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
    */

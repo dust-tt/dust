@@ -480,10 +480,16 @@ export async function reapSandboxPhaseActivity({
       );
     }
     case "kill_requested_sleeping": {
-      // Sleeping kill-requested sandboxes are pure storage cleanup: they are
-      // destroyed lazily on user access (ensureActive recreates them), so the
-      // reaper sweeps them last, most recently active first — those are the
-      // most likely to be woken soon.
+      // Sleeping kill-requested sandboxes are pure cleanup: when a user
+      // returns, ensureActive destroys and recreates them on the spot, so the
+      // reaper sweeps them last.
+      //
+      // Most recently active first: those are the most likely to be woken by
+      // a returning user, and destroying them proactively runs the
+      // pre-destroy flush (which pushes filesystem state to the replica the
+      // recreated sandbox mounts) in the background. If the reaper gets there
+      // first, the user's recreate mounts an already-flushed replica and the
+      // flush never sits on the request critical path.
       const sandboxes =
         await SandboxResource.dangerouslyGetKillRequestedSandboxes({
           limit: BATCH_SIZE,
