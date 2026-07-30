@@ -8,7 +8,21 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { frameContentType } from "@app/types/files";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+
+  return {
+    ...actual,
+    emitAuditLogEvent: mockEmitAuditLogEvent,
+  };
+});
 
 function url(workspace: { sId: string }, fileId: string) {
   return `/api/w/${workspace.sId}/files/${fileId}/share/grants`;
@@ -60,6 +74,10 @@ function deleteGrant(
 }
 
 describe("sharing grants endpoint", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("should return 400 for non-interactive-content files", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "GET",
@@ -125,6 +143,19 @@ describe("sharing grants endpoint", () => {
       "alice@example.com",
       "bob@example.com",
     ]);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "frame.email_grant_added",
+        metadata: {
+          frame_name: "test-frame.tsx",
+          emails: "alice@example.com,bob@example.com",
+        },
+        targets: [
+          expect.objectContaining({ type: "workspace", id: workspace.sId }),
+          expect.objectContaining({ type: "frame", id: file.sId }),
+        ],
+      })
+    );
   });
 
   it("should populate grantedBy with the granting user", async () => {
@@ -231,6 +262,19 @@ describe("sharing grants endpoint", () => {
 
     const delRes = await deleteGrant(workspace, file.sId, { grantId });
     expect(delRes.status).toBe(204);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "frame.email_grant_revoked",
+        metadata: {
+          frame_name: "test-frame.tsx",
+          grant_id: String(grantId),
+        },
+        targets: [
+          expect.objectContaining({ type: "workspace", id: workspace.sId }),
+          expect.objectContaining({ type: "frame", id: file.sId }),
+        ],
+      })
+    );
 
     const listRes = await getGrants(workspace, file.sId);
     expect(listRes.status).toBe(200);

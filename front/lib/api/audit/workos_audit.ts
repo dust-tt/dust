@@ -168,6 +168,9 @@ export const AUDIT_ACTIONS = [
   // Files.
   "file.moved",
   "frame.authorized_files_updated",
+  "frame.email_grant_added",
+  "frame.email_grant_revoked",
+  "frame.share_scope_updated",
   // Audit Logs.
   "audit_log.viewed",
   "audit_log.export_configured",
@@ -411,7 +414,8 @@ type AuditTargetType =
   | "group"
   | "credential"
   | "mcp_connection"
-  | "sandbox_env_var";
+  | "sandbox_env_var"
+  | "frame";
 
 /**
  * Resource shape required for each audit target type.
