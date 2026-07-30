@@ -106,6 +106,7 @@ export interface TokenUsageEvent {
 
 export type SuccessContent = {
   aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[];
+  stopReason?: string;
 };
 export interface SuccessEvent {
   type: "success";

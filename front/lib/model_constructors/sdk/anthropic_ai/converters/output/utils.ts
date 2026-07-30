@@ -952,6 +952,7 @@ export async function* rawOutputToEvents(
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
   let blockState: BlockState | null = null;
   let tokenUsage: BetaMessageDeltaUsage | null = null;
+  let stopReason: string | null = null;
   const toolSearchQueriesByToolUseId = new Map<string, string | undefined>();
   // The per-TTL cache-creation breakdown is only emitted on `message_start`;
   // capture it so the trailing `message_delta` usage can be split by TTL.
@@ -1068,6 +1069,7 @@ export async function* rawOutputToEvents(
         );
         outputEvents = events;
         tokenUsage = usage;
+        stopReason = event.delta.stop_reason ?? stopReason;
         break;
       }
       default:
@@ -1099,7 +1101,7 @@ export async function* rawOutputToEvents(
 
   yield {
     type: "success",
-    content: { aggregated },
+    content: { aggregated, ...(stopReason ? { stopReason } : {}) },
     metadata,
   };
 }

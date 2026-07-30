@@ -1286,6 +1286,41 @@ describe("rawOutputToEvents", () => {
     });
   });
 
+  it("carries the stop reason on the success event for a thinking-only turn", async () => {
+    // The empty-turn shape seen in production: a thinking block, no text and no
+    // tool call, ended by a stop reason we do not map to an error. The stop
+    // reason is the only signal telling the causes apart downstream.
+    const events = await collect(
+      rawOutputToEvents(
+        streamOf([
+          {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "thinking", thinking: "", signature: "" },
+          } as BetaRawMessageStreamEvent,
+          {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "thinking_delta", thinking: "Hmm" },
+          } as BetaRawMessageStreamEvent,
+          { type: "content_block_stop", index: 0 } as BetaRawMessageStreamEvent,
+          {
+            type: "message_delta",
+            delta: { stop_reason: "end_turn", stop_sequence: null },
+            usage: tokenUsage,
+          } as BetaRawMessageStreamEvent,
+          { type: "message_stop" } as BetaRawMessageStreamEvent,
+        ]),
+        metadata,
+        realConverters
+      )
+    );
+
+    expect(events.find((e) => e.type === "success")).toMatchObject({
+      content: { aggregated: [{ type: "reasoning" }], stopReason: "end_turn" },
+    });
+  });
+
   it("maps a thrown SDK error to an error event and stops", async () => {
     const events = await collect(
       rawOutputToEvents(
