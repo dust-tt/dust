@@ -1021,4 +1021,39 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(refetched?.error).toEqual({ code: "threw", message: "boom" });
   });
 
+  it("persists a stdout invocation_failed envelope even when exit code is non-zero", async () => {
+    const { authenticator, sandboxFunction, sandbox, invocation } =
+      await setupExecutionTest();
+    vi.mocked(hasFeatureFlag).mockResolvedValue(true);
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 1,
+        stdout: JSON.stringify({
+          protocolVersion: 3,
+          delivery: "stdout",
+          outcome: {
+            ok: false,
+            error: {
+              code: "invocation_failed",
+              message: "function produced no output",
+            },
+          },
+        }),
+        stderr: "",
+      })
+    );
+
+    const executionResult = await invocation.execute(authenticator);
+    expect(executionResult.isOk()).toBe(true);
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("errored");
+    expect(refetched?.error).toEqual({
+      code: "invocation_failed",
+      message: "function produced no output",
+    });
+  });
 });

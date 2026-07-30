@@ -551,6 +551,31 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       if (execResult.isErr()) {
         return execResult;
       }
+
+      if (stdoutResultDelivery) {
+        const { exitCode, stdout } = execResult.value;
+        logger.info(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            sandboxFunctionId: sandboxFunction.sId,
+            invocationId: this.sId,
+            exitCode,
+            stdoutBytes: Buffer.byteLength(stdout, "utf8"),
+            deliveryMode: "stdout",
+          },
+          "Pod function stdout result delivery"
+        );
+        // Persist from the envelope even on non-zero exit: dsbx may still have
+        // written a well-formed invocation_failed envelope the worker should keep.
+        const normalized = parseStdoutResultEnvelope(stdout);
+        if (normalized.ok) {
+          await this.succeed(normalized.output);
+        } else {
+          await this.fail(normalized.error);
+        }
+        return new Ok(undefined);
+      }
+
       if (execResult.value.exitCode !== 0) {
         const { exitCode, stdout, stderr } = execResult.value;
         logger.error(
@@ -579,26 +604,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             }`
           )
         );
-      }
-
-      if (stdoutResultDelivery) {
-        const { stdout } = execResult.value;
-        logger.info(
-          {
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            sandboxFunctionId: sandboxFunction.sId,
-            invocationId: this.sId,
-            stdoutBytes: Buffer.byteLength(stdout, "utf8"),
-            deliveryMode: "stdout",
-          },
-          "Pod function stdout result delivery"
-        );
-        const normalized = parseStdoutResultEnvelope(stdout);
-        if (normalized.ok) {
-          await this.succeed(normalized.output);
-        } else {
-          await this.fail(normalized.error);
-        }
       }
 
       return new Ok(undefined);
