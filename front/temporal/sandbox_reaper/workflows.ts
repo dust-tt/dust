@@ -51,11 +51,10 @@ export async function sandboxReaperWorkflow(): Promise<void> {
     return;
   }
 
-  // Patch lifecycle for prioritized phases:
-  // 1. Now: pre-patch executions replay the legacy phase order.
-  // 2. After 2026-08-14: replace patched() with deprecatePatch() and remove
-  //    REAPER_PHASES_V1.
-  // 3. After 2026-08-28: remove deprecatePatch() and the patch marker.
+  // Patch for prioritized phases: pre-patch executions replay the legacy phase
+  // order. After deploy, pause the schedule, terminate any open
+  // sandboxReaperWorkflow, wait for the worker rollout to finish, then remove
+  // REAPER_PHASES_V1 and this patched() call immediately.
   const phases = patched("sandbox-reaper-prioritized-phases")
     ? REAPER_PHASES_V2
     : REAPER_PHASES_V1;
