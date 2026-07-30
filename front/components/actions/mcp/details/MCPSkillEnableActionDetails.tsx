@@ -10,7 +10,14 @@ import { isSkillEnableInputType } from "@app/lib/actions/mcp_internal_actions/ty
 import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useSkill } from "@app/lib/swr/skill_configurations";
-import { ContentMessage, Spinner } from "@dust-tt/sparkle";
+import { getManageSkillsRoute } from "@app/lib/utils/router";
+import {
+  ContentMessage,
+  IconButton,
+  LinkExternal01,
+  Markdown,
+  Spinner,
+} from "@dust-tt/sparkle";
 
 export function MCPSkillEnableActionDetails({
   owner,
@@ -42,18 +49,30 @@ export function MCPSkillEnableActionDetails({
     disabled: !shouldFetchSkill,
   });
 
+  const description = skill?.userFacingDescription.trim() ?? "";
+  const hasDescription = description.length > 0;
   const instructions = skill?.instructions ?? "";
   const hasInstructions = instructions.trim().length > 0;
   const showInstructionsSection =
     shouldFetchSkill && (isSkillLoading || isSkillError || hasInstructions);
   const showSidebarDetails =
     displayContext !== "conversation" &&
-    (showInstructionsSection || outputItems.length > 0);
+    (hasDescription || showInstructionsSection || outputItems.length > 0);
 
   return (
     <ActionDetailsWrapper
       displayContext={displayContext}
       actionName={actionName}
+      headerAction={
+        displayContext !== "conversation" && enabledSkillId ? (
+          <IconButton
+            href={getManageSkillsRoute(owner.sId, enabledSkillId)}
+            icon={LinkExternal01}
+            size="xs"
+            tooltip="View skill"
+          />
+        ) : undefined
+      }
       visual={SKILL_ICON}
     >
       {showSidebarDetails && (
@@ -67,6 +86,23 @@ export function MCPSkillEnableActionDetails({
                     {getOutputText(o) ?? ""}
                   </ContentMessage>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {hasDescription && (
+            <div>
+              <span className="font-medium text-foreground">Description</span>
+              <div className="my-2">
+                <ContentMessage variant="primary" size="lg">
+                  <Markdown
+                    content={description}
+                    isStreaming={false}
+                    forcedTextSize="text-sm"
+                    textColor="text-muted-foreground"
+                    isLastMessage={false}
+                  />
+                </ContentMessage>
               </div>
             </div>
           )}
