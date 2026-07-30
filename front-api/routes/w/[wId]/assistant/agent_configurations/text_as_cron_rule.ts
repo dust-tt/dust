@@ -57,13 +57,17 @@ app.post(
       ].includes(r.error.message)
         ? r.error.message
         : GENERIC_ERROR_MESSAGE;
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: cleanMessage,
+      return apiError(
+        ctx,
+        {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: cleanMessage,
+          },
         },
-      });
+        r.error
+      );
     }
 
     return ctx.json(scheduleConfigToResponse(r.value));
