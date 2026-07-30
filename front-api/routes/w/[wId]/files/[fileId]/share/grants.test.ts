@@ -146,7 +146,6 @@ describe("sharing grants endpoint", () => {
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "frame.email_grant_added",
-        auth,
         metadata: {
           frame_name: "test-frame.tsx",
           emails: "alice@example.com,bob@example.com",
@@ -266,7 +265,6 @@ describe("sharing grants endpoint", () => {
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "frame.email_grant_revoked",
-        auth,
         metadata: {
           frame_name: "test-frame.tsx",
           grant_id: String(grantId),

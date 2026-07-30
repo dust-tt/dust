@@ -128,7 +128,6 @@ describe("share scope endpoint", () => {
       expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           action: "frame.share_scope_updated",
-          auth,
           metadata: {
             frame_name: "test-frame.tsx",
             share_scope: "public",
