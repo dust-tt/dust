@@ -35,6 +35,7 @@ import {
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import {
+  requestConversationMarkAsRead,
   useConversation,
   useConversationContextUsage,
   useConversationFeedbacks,
@@ -92,7 +93,6 @@ import {
   VirtuosoMessageList,
   VirtuosoMessageListLicense,
 } from "@virtuoso.dev/message-list";
-import debounce from "lodash/debounce";
 import type { MutableRefObject } from "react";
 import {
   useCallback,
@@ -387,7 +387,7 @@ export const ConversationViewer = ({
     disabled: !conversation?.spaceId,
   });
 
-  const { markAsRead } = useConversationMarkAsRead({
+  useConversationMarkAsRead({
     conversation,
     workspaceId: owner.sId,
   });
@@ -729,11 +729,6 @@ export const ConversationViewer = ({
 
   // Hooks related to conversation events streaming.
 
-  const debouncedMarkAsRead = useMemo(
-    () => debounce(markAsRead, 2000),
-    [markAsRead]
-  );
-
   const eventIds = useRef<string[]>([]);
 
   // Only conversation related events are handled here.
@@ -804,7 +799,11 @@ export const ConversationViewer = ({
                   { revalidate: false }
                 );
               }
-              void debouncedMarkAsRead(conversationId);
+              requestConversationMarkAsRead({
+                workspaceId: owner.sId,
+                conversationId,
+                activityAtMs: event.created,
+              });
 
               if (userMessage.contentFragments.length > 0) {
                 void mutateConversationAttachments();
@@ -900,7 +899,11 @@ export const ConversationViewer = ({
             break;
 
           case "conversation_title":
-            void debouncedMarkAsRead(conversationId);
+            requestConversationMarkAsRead({
+              workspaceId: owner.sId,
+              conversationId,
+              activityAtMs: event.created,
+            });
             void mutateConversation(
               (current) => {
                 if (current) {
@@ -935,9 +938,11 @@ export const ConversationViewer = ({
             }
             break;
           case "agent_message_done":
-            // Mark as read and do not mutate the list of convos in the sidebar to avoid useless network request.
-            // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
-            void debouncedMarkAsRead(event.conversationId);
+            requestConversationMarkAsRead({
+              workspaceId: owner.sId,
+              conversationId: event.conversationId,
+              activityAtMs: event.created,
+            });
 
             // Re-fetch context usage after the agent finishes so the indicator is up-to-date.
             void mutateContextUsage();
@@ -1106,7 +1111,6 @@ export const ConversationViewer = ({
     [
       conversation?.forkingData?.forkedFrom?.fileCopyStatus,
       conversationId,
-      debouncedMarkAsRead,
       mutateContextUsage,
       mutateConversation,
       mutateConversationAttachments,
