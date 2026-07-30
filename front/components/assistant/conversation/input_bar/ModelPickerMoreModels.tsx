@@ -12,6 +12,7 @@ import {
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import {
   getModelMaker,
   getModelMakerDisplayName,
@@ -46,9 +47,6 @@ interface ModelPickerMoreModelsProps {
   lockPremiumEfforts: boolean;
   search: string;
   onSearchChange: (value: string) => void;
-  // On width-constrained clients (mobile, extension) there are no submenus:
-  // "More models" and each maker expand inline.
-  isWidthConstrained: boolean;
   isExpanded: boolean;
   onToggleExpanded: () => void;
   expandedMaker: ModelMakerIdType | null;
@@ -70,7 +68,6 @@ export function ModelPickerMoreModels({
   lockPremiumEfforts,
   search,
   onSearchChange,
-  isWidthConstrained,
   isExpanded,
   onToggleExpanded,
   expandedMaker,
@@ -81,6 +78,10 @@ export function ModelPickerMoreModels({
   shouldBlockDismiss,
 }: ModelPickerMoreModelsProps) {
   const { isDark } = useTheme();
+
+  // On width-constrained clients (mobile, extension) there are no submenus:
+  // "More models" and each maker expand inline.
+  const isWidthConstrained = useIsWidthConstrained();
 
   const query = search.trim().toLowerCase();
   const isSearching = query !== "";
@@ -271,7 +272,7 @@ export function ModelPickerMoreModels({
     <DropdownMenuSub>
       {/* Children mode: place the selection check to the right, before the
           built-in chevron (DropdownMenuSubTrigger has no endComponent slot). */}
-      <DropdownMenuSubTrigger>
+      <DropdownMenuSubTrigger onClick={(e) => e.stopPropagation()}>
         <span className="flex-grow truncate text-left">More models</span>
         {isSpecificModelSelected && (
           <Icon visual={Check} size="sm" className="text-muted-foreground" />

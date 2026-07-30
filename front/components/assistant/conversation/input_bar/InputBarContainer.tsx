@@ -53,7 +53,7 @@ import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -329,6 +329,7 @@ const InputBarContainer = ({
   );
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
+  const clientType = useClientType();
   const { selectedSingleAgent, setSelectedSingleAgent, isLoadingGoTemplate } =
     useContext(InputBarContext);
 
@@ -373,8 +374,7 @@ const InputBarContainer = ({
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
-  const clientType = useClientType();
-  const isWidthConstrained = isMobile || clientType === "extension";
+  const isWidthConstrained = useIsWidthConstrained();
   const shouldEnableSlashSuggestion = actions.includes("capabilities");
 
   const [selectedNode, setSelectedNode] =
