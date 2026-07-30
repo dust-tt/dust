@@ -119,6 +119,9 @@ import {
   useState,
 } from "react";
 
+// To avoid overwhelming the user with unread pod conversations, we hide them if there are too many.
+const HIDE_UNREAD_POD_CONVERSATIONS_TRESHOLD = 16;
+
 interface AgentSidebarMenuProps {
   owner: WorkspaceType;
   hideActions?: boolean;
@@ -683,11 +686,19 @@ export function AgentSidebarMenu({
   }, [setSidebarOpen, router, activeConversationId, setShouldFocusInput]);
 
   const { allConversations, spaces } = useMemo(() => {
+    const unreadPodConversations = summary
+      .map(({ unreadConversations }) => unreadConversations)
+      .flat();
+    if (
+      unreadPodConversations.length >= HIDE_UNREAD_POD_CONVERSATIONS_TRESHOLD
+    ) {
+      return {
+        allConversations: conversations,
+        spaces: summary.map(({ space }) => space).flat(),
+      };
+    }
     return {
-      allConversations: [
-        ...conversations,
-        ...summary.map(({ unreadConversations }) => unreadConversations).flat(),
-      ],
+      allConversations: [...conversations, ...unreadPodConversations],
       spaces: summary.map(({ space }) => space).flat(),
     };
   }, [conversations, summary]);
