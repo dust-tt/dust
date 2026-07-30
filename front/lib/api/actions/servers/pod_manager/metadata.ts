@@ -178,7 +178,7 @@ export const POD_MANAGER_TOOLS_METADATA = [
     description:
       "Set or clear the Pod default skills: skills pre-inserted into new conversations started in this Pod. " +
       "Provide skillNames to set the full list (replacing any existing Pod default skills), or pass null or an empty array to clear it. " +
-      "Only skills available workspace-wide or scoped to this specific pod can be set as Pod defaults.",
+      "Only skills available workspace-wide can be set as Pod defaults.",
     schema: {
       skillNames: z
         .array(z.string())

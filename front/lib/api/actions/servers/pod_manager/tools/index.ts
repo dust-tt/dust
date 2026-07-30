@@ -552,6 +552,26 @@ export function createProjectManagerTools(
               )
             );
           }
+
+          // Only global, workspace-wide skills can be Pod defaults
+          const globalSpace =
+            await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+          const nonGlobalNames = skills
+            .filter(
+              (skill) =>
+                !skill.requestedSpaceIds.every((id) => id === globalSpace.id)
+            )
+            .map((skill) => skill.name);
+          if (nonGlobalNames.length > 0) {
+            return new Err(
+              new MCPError(
+                `Only global, workspace-wide skills can be set as Pod defaults. Not workspace-wide: ${nonGlobalNames
+                  .map((name) => `"${name}"`)
+                  .join(", ")}.`,
+                { tracked: false }
+              )
+            );
+          }
         }
 
         let metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
@@ -560,27 +580,16 @@ export function createProjectManagerTools(
         }
         await metadata.setDefaultSkills(auth, skills);
 
-        // setDefaultSkills drops skills that are not scoped to the correct space
-        // (only workspace wide or restricted to this specific pod allowed).
-        // Report back what actually got applied.
-        const appliedNames = skills
-          .filter((skill) => metadata.defaultSkillIds.includes(skill.sId))
-          .map((skill) => skill.name);
-        const skippedNames = skills
-          .filter((skill) => !metadata.defaultSkillIds.includes(skill.sId))
-          .map((skill) => skill.name);
-
         return new Ok(
           makeSuccessResponse({
             success: true,
             defaultSkillIds: metadata.defaultSkillIds,
             message:
-              (appliedNames.length > 0
-                ? `Pod default skills set to: ${appliedNames.join(", ")}.`
-                : "Pod default skills cleared.") +
-              (skippedNames.length > 0
-                ? ` Skipped (not workspace-wide or scoped to this Pod): ${skippedNames.join(", ")}.`
-                : ""),
+              skills.length > 0
+                ? `Pod default skills set to: ${skills
+                    .map((skill) => skill.name)
+                    .join(", ")}.`
+                : "Pod default skills cleared.",
           })
         );
       }, "Failed to set Pod default skills");
