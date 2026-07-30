@@ -286,9 +286,14 @@ app.patch(
 
     if ("read" in data) {
       if (data.read) {
-        await ConversationResource.markAsReadForAuthUser(auth, {
-          conversation,
-        });
+        // Clients re-send this on many triggers: skip the write when the conversation is
+        // already read up to its latest activity. This also preserves future-dated
+        // `lastReadAt` stamps (see markAsReadForAuthUser) instead of clobbering them.
+        if (conversation.unread) {
+          await ConversationResource.markAsReadForAuthUser(auth, {
+            conversation,
+          });
+        }
 
         // A stale `actionRequired` flag (e.g. left behind by a manual tool approval whose
         // message got interrupted before blocked actions were resolved on termination) would
