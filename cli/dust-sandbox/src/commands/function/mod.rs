@@ -10,10 +10,12 @@ use tokio::io::AsyncReadExt as _;
 use tokio::process::Command;
 
 mod build;
+mod envelope;
 mod get;
 mod run;
 
 pub use build::cmd_function_build;
+pub use envelope::ResultDelivery;
 pub use get::cmd_function_get;
 pub use run::cmd_function_run;
 
@@ -44,6 +46,11 @@ const DEFAULT_FUNCTION_WORKING_DIR: &str = "/home/agent";
 pub enum FunctionCommand {
     /// Execute a function: request envelope JSON on stdin, response JSON on stdout
     Run {
+        /// How to deliver the function result. Default remains the in-sandbox
+        /// HTTP callback; `stdout` returns a protocol v3 envelope on stdout for
+        /// the worker that started the command.
+        #[arg(long, value_enum, default_value_t = ResultDelivery::Callback)]
+        result_delivery: ResultDelivery,
         /// Function name (resolved to a <name>.<ext> bundle in ${DUST_FUNCTIONS_DIR})
         name: String,
     },
