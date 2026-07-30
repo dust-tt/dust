@@ -668,10 +668,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const allowedCustomSkills = validCustomSkills.filter((skill) =>
       auth.canRead(
-        createResourcePermissionsFromSpacesWithMap(
-          spaceIdToGroupsMap,
-          skill.requestedSpaceIds
-        )
+        createResourcePermissionsFromSpacesWithMap(spaceIdToGroupsMap, skill.requestedSpaceIds, auth.getNonNullableWorkspace().id)
       )
     );
     const allowedCustomSkillIds = allowedCustomSkills.map((skill) => skill.id);

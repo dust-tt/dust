@@ -8,8 +8,8 @@ import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { GroupKind } from "@app/types/groups";
 import type {
-  InlineGroupGrant,
-  LegacyAccessRule,
+  AccessControlList,
+  GroupGrant,
 } from "@app/types/resource_permissions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -161,7 +161,7 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
     return auth.canWrite(requestedPermissions);
   }
 
-  async requestedPermissions(): Promise<LegacyAccessRule[]> {
+  async requestedPermissions(): Promise<AccessControlList[]> {
     switch (this.space.kind) {
       case "system":
         return [
@@ -214,11 +214,12 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
       case "project": {
         // Only gets the editor groups correponding to the space management mode
         const editorGroupSpaces = await this.getEditorGroupSpaces(true);
-        const editorGroupsPermissions: InlineGroupGrant[] =
-          editorGroupSpaces.map((egs) => ({
+        const editorGroupsPermissions: GroupGrant[] = editorGroupSpaces.map(
+          (egs) => ({
             id: egs.groupId,
             permissions: ["admin", "read", "write"],
-          }));
+          })
+        );
         return [
           {
             groups: [
