@@ -200,9 +200,13 @@ app.get(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
-    const conversation = await ConversationResource.fetchById(auth, cId, {
-      includeForkingData: true,
-    });
+    // Read state must be hydrated: without it the serialized conversation always
+    // reports `unread: true` / `lastReadMs: null`.
+    const conversation = await ConversationResource.fetchByIdWithReadState(
+      auth,
+      cId,
+      { includeForkingData: true }
+    );
 
     if (!conversation) {
       // Distinguish between "not found" and "access restricted" for the UI.

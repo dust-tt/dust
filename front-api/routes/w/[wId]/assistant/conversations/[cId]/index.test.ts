@@ -182,6 +182,36 @@ describe("GET /api/w/:wId/assistant/conversations/:cId", () => {
     expect(response.status).toBe(404);
     expect((await response.json()).error.type).toBe("conversation_not_found");
   });
+
+  it("hydrates read state on the returned conversation", async () => {
+    const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "GET",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      requestedSpaceIds: [globalSpace.id],
+      messagesCreatedAt: [new Date()],
+    });
+
+    const unreadResponse = await getConversation(workspace, conversation.sId);
+    expect(unreadResponse.status).toBe(200);
+    const unreadBody = await unreadResponse.json();
+    expect(unreadBody.conversation.unread).toBe(true);
+    expect(unreadBody.conversation.lastReadMs).toBeNull();
+
+    const patchResponse = await patchConversation(workspace, conversation.sId, {
+      read: true,
+    });
+    expect(patchResponse.status).toBe(200);
+
+    const readResponse = await getConversation(workspace, conversation.sId);
+    expect(readResponse.status).toBe(200);
+    const readBody = await readResponse.json();
+    expect(readBody.conversation.unread).toBe(false);
+    expect(readBody.conversation.lastReadMs).toEqual(expect.any(Number));
+  });
 });
 
 describe("PATCH /api/w/:wId/assistant/conversations/:cId", () => {
