@@ -45,7 +45,7 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     },
   },
   {
-    label: "Members and agents",
+    label: "Workspace members and agents",
     description:
       "Available to workspace members and agents with Discover Skills, including @Dust",
     availability: "users_and_agents",

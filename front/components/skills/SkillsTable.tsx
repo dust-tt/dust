@@ -63,8 +63,7 @@ export const SKILL_AVAILABILITY_DISPLAY: Record<
   users_and_agents: {
     label: "Members and agents",
     color: "highlight",
-    tooltip:
-      "Available to workspace members and agents with Discover Skills",
+    tooltip: "Available to workspace members and agents with Discover Skills",
   },
 };
 

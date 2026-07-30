@@ -219,13 +219,13 @@ export function SkillBuilderSettingsSection({
                 </li>
                 <li>
                   Any agent with Discover Skills, including Dust, can use it
-                  automatically. See other Members and agents skills in{" "}
+                  automatically. See other skills available to agents in{" "}
                   <Hoverable
-                    href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
+                    href={`/w/${owner.sId}/builder/skills#?selectedTab=users_and_agents`}
                     target="_blank"
                     className="inline-flex items-center gap-1 underline"
                   >
-                    Manage Skills page
+                    Manage Skills
                     <Icon visual={LinkExternal01} size="xs" />
                   </Hoverable>
                 </li>
