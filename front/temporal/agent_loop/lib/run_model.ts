@@ -993,19 +993,21 @@ export async function runModel(
 
   // Create AgentStepContent for each content item (reasoning, text, function calls)
   // This replaces the original agent_step_content event emission
-  for (const [index, content] of output.contents.entries()) {
-    const stepContent = await AgentStepContentResource.createNewVersion({
+  const stepContents = await AgentStepContentResource.createNewVersions(
+    output.contents.map((content, index) => ({
       workspaceId: conversation.owner.id,
       agentMessageId: agentMessage.agentMessageId,
       step,
       index,
       type: content.type,
       value: content,
-    });
+    }))
+  );
 
+  for (const [i, content] of output.contents.entries()) {
     // If this is a function call content, track the step content ID
     if (content.type === "function_call") {
-      updatedFunctionCallStepContentIds[content.value.id] = stepContent.id;
+      updatedFunctionCallStepContentIds[content.value.id] = stepContents[i].id;
     }
   }
 

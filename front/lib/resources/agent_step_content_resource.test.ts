@@ -287,3 +287,157 @@ describe("AgentStepContentResource Redis cache", () => {
     );
   });
 });
+
+describe("AgentStepContentResource.createNewVersions", () => {
+  let authenticator: Authenticator;
+  let workspaceId: number;
+  let agentMessage: AgentMessageModel;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    authenticator = setup.authenticator;
+    workspaceId = setup.workspace.id;
+
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        name: "Step Content Bulk Create Agent",
+      }
+    );
+    const [message] = await createAgentMessages(authenticator, {
+      count: 1,
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+    });
+    agentMessage = message;
+  });
+
+  it("inserts multiple contents in one roundtrip with version 0", async () => {
+    const created = await AgentStepContentResource.createNewVersions([
+      {
+        workspaceId,
+        agentMessageId: agentMessage.id,
+        step: 0,
+        index: 0,
+        type: "text_content",
+        value: makeTextContent("first"),
+      },
+      {
+        workspaceId,
+        agentMessageId: agentMessage.id,
+        step: 0,
+        index: 1,
+        type: "text_content",
+        value: makeTextContent("second"),
+      },
+    ]);
+
+    expect(created).toHaveLength(2);
+    expect(created.map((c) => c.index)).toEqual([0, 1]);
+    expect(created.map((c) => c.version)).toEqual([0, 0]);
+    expect(created.map((c) => (c.value as AgentTextContentType).value)).toEqual(
+      ["first", "second"]
+    );
+
+    const fetched = await AgentStepContentResource.fetchByAgentMessages(
+      authenticator,
+      { agentMessageIds: [agentMessage.id] }
+    );
+    expect(fetched).toHaveLength(2);
+  });
+
+  it("bumps versions when re-inserting the same step/index pairs", async () => {
+    await AgentStepContentResource.createNewVersions([
+      {
+        workspaceId,
+        agentMessageId: agentMessage.id,
+        step: 0,
+        index: 0,
+        type: "text_content",
+        value: makeTextContent("v0-a"),
+      },
+      {
+        workspaceId,
+        agentMessageId: agentMessage.id,
+        step: 0,
+        index: 1,
+        type: "text_content",
+        value: makeTextContent("v0-b"),
+      },
+    ]);
+
+    const created = await AgentStepContentResource.createNewVersions([
+      {
+        workspaceId,
+        agentMessageId: agentMessage.id,
+        step: 0,
+        index: 0,
+        type: "text_content",
+        value: makeTextContent("v1-a"),
+      },
+      {
+        workspaceId,
+        agentMessageId: agentMessage.id,
+        step: 0,
+        index: 1,
+        type: "text_content",
+        value: makeTextContent("v1-b"),
+      },
+    ]);
+
+    expect(created.map((c) => c.version)).toEqual([1, 1]);
+
+    const fetched = await AgentStepContentResource.fetchByAgentMessages(
+      authenticator,
+      { agentMessageIds: [agentMessage.id] }
+    );
+    expect(fetched).toHaveLength(2);
+    expect(
+      fetched
+        .toSorted((a, b) => a.index - b.index)
+        .map((c) => (c.value as AgentTextContentType).value)
+    ).toEqual(["v1-a", "v1-b"]);
+  });
+
+  it("warms Redis for all inserted contents", async () => {
+    const created = await AgentStepContentResource.createNewVersions([
+      {
+        workspaceId,
+        agentMessageId: agentMessage.id,
+        step: 0,
+        index: 0,
+        type: "text_content",
+        value: makeTextContent("cached-0"),
+      },
+      {
+        workspaceId,
+        agentMessageId: agentMessage.id,
+        step: 0,
+        index: 1,
+        type: "text_content",
+        value: makeTextContent("cached-1"),
+      },
+    ]);
+
+    const redis = await getRedisCacheClient({
+      origin: "agent_step_content_cache",
+    });
+    const key = agentStepContentCacheKey({
+      workspaceId,
+      agentMessageId: agentMessage.id,
+    });
+    const hash = await redis.hGetAll(key);
+
+    expect(
+      JSON.parse(hash[agentStepContentHashField({ step: 0, index: 0 })]).id
+    ).toBe(created[0].id);
+    expect(
+      JSON.parse(hash[agentStepContentHashField({ step: 0, index: 1 })]).id
+    ).toBe(created[1].id);
+  });
+
+  it("returns an empty array for an empty input", async () => {
+    const created = await AgentStepContentResource.createNewVersions([]);
+    expect(created).toEqual([]);
+  });
+});
