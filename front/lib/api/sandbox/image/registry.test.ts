@@ -425,6 +425,31 @@ describe("sandbox image registry", () => {
     );
   });
 
+  test("installs the pinned Snowflake CLI release to /opt/bin", () => {
+    const operations = getDustBaseImageOperations();
+    const runCommands = getRunCommands(operations);
+    const image = getDustBaseImage();
+    const installCommand = runCommands.find((command) =>
+      command.includes("sfc-repo.snowflakecomputing.com/snowflake-cli")
+    );
+
+    expect(installCommand).toBeDefined();
+    expect(installCommand).toContain(
+      "https://sfc-repo.snowflakecomputing.com/snowflake-cli/linux_x86_64/3.23.0/snowflake-cli-3.23.0.x86_64.deb"
+    );
+    expect(installCommand).toContain(
+      "bb1a3e645c171f43dac44965daa4047c256424bf47c954fef8b2a00d38e84775  /tmp/snowflake-cli.deb"
+    );
+    expect(installCommand).toContain(
+      "ln -sf /usr/lib/snowflake/snowflake-cli/snow /opt/bin/snow"
+    );
+    expect(image.tools).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "snow", version: "3.23.0" }),
+      ])
+    );
+  });
+
   test("installs the pinned litestream release to /opt/bin", () => {
     const runCommands = getRunCommands(getDustBaseImageOperations());
     const installCommand = runCommands.find((command) =>
