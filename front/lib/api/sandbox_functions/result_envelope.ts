@@ -182,6 +182,10 @@ export function normalizeSandboxFunctionResult(
       });
     }
     if (!isSupportedProtocolVersion(protocolVersion)) {
+      logger.warn(
+        { reason: "unsupported_protocol_version", protocolVersion },
+        "Rejected Pod function result envelope"
+      );
       return {
         ok: false,
         error: {
