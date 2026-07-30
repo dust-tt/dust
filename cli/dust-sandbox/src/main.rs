@@ -220,10 +220,7 @@ mod tests {
                     result_delivery,
                 } => {
                     assert_eq!(name, "greet");
-                    assert_eq!(
-                        result_delivery,
-                        commands::function::ResultDelivery::Stdout
-                    );
+                    assert_eq!(result_delivery, commands::function::ResultDelivery::Stdout);
                 }
                 _ => panic!("expected run"),
             },
