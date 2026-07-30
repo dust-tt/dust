@@ -1,85 +1,55 @@
 export const ACTIVATION_POD_FRAME_TEMPLATE = `
 import { useEffect, useState } from "react";
-import {
-  CalendarCheck,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  Inbox,
-  MessageCircle,
-  Sparkles,
-} from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 /* ============================================================
    ACTIVATION POD FRAME — pinned pod overview
    ============================================================
-   ONE state. The pod's home: a short "What is this pod?" explainer
-   (collapsible) plus a growing set of tiles — one per recommendation
-   the user has completed. There is no day1/grown switch; the page
-   simply gains a tile each time something gets done.
+   TWO SURFACES, ONE DATA MODEL
 
-   The result of a recommendation is NOT rendered here — that gets its
-   own separate frame. This frame only keeps the record.
+   Banner (pinned): exact same PodIntro as full view — everything
+   above "Where we're headed". Not a compact/summary variant.
 
-   Keep placeholder names anonymized until you write the real
-   user's data.
+   Full view: PodIntro → Overall Goal highlights → Session plan
+   (hero, live statuses) → completed tiles.
+
+   Update PLAN step statuses as you execute. Keep NEXT_STEP in
+   sync with the current step (e.g. "Next step is in chat — …").
+   All copy is second person ("you"). Customize TEMPLATE DATA;
+   never ship placeholders.
    ============================================================ */
 
 /* ---------------- TEMPLATE DATA ---------------- */
 
-const USER = { name: "User", role: "Marketing", company: "Acme" };
+const WHY_THIS_POD =
+  "People in your role at Acme already run weekly reporting from Dust — this space was set up so you can too.";
 
-// "What is this pod?" — the collapsible explainer.
-const ABOUT =
-  "Your conversations, files, and anything you approve to run on its own all live here — so nothing you set up is ever lost or hidden. This page fills up with things you say yes to, one at a time.";
-
-const HOW_IT_WORKS = [
-  { title: "Dust suggests", icon: "sparkles", tint: "indigo", sub: "One idea at a time, drawn from how you actually work. Never a list." },
-  { title: "You say yes", icon: "chat", tint: "violet", sub: "In the chat, in your own words. Nothing runs without your ok." },
-  { title: "It runs for you", icon: "calendar", tint: "sky", sub: "On a schedule you pick. You don't do anything." },
-  { title: "Results land here", icon: "inbox", tint: "emerald", sub: "Each finished recommendation becomes a tile on this page." },
+// Second-person digest of AGENTS.md (Destination + Who). Not the full file.
+const OVERALL_GOAL_HIGHLIGHTS: string[] = [
+  "You're in Marketing at Acme — you live in HubSpot, Slack, and weekly stakeholder updates.",
+  "Overall goal: get you running recurring reporting and meeting prep from Dust, not by hand.",
+  "Must-hit: one real digest you keep, then one briefing before a key meeting.",
 ];
 
-// One tile per completed recommendation. Append one each time something
-// gets done. Empty until the first recommendation completes.
-const TILES: { title: string; when: string; detail?: string }[] = [
-  {
-    title: "Inbox closeout",
-    when: "Today",
-    detail: "Drafted 4 replies and flagged the partner contract thread.",
-  },
+const SESSION_GOAL =
+  "Help you draft this week's status from HubSpot + Slack — producing a ready-to-send digest.";
+
+// Update statuses as you go: pending → current → done.
+// Exactly one step should be "current" while the session is active.
+const PLAN: { label: string; status: "pending" | "current" | "done" }[] = [
+  { label: "Say yes to the idea in chat", status: "current" },
+  { label: "I'll build the digest from your sources", status: "pending" },
+  { label: "Optionally save or schedule it for next week", status: "pending" },
 ];
+
+// Plain instruction for what to do next. Update whenever PLAN's current step changes.
+const NEXT_STEP =
+  "Next step is in chat — say yes on the card when you're ready.";
+
+const TILES: { title: string; when: string; detail?: string }[] = [];
 
 /* ---------------- END TEMPLATE DATA ---------------- */
 
-function tintClasses(tint: string) {
-  if (tint === "indigo") {
-    return { bg: "bg-indigo-50 dark:bg-indigo-950/40", text: "text-indigo-500" };
-  }
-  if (tint === "violet") {
-    return { bg: "bg-violet-50 dark:bg-violet-950/40", text: "text-violet-500" };
-  }
-  if (tint === "sky") {
-    return { bg: "bg-sky-50 dark:bg-sky-950/40", text: "text-sky-500" };
-  }
-  return { bg: "bg-emerald-50 dark:bg-emerald-950/40", text: "text-emerald-500" };
-}
-
-function StepIcon({ name, className }: { name: string; className?: string }) {
-  if (name === "sparkles") {
-    return <Sparkles className={className} />;
-  }
-  if (name === "chat") {
-    return <MessageCircle className={className} />;
-  }
-  if (name === "calendar") {
-    return <CalendarCheck className={className} />;
-  }
-  return <Inbox className={className} />;
-}
-
-// Everything enters once, top to bottom — the page composes itself in reading
-// order. useEffect always fires, so content is never left permanently hidden.
 function Reveal({ i = 0, children }: { i?: number; children: React.ReactNode }) {
   const [shown, setShown] = useState(false);
   useEffect(() => {
@@ -107,77 +77,85 @@ function Kicker({ children }: { children: React.ReactNode }) {
   );
 }
 
-function HowItWorksTimeline() {
+// Top intro — identical in pinned banner and full view (everything above "Where we're headed").
+function PodIntro() {
   return (
-    <div className="flex flex-col">
-      {HOW_IT_WORKS.map((step, i) => {
-        const t = tintClasses(step.tint);
-        const last = i === HOW_IT_WORKS.length - 1;
+    <div className="flex flex-col gap-2">
+      <Kicker>Your pod</Kicker>
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        A space Dust set up for you
+      </h1>
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        {WHY_THIS_POD}
+      </p>
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        A <span className="font-medium text-foreground">pod</span> is a shared team space for these chats, files, and anything you
+        approve to run on its own. This panel is a{" "}
+        <span className="font-medium text-foreground">Frame</span> — pinned so you can always see the plan.
+      </p>
+    </div>
+  );
+}
+
+function PlanList() {
+  return (
+    <ol className="flex flex-col gap-2">
+      {PLAN.map((step, i) => {
+        const done = step.status === "done";
+        const current = step.status === "current";
         return (
-          <div key={step.title} className="flex gap-4">
-            <div className="flex flex-col items-center">
-              <div className={"flex h-10 w-10 shrink-0 items-center justify-center rounded-full " + t.bg}>
-                <StepIcon name={step.icon} className={"h-4 w-4 " + t.text} />
-              </div>
-              {last ? null : <div className="my-1 w-px flex-1 bg-border" />}
+          <li
+            key={step.label}
+            className={
+              "flex items-start gap-3 rounded-xl px-2.5 py-2 " +
+              (current ? "bg-indigo-50 dark:bg-indigo-950/40" : "")
+            }
+          >
+            <span
+              className={
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold " +
+                (done
+                  ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+                  : current
+                    ? "bg-indigo-500 text-white"
+                    : "bg-muted text-muted-foreground")
+              }
+            >
+              {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
+            </span>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <p
+                className={
+                  "text-sm leading-snug " +
+                  (done
+                    ? "text-muted-foreground line-through"
+                    : current
+                      ? "font-semibold text-foreground"
+                      : "text-muted-foreground")
+                }
+              >
+                {step.label}
+              </p>
+              {current ? (
+                <p className="mt-0.5 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                  Happening now
+                </p>
+              ) : null}
             </div>
-            <div className={last ? "" : "pb-7"}>
-              <p className="text-sm font-semibold text-foreground">{step.title}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{step.sub}</p>
-            </div>
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }
 
-function Collapsible({
-  label,
-  defaultOpen = false,
-  children,
-}: {
-  label: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="rounded-2xl border border-border">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
-      >
-        <span className="text-sm font-medium text-foreground">{label}</span>
-        {open ? (
-          <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-        )}
-      </button>
-      {open ? <div className="px-4 pb-5">{children}</div> : null}
-    </div>
-  );
-}
-
-// "What is this pod?" — collapsible. Defaults open on day 1 (no tiles yet),
-// and collapses out of the way once the pod has real activity.
-function AboutSection() {
-  return (
-    <Collapsible label="What is this pod?" defaultOpen={TILES.length === 0}>
-      <div className="flex flex-col gap-6 pt-1">
-        <p className="text-sm leading-relaxed text-muted-foreground">{ABOUT}</p>
-        <HowItWorksTimeline />
-      </div>
-    </Collapsible>
-  );
-}
-
-// One tile per completed recommendation.
 function Tiles() {
+  if (TILES.length === 0) {
+    return null;
+  }
   return (
     <div className="flex flex-col gap-2.5">
+      <Kicker>Done in this pod</Kicker>
       {TILES.map((tile, i) => (
         <Reveal key={i} i={i + 1}>
           <div className="rounded-2xl border border-border bg-card p-4">
@@ -198,8 +176,6 @@ function Tiles() {
   );
 }
 
-/* ---------------- Surface detection ---------------- */
-
 function useSurface() {
   const isBanner = () => {
     try {
@@ -218,70 +194,66 @@ function useSurface() {
   return banner;
 }
 
-/* ---------------- Full view (single centered column) ---------------- */
-
-function FullView() {
+function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="h-full overflow-y-auto bg-background text-foreground">
       <div className="mx-auto w-full max-w-xl px-6 py-10">
-        <div className="flex flex-col gap-6">
-          <Reveal i={0}>
-            <div className="flex flex-col items-center gap-2 text-center">
-              <Kicker>Your pod</Kicker>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                One place where Dust works for you, {USER.name}.
-              </h1>
-            </div>
-          </Reveal>
-
-          {TILES.length > 0 ? <Tiles /> : null}
-
-          <AboutSection />
-        </div>
+        <div className="flex flex-col gap-6">{children}</div>
       </div>
     </div>
   );
 }
 
-/* ---------------- Condensed banner view (pinned, ~280px) ---------------- */
-
-function BannerView() {
-  const recent = TILES.slice().reverse();
+function FullView() {
   return (
-    <div className="flex h-full flex-col gap-3 overflow-hidden bg-background px-4 py-3 text-foreground">
-      <div>
-        <Kicker>Your pod</Kicker>
-        <p className="mt-1 text-sm font-semibold leading-snug text-foreground">
-          One place where Dust works for you, {USER.name}.
-        </p>
-      </div>
-      {recent.length > 0 ? (
-        <div className="flex flex-col gap-1.5">
-          {recent.map((tile, i) => (
-            <div key={i} className="flex items-start gap-2">
-              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
-              <p className="text-xs leading-snug text-foreground line-clamp-1">{tile.title}</p>
-            </div>
-          ))}
-        </div>
-      ) : (
+    <Shell>
+      <Reveal i={0}>
+        <PodIntro />
+      </Reveal>
+
+      <Reveal i={1}>
         <div className="flex flex-col gap-2">
-          {HOW_IT_WORKS.map((step) => {
-            const t = tintClasses(step.tint);
-            return (
-              <div key={step.title} className="flex items-center gap-2.5">
-                <div className={"flex h-7 w-7 shrink-0 items-center justify-center rounded-full " + t.bg}>
-                  <StepIcon name={step.icon} className={"h-3.5 w-3.5 " + t.text} />
-                </div>
-                <p className="text-xs text-foreground">
-                  <span className="font-medium">{step.title}</span>
-                </p>
-              </div>
-            );
-          })}
+          <Kicker>Where we're headed</Kicker>
+          <ul className="flex flex-col gap-2">
+            {OVERALL_GOAL_HIGHLIGHTS.map((line) => (
+              <li
+                key={line}
+                className="rounded-xl border border-border px-3.5 py-3 text-sm leading-snug text-foreground"
+              >
+                {line}
+              </li>
+            ))}
+          </ul>
         </div>
-      )}
-    </div>
+      </Reveal>
+
+      <Reveal i={2}>
+        <div className="rounded-2xl border border-indigo-200 bg-card p-5 shadow-sm dark:border-indigo-900/50">
+          <Kicker>This session</Kicker>
+          <p className="mt-2 text-lg font-semibold leading-snug tracking-tight text-foreground">
+            {SESSION_GOAL}
+          </p>
+          <div className="mt-5 border-t border-border pt-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Simple plan
+            </p>
+            <PlanList />
+          </div>
+          <p className="mt-5 text-sm font-medium text-foreground">{NEXT_STEP}</p>
+        </div>
+      </Reveal>
+
+      <Tiles />
+    </Shell>
+  );
+}
+
+// Pinned strip = exact same PodIntro as full view (everything above "Where we're headed").
+function BannerView() {
+  return (
+    <Shell>
+      <PodIntro />
+    </Shell>
   );
 }
 
