@@ -15,6 +15,7 @@ import {
   ContentMessage,
   IconButton,
   LinkExternal01,
+  Markdown,
   Spinner,
 } from "@dust-tt/sparkle";
 
@@ -77,12 +78,15 @@ export function MCPSkillEnableActionDetails({
       {showSidebarDetails && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
           {hasDescription && (
-            <div>
-              <span className="font-medium text-foreground">Description</span>
-              <div className="my-2 text-sm text-muted-foreground">
-                {description}
-              </div>
-            </div>
+            <ContentMessage title="Description" variant="primary" size="lg">
+              <Markdown
+                content={description}
+                isStreaming={false}
+                forcedTextSize="text-sm"
+                textColor="text-muted-foreground"
+                isLastMessage={false}
+              />
+            </ContentMessage>
           )}
 
           {outputItems.length > 0 && (
