@@ -14,18 +14,18 @@ export const SANDBOX_FUNCTION_INVOCATION_STATUSES = [
 export type SandboxFunctionInvocationStatus =
   (typeof SANDBOX_FUNCTION_INVOCATION_STATUSES)[number];
 
-export const SANDBOX_FUNCTION_AUTHENTICATION_POLICIES = [
+export const SANDBOX_FUNCTION_USER_IDENTITY_POLICIES = [
   "optional",
   "workspace_user_required",
 ] as const;
 
-export type SandboxFunctionAuthenticationPolicy =
-  (typeof SANDBOX_FUNCTION_AUTHENTICATION_POLICIES)[number];
+export type SandboxFunctionUserIdentityPolicy =
+  (typeof SANDBOX_FUNCTION_USER_IDENTITY_POLICIES)[number];
 
-export function isSandboxFunctionAuthenticationPolicy(
+export function isSandboxFunctionUserIdentityPolicy(
   value: unknown
-): value is SandboxFunctionAuthenticationPolicy {
-  return SANDBOX_FUNCTION_AUTHENTICATION_POLICIES.some(
+): value is SandboxFunctionUserIdentityPolicy {
+  return SANDBOX_FUNCTION_USER_IDENTITY_POLICIES.some(
     (policy) => policy === value
   );
 }

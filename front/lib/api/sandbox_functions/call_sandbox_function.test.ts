@@ -73,7 +73,7 @@ function mockResult(result: unknown, invocationId: string): void {
 async function makeFunction(
   auth: Authenticator,
   space: SpaceResource,
-  authentication: "optional" | "workspace_user_required" = "optional"
+  userIdentity: "optional" | "workspace_user_required" = "optional"
 ): Promise<SandboxFunctionResource> {
   const file = await FileFactory.create(auth, null, {
     contentType: sandboxFunctionContentType,
@@ -88,7 +88,7 @@ async function makeFunction(
     file,
     slug: "greet",
     description: "Greet a user by name.",
-    authentication,
+    userIdentity,
     inputSchema,
     outputSchema,
   });
@@ -167,7 +167,7 @@ describe("callSandboxFunction", () => {
 
   it("fails closed on a policy introduced by a newer application version", async () => {
     const { auth, fn } = await setup();
-    Object.assign(fn, { authentication: "future_policy" });
+    Object.assign(fn, { userIdentity: "future_policy" });
 
     const result = await callSandboxFunction(auth, fn, { name: "x" });
 

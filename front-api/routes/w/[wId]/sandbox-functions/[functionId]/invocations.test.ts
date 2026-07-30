@@ -88,11 +88,11 @@ afterEach(() => {
 async function setupSandboxFunction({
   addCallerToSpace = true,
   withSandboxFunctionsFeatureFlag = true,
-  authentication = "optional",
+  userIdentity = "optional",
 }: {
   addCallerToSpace?: boolean;
   withSandboxFunctionsFeatureFlag?: boolean;
-  authentication?: "optional" | "workspace_user_required";
+  userIdentity?: "optional" | "workspace_user_required";
 } = {}) {
   const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
     role: "admin",
@@ -115,7 +115,7 @@ async function setupSandboxFunction({
     file,
     slug: "run-function",
     description: "Run the function.",
-    authentication,
+    userIdentity,
     inputSchema,
     outputSchema,
   });
@@ -322,7 +322,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
 
   it("allows a workspace member to invoke a workspace-user-required function", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction({
-      authentication: "workspace_user_required",
+      userIdentity: "workspace_user_required",
     });
 
     const response = await postInvocation({
