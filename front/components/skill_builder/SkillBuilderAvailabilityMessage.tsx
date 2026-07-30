@@ -27,9 +27,7 @@ function getAvailabilityContent({
 
   const gate =
     restrictedSpaces.length > 1 ? (
-      <>
-        Only members of all the following can use this skill: {spaceLinks}.
-      </>
+      <>Only members of all the following can use this skill: {spaceLinks}.</>
     ) : (
       <>Only members of {spaceLinks} can use this skill.</>
     );
