@@ -4,7 +4,6 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { ContentMessage, Users01 } from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
 
 interface SkillBuilderAvailabilityMessageProps {
   availability: SkillAvailability;
@@ -15,7 +14,7 @@ interface SkillBuilderAvailabilityMessageProps {
 function getAvailabilityItems(
   availability: SkillAvailability,
   { restricted }: { restricted: boolean }
-): ReactNode[] {
+): string[] {
   const everyoneCanFind = restricted
     ? "All members can find it via the input bar and agent builder"
     : "All workspace members can find it via the input bar and agent builder";
@@ -78,8 +77,8 @@ export function SkillBuilderAvailabilityMessage({
         <>
           {gate && <p className="mb-1">{gate} Among them:</p>}
           <ul className="list-disc space-y-1 pl-5">
-            {items.map((item, i) => (
-              <li key={i}>{item}</li>
+            {items.map((item) => (
+              <li key={item}>{item}</li>
             ))}
           </ul>
         </>

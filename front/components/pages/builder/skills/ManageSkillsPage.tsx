@@ -191,13 +191,9 @@ export function ManageSkillsPage() {
 
   const isSearchActive = !isEmptyString(skillSearch);
 
-  const visibleTabs = useMemo(
-    () =>
-      hasSkillPublicationGovernance
-        ? GOVERNANCE_SKILL_MANAGER_TABS
-        : LEGACY_SKILL_MANAGER_TABS,
-    [hasSkillPublicationGovernance]
-  );
+  const visibleTabs = hasSkillPublicationGovernance
+    ? GOVERNANCE_SKILL_MANAGER_TABS
+    : LEGACY_SKILL_MANAGER_TABS;
 
   const activeTab = useMemo<SkillManagerTabType>(() => {
     if (
@@ -555,7 +551,7 @@ export function ManageSkillsPage() {
                           }
                         />
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="start" className="w-48">
                         {AVAILABILITY_FILTER_OPTIONS.map((option) => (
                           <DropdownMenuItem
                             key={option.value}
