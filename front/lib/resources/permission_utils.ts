@@ -46,7 +46,7 @@ export function createSpaceIdToGroupsMap(
  * @param requestedSpaceIds - Array of space ids that need permission resolution
  * @returns Array of AccessControlList objects for use with Authenticator permission methods
  */
-export function createResourcePermissionsFromSpacesWithMap(
+export function createAccessControlListFromSpacesWithMap(
   spaceIdToGroupsMap: Map<ModelId, string[]>,
   requestedSpaceIds: ModelId[],
   workspaceId: ModelId
@@ -62,7 +62,7 @@ export function createResourcePermissionsFromSpacesWithMap(
     resolvedGroupIds.push(groupIds);
   }
 
-  return Authenticator.createResourcePermissionsFromGroupIds(
+  return Authenticator.createAccessControlListFromGroupIds(
     resolvedGroupIds,
     workspaceId
   );

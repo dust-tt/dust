@@ -144,7 +144,7 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
 
   async canAddMember(auth: Authenticator, _userId: string): Promise<boolean> {
     const acls = await this.getAccessControlLists(auth);
-    return auth.canWrite(acls);
+    return auth.hasPermissionForAcls("write", acls);
   }
 
   async canRemoveMember(
@@ -157,7 +157,7 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
       return false;
     }
     const acls = await this.getAccessControlLists(auth);
-    return auth.canWrite(acls);
+    return auth.hasPermissionForAcls("write", acls);
   }
 
   async getAccessControlLists(

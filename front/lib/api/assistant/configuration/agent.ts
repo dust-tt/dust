@@ -41,7 +41,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
-  createResourcePermissionsFromSpacesWithMap,
+  createAccessControlListFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -2108,8 +2108,9 @@ export async function filterAgentsByRequestedSpaces(
   );
 
   const allowedBySpaceIds = validAgents.filter((agent) =>
-    auth.canRead(
-      createResourcePermissionsFromSpacesWithMap(
+    auth.hasPermissionForAcls(
+      "read",
+      createAccessControlListFromSpacesWithMap(
         spaceIdToGroupsMap,
         agent.requestedSpaceIds,
         auth.getNonNullableWorkspace().id
