@@ -10,7 +10,6 @@ import type {
   ImageContent,
   ModelMessageTypeMultiActions,
 } from "@app/types/assistant/generation";
-import { isImageContent } from "@app/types/assistant/generation";
 import { describe, expect, it } from "vitest";
 
 function withTokens<T extends ModelMessageTypeMultiActions>(
@@ -117,16 +116,8 @@ function functionImageMessage(
   );
 }
 
-function imagePruningResultMessages(
-  state: CheckpointedConversationWindowState
-) {
-  return state
-    .renderedInteractions()
-    .flatMap((interaction) => interaction.messages);
-}
-
 describe("CheckpointedConversationWindowState image limits", () => {
-  it("prunes the oldest tool images as interactions are appended", () => {
+  it("prunes the oldest tool images when fitting the window", () => {
     const state = makeState({ maxInputImages: 2 });
     const firstInteraction = {
       messages: [
@@ -136,14 +127,6 @@ describe("CheckpointedConversationWindowState image limits", () => {
     };
 
     state.append(firstInteraction);
-    expect(
-      imagePruningResultMessages(state).flatMap((message) =>
-        "content" in message && Array.isArray(message.content)
-          ? message.content.filter(isImageContent)
-          : []
-      )
-    ).toHaveLength(2);
-
     state.append({
       messages: [
         {
@@ -160,9 +143,15 @@ describe("CheckpointedConversationWindowState image limits", () => {
       ],
     });
 
-    const [first, second, user, third] = state
-      .renderedInteractions()
-      .flatMap((item) => item.messages);
+    const result = state.fit();
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+
+    const [first, second, user, third] = result.value.interactions.flatMap(
+      (item) => item.messages
+    );
     expect(first.content).toEqual([
       {
         type: "text",
@@ -177,15 +166,11 @@ describe("CheckpointedConversationWindowState image limits", () => {
     ]);
     expect(user.content).toEqual([image("user-upload")]);
     expect(third.content).toEqual([image("third", "conversation/third.png")]);
-    const result = state.fit();
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value.stats).toMatchObject({
-        imageCountLimit: 2,
-        prunedImageCount: 2,
-        nonToolImageCount: 1,
-      });
-    }
+    expect(result.value.stats).toMatchObject({
+      imageCountLimit: 2,
+      prunedImageCount: 2,
+      nonToolImageCount: 1,
+    });
     expect(firstInteraction.messages[0].content).toEqual([
       image("first", "conversation/first.png"),
     ]);

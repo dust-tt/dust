@@ -1,6 +1,12 @@
 /** Shared token accounting and tool-result pruning helpers. */
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  FILES_CAT_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import type { Interaction } from "@app/lib/api/assistant/conversation/interactions";
 import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
+import { isImageContent } from "@app/types/assistant/generation";
 
 const PRUNED_TOOL_RESULT_PLACEHOLDER =
   "<dust_system>" +
@@ -10,6 +16,15 @@ const PRUNED_TOOL_RESULT_TOKENS = 24;
 
 // Fixed number of tokens assumed for image contents during message tokenization.
 export const IMAGE_CONTENT_TOKEN_COUNT = 3_100;
+
+// Fixed token estimate for the text that replaces a pruned image preview, covering the
+// placeholder sentence and the recovery hint with its file path.
+export const PRUNED_IMAGE_PREVIEW_TOKENS = 128;
+
+const FILES_CAT_TOOL_NAME = getPrefixedToolName(
+  FILES_SERVER_NAME,
+  FILES_CAT_ACTION_NAME
+);
 
 // Pruning advances through history in batches of this size, not message by message. Every move
 // of the pruning frontier invalidates the provider cache from that point on. Moving it for a
@@ -32,6 +47,40 @@ export function pruneToolResultMessage(
     ...message,
     content: PRUNED_TOOL_RESULT_PLACEHOLDER,
     tokenCount: PRUNED_TOOL_RESULT_TOKENS,
+  };
+}
+
+/** Replaces one image preview inside a tool result with an explanatory text placeholder. */
+export function pruneToolResultImagePreview(
+  message: Extract<MessageWithTokens, { role: "function" }>,
+  contentIndex: number,
+  maxInputImages: number
+): Extract<MessageWithTokens, { role: "function" }> {
+  if (!Array.isArray(message.content)) {
+    return message;
+  }
+
+  const content = [...message.content];
+  const preview = content[contentIndex];
+  const filePath = isImageContent(preview) ? preview.file_path : undefined;
+  content[contentIndex] = {
+    type: "text" as const,
+    text:
+      `[This image preview is no longer displayed because the conversation exceeds the ${maxInputImages}-image limit.` +
+      (filePath
+        ? ` Use \`${FILES_CAT_TOOL_NAME}\` with path \`${filePath}\` to display it again.]`
+        : " Re-run the tool to display it again.]"),
+  };
+
+  return {
+    ...message,
+    content,
+    tokenCount: Math.max(
+      message.tokenCount -
+        IMAGE_CONTENT_TOKEN_COUNT +
+        PRUNED_IMAGE_PREVIEW_TOKENS,
+      0
+    ),
   };
 }
 

@@ -18,7 +18,10 @@ import {
   TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR,
 } from "./index";
 import { renderAllMessages } from "./message_rendering";
-import { IMAGE_CONTENT_TOKEN_COUNT } from "./pruning";
+import {
+  IMAGE_CONTENT_TOKEN_COUNT,
+  PRUNED_IMAGE_PREVIEW_TOKENS,
+} from "./pruning";
 
 vi.mock(
   "@app/lib/api/assistant/conversation_rendering/message_rendering",
@@ -302,13 +305,6 @@ describe("renderConversationForModel", () => {
         ),
       },
     ]);
-    if (!Array.isArray(oldestToolResult.content)) {
-      throw new Error("Expected structured tool content");
-    }
-    const replacement = oldestToolResult.content[0];
-    if (!isTextContent(replacement)) {
-      throw new Error("Expected an image replacement");
-    }
     expect(res.value.tokensUsed).toBe(
       TOKENS_MARGIN +
         10 +
@@ -316,7 +312,7 @@ describe("renderConversationForModel", () => {
         10 +
         ANTHROPIC_MAX_INPUT_IMAGES * 5 +
         ANTHROPIC_MAX_INPUT_IMAGES * IMAGE_CONTENT_TOKEN_COUNT +
-        Buffer.byteLength(replacement.text)
+        PRUNED_IMAGE_PREVIEW_TOKENS
     );
   });
 

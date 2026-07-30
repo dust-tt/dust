@@ -1,16 +1,11 @@
-import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
-import {
-  FILES_CAT_ACTION_NAME,
-  FILES_SERVER_NAME,
-} from "@app/lib/api/actions/servers/files/metadata";
 import type {
   InteractionWithTokens,
   MessageWithTokens,
 } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import {
   getToolResultTokenSavings,
-  IMAGE_CONTENT_TOKEN_COUNT,
   PRUNING_CHECKPOINT_TOKENS,
+  pruneToolResultImagePreview,
   pruneToolResultMessage,
 } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import type {
@@ -18,7 +13,6 @@ import type {
   ConversationWindowResult,
 } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import logger from "@app/logger/logger";
-import type { ImageContent } from "@app/types/assistant/generation";
 import { isImageContent } from "@app/types/assistant/generation";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -33,7 +27,6 @@ type ToolResultNode = {
   message: Extract<MessageWithTokens, { role: "function" }>;
   tokenSavings: number;
   pruned: boolean;
-  eligible: boolean;
   imageReferences: ToolImageReference[];
 };
 
@@ -60,14 +53,8 @@ export const MINIMUM_PRUNING_BATCH_TOKENS = 5_000;
 type ToolImageReference = {
   node: ToolResultNode;
   contentIndex: number;
-  image: ImageContent;
   retained: boolean;
 };
-
-const FILES_CAT_TOOL_NAME = getPrefixedToolName(
-  FILES_SERVER_NAME,
-  FILES_CAT_ACTION_NAME
-);
 
 function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
   if (message.role === "function") {
@@ -76,7 +63,6 @@ function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
       message,
       tokenSavings: getToolResultTokenSavings(message),
       pruned: false,
-      eligible: false,
       imageReferences: [],
     };
   }
@@ -98,8 +84,9 @@ function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
  * the window keeps serving it and reports the excess through logs and metrics. The provider limit
  * remains the final boundary. The latest unconsumed result batch always remains intact.
  *
- * Model image limits are enforced during the same replay. Old tool-result previews are replaced
- * first, while images from user input are preserved.
+ * When the model declares an image input limit, image previews are registered during the replay
+ * and the cap is applied once at fit() time: the oldest tool-result previews are replaced with
+ * explanatory text until the retained images fit the limit. Images from user input are preserved.
  */
 export class CheckpointedConversationWindowState {
   private interactions: WindowInteraction[] = [];
@@ -113,7 +100,6 @@ export class CheckpointedConversationWindowState {
   private eligibleToolResultTokenSavings = 0;
 
   private toolImages: ToolImageReference[] = [];
-  private nextToolImageIndex = 0;
   private retainedImageCount = 0;
   private totalImageCount = 0;
   private nonToolImageCount = 0;
@@ -167,7 +153,6 @@ export class CheckpointedConversationWindowState {
       }
 
       this.registerImages(node);
-      this.pruneImagesToLimit();
 
       if (this.isModelInputCheckpoint(message, nextMessage)) {
         this.applyBufferedPruning();
@@ -183,6 +168,8 @@ export class CheckpointedConversationWindowState {
 
   fit(): Result<ConversationWindowResult, Error> {
     const { budgetForInteractions, logDetails, maxInputImages } = this.options;
+
+    this.capToolImagePreviews();
 
     if (
       maxInputImages !== undefined &&
@@ -257,10 +244,9 @@ export class CheckpointedConversationWindowState {
       this.retainedImageCount += 1;
 
       if (node.kind === "tool_result") {
-        const reference = {
+        const reference: ToolImageReference = {
           node,
           contentIndex,
-          image: content,
           retained: true,
         };
         node.imageReferences.push(reference);
@@ -271,65 +257,36 @@ export class CheckpointedConversationWindowState {
     }
   }
 
-  private pruneImagesToLimit(): void {
+  private capToolImagePreviews(): void {
     const { maxInputImages } = this.options;
     if (maxInputImages === undefined) {
       return;
     }
 
-    while (
-      this.retainedImageCount > maxInputImages &&
-      this.nextToolImageIndex < this.toolImages.length
-    ) {
-      const reference = this.toolImages[this.nextToolImageIndex];
-      this.nextToolImageIndex += 1;
-
+    for (const reference of this.toolImages) {
+      if (this.retainedImageCount <= maxInputImages) {
+        return;
+      }
       if (!reference.retained) {
         continue;
       }
 
-      const { node, contentIndex, image } = reference;
-      if (!Array.isArray(node.message.content)) {
-        throw new Error("Expected structured tool content");
-      }
-      const replacement = {
-        type: "text" as const,
-        text:
-          `[This image preview is no longer displayed because the conversation exceeds the ${maxInputImages}-image limit.` +
-          (image.file_path
-            ? ` Use \`${FILES_CAT_TOOL_NAME}\` with path \`${image.file_path}\` to display it again.]`
-            : " Re-run the tool to display it again.]"),
-      };
       reference.retained = false;
       this.retainedImageCount -= 1;
       this.prunedImageCount += 1;
 
+      const { node } = reference;
       const previousTokenCount = node.message.tokenCount;
-      const previousTokenSavings = node.tokenSavings;
-      // UTF-8 bytes are a conservative token estimate that also covers the variable file path
-      // without introducing another tokenizer call during replay.
-      const replacementTokenCount = Buffer.byteLength(replacement.text);
-      const content = [...node.message.content];
-      content[contentIndex] = replacement;
-      node.message = {
-        ...node.message,
-        content,
-        tokenCount: Math.max(
-          previousTokenCount -
-            IMAGE_CONTENT_TOKEN_COUNT +
-            replacementTokenCount,
-          0
-        ),
-      };
+      node.message = pruneToolResultImagePreview(
+        node.message,
+        reference.contentIndex,
+        maxInputImages
+      );
       node.tokenSavings = getToolResultTokenSavings(node.message);
 
       const tokenDelta = node.message.tokenCount - previousTokenCount;
       this.retainedTokens += tokenDelta;
       this.totalTokensBefore += tokenDelta;
-      if (node.eligible) {
-        this.eligibleToolResultTokenSavings +=
-          node.tokenSavings - previousTokenSavings;
-      }
     }
   }
 
@@ -359,7 +316,6 @@ export class CheckpointedConversationWindowState {
   private makePendingToolResultsEligible(): void {
     for (const { node } of this.pendingToolResults) {
       if (node.tokenSavings > 0) {
-        node.eligible = true;
         this.eligibleToolResults.push({ phase: "eligible", node });
         this.eligibleToolResultTokenSavings += node.tokenSavings;
       }
