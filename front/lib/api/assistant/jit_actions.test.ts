@@ -608,7 +608,7 @@ describe("getJITServers", () => {
         projectSpace,
         { description: "d" }
       );
-      await metadata.setDefaultSkills(auth, [
+      await metadata.setDefaultSkills([
         podDefaultSkill,
         enabledPodDefaultSkill,
       ]);

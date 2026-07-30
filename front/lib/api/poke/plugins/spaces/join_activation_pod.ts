@@ -65,7 +65,7 @@ async function setPodDefaultSkills(
   const skills = await SkillResource.fetchByIds(auth, skillIds, {
     onlyActive: true,
   });
-  await metadata.setDefaultSkills(auth, skills);
+  await metadata.setDefaultSkills(skills);
 
   return new Ok({ skillNames: skills.map((skill) => skill.name) });
 }

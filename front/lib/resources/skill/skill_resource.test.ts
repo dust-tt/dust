@@ -1947,7 +1947,7 @@ describe("SkillResource", () => {
         space,
         { description: "d" }
       );
-      await metadata.setDefaultSkills(authenticator, [defaultSkill]);
+      await metadata.setDefaultSkills([defaultSkill]);
 
       const agent = await AgentConfigurationFactory.createTestAgent(
         authenticator,
@@ -1982,7 +1982,7 @@ describe("SkillResource", () => {
         space,
         { description: "d" }
       );
-      await metadata.setDefaultSkills(authenticator, [defaultSkill]);
+      await metadata.setDefaultSkills([defaultSkill]);
 
       const agent = await AgentConfigurationFactory.createTestAgent(
         authenticator,
@@ -2016,7 +2016,7 @@ describe("SkillResource", () => {
         space,
         { description: "d" }
       );
-      await metadata.setDefaultSkills(authenticator, [defaultSkill]);
+      await metadata.setDefaultSkills([defaultSkill]);
 
       const agent = await AgentConfigurationFactory.createTestAgent(
         authenticator,
@@ -2055,7 +2055,7 @@ describe("SkillResource", () => {
         space,
         { description: "d" }
       );
-      await metadata.setDefaultSkills(authenticator, [skill]);
+      await metadata.setDefaultSkills([skill]);
 
       const agent = await AgentConfigurationFactory.createTestAgent(
         authenticator,
@@ -2089,7 +2089,7 @@ describe("SkillResource", () => {
         space,
         { description: "d" }
       );
-      await metadata.setDefaultSkills(authenticator, [podDefaultSkill]);
+      await metadata.setDefaultSkills([podDefaultSkill]);
 
       const agentSkill = await SkillFactory.create(authenticator, {
         name: "Z Agent Skill",
