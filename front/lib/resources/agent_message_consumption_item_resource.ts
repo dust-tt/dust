@@ -9,25 +9,13 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 interface ConsumptionItemEvidenceBase {
   grossAttributedCreditAmountMicro: number;
 }
-
-export type CompletedAgentMessageConsumptionItem =
-  | (ConsumptionItemEvidenceBase & {
-      itemType: "system" | "input";
-      runUsageModelId: ModelId;
-      inputTokensCount: number | null;
-    })
-  | (ConsumptionItemEvidenceBase & {
-      itemType: "output" | "reasoning";
-      runUsageModelId: ModelId;
-      outputTokensCount: number | null;
-    })
-  | CompletedToolConsumptionItem;
 
 export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
   itemType: "tool";
@@ -53,6 +41,19 @@ export type PendingToolConsumptionItem = ConsumptionItemEvidenceBase & {
   /** Estimated tokens in the model output that emitted the tool name and arguments */
   outputTokensCount: number | null;
 };
+
+export type CompletedAgentMessageConsumptionItem =
+  | (ConsumptionItemEvidenceBase & {
+      itemType: "system" | "input";
+      runUsageModelId: ModelId;
+      inputTokensCount: number | null;
+    })
+  | (ConsumptionItemEvidenceBase & {
+      itemType: "output" | "reasoning";
+      runUsageModelId: ModelId;
+      outputTokensCount: number | null;
+    })
+  | CompletedToolConsumptionItem;
 
 type ConsumptionItemEvidenceAttributes = Pick<
   Attributes<AgentMessageConsumptionItemModel>,
@@ -139,9 +140,11 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     records: CompletedAgentMessageConsumptionItem[]
   ): void {
     const itemKeys = records.map((record) => this.itemKey(record));
-    if (new Set(itemKeys).size !== itemKeys.length) {
-      throw new Error("Consumption items contain duplicate identities");
-    }
+    const uniqueItemKeys = new Set(itemKeys);
+    assert(
+      uniqueItemKeys.size === itemKeys.length,
+      "Consumption items contain duplicate identities"
+    );
   }
 
   private static creationAttributes(
@@ -197,14 +200,14 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }
 
     this.assertUniqueItemKeys(records);
-    for (const record of records) {
-      if (
-        record.itemType === "tool" &&
-        record.action.agentMessageId !== agentMessageModelId
-      ) {
-        throw new Error("Tool consumption item has a different owner");
-      }
-    }
+    assert(
+      records.every(
+        (record) =>
+          record.itemType !== "tool" ||
+          record.action.agentMessageId === agentMessageModelId
+      ),
+      "Tool consumption items must have the same agent message ID as the owning agent message"
+    );
 
     const now = new Date();
     await this.model.bulkCreate(
