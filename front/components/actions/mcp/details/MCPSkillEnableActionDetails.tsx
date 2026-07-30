@@ -10,7 +10,8 @@ import { isSkillEnableInputType } from "@app/lib/actions/mcp_internal_actions/ty
 import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useSkill } from "@app/lib/swr/skill_configurations";
-import { ContentMessage, Spinner } from "@dust-tt/sparkle";
+import { getManageSkillsRoute } from "@app/lib/utils/router";
+import { Button, ContentMessage, Spinner } from "@dust-tt/sparkle";
 
 export function MCPSkillEnableActionDetails({
   owner,
@@ -42,22 +43,43 @@ export function MCPSkillEnableActionDetails({
     disabled: !shouldFetchSkill,
   });
 
+  const description = skill?.userFacingDescription.trim() ?? "";
+  const hasDescription = description.length > 0;
   const instructions = skill?.instructions ?? "";
   const hasInstructions = instructions.trim().length > 0;
   const showInstructionsSection =
     shouldFetchSkill && (isSkillLoading || isSkillError || hasInstructions);
   const showSidebarDetails =
     displayContext !== "conversation" &&
-    (showInstructionsSection || outputItems.length > 0);
+    (hasDescription || showInstructionsSection || outputItems.length > 0);
 
   return (
     <ActionDetailsWrapper
       displayContext={displayContext}
       actionName={actionName}
+      headerAction={
+        displayContext !== "conversation" && enabledSkillId ? (
+          <Button
+            href={getManageSkillsRoute(owner.sId, enabledSkillId)}
+            label="View skill"
+            size="xs"
+            variant="outline"
+          />
+        ) : undefined
+      }
       visual={SKILL_ICON}
     >
       {showSidebarDetails && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
+          {hasDescription && (
+            <div>
+              <span className="font-medium text-foreground">Description</span>
+              <div className="my-2 text-sm text-muted-foreground">
+                {description}
+              </div>
+            </div>
+          )}
+
           {outputItems.length > 0 && (
             <div>
               <span className="font-medium text-foreground">Output</span>
