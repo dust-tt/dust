@@ -28,7 +28,7 @@ CREATE TABLE "public"."conversation_goals" (
 	"lastAgentMessageId" bigint,
 	"objective" text COLLATE "pg_catalog"."default" NOT NULL,
 	"status" character varying(255) COLLATE "pg_catalog"."default" NOT NULL,
-	"reason" text COLLATE "pg_catalog"."default"
+	"statusReason" text COLLATE "pg_catalog"."default"
 );
 
 /*

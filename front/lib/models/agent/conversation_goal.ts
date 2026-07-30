@@ -26,7 +26,7 @@ export class ConversationGoalModel extends WorkspaceAwareModel<ConversationGoalM
 
   declare objective: string;
   declare status: GoalStatus;
-  declare reason: string | null;
+  declare statusReason: string | null;
   declare terminalAt: Date | null;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
@@ -62,7 +62,7 @@ ConversationGoalModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    reason: {
+    statusReason: {
       type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },

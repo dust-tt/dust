@@ -90,7 +90,7 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
         currentAgentMessageId: message.agentMessage.id,
         status: "active",
         lastAgentMessageId: null,
-        reason: null,
+        statusReason: null,
         terminalAt: null,
       },
       { transaction }
