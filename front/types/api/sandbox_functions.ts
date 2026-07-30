@@ -23,14 +23,6 @@ export const SANDBOX_FUNCTION_USER_IDENTITY_POLICIES = [
 export type SandboxFunctionUserIdentityPolicy =
   (typeof SANDBOX_FUNCTION_USER_IDENTITY_POLICIES)[number];
 
-export function isSandboxFunctionUserIdentityPolicy(
-  value: unknown
-): value is SandboxFunctionUserIdentityPolicy {
-  return SANDBOX_FUNCTION_USER_IDENTITY_POLICIES.some(
-    (policy) => policy === value
-  );
-}
-
 export const SANDBOX_FUNCTION_INVOCATION_ORIGINS = [
   "interactive_session",
   "delegated",

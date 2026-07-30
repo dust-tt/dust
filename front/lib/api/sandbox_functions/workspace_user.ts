@@ -5,8 +5,7 @@ import type {
   SandboxFunctionInvocationOrigin,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import { isSandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 
 type SandboxFunctionAuthorization =
   | { authorized: true; user: UserResource | null }
@@ -39,14 +38,7 @@ export async function authorizeSandboxFunctionInvocation(
   }
 ): Promise<SandboxFunctionAuthorization> {
   const user = await getAuthenticatedWorkspaceUser(auth);
-  const policy: unknown = userIdentity ?? "optional";
-  if (!isSandboxFunctionUserIdentityPolicy(policy)) {
-    return {
-      authorized: false,
-      errorMessage:
-        "This Pod Function uses an unsupported user identity policy.",
-    };
-  }
+  const policy = userIdentity ?? "optional";
   switch (policy) {
     case "optional":
       return { authorized: true, user };
@@ -72,6 +64,13 @@ export async function authorizeSandboxFunctionInvocation(
           };
     }
     default:
-      return assertNever(policy);
+      // The policy is persisted as a plain string, so a revision newer than this one can store a
+      // value it does not know. Deny rather than throw so a mixed-version deploy fails closed.
+      assertNeverAndIgnore(policy);
+      return {
+        authorized: false,
+        errorMessage:
+          "This Pod Function uses an unsupported user identity policy.",
+      };
   }
 }
