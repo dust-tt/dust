@@ -75,7 +75,8 @@ fn deliver_stdout(response: &str, timings_ms: TimingsMs) -> ! {
     let trimmed = response.trim();
     if trimmed.is_empty() {
         ResultEnvelope::stdout_invocation_failed("function produced no output").write_to_stdout();
-        std::process::exit(1);
+        // Exit 0 after any well-formed envelope so the worker keeps structured errors.
+        std::process::exit(0);
     }
 
     match serde_json::from_str::<serde_json::Value>(trimmed) {
@@ -90,7 +91,7 @@ fn deliver_stdout(response: &str, timings_ms: TimingsMs) -> ! {
                 "function produced non-JSON output that could not be wrapped as a result envelope",
             )
             .write_to_stdout();
-            std::process::exit(1);
+            std::process::exit(0);
         }
     }
 }
