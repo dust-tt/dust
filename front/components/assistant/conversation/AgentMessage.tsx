@@ -13,7 +13,6 @@ import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessag
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { getModelWithReasoningEffortLabel } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import type {
   AgentMessageStateWithControlEvent,
   AgentMessageWithStreaming,
@@ -44,6 +43,7 @@ import {
   getVisualizationPlugin,
   sanitizeVisualizationContent,
 } from "@app/components/markdown/VisualizationBlock";
+import { getModelWithReasoningEffortLabel } from "@app/components/model_picker/modelPickerUtils";
 import {
   useBranchConversation,
   useCancelMessage,

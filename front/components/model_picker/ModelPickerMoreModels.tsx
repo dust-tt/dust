@@ -1,15 +1,15 @@
-import { ModelPickerModelRow } from "@app/components/assistant/conversation/input_bar/ModelPickerModelRow";
+import { ModelPickerModelRow } from "@app/components/model_picker/ModelPickerModelRow";
 import type {
   MakerGroup,
   Selection,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+} from "@app/components/model_picker/modelPickerUtils";
 import {
   getEffortStops,
   getInitialEffort,
   getModelKey,
   getModelLockReason,
   isModelSelection,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+} from "@app/components/model_picker/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
