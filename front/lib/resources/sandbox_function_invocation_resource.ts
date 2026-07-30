@@ -553,7 +553,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       }
 
       if (stdoutResultDelivery) {
-        const { exitCode, stdout } = execResult.value;
+        const { exitCode, stdout, stderr } = execResult.value;
         logger.info(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
@@ -568,6 +568,24 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         // Persist from the envelope even on non-zero exit: dsbx may still have
         // written a well-formed invocation_failed envelope the worker should keep.
         const normalized = parseStdoutResultEnvelope(stdout);
+        if (!normalized.ok || exitCode !== 0) {
+          // Mirror the callback path's failure logging: without the raw
+          // stdout/stderr there is no way to diagnose a rejected envelope.
+          logger.error(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              spaceId: sandboxFunction.space.sId,
+              sandboxFunctionId: sandboxFunction.sId,
+              slug: sandboxFunction.slug,
+              invocationId: this.sId,
+              exitCode,
+              stdout: truncate(stdout, SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS),
+              stderr: truncate(stderr, SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS),
+              deliveryMode: "stdout",
+            },
+            "Sandbox function invocation failed"
+          );
+        }
         if (normalized.ok) {
           await this.succeed(normalized.output);
         } else {
