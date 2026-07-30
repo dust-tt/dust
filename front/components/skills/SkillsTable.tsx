@@ -19,6 +19,7 @@ import {
   DataTable,
   Edit04,
   Eye,
+  Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
 import type {
@@ -46,11 +47,25 @@ type RowData = {
 
 export const SKILL_AVAILABILITY_DISPLAY: Record<
   SkillAvailability,
-  { label: string; color: "primary" | "success" | "highlight" }
+  { label: string; color: "primary" | "success" | "highlight"; tooltip: string }
 > = {
-  editors: { label: "Editors only", color: "primary" },
-  workspace_users: { label: "Workspace members", color: "success" },
-  users_and_agents: { label: "Members and agents", color: "highlight" },
+  editors: {
+    label: "Editors only",
+    color: "primary",
+    tooltip: "Only editors can find it via the input bar and agent builder",
+  },
+  workspace_users: {
+    label: "Workspace members",
+    color: "success",
+    tooltip:
+      "All workspace members can find it via the input bar and agent builder",
+  },
+  users_and_agents: {
+    label: "Members and agents",
+    color: "highlight",
+    tooltip:
+      "Available to workspace members and agents with Discover Skills",
+  },
 };
 
 const nameColumn = {
@@ -89,7 +104,12 @@ const availabilityColumn = {
     const display = SKILL_AVAILABILITY_DISPLAY[info.getValue()];
     return (
       <DataTable.CellContent>
-        <Chip size="xs" color={display.color} label={display.label} />
+        <Tooltip
+          label={display.tooltip}
+          trigger={
+            <Chip size="xs" color={display.color} label={display.label} />
+          }
+        />
       </DataTable.CellContent>
     );
   },

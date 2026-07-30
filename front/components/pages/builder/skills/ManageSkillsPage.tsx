@@ -440,7 +440,7 @@ export function ManageSkillsPage() {
                     onClick={() => setSelectedTab(tab.id)}
                     tooltip={
                       tab.id === "default" && hasSkillPublicationGovernance
-                        ? "Skills available to workspace members and agents with Discover Skills"
+                        ? "Skills available to workspace members and agents"
                         : tab.description
                     }
                     isCounter={tab.id !== "archived"}
