@@ -7,12 +7,12 @@ import type {
   ScopedWorkspaceUserIdentity,
   WorkspaceUserIdentity,
 } from "@app/types/assistant/visualization";
-import type { RoleType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import { forwardRef, useContext } from "react";
 
 interface WorkspaceAuthIdentity {
   user: WorkspaceUserIdentity;
-  workspace: { role: RoleType; sId: string };
+  workspace: Pick<LightWorkspaceType, "role" | "sId">;
 }
 
 export function getAuthenticatedFrameUserIdentity(

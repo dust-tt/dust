@@ -22,13 +22,13 @@ describe("getAuthenticatedFrameUserIdentity", () => {
     );
   });
 
-  it("rejects an auth context for another workspace", () => {
+  it("returns no identity for an auth context from another workspace", () => {
     expect(
       getAuthenticatedFrameUserIdentity(authContext, "w_other")
     ).toBeUndefined();
   });
 
-  it("rejects a non-member auth context", () => {
+  it("returns no identity for a non-member auth context", () => {
     expect(
       getAuthenticatedFrameUserIdentity(
         {
