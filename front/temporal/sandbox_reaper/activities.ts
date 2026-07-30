@@ -26,6 +26,7 @@ const REAPER_CONCURRENCY = 16;
 
 export type ReaperPhase =
   | "kill_requested"
+  | "kill_requested_sleeping"
   | "running"
   | "pending_approval"
   | "sleeping";
@@ -462,10 +463,13 @@ export async function reapSandboxPhaseActivity({
 
   switch (phase) {
     case "kill_requested": {
+      // Awake kill-requested sandboxes consume cluster capacity, so they are
+      // destroyed ahead of sleeping ones.
       const sandboxes =
         await SandboxResource.dangerouslyGetKillRequestedSandboxes({
           limit: BATCH_SIZE,
           after,
+          statuses: ["running", "pending_approval"],
         });
       return processReaperBatch(
         phase,
@@ -473,6 +477,26 @@ export async function reapSandboxPhaseActivity({
         (auth, owner) => owner.dangerouslyDestroySandboxIfKillRequested(auth),
         getKillRequestedAt,
         "Reaper: failed to destroy kill-requested sandbox — continuing."
+      );
+    }
+    case "kill_requested_sleeping": {
+      // Sleeping kill-requested sandboxes are pure storage cleanup: they are
+      // destroyed lazily on user access (ensureActive recreates them), so the
+      // reaper sweeps them last, most recently active first — those are the
+      // most likely to be woken soon.
+      const sandboxes =
+        await SandboxResource.dangerouslyGetKillRequestedSandboxes({
+          limit: BATCH_SIZE,
+          after,
+          statuses: ["sleeping"],
+          order: "lastActivityAtDesc",
+        });
+      return processReaperBatch(
+        phase,
+        sandboxes,
+        (auth, owner) => owner.dangerouslyDestroySandboxIfKillRequested(auth),
+        (sandbox) => sandbox.lastActivityAt,
+        "Reaper: failed to destroy kill-requested sleeping sandbox — continuing."
       );
     }
     case "running": {

@@ -14,14 +14,28 @@ const { reapSandboxPhaseActivity, reapStaleSandboxesActivity } =
     },
   });
 
-const REAPER_PHASES = [
+// Legacy phase order, kept for replay of pre-patch executions.
+const REAPER_PHASES_V1 = [
   "kill_requested",
   "running",
   "pending_approval",
   "sleeping",
 ] satisfies ReaperPhase[];
 
-const MAX_BATCHES_PER_PHASE = 100;
+// Priority order: pausing stale awake sandboxes and destroying awake
+// kill-requested sandboxes directly cap cluster concurrency, so they run
+// first. Kill-requested sleeping sandboxes are pure storage cleanup (they are
+// destroyed lazily on user access) and are swept last, when higher-priority
+// phases leave room in the run.
+const REAPER_PHASES_V2 = [
+  "running",
+  "pending_approval",
+  "kill_requested",
+  "sleeping",
+  "kill_requested_sleeping",
+] satisfies ReaperPhase[];
+
+const MAX_BATCHES_PER_PHASE = 200;
 
 export async function sandboxReaperWorkflow(): Promise<void> {
   // Patch lifecycle for phase pagination:
@@ -37,7 +51,16 @@ export async function sandboxReaperWorkflow(): Promise<void> {
     return;
   }
 
-  for (const phase of REAPER_PHASES) {
+  // Patch lifecycle for prioritized phases:
+  // 1. Now: pre-patch executions replay the legacy phase order.
+  // 2. After 2026-08-14: replace patched() with deprecatePatch() and remove
+  //    REAPER_PHASES_V1.
+  // 3. After 2026-08-28: remove deprecatePatch() and the patch marker.
+  const phases = patched("sandbox-reaper-prioritized-phases")
+    ? REAPER_PHASES_V2
+    : REAPER_PHASES_V1;
+
+  for (const phase of phases) {
     let cursor: ReaperCursor | null = null;
     let processedBatches = 0;
 
