@@ -21,7 +21,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
-  createResourcePermissionsFromSpacesWithMap,
+  createAccessControlListFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -1354,9 +1354,10 @@ describe("createResourcePermissionsFromSpacesWithMap", () => {
   });
 
   it("should resolve space ids to group permissions", () => {
-    const permissions = createResourcePermissionsFromSpacesWithMap(
+    const permissions = createAccessControlListFromSpacesWithMap(
       spaceIdToGroupsMap,
-      [globalSpace.id]
+      [globalSpace.id],
+      auth.getNonNullableWorkspace().id
     );
 
     expect(permissions).toBeDefined();
@@ -1366,9 +1367,10 @@ describe("createResourcePermissionsFromSpacesWithMap", () => {
   });
 
   it("should handle multiple space ids", () => {
-    const permissions = createResourcePermissionsFromSpacesWithMap(
+    const permissions = createAccessControlListFromSpacesWithMap(
       spaceIdToGroupsMap,
-      [globalSpace.id, regularSpace.id]
+      [globalSpace.id, regularSpace.id],
+      auth.getNonNullableWorkspace().id
     );
 
     expect(permissions).toBeDefined();
@@ -1377,17 +1379,19 @@ describe("createResourcePermissionsFromSpacesWithMap", () => {
 
   it("should throw assertion error for missing spaces", () => {
     expect(() =>
-      createResourcePermissionsFromSpacesWithMap(
+      createAccessControlListFromSpacesWithMap(
         spaceIdToGroupsMap,
-        [99999] // Non-existent space Id.
+        [99999], // Non-existent space Id.
+        auth.getNonNullableWorkspace().id
       )
     ).toThrow("No group IDs found for space ID 99999");
   });
 
   it("should handle empty space ids array", () => {
-    const permissions = createResourcePermissionsFromSpacesWithMap(
+    const permissions = createAccessControlListFromSpacesWithMap(
       spaceIdToGroupsMap,
-      []
+      [],
+      auth.getNonNullableWorkspace().id
     );
 
     expect(permissions).toBeDefined();

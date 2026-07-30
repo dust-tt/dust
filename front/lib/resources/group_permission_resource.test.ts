@@ -30,9 +30,12 @@ describe("GroupPermissionResource", () => {
         resourceId: 42,
       });
 
-      const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: [groupA.id],
-      });
+      const grants = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: [groupA.id],
+        }
+      );
       expect(grants).toHaveLength(1);
       expect(grants[0].grantType).toBe("reader");
       expect(grants[0].resourceType).toBe("space");
@@ -49,9 +52,12 @@ describe("GroupPermissionResource", () => {
       await GroupPermissionResource.grant(auth, spec);
       await GroupPermissionResource.grant(auth, spec);
 
-      const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: [groupA.id],
-      });
+      const grants = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: [groupA.id],
+        }
+      );
       expect(grants).toHaveLength(1);
     });
 
@@ -111,11 +117,14 @@ describe("GroupPermissionResource", () => {
         resourceId: 1,
       });
 
-      const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: [groupA.id, groupB.id],
-        resourceType: "space",
-        resourceId: 1,
-      });
+      const grants = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: [groupA.id, groupB.id],
+          resourceType: "space",
+          resourceId: 1,
+        }
+      );
       expect(grants).toHaveLength(2);
       expect(new Set(grants.map((g) => g.groupId))).toEqual(
         new Set([groupA.id, groupB.id])
@@ -123,9 +132,12 @@ describe("GroupPermissionResource", () => {
     });
 
     it("returns [] for no groups without querying", async () => {
-      const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: [],
-      });
+      const grants = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: [],
+        }
+      );
       expect(grants).toEqual([]);
     });
   });
@@ -152,9 +164,12 @@ describe("GroupPermissionResource", () => {
         resourceId: 1,
       });
 
-      const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: [groupA.id],
-      });
+      const grants = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: [groupA.id],
+        }
+      );
       expect(grants).toHaveLength(1);
       expect(grants[0].grantType).toBe("member");
     });
@@ -184,9 +199,12 @@ describe("GroupPermissionResource", () => {
         resourceId: 1,
       });
 
-      const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: [groupA.id],
-      });
+      const grants = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: [groupA.id],
+        }
+      );
       expect(grants).toHaveLength(1);
       expect(grants[0].grantType).toBe("admin");
     });
@@ -220,9 +238,12 @@ describe("GroupPermissionResource", () => {
       });
       expect(deleted).toBe(2);
 
-      const remaining = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: [groupA.id, groupB.id],
-      });
+      const remaining = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: [groupA.id, groupB.id],
+        }
+      );
       expect(remaining).toHaveLength(1);
       expect(remaining[0].resourceId).toBe(100);
     });
@@ -254,9 +275,12 @@ describe("GroupPermissionResource", () => {
 
       await GroupPermissionResource.deleteAllForWorkspace(auth);
 
-      const remaining = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: [groupA.id, groupB.id],
-      });
+      const remaining = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: [groupA.id, groupB.id],
+        }
+      );
       expect(remaining).toEqual([]);
     });
   });
@@ -274,9 +298,12 @@ describe("GroupPermissionResource", () => {
         resourceType: "agent",
       });
 
-      const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: [groupA.id],
-      });
+      const grants = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: [groupA.id],
+        }
+      );
       expect(grants).toHaveLength(1);
       expect(grants[0].resourceId).toBe(-1);
     });
@@ -303,9 +330,12 @@ describe("GroupPermissionResource", () => {
         resourceType: "billing",
       });
 
-      const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: [groupA.id],
-      });
+      const grants = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: [groupA.id],
+        }
+      );
       expect(grants).toHaveLength(0);
     });
   });
@@ -318,9 +348,12 @@ describe("GroupPermissionResource", () => {
         resourceType: "skill",
       });
 
-      const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: [groupA.id, groupB.id],
-      });
+      const grants = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: [groupA.id, groupB.id],
+        }
+      );
       expect(grants).toHaveLength(2);
       expect(grants.every((g) => g.resourceId === -1)).toBe(true);
     });
@@ -349,9 +382,12 @@ describe("GroupPermissionResource", () => {
         ],
       });
 
-      const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: [groupA.id],
-      });
+      const grants = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: [groupA.id],
+        }
+      );
       expect(grants).toHaveLength(2);
     });
 
@@ -384,16 +420,19 @@ describe("GroupPermissionResource", () => {
       });
       expect(result.isOk()).toBe(true);
 
-      const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: (
-          await GroupResource.listAllWorkspaceGroups(auth, {
-            groupKinds: ["regular_auto"],
-          })
-        ).map((group) => group.id),
-        grantType: "reader",
-        resourceType: "space",
-        resourceId: 42,
-      });
+      const grants = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: (
+            await GroupResource.listAllWorkspaceGroups(auth, {
+              groupKinds: ["regular_auto"],
+            })
+          ).map((group) => group.id),
+          grantType: "reader",
+          resourceType: "space",
+          resourceId: 42,
+        }
+      );
       expect(grants).toHaveLength(1);
 
       const group = await GroupResource.fetchByModelIds(auth, [
@@ -427,12 +466,15 @@ describe("GroupPermissionResource", () => {
       });
       const grantGroups = [];
       for (const group of autoGroups) {
-        const grants = await GroupPermissionResource.listForGroups(auth, {
-          groupModelIds: [group.id],
-          grantType: "editor",
-          resourceType: "agent",
-          resourceId: 7,
-        });
+        const grants = await GroupPermissionResource.listForGroups(
+          auth.getNonNullableWorkspace(),
+          {
+            groupModelIds: [group.id],
+            grantType: "editor",
+            resourceType: "agent",
+            resourceId: 7,
+          }
+        );
         if (grants.length > 0) {
           grantGroups.push(group);
         }
@@ -464,12 +506,15 @@ describe("GroupPermissionResource", () => {
       const autoGroups = await GroupResource.listAllWorkspaceGroups(auth, {
         groupKinds: ["regular_auto"],
       });
-      const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: autoGroups.map((group) => group.id),
-        grantType: "editor",
-        resourceType: "skill",
-        resourceId: 99,
-      });
+      const grants = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: autoGroups.map((group) => group.id),
+          grantType: "editor",
+          resourceType: "skill",
+          resourceId: 99,
+        }
+      );
       expect(grants).toHaveLength(0);
     });
 
@@ -500,16 +545,19 @@ describe("GroupPermissionResource", () => {
       });
       expect(result.isOk()).toBe(true);
 
-      const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: (
-          await GroupResource.listAllWorkspaceGroups(auth, {
-            groupKinds: ["regular_auto"],
-          })
-        ).map((group) => group.id),
-        grantType: "reader",
-        resourceType: "space",
-        resourceId: 5,
-      });
+      const grants = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: (
+            await GroupResource.listAllWorkspaceGroups(auth, {
+              groupKinds: ["regular_auto"],
+            })
+          ).map((group) => group.id),
+          grantType: "reader",
+          resourceType: "space",
+          resourceId: 5,
+        }
+      );
       expect(grants).toHaveLength(1);
 
       const [group] = await GroupResource.fetchByModelIds(auth, [
@@ -535,12 +583,15 @@ describe("GroupPermissionResource", () => {
         resourceId: 42,
       });
 
-      const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupModelIds: [globalGroup.id],
-        grantType: "reader",
-        resourceType: "space",
-        resourceId: 42,
-      });
+      const grants = await GroupPermissionResource.listForGroups(
+        auth.getNonNullableWorkspace(),
+        {
+          groupModelIds: [globalGroup.id],
+          grantType: "reader",
+          resourceType: "space",
+          resourceId: 42,
+        }
+      );
       expect(grants).toHaveLength(1);
 
       await GroupPermissionResource.revokeFromEverybody(auth, {
@@ -549,12 +600,15 @@ describe("GroupPermissionResource", () => {
         resourceId: 42,
       });
       expect(
-        await GroupPermissionResource.listForGroups(auth, {
-          groupModelIds: [globalGroup.id],
-          grantType: "reader",
-          resourceType: "space",
-          resourceId: 42,
-        })
+        await GroupPermissionResource.listForGroups(
+          auth.getNonNullableWorkspace(),
+          {
+            groupModelIds: [globalGroup.id],
+            grantType: "reader",
+            resourceType: "space",
+            resourceId: 42,
+          }
+        )
       ).toHaveLength(0);
     });
 

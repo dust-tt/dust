@@ -8,7 +8,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
-import type { CombinedResourcePermissions } from "@app/types/resource_permissions";
+import type { AccessControlList } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
 import uniq from "lodash/uniq";
@@ -43,12 +43,12 @@ export function getDataSourceViewIdsFromActions(
   );
 }
 
-export function groupsFromRequestedPermissions(
-  requestedPermissions: CombinedResourcePermissions[]
+export function groupsFromAccessControlLists(
+  accessControlLists: AccessControlList[]
 ) {
   return (
-    requestedPermissions
-      .flatMap((rp) => rp.groups.map((g) => g.id))
+    accessControlLists
+      .flatMap((acl) => acl.groups.map((g) => g.id))
       // Sort to ensure consistent ordering.
       .sort((a, b) => a - b)
   );
@@ -122,7 +122,9 @@ export async function getContentFragmentGroupIds(
     throw new Error(`Unexpected dataSourceView not found`);
   }
 
-  const groups = groupsFromRequestedPermissions(dsView.requestedPermissions());
+  const groups = groupsFromAccessControlLists(
+    dsView.getAccessControlLists(auth)
+  );
 
   return [groups].filter((arr) => arr.length > 0);
 }

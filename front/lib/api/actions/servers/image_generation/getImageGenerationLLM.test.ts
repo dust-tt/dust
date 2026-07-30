@@ -34,6 +34,7 @@ vi.mock("@app/lib/api/regions/config", () => ({
 }));
 
 import { Authenticator } from "@app/lib/auth";
+import { GroupPermissions } from "@app/lib/resources/group_permission_registry";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import {
   GPT_IMAGE_1_5_MODEL_ID,
@@ -94,6 +95,7 @@ function makeAuth(): Authenticator {
     groupModelIds: [],
     subscription,
     authMethod: "internal",
+    permissions: GroupPermissions.empty(),
   });
 }
 

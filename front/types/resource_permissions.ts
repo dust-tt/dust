@@ -1,68 +1,56 @@
+import type { Authenticator } from "@app/lib/auth";
+
+import type { GrantVerb } from "./group_permissions";
 import type { ModelId } from "./shared/model_id";
 import type { RoleType } from "./user";
 
-// Supported operations for resource permissions.
-export const SUPPORTED_OPERATIONS = ["admin", "read", "write"] as const;
-
-export type PermissionType = (typeof SUPPORTED_OPERATIONS)[number];
-
 /**
- * Represents permissions assigned to a specific group.
+ * A group and the verbs it is granted on a resource.
  *
- * @property id - Unique identifier for the group (ModelId type)
- * @property permissions - Array of permissions granted to the group
+ * @property id - The group's model id
+ * @property permissions - Grant verbs the group holds
  */
-export type GroupPermission = {
+export type GroupGrant = {
   id: ModelId;
-  permissions: PermissionType[];
+  permissions: GrantVerb[];
 };
 
 /**
- * Represents permissions assigned to a specific role.
+ * A role and the verbs it is granted on a resource.
  *
- * @property role - The type of role (RoleType)
- * @property permissions - Array of permissions granted to the role
+ * @property role - The workspace role
+ * @property permissions - Grant verbs the role holds
  */
-export type RolePermission = {
+export type RoleGrant = {
   role: RoleType;
-  permissions: PermissionType[];
+  permissions: GrantVerb[];
 };
 
 /**
- * Defines group-based permissions for a resource.
- * Used when access control is managed through group assignments.
+ * The access rules for a resource: the roles and groups that confer verbs, scoped to a workspace.
+ *
+ * A resource builds its own ACL (see each resource's `acl(auth)`) from role rules and/or the
+ * caller's governance grants (`Authenticator.getGroupPermissions`). The Authenticator evaluates it
+ * with `hasPermission`: a caller passes if their role grants the verb, or they belong to a listed
+ * group that grants it. When the groups come from governance grants, the list is caller-scoped
+ * (only the caller's groups) — an ACL is a check artifact, not a complete "who has access" listing.
+ *
+ * @property roles - Role-based grants: a caller whose workspace role matches gets its verbs
+ * @property groups - Group-based grants: a caller in a listed group gets its verbs
+ * @property workspaceId - The resource's workspace; checks only apply within the caller's workspace
  */
-export type GroupResourcePermissions = {
-  groups: GroupPermission[];
-};
-
-/**
- * Defines combined group and role-based permissions for a resource.
- */
-export type CombinedResourcePermissions = {
-  groups: GroupPermission[];
-  roles: RolePermission[];
+export type AccessControlList = {
+  roles: RoleGrant[];
+  groups: GroupGrant[];
   workspaceId: ModelId;
 };
 
 /**
- * Represents the complete permission configuration for a resource.
- * Can be either:
- * - Group-based permissions only
- * - Both group and role-based permissions combined
+ * A resource whose access is governed by one or more access-control lists. The caller passes when
+ * they satisfy every ACL returned by `getAccessControlLists(auth)` (see
+ * `Authenticator.hasPermission`). `auth` is passed so a resource can build its ACL from the caller's
+ * governance grants (`auth.getGroupPermissions`) — e.g. the per-workspace flip.
  */
-export type ResourcePermission =
-  | GroupResourcePermissions
-  | CombinedResourcePermissions;
-
-/**
- * Type guard to determine if a permission configuration includes role-based access control.
- *
- * @param resourcePermission - The resource permission configuration to check
- * @returns True if the configuration includes role-based permissions
- */
-export function hasRolePermissions(
-  resourcePermission: ResourcePermission
-): resourcePermission is CombinedResourcePermissions {
-  return "roles" in resourcePermission;
+export interface WithAccessControl {
+  getAccessControlLists(auth: Authenticator): AccessControlList[];
 }

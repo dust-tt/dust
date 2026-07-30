@@ -35,7 +35,7 @@ import {
   isRegularManualGroupKind,
   isSkillEditorGroupKind,
 } from "@app/types/groups";
-import type { ResourcePermission } from "@app/types/resource_permissions";
+import type { AccessControlList } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -2192,7 +2192,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     newName: string
   ): Promise<Result<undefined, Error>> {
-    if (!auth.canAdministrate(this.requestedPermissions())) {
+    if (!auth.hasPermission("admin", this)) {
       return new Err(new Error("Only admins can update group names."));
     }
 
@@ -2305,7 +2305,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     poolCapAwuCredits: number | null
   ): Promise<Result<undefined, Error>> {
-    if (!auth.canAdministrate(this.requestedPermissions())) {
+    if (!auth.hasPermission("admin", this)) {
       return new Err(new Error("Only admins can update group spend limits."));
     }
 
@@ -2430,10 +2430,10 @@ export class GroupResource extends BaseResource<GroupModel> {
    * NOT inherited, i.e., if you set a permission for role "user", an "admin"
    * will NOT have it
    *
-   * @returns Array of ResourcePermission objects defining the default access
+   * @returns Array of AccessControlList objects defining the default access
    * configuration
    */
-  requestedPermissions(): ResourcePermission[] {
+  getAccessControlLists(auth: Authenticator): AccessControlList[] {
     if (this.kind === "agent_editors" || this.kind === "skill_editors") {
       return [
         {
@@ -2531,15 +2531,15 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   canRead(auth: Authenticator): boolean {
-    return auth.canRead(this.requestedPermissions());
+    return auth.hasPermission("read", this);
   }
 
   canWrite(auth: Authenticator): boolean {
-    return auth.canWrite(this.requestedPermissions());
+    return auth.hasPermission("write", this);
   }
 
   canAdministrate(auth: Authenticator): boolean {
-    return auth.canAdministrate(this.requestedPermissions());
+    return auth.hasPermission("admin", this);
   }
 
   isSystem(): boolean {

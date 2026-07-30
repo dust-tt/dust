@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { ResourcePermission } from "@app/types/resource_permissions";
+import type { AccessControlList } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
@@ -21,9 +21,9 @@ export function createSpaceIdToGroupsMap(
   const spaceIdToGroupsMap = new Map<ModelId, string[]>();
 
   for (const space of allFetchedSpaces) {
-    // Use `requestedPermissions` to get up-to-date permission groups (this includes provisioned groups).
-    // TODO: Refactor to avoid calling `requestedPermissions` but still get the right groups.
-    const permissions = space.requestedPermissions();
+    // Use `getAccessControlLists` to get up-to-date permission groups (this includes provisioned groups).
+    // TODO: Refactor to avoid calling `getAccessControlLists` but still get the right groups.
+    const permissions = space.getAccessControlLists(auth);
     const groupIds = permissions.flatMap((permission) =>
       permission.groups.map((group) =>
         GroupResource.modelIdToSId({
@@ -39,17 +39,18 @@ export function createSpaceIdToGroupsMap(
 }
 
 /**
- * Creates ResourcePermission objects from space ids using a pre-built space-to-groups mapping.
+ * Creates AccessControlList objects from space ids using a pre-built space-to-groups mapping.
  * This is the optimized version that avoids rebuilding the map on each call.
  *
  * @param spaceIdToGroupsMap - Pre-built mapping from space ids to group IDs
  * @param requestedSpaceIds - Array of space ids that need permission resolution
- * @returns Array of ResourcePermission objects for use with Authenticator permission methods
+ * @returns Array of AccessControlList objects for use with Authenticator permission methods
  */
-export function createResourcePermissionsFromSpacesWithMap(
+export function createAccessControlListFromSpacesWithMap(
   spaceIdToGroupsMap: Map<ModelId, string[]>,
-  requestedSpaceIds: ModelId[]
-): ResourcePermission[] {
+  requestedSpaceIds: ModelId[],
+  workspaceId: ModelId
+): AccessControlList[] {
   const resolvedGroupIds: string[][] = [];
 
   for (const spaceId of requestedSpaceIds) {
@@ -61,5 +62,8 @@ export function createResourcePermissionsFromSpacesWithMap(
     resolvedGroupIds.push(groupIds);
   }
 
-  return Authenticator.createResourcePermissionsFromGroupIds(resolvedGroupIds);
+  return Authenticator.createAccessControlListFromGroupIds(
+    resolvedGroupIds,
+    workspaceId
+  );
 }

@@ -30,8 +30,8 @@ import {
   SPACE_GROUP_PREFIX,
 } from "@app/types/groups";
 import type {
-  CombinedResourcePermissions,
-  GroupPermission,
+  AccessControlList,
+  GroupGrant,
 } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -1543,9 +1543,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * - Read/Write: Group members
    * - Admin: Workspace admins
    *
-   * @returns Array of ResourcePermission objects based on space type
+   * @returns Array of AccessControlList objects based on space type
    */
-  requestedPermissions(): CombinedResourcePermissions[] {
+  getAccessControlLists(auth: Authenticator): AccessControlList[] {
     // System space.
     if (this.isSystem()) {
       return [
@@ -1586,7 +1586,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     // Open space.
     // Currently only using global group for simplicity.
-    // TODO(2024-10-25 flav): Refactor to store a list of ResourcePermission on conversations and
+    // TODO(2024-10-25 flav): Refactor to store a list of AccessControlList on conversations and
     // agent_configurations. This will allow proper handling of multiple groups instead of only
     // using the global group as a temporary solution.
     if (this.isRegularAndOpen()) {
@@ -1608,7 +1608,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               });
             }
             return acc;
-          }, [] as GroupPermission[]),
+          }, [] as GroupGrant[]),
         },
       ];
     }
@@ -1639,7 +1639,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               }
             }
             return acc;
-          }, [] as GroupPermission[]),
+          }, [] as GroupGrant[]),
         },
       ];
     }
@@ -1657,7 +1657,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             });
           }
           return acc;
-        }, [] as GroupPermission[]),
+        }, [] as GroupGrant[]),
       },
     ];
   }
@@ -1687,15 +1687,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   canAdministrate(auth: Authenticator) {
-    return auth.canAdministrate(this.requestedPermissions());
+    return auth.hasPermission("admin", this);
   }
 
   canWrite(auth: Authenticator) {
-    return auth.canWrite(this.requestedPermissions());
+    return auth.hasPermission("write", this);
   }
 
   canRead(auth: Authenticator) {
-    return auth.canRead(this.requestedPermissions());
+    return auth.hasPermission("read", this);
   }
 
   canReadOrAdministrate(auth: Authenticator) {
