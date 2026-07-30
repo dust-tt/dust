@@ -72,7 +72,7 @@ function constructContextSection({
 
   const { modelConfig } = modelInfo.endpoint;
   if (modelConfig.formattingMetaPrompt && !disableFormattingPrompt) {
-    context += `# RESPONSE FORMAT\n${modelConfig.formattingMetaPrompt}\n`;
+    context += `\n# RESPONSE FORMAT\n${modelConfig.formattingMetaPrompt}\n`;
   }
 
   return context;
