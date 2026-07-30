@@ -91,3 +91,16 @@ jobs:
         uses: ./.github/actions/setup-node-deps
       - name: Lint audit log schemas
         run: npm -w front run lint:audit-log-schemas
+  knip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          build-sdks: "true"
+          build-sparkle: "true"
+      - name: Knip
+        uses: ./.github/actions/knip
+        with:
+          workspace: front
