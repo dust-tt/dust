@@ -51,15 +51,11 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
     {
       objective,
       conversation,
-      agentConfigurationId,
       currentAgentMessageId,
-      maxTurns,
     }: {
       objective: string;
       conversation: ConversationResource;
-      agentConfigurationId: string;
       currentAgentMessageId: string;
-      maxTurns: number;
     },
     transaction: Transaction
   ): Promise<ConversationGoalResource> {
@@ -76,7 +72,6 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
           model: AgentMessageModel,
           as: "agentMessage",
           required: true,
-          where: { agentConfigurationId },
         },
       ],
       transaction,
@@ -92,11 +87,8 @@ export class ConversationGoalResource extends BaseResource<ConversationGoalModel
         conversationId: conversation.id,
         branchId: null,
         createdByUserId: auth.getNonNullableUser().id,
-        agentConfigurationId,
         currentAgentMessageId: message.agentMessage.id,
-        maxTurns,
         status: "active",
-        turnCount: 1,
         lastAgentMessageId: null,
         reason: null,
         terminalAt: null,

@@ -26,9 +26,6 @@ export class ConversationGoalModel extends WorkspaceAwareModel<ConversationGoalM
 
   declare objective: string;
   declare status: GoalStatus;
-  declare agentConfigurationId: string;
-  declare turnCount: CreationOptional<number>;
-  declare maxTurns: number;
   declare reason: string | null;
   declare terminalAt: Date | null;
 
@@ -63,19 +60,6 @@ ConversationGoalModel.init(
     },
     status: {
       type: DataTypes.STRING,
-      allowNull: false,
-    },
-    agentConfigurationId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    turnCount: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 1,
-    },
-    maxTurns: {
-      type: DataTypes.INTEGER,
       allowNull: false,
     },
     reason: {

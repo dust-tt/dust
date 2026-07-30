@@ -660,9 +660,7 @@ describe("destroyConversation", () => {
         {
           objective: "Delete this conversation",
           conversation,
-          agentConfigurationId,
           currentAgentMessageId: agentMessage.sId,
-          maxTurns: 25,
         },
         transaction
       )

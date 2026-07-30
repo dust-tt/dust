@@ -17,21 +17,18 @@ SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
 CREATE TABLE "public"."conversation_goals" (
 	"branchId" bigint,
-	"id" bigint DEFAULT nextval('conversation_goals_id_seq'::regclass) NOT NULL,
-	"lastAgentMessageId" bigint,
-	"currentAgentMessageId" bigint NOT NULL,
-	"createdByUserId" bigint NOT NULL,
-	"createdAt" timestamp with time zone NOT NULL,
 	"updatedAt" timestamp with time zone NOT NULL,
-	"workspaceId" bigint NOT NULL,
 	"terminalAt" timestamp with time zone,
+	"workspaceId" bigint NOT NULL,
+	"id" bigint DEFAULT nextval('conversation_goals_id_seq'::regclass) NOT NULL,
 	"conversationId" bigint NOT NULL,
-	"maxTurns" integer NOT NULL,
-	"turnCount" integer DEFAULT 1 NOT NULL,
-	"reason" text COLLATE "pg_catalog"."default",
-	"agentConfigurationId" character varying(255) COLLATE "pg_catalog"."default" NOT NULL,
+	"createdAt" timestamp with time zone NOT NULL,
+	"createdByUserId" bigint NOT NULL,
+	"currentAgentMessageId" bigint NOT NULL,
+	"lastAgentMessageId" bigint,
+	"objective" text COLLATE "pg_catalog"."default" NOT NULL,
 	"status" character varying(255) COLLATE "pg_catalog"."default" NOT NULL,
-	"objective" text COLLATE "pg_catalog"."default" NOT NULL
+	"reason" text COLLATE "pg_catalog"."default"
 );
 
 /*
