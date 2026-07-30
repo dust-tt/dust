@@ -848,6 +848,10 @@ describe("DustFileSystem.forAgentLoop", () => {
         }
       );
 
+      // Refresh the session auth so its group_permissions snapshot includes the open project
+      // created after it was built.
+      await userSessionAuth.refresh();
+
       const access = await ConversationResource.canAccess(
         userSessionAuth,
         podConversation.sId

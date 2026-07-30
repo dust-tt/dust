@@ -3,6 +3,7 @@ import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
@@ -13,10 +14,8 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
@@ -782,6 +781,10 @@ describe("SpaceResource", () => {
             group: projectEditorGroup,
             space: projectSpace,
           });
+
+          // The associations were created directly (not through createSpace/updatePermissions), so
+          // seed the space's group_permissions from them.
+          await projectSpace.writeGroupPermissions(adminAuth, {});
         });
 
         it("should not allow simple members to update space permissions", async () => {
@@ -1021,6 +1024,10 @@ describe("SpaceResource", () => {
             group: provisionedEditorGroup,
             space: projectSpace,
           });
+
+          // The associations were created directly (not through createSpace/updatePermissions), so
+          // seed the space's group_permissions from them.
+          await projectSpace.writeGroupPermissions(adminAuth, {});
         });
 
         it("should not allow simple members to update space permissions", async () => {
@@ -1913,7 +1920,7 @@ describe("SpaceResource cleanup on delete", () => {
   });
 });
 
-describe("SpaceResource group_permissions shadow-compare", () => {
+describe("SpaceResource group_permissions enforcement", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let adminAuth: Authenticator;
   let memberUser: UserResource;
@@ -1957,76 +1964,34 @@ describe("SpaceResource group_permissions shadow-compare", () => {
     return space;
   }
 
-  it("logs a mismatch when the table diverges from the group rules", async () => {
-    // No reconcile: the table grants nothing, but the member group still grants read via code.
+  it("enforces the table: member can read from the space's group grants", async () => {
+    // `SpaceFactory.regular` writes the space's group_permissions on creation.
     const space = await setupRestrictedSpaceWithMember();
-    await FeatureFlagFactory.basic(adminAuth, "group_permissions_shadow");
 
     const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
       memberUser.sId,
       workspace.sId
     );
-    const warn = vi.spyOn(logger, "warn");
 
-    // Served result is unchanged (legacy: role OR group grants read).
+    // Member group confers read+write; served from the group_permissions table.
     expect(space.canRead(memberAuth)).toBe(true);
-
-    await vi.waitFor(() =>
-      expect(warn).toHaveBeenCalledWith(
-        expect.objectContaining({
-          resource: "space",
-          spaceId: space.sId,
-          permission: "read",
-        }),
-        "group_permissions_shadow_mismatch"
-      )
-    );
+    expect(space.canWrite(memberAuth)).toBe(true);
   });
 
-  it("reaches parity once the grants are backfilled", async () => {
+  it("enforces the table: member is denied when the space has no grants", async () => {
+    // Member is in the space's inline group, but with the table cleared access is served from the
+    // (empty) table — denied.
     const space = await setupRestrictedSpaceWithMember();
-    await space.reconcileGroupPermissions(adminAuth, {});
+    await GroupPermissionResource.deleteAllForResource(adminAuth, {
+      resourceType: "space",
+      resourceId: space.id,
+    });
 
-    // Build the auth AFTER reconcile so its PermissionSet snapshot includes the grants.
     const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
       memberUser.sId,
       workspace.sId
     );
 
-    // Legacy: the served ACLs (roles + inline groups). Candidate: same roles, groups from the
-    // group_permissions table — mirroring shadowCompareSpacePermission.
-    const legacyAcls = space.getAccessControlLists(adminAuth);
-    const candidateAcls = legacyAcls.map((acl) => ({
-      roles: acl.roles,
-      groups: memberAuth.getGroupPermissions("space", space.id),
-      workspaceId: acl.workspaceId,
-    }));
-
-    for (const permission of ["read", "write", "admin"] as const) {
-      expect(memberAuth.hasPermissionForAcls(permission, candidateAcls)).toBe(
-        memberAuth.hasPermissionForAcls(permission, legacyAcls)
-      );
-    }
-  });
-
-  it("never logs a mismatch while the flag is off", async () => {
-    // Divergent data (no reconcile) but the flag is off, so the compare never runs.
-    const space = await setupRestrictedSpaceWithMember();
-
-    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      memberUser.sId,
-      workspace.sId
-    );
-    const warn = vi.spyOn(logger, "warn");
-
-    expect(space.canRead(memberAuth)).toBe(true);
-
-    // Flush the fire-and-forget; with the flag off it short-circuits before comparing.
-    await new Promise((resolve) => setImmediate(resolve));
-    await new Promise((resolve) => setImmediate(resolve));
-    expect(warn).not.toHaveBeenCalledWith(
-      expect.anything(),
-      "group_permissions_shadow_mismatch"
-    );
+    expect(space.canRead(memberAuth)).toBe(false);
   });
 });

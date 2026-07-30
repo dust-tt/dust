@@ -11,9 +11,9 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
 
 // Backfill (#9478): (re-)derive every space's group_permissions from its group_vaults associations.
-// The write goes through SpaceResource.reconcileGroupPermissions, which delegates to the same
-// writeGroupPermissions the space mutation paths use, so the backfill and the ongoing writes can
-// never disagree. Idempotent (clears + re-inserts), so it is safe to re-run if grants get corrupted.
+// The write goes through SpaceResource.writeGroupPermissions, the same helper the space mutation
+// paths use, so the backfill and the ongoing writes can never disagree. Idempotent (clears +
+// re-inserts), so it is safe to re-run if grants get corrupted.
 async function backfillWorkspaceSpaceGroupPermissions(
   execute: boolean,
   logger: Logger,
@@ -50,9 +50,9 @@ async function backfillWorkspaceSpaceGroupPermissions(
         return;
       }
 
-      // One transaction per space so a space is never left without its grants mid-reconcile.
+      // One transaction per space so a space is never left without its grants mid-write.
       await frontSequelize.transaction(async (transaction) => {
-        await space.reconcileGroupPermissions(auth, { transaction });
+        await space.writeGroupPermissions(auth, { transaction });
       });
 
       logger.info(
