@@ -6,14 +6,14 @@ import { z } from "zod";
 export interface FunctionSchema {
   name: string;
   description: string | null;
-  authentication: "optional" | "workspace_user_required";
+  userIdentity: "optional" | "workspace_user_required";
   input_schema: Record<string, unknown> | null;
   output_schema: Record<string, unknown> | null;
 }
 
-function parseAuthenticationPolicy(
+function parseUserIdentityPolicy(
   value: unknown
-): FunctionSchema["authentication"] {
+): FunctionSchema["userIdentity"] {
   if (value === undefined || value === "optional") {
     return "optional";
   }
@@ -21,7 +21,7 @@ function parseAuthenticationPolicy(
     return value;
   }
   throw new Error(
-    "`schema.authentication` must be `optional` or `workspace_user_required`"
+    "`schema.userIdentity` must be `optional` or `workspace_user_required`"
   );
 }
 
@@ -40,7 +40,7 @@ export async function getFunctionSchema(
   const schema = mod.schema as
     | {
         description?: unknown;
-        authentication?: unknown;
+        userIdentity?: unknown;
         input?: unknown;
         output?: unknown;
       }
@@ -52,7 +52,7 @@ export async function getFunctionSchema(
     name: basename(handlerPath, extname(handlerPath)),
     description:
       typeof schema.description === "string" ? schema.description : null,
-    authentication: parseAuthenticationPolicy(schema.authentication),
+    userIdentity: parseUserIdentityPolicy(schema.userIdentity),
     input_schema: toJsonSchema(schema.input),
     output_schema: toJsonSchema(schema.output),
   };

@@ -9,13 +9,13 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type {
-  SandboxFunctionAuthenticationPolicy,
   SandboxFunctionInvocationStatus,
+  SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
 import {
   isValidSandboxFunctionSlug,
-  SANDBOX_FUNCTION_AUTHENTICATION_POLICIES,
   SANDBOX_FUNCTION_INVOCATION_STATUSES,
+  SANDBOX_FUNCTION_USER_IDENTITY_POLICIES,
 } from "@app/types/api/sandbox_functions";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
@@ -47,7 +47,8 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
   declare fileId: ForeignKey<FileModel["id"]>;
   declare slug: string;
   declare description: string;
-  declare authentication: SandboxFunctionAuthenticationPolicy | null;
+  declare legacyAuthentication: string | null;
+  declare userIdentity: SandboxFunctionUserIdentityPolicy | null;
   declare inputSchema: JSONSchema;
   declare outputSchema: JSONSchema;
 
@@ -100,11 +101,16 @@ SandboxFunctionModel.init(
       type: DataTypes.STRING(255),
       allowNull: false,
     },
-    authentication: {
+    legacyAuthentication: {
+      field: "authentication",
+      type: DataTypes.STRING(64),
+      allowNull: true,
+    },
+    userIdentity: {
       type: DataTypes.STRING(64),
       allowNull: true,
       validate: {
-        isIn: [SANDBOX_FUNCTION_AUTHENTICATION_POLICIES],
+        isIn: [SANDBOX_FUNCTION_USER_IDENTITY_POLICIES],
       },
     },
     inputSchema: {

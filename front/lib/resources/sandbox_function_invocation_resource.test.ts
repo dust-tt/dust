@@ -15,7 +15,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { SandboxFunctionAuthenticationPolicy } from "@app/types/api/sandbox_functions";
+import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -69,7 +69,7 @@ beforeEach(() => {
 });
 
 async function setupExecutionTest(
-  authentication: SandboxFunctionAuthenticationPolicy = "optional"
+  userIdentity: SandboxFunctionUserIdentityPolicy = "optional"
 ) {
   const { authenticator, workspace } = await createResourceTest({
     role: "admin",
@@ -88,7 +88,7 @@ async function setupExecutionTest(
     file,
     slug: "add-comment",
     description: "Add a comment.",
-    authentication,
+    userIdentity,
     inputSchema,
     outputSchema,
   });
@@ -637,7 +637,7 @@ describe("SandboxFunctionInvocationResource", () => {
       await setupExecutionTest();
     await frontSequelize.getQueryInterface().bulkUpdate(
       "sandbox_functions",
-      { authentication: "future_policy" },
+      { userIdentity: "future_policy" },
       {
         id: sandboxFunction.id,
         workspaceId: sandboxFunction.workspaceId,

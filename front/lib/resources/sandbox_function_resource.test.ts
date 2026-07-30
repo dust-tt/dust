@@ -466,7 +466,7 @@ describe("SandboxFunctionResource", () => {
         file,
         slug: "greet",
         description: "First.",
-        authentication: "optional",
+        userIdentity: "optional",
         inputSchema,
         outputSchema,
       }
@@ -478,7 +478,7 @@ describe("SandboxFunctionResource", () => {
     const result = await sandboxFunction.updateContent(authenticator, {
       bundleCode: "v2",
       description: "Second.",
-      authentication: "workspace_user_required",
+      userIdentity: "workspace_user_required",
       inputSchema,
       outputSchema,
     });
@@ -494,7 +494,8 @@ describe("SandboxFunctionResource", () => {
       authenticator,
       sandboxFunction.sId
     );
-    expect(fetched?.authentication).toBe("workspace_user_required");
+    expect(fetched?.userIdentity).toBe("workspace_user_required");
+    expect(fetched?.legacyAuthentication).toBe("workspace_user_required");
     expect(fetched?.description).toBe("First.");
   });
 

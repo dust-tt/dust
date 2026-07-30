@@ -339,7 +339,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         return new Err(new Error("The Pod Function no longer exists."));
       }
       const authorization = await authorizeSandboxFunctionInvocation(auth, {
-        authentication: persistedFunction.authentication,
+        userIdentity: persistedFunction.userIdentity,
       });
       if (!authorization.authorized) {
         return new Err(

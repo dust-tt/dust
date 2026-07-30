@@ -23,7 +23,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
   PostSandboxFunctionInvocationRequestBody,
-  SandboxFunctionAuthenticationPolicy,
+  SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
 import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
@@ -41,16 +41,16 @@ export interface SandboxFunctionResource
 
 const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
 
-function authenticationPolicyStrength(
-  authentication: SandboxFunctionAuthenticationPolicy
+function userIdentityPolicyStrength(
+  policy: SandboxFunctionUserIdentityPolicy
 ): number {
-  switch (authentication) {
+  switch (policy) {
     case "optional":
       return 0;
     case "workspace_user_required":
       return 1;
     default:
-      return assertNever(authentication);
+      return assertNever(policy);
   }
 }
 
@@ -97,7 +97,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       file,
       slug,
       description,
-      authentication = "optional",
+      userIdentity = "optional",
       inputSchema,
       outputSchema,
     }: {
@@ -105,7 +105,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       file: FileResource;
       slug: string;
       description: string;
-      authentication?: SandboxFunctionAuthenticationPolicy;
+      userIdentity?: SandboxFunctionUserIdentityPolicy;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     },
@@ -144,7 +144,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         fileId: file.id,
         slug,
         description,
-        authentication,
+        legacyAuthentication: userIdentity,
+        userIdentity,
         inputSchema,
         outputSchema,
       },
@@ -165,13 +166,13 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     {
       bundleCode,
       description,
-      authentication = this.authentication ?? "optional",
+      userIdentity = this.userIdentity ?? "optional",
       inputSchema,
       outputSchema,
     }: {
       bundleCode: string;
       description: string;
-      authentication?: SandboxFunctionAuthenticationPolicy;
+      userIdentity?: SandboxFunctionUserIdentityPolicy;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     }
@@ -190,22 +191,26 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
             return new Err(new Error("The Pod Function no longer exists."));
           }
 
-          const currentAuthentication =
-            currentFunction.authentication ?? "optional";
+          const currentUserIdentity =
+            currentFunction.userIdentity ?? "optional";
           if (
-            authenticationPolicyStrength(authentication) >
-            authenticationPolicyStrength(currentAuthentication)
+            userIdentityPolicyStrength(userIdentity) >
+            userIdentityPolicyStrength(currentUserIdentity)
           ) {
             // Commit a stricter policy before exposing its bundle. If the
             // upload fails, the old bundle remains callable only under the
             // stricter policy.
-            await this.update({ authentication });
+            await this.update({
+              legacyAuthentication: userIdentity,
+              userIdentity,
+            });
           }
 
           await this.file.uploadContent(auth, bundleCode);
           await this.update({
             description,
-            authentication,
+            legacyAuthentication: userIdentity,
+            userIdentity,
             inputSchema,
             outputSchema,
           });
@@ -415,7 +420,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       );
     }
     const authorization = await authorizeSandboxFunctionInvocation(auth, {
-      authentication: this.authentication,
+      userIdentity: this.userIdentity,
     });
     if (!authorization.authorized) {
       return new Err(
