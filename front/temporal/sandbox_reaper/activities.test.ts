@@ -209,4 +209,59 @@ describe("reapSandboxPhaseActivity", () => {
     const sandbox = await PodSandboxAdapter.fetchSandbox(authenticator, pod);
     expect(sandbox?.status).toBe("deleted");
   });
+
+  it("defers kill-requested sleeping sandboxes to the low-priority phase", async () => {
+    mockGetSandboxImage.mockReturnValue(
+      new Ok({
+        toCreateConfig: () => ({
+          imageId: { imageName: "test-image", tag: "0.0.1" },
+          envVars: {},
+          network: { egress: "restricted" },
+          resources: { cpu: 1, memoryMB: 512 },
+        }),
+      })
+    );
+    mockGetSandboxProvider.mockReturnValue({
+      create: vi.fn().mockResolvedValue(new Ok({ providerId: "pod-provider" })),
+      destroy: mockProviderDestroy.mockResolvedValue(new Ok(undefined)),
+    });
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace);
+    const podSandboxResult = await PodSandboxAdapter.ensureSandboxActive(
+      authenticator,
+      pod
+    );
+    if (podSandboxResult.isErr()) {
+      throw podSandboxResult.error;
+    }
+    await podSandboxResult.value.sandbox.updateStatus("sleeping");
+    await podSandboxResult.value.sandbox.requestKill();
+
+    const awakeResult = await reapSandboxPhaseActivity({
+      cursor: null,
+      phase: "kill_requested",
+    });
+    expect(awakeResult.processedCount).toBe(0);
+    expect(mockProviderDestroy).not.toHaveBeenCalled();
+
+    const result = await reapSandboxPhaseActivity({
+      cursor: null,
+      phase: "kill_requested_sleeping",
+    });
+
+    expect(result).toEqual({
+      failedCount: 0,
+      nextCursor: null,
+      processedCount: 1,
+      skippedCount: 0,
+      succeededCount: 1,
+    });
+    expect(mockProviderDestroy).toHaveBeenCalledWith("pod-provider", {
+      workspaceId: workspace.sId,
+    });
+    const sandbox = await PodSandboxAdapter.fetchSandbox(authenticator, pod);
+    expect(sandbox?.status).toBe("deleted");
+  });
 });
