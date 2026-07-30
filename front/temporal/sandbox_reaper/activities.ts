@@ -552,31 +552,3 @@ export async function reapSandboxPhaseActivity({
       return assertNever(phase);
   }
 }
-
-/**
- * Compatibility activity for sandbox reaper workflows started before the
- * phase-pagination patch. Keep its no-argument input and boolean output until
- * every pre-patch workflow execution has closed.
- *
- * Note: the "kill_requested" phase is awake-only now, so pre-patch executions
- * replaying through this activity skip sleeping kill-requested rows. That is
- * fine: the next scheduled (post-patch) execution sweeps them via the
- * "kill_requested_sleeping" phase.
- */
-export async function reapStaleSandboxesActivity(): Promise<boolean> {
-  const phases: ReaperPhase[] = [
-    "kill_requested",
-    "running",
-    "pending_approval",
-    "sleeping",
-  ];
-  let hasMore = false;
-
-  for (const phase of phases) {
-    const result = await reapSandboxPhaseActivity({ cursor: null, phase });
-    hasMore ||=
-      result.processedCount >= BATCH_SIZE && result.succeededCount > 0;
-  }
-
-  return hasMore;
-}
