@@ -217,7 +217,7 @@ export class Authenticator {
    * @param workspaceId - The workspace the resources belong to
    * @returns Array of AccessControlList objects, one entry per sub-array
    */
-  static createResourcePermissionsFromGroupIds(
+  static createAccessControlListFromGroupIds(
     groupIds: string[][],
     workspaceId: ModelId
   ): AccessControlList[] {
@@ -1494,12 +1494,13 @@ export class Authenticator {
     return targets.every((target) => this.hasPermission(verb, target));
   }
 
-  // Whether the caller holds `verb` on every ACL in the list (conjunction). Callers that already
-  // hold raw ACLs (e.g. `canRead`, the conversation space checks) use this directly.
-  private hasPermissionForAcls(
-    verb: GrantVerb,
-    acls: AccessControlList[]
-  ): boolean {
+  /**
+   * Whether the caller holds `verb` on every ACL in the list (conjunction). This is the raw-ACL
+   * entry point: callers that already hold built or derived ACLs (e.g. a space's served ACLs, the
+   * cross-space conversation checks) use this directly, rather than going through a
+   * `WithAccessControl` target.
+   */
+  hasPermissionForAcls(verb: GrantVerb, acls: AccessControlList[]): boolean {
     return acls.every((acl) => this.hasPermissionForAcl(verb, acl));
   }
 
@@ -1527,18 +1528,6 @@ export class Authenticator {
     return this._groupModelIds.some((groupId) =>
       acl.groups.some((g) => g.id === groupId && g.permissions.includes(verb))
     );
-  }
-
-  canAdministrate(acls: AccessControlList[]): boolean {
-    return this.hasPermissionForAcls("admin", acls);
-  }
-
-  canRead(acls: AccessControlList[]): boolean {
-    return this.hasPermissionForAcls("read", acls);
-  }
-
-  canWrite(acls: AccessControlList[]): boolean {
-    return this.hasPermissionForAcls("write", acls);
   }
 
   key(): KeyAuthType | null {

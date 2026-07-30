@@ -20,7 +20,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
-  createResourcePermissionsFromSpacesWithMap,
+  createAccessControlListFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -1356,7 +1356,7 @@ describe("createResourcePermissionsFromSpacesWithMap", () => {
   });
 
   it("should resolve space ids to group permissions", () => {
-    const permissions = createResourcePermissionsFromSpacesWithMap(
+    const permissions = createAccessControlListFromSpacesWithMap(
       spaceIdToGroupsMap,
       [globalSpace.id],
       auth.getNonNullableWorkspace().id
@@ -1369,7 +1369,7 @@ describe("createResourcePermissionsFromSpacesWithMap", () => {
   });
 
   it("should handle multiple space ids", () => {
-    const permissions = createResourcePermissionsFromSpacesWithMap(
+    const permissions = createAccessControlListFromSpacesWithMap(
       spaceIdToGroupsMap,
       [globalSpace.id, regularSpace.id],
       auth.getNonNullableWorkspace().id
@@ -1381,7 +1381,7 @@ describe("createResourcePermissionsFromSpacesWithMap", () => {
 
   it("should throw assertion error for missing spaces", () => {
     expect(() =>
-      createResourcePermissionsFromSpacesWithMap(
+      createAccessControlListFromSpacesWithMap(
         spaceIdToGroupsMap,
         [99999], // Non-existent space Id.
         auth.getNonNullableWorkspace().id
@@ -1390,7 +1390,7 @@ describe("createResourcePermissionsFromSpacesWithMap", () => {
   });
 
   it("should handle empty space ids array", () => {
-    const permissions = createResourcePermissionsFromSpacesWithMap(
+    const permissions = createAccessControlListFromSpacesWithMap(
       spaceIdToGroupsMap,
       [],
       auth.getNonNullableWorkspace().id

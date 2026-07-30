@@ -30,7 +30,7 @@ import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import {
-  createResourcePermissionsFromSpacesWithMap,
+  createAccessControlListFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -1778,8 +1778,9 @@ export async function filterAgentsByRequestedSpaces(
   );
 
   const allowedBySpaceIds = validAgents.filter((agent) =>
-    auth.canRead(
-      createResourcePermissionsFromSpacesWithMap(
+    auth.hasPermissionForAcls(
+      "read",
+      createAccessControlListFromSpacesWithMap(
         spaceIdToGroupsMap,
         agent.requestedSpaceIds,
         auth.getNonNullableWorkspace().id

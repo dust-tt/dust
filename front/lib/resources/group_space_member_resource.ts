@@ -142,7 +142,7 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
       }
     }
     const acls = await this.getAccessControlLists(auth);
-    return auth.canWrite(acls);
+    return auth.hasPermissionForAcls("write", acls);
   }
 
   async canRemoveMember(
@@ -158,7 +158,7 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
       }
     }
     const acls = await this.getAccessControlLists(auth);
-    return auth.canWrite(acls);
+    return auth.hasPermissionForAcls("write", acls);
   }
 
   async getAccessControlLists(

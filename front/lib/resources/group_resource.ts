@@ -2251,7 +2251,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     newName: string
   ): Promise<Result<undefined, Error>> {
-    if (!auth.canAdministrate(this.getAccessControlLists(auth))) {
+    if (!auth.hasPermission("admin", this)) {
       return new Err(new Error("Only admins can update group names."));
     }
 
@@ -2672,15 +2672,15 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   canRead(auth: Authenticator): boolean {
-    return auth.canRead(this.getAccessControlLists(auth));
+    return auth.hasPermission("read", this);
   }
 
   canWrite(auth: Authenticator): boolean {
-    return auth.canWrite(this.getAccessControlLists(auth));
+    return auth.hasPermission("write", this);
   }
 
   canAdministrate(auth: Authenticator): boolean {
-    return auth.canAdministrate(this.getAccessControlLists(auth));
+    return auth.hasPermission("admin", this);
   }
 
   isSystem(): boolean {

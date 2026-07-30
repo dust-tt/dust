@@ -1899,15 +1899,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   canAdministrate(auth: Authenticator) {
-    return auth.canAdministrate(this.getAccessControlLists(auth));
+    return auth.hasPermission("admin", this);
   }
 
   canWrite(auth: Authenticator) {
-    return auth.canWrite(this.getAccessControlLists(auth));
+    return auth.hasPermission("write", this);
   }
 
   canRead(auth: Authenticator) {
-    return auth.canRead(this.getAccessControlLists(auth));
+    return auth.hasPermission("read", this);
   }
 
   canReadOrAdministrate(auth: Authenticator) {

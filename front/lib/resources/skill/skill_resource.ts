@@ -37,7 +37,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
-  createResourcePermissionsFromSpacesWithMap,
+  createAccessControlListFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -667,8 +667,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     const allowedCustomSkills = validCustomSkills.filter((skill) =>
-      auth.canRead(
-        createResourcePermissionsFromSpacesWithMap(
+      auth.hasPermissionForAcls(
+        "read",
+        createAccessControlListFromSpacesWithMap(
           spaceIdToGroupsMap,
           skill.requestedSpaceIds,
           auth.getNonNullableWorkspace().id
