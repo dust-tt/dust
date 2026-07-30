@@ -59,22 +59,22 @@ const SKILL_MANAGER_TABS = [
   {
     id: "active",
     label: "All",
-    description: "All active skills.",
+    description: "All active skills",
   },
   {
     id: "editable_by_me",
     label: "Editable by me",
-    description: "Skills you can edit.",
+    description: "Skills you can edit",
   },
   {
     id: "default",
     label: "Default",
-    description: "Default skills provided by Dust.",
+    description: "Default skills provided by Dust",
   },
   {
     id: "archived",
     label: "Archived",
-    description: "Archived skills.",
+    description: "Archived skills",
   },
 ] as const;
 
@@ -438,7 +438,11 @@ export function ManageSkillsPage() {
                         : tab.label
                     }
                     onClick={() => setSelectedTab(tab.id)}
-                    tooltip={tab.description}
+                    tooltip={
+                      tab.id === "default" && hasSkillPublicationGovernance
+                        ? "Skills available to workspace members and agents with Discover Skills"
+                        : tab.description
+                    }
                     isCounter={tab.id !== "archived"}
                     counterValue={`${skillsByTab[tab.id].length}`}
                   />
