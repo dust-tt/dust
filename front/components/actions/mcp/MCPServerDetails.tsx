@@ -109,6 +109,9 @@ export function MCPServerDetails({
   const { mcpServers } = useMCPServers({
     owner,
     disabled: !isOpen || readOnly,
+    // The admin tools list loads this exact SWR key before the details sheet opens.
+    // Reuse that cached response instead of repeating the expensive full listing.
+    revalidateIfStale: false,
   });
 
   // Collect all effective view names from other servers (excluding the current one).

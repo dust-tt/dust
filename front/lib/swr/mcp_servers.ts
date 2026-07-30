@@ -171,9 +171,11 @@ export function useAvailableMCPServers({
 export function useMCPServers({
   owner,
   disabled,
+  revalidateIfStale,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
+  revalidateIfStale?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
@@ -185,6 +187,7 @@ export function useMCPServers({
     configFetcher,
     {
       disabled,
+      ...(revalidateIfStale !== undefined ? { revalidateIfStale } : {}),
     }
   );
 
