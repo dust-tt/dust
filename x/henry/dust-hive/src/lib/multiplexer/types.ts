@@ -41,6 +41,8 @@ export interface LayoutConfig {
   warmCommand?: string | undefined;
   /** Optional initial command to run in the main shell before dropping to interactive shell */
   initialCommand?: string | undefined;
+  /** Optional input to send to the initial command after it starts */
+  initialInput?: string | undefined;
 }
 
 /**

@@ -170,14 +170,25 @@ export class TmuxAdapter implements MultiplexerAdapter {
   // ============================================================
 
   generateLayout(config: LayoutConfig): string {
-    const { envName, worktreePath, envShPath, unifiedLogs, warmCommand, initialCommand } = config;
+    const {
+      envName,
+      worktreePath,
+      envShPath,
+      unifiedLogs,
+      warmCommand,
+      initialCommand,
+      initialInput,
+    } = config;
     const shellPath = getUserShell();
     const sessionName = `${SESSION_PREFIX}${envName}`;
     const mainWindowName = envName;
 
     // Build the shell command that runs in the main window
+    const initialInputCommand = initialInput
+      ? `(sleep 3; tmux send-keys -t "$TMUX_PANE" ${shellQuote(initialInput)} Enter) & `
+      : "";
     const shellCommand = initialCommand
-      ? `source ${shellQuote(envShPath)} && ${initialCommand}; exec ${shellQuote(shellPath)}`
+      ? `source ${shellQuote(envShPath)} && ${initialInputCommand}${initialCommand}; exec ${shellQuote(shellPath)}`
       : `source ${shellQuote(envShPath)} && exec ${shellQuote(shellPath)}`;
 
     // Use window names instead of indices to avoid base-index issues

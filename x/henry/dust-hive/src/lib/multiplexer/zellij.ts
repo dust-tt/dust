@@ -26,6 +26,8 @@ const ZELLIJ_LAYOUT_DIR = join(homedir(), ".dust-hive", "zellij");
 const ZELLIJ_SWITCH_PLUGIN_URL =
   "https://github.com/mostafaqanbaryan/zellij-switch/releases/download/0.2.1/zellij-switch.wasm";
 
+const ENTER_KEY_BYTE = 13;
+
 /**
  * Escape a string for use in KDL (Zellij's config format)
  */
@@ -210,13 +212,27 @@ export class ZellijAdapter implements MultiplexerAdapter {
   // ============================================================
 
   generateLayout(config: LayoutConfig): string {
-    const { envName, worktreePath, envShPath, compact, unifiedLogs, warmCommand, initialCommand } =
-      config;
+    const {
+      envName,
+      worktreePath,
+      envShPath,
+      compact,
+      unifiedLogs,
+      warmCommand,
+      initialCommand,
+      initialInput,
+    } = config;
     const shellPath = getUserShell();
 
     // Build the shell command that runs in the main tab
+    const initialInputBytes = initialInput
+      ? [...new TextEncoder().encode(initialInput)].join(" ")
+      : undefined;
+    const initialInputCommand = initialInputBytes
+      ? `(sleep 5; zellij action write ${initialInputBytes}; sleep 1; zellij action write ${ENTER_KEY_BYTE}) & `
+      : "";
     const shellCommand = initialCommand
-      ? `source ${shellQuote(envShPath)} && ${initialCommand}; exec ${shellQuote(shellPath)}`
+      ? `source ${shellQuote(envShPath)} && ${initialInputCommand}${initialCommand}; exec ${shellQuote(shellPath)}`
       : `source ${shellQuote(envShPath)} && exec ${shellQuote(shellPath)}`;
 
     // Generate warm tab if requested

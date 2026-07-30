@@ -339,6 +339,7 @@ function buildOpenOptions(
   warmCommand?: string;
   noAttach?: boolean;
   initialCommand?: string;
+  initialInput?: string;
   compact?: boolean;
   unifiedLogs?: boolean;
 } {
@@ -346,12 +347,18 @@ function buildOpenOptions(
     warmCommand?: string;
     noAttach?: boolean;
     initialCommand?: string;
+    initialInput?: string;
     compact?: boolean;
     unifiedLogs?: boolean;
   } = {};
   if (options.warm) openOpts.warmCommand = `dust-hive warm ${name}`;
   if (options.noAttach) openOpts.noAttach = true;
-  if (options.command) openOpts.initialCommand = options.command;
+  if (options.command) {
+    openOpts.initialCommand = options.command;
+    if (options.command === "codex") {
+      openOpts.initialInput = `/rename ${name}`;
+    }
+  }
   if (options.compact) openOpts.compact = true;
   if (options.unifiedLogs) openOpts.unifiedLogs = true;
   return openOpts;
