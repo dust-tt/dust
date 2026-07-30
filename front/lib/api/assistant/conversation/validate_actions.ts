@@ -297,7 +297,10 @@ export async function validateAction(
 
   // A sub-agent's caller sits in `blocked_child_action_input_required` until we relaunch it, so
   // this must run whatever the surface the approval came from (web, Slack, Teams, public API).
-  return resumeAncestorConversationsHelper(auth, conversation, {
+  // The approval is already committed, so a failed wake-up is logged, never returned.
+  await resumeAncestorConversationsHelper(auth, conversation, {
     agentMessageId,
   });
+
+  return new Ok(undefined);
 }

@@ -194,6 +194,9 @@ export async function registerUserAnswer(
     "User question answered, agent loop resumed"
   );
 
-  // A sub-agent's caller sits in `blocked_child_action_input_required` until we relaunch it.
-  return resumeAncestorConversations(auth, conversation, { agentMessageId });
+  // A sub-agent's caller sits in `blocked_child_action_input_required` until we relaunch it. The
+  // answer is already committed, so a failed wake-up is logged, never returned.
+  await resumeAncestorConversations(auth, conversation, { agentMessageId });
+
+  return new Ok(undefined);
 }

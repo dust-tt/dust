@@ -222,10 +222,13 @@ export async function resolveAuthentication(
   );
 
   // A sub-agent's caller sits in `blocked_child_action_input_required` until we relaunch it, so
-  // this must run whatever the surface the authentication was resolved from.
-  return resumeAncestorConversationsHelper(auth, conversation, {
+  // this must run whatever the surface the authentication was resolved from. The resolution is
+  // already committed, so a failed wake-up is logged, never returned.
+  await resumeAncestorConversationsHelper(auth, conversation, {
     agentMessageId,
   });
+
+  return new Ok(undefined);
 }
 
 export const ResolveAuthenticationSchema = z.object({
