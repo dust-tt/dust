@@ -91,6 +91,38 @@ struct QdrantResponse<T> {
     result: T,
 }
 
+// GETs a Qdrant JSON endpoint, failing with the URL, HTTP status and (truncated) body. A bare
+// `.json()` on a peer returning a non-JSON error page (e.g. an ingress 404/502) only yields an
+// anonymous "error decoding response body" with no clue about which peer failed.
+async fn get_json<T: serde::de::DeserializeOwned>(
+    client: &reqwest::Client,
+    url: &str,
+    api_key: &str,
+) -> Result<T> {
+    let mut req = client.get(url);
+    if !api_key.is_empty() {
+        req = req.header("api-key", api_key);
+    }
+    let res = req
+        .send()
+        .await
+        .map_err(|e| anyhow!("GET {} failed: {}", url, e))?;
+    let status = res.status();
+    let body = res.text().await.unwrap_or_default();
+    let body_snippet: String = body.chars().take(500).collect();
+    if !status.is_success() {
+        return Err(anyhow!("GET {} failed ({}): {}", url, status, body_snippet));
+    }
+    serde_json::from_str(&body).map_err(|e| {
+        anyhow!(
+            "GET {}: failed to parse response: {} ({})",
+            url,
+            e,
+            body_snippet
+        )
+    })
+}
+
 #[derive(Debug, Clone)]
 struct PeerEndpoint {
     url: String,
@@ -230,13 +262,8 @@ fn create_node_url(base_url: &str, node_number: &str) -> Result<String, Error> {
 async fn get_cluster_peers(seed_uri: &str, api_key: &str) -> Result<HashMap<u64, PeerEndpoint>> {
     let http_client = reqwest::Client::new();
 
-    let mut req = http_client.get(format!("{}/cluster", seed_uri));
-    if !api_key.is_empty() {
-        req = req.header("api-key", api_key);
-    }
-
     let cluster_resp: QdrantResponse<ClusterStatus> =
-        req.send().await?.error_for_status()?.json().await?;
+        get_json(&http_client, &format!("{}/cluster", seed_uri), api_key).await?;
 
     if cluster_resp.status != "ok" {
         return Err(anyhow!(
@@ -277,14 +304,12 @@ async fn get_cluster_peers(seed_uri: &str, api_key: &str) -> Result<HashMap<u64,
 async fn list_collections(seed_uri: &str, api_key: &str) -> Result<Vec<String>> {
     let client = reqwest::Client::new();
 
-    let collections_resp: QdrantResponse<CollectionsResult> = client
-        .get(format!("{}/collections", seed_uri.trim_end_matches('/')))
-        .header("api-key", api_key)
-        .send()
-        .await?
-        .error_for_status()?
-        .json()
-        .await?;
+    let collections_resp: QdrantResponse<CollectionsResult> = get_json(
+        &client,
+        &format!("{}/collections", seed_uri.trim_end_matches('/')),
+        api_key,
+    )
+    .await?;
 
     let mut collections: Vec<String> = collections_resp
         .result
@@ -333,14 +358,25 @@ async fn gather_shard_replicas(
         let base_uri = endpoint.url.trim_end_matches('/');
 
         for collection in collections {
-            let cluster_info: QdrantResponse<ClusterInfoResult> = client
-                .get(format!("{}/collections/{}/cluster", base_uri, collection))
-                .header("api-key", api_key)
-                .send()
-                .await?
-                .error_for_status()?
-                .json()
-                .await?;
+            // An unreachable peer (e.g. a freshly added node whose public URL is not serving
+            // yet) must not kill the whole breakdown; its local shards are simply missing from
+            // the output, with a warning.
+            let cluster_info: QdrantResponse<ClusterInfoResult> = match get_json(
+                &client,
+                &format!("{}/collections/{}/cluster", base_uri, collection),
+                api_key,
+            )
+            .await
+            {
+                Ok(cluster_info) => cluster_info,
+                Err(e) => {
+                    println!(
+                        "WARNING: skipping {} ({}): {}",
+                        endpoint.node_name, collection, e
+                    );
+                    continue;
+                }
+            };
 
             let peer_id = cluster_info.result.peer_id;
 
@@ -382,15 +418,19 @@ async fn gather_peer_memory(
             "{}/telemetry?details_level=1",
             endpoint.url.trim_end_matches('/')
         );
-        let telemetry = client
-            .get(&telemetry_url)
-            .header("api-key", api_key)
-            .send()
-            .await?
-            .json::<QdrantResponse<TelemetryResult>>()
-            .await?;
+        // Memory is display-only (rendered as n/a when absent): an unreachable peer must not
+        // kill the whole breakdown.
+        let telemetry: Result<QdrantResponse<TelemetryResult>> =
+            get_json(&client, &telemetry_url, api_key).await;
+        let resident_bytes = match telemetry {
+            Ok(telemetry) => telemetry.result.memory.map(|m| m.resident_bytes),
+            Err(e) => {
+                println!("WARNING: no telemetry for {}: {}", endpoint.node_name, e);
+                None
+            }
+        };
 
-        memory_by_peer.insert(*peer_id, telemetry.result.memory.map(|m| m.resident_bytes));
+        memory_by_peer.insert(*peer_id, resident_bytes);
     }
 
     Ok(memory_by_peer)
