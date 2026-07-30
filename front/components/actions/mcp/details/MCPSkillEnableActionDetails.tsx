@@ -11,7 +11,12 @@ import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/sk
 import { SKILL_ICON } from "@app/lib/skill";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
-import { Button, ContentMessage, Spinner } from "@dust-tt/sparkle";
+import {
+  ContentMessage,
+  IconButton,
+  LinkExternal01,
+  Spinner,
+} from "@dust-tt/sparkle";
 
 export function MCPSkillEnableActionDetails({
   owner,
@@ -59,11 +64,11 @@ export function MCPSkillEnableActionDetails({
       actionName={actionName}
       headerAction={
         displayContext !== "conversation" && enabledSkillId ? (
-          <Button
+          <IconButton
             href={getManageSkillsRoute(owner.sId, enabledSkillId)}
-            label="View skill"
+            icon={LinkExternal01}
             size="xs"
-            variant="outline"
+            tooltip="View skill"
           />
         ) : undefined
       }
