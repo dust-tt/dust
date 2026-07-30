@@ -37,10 +37,7 @@ pub struct TimingsMs {
 }
 
 impl ResultEnvelope {
-    pub fn stdout_outcome(
-        outcome: serde_json::Value,
-        timings_ms: Option<TimingsMs>,
-    ) -> Self {
+    pub fn stdout_outcome(outcome: serde_json::Value, timings_ms: Option<TimingsMs>) -> Self {
         Self {
             protocol_version: RESULT_PROTOCOL_VERSION,
             delivery: ResultDelivery::Stdout.as_str().to_string(),

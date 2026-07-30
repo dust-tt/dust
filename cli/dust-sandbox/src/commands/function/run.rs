@@ -30,10 +30,13 @@ pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Re
     match result_delivery {
         ResultDelivery::Callback => deliver_callback(name, code, &response).await,
         ResultDelivery::Stdout => {
-            deliver_stdout(&response, TimingsMs {
-                total: started.elapsed().as_millis() as u64,
-                runner: runner_ms,
-            });
+            deliver_stdout(
+                &response,
+                TimingsMs {
+                    total: started.elapsed().as_millis() as u64,
+                    runner: runner_ms,
+                },
+            );
         }
     }
 }
