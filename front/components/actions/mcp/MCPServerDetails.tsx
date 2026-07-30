@@ -18,7 +18,6 @@ import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_int
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { LinkWrapper } from "@app/lib/platform";
 import {
   useMCPServer,
   useMCPServers,
@@ -170,13 +169,14 @@ export function MCPServerDetails({
           <ul className="list-disc space-y-1 pl-5">
             {affectedAgents.map((agent) => (
               <li key={agent.sId}>
-                <LinkWrapper
+                <a
                   href={getAgentBuilderRoute(owner.sId, agent.sId)}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="underline underline-offset-2"
                 >
                   {agent.name}
-                </LinkWrapper>
+                </a>
               </li>
             ))}
           </ul>
