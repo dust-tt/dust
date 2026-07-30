@@ -16,11 +16,13 @@ import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import { parseStdoutResultEnvelope } from "@app/lib/api/sandbox_functions/result_delivery";
 import {
   authorizeSandboxFunctionInvocation,
   getAuthenticatedWorkspaceUser,
 } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
@@ -196,9 +198,15 @@ function dustAPIBaseUrlForSandbox(): string {
     : config.getApiBaseUrl();
 }
 
-function buildSandboxFunctionRunCommand(slug: string): string {
+function buildSandboxFunctionRunCommand(
+  slug: string,
+  { stdoutResultDelivery }: { stdoutResultDelivery: boolean }
+): string {
   // dsbx resolves `function run <slug>` as `${DUST_FUNCTIONS_DIR}/<slug>.ts`, which is the
   // read-only mount of the pod's published bundles.
+  if (stdoutResultDelivery) {
+    return `${DSBX_BIN_PATH} function run --result-delivery stdout -- ${shellEscape(slug)}`;
+  }
   return `${DSBX_BIN_PATH} function run ${shellEscape(slug)}`;
 }
 
@@ -486,15 +494,23 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
       await ensureResult.value.sandbox.updateLastActivityAt();
 
+      const sandbox = ensureResult.value.sandbox;
+      const stdoutResultDelivery = await hasFeatureFlag(
+        auth,
+        "sandbox_function_stdout_result"
+      );
+
       const execId = generateExecId();
       const token = await generateSandboxFunctionInvocationToken(auth, {
-        sandbox: ensureResult.value.sandbox,
+        sandbox,
         sandboxFunction,
         invocationId: this.sId,
         execId,
       });
 
-      const command = buildSandboxFunctionRunCommand(sandboxFunction.slug);
+      const command = buildSandboxFunctionRunCommand(sandboxFunction.slug, {
+        stdoutResultDelivery,
+      });
       const inputEnvelope = {
         method: "POST",
         url: `https://dust.local/sandbox-functions/${sandboxFunction.sId}/invocations/${this.sId}`,
@@ -514,7 +530,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         this
       );
 
-      const execResult = await ensureResult.value.sandbox.exec(auth, command, {
+      const execResult = await sandbox.exec(auth, command, {
         workingDirectory: SANDBOX_FUNCTION_WORKING_DIRECTORY,
         envVars: {
           DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
@@ -563,6 +579,26 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             }`
           )
         );
+      }
+
+      if (stdoutResultDelivery) {
+        const { stdout } = execResult.value;
+        logger.info(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            sandboxFunctionId: sandboxFunction.sId,
+            invocationId: this.sId,
+            stdoutBytes: Buffer.byteLength(stdout, "utf8"),
+            deliveryMode: "stdout",
+          },
+          "Pod function stdout result delivery"
+        );
+        const normalized = parseStdoutResultEnvelope(stdout);
+        if (normalized.ok) {
+          await this.succeed(normalized.output);
+        } else {
+          await this.fail(normalized.error);
+        }
       }
 
       return new Ok(undefined);

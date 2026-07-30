@@ -15,7 +15,7 @@ export const SUPPORTED_SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSIONS = [
 // Cap on the rejected-payload snippet included in logs.
 const REJECTED_ENVELOPE_LOG_SNIPPET_MAX_CHARS = 512;
 
-type NormalizedSandboxFunctionOutcome =
+export type NormalizedSandboxFunctionOutcome =
   | { ok: true; output: unknown }
   | { ok: false; error: SandboxFunctionCallError };
 
