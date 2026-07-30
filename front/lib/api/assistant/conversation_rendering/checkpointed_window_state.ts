@@ -32,8 +32,19 @@ type ToolResultNode = {
   kind: "tool_result";
   message: Extract<MessageWithTokens, { role: "function" }>;
   tokenSavings: number;
-  phase: "pending" | "eligible" | "pruned";
+  pruned: boolean;
+  eligible: boolean;
   imageReferences: ToolImageReference[];
+};
+
+type PendingToolResult = {
+  phase: "pending";
+  node: ToolResultNode;
+};
+
+type EligibleToolResult = {
+  phase: "eligible";
+  node: ToolResultNode;
 };
 
 // Interactions own these nodes. The pending and eligible queues only hold references to the same
@@ -64,7 +75,8 @@ function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
       kind: "tool_result",
       message,
       tokenSavings: getToolResultTokenSavings(message),
-      phase: "pending",
+      pruned: false,
+      eligible: false,
       imageReferences: [],
     };
   }
@@ -95,8 +107,8 @@ export class CheckpointedConversationWindowState {
   private totalTokensBefore = 0;
   private prunedTokens = 0;
 
-  private pendingToolResults: ToolResultNode[] = [];
-  private eligibleToolResults: ToolResultNode[] = [];
+  private pendingToolResults: PendingToolResult[] = [];
+  private eligibleToolResults: EligibleToolResult[] = [];
   private nextEligibleToolResultIndex = 0;
   private eligibleToolResultTokenSavings = 0;
 
@@ -151,7 +163,7 @@ export class CheckpointedConversationWindowState {
       this.totalTokensBefore += message.tokenCount;
 
       if (node.kind === "tool_result") {
-        this.pendingToolResults.push(node);
+        this.pendingToolResults.push({ phase: "pending", node });
       }
 
       this.registerImages(node);
@@ -222,7 +234,7 @@ export class CheckpointedConversationWindowState {
     const latestInteraction = this.interactions[this.interactions.length - 1];
 
     return latestInteraction.messages.some(
-      (node) => node.kind === "tool_result" && node.phase === "pruned"
+      (node) => node.kind === "tool_result" && node.pruned
     );
   }
 
@@ -314,7 +326,7 @@ export class CheckpointedConversationWindowState {
       const tokenDelta = node.message.tokenCount - previousTokenCount;
       this.retainedTokens += tokenDelta;
       this.totalTokensBefore += tokenDelta;
-      if (node.phase === "eligible") {
+      if (node.eligible) {
         this.eligibleToolResultTokenSavings +=
           node.tokenSavings - previousTokenSavings;
       }
@@ -345,10 +357,10 @@ export class CheckpointedConversationWindowState {
   }
 
   private makePendingToolResultsEligible(): void {
-    for (const node of this.pendingToolResults) {
-      node.phase = "eligible";
+    for (const { node } of this.pendingToolResults) {
       if (node.tokenSavings > 0) {
-        this.eligibleToolResults.push(node);
+        node.eligible = true;
+        this.eligibleToolResults.push({ phase: "eligible", node });
         this.eligibleToolResultTokenSavings += node.tokenSavings;
       }
     }
@@ -381,11 +393,12 @@ export class CheckpointedConversationWindowState {
       this.retainedTokens > targetTokens &&
       this.nextEligibleToolResultIndex < this.eligibleToolResults.length
     ) {
-      const node = this.eligibleToolResults[this.nextEligibleToolResultIndex];
+      const { node } =
+        this.eligibleToolResults[this.nextEligibleToolResultIndex];
 
       this.releaseToolResultImages(node);
       node.message = pruneToolResultMessage(node.message);
-      node.phase = "pruned";
+      node.pruned = true;
       this.retainedTokens -= node.tokenSavings;
       this.prunedTokens += node.tokenSavings;
       this.eligibleToolResultTokenSavings -= node.tokenSavings;
