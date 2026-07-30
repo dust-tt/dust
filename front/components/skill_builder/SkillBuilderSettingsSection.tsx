@@ -203,15 +203,7 @@ export function SkillBuilderSettingsSection({
       </div>
       {isSkillPublicationEnabled ? (
         <>
-          {!showWorkspaceWideEffectsMessage && (
-            <SkillBuilderAvailabilityMessage
-              availability={availability}
-              owner={owner}
-              restrictedSpaces={nonGlobalSpacesWithRestrictions}
-            />
-          )}
-
-          {showWorkspaceWideEffectsMessage && (
+          {showWorkspaceWideEffectsMessage ? (
             <ContentMessage
               icon={InfoCircle}
               title="This skill has workspace-wide effects"
@@ -230,6 +222,12 @@ export function SkillBuilderSettingsSection({
                 </Hoverable>
               </p>
             </ContentMessage>
+          ) : (
+            <SkillBuilderAvailabilityMessage
+              availability={availability}
+              owner={owner}
+              restrictedSpaces={nonGlobalSpacesWithRestrictions}
+            />
           )}
         </>
       ) : (
