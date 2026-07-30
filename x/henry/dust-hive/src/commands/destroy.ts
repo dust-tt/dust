@@ -1,5 +1,3 @@
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { requireEnvironment } from "../lib/commands";
 import { removeDirenvIntegration } from "../lib/direnv";
 import { removeDockerVolumes, stopDocker } from "../lib/docker";
@@ -34,66 +32,6 @@ async function cleanupMultiplexerSession(envName: string): Promise<void> {
 
   // Then delete it (removes from list)
   await multiplexer.deleteSession(sessionName);
-}
-
-async function findCodexSessionId(envName: string): Promise<string | null> {
-  const codexHome = process.env["CODEX_HOME"] ?? join(homedir(), ".codex");
-  const sessionIndex = Bun.file(join(codexHome, "session_index.jsonl"));
-  if (!(await sessionIndex.exists())) {
-    return null;
-  }
-
-  let sessionId: string | null = null;
-  for (const line of (await sessionIndex.text()).split("\n")) {
-    try {
-      const entry: unknown = JSON.parse(line);
-      if (
-        typeof entry === "object" &&
-        entry !== null &&
-        "id" in entry &&
-        typeof entry.id === "string" &&
-        "thread_name" in entry &&
-        entry.thread_name === envName
-      ) {
-        sessionId = entry.id;
-      }
-    } catch {
-      // Ignore blank or incomplete JSONL entries.
-    }
-  }
-
-  return sessionId;
-}
-
-async function cleanupCodexSession(envName: string): Promise<void> {
-  const sessionId = await findCodexSessionId(envName);
-  if (!sessionId) {
-    return;
-  }
-
-  const codexPath = Bun.which("codex");
-  if (!codexPath) {
-    logger.warn("codex CLI not found, skipping session deletion");
-    return;
-  }
-
-  logger.step("Removing Codex session...");
-  const proc = Bun.spawn([codexPath, "delete", "--force", sessionId], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const [stdout, stderr] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
-
-  if (proc.exitCode === 0) {
-    logger.success("Codex session removed");
-  } else {
-    const message = stderr.trim() || stdout.trim() || `exit code ${proc.exitCode}`;
-    logger.warn(`Could not remove Codex session: ${message}`);
-  }
 }
 
 export interface DestroyOptions {
@@ -300,10 +238,6 @@ export async function destroySingleEnvironment(
   // Clean up multiplexer session
   logger.step("Cleaning up multiplexer session...");
   await cleanupMultiplexerSession(env.name);
-
-  if (!plan.keepWorktree) {
-    await cleanupCodexSession(env.name);
-  }
 
   // Force cleanup any orphaned processes on service ports
   const portsResult = await cleanupEnvironmentPorts(env, options.force);
