@@ -3,13 +3,13 @@ import {
   getDefaultUserSpendLimit,
   setDefaultUserSpendLimit,
 } from "@app/lib/api/workspace/default_user_spend_limit";
-import { MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS } from "@app/types/credits";
 import { Authenticator } from "@app/lib/auth";
 import * as defaultUserCapAlert from "@app/lib/metronome/alerts/spend_limits";
 import * as planType from "@app/lib/metronome/plan_type";
 import * as seatTypes from "@app/lib/metronome/seat_types";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS } from "@app/types/credits";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Subscription } from "@metronome/sdk/resources";

@@ -203,11 +203,7 @@ describe("setGroupSpendLimit", () => {
       workOSGroupId: "fake-sales",
     });
 
-    for (const awuCredits of [
-      -1,
-      MAX_GROUP_SPEND_LIMIT_AWU_CREDITS + 1,
-      1.5,
-    ]) {
+    for (const awuCredits of [-1, MAX_GROUP_SPEND_LIMIT_AWU_CREDITS + 1, 1.5]) {
       const result = await setGroupSpendLimit(auth, {
         groupId: group.sId,
         limit: { kind: "limited", awuCredits },
