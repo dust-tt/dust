@@ -1,3 +1,4 @@
+import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
 import {
@@ -411,13 +412,13 @@ export const sandboxSkill = {
   mcpServers: [{ name: "sandbox" }],
   version: 1,
   icon: "CommandLineIcon",
-  // Auto-equipped for every agent unless the workspace has disabled the
-  // Computer, but not enabled until the agent decides to use it. Dust-like
-  // agents used to auto-enable it so the bash tool was eagerly available, but
-  // auto-enabling promotes the skill to a system skill, which `enable_skill`
-  // cannot resolve: agents told to enable the Computer proactively got
-  // `Skill "Computer" not found` instead.
-  getAutoEnabledOrEquippedForAgentLoop: () => "equipped",
+  // Auto-enabled for dust-like agents, which are heavy users of it.
+  // This allows adding the bash tool eagerly, as it's used for a wide variety of use cases and deferring it would
+  // increase significantly the number of tool searches ran overall.
+  // Auto-equipped for every other agent unless the workspace has disabled the
+  // Computer, but not enabled until the agent decides to use it.
+  getAutoEnabledOrEquippedForAgentLoop: ({ agentConfiguration }) =>
+    isDustLikeAgent(agentConfiguration.sId) ? "enabled" : "equipped",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 
