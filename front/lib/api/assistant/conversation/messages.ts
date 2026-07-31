@@ -40,12 +40,41 @@ import type {
 } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import assert from "assert";
 import uniqBy from "lodash/uniqBy";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
+
+function signalAgentUsageAfterCommit(
+  {
+    agentConfigurationId,
+    workspaceId,
+  }: {
+    agentConfigurationId: string;
+    workspaceId: string;
+  },
+  transaction?: Transaction
+) {
+  const signal = () => {
+    void signalAgentUsage({ agentConfigurationId, workspaceId }).catch(
+      (err) => {
+        logger.warn(
+          { err: normalizeError(err), agentConfigurationId, workspaceId },
+          "Failed to signal agent usage"
+        );
+      }
+    );
+  };
+
+  if (transaction) {
+    transaction.afterCommit(signal);
+  } else {
+    signal();
+  }
+}
 
 export async function attributeUserFromWorkspaceAndEmail(
   workspace: WorkspaceType | null,
@@ -367,10 +396,13 @@ export const createAgentMessages = async (
         );
 
         // Track agent usage when retrying an agent message.
-        void signalAgentUsage({
-          agentConfigurationId: agentConfiguration.sId,
-          workspaceId: owner.sId,
-        });
+        signalAgentUsageAfterCommit(
+          {
+            agentConfigurationId: agentConfiguration.sId,
+            workspaceId: owner.sId,
+          },
+          transaction
+        );
 
         results.push({
           agentAnswer: {
@@ -547,10 +579,13 @@ export const createAgentMessages = async (
                 : null;
 
             // Track agent usage when creating a new agent message.
-            void signalAgentUsage({
-              agentConfigurationId: configuration.sId,
-              workspaceId: owner.sId,
-            });
+            signalAgentUsageAfterCommit(
+              {
+                agentConfigurationId: configuration.sId,
+                workspaceId: owner.sId,
+              },
+              transaction
+            );
 
             results.push({
               agentAnswer: {
