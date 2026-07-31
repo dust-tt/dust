@@ -47,6 +47,9 @@ import {
   makeMessageRateLimitKeyForWorkspaceActor,
   makeMessageRateLimitKeyForWorkspaceActorPerHour,
   makeProgrammaticUsageRateLimitKeyForWorkspace,
+  makeSidekickMessageRateLimitKeyForWorkspaceActor,
+  SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY,
+  SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_WINDOW_SECONDS,
 } from "@app/lib/api/assistant/rate_limits";
 import {
   publishAgentMessagesEvents,
@@ -2436,34 +2439,80 @@ export async function checkMessagesLimit(
     return new Ok(undefined);
   }
 
-  // The "agent_sidekick" origin makes the whole message free (no LLM/tool AWU
-  // billing, see FREE_ORIGINS). It must therefore only ever route to the
-  // sidekick global agent — any other target would let a caller run a real
-  // agent for free. This lives in checkMessagesLimit so it also covers both
-  // new messages and editUserMessage paths.
-  const sidekickAgentMentions = mentions.filter(isAgentMention);
-  if (
-    context.origin === "agent_sidekick" &&
-    sidekickAgentMentions.some(
-      (mention) => mention.configurationId !== GLOBAL_AGENTS_SID.SIDEKICK
-    )
-  ) {
-    logger.warn(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        userId: auth.user()?.sId,
-        mentionedAgentIds: sidekickAgentMentions.map((m) => m.configurationId),
-      },
-      "Message with agent_sidekick origin targets a non-sidekick agent; refusing to bill it as free."
-    );
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "The agent_sidekick origin can only target the sidekick agent.",
-      },
+  // The "agent_sidekick" origin is the builder assistant: an interactive UI
+  // feature backed by free (unbilled) usage. Gate it here (so post, edit, and
+  // retry are all covered):
+  //   1. API keys can't use it — it's UI/session only, never programmatic.
+  //   2. It may only target the sidekick global agent — any other target would
+  //      let a caller run a real agent for free (the sidekick agent runs its
+  //      target via the run_agent tool, not a user-message mention).
+  //   3. It's capped per actor to bound how much free usage a single user can
+  //      generate through the assistant.
+  if (context.origin === "agent_sidekick") {
+    if (auth.isKey()) {
+      logger.warn(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          apiKeyId: auth.key()?.id,
+        },
+        "agent_sidekick origin used with API key auth; rejecting."
+      );
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "The agent_sidekick origin is only available to interactive users.",
+        },
+      });
+    }
+
+    const sidekickAgentMentions = mentions.filter(isAgentMention);
+    if (
+      sidekickAgentMentions.some(
+        (mention) => mention.configurationId !== GLOBAL_AGENTS_SID.SIDEKICK
+      )
+    ) {
+      logger.warn(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          userId: auth.user()?.sId,
+          mentionedAgentIds: sidekickAgentMentions.map(
+            (m) => m.configurationId
+          ),
+        },
+        "Message with agent_sidekick origin targets a non-sidekick agent; refusing to bill it as free."
+      );
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "The agent_sidekick origin can only target the sidekick agent.",
+        },
+      });
+    }
+
+    const remaining = await rateLimiter({
+      key: makeSidekickMessageRateLimitKeyForWorkspaceActor(
+        auth.getNonNullableWorkspace(),
+        getMessageRateLimitActor(auth)
+      ),
+      maxPerTimeframe: SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY,
+      timeframeSeconds:
+        SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_WINDOW_SECONDS,
+      logger,
     });
+    if (remaining <= 0) {
+      return new Err({
+        status_code: 429,
+        api_error: {
+          type: "rate_limit_error",
+          message:
+            "You have reached the sidekick usage limit. Please try again later.",
+        },
+      });
+    }
   }
 
   // Credit-state + programmatic rate-limit gate. Two systems coexist:
