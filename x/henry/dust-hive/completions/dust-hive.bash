@@ -642,7 +642,7 @@ _dhc()  { local COMP_WORDS=("dust-hive" "cool" "${COMP_WORDS[@]:1}"); local COMP
 _dhx()  { local COMP_WORDS=("dust-hive" "spawn" "${COMP_WORDS[@]:1}"); local COMP_CWORD=$(( COMP_CWORD + 1 )); _dust_hive_complete; }
 _dhb() {
   if (( COMP_CWORD == 1 )); then
-    COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "${COMP_WORDS[COMP_CWORD]}"))
+    COMPREPLY=($(compgen -W "$(_dust_hive_warm_envs)" -- "${COMP_WORDS[COMP_CWORD]}"))
   fi
 }
 _dhdb() {
