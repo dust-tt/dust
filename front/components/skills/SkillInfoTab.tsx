@@ -99,7 +99,7 @@ export function SkillInfoTab({
   }, []);
 
   const showAgentFacingDescription =
-    showDescription && !!skill.agentFacingDescription;
+    !!skill.instructions && !!skill.agentFacingDescription;
 
   const showSeparator =
     showAgentFacingDescription ||
