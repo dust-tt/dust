@@ -283,6 +283,9 @@ export function ManageSkillsPage() {
     "skill"
   );
 
+  const isAvailabilityFilterVisible =
+    hasSkillPublicationGovernance;
+
   const knownSkillsById = useMemo(
     () =>
       new Map(
@@ -441,8 +444,27 @@ export function ManageSkillsPage() {
                     counterValue={`${skillsByTab[tab.id].length}`}
                   />
                 ))}
-                {hasSkillPublicationGovernance && activeTab === "active" && (
+                {isAvailabilityFilterVisible && (
                   <div className="ml-auto flex flex-row items-center gap-2 self-center text-sm text-muted-foreground">
+                    {canBypassEditorVisibility && (
+                      <>
+                        <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
+                          <Checkbox
+                            checked={bypassEditorVisibility}
+                            onCheckedChange={(checked) =>
+                              handleShowHiddenChange(checked === true)
+                            }
+                          />
+                          Show hidden skills
+                        </label>
+                        <Tooltip
+                          label="Shows skills you can access as an admin, even if you’re not an editor"
+                          trigger={
+                            <InfoCircle className="h-4 w-4 text-muted-foreground" />
+                          }
+                        />
+                      </>
+                    )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -463,25 +485,6 @@ export function ManageSkillsPage() {
                         ))}
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    {canBypassEditorVisibility && (
-                      <>
-                        <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
-                          <Checkbox
-                            checked={bypassEditorVisibility}
-                            onCheckedChange={(checked) =>
-                              handleShowHiddenChange(checked === true)
-                            }
-                          />
-                          Show hidden skills
-                        </label>
-                        <Tooltip
-                          label="Shows skills you can access as an admin, even if you’re not an editor"
-                          trigger={
-                            <InfoCircle className="h-4 w-4 text-muted-foreground" />
-                          }
-                        />
-                      </>
-                    )}
                   </div>
                 )}
               </TabsList>
