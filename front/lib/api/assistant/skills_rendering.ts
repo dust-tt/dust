@@ -37,7 +37,7 @@ export function getEnabledSkillInstructions(
   return `<${skill.name}>\n${modelInstructions}\n</${skill.name}>`;
 }
 
-function renderAvailableSkillsUserMessage(
+export function renderAvailableSkillsUserMessage(
   skills: Pick<SkillResource, "name" | "agentFacingDescription">[],
   name: "system" | "user"
 ): UserMessageTypeModel | null {
@@ -66,19 +66,6 @@ function renderAvailableSkillsUserMessage(
       `</dust_system>`,
     name
   );
-}
-
-export function renderEquippedSkillsUserMessage(
-  equippedSkills: SkillResource[]
-): UserMessageTypeModel | null {
-  return renderAvailableSkillsUserMessage(equippedSkills, "system");
-}
-
-export function renderFavoriteSkillsUserMessage(
-  favoriteSkills: SkillResource[]
-): UserMessageTypeModel | null {
-  // Only a leading name: "system" message receives the skills cache breakpoint.
-  return renderAvailableSkillsUserMessage(favoriteSkills, "user");
 }
 
 export function renderEnabledSkillUserMessageFromInstructions({

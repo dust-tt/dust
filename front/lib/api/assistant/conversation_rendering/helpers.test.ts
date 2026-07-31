@@ -1,8 +1,5 @@
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
-import {
-  renderEquippedSkillsUserMessage,
-  renderFavoriteSkillsUserMessage,
-} from "@app/lib/api/assistant/skills_rendering";
+import { renderAvailableSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -207,10 +204,10 @@ describe("skill rendering helpers", () => {
         "Review a pull request for code quality and correctness.",
     });
 
-    const message = renderEquippedSkillsUserMessage([
-      commitSkill,
-      reviewPrSkill,
-    ]);
+    const message = renderAvailableSkillsUserMessage(
+      [commitSkill, reviewPrSkill],
+      "system"
+    );
 
     expect(message).toEqual({
       role: "user",
@@ -238,7 +235,7 @@ Pass \`skillName\` exactly as written between backticks above, character for cha
       agentFacingDescription: "Use my favorite skill.",
     });
 
-    const message = renderFavoriteSkillsUserMessage([favoriteSkill]);
+    const message = renderAvailableSkillsUserMessage([favoriteSkill], "user");
 
     expect(message).toMatchObject({
       role: "user",

@@ -34,10 +34,7 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
-import {
-  renderEquippedSkillsUserMessage,
-  renderFavoriteSkillsUserMessage,
-} from "@app/lib/api/assistant/skills_rendering";
+import { renderAvailableSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
@@ -646,9 +643,10 @@ export async function runModel(
     disableFormattingPrompt,
     hasSelectedSpacesOutsideAgentScope,
   });
+  // Only the shared skills message receives the leading skills cache breakpoint.
   const leadingMessages = removeNulls([
-    renderEquippedSkillsUserMessage(equippedSkills),
-    renderFavoriteSkillsUserMessage(favoriteSkills),
+    renderAvailableSkillsUserMessage(equippedSkills, "system"),
+    renderAvailableSkillsUserMessage(favoriteSkills, "user"),
   ]);
 
   const modelConfig = modelInfo.endpoint.modelConfig;
