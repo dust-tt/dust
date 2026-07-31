@@ -9,6 +9,7 @@ import { QUEUE_NAME } from "@app/temporal/analytics_queue/config";
 import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
 import {
   storeAgentAnalyticsWorkflow,
+  storeAgentMessageConsumptionAttributionWorkflow,
   storeAgentMessageFeedbackWorkflow,
 } from "@app/temporal/analytics_queue/workflows";
 import type {
@@ -90,6 +91,60 @@ export async function launchStoreAgentAnalyticsWorkflow({
           error: e,
         },
         "Failed starting agent analytics workflow"
+      );
+    }
+
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchStoreAgentMessageConsumptionAttributionWorkflow({
+  authType,
+  agentLoopArgs,
+}: {
+  authType: AuthenticatorType;
+  agentLoopArgs: AgentLoopArgs;
+}): Promise<Result<undefined, Error>> {
+  const { workspaceId } = authType;
+
+  const { agentMessageId, conversationId } = agentLoopArgs;
+
+  const client = await getTemporalClientForFrontNamespace();
+
+  const workflowId =
+    makeAgentMessageAnalyticsWorkflowId({
+      agentMessageId,
+      conversationId,
+      workspaceId,
+    }) + "-consumption-attribution";
+
+  try {
+    await client.workflow.start(
+      storeAgentMessageConsumptionAttributionWorkflow,
+      {
+        args: [authType, { agentLoopArgs }],
+        taskQueue: QUEUE_NAME,
+        workflowId,
+        searchAttributes: {
+          conversationId: [conversationId],
+          workspaceId: [workspaceId],
+        },
+        memo: {
+          agentMessageId,
+          workspaceId,
+        },
+      }
+    );
+    return new Ok(undefined);
+  } catch (e) {
+    if (!(e instanceof WorkflowExecutionAlreadyStartedError)) {
+      logger.error(
+        {
+          workflowId,
+          agentMessageId,
+          error: e,
+        },
+        "Failed starting agent message consumption attribution workflow"
       );
     }
 
