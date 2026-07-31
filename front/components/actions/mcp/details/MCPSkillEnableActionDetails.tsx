@@ -72,7 +72,7 @@ export function MCPSkillEnableActionDetails({
       visual={SKILL_ICON}
     >
       {showSidebarDetails && (
-        <div className="dd-privacy-mask flex flex-col gap-5 py-4 pl-6">
+        <div className="dd-privacy-mask flex flex-col gap-5 py-4 pl-6 text-sm">
           {outputItems.length > 0 && (
             <div className="flex flex-col gap-2 text-sm text-muted-foreground">
               {outputItems.map((o, index) => (
