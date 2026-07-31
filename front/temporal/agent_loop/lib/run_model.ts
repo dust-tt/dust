@@ -16,7 +16,10 @@ import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
-import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
+import {
+  constructPromptMultiActions,
+  renderToolUseDisabledUserMessage,
+} from "@app/lib/api/assistant/generation";
 import { buildToolsetsContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
   globalAgentInjectsToolsets,
@@ -705,6 +708,14 @@ export async function runModel(
     return null;
   }
 
+  if (disableToolUse) {
+    // Tool choice "none" alone leaves the model with nothing to do; spell it out
+    // so it writes an answer. Its tokens sit outside the render budget.
+    modelConversationRes.value.modelConversation.messages.push(
+      renderToolUseDisabledUserMessage()
+    );
+  }
+
   const { specifications, missingReplayedToolNames } =
     buildSpecificationsWithReplayPlaceholders(baseSpecifications, {
       modelConversation: modelConversationRes.value.modelConversation,
@@ -1041,6 +1052,12 @@ export async function runModel(
         stopReason: stopReason ?? "unknown",
         contentCount: output.contents.length,
         contentTypes: output.contents.map((c) => c.type),
+        reasoningEffort: modelInfo.reasoningEffort,
+        chainOfThoughtLength: (
+          nativeChainOfThought ||
+          contentParser.getChainOfThought() ||
+          ""
+        ).length,
         prunedContext: modelConversationRes.value.prunedContext,
         inputTokens: modelConversationRes.value.tokensUsed,
         toolSearchEnabled,
