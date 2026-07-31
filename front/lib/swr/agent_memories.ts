@@ -1,10 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type {
-  GetAgentMemoriesResponseBody,
-  PatchAgentMemoryRequestBody,
-} from "@app/types/api/assistant/configuration/memories";
+import type { GetAgentMemoriesResponseBody } from "@app/types/api/assistant/configuration/memories";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
@@ -36,59 +33,6 @@ export function useAgentMemoriesForUser({
     isMemoriesError: !!error,
     mutateMemories: mutate,
   };
-}
-
-export function useUpdateAgentMemory({
-  owner,
-  agentConfiguration,
-}: {
-  owner: LightWorkspaceType;
-  agentConfiguration: AgentConfigurationType;
-}) {
-  const sendNotification = useSendNotification();
-  const { mutateMemories } = useAgentMemoriesForUser({
-    owner,
-    agentConfiguration,
-    disabled: true,
-  });
-
-  const updateMemory = useCallback(
-    async (memoryId: string, body: PatchAgentMemoryRequestBody) => {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/memories/${memoryId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        }
-      );
-
-      if (!res.ok) {
-        const json = await res.json();
-        sendNotification({
-          type: "error",
-          title: "Failed to update memory",
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          description: json.error?.message || "Failed to update memory",
-        });
-        return null;
-      }
-
-      sendNotification({
-        type: "success",
-        title: "Memory updated",
-      });
-
-      void mutateMemories();
-      const json = await res.json();
-      return json.memory;
-    },
-    [owner.sId, agentConfiguration, sendNotification, mutateMemories]
-  );
-
-  return { updateMemory };
 }
 
 export function useDeleteAgentMemory({

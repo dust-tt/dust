@@ -1,5 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   getMcpServerDisplayName,
   getMcpServerViewDisplayName,
@@ -19,11 +18,7 @@ import type {
   MCPServerType,
   MCPServerTypeWithViews,
   MCPServerViewType,
-  PatchMCPServerBody,
-  PatchMCPServerResponseBody,
-  PatchMCPServerToolsPermissionsResponseBody,
   SyncMCPServerResponseBody,
-  UpdateMCPToolSettingsBodyType,
 } from "@app/lib/api/mcp";
 import type {
   PatchMCPServerViewBody,
@@ -38,7 +33,7 @@ import type {
   PostConnectionResponseBody,
 } from "@app/lib/resources/mcp_server_connection_resource";
 import type { GetMCPServerViewsResponseBody } from "@app/lib/resources/mcp_server_view_resource";
-import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -519,67 +514,6 @@ export function useSyncRemoteMCPServer(
 /**
  * Hook to update an MCP server
  */
-export function useUpdateMCPServer(
-  owner: LightWorkspaceType,
-  // Using the view to get the proper name/description
-  mcpServerView: MCPServerViewType
-) {
-  const sendNotification = useSendNotification();
-  const { mutateMCPServer } = useMCPServer({
-    disabled: true,
-    owner,
-    serverId: mcpServerView.server.sId,
-  });
-
-  const { mutate } = useMutateMCPServersViewsForAdmin(owner);
-
-  const updateServer = async (data: PatchMCPServerBody): Promise<boolean> => {
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }
-    );
-
-    if (!response.ok) {
-      const body = await response.json();
-      sendNotification({
-        title: `Error updating server`,
-        type: "error",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: body.error?.message || "An error occurred",
-      });
-
-      return false;
-    }
-
-    const result: WithAPIErrorResponse<PatchMCPServerResponseBody> =
-      await response.json();
-    if (isAPIErrorResponse(result)) {
-      sendNotification({
-        title: `Error updating server`,
-        type: "error",
-        description: result.error?.message || "An error occurred",
-      });
-      return false;
-    }
-
-    sendNotification({
-      title: `${getMcpServerViewDisplayName(mcpServerView)} updated`,
-      type: "success",
-      description: `${getMcpServerViewDisplayName(mcpServerView)} has been successfully updated.`,
-    });
-
-    void mutateMCPServer();
-    void mutate();
-    return true;
-  };
-
-  return { updateServer };
-}
-
 /**
  * Hook to update an MCP serverView
  */
@@ -815,69 +749,6 @@ export function useDeleteMCPServerConnection({
   );
 
   return { deleteMCPServerConnection };
-}
-
-export function useUpdateMCPServerToolsSettings({
-  owner,
-  mcpServerView,
-}: {
-  owner: LightWorkspaceType;
-  mcpServerView: MCPServerViewType;
-}) {
-  const space = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: mcpServerView.spaceId,
-  });
-  const { mutateMCPServerViews } = useMCPServerViews({
-    owner,
-    space: space.spaceInfo ?? undefined,
-    disabled: true,
-  });
-
-  const sendNotification = useSendNotification();
-
-  const updateToolSettings = async ({
-    toolName,
-    permission,
-    enabled,
-  }: {
-    toolName: string;
-    permission: MCPToolStakeLevelType;
-    enabled: boolean;
-  }): Promise<PatchMCPServerToolsPermissionsResponseBody> => {
-    const body: UpdateMCPToolSettingsBodyType = {
-      permission,
-      enabled,
-    };
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}/tools/${toolName}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-    if (!response.ok) {
-      const body = await response.json();
-      throw new Error(
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        body.error?.message || "Failed to update MCP tool settings"
-      );
-    }
-
-    sendNotification({
-      type: "success",
-      title: "Settings updated",
-      description: `The settings for ${toolName} have been updated.`,
-    });
-
-    void mutateMCPServerViews();
-    return response.json();
-  };
-
-  return { updateToolSettings };
 }
 
 export function useCreatePersonalConnection(owner: LightWorkspaceType) {

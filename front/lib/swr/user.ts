@@ -111,16 +111,6 @@ export function useCompleteUserOnboarding() {
   return { completeUserOnboarding };
 }
 
-export function useDeleteMetadata() {
-  const deleteMetadata = async (prefix: string) => {
-    return clientFetch(`/api/user/metadata/${encodeURIComponent(prefix)}`, {
-      method: "DELETE",
-    });
-  };
-
-  return { deleteMetadata };
-}
-
 export function useDeleteToolApproval() {
   const deleteToolApproval = async (
     owner: LightWorkspaceType,
@@ -133,27 +123,6 @@ export function useDeleteToolApproval() {
   };
 
   return { deleteToolApproval };
-}
-
-export function useIsOnboardingConversation(
-  conversationId: string | null,
-  workspaceId: string
-) {
-  const { metadata, isMetadataLoading } = useUserMetadata(
-    "onboarding:conversation",
-    {
-      disabled: !conversationId,
-      workspaceId,
-    }
-  );
-
-  return {
-    isOnboardingConversation:
-      !!conversationId &&
-      !!metadata?.value &&
-      metadata.value === conversationId,
-    isLoading: isMetadataLoading,
-  };
 }
 
 export function usePatchUser() {

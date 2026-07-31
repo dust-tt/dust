@@ -410,67 +410,6 @@ export function useFileContent({
   };
 }
 
-export function useSkillFileContent({
-  skillId,
-  fileId,
-  owner,
-  disabled,
-}: {
-  skillId: string | null;
-  fileId: string | null;
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-}) {
-  const { data, error, mutate, isLoading } = useSWRWithDefaults(
-    skillId && fileId
-      ? `/api/w/${owner.sId}/skills/${skillId}/files/${fileId}/content`
-      : null,
-    async (url: string) => {
-      const response = await clientFetch(url);
-      if (!response.ok) {
-        const errorData = await getErrorFromResponse(response);
-        throw new Error(errorData.message);
-      }
-      return response.text();
-    },
-    { disabled }
-  );
-
-  return {
-    fileContent: data ?? null,
-    isFileContentLoading: isLoading,
-    fileContentError: error ? normalizeError(error) : null,
-    mutateFileContent: mutate,
-  };
-}
-
-export function useFileSignedUrl({
-  fileId,
-  owner,
-  config,
-}: {
-  fileId: string | null;
-  owner: LightWorkspaceType;
-  config?: SWRConfiguration & { disabled?: boolean };
-}) {
-  const { fetcher } = useFetcher();
-  const signedUrlFetcher: Fetcher<{ signedUrl: string }> = fetcher;
-  const isDisabled = config?.disabled ?? !fileId;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    isDisabled ? null : `/api/w/${owner.sId}/files/${fileId}/signed-url`,
-    signedUrlFetcher,
-    config
-  );
-
-  return {
-    signedUrl: data?.signedUrl ?? null,
-    isLoading: isDisabled ? false : !error && !data,
-    error,
-    mutate,
-  };
-}
-
 export function useShareInteractiveContentFile({
   fileId,
   owner,

@@ -11,7 +11,6 @@ import {
   emptyArray,
   getErrorFromResponse,
   useFetcher,
-  useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
@@ -38,7 +37,7 @@ import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { PodType, SpaceKind, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
 export function useSpaces({
@@ -870,89 +869,5 @@ export function useSpacesSearch({
     nextPageCursor: data?.nextPageCursor || null,
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     resultsCount: data?.resultsCount || null,
-  };
-}
-
-export function useSpacesSearchWithInfiniteScroll({
-  disabled = false,
-  includeDataSources = false,
-  nodeIds,
-  owner,
-  search,
-  spaceIds,
-  viewType,
-  pageSize = 25,
-  allowAdminSearch = false,
-  parentId,
-}: SpacesSearchParams & { pageSize?: number }): {
-  isSearchLoading: boolean;
-  isSearchError: boolean;
-  isSearchValidating: boolean;
-  searchResultNodes: DataSourceContentNode[];
-  nextPage: () => Promise<void>;
-  hasMore: boolean;
-} {
-  const { fetcherWithBody } = useFetcher();
-  const body = {
-    query: search,
-    viewType,
-    nodeIds,
-    spaceIds,
-    includeDataSources,
-    limit: pageSize,
-    allowAdminSearch,
-    parentId,
-  };
-
-  // Only perform a query if we have a valid search
-  const url =
-    (search && search.length >= 1) || nodeIds
-      ? `/api/w/${owner.sId}/search`
-      : null;
-
-  const { data, error, setSize, size, isValidating, isLoading } =
-    useSWRInfiniteWithDefaults(
-      (_, previousPageData) => {
-        if (!url || disabled) {
-          return null;
-        }
-
-        const params = new URLSearchParams();
-
-        params.append("limit", pageSize.toString());
-
-        if (previousPageData?.nextPageCursor) {
-          params.append("cursor", previousPageData.nextPageCursor);
-        }
-
-        return JSON.stringify([url + "?" + params.toString(), body]);
-      },
-      async (fetchKey: string) => {
-        if (!fetchKey) {
-          return null;
-        }
-
-        const [urlWithParams, bodyWithCursor] = JSON.parse(fetchKey);
-        return fetcherWithBody([urlWithParams, bodyWithCursor, "POST"]);
-      },
-      {
-        revalidateOnFocus: false,
-        revalidateOnReconnect: false,
-        revalidateFirstPage: false,
-      }
-    );
-
-  return {
-    searchResultNodes: useMemo(
-      () => (data ? data.flatMap((d) => (d ? d.nodes : [])) : []),
-      [data]
-    ),
-    isSearchLoading: isLoading,
-    isSearchError: error,
-    isSearchValidating: isValidating,
-    hasMore: data?.[size - 1] ? data[size - 1]?.nextPageCursor !== null : false, // check the last page of the array to see if there is a next page or not
-    nextPage: useCallback(async () => {
-      await setSize((size) => size + 1);
-    }, [setSize]),
   };
 }

@@ -10,7 +10,6 @@ import {
 import type { GetTriggerEstimationResponseBody } from "@app/lib/triggers/trigger_usage_estimation";
 import type {
   GetTriggersResponseBody,
-  GetUserTriggersResponseBody,
   PatchTriggersRequestBody,
   PostTextAsCronRuleRequestBody,
   PostTextAsCronRuleResponseBody,
@@ -51,31 +50,6 @@ export function useAgentTriggers({
   return {
     triggers: data?.triggers ?? emptyArray(),
     isTriggersLoading: !!agentConfigurationId && !error && !data && !disabled,
-    isTriggersError: error,
-    isTriggersValidating: isValidating,
-    mutateTriggers: mutate,
-  };
-}
-
-export function useUserTriggers({
-  workspaceId,
-  disabled,
-}: {
-  workspaceId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const userTriggersFetcher: Fetcher<GetUserTriggersResponseBody> = fetcher;
-
-  const { data, error, mutate, isValidating } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/me/triggers`,
-    userTriggersFetcher,
-    { disabled }
-  );
-
-  return {
-    triggers: data?.triggers ?? emptyArray(),
-    isTriggersLoading: !error && !data && !disabled,
     isTriggersError: error,
     isTriggersValidating: isValidating,
     mutateTriggers: mutate,
