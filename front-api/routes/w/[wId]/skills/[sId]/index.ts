@@ -410,10 +410,11 @@ app.patch(
       ...additionalRequestedSpaceIds,
     ]);
 
-    const podSpaceValidation = await validateAtMostOnePodSpace(
+    const requestedSpaces = await SpaceResource.fetchByModelIds(
       auth,
       requestedSpaceIds
     );
+    const podSpaceValidation = validateAtMostOnePodSpace(requestedSpaces);
     if (podSpaceValidation.isErr()) {
       return apiError(ctx, {
         status_code: 400,
