@@ -4,7 +4,10 @@ import {
   sendEmailReplyOnError,
 } from "@app/lib/api/assistant/email/email_reply";
 import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
-import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities/analytics";
+import {
+  launchAgentMessageAnalytics,
+  launchAgentMessageConsumptionAttribution,
+} from "@app/temporal/agent_loop/activities/analytics";
 import {
   creditsExhaustedMessage,
   finalizeCancellation,
@@ -34,6 +37,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
     launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttribution(auth, agentLoopArgs),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
@@ -61,6 +65,7 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
     launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttribution(auth, agentLoopArgs),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
@@ -88,6 +93,7 @@ export async function finalizeInterruptedAgentLoopActivity(
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
     launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttribution(auth, agentLoopArgs),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
@@ -107,6 +113,7 @@ export async function finalizeCancelledAgentLoopActivity(
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
     launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttribution(auth, agentLoopArgs),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
@@ -129,6 +136,7 @@ export async function finalizeCreditStoppedAgentLoopActivity(
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
     launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttribution(auth, agentLoopArgs),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     computeAndStoreAgentMessageCredits(auth, {
@@ -150,6 +158,7 @@ export async function finalizeErroredAgentLoopActivity(
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
     launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttribution(auth, agentLoopArgs),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     computeAndStoreAgentMessageCredits(auth, agentLoopArgs),

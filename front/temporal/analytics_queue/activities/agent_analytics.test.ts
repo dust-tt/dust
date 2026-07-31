@@ -7,7 +7,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { storeAgentAnalyticsActivity } from "@app/temporal/analytics_queue/activities";
+import { storeAgentAnalyticsActivity } from "@app/temporal/analytics_queue/activities/agent_analytics";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";

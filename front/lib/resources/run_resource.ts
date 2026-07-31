@@ -37,6 +37,26 @@ import { Op, Sequelize } from "sequelize";
 
 type RunResourceWithApp = RunResource & { app: AppModel };
 
+export interface RunUsageType {
+  completionTokens: number;
+  // Provider-reported reasoning subset of completionTokens.
+  reasoningTokens: number | null;
+  modelId: ModelIdType;
+  promptTokens: number;
+  providerId: ModelProviderIdType;
+  cachedTokens: number | null;
+  // Optional: tokens spent writing to cache (e.g., Anthropic cache creation)
+  cacheCreationTokens?: number | null;
+  costMicroUsd: number;
+  isBatch: boolean;
+}
+
+interface RunUsageWithRunKeyType extends RunUsageType {
+  runKey: string | null;
+  runUsageModelId: ModelId;
+  runModelId: ModelId;
+}
+
 export type FetchRunOptions<T extends boolean> = {
   includeApp?: T;
   since?: Date;
@@ -200,9 +220,7 @@ export class RunResource extends BaseResource<RunModel> {
     }: {
       runs: RunResource[];
     }
-  ): Promise<
-    (RunUsageType & { runModelId: ModelId; runKey: string | null })[]
-  > {
+  ): Promise<RunUsageWithRunKeyType[]> {
     const runModelIds = runs.map((run) => run.id);
     if (runModelIds.length === 0) {
       return [];
@@ -223,6 +241,7 @@ export class RunResource extends BaseResource<RunModel> {
     });
 
     return usages.map((usage) => ({
+      runUsageModelId: usage.id,
       runModelId: usage.runId,
       runKey: runKeyByModelId.get(usage.runId) ?? null,
       completionTokens: usage.completionTokens,
@@ -481,18 +500,4 @@ function addCreatedAtClause(where: WhereOptions<RunModel>) {
     ...where,
     createdAt: { [Op.gt]: getRunExecutionsDeletionCutoffDate() },
   };
-}
-
-export interface RunUsageType {
-  completionTokens: number;
-  // Provider-reported reasoning subset of completionTokens.
-  reasoningTokens: number | null;
-  modelId: ModelIdType;
-  promptTokens: number;
-  providerId: ModelProviderIdType;
-  cachedTokens: number | null;
-  // Optional: tokens spent writing to cache (e.g., Anthropic cache creation)
-  cacheCreationTokens?: number | null;
-  costMicroUsd: number;
-  isBatch: boolean;
 }
