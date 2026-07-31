@@ -12,7 +12,10 @@ import { usePresetActionHandler } from "@app/components/agent_builder/capabiliti
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSheetStateForActionEdit } from "@app/components/agent_builder/skills/sheetRouting";
 import { useSkillsAndActionsState } from "@app/components/agent_builder/skills/skillsAndActionsState";
-import type { SheetState } from "@app/components/agent_builder/skills/types";
+import type {
+  CapabilitiesSheetState,
+  SheetState,
+} from "@app/components/agent_builder/skills/types";
 import { isCapabilitiesSheetOpen } from "@app/components/agent_builder/skills/types";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
@@ -38,7 +41,7 @@ import {
   ShapesPlus,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 interface SkillCardProps {
@@ -259,6 +262,13 @@ export function AgentBuilderCapabilitiesBlock({
   const hasCapabilitiesConfigured =
     actionFields.length > 0 || skillFields.length > 0;
 
+  const lastCapabilitiesState = useRef<CapabilitiesSheetState>({
+    state: "selection",
+  });
+  if (isCapabilitiesSheetOpen(sheetState)) {
+    lastCapabilitiesState.current = sheetState;
+  }
+
   return (
     <AgentBuilderSectionContainer
       title="Capabilities and knowledge"
@@ -344,7 +354,7 @@ export function AgentBuilderCapabilitiesBlock({
         sheetState={
           isCapabilitiesSheetOpen(sheetState)
             ? sheetState
-            : { state: "selection" }
+            : lastCapabilitiesState.current
         }
         onClose={handleCloseSheet}
         onCapabilitiesSave={handleCapabilitiesSave}
