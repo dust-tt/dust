@@ -1,5 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
@@ -82,11 +81,6 @@ export interface ConversationAsset {
   exchanges: Exchange[];
 }
 
-export interface ConversationsAsset {
-  customAgentConversations: ConversationAsset[];
-  dustAgentConversations: ConversationAsset[];
-}
-
 export interface FeedbackAsset {
   conversationId: string;
   agentMessageId: string;
@@ -97,10 +91,6 @@ export interface FeedbackAsset {
 export interface CreatedAgent {
   sId: string;
   name: string;
-}
-
-export interface SeedSpaceResult {
-  restrictedSpace: SpaceResource | undefined;
 }
 
 export type SuggestionAsset = AgentSuggestionData & {

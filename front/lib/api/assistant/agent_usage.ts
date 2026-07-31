@@ -2,7 +2,6 @@ import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
@@ -294,36 +293,4 @@ export async function signalAgentUsage({
       );
     }
   }
-}
-
-type UsersUsageCount = {
-  userId: number;
-  messageCount: number;
-  timePeriodSec: number;
-};
-
-export async function getAgentUsers(
-  auth: Authenticator,
-  agentConfiguration: LightAgentConfigurationType,
-  rankingUsageDays: number = RANKING_USAGE_DAYS
-): Promise<UsersUsageCount[]> {
-  const mentions = await ConversationResource.listMentionsByConfiguration(
-    auth,
-    {
-      agentConfiguration,
-      rankingUsageDays,
-    }
-  );
-
-  return mentions.map((mention) => {
-    const castMention = mention as unknown as {
-      userId: number;
-      count: number;
-    };
-    return {
-      userId: castMention.userId,
-      messageCount: castMention.count,
-      timePeriodSec: rankingUsageDays * 24 * 60 * 60,
-    };
-  });
 }

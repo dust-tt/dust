@@ -105,7 +105,3 @@ export function parseMCPDiagnosticReport(
     return null;
   }
 }
-
-export function formatDiagnosticCheckName(check: string): string {
-  return check.replaceAll("_", " ");
-}

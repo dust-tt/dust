@@ -389,21 +389,6 @@ export async function searchMembers(
   };
 }
 
-export async function getMembersCount(
-  auth: Authenticator,
-  { activeOnly = false }: { activeOnly?: boolean } = {}
-): Promise<number> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return 0;
-  }
-
-  return MembershipResource.getMembersCountForWorkspace({
-    workspace: owner,
-    activeOnly,
-  });
-}
-
 export async function checkWorkspaceSeatAvailabilityUsingAuth(
   auth: Authenticator
 ): Promise<boolean> {
@@ -597,12 +582,6 @@ export async function setWorkspaceRelocated(
   owner: LightWorkspaceType
 ): Promise<Result<void, Error>> {
   return updateWorkspaceMetadata(owner, { maintenance: "relocation-done" });
-}
-
-export function isWorkspaceRelocationOngoing(
-  owner: LightWorkspaceType
-): boolean {
-  return owner.metadata?.maintenance === "relocation";
 }
 
 export function isWorkspaceRelocationDone(owner: LightWorkspaceType): boolean {
@@ -804,10 +783,6 @@ export type GetProvisioningStatusResponseBody = {
 export type GetWelcomeResponseBody = {
   isFirstAdmin: boolean;
   emailProvider: EmailProviderType;
-};
-
-export type PostWorkspaceResponseBody = {
-  workspace: WorkspaceType;
 };
 
 export type GetWorkspaceResponseBody = {
