@@ -1,5 +1,3 @@
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-
 export function buildProjectKickoffPrompt({
   projectName,
   userFullName,
@@ -47,5 +45,3 @@ Use quick replies for 4 and 5, for example:
 Always be helpful and action-oriented.
 </dust_system>`;
 }
-
-export const PROJECT_KICKOFF_AGENT = GLOBAL_AGENTS_SID.DUST;

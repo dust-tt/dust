@@ -3,7 +3,6 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import { isDevelopment } from "@app/types/shared/env";
 import type { TagType } from "@app/types/tag";
-import isEqual from "lodash/isEqual";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
 
@@ -60,24 +59,6 @@ export const timeAgoFrom = (
 
   return "<1m";
 };
-
-export function getWeekBoundaries(date: Date): {
-  startDate: Date;
-  endDate: Date;
-} {
-  const startDate = new Date(date);
-  startDate.setHours(0, 0, 0, 0);
-  const diff =
-    startDate.getDate() -
-    startDate.getDay() +
-    (startDate.getDay() === 0 ? -6 : 1);
-  startDate.setDate(diff);
-
-  const endDate = new Date(startDate);
-  endDate.setDate(startDate.getDate() + 7);
-
-  return { startDate, endDate };
-}
 
 /**
  * Formats a timestamp to a human-readable date string.
@@ -149,23 +130,6 @@ export const isDomain = (domain: string | null): boolean => {
     return false;
   }
   return DOMAIN_REGEX.test(domain);
-};
-
-export const objectToMarkdown = (obj: any, indent = 0) => {
-  let markdown = "";
-
-  for (const key in obj) {
-    if (typeof obj[key] === "object") {
-      markdown += `${"  ".repeat(indent)}- **${key}**:\n${objectToMarkdown(
-        obj[key],
-        indent + 1
-      )}`;
-    } else {
-      markdown += `${"  ".repeat(indent)}- **${key}**: ${obj[key]}\n`;
-    }
-  }
-
-  return markdown;
 };
 
 /**
@@ -341,48 +305,6 @@ export function sanitizeJSONOutput(obj: unknown): unknown {
 
 export function removeDiacritics(input: string): string {
   return input.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-}
-
-/**
- * Compares two 2D arrays for equality, ignoring the order of elements.
- * Does not mutate input arrays.
- */
-export function isArrayEqual2DUnordered(
-  first: unknown[][],
-  second: unknown[][]
-): boolean {
-  if (first.length !== second.length) {
-    return false;
-  }
-
-  // Sort both arrays and their inner arrays.
-  const sort2D = (arr: unknown[][]) =>
-    [...arr].map((row) => [...row].sort()).sort();
-
-  return isEqual(sort2D(first), sort2D(second));
-}
-
-// Postgres requires all subarrays to be of the same length.
-// This function ensures that all subarrays are of the same length
-// by repeating the last element of each subarray until all subarrays have the same length.
-// Make sure that it's okay to use this function for your use case.
-export function normalizeArrays<T>(array2D: T[][]): T[][] {
-  // Copy the array to avoid mutating the original array.
-  const array2DCopy = array2D.map((array) => [...array]);
-
-  const longestArray = array2DCopy.reduce(
-    (max, req) => Math.max(max, req.length),
-    0
-  );
-  // for each array, repeatedly add the last id until array is of longest array length
-  const updatedArrays = array2DCopy.map((array) => {
-    while (array.length < longestArray) {
-      array.push(array[array.length - 1]);
-    }
-    return array;
-  });
-
-  return updatedArrays;
 }
 
 // from http://detectmobilebrowsers.com/

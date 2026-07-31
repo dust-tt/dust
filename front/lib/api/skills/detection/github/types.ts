@@ -54,5 +54,3 @@ export const GitHubBlobResponseSchema = z
   .passthrough();
 
 export type GitHubTreeEntry = z.infer<typeof GitHubTreeEntrySchema>;
-export type GitHubTreeResponse = z.infer<typeof GitHubTreeResponseSchema>;
-export type GitHubBlobResponse = z.infer<typeof GitHubBlobResponseSchema>;
