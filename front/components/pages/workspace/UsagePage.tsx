@@ -1194,7 +1194,10 @@ export function UsagePage() {
                     </div>
                   )}
                   {membersTab === "history" && (
-                    <CsvDownloadButton {...upgradeRequestsHistoryCsvDownload} />
+                    <CsvDownloadButton
+                      {...upgradeRequestsHistoryCsvDownload}
+                      label="Export to CSV"
+                    />
                   )}
                 </div>
                 <div className="flex flex-col gap-2 pt-2">
