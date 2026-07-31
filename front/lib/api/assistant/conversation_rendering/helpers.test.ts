@@ -218,8 +218,10 @@ describe("skill rendering helpers", () => {
           text: `<dust_system>
 The following skills are available for use with the skill_management__enable_skill tool:
 
-- **commit**: Create a git commit with a descriptive message.
-- **review-pr**: Review a pull request for code quality and correctness.
+- \`commit\`: Create a git commit with a descriptive message.
+- \`review-pr\`: Review a pull request for code quality and correctness.
+
+Pass \`skillName\` exactly as written between backticks above: same case, same punctuation, and including any leading \`[Category]\` prefix. Do not add brackets, invent a prefix, or otherwise reformat the name. Names are matched exactly, so a modified name will not be found.
 </dust_system>`,
         },
       ],
