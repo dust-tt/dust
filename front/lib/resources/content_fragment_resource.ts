@@ -767,6 +767,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           contentFragmentType: "file",
           expiredReason: fr.expiredReason,
           path: null,
+          processedPath: null,
           skipDataSourceIndexing: false,
           skipFileProcessing: false,
           fileId: null,
@@ -826,6 +827,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let isInProjectContext = false;
       let hidden = true;
       let path: string | null = null;
+      let processedPath: string | null = null;
       let skipDataSourceIndexing = false;
       let skipFileProcessing = false;
 
@@ -847,6 +849,11 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           conversationId: fileResource.useCaseMetadata?.conversationId,
           mountFilePath: fileResource.mountFilePath,
         });
+        processedPath = getConversationFilePath({
+          workspaceId: workspace.sId,
+          conversationId: fileResource.useCaseMetadata?.conversationId,
+          mountFilePath: fileResource.getTextProcessedMountFilePath(),
+        });
       }
 
       if (source.kind === "project_context") {
@@ -862,6 +869,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         contentFragmentType: "file",
         expiredReason: null,
         path,
+        processedPath,
         skipDataSourceIndexing,
         skipFileProcessing,
         fileId: fileStringId,
@@ -1185,9 +1193,16 @@ function renderFileOrAttachmentXml(
   if (isNewFileExplorer) {
     const path = "path" in attachment ? attachment.path : null;
     const pathAttr = path ? ` path="${path}"` : "";
+    // Binary originals with a text processed version (audio transcripts) are mounted next to the
+    // original. Point the model at the sibling: no tool of ours can read the original.
+    const processedPath =
+      "processedPath" in attachment ? attachment.processedPath : null;
+    const processedPathAttr = processedPath
+      ? ` processedPath="${processedPath}"`
+      : "";
     return content
-      ? `<file name="${attachment.title}"${pathAttr}>${content}\n</file>`
-      : `<file name="${attachment.title}"${pathAttr}/>`;
+      ? `<file name="${attachment.title}"${pathAttr}${processedPathAttr}>${content}\n</file>`
+      : `<file name="${attachment.title}"${pathAttr}${processedPathAttr}/>`;
   }
 
   return renderAttachmentXml({ attachment, content: content ?? null });
