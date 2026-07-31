@@ -9,11 +9,11 @@ import {
 import {
   getEffectiveSpendCapAwuCreditsForUser,
   getEsConsumedAwuCreditsForUser,
-  getNonCreditPricedSpendCapAwuCreditsForUser,
 } from "@app/lib/api/credits/members_usage";
 import { reconcileUser } from "@app/lib/api/metronome/reconcile_credit_state";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
+import { getNonCreditPricedDefaultUserSpendLimit } from "@app/lib/api/workspace/default_user_spend_limit";
 import type { Authenticator } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
 import {
@@ -499,23 +499,18 @@ export async function isUserSpendLimitRateCapReached(
  * Per-user spend cap for workspaces that are *not* on a credit-priced plan. Same
  * Redis fixed-window counter as `isUserSpendLimitRateCapReached`, with the two
  * Metronome-dependent inputs replaced:
- *   - the threshold comes from `getNonCreditPricedSpendCapAwuCreditsForUser`
- *     (Postgres only — no seat allowance, no Metronome alert);
+ *   - the threshold is the optional workspace-wide default.
  *   - the cycle is the UTC calendar month, since there is no contract billing
  *     period to anchor on.
  *
- * The workspace credit pool and the Metronome per-user cap do not apply to these
- * workspaces, so this is their only per-user credit gate. Returns `false` (does
- * not block) when no cap is configured, or on a Redis read error (fail-open).
+ * Returns `false` when no limit is configured, or on a Redis read error (fail-open).
  */
 export async function isNonCreditPricedUserSpendLimitReached(
   auth: Authenticator,
   { user }: { user: UserResource }
 ): Promise<boolean> {
-  const threshold = await getNonCreditPricedSpendCapAwuCreditsForUser(auth, {
-    user,
-  });
-  if (threshold === null) {
+  const threshold = await getNonCreditPricedDefaultUserSpendLimit(auth);
+  if (threshold === 0) {
     return false;
   }
 
