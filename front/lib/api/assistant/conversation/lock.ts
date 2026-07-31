@@ -19,7 +19,7 @@ export async function getConversationRankVersionLock(
   conversation: ConversationWithoutContentType | ConversationResource,
   t: Transaction
 ) {
-  const now = new Date();
+  const startMs = performance.now();
   // Get a lock using the unique lock key (number withing postgresql BigInt range).
   const hash = md5(`conversation_message_rank_version_${conversation.id}`);
   const lockKey = parseInt(hash, 16) % 9999999999;
@@ -29,15 +29,29 @@ export async function getConversationRankVersionLock(
     replacements: { key: lockKey },
   });
 
+  const acquiredAtMs = performance.now();
+
   logger.info(
     {
       workspaceId: auth.getNonNullableWorkspace().sId,
       conversationId: conversation.sId,
-      duration: new Date().getTime() - now.getTime(),
+      waitMs: acquiredAtMs - startMs,
       lockKey,
     },
     "[ASSISTANT_TRACE] Advisory lock acquired"
   );
+
+  t.afterCommit(() => {
+    logger.info(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        conversationId: conversation.sId,
+        heldMs: performance.now() - acquiredAtMs,
+        lockKey,
+      },
+      "[ASSISTANT_TRACE] Advisory lock released"
+    );
+  });
 }
 
 export async function getNextConversationMessageRank(
