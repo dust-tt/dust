@@ -197,7 +197,7 @@ function constructSkillsSection({
     `Skill references can also appear as \`<skill id=\"...\" name=\"...\" />\` tags in user messages or enabled skill instructions. ` +
     "These tags are strong hints that the referenced skill is relevant, including when a skill author nested one skill inside another. " +
     `You can enable the skill using \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value, copied verbatim.\n` +
-    "Skill names are matched exactly. Always copy the name character for character from the available-skills list or the tag, and never reformat, re-case, or add a bracketed prefix to it.\n" +
+    "Skill names are matched exactly. Always copy the name character for character from the available-skills list or the tag, and never reformat or re-case it.\n" +
     "It is not useful to enable skills that are already enabled, this would only output the skill's content again.\n" +
     "Referenced skills may not appear in the available-skills list; a tag is enough to enable the skill by name. " +
     "Only enable skills you actually need, because enabling a skill loads its full instructions into context.\n" +

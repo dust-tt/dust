@@ -221,7 +221,7 @@ The following skills are available for use with the skill_management__enable_ski
 - \`commit\`: Create a git commit with a descriptive message.
 - \`review-pr\`: Review a pull request for code quality and correctness.
 
-Pass \`skillName\` exactly as written between backticks above: same case, same punctuation, and including any leading \`[Category]\` prefix. Do not add brackets, invent a prefix, or otherwise reformat the name. Names are matched exactly, so a modified name will not be found.
+Pass \`skillName\` exactly as written between backticks above, character for character: same case, same spacing, same punctuation, same prefixes and suffixes. Copy the name rather than retyping it, and do not adjust it to match how other skills in the list are named. Names are matched exactly, so a modified name will not be found.
 </dust_system>`,
         },
       ],

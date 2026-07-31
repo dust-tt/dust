@@ -43,9 +43,9 @@ export function renderEquippedSkillsUserMessage(
 
   const enableSkillToolName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
   // Names are rendered as code literals rather than bold text: `skillName` is matched exactly, and
-  // a literal is copied verbatim far more reliably than prose. Workspaces often name skills with a
-  // `[Category] Title` convention, and models otherwise regenerate names to fit that pattern —
-  // wrapping an unbracketed name, or inventing a category prefix — which never resolves.
+  // a literal is copied verbatim far more reliably than prose. Workspaces tend to develop their own
+  // naming conventions, and models otherwise regenerate names to fit the pattern they infer from
+  // the list instead of copying them, which never resolves.
   const lines = equippedSkills.map(
     ({ name, agentFacingDescription }) =>
       `- \`${name}\`: ${agentFacingDescription.replaceAll("\n", "\n  ")}`
@@ -55,10 +55,10 @@ export function renderEquippedSkillsUserMessage(
     `<dust_system>\n` +
       `The following skills are available for use with the ${enableSkillToolName} tool:\n\n` +
       `${lines.join("\n")}\n\n` +
-      `Pass \`skillName\` exactly as written between backticks above: same case, same ` +
-      `punctuation, and including any leading \`[Category]\` prefix. Do not add brackets, ` +
-      `invent a prefix, or otherwise reformat the name. Names are matched exactly, so a ` +
-      `modified name will not be found.\n` +
+      `Pass \`skillName\` exactly as written between backticks above, character for character: ` +
+      `same case, same spacing, same punctuation, same prefixes and suffixes. Copy the name ` +
+      `rather than retyping it, and do not adjust it to match how other skills in the list are ` +
+      `named. Names are matched exactly, so a modified name will not be found.\n` +
       `</dust_system>`
   );
 }
