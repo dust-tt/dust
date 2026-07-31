@@ -189,27 +189,19 @@ export const ADFMarkSchema = z.object({
   attrs: z.record(z.any()).optional(),
 });
 
-export type ADFMark = z.infer<typeof ADFMarkSchema>;
-
 export const ADFTextNodeSchema = z.object({
   type: z.literal("text"),
   text: z.string(),
   marks: z.array(ADFMarkSchema).optional(),
 });
 
-export type ADFTextNode = z.infer<typeof ADFTextNodeSchema>;
-
 export const ADFHardBreakNodeSchema = z.object({
   type: z.literal("hardBreak"),
 });
 
-export type ADFHardBreakNode = z.infer<typeof ADFHardBreakNodeSchema>;
-
 export const ADFRuleNodeSchema = z.object({
   type: z.literal("rule"),
 });
-
-export type ADFRuleNode = z.infer<typeof ADFRuleNodeSchema>;
 
 // Explicit schemas for inline nodes we actively render
 export const ADFEmojiNodeSchema = z.object({
@@ -365,21 +357,6 @@ export const ADFDocumentSchema = z.object({
 
 export type ADFDocument = z.infer<typeof ADFDocumentSchema>;
 
-// Schema for update operations that allows ADF format for description and any string field
-export const JiraUpdateIssueRequestSchema = z
-  .record(
-    z.union([
-      z.string(),
-      ADFDocumentSchema,
-      z.object({}).passthrough(), // For complex field types like assignee, priority
-      z.array(z.string()), // For arrays like labels (most common case)
-      z.null(),
-    ])
-  )
-  .describe(
-    "Issue field updates - string fields can be plain text or ADF format"
-  );
-
 export const JiraSearchRequestSchema = z.object({
   jql: z.string(),
   maxResults: z.number(),
@@ -435,31 +412,6 @@ export const JiraIssueLinkTypeSchema = z.object({
   outward: z.string(),
 });
 
-export const JiraIssueLinkSchema = z.object({
-  id: z.string(),
-  type: JiraIssueLinkTypeSchema,
-  inwardIssue: z
-    .object({
-      key: z.string(),
-      fields: z
-        .object({
-          summary: z.string(),
-        })
-        .optional(),
-    })
-    .optional(),
-  outwardIssue: z
-    .object({
-      key: z.string(),
-      fields: z
-        .object({
-          summary: z.string(),
-        })
-        .optional(),
-    })
-    .optional(),
-});
-
 export const JiraCreateIssueLinkRequestSchema = z.object({
   type: z.object({
     name: z
@@ -498,8 +450,6 @@ export const JiraUserSchema = z.object({
   accountType: z.string(),
   active: z.boolean(),
 });
-
-export type JiraUser = z.infer<typeof JiraUserSchema>;
 
 export const JiraUsersSearchResultSchema = z.array(JiraUserSchema);
 
@@ -644,28 +594,7 @@ export const JiraCreateIssueRequestSchema = JiraIssueFieldsSchema.partial({
 export type JiraSearchResult = z.infer<typeof JiraSearchResultSchema>;
 export type JiraErrorResult = string;
 export type JiraIssue = z.infer<typeof JiraIssueSchema>;
-export type JiraProject = z.infer<typeof JiraProjectSchema>;
-export type JiraTransition = z.infer<typeof JiraTransitionSchema>;
 export type JiraComment = z.infer<typeof JiraCommentSchema>;
-export type JiraUserInfo = z.infer<typeof JiraUserInfoSchema>;
-export type JiraConnectionInfo = z.infer<typeof JiraConnectionInfoSchema>;
-export type JiraCreateIssueRequest = z.infer<
-  typeof JiraCreateIssueRequestSchema
->;
-export type JiraUpdateIssueRequest = z.infer<
-  typeof JiraUpdateIssueRequestSchema
->;
-export type JiraIssueLink = z.infer<typeof JiraIssueLinkSchema>;
-export type JiraIssueLinkType = z.infer<typeof JiraIssueLinkTypeSchema>;
-export type JiraCreateIssueLinkRequest = z.infer<
-  typeof JiraCreateIssueLinkRequestSchema
->;
-export type JiraAttachment = z.infer<typeof JiraAttachmentSchema>;
-export type JiraAttachmentsResult = z.infer<typeof JiraAttachmentsResultSchema>;
-export type JiraIssueWithAttachments = z.infer<
-  typeof JiraIssueWithAttachmentsSchema
->;
-
 export function isADFDocument(value: unknown): value is ADFDocument {
   return ADFDocumentSchema.safeParse(value).success;
 }
