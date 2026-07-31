@@ -474,6 +474,19 @@ export const createAgentMessages = async (
                 (mention) => mention.configurationId
               );
 
+        // Multiple agent mentions are still accepted (the public API relies on them), we only
+        // track them while we move to a single mention per message.
+        if (uniqueAgentMentions.length > 1) {
+          logger.warn(
+            {
+              agentMentionCount: uniqueAgentMentions.length,
+              conversationId: conversation.sId,
+              workspaceId: owner.sId,
+            },
+            "Creating agent messages for multiple agent mentions."
+          );
+        }
+
         await concurrentExecutor(
           uniqueAgentMentions,
           async (mention) => {
