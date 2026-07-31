@@ -11,6 +11,7 @@ import {
 import {
   creditsExhaustedMessage,
   finalizeCancellation,
+  finalizeCreditApprovalRequest,
   finalizeCreditStop,
   finalizeGracefulStop,
   finalizeInterruption,
@@ -143,6 +144,26 @@ export async function finalizeCreditStoppedAgentLoopActivity(
       agentMessageId: agentLoopArgs.agentMessageId,
     }),
     sendEmailReplyOnError(auth, agentLoopArgs, creditsExhaustedMessage(auth)),
+  ]);
+}
+
+export async function finalizeCreditApprovalRequiredAgentLoopActivity(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs,
+  { costCredits }: { costCredits: number }
+): Promise<void> {
+  await finalizeCreditApprovalRequest(authType, agentLoopArgs, { costCredits });
+
+  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+  await Promise.all([
+    snapshotAgentMessageSkills(auth, agentLoopArgs),
+    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttribution(auth, agentLoopArgs),
+    launchTrackProgrammaticUsage(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    computeAndStoreAgentMessageCredits(auth, agentLoopArgs),
+    conversationUnreadNotification(auth, agentLoopArgs),
   ]);
 }
 

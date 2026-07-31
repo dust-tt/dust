@@ -33,6 +33,7 @@ type BlockedActionsContextType = {
     messageId: string;
     conversationId: string;
   }) => void;
+  markConversationActionRequired: (params: { conversationId: string }) => void;
   hasPendingValidations: (userId: string) => boolean;
   getBlockedActions: (userId: string) => AgentLoopBlockedToolExecution[];
   getFirstBlockedActionForMessage: (
@@ -237,6 +238,26 @@ export function BlockedActionsProvider({
     options: { disabled: true },
   });
 
+  // Counterpart of the cache update in `removeAllBlockedActionsForMessage`: the server sets
+  // `actionRequired` on the participant row, but the sidebar reads it from the conversations list,
+  // which is not revalidated while the user sits in the conversation. Without this the run would
+  // only surface in the Inbox after a full refetch, which is exactly when the user no longer needs
+  // to be told.
+  const markConversationActionRequired = useCallback(
+    ({ conversationId }: { conversationId: string }) => {
+      void mutateConversations(
+        (currentData: ConversationListItemType[] | undefined) =>
+          currentData?.map((c) =>
+            c.sId === conversationId && !c.actionRequired
+              ? { ...c, actionRequired: true }
+              : c
+          ),
+        { revalidate: false }
+      );
+    },
+    [mutateConversations]
+  );
+
   const removeAllBlockedActionsForMessage = useCallback(
     ({
       messageId,
@@ -287,6 +308,7 @@ export function BlockedActionsProvider({
       enqueueBlockedAction,
       removeCompletedAction,
       removeAllBlockedActionsForMessage,
+      markConversationActionRequired,
       hasPendingValidations,
       getBlockedActions,
       getFirstBlockedActionForMessage,
@@ -298,6 +320,7 @@ export function BlockedActionsProvider({
       enqueueBlockedAction,
       removeCompletedAction,
       removeAllBlockedActionsForMessage,
+      markConversationActionRequired,
       hasPendingValidations,
       getBlockedActions,
       getFirstBlockedActionForMessage,

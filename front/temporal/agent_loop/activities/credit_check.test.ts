@@ -1,10 +1,12 @@
 import { checkCreditsActivity } from "@app/temporal/agent_loop/activities/credit_check";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockFromJson, mockCheckPoolCreditGate } = vi.hoisted(() => ({
-  mockFromJson: vi.fn(),
-  mockCheckPoolCreditGate: vi.fn(),
-}));
+const { mockFromJson, mockCheckPoolCreditGate, mockCheckMessageCreditGate } =
+  vi.hoisted(() => ({
+    mockFromJson: vi.fn(),
+    mockCheckPoolCreditGate: vi.fn(),
+    mockCheckMessageCreditGate: vi.fn(),
+  }));
 
 vi.mock("@app/lib/auth", () => ({
   Authenticator: { fromJsonWithRefrehedGroups: mockFromJson },
@@ -12,6 +14,7 @@ vi.mock("@app/lib/auth", () => ({
 
 vi.mock("@app/lib/api/assistant/credit_check", () => ({
   checkPoolCreditGate: mockCheckPoolCreditGate,
+  checkMessageCreditApprovalGate: mockCheckMessageCreditGate,
 }));
 
 const FAKE_AUTH = {
@@ -22,6 +25,10 @@ describe("checkCreditsActivity (pure decision)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFromJson.mockResolvedValue(FAKE_AUTH);
+    mockCheckMessageCreditGate.mockResolvedValue({
+      shouldStop: false,
+      reason: null,
+    });
   });
 
   it("returns the gate's no-stop result unchanged", async () => {
@@ -77,6 +84,52 @@ describe("checkCreditsActivity (pure decision)", () => {
 
     expect(mockCheckPoolCreditGate).toHaveBeenCalledWith(FAKE_AUTH, {
       userMessageOrigin: null,
+    });
+  });
+
+  it("skips the per-message gate when the workspace pool is already exhausted", async () => {
+    mockCheckPoolCreditGate.mockResolvedValue({
+      shouldStop: true,
+      reason: "credits_exhausted",
+    });
+
+    await checkCreditsActivity({} as never, {
+      agentLoopArgs: {} as never,
+    });
+
+    expect(mockCheckMessageCreditGate).not.toHaveBeenCalled();
+  });
+
+  it("returns the per-message gate's approval request when the pool is fine", async () => {
+    mockCheckPoolCreditGate.mockResolvedValue({
+      shouldStop: false,
+      reason: null,
+    });
+    mockCheckMessageCreditGate.mockResolvedValue({
+      shouldStop: true,
+      reason: "credit_approval_required",
+      costCredits: 300,
+    });
+
+    const result = await checkCreditsActivity({} as never, {
+      agentLoopArgs: {
+        agentMessageId: "msg_1",
+        agentMessageVersion: 0,
+        conversationId: "conv_1",
+        userMessageId: "usr_msg_1",
+        userMessageOrigin: "web",
+      } as never,
+    });
+
+    expect(result).toEqual({
+      shouldStop: true,
+      reason: "credit_approval_required",
+      costCredits: 300,
+    });
+    expect(mockCheckMessageCreditGate).toHaveBeenCalledWith(FAKE_AUTH, {
+      agentMessageId: "msg_1",
+      userMessageId: "usr_msg_1",
+      userMessageOrigin: "web",
     });
   });
 });

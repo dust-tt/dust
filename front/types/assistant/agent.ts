@@ -249,6 +249,7 @@ export const AgentErrorCategories = [
   "unknown_error",
   "invalid_response_format_configuration",
   "credits_exhausted",
+  "credit_approval_required",
 ] as const;
 
 export type AgentErrorCategory = (typeof AgentErrorCategories)[number];

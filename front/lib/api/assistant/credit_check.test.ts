@@ -1,5 +1,9 @@
-import { checkPoolCreditGate } from "@app/lib/api/assistant/credit_check";
-import type { Authenticator } from "@app/lib/auth";
+import { AGENT_MESSAGE_CREDIT_APPROVAL_THRESHOLD } from "@app/lib/api/assistant/credit_approval";
+import {
+  checkMessageCreditApprovalGate,
+  checkPoolCreditGate,
+} from "@app/lib/api/assistant/credit_check";
+import type { Authenticator, AuthMethodType } from "@app/lib/auth";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,11 +12,33 @@ const {
   mockIsApiBlocked,
   mockIsProgrammaticApiBlocked,
   mockIsProgrammaticUsage,
+  mockComputeAgentMessageCredits,
+  mockFetchCreditApprovalContext,
+  mockFetchCreditApprovalStep,
+  mockGetFeatureFlags,
 } = vi.hoisted(() => ({
   mockIsUserBlocked: vi.fn(),
   mockIsApiBlocked: vi.fn(),
   mockIsProgrammaticApiBlocked: vi.fn(),
   mockIsProgrammaticUsage: vi.fn(),
+  mockComputeAgentMessageCredits: vi.fn(),
+  mockFetchCreditApprovalContext: vi.fn(),
+  mockFetchCreditApprovalStep: vi.fn(),
+  mockGetFeatureFlags: vi.fn(),
+}));
+
+vi.mock("@app/lib/auth", () => ({
+  getFeatureFlags: mockGetFeatureFlags,
+}));
+
+vi.mock("@app/lib/api/assistant/credit_approval", () => ({
+  AGENT_MESSAGE_CREDIT_APPROVAL_THRESHOLD: 100,
+  fetchCreditApprovalContext: mockFetchCreditApprovalContext,
+  fetchCreditApprovalStep: mockFetchCreditApprovalStep,
+}));
+
+vi.mock("@app/lib/api/assistant/credit_cost", () => ({
+  computeAgentMessageCredits: mockComputeAgentMessageCredits,
 }));
 
 vi.mock("@app/lib/metronome/user_block", () => ({
@@ -37,10 +63,12 @@ function makeAuth({
   isCreditPriced = true,
   metronomeCustomerId = "metro_123",
   hasUser = true,
+  authMethod = "session",
 }: {
   isCreditPriced?: boolean;
   metronomeCustomerId?: string | null;
   hasUser?: boolean;
+  authMethod?: AuthMethodType;
 } = {}): Authenticator {
   const plan = isCreditPriced
     ? { code: "ENT_NEW_CREDIT", limits: {} }
@@ -50,6 +78,7 @@ function makeAuth({
     getNonNullableWorkspace: () => ({ sId: "ws_test", metronomeCustomerId }),
     subscription: () => ({ plan }),
     user: () => (hasUser ? { sId: "user_test" } : null),
+    authMethod: () => authMethod,
   } as unknown as Authenticator;
 }
 
@@ -153,5 +182,132 @@ describe("checkPoolCreditGate", () => {
     mockIsUserBlocked.mockRejectedValue(new Error("redis unavailable"));
     const auth = makeAuth();
     await expect(callGate(auth)).rejects.toThrow("redis unavailable");
+  });
+});
+
+function callApprovalGate(
+  auth: Authenticator,
+  userMessageOrigin: UserMessageOrigin | null = "web"
+) {
+  return checkMessageCreditApprovalGate(auth, {
+    agentMessageId: "msg_1",
+    userMessageId: "usr_msg_1",
+    userMessageOrigin,
+  });
+}
+
+function mockCostCredits(costCredits: number | null) {
+  mockComputeAgentMessageCredits.mockResolvedValue({
+    agentMessageModelId: 1,
+    costCredits,
+    previousCostCredits: null,
+  });
+}
+
+describe("checkMessageCreditApprovalGate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFetchCreditApprovalContext.mockResolvedValue({
+      agentMessageModelId: 1,
+      isRootAgentMessage: true,
+    });
+    mockFetchCreditApprovalStep.mockResolvedValue(null);
+    mockCostCredits(0);
+    mockIsProgrammaticUsage.mockReturnValue(false);
+    mockGetFeatureFlags.mockResolvedValue(["credit_approval_gate"]);
+  });
+
+  it("never asks when the feature flag is off", async () => {
+    mockGetFeatureFlags.mockResolvedValue([]);
+    mockCostCredits(AGENT_MESSAGE_CREDIT_APPROVAL_THRESHOLD + 1);
+
+    const result = await callApprovalGate(makeAuth());
+
+    expect(result).toEqual({ shouldStop: false, reason: null });
+    expect(mockFetchCreditApprovalContext).not.toHaveBeenCalled();
+    expect(mockComputeAgentMessageCredits).not.toHaveBeenCalled();
+  });
+
+  it("asks for approval once the cost is strictly above the threshold", async () => {
+    mockCostCredits(AGENT_MESSAGE_CREDIT_APPROVAL_THRESHOLD + 1);
+
+    const result = await callApprovalGate(makeAuth());
+
+    expect(result).toEqual({
+      shouldStop: true,
+      reason: "credit_approval_required",
+      costCredits: AGENT_MESSAGE_CREDIT_APPROVAL_THRESHOLD + 1,
+    });
+  });
+
+  it("does not ask when the cost sits exactly on the threshold", async () => {
+    mockCostCredits(AGENT_MESSAGE_CREDIT_APPROVAL_THRESHOLD);
+
+    const result = await callApprovalGate(makeAuth());
+
+    expect(result).toEqual({ shouldStop: false, reason: null });
+  });
+
+  it("does not ask when nothing billable is attributed to the message yet", async () => {
+    mockCostCredits(null);
+
+    const result = await callApprovalGate(makeAuth());
+
+    expect(result).toEqual({ shouldStop: false, reason: null });
+  });
+
+  it("never asks twice: a message that already asked short-circuits before computing the cost", async () => {
+    mockFetchCreditApprovalStep.mockResolvedValue(2);
+    mockCostCredits(AGENT_MESSAGE_CREDIT_APPROVAL_THRESHOLD + 1);
+
+    const result = await callApprovalGate(makeAuth());
+
+    expect(result).toEqual({ shouldStop: false, reason: null });
+    expect(mockComputeAgentMessageCredits).not.toHaveBeenCalled();
+  });
+
+  it("does not ask when the agent message row is gone", async () => {
+    mockFetchCreditApprovalContext.mockResolvedValue(null);
+
+    const result = await callApprovalGate(makeAuth());
+
+    expect(result).toEqual({ shouldStop: false, reason: null });
+    expect(mockComputeAgentMessageCredits).not.toHaveBeenCalled();
+  });
+
+  it("leaves sub-agent runs alone — the root message's cost already covers them", async () => {
+    mockFetchCreditApprovalContext.mockResolvedValue({
+      agentMessageModelId: 1,
+      isRootAgentMessage: false,
+    });
+
+    const result = await callApprovalGate(makeAuth());
+
+    expect(result).toEqual({ shouldStop: false, reason: null });
+    expect(mockComputeAgentMessageCredits).not.toHaveBeenCalled();
+  });
+
+  it("never asks on a programmatic origin: nobody is there to answer", async () => {
+    mockIsProgrammaticUsage.mockReturnValue(true);
+    mockCostCredits(AGENT_MESSAGE_CREDIT_APPROVAL_THRESHOLD + 1);
+
+    const result = await callApprovalGate(makeAuth(), "api");
+
+    expect(result).toEqual({ shouldStop: false, reason: null });
+    expect(mockFetchCreditApprovalContext).not.toHaveBeenCalled();
+    expect(mockComputeAgentMessageCredits).not.toHaveBeenCalled();
+  });
+
+  it("never asks on API-key auth, even when the run carries no origin", async () => {
+    mockCostCredits(AGENT_MESSAGE_CREDIT_APPROVAL_THRESHOLD + 1);
+
+    const result = await callApprovalGate(
+      makeAuth({ authMethod: "api_key" }),
+      null
+    );
+
+    expect(result).toEqual({ shouldStop: false, reason: null });
+    expect(mockIsProgrammaticUsage).not.toHaveBeenCalled();
+    expect(mockFetchCreditApprovalContext).not.toHaveBeenCalled();
   });
 });

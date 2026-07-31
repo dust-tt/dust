@@ -718,10 +718,19 @@ export function useAgentMessageStream({
           break;
 
         case "tool_error":
-        case "agent_error":
-          isStreamTerminated.current = true;
-          updateMessageThrottled.cancel();
+        case "agent_error": {
           const error = eventPayload.data.error;
+          // The credit safety net stops the loop through an `agent_error`, but nothing failed: the
+          // message is parked awaiting the user's answer and resumes in place, on this same stream.
+          // So it stays "created" (like one blocked on a tool validation) and does not stop the
+          // stream — otherwise the resumed run would be invisible until a reload.
+          const isCreditApprovalRequest =
+            error.metadata?.category === "credit_approval_required";
+
+          if (!isCreditApprovalRequest) {
+            isStreamTerminated.current = true;
+          }
+          updateMessageThrottled.cancel();
           mapMessagesWithAutoScroll((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
@@ -737,7 +746,7 @@ export function useAgentMessageStream({
             });
             return {
               ...m,
-              status: "failed",
+              status: isCreditApprovalRequest ? m.status : "failed",
               error: error,
               ...(contentCleared ? { content: null } : {}),
               streaming: {
@@ -749,6 +758,7 @@ export function useAgentMessageStream({
             };
           });
           break;
+        }
 
         case "agent_context_pruned":
           mapMessagesWithAutoScroll((m) =>

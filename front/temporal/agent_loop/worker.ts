@@ -15,6 +15,7 @@ import { checkCreditsActivity } from "@app/temporal/agent_loop/activities/credit
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import {
   finalizeCancelledAgentLoopActivity,
+  finalizeCreditApprovalRequiredAgentLoopActivity,
   finalizeCreditStoppedAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
   finalizeGracefullyStoppedAgentLoopActivity,
@@ -64,6 +65,7 @@ export async function runAgentLoopWorker() {
       finalizeSuccessfulAgentLoopActivity,
       finalizeGracefullyStoppedAgentLoopActivity,
       finalizeCreditStoppedAgentLoopActivity,
+      finalizeCreditApprovalRequiredAgentLoopActivity,
       finalizeCancelledAgentLoopActivity,
       finalizeInterruptedAgentLoopActivity,
       finalizeErroredAgentLoopActivity,

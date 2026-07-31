@@ -140,6 +140,7 @@ const {
   finalizeSuccessfulAgentLoopActivity,
   finalizeGracefullyStoppedAgentLoopActivity,
   finalizeCreditStoppedAgentLoopActivity,
+  finalizeCreditApprovalRequiredAgentLoopActivity,
   finalizeCancelledAgentLoopActivity,
   finalizeInterruptedAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
@@ -233,6 +234,10 @@ export async function agentLoopWorkflow({
   // Credit stop: the per-step gate found the workspace pool exhausted.
   let creditStopRequested = false;
 
+  // Credit approval: the per-step gate found this message consumed more than the credit threshold, so the
+  // loop stops and asks the user whether to continue. Set at most once per message.
+  let creditApprovalRequest: { costCredits: number } | null = null;
+
   const runIds: string[] = [];
 
   try {
@@ -322,7 +327,13 @@ export async function agentLoopWorkflow({
           },
         });
         if (creditCheckResult.shouldStop) {
-          creditStopRequested = true;
+          if (creditCheckResult.reason === "credit_approval_required") {
+            creditApprovalRequest = {
+              costCredits: creditCheckResult.costCredits,
+            };
+          } else {
+            creditStopRequested = true;
+          }
           break;
         }
       }
@@ -358,6 +369,12 @@ export async function agentLoopWorkflow({
           await finalizeCreditStoppedAgentLoopActivity(
             authType,
             argsWithRunIds
+          );
+        } else if (creditApprovalRequest) {
+          await finalizeCreditApprovalRequiredAgentLoopActivity(
+            authType,
+            argsWithRunIds,
+            creditApprovalRequest
           );
         } else {
           await finalizeSuccessfulAgentLoopActivity(authType, argsWithRunIds);

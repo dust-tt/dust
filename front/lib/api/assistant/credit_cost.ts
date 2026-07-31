@@ -31,6 +31,7 @@ import {
   AGENT_MESSAGE_STATUSES_TO_TRACK,
   type UserMessageOrigin,
 } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 
 interface CreditActionMinimalInput {
   toolName: string;
@@ -162,7 +163,7 @@ export function buildAgentMessageCreditsBreakdownFromAnalytics({
   };
 }
 
-export function computeAgentMessageCredits({
+export function computeCreditsFromUsage({
   runUsages,
   actions,
   contextOrigin,
@@ -189,30 +190,23 @@ export function computeAgentMessageCredits({
 }
 
 /**
- * Compute the agent message credit cost once at the end of the agentic loop and persist it on the
- * agent message. Returns the computed value (or null when there is nothing to track).
+ * Return the credit cost accrued so far by an agent message: its own
+ * intelligence + tool cost, from its full accumulated runIds and all final-status actions.
  *
- * Called from the finalize activities (alongside the Metronome usage events it is derived from),
- * not from the hot terminal-event path, so publishing the terminal events stays lightweight. The
- * value is not pushed on any event — clients read it from the messages / conversation API on their
- * next revalidation.
- *
- * Computes from the message's full accumulated runIds + all final-status actions (the message-level
- * total), so re-runs (interrupt/resume) overwrite the stored value with the complete cost. Only
- * persists for statuses we track for billing, matching the Metronome gate.
- *
- * Before recomputing, this execution's runs are tagged with their runKey (from `dustRunIds`) so the
- * intelligence cost is ceiled per agent-loop execution — exactly matching the per-execution
- * Metronome events. Tagging is idempotent (same runIds → same runKey), so it stays overwrite-safe
- * across Temporal retries.
+ * Returns null when the message is gone or its status is not one we bill for, so callers can tell
+ * "nothing to account for" from "costs zero".
  */
-export async function computeAndStoreAgentMessageCredits(
+export async function computeAgentMessageCredits(
   auth: Authenticator,
   {
     agentMessageId,
     dustRunIds,
   }: { agentMessageId: string; dustRunIds?: string[] }
-): Promise<number | null> {
+): Promise<{
+  agentMessageModelId: ModelId;
+  costCredits: number | null;
+  previousCostCredits: number | null;
+} | null> {
   const creditContext =
     await ConversationResource.fetchAgentMessageCreditContext(auth, {
       agentMessageId,
@@ -254,7 +248,7 @@ export async function computeAndStoreAgentMessageCredits(
     AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessageModelId]),
   ]);
 
-  const costCredits = computeAgentMessageCredits({
+  const costCredits = computeCreditsFromUsage({
     runUsages,
     actions: actions.map((action) => ({
       toolName: getToolNameFromFunctionCallName(action.functionCallName),
@@ -263,6 +257,45 @@ export async function computeAndStoreAgentMessageCredits(
     })),
     contextOrigin: triggeringUserMessageOrigin,
   });
+
+  return { agentMessageModelId, costCredits, previousCostCredits };
+}
+
+/**
+ * Compute the agent message credit cost once at the end of the agentic loop and persist it on the
+ * agent message. Returns the computed value (or null when there is nothing to track).
+ *
+ * Called from the finalize activities (alongside the Metronome usage events it is derived from),
+ * not from the hot terminal-event path, so publishing the terminal events stays lightweight. The
+ * value is not pushed on any event — clients read it from the messages / conversation API on their
+ * next revalidation.
+ *
+ * Computes from the message's full accumulated runIds + all final-status actions (the message-level
+ * total), so re-runs (interrupt/resume) overwrite the stored value with the complete cost. Only
+ * persists for statuses we track for billing, matching the Metronome gate.
+ *
+ * Before recomputing, this execution's runs are tagged with their runKey (from `dustRunIds`) so the
+ * intelligence cost is ceiled per agent-loop execution — exactly matching the per-execution
+ * Metronome events. Tagging is idempotent (same runIds → same runKey), so it stays overwrite-safe
+ * across Temporal retries.
+ */
+export async function computeAndStoreAgentMessageCredits(
+  auth: Authenticator,
+  {
+    agentMessageId,
+    dustRunIds,
+  }: { agentMessageId: string; dustRunIds?: string[] }
+): Promise<number | null> {
+  const computed = await computeAgentMessageCredits(auth, {
+    agentMessageId,
+    dustRunIds,
+  });
+
+  if (!computed) {
+    return null;
+  }
+
+  const { agentMessageModelId, costCredits, previousCostCredits } = computed;
 
   await ConversationResource.updateAgentMessageCostCredits(auth, {
     agentMessageModelId,

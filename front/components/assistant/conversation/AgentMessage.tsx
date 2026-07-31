@@ -8,6 +8,7 @@ import { AttachmentCitation } from "@app/components/assistant/conversation/attac
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { CreditApprovalRequired } from "@app/components/assistant/conversation/CreditApprovalRequired";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -332,8 +333,11 @@ export function AgentMessage({
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
-  const { enqueueBlockedAction, removeAllBlockedActionsForMessage } =
-    useBlockedActionsContext();
+  const {
+    enqueueBlockedAction,
+    markConversationActionRequired,
+    removeAllBlockedActionsForMessage,
+  } = useBlockedActionsContext();
 
   const { mutateConversationAttachments } = useConversationAttachments({
     conversationId,
@@ -482,8 +486,24 @@ export function AgentMessage({
               conversationId,
             });
             break;
-          case "agent_generation_cancelled":
           case "agent_error":
+            // The credit safety net rides on `agent_error`, but it parks the run waiting on the
+            // user rather than ending it: surface the conversation in the sidebar Inbox instead of
+            // clearing the flag the server just set. Other errors fall through to the cleanup.
+            if (
+              eventPayload.data.error.metadata?.category ===
+              "credit_approval_required"
+            ) {
+              void markConversationActionRequired({ conversationId });
+              break;
+            }
+            void removeAllBlockedActionsForMessage({
+              messageId: sId,
+              conversationId,
+            });
+            break;
+
+          case "agent_generation_cancelled":
           case "generation_tokens":
             // We can remove all blocked actions for this message (especially useful to let other users see the message updates)
             void removeAllBlockedActionsForMessage({
@@ -529,6 +549,7 @@ export function AgentMessage({
       [
         enqueueBlockedAction,
         sId,
+        markConversationActionRequired,
         removeAllBlockedActionsForMessage,
         conversationId,
         owner,
@@ -1581,19 +1602,36 @@ function AgentMessageContent({
             </div>
           </div>
         )}
-        {agentMessage.status === "failed" && (
-          <ErrorMessage
-            error={
-              agentMessage.error ?? {
-                message: "Unexpected Error",
-                code: "unexpected_error",
-                metadata: {},
-              }
-            }
-            retryHandler={async () =>
-              retryHandler({ conversationId, messageId: agentMessage.sId })
+        {/* The credit safety net stops the message through an `agent_error`, but nothing failed:
+            the message stays "created" and resumable, so it gets a "continue" prompt that picks up
+            where the loop stopped rather than a "retry" that would re-run (and re-charge) it. */}
+        {agentMessage.error?.metadata?.category ===
+        "credit_approval_required" ? (
+          <CreditApprovalRequired
+            error={agentMessage.error}
+            triggeringUser={triggeringUser}
+            resumeHandler={() =>
+              retryHandlerWithResetState({
+                conversationId,
+                messageId: agentMessage.sId,
+              })
             }
           />
+        ) : (
+          agentMessage.status === "failed" && (
+            <ErrorMessage
+              error={
+                agentMessage.error ?? {
+                  message: "Unexpected Error",
+                  code: "unexpected_error",
+                  metadata: {},
+                }
+              }
+              retryHandler={async () =>
+                retryHandler({ conversationId, messageId: agentMessage.sId })
+              }
+            />
+          )
         )}
       </div>
     </CitationsContext.Provider>

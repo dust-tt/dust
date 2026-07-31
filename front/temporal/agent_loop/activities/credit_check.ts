@@ -1,5 +1,6 @@
 import {
   type CreditCheckResult,
+  checkMessageCreditApprovalGate,
   checkPoolCreditGate,
 } from "@app/lib/api/assistant/credit_check";
 import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
@@ -11,7 +12,17 @@ export async function checkCreditsActivity(
 ): Promise<CreditCheckResult> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  return checkPoolCreditGate(auth, {
+  const poolGateResult = await checkPoolCreditGate(auth, {
+    userMessageOrigin: agentLoopArgs.userMessageOrigin ?? null,
+  });
+  if (poolGateResult.shouldStop) {
+    return poolGateResult;
+  }
+
+  // The workspace pool is fine; check whether this single message is running away with credits.
+  return checkMessageCreditApprovalGate(auth, {
+    agentMessageId: agentLoopArgs.agentMessageId,
+    userMessageId: agentLoopArgs.userMessageId,
     userMessageOrigin: agentLoopArgs.userMessageOrigin ?? null,
   });
 }

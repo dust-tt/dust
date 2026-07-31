@@ -1,5 +1,7 @@
 import { retryAgentMessage } from "@app/lib/api/assistant/conversation";
+import { resumeAfterCreditApproval } from "@app/lib/api/assistant/conversation/resume_credit_approval";
 import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
+import { CREDIT_APPROVAL_REQUIRED_ERROR_CODE } from "@app/lib/api/assistant/credit_approval";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -137,16 +139,19 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
   }
 
   // If the query parameter `blocked_only` is true, we retry only the blocked
-  // actions.
+  // actions, or resume the message from where it left off if it was waiting for credit approval.
   if (ctx.req.query("blocked_only") === "true") {
-    const retryBlockedActionsRes = await retryBlockedActions(
-      auth,
-      conversation,
-      { messageId }
-    );
+    const retryBlockedAction =
+      messageModel.agentMessage.errorCode ===
+      CREDIT_APPROVAL_REQUIRED_ERROR_CODE;
+    const resumeFn = retryBlockedAction
+      ? resumeAfterCreditApproval
+      : retryBlockedActions;
 
-    if (retryBlockedActionsRes.isErr()) {
-      const { error } = retryBlockedActionsRes;
+    const resumeRes = await resumeFn(auth, conversation, { messageId });
+
+    if (resumeRes.isErr()) {
+      const { error } = resumeRes;
 
       if (
         error instanceof DustError &&
@@ -165,7 +170,9 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
         status_code: 500,
         api_error: {
           type: "invalid_request_error",
-          message: "Failed to retry blocked actions.",
+          message: retryBlockedAction
+            ? "Failed to retry blocked action."
+            : "Failed to resume message.",
         },
       });
     }

@@ -1,4 +1,4 @@
-import { computeAgentMessageCredits } from "@app/lib/api/assistant/credit_cost";
+import { computeCreditsFromUsage } from "@app/lib/api/assistant/credit_cost";
 import {
   awuFromMicroUsd,
   intelligenceAwuFromRunUsages,
@@ -159,9 +159,9 @@ describe("toolAwuFromActions", () => {
   });
 });
 
-describe("computeAgentMessageCredits", () => {
+describe("computeCreditsFromUsage", () => {
   it("sums intelligence and tool credits", () => {
-    const credits = computeAgentMessageCredits({
+    const credits = computeCreditsFromUsage({
       runUsages: [usage({ costMicroUsd: 8500 })], // 1 intelligence credit
       actions: [
         {
@@ -176,7 +176,7 @@ describe("computeAgentMessageCredits", () => {
   });
 
   it("ignores non-final actions", () => {
-    const credits = computeAgentMessageCredits({
+    const credits = computeCreditsFromUsage({
       runUsages: [],
       actions: [
         {
@@ -192,7 +192,7 @@ describe("computeAgentMessageCredits", () => {
 
   it("returns null when there is no billable usage", () => {
     expect(
-      computeAgentMessageCredits({
+      computeCreditsFromUsage({
         runUsages: [],
         actions: [],
         contextOrigin: TEST_CONTEXT_ORIGIN,
@@ -201,7 +201,7 @@ describe("computeAgentMessageCredits", () => {
   });
 
   it("costs 0 for free-origin usage (e.g. agent_sidekick), LLM and tools alike", () => {
-    const credits = computeAgentMessageCredits({
+    const credits = computeCreditsFromUsage({
       runUsages: [usage({ costMicroUsd: 8500 })], // would be 1 intelligence credit
       actions: [
         {
@@ -217,7 +217,7 @@ describe("computeAgentMessageCredits", () => {
 
   it("still returns null for free-origin usage when there is nothing to track", () => {
     expect(
-      computeAgentMessageCredits({
+      computeCreditsFromUsage({
         runUsages: [],
         actions: [],
         contextOrigin: "agent_sidekick",

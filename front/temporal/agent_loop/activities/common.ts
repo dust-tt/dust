@@ -1,10 +1,19 @@
 import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
+import {
+  AGENT_MESSAGE_CREDIT_APPROVAL_THRESHOLD,
+  CREDIT_APPROVAL_REQUIRED_ERROR_CODE,
+  CREDIT_APPROVAL_REQUIRED_ERROR_TITLE,
+  creditApprovalRequiredMessage,
+} from "@app/lib/api/assistant/credit_approval";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
+import {
+  isCreditApprovalRequestEvent,
+  isTerminalAgentMessageEvent,
+} from "@app/lib/api/assistant/streaming/helpers";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
 import {
@@ -12,6 +21,7 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -87,6 +97,12 @@ export async function updateAgentMessageDBAndMemory(
           | {
               type: "prunedContext";
               prunedContext: true;
+            }
+          | {
+              // Stores an error the message can be resumed from, without the terminal transition
+              // that `type: "error"` performs. See `isCreditApprovalRequestEvent`.
+              type: "resumableError";
+              error: ToolErrorEvent["error"];
             };
       }
 ): Promise<boolean> {
@@ -188,6 +204,20 @@ export async function updateAgentMessageDBAndMemory(
       }
       break;
 
+    case "resumableError":
+      {
+        await AgentMessageModel.update(
+          {
+            errorCode: update.error.code,
+            errorMessage: update.error.message,
+            errorMetadata: update.error.metadata,
+          },
+          { where }
+        );
+        agentMessage.error = update.error;
+      }
+      break;
+
     default:
       assertNever(update);
   }
@@ -262,21 +292,35 @@ export async function processEventForDatabase(
 
   switch (event.type) {
     case "agent_error": {
-      // Store error in database.
-      const applied = await markAgentMessageAsFailed(auth, {
-        agentMessage,
-        conversation,
-        error: event.error,
-      });
+      // A credit-approval request is a pause, not a failure: the message stays "created" and
+      // resumable, like one parked on a tool validation. Finalizing it would deny its blocked
+      // actions, promote queued messages and close it for good, and flagging the conversation as
+      // errored would misreport a run the user can still continue.
+      if (isCreditApprovalRequestEvent(event)) {
+        await updateAgentMessageDBAndMemory(auth, {
+          agentMessage,
+          update: {
+            type: "resumableError",
+            error: event.error,
+          },
+        });
+      } else {
+        // Store error in database.
+        const applied = await markAgentMessageAsFailed(auth, {
+          agentMessage,
+          conversation,
+          error: event.error,
+        });
 
-      if (!applied) {
-        return false;
+        if (!applied) {
+          return false;
+        }
+
+        // Mark the conversation as errored.
+        await ConversationResource.markHasError(auth, {
+          conversation,
+        });
       }
-
-      // Mark the conversation as errored.
-      await ConversationResource.markHasError(auth, {
-        conversation,
-      });
 
       await AgentStepContentResource.createNewVersion({
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -364,7 +408,7 @@ export async function processEventForDatabase(
       break;
   }
 
-  if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
+  if (isTerminalAgentMessageEvent(event)) {
     await ConversationResource.setIsRunningAgentLoop(auth, {
       conversation,
       isRunningAgentLoop: false,
@@ -386,7 +430,7 @@ async function processEventForUnreadState(
   }
 ) {
   // If the event is a done event, we want to mark the conversation as unread for all participants.
-  if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
+  if (isTerminalAgentMessageEvent(event)) {
     // Publish the agent message done event that will be handled on the client-side.
     await publishConversationRelatedEvent({
       conversationId: conversation.sId,
@@ -832,6 +876,84 @@ export async function finalizeGracefulStop(
       conversationId: conversation.sId,
     },
     "Agent generation gracefully stopped"
+  );
+}
+
+/**
+ * Credit approval request: publishes the resumable `credit_approval_required` agent error.
+ *
+ * Reuses the `agent_error` MessageEvent rather than introducing a stop of its own,
+ * and writes an `error` step content to keep track of the approval request (see `fetchCreditApprovalStep`).
+ */
+export async function finalizeCreditApprovalRequest(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs,
+  { costCredits }: { costCredits: number }
+): Promise<void> {
+  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  if (runAgentDataRes.isErr()) {
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      logger.info(
+        {
+          conversationId: agentLoopArgs.conversationId,
+          agentMessageId: agentLoopArgs.agentMessageId,
+        },
+        "Message or conversation was deleted, exiting"
+      );
+      return;
+    }
+    throw new Error(
+      `Failed to get run agent data: ${runAgentDataRes.error.message}`
+    );
+  }
+  const { auth, agentConfiguration, agentMessage, conversation } =
+    runAgentDataRes.value;
+
+  // Record a step after the last one that produced content.
+  const step = (maxBy(agentMessage.contents, "step")?.step ?? 0) + 1;
+
+  await updateResourceAndPublishEvent(auth, {
+    event: {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: CREDIT_APPROVAL_REQUIRED_ERROR_CODE,
+        message: creditApprovalRequiredMessage(costCredits),
+        metadata: {
+          category: CREDIT_APPROVAL_REQUIRED_ERROR_CODE,
+          errorTitle: CREDIT_APPROVAL_REQUIRED_ERROR_TITLE,
+          costCredits,
+          thresholdCredits: AGENT_MESSAGE_CREDIT_APPROVAL_THRESHOLD,
+        },
+      },
+      runIds: agentLoopArgs.dustRunIds ?? [],
+    },
+    agentMessage,
+    conversation,
+    step,
+  });
+
+  // Same signal as a tool awaiting validation: the conversation needs the user before it can go
+  // any further.
+  await ConversationResource.markAsActionRequired(auth, { conversation });
+
+  if (!conversation.actionRequired) {
+    notifyManualActionRequired(auth, { conversationId: conversation.sId });
+  }
+
+  // Paired with the "resumed" log in `resumeAfterCreditApproval`
+  logger.info(
+    {
+      agentMessageId: agentMessage.sId,
+      conversationId: conversation.sId,
+      costCredits,
+      step,
+      thresholdCredits: AGENT_MESSAGE_CREDIT_APPROVAL_THRESHOLD,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+    },
+    "[CreditApproval] Agent loop interrupted: per-message credit threshold crossed"
   );
 }
 
