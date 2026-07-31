@@ -1,5 +1,8 @@
 import * as workosAudit from "@app/lib/api/audit/workos_audit";
-import { setGroupSpendLimit } from "@app/lib/api/groups/spend_limit";
+import {
+  MAX_GROUP_SPEND_LIMIT_AWU_CREDITS,
+  setGroupSpendLimit,
+} from "@app/lib/api/groups/spend_limit";
 import { Authenticator } from "@app/lib/auth";
 import * as groupCapAlert from "@app/lib/metronome/alerts/spend_limits";
 import * as planType from "@app/lib/metronome/plan_type";
@@ -200,7 +203,11 @@ describe("setGroupSpendLimit", () => {
       workOSGroupId: "fake-sales",
     });
 
-    for (const awuCredits of [-1, 1_000_001, 1.5]) {
+    for (const awuCredits of [
+      -1,
+      MAX_GROUP_SPEND_LIMIT_AWU_CREDITS + 1,
+      1.5,
+    ]) {
       const result = await setGroupSpendLimit(auth, {
         groupId: group.sId,
         limit: { kind: "limited", awuCredits },

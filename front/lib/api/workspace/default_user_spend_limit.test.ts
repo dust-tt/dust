@@ -3,6 +3,7 @@ import {
   getDefaultUserSpendLimit,
   setDefaultUserSpendLimit,
 } from "@app/lib/api/workspace/default_user_spend_limit";
+import { MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS } from "@app/types/credits";
 import { Authenticator } from "@app/lib/auth";
 import * as defaultUserCapAlert from "@app/lib/metronome/alerts/spend_limits";
 import * as planType from "@app/lib/metronome/plan_type";
@@ -231,7 +232,11 @@ describe("setDefaultUserSpendLimit", () => {
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    for (const awuCredits of [-1, 1_000_001, 1.5]) {
+    for (const awuCredits of [
+      -1,
+      MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS + 1,
+      1.5,
+    ]) {
       const result = await setDefaultUserSpendLimit(auth, {
         awuCredits,
         auditContext: AUDIT_CONTEXT,
