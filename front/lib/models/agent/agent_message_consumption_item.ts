@@ -73,6 +73,11 @@ function validateConsumptionItemShape(
   }
 }
 
+// Each row explains one component of an agent message's cost (a model token bucket or a tool
+// call). The credit amounts here are an attribution ledger, not the bill: they are un-rounded
+// micro-credits priced cache-naive, whereas the authoritative charge is the Metronome AWU amount
+// rounded up per execution. These rows are not expected to sum to the billed amount; they rank
+// what drove the cost. See attribution_builder.ts for the pricing rationale.
 export class AgentMessageConsumptionItemModel extends WorkspaceAwareModel<AgentMessageConsumptionItemModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;

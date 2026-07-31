@@ -7,8 +7,10 @@ import groupBy from "lodash/groupBy";
 
 export const AGENT_STEP_CONTENT_CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
-// Bump the `:v1` suffix any time the cached value shape changes, so stale entries
-// from previous formats are orphaned instead of mis-parsed.
+// Bump the version any time the cached value shape changes, so stale entries from previous formats
+// are orphaned instead of mis-parsed.
+const AGENT_STEP_CONTENT_CACHE_VERSION = 2;
+
 export function agentStepContentCacheKey({
   workspaceId,
   agentMessageId,
@@ -16,7 +18,7 @@ export function agentStepContentCacheKey({
   workspaceId: ModelId;
   agentMessageId: ModelId;
 }): string {
-  return `agent_step_contents:w:${workspaceId}:am:${agentMessageId}:v1`;
+  return `agent_step_contents:w:${workspaceId}:am:${agentMessageId}:v${AGENT_STEP_CONTENT_CACHE_VERSION}`;
 }
 
 export function agentStepContentHashField({
@@ -38,6 +40,7 @@ export type CachedAgentStepContent = {
   version: number;
   type: AgentContentItemType["type"];
   value: AgentContentItemType;
+  dustRunId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -155,6 +158,7 @@ function isCachedAgentStepContent(
     typeof v.type === "string" &&
     v.value !== null &&
     typeof v.value === "object" &&
+    (v.dustRunId === null || typeof v.dustRunId === "string") &&
     typeof v.createdAt === "string" &&
     typeof v.updatedAt === "string"
   );
@@ -269,30 +273,4 @@ export async function tryHydrateAgentStepContentsFromCache({
     );
     return null;
   }
-}
-
-export function toCachedAgentStepContent(blob: {
-  id: ModelId;
-  workspaceId: ModelId;
-  agentMessageId: ModelId;
-  step: number;
-  index: number;
-  version: number;
-  type: AgentContentItemType["type"];
-  value: AgentContentItemType;
-  createdAt: Date;
-  updatedAt: Date;
-}): CachedAgentStepContent {
-  return {
-    id: blob.id,
-    workspaceId: blob.workspaceId,
-    agentMessageId: blob.agentMessageId,
-    step: blob.step,
-    index: blob.index,
-    version: blob.version,
-    type: blob.type,
-    value: blob.value,
-    createdAt: blob.createdAt.toISOString(),
-    updatedAt: blob.updatedAt.toISOString(),
-  };
 }

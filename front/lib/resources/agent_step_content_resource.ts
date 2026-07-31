@@ -3,9 +3,8 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import type { CachedAgentStepContent } from "@app/lib/resources/agent_step_content/cache";
 import {
-  type CachedAgentStepContent,
-  toCachedAgentStepContent,
   tryHydrateAgentStepContentsFromCache,
   warmAgentStepContentCacheMany,
 } from "@app/lib/resources/agent_step_content/cache";
@@ -180,9 +179,27 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       version: cached.version,
       type: cached.type,
       value: cached.value,
+      dustRunId: cached.dustRunId,
       createdAt: new Date(cached.createdAt),
       updatedAt: new Date(cached.updatedAt),
     });
+  }
+
+  // Serialize into the Redis cache shape. Inverse of `fromCached`.
+  private toCachedJSON(): CachedAgentStepContent {
+    return {
+      id: this.id,
+      workspaceId: this.workspaceId,
+      agentMessageId: this.agentMessageId,
+      step: this.step,
+      index: this.index,
+      version: this.version,
+      type: this.type,
+      value: this.value,
+      dustRunId: this.dustRunId,
+      createdAt: this.createdAt.toISOString(),
+      updatedAt: this.updatedAt.toISOString(),
+    };
   }
 
   private static async fetchByAgentMessagesFromPostgres(
@@ -393,7 +410,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
     // Re-warm so the next fetch within the TTL can skip TOAST.
     void warmAgentStepContentCacheMany(
-      missResources.map((r) => toCachedAgentStepContent(r))
+      missResources.map((r) => r.toCachedJSON())
     );
 
     return [...hitResources, ...missResources].toSorted(
@@ -548,9 +565,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       (row) => new AgentStepContentResource(this.model, row.get())
     );
 
-    await warmAgentStepContentCacheMany(
-      resources.map((r) => toCachedAgentStepContent(r))
-    );
+    await warmAgentStepContentCacheMany(resources.map((r) => r.toCachedJSON()));
 
     return resources;
   }

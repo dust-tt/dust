@@ -1,3 +1,8 @@
+// This module explains the relative composition of an agent message's cost. It does not
+// reproduce the bill: the authoritative charge is the Metronome AWU amount, rounded up per
+// execution. These attributed micro-credits are un-rounded and cache-naive, so they are not
+// expected to sum to the billed amount. Their job is to rank what drove the cost, not to
+// reconcile euros.
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
@@ -88,8 +93,12 @@ function creditAmountMicroFromCostMicroUsd(costMicroUsd: number): number {
 }
 
 /**
- * Derives cache-naive input and output rates from model pricing. Empty usages use one token for the
- * rate calculation to avoid division by zero.
+ * Derives input and output rates from model pricing, intentionally cache-naive: every token is
+ * priced at full rate. We do not try to attribute cache discounts to individual items because
+ * reconstructing which tokens were served from cache is too hard to do fairly. The bet is that
+ * every token is paid in full at least once, so full-price attribution is a fair floor for what a
+ * component costs, and it ranks cost drivers correctly even though it overstates absolute credits.
+ * Empty usages use one token for the rate calculation to avoid division by zero.
  */
 function getRunTokenRates(usage: RunUsageForAttribution): {
   inputCostMicroUsdPerToken: number;
