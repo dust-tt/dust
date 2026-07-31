@@ -4076,7 +4076,10 @@ describe("Space Handling", () => {
     });
   });
 
-  describe("restricted project space access", () => {
+  // Pod conversation ACL (`spaceId` set): access is gated on read permission for the
+  // project space only. Extra `requestedSpaceIds` must not lock out pod members — that
+  // is the contract that lets a follow-up stop stripping agent/skill space requirements.
+  describe("pod conversation access", () => {
     it(
       "should not allow a user not in a restricted project space to fetch a conversation in that space",
       async () => {
@@ -4133,6 +4136,165 @@ describe("Space Handling", () => {
 
         // The conversation should not be accessible to the non-member user
         expect(fetchedConversation).toBeNull();
+        expect(
+          await ConversationResource.canAccess(nonMemberAuth, conversation.sId)
+        ).toBe("conversation_access_restricted");
+      },
+      RESTRICTED_PROJECT_SPACE_ACCESS_TEST_TIMEOUT_MS
+    );
+
+    it(
+      "should allow a project member to access a pod conversation even when requestedSpaceIds includes a restricted space they cannot read",
+      async () => {
+        const {
+          authenticator: adminAuth,
+          user: adminUser,
+          workspace,
+        } = await createResourceTest({ role: "admin" });
+
+        const memberUser = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, memberUser, {
+          role: "user",
+        });
+
+        const projectSpace = await SpaceFactory.project(
+          workspace,
+          adminUser.id
+        );
+        const restrictedSpace = await SpaceFactory.regular(workspace);
+
+        // Restricted space: admin only. Project: admin + member.
+        const addRestrictedRes = await restrictedSpace.addMembers(adminAuth, {
+          userIds: [adminUser.sId],
+        });
+        assert(
+          addRestrictedRes.isOk(),
+          "Failed to add admin to restricted space"
+        );
+        const addProjectRes = await projectSpace.addMembers(adminAuth, {
+          userIds: [adminUser.sId, memberUser.sId],
+        });
+        assert(addProjectRes.isOk(), "Failed to add members to project space");
+
+        const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          memberUser.sId,
+          workspace.sId
+        );
+        const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          adminUser.sId,
+          workspace.sId
+        );
+
+        const conversation = await ConversationResource.makeNew(
+          refreshedAdminAuth,
+          {
+            title: "Pod conversation with extra restricted requirement",
+            sId: generateRandomModelSId(),
+            spaceId: projectSpace.id,
+            requestedSpaceIds: [],
+          },
+          projectSpace
+        );
+
+        // Simulate accumulated agent/skill requirements (write path still strips these
+        // today; set them directly so this test locks the read ACL independently).
+        const updateRes = await ConversationResource.updateRequirements(
+          refreshedAdminAuth,
+          conversation.sId,
+          [projectSpace.id, restrictedSpace.id]
+        );
+        assert(updateRes.isOk(), "Failed to update conversation requirements");
+
+        // Under the old conjunctive ACL this would be denied; pod ACL only checks the project.
+        expect(
+          await ConversationResource.canAccess(memberAuth, conversation.sId)
+        ).toBe("allowed");
+        expect(
+          await ConversationResource.fetchById(memberAuth, conversation.sId)
+        ).not.toBeNull();
+        expect(
+          (await ConversationResource.listAll(memberAuth)).map((c) => c.sId)
+        ).toContain(conversation.sId);
+
+        // Non-member still denied even though they share the workspace.
+        const nonMemberUser = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, nonMemberUser, {
+          role: "user",
+        });
+        const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          nonMemberUser.sId,
+          workspace.sId
+        );
+        expect(
+          await ConversationResource.canAccess(nonMemberAuth, conversation.sId)
+        ).toBe("conversation_access_restricted");
+        expect(
+          await ConversationResource.fetchById(nonMemberAuth, conversation.sId)
+        ).toBeNull();
+      },
+      RESTRICTED_PROJECT_SPACE_ACCESS_TEST_TIMEOUT_MS
+    );
+
+    it(
+      "should deny access to a pod conversation when its project space is deleted",
+      async () => {
+        const {
+          authenticator: adminAuth,
+          user: adminUser,
+          workspace,
+        } = await createResourceTest({ role: "admin" });
+
+        const projectSpace = await SpaceFactory.project(
+          workspace,
+          adminUser.id
+        );
+        const addMemberRes = await projectSpace.addMembers(adminAuth, {
+          userIds: [adminUser.sId],
+        });
+        assert(addMemberRes.isOk(), "Failed to add admin to project space");
+
+        const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          adminUser.sId,
+          workspace.sId
+        );
+
+        const conversation = await ConversationResource.makeNew(
+          refreshedAdminAuth,
+          {
+            title: "Pod conversation whose space will be deleted",
+            sId: generateRandomModelSId(),
+            spaceId: projectSpace.id,
+            requestedSpaceIds: [],
+          },
+          projectSpace
+        );
+
+        expect(
+          await ConversationResource.canAccess(
+            refreshedAdminAuth,
+            conversation.sId
+          )
+        ).toBe("allowed");
+
+        await projectSpace.delete(refreshedAdminAuth, { hardDelete: false });
+
+        expect(
+          await ConversationResource.canAccess(
+            refreshedAdminAuth,
+            conversation.sId
+          )
+        ).toBe("conversation_access_restricted");
+        expect(
+          await ConversationResource.fetchById(
+            refreshedAdminAuth,
+            conversation.sId
+          )
+        ).toBeNull();
+        expect(
+          (await ConversationResource.listAll(refreshedAdminAuth)).map(
+            (c) => c.sId
+          )
+        ).not.toContain(conversation.sId);
       },
       RESTRICTED_PROJECT_SPACE_ACCESS_TEST_TIMEOUT_MS
     );

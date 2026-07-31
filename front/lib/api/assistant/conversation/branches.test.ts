@@ -437,11 +437,22 @@ describe("mergeConversationBranch", () => {
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
 
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const projectSpace = await SpaceFactory.project(workspace);
+    const addMemberRes = await projectSpace.addMembers(internalAdminAuth, {
+      userIds: [user.sId],
+    });
+    if (addMemberRes.isErr()) {
+      throw new Error(addMemberRes.error.message);
+    }
+
+    // Refresh auth so group membership is visible for pod conversation ACL.
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
     );
-    const projectSpace = await SpaceFactory.project(workspace);
 
     const task = await ProjectTaskResource.makeNew(auth, {
       spaceId: projectSpace.id,
