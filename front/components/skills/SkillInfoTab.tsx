@@ -9,6 +9,7 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -97,6 +98,7 @@ export function SkillInfoTab({
   }, []);
 
   const showSeparator =
+    !!skill.agentFacingDescription ||
     !!skill.instructions ||
     knowledgeItems.length > 0 ||
     skill.fileAttachments.length > 0 ||
@@ -114,6 +116,17 @@ export function SkillInfoTab({
       ) : null}
 
       {showSeparator ? <Separator /> : null}
+
+      {skill.agentFacingDescription && (
+        <div className="flex flex-col gap-4">
+          <div className="heading-lg text-foreground">
+            {SKILL_INVOCATION_LABEL}
+          </div>
+          <div className="whitespace-pre-wrap text-sm text-foreground">
+            {skill.agentFacingDescription}
+          </div>
+        </div>
+      )}
 
       {skill.instructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
