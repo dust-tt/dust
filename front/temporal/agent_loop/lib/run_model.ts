@@ -1049,6 +1049,12 @@ export async function runModel(
         stopReason: stopReason ?? "unknown",
         contentCount: output.contents.length,
         contentTypes: output.contents.map((c) => c.type),
+        reasoningEffort: modelInfo.reasoningEffort,
+        chainOfThoughtLength: (
+          nativeChainOfThought ||
+          contentParser.getChainOfThought() ||
+          ""
+        ).length,
         prunedContext: modelConversationRes.value.prunedContext,
         inputTokens: modelConversationRes.value.tokensUsed,
         toolSearchEnabled,
