@@ -40,6 +40,7 @@ export function MCPSkillEnableActionDetails({
   const { skill, isSkillLoading, isSkillError } = useSkill({
     workspaceId: owner.sId,
     skillId: enabledSkillId,
+    withRelations: true,
     disabled: !shouldFetchSkill,
   });
 
