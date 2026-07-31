@@ -9,6 +9,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
@@ -393,10 +394,11 @@ app.patch(
       ...additionalRequestedSpaceIds,
     ]);
 
-    const podSpaceValidation = await validateAtMostOnePodSpace(
+    const requestedSpaces = await SpaceResource.fetchByModelIds(
       auth,
       requestedSpaceIds
     );
+    const podSpaceValidation = validateAtMostOnePodSpace(requestedSpaces);
     if (podSpaceValidation.isErr()) {
       return apiError(ctx, {
         status_code: 400,
