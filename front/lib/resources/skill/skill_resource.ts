@@ -2898,8 +2898,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const availabilityChanged =
       availability !== undefined && availability !== this.availability;
 
-    // With skill publication governance, changing the availability requires the
-    // workspace-level publish permission — even for editors.
+    // Changing the availability requires the workspace-level publish
+    // permission — even for editors.
     if (availabilityChanged) {
       assert(
         await auth.hasWorkspacePermission("publish", "skill"),

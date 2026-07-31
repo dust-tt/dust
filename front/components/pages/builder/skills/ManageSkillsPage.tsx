@@ -116,7 +116,7 @@ export function ManageSkillsPage() {
       return selectedTab;
     }
     return "active";
-  }, [selectedTab, visibleTabs]);
+  }, [selectedTab]);
 
   const canBypassEditorVisibility = isAdmin;
   const isBypassEditorVisibilityEnabled =
@@ -417,46 +417,46 @@ export function ManageSkillsPage() {
                   />
                 ))}
                 <div className="ml-auto flex flex-row items-center gap-3 self-center text-sm text-muted-foreground">
-                    {canBypassEditorVisibility && (
-                      <span className="flex gap-1">
-                        <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
-                          <Checkbox
-                            checked={bypassEditorVisibility}
-                            onCheckedChange={(checked) =>
-                              handleShowHiddenChange(checked === true)
-                            }
-                          />
-                          Show hidden skills
-                        </label>
-                        <Tooltip
-                          label="Shows skills you can access as an admin, even if you’re not an editor"
-                          trigger={
-                            <InfoCircle className="h-4 w-4 text-muted-foreground" />
+                  {canBypassEditorVisibility && (
+                    <span className="flex gap-1">
+                      <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
+                        <Checkbox
+                          checked={bypassEditorVisibility}
+                          onCheckedChange={(checked) =>
+                            handleShowHiddenChange(checked === true)
                           }
                         />
-                      </span>
-                    )}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          isSelect
-                          className="w-44 justify-between"
-                          label={getAvailabilityFilterLabel(availabilityFilter)}
+                        Show hidden skills
+                      </label>
+                      <Tooltip
+                        label="Shows skills you can access as an admin, even if you’re not an editor"
+                        trigger={
+                          <InfoCircle className="h-4 w-4 text-muted-foreground" />
+                        }
+                      />
+                    </span>
+                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        isSelect
+                        className="w-44 justify-between"
+                        label={getAvailabilityFilterLabel(availabilityFilter)}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48">
+                      {AVAILABILITY_FILTER_OPTIONS.map((option) => (
+                        <DropdownMenuItem
+                          key={option.value}
+                          label={option.label}
+                          onClick={() => setAvailabilityFilter(option.value)}
                         />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-48">
-                        {AVAILABILITY_FILTER_OPTIONS.map((option) => (
-                          <DropdownMenuItem
-                            key={option.value}
-                            label={option.label}
-                            onClick={() => setAvailabilityFilter(option.value)}
-                          />
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </TabsList>
             </Tabs>
             {isLoading ? (
@@ -481,7 +481,6 @@ export function ManageSkillsPage() {
                   onSkillClick={handleSkillSelect}
                   onAgentClick={setAgentId}
                   onUsedBySkillClick={handleUsedBySkillSelect}
-                  showAvailability
                   canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
                   {...(isBatchEditionAvailable && isBatchEditing
                     ? { rowSelection, setRowSelection }

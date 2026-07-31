@@ -192,19 +192,17 @@ const menuColumn = {
 const getTableColumns = ({
   onAgentClick,
   onUsedBySkillClick,
-  showAvailability,
   enableRowSelection,
 }: {
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
-  showAvailability: boolean;
   enableRowSelection: boolean;
 }) => {
   /**
    * Columns order:
    * - Selection (batch edition only)
    * - Name (always)
-   * - Access (skill publication governance only, hidden on mobile)
+   * - Access (hidden on mobile)
    * - Used by (hidden on mobile)
    * - Editors (hidden on mobile)
    * - Last Edited (hidden on mobile)
@@ -214,7 +212,7 @@ const getTableColumns = ({
   return [
     ...(enableRowSelection ? [createSelectionColumn<RowData>()] : []),
     nameColumn,
-    ...(showAvailability ? [availabilityColumn] : []),
+    availabilityColumn,
     usedByColumn(onAgentClick, onUsedBySkillClick),
     editorsColumn,
     lastEditedColumn,
@@ -230,7 +228,6 @@ type SkillsTableProps = {
   ) => void;
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
-  showAvailability?: boolean;
   canMakeSkillAutoDiscoverable?: boolean;
   rowSelection?: RowSelectionState;
   setRowSelection?: (selection: RowSelectionState) => void;
@@ -242,7 +239,6 @@ export function SkillsTable({
   onSkillClick,
   onAgentClick,
   onUsedBySkillClick,
-  showAvailability = false,
   canMakeSkillAutoDiscoverable = false,
   rowSelection,
   setRowSelection,
@@ -261,10 +257,9 @@ export function SkillsTable({
       getTableColumns({
         onAgentClick,
         onUsedBySkillClick,
-        showAvailability,
         enableRowSelection: isSelectionEnabled,
       }),
-    [onAgentClick, onUsedBySkillClick, showAvailability, isSelectionEnabled]
+    [onAgentClick, onUsedBySkillClick, isSelectionEnabled]
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`

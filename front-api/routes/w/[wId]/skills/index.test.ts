@@ -148,8 +148,8 @@ describe("GET /api/w/:wId/skills", () => {
   });
 
   // Suggestions are created with an empty editor group (SkillResource.makeSuggestion), and
-  // under skill publication governance they get editors-only availability. Without the
-  // status exemption the editor-visibility rule would hide them from everyone.
+  // they get editors-only availability. Without the status exemption the editor-visibility
+  // rule would hide them from everyone.
   it("lists editors-only suggestions to admins who can create skills", async () => {
     const { workspace, user } = await setupTest("admin");
 
@@ -900,24 +900,6 @@ describe("POST /api/w/:wId/skills", () => {
     expect(createdSkill).not.toBeNull();
   });
 
-  it("rejects the editors availability when skill publication governance is off", async () => {
-    const { workspace } = await setupTest("admin");
-
-    const response = await postSkill(workspace, {
-      name: "Unpublished Skill",
-      agentFacingDescription: "To use in various situations",
-      userFacingDescription: "A skill",
-      instructions: "Instructions",
-      icon: "PuzzleIcon",
-      tools: [],
-      attachedKnowledge: [],
-      instructionsHtml: null,
-      availability: "editors",
-    });
-
-    expect(response.status).toBe(400);
-  });
-
   it("defaults new skills to unpublished, without requiring the publish permission", async () => {
     const { workspace, user } = await setupTest("user");
     await grantCreateSkillCapability(workspace, user);
@@ -1002,7 +984,7 @@ describe("POST /api/w/:wId/skills", () => {
     expect(responseData.skill.availability).toBe("users_and_agents");
   });
 
-  it("lets an admin create a published skill when governance is on", async () => {
+  it("lets an admin create a published skill", async () => {
     const { workspace } = await setupTest("admin");
 
     const response = await postSkill(workspace, {
