@@ -1,7 +1,7 @@
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
-import { ENSURE_IS_BUILDER_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
+import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/assistant/observability/messages_metrics", async () => ({
@@ -225,12 +225,16 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(response.status).toBe(200);
   });
 
-  // TODO(api-key-scopes): once builder keys are migrated to admin scope and the
-  // temporary fallback in export.ts is removed, change this to expect 403.
-  it("returns 200 for builder API key (temporary backward-compat)", async () => {
+  it("returns 403 for builder API key", async () => {
     const { response } = await setupTest({ role: "builder" });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
+      },
+    });
   });
 
   it("returns 403 for read-only API key (insufficient scope)", async () => {
@@ -240,7 +244,7 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(await response.json()).toEqual({
       error: {
         type: "workspace_auth_error",
-        message: ENSURE_IS_BUILDER_ERROR_MESSAGE,
+        message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
       },
     });
   });
