@@ -10,7 +10,10 @@ import { isSkillEnableInputType } from "@app/lib/actions/mcp_internal_actions/ty
 import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useSkill } from "@app/lib/swr/skill_configurations";
-import { getManageSkillsRoute } from "@app/lib/utils/router";
+import {
+  getManageSkillsRoute,
+  getSkillBuilderRoute,
+} from "@app/lib/utils/router";
 import { IconButton, LinkExternal01, Spinner } from "@dust-tt/sparkle";
 
 export function MCPSkillEnableActionDetails({
@@ -55,10 +58,14 @@ export function MCPSkillEnableActionDetails({
       headerAction={
         displayContext !== "conversation" && enabledSkillId ? (
           <IconButton
-            href={getManageSkillsRoute(owner.sId, enabledSkillId)}
+            href={
+              skill?.canAdministrate
+                ? getSkillBuilderRoute(owner.sId, enabledSkillId)
+                : getManageSkillsRoute(owner.sId, enabledSkillId)
+            }
             icon={LinkExternal01}
             size="xs"
-            tooltip="View skill"
+            tooltip={skill?.canAdministrate ? "Edit skill" : "View skill"}
           />
         ) : undefined
       }
