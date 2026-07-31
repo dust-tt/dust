@@ -11,7 +11,7 @@ type SandboxFunctionAuthorization =
   | { authorized: true; user: UserResource | null }
   | { authorized: false; errorMessage: string };
 
-async function getAuthenticatedWorkspaceUser(
+export async function getAuthenticatedWorkspaceUser(
   auth: Authenticator
 ): Promise<UserResource | null> {
   const user = auth.user();
