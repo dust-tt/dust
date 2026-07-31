@@ -39,7 +39,7 @@ interface FailedScenario {
   score: number;
 }
 
-export interface SidekickOnSidekickReport {
+interface SidekickOnSidekickReport {
   failedScenarios: FailedScenario[];
   suggestion: string | null;
   error?: string;

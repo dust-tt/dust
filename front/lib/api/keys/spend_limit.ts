@@ -28,14 +28,14 @@ export const MAX_API_KEY_SPEND_LIMIT_AWU_CREDITS = 1_000_000;
 // USD cap to the new credit cap during backfill.
 const MICRO_USD_PER_AWU_CREDIT = 10_000;
 
-export type ApiKeySpendLimitErrorType =
+type ApiKeySpendLimitErrorType =
   | "key_not_found"
   | "system_key"
   | "workspace_not_credit_priced"
   | "workspace_not_metronome_billed"
   | "metronome_error";
 
-export class ApiKeySpendLimitError extends Error {
+class ApiKeySpendLimitError extends Error {
   constructor(
     readonly type: ApiKeySpendLimitErrorType,
     message: string
@@ -222,7 +222,7 @@ export async function setApiKeySpendLimit(
  * key in the workspace that has a per-key credit cap. Used by the backfill /
  * repair flow. Logs and continues on per-key failures.
  */
-export async function syncApiKeyCapAlertsForWorkspace(
+async function syncApiKeyCapAlertsForWorkspace(
   workspace: LightWorkspaceType
 ): Promise<void> {
   const { metronomeCustomerId } = workspace;

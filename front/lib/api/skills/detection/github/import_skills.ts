@@ -46,7 +46,7 @@ type ImportSkillsResult = {
 
 // Wider than GitHubSkillDetectionError (shared with the read-only detect endpoint, which never
 // produces this variant): only the actual import/creation path checks the create/skill capability.
-export type ImportSkillsFromGitHubError =
+type ImportSkillsFromGitHubError =
   | GitHubSkillDetectionError
   | { type: "unauthorized"; message: string };
 

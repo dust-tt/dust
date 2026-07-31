@@ -104,7 +104,7 @@ async function request<T extends z.ZodTypeAny>(
   return new Ok(parseResult.data);
 }
 
-export class ServiceNowClient {
+class ServiceNowClient {
   constructor(
     private readonly accessToken: string,
     private readonly instanceUrl: string

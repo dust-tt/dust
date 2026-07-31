@@ -9,7 +9,7 @@ import cronstrue from "cronstrue";
 // Render an instant as a localized time of day in the viewer's local
 // timezone. The locale is resolved from the browser/OS so users in 24h
 // regions see "14:30" and users in 12h regions see "2:30 PM".
-export function formatWakeUpTimeOfDay(timestamp: number): string {
+function formatWakeUpTimeOfDay(timestamp: number): string {
   const date = new Date(timestamp);
   return date.toLocaleTimeString(undefined, {
     hour: "2-digit",

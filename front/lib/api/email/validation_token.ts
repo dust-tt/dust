@@ -5,13 +5,13 @@ import { createHmac, timingSafeEqual } from "crypto";
 
 const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-export type ValidationTokenPayload = {
+type ValidationTokenPayload = {
   actionId: string;
   timestamp: number;
   approvalState: "approved" | "rejected";
 };
 
-export type TokenError =
+type TokenError =
   | { type: "invalid_signature" }
   | { type: "expired" }
   | { type: "malformed" };

@@ -81,7 +81,7 @@ export async function getMetronomeContractSummary(
   });
 }
 
-export type ContractLifecycleAction = "cancel" | "reactivate";
+type ContractLifecycleAction = "cancel" | "reactivate";
 
 export async function applyContractLifecycleAction(
   auth: Authenticator,

@@ -288,7 +288,7 @@ export async function stopAllActivationWorkspaceSchedules(): Promise<void> {
 // Nightly reconcile cron
 // ---------------------------------------------------------------------------
 
-export const ENSURE_ACTIVATION_SCHEDULES_WORKFLOW_ID = `ensure-${WORKSPACE_WORKFLOW_ID_PREFIX}schedules`;
+const ENSURE_ACTIVATION_SCHEDULES_WORKFLOW_ID = `ensure-${WORKSPACE_WORKFLOW_ID_PREFIX}schedules`;
 
 const ELEVEN_PM = "23:00";
 

@@ -5,7 +5,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 export const PROFILE_DIR = "/opt/dust/profile";
 const COMMAND_HEREDOC_DELIMITER = "DUST_CMD_EOF";
 
-export interface WrapCommandOptions {
+interface WrapCommandOptions {
   timeoutSec?: number;
 }
 

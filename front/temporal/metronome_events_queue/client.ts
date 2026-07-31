@@ -25,9 +25,7 @@ import { WorkflowIdConflictPolicy } from "@temporalio/common";
  *   ack the webhook delivery: this is exactly the dedup guarantee we want for
  *   Metronome's at-least-once delivery.
  */
-export type LaunchMetronomeEventsWorkflowOutcome =
-  | "started"
-  | "already_started";
+type LaunchMetronomeEventsWorkflowOutcome = "started" | "already_started";
 
 export async function launchMetronomeEventsWorkflow({
   event,

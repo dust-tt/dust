@@ -19,7 +19,7 @@ export const MAX_MESSAGES_TO_SCAN = 10_000;
 // *ordering* field, not the date-range filter field — only the ordering field
 // guarantees later pages are strictly older. Chats can order by createdDateTime;
 // channels are always ordered by lastModifiedDateTime (reply chain).
-export type MessageOrderingField = "createdDateTime" | "lastModifiedDateTime";
+type MessageOrderingField = "createdDateTime" | "lastModifiedDateTime";
 
 // Pure (no I/O, no shared state) so the stop logic can be unit-tested — this is
 // where the past-toDate early-exit bug lived. Pages are newest-first, so we keep

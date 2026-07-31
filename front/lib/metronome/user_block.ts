@@ -364,7 +364,7 @@ export async function setUserCreditState(
   await setFlag(buildUserCreditStateKey(workspaceId, userId), state);
 }
 
-export async function getUserCreditState(
+async function getUserCreditState(
   workspaceId: string,
   userId: string
 ): Promise<UserCreditState> {

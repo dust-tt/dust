@@ -14,16 +14,16 @@ import moment from "moment-timezone";
 
 export const MIN_HVUC_DAYS = 6;
 export const MIN_DISTINCT_WEEKS = 3;
-export const TRAILING_WINDOW_DAYS = 28;
+const TRAILING_WINDOW_DAYS = 28;
 
-export interface ActivationEvidence {
+interface ActivationEvidence {
   // ISO dates (YYYY-MM-DD, UTC) of the qualifying HVUC days.
   qualifyingDays: string[];
   // Distinct Monday-based UTC ISO weeks spanned by the qualifying days.
   qualifyingWeeks: string[];
 }
 
-export interface ActivationResult {
+interface ActivationResult {
   activated: boolean;
   hvucDays: number;
   hvucWeeks: number;

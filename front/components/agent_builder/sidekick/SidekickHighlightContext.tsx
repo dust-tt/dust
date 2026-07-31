@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 
-export interface SidekickHighlightContextType {
+interface SidekickHighlightContextType {
   highlightedSuggestionId: string | null;
   isHighlightedSuggestionPinned: boolean;
   highlightSuggestion: (id: string | null, pinned?: boolean) => void;

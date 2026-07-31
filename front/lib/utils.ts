@@ -319,7 +319,7 @@ export const isMobile = (navigator: Navigator) =>
 /**
  * Bridge a push-based callback to a pull-based `.next()` promise stream.
  */
-export type CallbackReader<T> = {
+type CallbackReader<T> = {
   /** Push endpoint fed by the producer (e.g. Redis subscription). */
   callback: (v: T) => void;
   /** Pull endpoint for the consumer; resolves with the next value. */

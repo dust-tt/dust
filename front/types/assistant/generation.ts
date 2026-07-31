@@ -7,7 +7,7 @@ import type {
  * Model rendering of conversations.
  */
 
-export interface ModelMessageType {
+interface ModelMessageType {
   role: "action" | "agent" | "user" | "content_fragment" | "compaction";
   name: string;
   content: string;

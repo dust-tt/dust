@@ -98,7 +98,7 @@ export const LumaGuestResponseSchema = z
   })
   .passthrough();
 
-export const LumaEventEntrySchema = z
+const LumaEventEntrySchema = z
   .object({
     api_id: z.string(),
     event: LumaEventSchema,
@@ -113,7 +113,7 @@ export const LumaEventListResponseSchema = z
   })
   .passthrough();
 
-export const LumaGuestEntrySchema = z
+const LumaGuestEntrySchema = z
   .object({
     api_id: z.string(),
     guest: LumaGuestSchema,

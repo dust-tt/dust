@@ -10,7 +10,7 @@ import { cacheWithRedis } from "@app/lib/utils/cache";
 // All workspace-relevant Metronome alerts, resolved in a single alert-list
 // scan. `null` per slot when that alert isn't configured. Each slot carries the
 // alert id (for deep-linking) and its current evaluation status (for display).
-export type WorkspaceMetronomeAlerts = {
+type WorkspaceMetronomeAlerts = {
   poolBalance: MetronomeAlertRef | null;
   programmatic: {
     cap: MetronomeAlertRef | null;

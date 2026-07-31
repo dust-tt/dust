@@ -665,7 +665,7 @@ function createPlugin(
   });
 }
 
-export interface ApplySuggestionOptions {
+interface ApplySuggestionOptions {
   id: string;
   targetBlockId: string;
   // HTML content for the block (e.g., '<p>New text with <strong>bold</strong></p>').

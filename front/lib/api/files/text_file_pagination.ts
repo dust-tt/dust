@@ -100,7 +100,7 @@ function countNewlines(bytes: Buffer): number {
   return count;
 }
 
-export type TextFilePageParams = {
+type TextFilePageParams = {
   fileSizeBytes: number;
   maxLines: number;
   budgetBytes: number;
@@ -113,7 +113,7 @@ export type TextFilePageParams = {
   byteOffset: number | null;
 };
 
-export type TextFilePage = {
+type TextFilePage = {
   /** Display lines/segments, already prefixed with their line number. */
   parts: string[];
   firstLine: number | null;
@@ -356,7 +356,7 @@ export async function readTextFilePage(
   };
 }
 
-export type TextFilePageRender =
+type TextFilePageRender =
   | { outcome: "ok"; text: string }
   /** byteOffset mode where the stream ran short of the offset: the file shrank between stat and read. */
   | { outcome: "file_changed" };

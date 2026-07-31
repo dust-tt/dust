@@ -1,5 +1,5 @@
 import { isDevelopment } from "@app/types/shared/env";
-import type { Span as DDSpan, Tracer as DDTracer } from "dd-trace";
+import type { Span as DDSpan } from "dd-trace";
 
 /**
  * Minimal tracer interface matching the dd-trace API surface we actually use.
@@ -65,6 +65,6 @@ if (isDevelopment()) {
   tracer = require("dd-trace").default as TracerLike;
 }
 
-export type { DDSpan as Span, DDTracer as Tracer, SpanLike };
+export type { DDSpan as Span };
 export { tracer };
 export default tracer;

@@ -7,7 +7,7 @@ import type { estypes } from "@elastic/elasticsearch";
 
 const USER_SEARCH_SCAN_PAGE_SIZE = 1000;
 
-export interface SearchUsersResult {
+interface SearchUsersResult {
   users: UserSearchDocument[];
   total: number;
 }

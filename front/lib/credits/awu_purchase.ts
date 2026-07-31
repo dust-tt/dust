@@ -65,7 +65,7 @@ export type AwuPurchaseInfo =
         | null;
     };
 
-export type AwuPurchaseResult = {
+type AwuPurchaseResult = {
   amountCredits: number;
 };
 
@@ -75,7 +75,7 @@ export type PostAwuPurchaseResponseBody = {
   amountCredits: number;
 };
 
-export type AwuPurchaseError =
+type AwuPurchaseError =
   | { code: "not_metronome_billed" }
   | { code: "legacy_plan" }
   | { code: "enterprise_plan" }

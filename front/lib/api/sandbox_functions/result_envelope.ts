@@ -49,7 +49,7 @@ const LegacySandboxFunctionRunnerOutputSchema = z.discriminatedUnion("ok", [
     .strict(),
 ]);
 
-export type NormalizedSandboxFunctionOutcome =
+type NormalizedSandboxFunctionOutcome =
   | { ok: true; output: unknown }
   | { ok: false; error: SandboxFunctionCallError };
 

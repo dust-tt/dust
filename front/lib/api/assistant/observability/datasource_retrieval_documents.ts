@@ -22,7 +22,7 @@ type DatasourceRetrievalParentGroupData = {
   count: number;
 };
 
-export type DatasourceRetrievalDocumentData = {
+type DatasourceRetrievalDocumentData = {
   documentId: string;
   displayName: string;
   parentId: string | null;

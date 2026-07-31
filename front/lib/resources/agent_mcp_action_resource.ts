@@ -90,7 +90,7 @@ import type {
 import { Op } from "sequelize";
 import { AgentStepContentModel } from "../models/agent/agent_step_content";
 
-export type ConversationGeneratedFileType = ActionGeneratedDBFileType & {
+type ConversationGeneratedFileType = ActionGeneratedDBFileType & {
   creator: AttachmentCreator | null;
 };
 

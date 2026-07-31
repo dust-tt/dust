@@ -86,7 +86,7 @@ type CachedWorkspaceData = {
   updatedAt: number;
 };
 
-export type WorkspaceModelIdBatchRow = {
+type WorkspaceModelIdBatchRow = {
   workspaceModelId: ModelId;
   workspaceId: string;
 };
@@ -106,10 +106,10 @@ export type WorkspaceConversationKillSwitchOperation =
 export const WORKSPACE_KILL_SWITCH_OPERATIONS = ["block", "unblock"] as const;
 export type WorkspaceKillSwitchOperation =
   (typeof WORKSPACE_KILL_SWITCH_OPERATIONS)[number];
-export type UpdateWorkspaceKillSwitchResult = {
+type UpdateWorkspaceKillSwitchResult = {
   wasUpdated: boolean;
 };
-export type UpdateWorkspaceConversationKillSwitchResult = {
+type UpdateWorkspaceConversationKillSwitchResult = {
   wasUpdated: boolean;
 };
 

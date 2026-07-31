@@ -69,7 +69,7 @@ import type {
 import { Op } from "sequelize";
 
 /** How to build the message envelope and resolve the file when rendering a DB fragment to {@link ContentFragmentType}. */
-export type RenderContentFragmentToTypeSource =
+type RenderContentFragmentToTypeSource =
   | {
       kind: "conversation_message";
       conversationId: string;

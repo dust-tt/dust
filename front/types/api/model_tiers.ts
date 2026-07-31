@@ -1,8 +1,8 @@
 import { MODELS_TIER_NAMES } from "@app/lib/api/assistant/token_pricing/tiers";
 import { z } from "zod";
 
-export const ModelsTierNameSchema = z.enum(MODELS_TIER_NAMES);
-export const ModelTierDefinitionSchema = z.object({
+const ModelsTierNameSchema = z.enum(MODELS_TIER_NAMES);
+const ModelTierDefinitionSchema = z.object({
   name: ModelsTierNameSchema,
   id: z.number(),
   description: z.string(),

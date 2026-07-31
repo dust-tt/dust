@@ -18,7 +18,7 @@ import {
 
 // The per-seat fair-use limit for a plan: if the plan sets maxAwuCredits it's a
 // credit limit, otherwise it's a max number of messages.
-export type FairUseSeatLimit =
+type FairUseSeatLimit =
   | { kind: "credits"; limit: number; timeframe: MaxAwuCreditsTimeframeType }
   | { kind: "messages"; limit: number; timeframe: MaxMessagesTimeframeType };
 

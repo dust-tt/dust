@@ -33,7 +33,7 @@ export function usePokeDataSourceViews({
   };
 }
 
-export interface DataSourceViewContentNodesProps {
+interface DataSourceViewContentNodesProps {
   dataSourceView?: DataSourceViewType;
   disabled?: boolean;
   internalIds?: string[];

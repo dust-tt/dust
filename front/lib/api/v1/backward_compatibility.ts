@@ -91,7 +91,7 @@ export function addBackwardCompatibleConversationWithoutContentFields(
   };
 }
 
-export function filterOutInternalFileContentTypes(
+function filterOutInternalFileContentTypes(
   c: ContentFragmentType[]
 ): ContentFragmentPublicType[] {
   const result: ContentFragmentPublicType[] = [];

@@ -25,7 +25,7 @@ export const BulkMemberSelectionSchema = z.discriminatedUnion("mode", [
   }),
 ]);
 
-export type BulkMemberSelection = z.infer<typeof BulkMemberSelectionSchema>;
+type BulkMemberSelection = z.infer<typeof BulkMemberSelectionSchema>;
 
 export async function resolveBulkMemberSelectionUserIds(
   auth: Authenticator,

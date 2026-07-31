@@ -45,12 +45,12 @@ const IntervalScheduleConfigSchema = z.object({
   timezone: z.string(),
 });
 
-export const ScheduleConfigSchema = z.union([
+const ScheduleConfigSchema = z.union([
   CronScheduleConfigSchema,
   IntervalScheduleConfigSchema,
 ]);
 
-export const WebhookConfigSchema = z.object({
+const WebhookConfigSchema = z.object({
   includePayload: z.boolean(),
   event: z.string().optional(),
   filter: z.string().optional(),

@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 
-export type ClientType = "web" | "extension";
+type ClientType = "web" | "extension";
 
 const ClientTypeContext = createContext<ClientType>("web");
 

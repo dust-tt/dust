@@ -63,7 +63,7 @@ const getDataSourceCategory = (
   return "managed";
 };
 
-export type FetchDataSourceViewOptions = {
+type FetchDataSourceViewOptions = {
   includeDeleted?: boolean;
   includeEditedBy?: boolean;
   limit?: number;

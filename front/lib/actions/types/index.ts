@@ -90,9 +90,7 @@ const UserQuestionResumeStateSchema = z.object({
   answer: UserQuestionAnswerSchema.optional(),
 });
 
-export type UserQuestionResumeState = z.infer<
-  typeof UserQuestionResumeStateSchema
->;
+type UserQuestionResumeState = z.infer<typeof UserQuestionResumeStateSchema>;
 
 export function isUserQuestionResumeState(
   value: unknown
@@ -104,7 +102,7 @@ const SandboxResumeStateSchema = z.object({
   execId: z.string(),
 });
 
-export type SandboxResumeState = z.infer<typeof SandboxResumeStateSchema>;
+type SandboxResumeState = z.infer<typeof SandboxResumeStateSchema>;
 
 export function isSandboxResumeState(
   value: unknown

@@ -163,7 +163,7 @@ export async function writeBatchUserMessages(
  * - Creates a `MessageModel` at the next rank, parented to the last user message.
  * - Creates `AgentStepContentModel` entries for text, tool calls, reasoning, errors.
  */
-export interface StoreLlmResultInfo {
+interface StoreLlmResultInfo {
   agentMessageModelId: ModelId;
   agentMessageId: string;
   userMessageId: string;
@@ -387,7 +387,7 @@ export async function sendBatchCallToLlm(
   return new Ok({ batchId, conversationIds });
 }
 
-export interface BatchDownloadResult {
+interface BatchDownloadResult {
   events: Map<string, LLMEvent[]>;
   storedResultInfo: Map<string, StoreLlmResultInfo>;
 }

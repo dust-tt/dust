@@ -48,7 +48,7 @@ export async function dataSourceToPokeItem(
   };
 }
 
-export async function dataSourceToPokeJSON(
+async function dataSourceToPokeJSON(
   auth: Authenticator,
   dataSource: DataSourceResource
 ): Promise<PokeDataSourceType> {

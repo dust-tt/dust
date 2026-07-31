@@ -40,7 +40,7 @@ import { ConversationError } from "./conversation";
  * Error types for getAgentLoopData that indicate deleted or unavailable resources.
  * These are safe to ignore in callers since retrying won't make the data available.
  */
-export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
+const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
   "conversation_deleted",
   "agent_message_deleted",
   "user_message_deleted",
@@ -49,10 +49,10 @@ export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
 // Cache for 200 seconds, which maps to P95 execution time of the agent loop.
 const AGENT_CONFIGURATION_CACHE_TTL_MS = 200 * 1000;
 
-export type AgentLoopDataSoftDeleteErrorType =
+type AgentLoopDataSoftDeleteErrorType =
   (typeof AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES)[number];
 
-export class AgentLoopDataError extends Error {
+class AgentLoopDataError extends Error {
   readonly type: AgentLoopDataSoftDeleteErrorType;
 
   constructor(type: AgentLoopDataSoftDeleteErrorType) {

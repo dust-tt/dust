@@ -6,14 +6,14 @@ import { readableStreamToReadable } from "@app/types/shared/utils/streams";
 import crypto from "crypto";
 import type { Readable } from "stream";
 
-export interface ResizeOptions {
+interface ResizeOptions {
   format: string;
   maxSizePixels: number;
 }
 
-export type ImageConverterErrorCode = "resize_failed" | "network_error";
+type ImageConverterErrorCode = "resize_failed" | "network_error";
 
-export class ImageConverterError extends Error {
+class ImageConverterError extends Error {
   readonly code: ImageConverterErrorCode;
 
   constructor(code: ImageConverterErrorCode, message: string) {

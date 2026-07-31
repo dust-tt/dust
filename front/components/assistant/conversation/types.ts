@@ -255,7 +255,7 @@ export const isAtInitialStreamState = (
   );
 };
 
-export const isSidekickBootstrapMessage = (
+const isSidekickBootstrapMessage = (
   message: UserMessageTypeWithContentFragments
 ): boolean => {
   return message.context.origin === "agent_sidekick" && message.rank === 0;

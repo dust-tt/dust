@@ -3,14 +3,14 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import { Globe01, Lock01, Users01 } from "@dust-tt/sparkle";
 
-export interface ScopeOption {
+interface ScopeOption {
   icon: typeof Lock01;
   label: string;
   description: string;
   value: FileShareScope;
 }
 
-export interface AvailableScopeOption extends ScopeOption {
+interface AvailableScopeOption extends ScopeOption {
   disabled: boolean;
 }
 

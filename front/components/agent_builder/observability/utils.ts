@@ -13,9 +13,9 @@ import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/ve
 import { formatShortDate } from "@app/lib/utils/timestamps";
 import moment from "moment-timezone";
 
-export type VersionMarker = { version: string; timestamp: number };
+type VersionMarker = { version: string; timestamp: number };
 
-export type SourceBucket = { origin: string; count: number };
+type SourceBucket = { origin: string; count: number };
 
 export function isUserMessageOrigin(
   origin?: string | null

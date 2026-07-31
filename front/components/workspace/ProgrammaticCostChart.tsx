@@ -54,7 +54,7 @@ interface ProgrammaticCostChartProps {
 
 export type DisplayMode = "cumulative" | "daily";
 
-export interface BaseProgrammaticCostChartProps {
+interface BaseProgrammaticCostChartProps {
   workspaceId: string;
   programmaticCostData: GetWorkspaceProgrammaticCostResponse | undefined;
   isProgrammaticCostLoading: boolean;

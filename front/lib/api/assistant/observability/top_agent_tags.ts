@@ -7,7 +7,7 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
-export type TopAgentTagRow = {
+type TopAgentTagRow = {
   tagId: string;
   name: string;
   messageCount: number;

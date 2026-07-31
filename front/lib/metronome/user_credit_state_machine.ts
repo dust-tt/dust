@@ -52,7 +52,7 @@ export type UserCreditContext = {
   poolLimitAwuCredits?: number | null;
 };
 
-export type UserCreditEvent =
+type UserCreditEvent =
   /** This user hit their admin-configured per-user spend cap. */
   | { type: "per_user_cap_reached" }
   /**

@@ -23,7 +23,7 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
 export const MAX_CSV_ROWS = 200;
-export const MAX_TEXT_CHARS = 100_000;
+const MAX_TEXT_CHARS = 100_000;
 
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
   py: "python",
@@ -61,7 +61,7 @@ function getCodeLanguage(fileName: string): string {
   return EXTENSION_TO_LANGUAGE[ext] ?? "text";
 }
 
-export function getDelimitedRecordCount({
+function getDelimitedRecordCount({
   content,
 }: {
   content: string;
@@ -179,7 +179,7 @@ interface UseFilePreviewContentParams {
   enabled: boolean;
 }
 
-export interface FilePreviewContentData {
+interface FilePreviewContentData {
   category: FilePreviewCategory;
   mimeType: string;
   truncatedContent: string | null;

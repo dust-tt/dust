@@ -4,7 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isNumberOrBoolean, isString } from "@app/types/shared/utils/general";
 
-export interface ToolInputContext {
+interface ToolInputContext {
   toolInputs: Record<string, unknown>;
 }
 

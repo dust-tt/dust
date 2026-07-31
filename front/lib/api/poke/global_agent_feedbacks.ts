@@ -37,14 +37,14 @@ export interface GlobalAgentFeedbackItem {
   messageId: string | null;
 }
 
-export interface ListGlobalAgentFeedbacksParams {
+interface ListGlobalAgentFeedbacksParams {
   /** If false (the default in the poke UI), feedbacks with empty content are filtered out. */
   includeEmpty: boolean;
   /** Cursor for pagination — return rows with id less than this value. */
   lastId?: number;
 }
 
-export interface ListGlobalAgentFeedbacksResult {
+interface ListGlobalAgentFeedbacksResult {
   feedbacks: GlobalAgentFeedbackItem[];
   hasMore: boolean;
 }

@@ -25,8 +25,7 @@ export type PodUiScopedPreferences = z.infer<
   (typeof scopedUIPreferencesSchemaByScope)["podUi"]
 >;
 
-export type ScopedUIPreferencesScope =
-  keyof typeof scopedUIPreferencesSchemaByScope;
+type ScopedUIPreferencesScope = keyof typeof scopedUIPreferencesSchemaByScope;
 type ScopeSchema<TScope extends ScopedUIPreferencesScope> =
   (typeof scopedUIPreferencesSchemaByScope)[TScope];
 type ScopeValue<TScope extends ScopedUIPreferencesScope> =

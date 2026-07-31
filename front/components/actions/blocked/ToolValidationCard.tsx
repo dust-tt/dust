@@ -177,7 +177,7 @@ const MCP_TOOL_OVERRIDES: Partial<
 
 // Display data needed to render a tool validation card, for both agent-loop and sandbox-function
 // blocked tool executions.
-export type ToolValidationRequest = Pick<
+type ToolValidationRequest = Pick<
   BlockedToolExecution,
   | "actionId"
   | "userId"

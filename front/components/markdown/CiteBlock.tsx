@@ -5,7 +5,7 @@ import { visit } from "unist-util-visit";
 
 import type { MCPReferenceCitation } from "./MCPReferenceCitation";
 
-export type CitationsContextType = {
+type CitationsContextType = {
   references: {
     [key: string]: MCPReferenceCitation;
   };

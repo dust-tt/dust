@@ -135,7 +135,7 @@ function toShareFrameViewerFile(
   };
 }
 
-export async function getShareFrameViewerFilesForFrame(
+async function getShareFrameViewerFilesForFrame(
   auth: Authenticator,
   frameFile: FileResource
 ): Promise<ShareFrameViewerFile[]> {

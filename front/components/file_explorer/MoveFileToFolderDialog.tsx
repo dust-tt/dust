@@ -66,7 +66,7 @@ function FolderTreeNode({
   );
 }
 
-export interface MoveFileToFolderDialogProps {
+interface MoveFileToFolderDialogProps {
   folderTree: FileSystemTreeNode[];
   file: { fileName: string; path: string } | null;
   isOpen: boolean;

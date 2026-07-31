@@ -2,7 +2,7 @@ import { EmailLayout } from "@app/lib/notifications/email-templates/_layout";
 import { render } from "@react-email/render";
 import { z } from "zod";
 
-export const ActivationNewConversationEmailTemplatePropsSchema = z.object({
+const ActivationNewConversationEmailTemplatePropsSchema = z.object({
   name: z.string(),
   workspace: z.object({
     id: z.string(),

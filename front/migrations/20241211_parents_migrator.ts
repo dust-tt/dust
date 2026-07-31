@@ -85,7 +85,7 @@ export function isGithubCodeDirId(internalId: string): boolean {
 export function isGithubCodeFileId(internalId: string): boolean {
   return /^github-code-\d+-file-[a-f0-9]+$/.test(internalId);
 }
-export function isOldGithuRepoId(internalId: string): boolean {
+function isOldGithuRepoId(internalId: string): boolean {
   return /^\d+$/.test(internalId);
 }
 

@@ -24,7 +24,7 @@ import { endOfMonth } from "date-fns/endOfMonth";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
-export const USAGE_TABLES = [
+const USAGE_TABLES = [
   "users",
   "assistant_messages",
   "builders",

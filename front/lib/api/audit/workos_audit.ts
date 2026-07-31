@@ -183,7 +183,7 @@ export const AUDIT_ACTIONS = [
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
-export type EmitAuditLogEventParams = {
+type EmitAuditLogEventParams = {
   auth: Authenticator;
   action: AuditAction;
   targets: AuditLogTarget[];
@@ -456,7 +456,7 @@ export function getAuditLogContext(
   return { location: auth.clientIp() ?? "internal" };
 }
 
-export type AgentTriggerType = "user" | "agent" | "trigger" | "handover";
+type AgentTriggerType = "user" | "agent" | "trigger" | "handover";
 
 /**
  * Classifies how an agent run was triggered, for the `trigger_type` metadata on

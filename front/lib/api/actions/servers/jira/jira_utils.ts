@@ -7,7 +7,7 @@ import { FIELD_MAPPINGS } from "@app/lib/api/actions/servers/jira/types";
 import { markdownToAdf } from "marklassian";
 
 // Helper function to escape JQL values that contain spaces or special characters
-export const escapeJQLValue = (value: string): string => {
+const escapeJQLValue = (value: string): string => {
   // JQL reserved characters per official Atlassian docs: space, +, ., ,, ;, ?, |, *, /, %, ^, $, #, @, [, ]
   const hasSpecialChars = /[\s"'\\/@+.,;?|*%^$#[\]]/.test(value);
 
@@ -102,7 +102,7 @@ export function createJQLFromSearchFilters(
  * @param fieldMetadata - Optional field metadata from Jira API containing schema information
  * @returns true if the field should be converted to ADF, false otherwise
  */
-export function shouldConvertToADF(
+function shouldConvertToADF(
   fieldKey: string,
   fieldValue: unknown,
   fieldMetadata?: {

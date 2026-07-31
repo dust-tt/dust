@@ -63,7 +63,7 @@ export interface SuggestedSkillAsset {
   instructions: string;
 }
 
-export interface MessageAsset {
+interface MessageAsset {
   sId: string;
   content: string;
 }

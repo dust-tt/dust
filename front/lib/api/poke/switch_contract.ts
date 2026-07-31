@@ -98,7 +98,7 @@ export class SwitchContractError extends Error {
   }
 }
 
-export type SwitchContractSuccess = {
+type SwitchContractSuccess = {
   metronomeContractId: string;
 };
 

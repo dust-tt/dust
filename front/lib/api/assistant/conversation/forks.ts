@@ -47,7 +47,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Transaction } from "sequelize";
 
-export type CreateConversationForkErrorCode =
+type CreateConversationForkErrorCode =
   | "conversation_not_found"
   | "failed_to_copy_files"
   | "internal_error"

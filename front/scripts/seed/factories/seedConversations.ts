@@ -9,7 +9,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 
 import type { ConversationAsset, CreatedAgent, SeedContext } from "./types";
 
-export interface SeedConversationsOptions {
+interface SeedConversationsOptions {
   agents?: Map<string, CreatedAgent>;
   defaultAgentId?: string;
   placeholders?: Record<string, string>;

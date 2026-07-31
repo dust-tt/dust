@@ -50,7 +50,7 @@ export function getBusinessProPlanProductId() {
     : PROD_BUSINESS_PRO_PLAN_PRODUCT_ID;
 }
 
-export function getStripeCheckoutSessionProductId(owner: WorkspaceType) {
+function getStripeCheckoutSessionProductId(owner: WorkspaceType) {
   const isBusiness = owner.metadata?.isBusiness;
   return isBusiness ? getBusinessProPlanProductId() : getProPlanProductId();
 }
@@ -62,7 +62,7 @@ export function getCreditPurchasePriceId() {
   return isDevelopment() ? devCreditPurchasePriceId : prodCreditPurchasePriceId;
 }
 
-export function getPAYGCreditPriceId() {
+function getPAYGCreditPriceId() {
   const devPAYGPriceId = "price_1SZviPDKd2JRwZF6XHCzjgqp";
   const prodPAYGPriceId = "price_1SZvmdDKd2JRwZF64DE4tZ6c";
 
@@ -695,7 +695,7 @@ export const extendStripeSubscriptionTrial = async (
  * subscription items with prices of type "licensed" (that is, per seat).
  * https://stripe.com/docs/billing/subscriptions/upgrade-downgrade
  */
-export const updateStripeQuantityForSubscriptionItem = async (
+const updateStripeQuantityForSubscriptionItem = async (
   subscriptionItem: Stripe.SubscriptionItem,
   quantity: number
 ): Promise<void> => {
@@ -1179,7 +1179,7 @@ export function getCustomerId(subscription: Stripe.Subscription): string {
     : subscription.customer.id;
 }
 
-export function getDefaultPaymentMethodId(
+function getDefaultPaymentMethodId(
   subscription: Stripe.Subscription
 ): string | undefined {
   return isString(subscription.default_payment_method)

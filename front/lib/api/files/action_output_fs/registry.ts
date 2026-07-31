@@ -12,7 +12,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 // To add support for a new type: add one branch to resolveResourceOutput.
 // Reuse the typeguard and type already defined in output_schemas.ts.
 
-export interface ResolvedOutput {
+interface ResolvedOutput {
   fileName: string;
   content: string;
   storageContentType: AllSupportedFileContentType;

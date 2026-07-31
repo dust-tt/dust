@@ -25,13 +25,13 @@ import {
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 
-export type ProjectTaskStartWorkingOptions = {
+type ProjectTaskStartWorkingOptions = {
   customMessage?: string;
   agentConfigurationId?: string;
   goToConversation: boolean;
 };
 
-export type ProjectTaskStartWorkingContext = "tasks_page" | "conversation";
+type ProjectTaskStartWorkingContext = "tasks_page" | "conversation";
 
 function startRedirectMenuLabels(context: ProjectTaskStartWorkingContext): {
   goToConversation: string;

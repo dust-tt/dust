@@ -34,7 +34,7 @@ export type ConfluenceSearchRequest = z.infer<
   typeof ConfluenceSearchRequestSchema
 >;
 
-export const ConfluencePageBodySchema = z.object({
+const ConfluencePageBodySchema = z.object({
   storage: z
     .object({
       value: z.string(),

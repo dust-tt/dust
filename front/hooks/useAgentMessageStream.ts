@@ -161,7 +161,7 @@ export function removePendingToolCallForAction(
   return pendingToolCalls.filter((_, index) => index !== fallbackMatchIndex);
 }
 
-export function updateMessageWithAction(
+function updateMessageWithAction(
   m: LightAgentMessageWithActionsType,
   action: AgentMCPActionWithOutputType
 ): LightAgentMessageWithActionsType {
@@ -172,7 +172,7 @@ export function updateMessageWithAction(
   };
 }
 
-export function updateProgress(
+function updateProgress(
   agentMessage: AgentMessageWithStreaming,
   event: AgentLoopToolNotificationEvent
 ): AgentMessageWithStreaming {

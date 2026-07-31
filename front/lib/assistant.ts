@@ -10,7 +10,7 @@ import type { PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
-export function isAdvancedModel(m: ModelConfigurationType): boolean {
+function isAdvancedModel(m: ModelConfigurationType): boolean {
   return m.availableIfOneOf?.plansWithAdvancedModels === true;
 }
 

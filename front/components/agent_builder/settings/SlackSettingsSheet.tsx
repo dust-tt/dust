@@ -30,7 +30,7 @@ import { useController } from "react-hook-form";
 
 const SLACK_CHANNEL_INTERNAL_ID_PREFIX = "slack-channel-";
 
-export type SlackChannel = {
+type SlackChannel = {
   slackChannelId: string;
   slackChannelName: string;
   sourceUrl?: string | null;

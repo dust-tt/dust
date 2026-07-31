@@ -49,7 +49,7 @@ export type FilePreviewCategory =
   | "image"
   | "unsupported";
 
-export interface FilePreviewConfig {
+interface FilePreviewConfig {
   category: FilePreviewCategory;
   needsProcessedVersion: boolean;
   supportsExternalViewer: boolean;
@@ -468,7 +468,7 @@ export function getFileExplorerSearchResultTitle(
 }
 
 /** All file leaves in a tree (folders excluded). */
-export function collectAllFileTreeNodes(
+function collectAllFileTreeNodes(
   nodes: FileSystemTreeNode[]
 ): FileSystemTreeNode[] {
   return nodes.flatMap((node) =>

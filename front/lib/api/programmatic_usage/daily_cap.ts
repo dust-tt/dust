@@ -52,7 +52,7 @@ export async function getDefaultDailyCapMicroUsd(
 /**
  * Get the effective daily cap (configured or default).
  */
-export async function getEffectiveDailyCapMicroUsd(
+async function getEffectiveDailyCapMicroUsd(
   auth: Authenticator
 ): Promise<number> {
   const config =

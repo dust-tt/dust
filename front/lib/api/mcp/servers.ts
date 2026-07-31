@@ -82,7 +82,7 @@ export async function listMCPServersWithViews(
   }));
 }
 
-export interface CreateRemoteMCPServerInput {
+interface CreateRemoteMCPServerInput {
   url: string;
   defaultServerId?: number;
   includeGlobal?: boolean;
@@ -230,7 +230,7 @@ export async function createRemoteMCPServer(
   return new Ok(newRemoteMCPServer.toJSON());
 }
 
-export interface CreateInternalMCPServerInput {
+interface CreateInternalMCPServerInput {
   name: string;
   useCase?: MCPOAuthUseCase;
   connectionId?: string;

@@ -124,7 +124,7 @@ export interface RunCommandSlashCommand<TCommand = unknown>
   };
 }
 
-export interface InsertKnowledgeSlashCommand extends SlashCommand {
+interface InsertKnowledgeSlashCommand extends SlashCommand {
   action: typeof INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION;
 }
 

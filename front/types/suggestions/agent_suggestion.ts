@@ -61,7 +61,7 @@ const ModelSuggestionSchema = z.object({
   reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
 });
 
-export const KNOWLEDGE_SUGGESTION_METHODS = ["search", "query_tables"] as const;
+const KNOWLEDGE_SUGGESTION_METHODS = ["search", "query_tables"] as const;
 const KnowledgeSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]),
   method: z

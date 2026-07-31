@@ -5,7 +5,7 @@ import {
 import { getAgentModelDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import type { Authenticator } from "@app/lib/auth";
 
-export type AnalyticsAgentLabel = {
+type AnalyticsAgentLabel = {
   name: string;
   pictureUrl: string | null;
   modelDisplayName: string;

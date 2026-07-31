@@ -9,7 +9,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 
-export interface TagSearchProps {
+interface TagSearchProps {
   searchInputValue: string;
   setSearchInputValue: (search: string) => void;
   availableTags: DataSourceTag[];

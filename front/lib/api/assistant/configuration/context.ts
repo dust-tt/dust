@@ -13,7 +13,7 @@ import { Err, Ok } from "@app/types/shared/result";
  * agents are code-defined) whose current version is active (an archived one would be resurrected
  * by writing it back as a new version).
  */
-export type ActiveWorkspaceAgentConfiguration = AgentConfigurationType & {
+type ActiveWorkspaceAgentConfiguration = AgentConfigurationType & {
   scope: Exclude<AgentConfigurationType["scope"], "global">;
   status: "active";
 };
@@ -22,7 +22,7 @@ export type ActiveWorkspaceAgentConfiguration = AgentConfigurationType & {
  * An agent configuration plus the associations that live outside of it and are needed to write it
  * back in full: its editors and its skills.
  */
-export type AgentConfigurationContext = {
+type AgentConfigurationContext = {
   agentConfiguration: ActiveWorkspaceAgentConfiguration;
   editorUsers: UserResource[];
   skills: SkillResource[];

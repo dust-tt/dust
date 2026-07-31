@@ -9,7 +9,7 @@ export const DEFAULT_DUST_MCP_SERVER_ALLOWED_REDIRECT_URIS = [
   // "https://www.cursor.com/agents/mcp/oauth/callback",
 ] as const;
 
-export type DustMcpServerRedirectUriPolicy = "all" | "allowlist";
+type DustMcpServerRedirectUriPolicy = "all" | "allowlist";
 
 export interface DustMcpServerSettings {
   disabled: boolean;

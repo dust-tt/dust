@@ -46,7 +46,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 export const MIN_USER_SPEND_LIMIT_AWU_CREDITS = 0;
 export const MAX_USER_SPEND_LIMIT_AWU_CREDITS = 1_000_000;
 
-export type UserSpendLimitErrorType =
+type UserSpendLimitErrorType =
   | "user_not_found"
   | "workspace_not_metronome_billed"
   | "metronome_error";

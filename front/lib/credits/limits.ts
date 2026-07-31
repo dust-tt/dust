@@ -25,7 +25,7 @@ export type CreditPurchaseLimits =
 
 // Where the workspace is billed from. Drives Enterprise detection, the
 // billing-cycle bounds, and the Stripe-only trial / payment-issue guard.
-export type CreditPurchaseLimitsContext =
+type CreditPurchaseLimitsContext =
   | { type: "stripe-subscription"; stripeSubscription: Stripe.Subscription }
   | { type: "metronome"; subscription: SubscriptionResource };
 

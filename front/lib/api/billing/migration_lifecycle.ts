@@ -65,7 +65,7 @@ export async function getWorkspaceMigrationStatus(
   };
 }
 
-export type MigrationLifecycleErrorKind =
+type MigrationLifecycleErrorKind =
   // Bad input or precondition not met (no pending migration, not Stripe-billed,
   // no resolvable billing period) — handler should return 400.
   | "invalid_state"

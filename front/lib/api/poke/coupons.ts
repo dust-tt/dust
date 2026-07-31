@@ -11,7 +11,7 @@ export function canCreateCoupon(): boolean {
   return config.isMainRegion() || isDevelopment();
 }
 
-export type CreateCouponError =
+type CreateCouponError =
   | { type: "coupon_already_exists" }
   | { type: "creation_failed"; message: string }
   | { type: "sync_failed" };
@@ -45,7 +45,7 @@ export async function createCouponAndPushToOtherRegion(
   return new Ok(coupon);
 }
 
-export type PushCouponError = "other_region_push_failed";
+type PushCouponError = "other_region_push_failed";
 
 export async function pushCouponToOtherRegion(
   coupon: CouponType

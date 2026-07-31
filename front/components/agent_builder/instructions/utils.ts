@@ -12,7 +12,7 @@ import type {
   ModelMakerIdType,
 } from "@app/types/assistant/models/types";
 
-export const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
+const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
   GPT_5_6_TERRA_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
   CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
@@ -20,11 +20,11 @@ export const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
   GEMINI_3_1_PRO_MODEL_ID,
 ] as const;
 
-export function isBestPerformingModel(modelId: ModelIdType): boolean {
+function isBestPerformingModel(modelId: ModelIdType): boolean {
   return BEST_PERFORMING_MODELS_ID.includes(modelId);
 }
 
-export function categorizeModels<T extends ModelConfigurationType>(
+function categorizeModels<T extends ModelConfigurationType>(
   models: T[]
 ): {
   bestPerformingModelConfigs: T[];
@@ -51,7 +51,7 @@ export function getModelKey(
 }
 
 // Enhanced categorization for new UI structure
-export interface ModelCategories<
+interface ModelCategories<
   T extends ModelConfigurationType = ModelConfigurationType,
 > {
   bestGeneralModels: T[];

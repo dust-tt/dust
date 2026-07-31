@@ -19,7 +19,7 @@ export type PatchAgentTagsRequestBody = z.infer<
   typeof PatchAgentTagsRequestBodySchema
 >;
 
-export const PatchAgentTagsResponseBodySchema = z.object({
+const PatchAgentTagsResponseBodySchema = z.object({
   tags: z.array(TagSchema),
 });
 

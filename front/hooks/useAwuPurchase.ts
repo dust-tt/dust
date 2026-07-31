@@ -26,7 +26,7 @@ function subscribeToAwuPurchaseLoading(callback: () => void) {
   };
 }
 
-export type AwuPurchaseOutcome =
+type AwuPurchaseOutcome =
   | { status: "success" }
   | { status: "error"; message: string };
 

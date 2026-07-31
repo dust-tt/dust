@@ -11,19 +11,19 @@ export const FILE_OFFLOAD_SNIPPET_LENGTH = 8_000; // Approximately 2K tokens.
 
 // Hard limits for remote MCP server tool results.
 // When any content block exceeds these sizes, the entire tool result is rejected.
-export const REMOTE_MAX_TEXT_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
-export const REMOTE_MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
+const REMOTE_MAX_TEXT_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
+const REMOTE_MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
 // Resource-with-text blocks above FILE_OFFLOAD_TEXT_SIZE_BYTES are offloaded to a file in
 // processToolResults, so this hard limit only needs to guard against absurd payloads.
-export const REMOTE_MAX_RESOURCE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB.
+const REMOTE_MAX_RESOURCE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB.
 // Hard limit on the entire array of tool outputs.
-export const REMOTE_MAX_TOOL_RESULT_SIZE_BYTES = 50 * 1024 * 1024; // 50MB.
+const REMOTE_MAX_TOOL_RESULT_SIZE_BYTES = 50 * 1024 * 1024; // 50MB.
 
 export function computeTextByteSize(text: string): number {
   return Buffer.byteLength(text, "utf8");
 }
 
-export function computeBase64ByteSize(base64: string): number {
+function computeBase64ByteSize(base64: string): number {
   return Math.ceil((base64.length * 3) / 4);
 }
 

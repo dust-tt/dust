@@ -25,7 +25,7 @@ const HeaderFooterRoleSchema = z
   .default("default")
   .describe("Which header/footer to target.");
 
-export const DocumentOperationSchema = z.discriminatedUnion("type", [
+const DocumentOperationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("replaceText"),
     find: z.string().describe("Text to find (matched anywhere in the doc)."),
@@ -166,7 +166,7 @@ export const DocumentOperationSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-export type DocumentOperation = z.infer<typeof DocumentOperationSchema>;
+type DocumentOperation = z.infer<typeof DocumentOperationSchema>;
 
 export const DocumentOperationsArraySchema = z.array(DocumentOperationSchema);
 

@@ -56,7 +56,7 @@ type SupportedReasoningEfforts<S extends ReasoningEffortSupport> = {
   [E in ReasoningEffort]: S[E] extends true ? E : never;
 }[ReasoningEffort];
 
-export type StaticModelTierByReasoningEffort<
+type StaticModelTierByReasoningEffort<
   S extends ReasoningEffortSupport = ReasoningEffortSupport,
 > = {
   [E in SupportedReasoningEfforts<S>]: ModelsTierName;
@@ -68,7 +68,7 @@ type StaticModelTiersMap = {
   >;
 };
 
-export type StaticModelTiersLookup = Record<
+type StaticModelTiersLookup = Record<
   StaticModelIdType,
   Partial<Record<ReasoningEffort, ModelsTierName>>
 >;

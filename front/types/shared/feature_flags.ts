@@ -341,7 +341,7 @@ export const WHITELISTABLE_FEATURES = Object.keys(
   WHITELISTABLE_FEATURES_CONFIG
 ) as WhitelistableFeature[];
 
-export const DISABLE_COMPUTER_FEATURE =
+const DISABLE_COMPUTER_FEATURE =
   "disable_computer_feature" as const satisfies WhitelistableFeature;
 
 export function isComputerFeatureEnabled(

@@ -2,7 +2,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 
 export type UserIdMapping = Map<ModelId, ModelId>;
 
-export function mapUserIdsInRow(
+function mapUserIdsInRow(
   row: Record<string, any>,
   userIdMapping: UserIdMapping,
   userIdColumns: string[]

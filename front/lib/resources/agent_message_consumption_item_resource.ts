@@ -28,14 +28,14 @@ export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
   directCreditAmountMicro: number | null;
 };
 
-export type PendingToolConsumptionCompletion = ConsumptionItemEvidenceBase & {
+type PendingToolConsumptionCompletion = ConsumptionItemEvidenceBase & {
   action: AgentMCPActionResource;
   /** Estimated tokens in the result returned by this tool execution */
   inputTokensCount: number | null;
   directCreditAmountMicro: number | null;
 };
 
-export type PendingToolConsumptionItem = ConsumptionItemEvidenceBase & {
+type PendingToolConsumptionItem = ConsumptionItemEvidenceBase & {
   action: AgentMCPActionResource;
   runUsageModelId: ModelId | null;
   /** Estimated tokens in the model output that emitted the tool name and arguments */

@@ -147,7 +147,7 @@ export const SOUND_NOTIFICATION_OPTIONS = [
   "Wizz",
 ] as const;
 
-export type SoundNotificationType = (typeof SOUND_NOTIFICATION_OPTIONS)[number];
+type SoundNotificationType = (typeof SOUND_NOTIFICATION_OPTIONS)[number];
 
 export const DEFAULT_SOUND_NOTIFICATION: SoundNotificationType = "Pluck";
 

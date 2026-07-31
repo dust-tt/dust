@@ -248,7 +248,7 @@ function parseEgressHealthcheckOutput(
   };
 }
 
-export async function checkEgressForwarderHealth(
+async function checkEgressForwarderHealth(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<EgressHealthState, Error>> {

@@ -48,7 +48,7 @@ const unselectedChildren = (
   }, {});
 };
 
-export type UseResourcesHook = (parentId: string | null) => {
+type UseResourcesHook = (parentId: string | null) => {
   resources: ContentNode[];
   totalResourceCount?: number; // This count can be higher than resources.length if the call is paginated.
   isResourcesLoading: boolean;

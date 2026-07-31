@@ -11,7 +11,7 @@ import type {
  * Formats raw conversation content into a readable text representation for display.
  * This creates a simple text representation with all messages.
  */
-export function formatConversationForDisplay(
+function formatConversationForDisplay(
   conversation: ConversationType | LightConversationType,
   workspaceId: string
 ) {

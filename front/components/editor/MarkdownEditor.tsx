@@ -12,9 +12,9 @@ import debounce from "lodash/debounce";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef } from "react";
 
-export const DEFAULT_MARKDOWN_EDITOR_DEBOUNCE_MS = 250;
+const DEFAULT_MARKDOWN_EDITOR_DEBOUNCE_MS = 250;
 /** Default classes for the TipTap editable surface (scroll + max height). */
-export const DEFAULT_MARKDOWN_EDITOR_CLASSNAME = "max-h-96";
+const DEFAULT_MARKDOWN_EDITOR_CLASSNAME = "max-h-96";
 
 const editorVariants = cva(
   [
@@ -85,7 +85,7 @@ interface UseMarkdownEditorProps {
   placeholder?: string;
 }
 
-export function useMarkdownEditor({
+function useMarkdownEditor({
   content,
   debounceMs = DEFAULT_MARKDOWN_EDITOR_DEBOUNCE_MS,
   editable = true,

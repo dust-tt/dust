@@ -15,7 +15,7 @@ import type {
   ConversationAttachmentRow,
 } from "./types";
 
-export function getFilePanelCategory(
+function getFilePanelCategory(
   item: ConversationAttachmentItem
 ): FilePanelCategory {
   if (isContentNodeAttachmentType(item)) {

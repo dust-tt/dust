@@ -54,7 +54,7 @@ export interface AgentExportRow {
 // cells, so the array-valued editorEmails is joined into a single
 // comma-separated string. The serializer then wraps it in double quotes
 // automatically since the cell contains commas.
-export type AgentExportCsvRow = Omit<AgentExportRow, "editorEmails"> & {
+type AgentExportCsvRow = Omit<AgentExportRow, "editorEmails"> & {
   editorEmails: string;
 };
 

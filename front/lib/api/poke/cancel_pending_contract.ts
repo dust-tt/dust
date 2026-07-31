@@ -30,7 +30,7 @@ export class CancelPendingContractError extends Error {
   }
 }
 
-export type CancelPendingContractSuccess = {
+type CancelPendingContractSuccess = {
   cancelledMetronomeContractId: string | null;
 };
 

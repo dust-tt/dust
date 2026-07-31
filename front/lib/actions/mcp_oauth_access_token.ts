@@ -36,7 +36,7 @@ export function resetMCPStaticIpProxyFreshnessCache(): void {
   MCP_STATIC_IP_PROXY_LAST_CHECKED_MS.clear();
 }
 
-export async function syncMCPStaticIpProxyMetadata(
+async function syncMCPStaticIpProxyMetadata(
   auth: Authenticator,
   {
     connectionId,

@@ -16,7 +16,7 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 // Build a Datadog logs deep-link for a credit state machine's "Transition
 // applied" logs, scoped to the workspace (and user, for the per-user machine).
-export function buildCreditStateTransitionLogsUrl({
+function buildCreditStateTransitionLogsUrl({
   machine,
   workspaceId,
   userId,

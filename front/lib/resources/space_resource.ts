@@ -61,7 +61,7 @@ export interface SpaceResource extends ReadonlyAttributesType<SpaceModel> {}
  * a second join. This is slated to be superseded by the upcoming
  * GroupPermission model.
  */
-export class SpaceGroupReference {
+class SpaceGroupReference {
   constructor(
     readonly groupId: ModelId,
     readonly groupKind: GroupKind,

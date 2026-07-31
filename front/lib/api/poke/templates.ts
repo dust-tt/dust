@@ -45,7 +45,7 @@ export function buildSharedTemplateAttributes(
   };
 }
 
-export type PullTemplatesError = "main_region_fetch_failed";
+type PullTemplatesError = "main_region_fetch_failed";
 
 /**
  * Pulls every published template from the main region and upserts it

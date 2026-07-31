@@ -36,7 +36,7 @@ export const ConnectorCreateRequestBodySchema = z.object({
   configuration: ConnectorConfigurationTypeSchema,
 });
 
-export type ConnectorCreateRequestBody = z.infer<
+type ConnectorCreateRequestBody = z.infer<
   typeof ConnectorCreateRequestBodySchema
 >;
 

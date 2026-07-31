@@ -29,14 +29,14 @@ const PutDefaultUserSpendLimitResponseSchema = z.object({
   awuCredits: z.number().int(),
 });
 
-export interface UsageSettings {
+interface UsageSettings {
   allowUpgradeRequest: boolean;
   autoSeatUpgradeEnabled: boolean;
   autoSeatUpgradeAvailable: boolean;
   topUpEnabled: boolean;
 }
 
-export interface UsageNotifications {
+interface UsageNotifications {
   creditUsageAlertPercent: number;
   balanceThresholdCredits: number | null;
   upgradeRequestEmail: boolean;

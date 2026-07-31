@@ -12,9 +12,9 @@ import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { areRestrictedModelsAllowedForPublishedAgents } from "@app/types/user";
 
-export const MODEL_TIER_NOT_ENABLED_ERROR_CODE = "model_tier_not_enabled";
+const MODEL_TIER_NOT_ENABLED_ERROR_CODE = "model_tier_not_enabled";
 
-export function buildModelTierAccessDeniedError(
+function buildModelTierAccessDeniedError(
   agentName: string
 ): GenericErrorContent {
   return {

@@ -13,7 +13,7 @@ const MISSING_SPACE_ID = "__none__";
 // many pods with activity on a single agent over the selected window.
 const MAX_POD_BUCKETS = 100;
 
-export type PodUsageBucket = {
+type PodUsageBucket = {
   // Pod (project space) sId, or null for messages outside of any pod.
   podId: string | null;
   // Pod name, null for the no-pod bucket.

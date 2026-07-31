@@ -53,7 +53,7 @@ function BreadcrumbDropZone({
   );
 }
 
-export interface FileExplorerBreadcrumbProps {
+interface FileExplorerBreadcrumbProps {
   currentFolderPath: string;
   onNavigate: (index: number) => void;
   onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;

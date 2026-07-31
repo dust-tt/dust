@@ -6,7 +6,7 @@ export const MODEL_TIER_OVERRIDE_GROUP_KINDS = [
   "provisioned",
 ] as const satisfies readonly GroupKind[];
 
-export type ModelTierOverrideGroupKind =
+type ModelTierOverrideGroupKind =
   (typeof MODEL_TIER_OVERRIDE_GROUP_KINDS)[number];
 
 export function isModelTierOverrideGroupKind(

@@ -30,7 +30,7 @@ export function encodeMCPToolNameForForm(toolName: string): string {
   return encodeURIComponent(toolName).replaceAll(".", "%2E");
 }
 
-export function decodeMCPToolNameFromForm(encodedToolName: string): string {
+function decodeMCPToolNameFromForm(encodedToolName: string): string {
   return decodeURIComponent(encodedToolName);
 }
 

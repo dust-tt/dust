@@ -44,7 +44,7 @@ export type ContentActionKey =
   | "MultipleFilesUpload"
   | "DeleteContentNode";
 
-export type ContentAction = {
+type ContentAction = {
   action?: ContentActionKey;
   contentNode?: DataSourceViewContentNode;
 };

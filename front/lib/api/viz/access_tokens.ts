@@ -24,7 +24,7 @@ const VizAccessTokenPayloadSchema = z.object({
   workspaceId: z.string(),
 });
 
-export type VizAccessTokenPayload = z.infer<typeof VizAccessTokenPayloadSchema>;
+type VizAccessTokenPayload = z.infer<typeof VizAccessTokenPayloadSchema>;
 
 export function generateVizAccessToken({
   contentType,
@@ -74,9 +74,7 @@ function getRawPayloadFromToken(token: string): unknown {
   }
 }
 
-export function verifyVizAccessToken(
-  token: string
-): VizAccessTokenPayload | null {
+function verifyVizAccessToken(token: string): VizAccessTokenPayload | null {
   const rawPayload = getRawPayloadFromToken(token);
   if (rawPayload === null) {
     return null;

@@ -125,7 +125,7 @@ const TOOL_USAGE_HEADERS = [
   "uniqueUsers",
 ] as const satisfies readonly (keyof ToolUsageRow)[];
 
-export type ExportTableData =
+type ExportTableData =
   | {
       table: "usage_metrics";
       headers: typeof USAGE_METRICS_HEADERS;

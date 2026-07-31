@@ -8,7 +8,7 @@ const VISUALIZATION_MAGIC_LINE = "{/** visualization-complete */}";
 
 type PositionType = { start: { line: number }; end: { line: number } };
 
-export type CustomRenderers = {
+type CustomRenderers = {
   visualization: (
     code: string,
     complete: boolean,

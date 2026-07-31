@@ -126,7 +126,7 @@ async function fetchCitationsAndFilesFromSourceAgentMessage(
   };
 }
 
-export type MergeConversationBranchErrorCode =
+type MergeConversationBranchErrorCode =
   | "branch_not_found"
   | "branch_write_not_authorized"
   | "branch_not_open"
@@ -351,7 +351,7 @@ export async function mergeConversationBranch(
   });
 }
 
-export type CloseConversationBranchErrorCode =
+type CloseConversationBranchErrorCode =
   | "branch_not_found"
   | "branch_write_not_authorized"
   | "branch_not_open"

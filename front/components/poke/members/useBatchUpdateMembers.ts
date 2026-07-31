@@ -14,7 +14,7 @@ export type BatchMemberUpdate =
   | { action: "update_seat"; seatType: MembershipSeatType }
   | { action: "revoke" };
 
-export interface BatchMemberResultRow {
+interface BatchMemberResultRow {
   email: string;
   status: string;
   error?: string;

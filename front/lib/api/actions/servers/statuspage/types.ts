@@ -20,7 +20,7 @@ export const RealTimeIncidentStatusSchema = z.enum([
 ]);
 
 // All possible incident status values (including scheduled maintenance and postmortem)
-export const IncidentStatusSchema = z.enum([
+const IncidentStatusSchema = z.enum([
   "investigating",
   "identified",
   "monitoring",
@@ -82,7 +82,7 @@ export const StatuspageComponentSchema = z
 export type StatuspageComponent = z.infer<typeof StatuspageComponentSchema>;
 
 // Incident update schema
-export const StatuspageIncidentUpdateSchema = z
+const StatuspageIncidentUpdateSchema = z
   .object({
     id: z.string(),
     incident_id: z.string(),

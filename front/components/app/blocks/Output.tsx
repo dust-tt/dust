@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 
 const ENABLE_TOP_LEVEL_AUTO_EXPAND = false;
 
-export function ObjectViewer({
+function ObjectViewer({
   block,
   value,
 }: {
@@ -36,7 +36,7 @@ export function ObjectViewer({
   );
 }
 
-export function ArrayViewer({
+function ArrayViewer({
   block,
   value,
 }: {
@@ -180,7 +180,7 @@ const STRING_SHOW_MORE_LINK_LENGTH = 400;
 // This viewer just truncates very long strings with a show all link for
 // seeing the full value. It does not currently allow you to hide the
 // text again.
-export function StringViewer({ value }: { value: any }) {
+function StringViewer({ value }: { value: any }) {
   const [expanded, setExpanded] = useState(false);
 
   if (expanded) {
@@ -273,7 +273,7 @@ export function Execution({
   );
 }
 
-export function InnerLogs({ trace }: { trace: TraceType }) {
+function InnerLogs({ trace }: { trace: TraceType }) {
   const meta =
     (trace.meta as
       | {

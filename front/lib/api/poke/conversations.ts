@@ -50,7 +50,7 @@ export interface ReinforcementTestCaseMockSkillConfig {
   tools?: ReinforcementTestCaseMockSkillTool[];
 }
 
-export interface ReinforcementTestCaseWorkspaceContext {
+interface ReinforcementTestCaseWorkspaceContext {
   tools: AvailableTool[];
 }
 

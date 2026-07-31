@@ -491,7 +491,7 @@ export const CONVERSATION_URL_ACCESS_MODES = [
 export type ConversationUrlAccessMode =
   (typeof CONVERSATION_URL_ACCESS_MODES)[number];
 
-export const CONVERSATION_METADATA_URL_ACCESS_MODE_KEY = "urlAccessMode";
+const CONVERSATION_METADATA_URL_ACCESS_MODE_KEY = "urlAccessMode";
 
 export type ConversationMetadata = Record<string, unknown> & {
   urlAccessMode?: ConversationUrlAccessMode;
@@ -499,7 +499,7 @@ export type ConversationMetadata = Record<string, unknown> & {
   useFileSystem?: boolean;
 };
 
-export function isConversationUrlAccessMode(
+function isConversationUrlAccessMode(
   value: unknown
 ): value is ConversationUrlAccessMode {
   return value === "participants_only" || value === "workspace_members";

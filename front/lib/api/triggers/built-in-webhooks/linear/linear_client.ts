@@ -34,8 +34,8 @@ const LinearGraphQLResponseSchema = z.object({
     .optional(),
 });
 
-export type LinearTeamType = z.infer<typeof LinearTeamSchema>;
-export type LinearWebhookType = z.infer<typeof LinearWebhookSchema>;
+type LinearTeamType = z.infer<typeof LinearTeamSchema>;
+type LinearWebhookType = z.infer<typeof LinearWebhookSchema>;
 
 export class LinearClient {
   private readonly apiUrl = "https://api.linear.app/graphql";

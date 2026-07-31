@@ -111,7 +111,7 @@ export const WebsearchInputSchema = z.object({
     ),
 });
 
-export type WebsearchInputType = z.infer<typeof WebsearchInputSchema>;
+type WebsearchInputType = z.infer<typeof WebsearchInputSchema>;
 
 export function isWebsearchInputType(
   input: Record<string, unknown>
@@ -135,7 +135,7 @@ export const WebbrowseInputSchema = z.object({
     .describe("If true, also retrieve outgoing links from the page."),
 });
 
-export type WebbrowseInputType = z.infer<typeof WebbrowseInputSchema>;
+type WebbrowseInputType = z.infer<typeof WebbrowseInputSchema>;
 
 export function isWebbrowseInputType(
   input: Record<string, unknown>
@@ -295,11 +295,11 @@ export type DataSourceFilesystemLocateTreeInputType = z.infer<
   typeof DataSourceFilesystemLocateTreeInputSchema
 >;
 
-export const SkillEnableInputSchema = z.object({
+const SkillEnableInputSchema = z.object({
   skillName: z.string().describe("The name of the skill to enable"),
 });
 
-export type SkillEnableInputType = z.infer<typeof SkillEnableInputSchema>;
+type SkillEnableInputType = z.infer<typeof SkillEnableInputSchema>;
 
 export function isSkillEnableInputType(
   input: Record<string, unknown>

@@ -140,9 +140,7 @@ function renderConfigField(
   return `### Field: ${fieldId}\n${markdown}`;
 }
 
-export function renderNoteConfiguration(
-  config: ProductboardConfiguration
-): string {
+function renderNoteConfiguration(config: ProductboardConfiguration): string {
   const lines: string[] = [];
 
   lines.push(`## Note Type: ${config.type}`);
@@ -188,9 +186,7 @@ export function renderNoteConfigurationsList(
   return lines.join("\n").trim();
 }
 
-export function renderEntityConfiguration(
-  config: ProductboardConfiguration
-): string {
+function renderEntityConfiguration(config: ProductboardConfiguration): string {
   const lines: string[] = [];
 
   lines.push(`## Entity Type: ${config.type}`);
@@ -236,7 +232,7 @@ export function renderEntityConfigurationsList(
   return lines.join("\n").trim();
 }
 
-export function renderRelationship(rel: ProductboardRelationship): string {
+function renderRelationship(rel: ProductboardRelationship): string {
   const lines: string[] = [];
   lines.push(`- **${rel.type}**`);
   lines.push(`  Target: ${rel.target.type} (${rel.target.id})`);

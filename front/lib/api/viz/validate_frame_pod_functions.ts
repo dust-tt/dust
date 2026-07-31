@@ -26,13 +26,13 @@ const CALL_DIAGNOSTIC_CODES = new Set([
   2769, // No overload accepts the provided arguments.
 ]);
 
-export type FramePodFunctionValidationErrorCode =
+type FramePodFunctionValidationErrorCode =
   | "invalid_pod_function_input"
   | "pod_function_not_found"
   | "pod_function_schema_invalid"
   | "pod_scope_not_found";
 
-export class FramePodFunctionValidationError extends Error {
+class FramePodFunctionValidationError extends Error {
   constructor(
     readonly code: FramePodFunctionValidationErrorCode,
     message: string

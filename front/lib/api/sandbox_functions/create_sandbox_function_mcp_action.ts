@@ -18,7 +18,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import omit from "lodash/omit";
 
-export class SandboxFunctionMCPActionError extends Error {
+class SandboxFunctionMCPActionError extends Error {
   constructor(
     readonly type:
       | "server_view_not_found"

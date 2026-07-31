@@ -50,7 +50,7 @@ export type GetProjectContextResponseBody = {
   attachments: ConversationAttachmentType[];
 };
 
-export const PostProjectContextContentNodeItemSchema = z.object({
+const PostProjectContextContentNodeItemSchema = z.object({
   title: z.string().min(1, "title is required"),
   nodeId: z.string().min(1, "nodeId is required"),
   nodeDataSourceViewId: z.string().min(1, "nodeDataSourceViewId is required"),

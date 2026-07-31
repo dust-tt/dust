@@ -81,7 +81,7 @@ import {
   CheckoutSeatTypeSchema,
 } from "./types";
 
-export type BusinessActivationError =
+type BusinessActivationError =
   | { type: "not_on_free_plan" }
   | { type: "invalid_coupon" }
   | { type: "metronome_error"; message: string };
@@ -787,8 +787,6 @@ export async function handleSubscriptionActivationFailure({
   );
 }
 
-export { checkoutToMembershipSeatType };
-
 // ---------------------------------------------------------------------------
 // Invoice URL retrieval — called from the GET /checkout/business-activation
 // handler when status is "succeeded".
@@ -801,7 +799,7 @@ export { checkoutToMembershipSeatType };
  *
  * Returns null on any failure so callers can treat the URL as optional.
  */
-export async function fetchStripeHostedInvoiceUrl({
+async function fetchStripeHostedInvoiceUrl({
   metronomeCustomerId,
   metronomeInvoiceId,
 }: {

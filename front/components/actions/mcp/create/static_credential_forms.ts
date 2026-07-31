@@ -6,7 +6,7 @@ import type {
 import type { MCPOAuthUseCase, OAuthProvider } from "@app/types/oauth/lib";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 
-export type StaticCredentialFormComponent = ForwardRefExoticComponent<
+type StaticCredentialFormComponent = ForwardRefExoticComponent<
   StaticCredentialFormProps & RefAttributes<StaticCredentialFormHandle>
 >;
 

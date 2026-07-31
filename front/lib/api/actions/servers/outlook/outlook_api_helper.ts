@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const localLogger = logger.child({ module: "outlook_api_helper" });
 
-export const OutlookCalendarSchema = z.object({
+const OutlookCalendarSchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.string(),
@@ -76,10 +76,10 @@ export const OutlookEventSchema = z.object({
   recurrence: z.any().optional(),
 });
 
-export type OutlookCalendar = z.infer<typeof OutlookCalendarSchema>;
+type OutlookCalendar = z.infer<typeof OutlookCalendarSchema>;
 export type OutlookEvent = z.infer<typeof OutlookEventSchema>;
 
-export interface ListCalendarsParams {
+interface ListCalendarsParams {
   top?: number;
   skip?: number;
   userTimezone?: string;
@@ -95,7 +95,7 @@ export interface ListEventsParams {
   userTimezone?: string;
 }
 
-export interface GetEventParams {
+interface GetEventParams {
   calendarId?: string;
   eventId: string;
   userTimezone?: string;
@@ -135,13 +135,13 @@ export interface UpdateEventParams {
   userTimezone?: string;
 }
 
-export interface DeleteEventParams {
+interface DeleteEventParams {
   calendarId?: string;
   eventId: string;
   userTimezone?: string;
 }
 
-export interface CheckAvailabilityParams {
+interface CheckAvailabilityParams {
   emails: string[];
   startTime: string;
   endTime: string;

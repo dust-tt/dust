@@ -26,7 +26,7 @@ import {
   jwtVerify,
 } from "jose";
 
-export type McpServerAuthVariables = {
+type McpServerAuthVariables = {
   mcpAuth: WorkOSWorkspaceAuthenticator;
 };
 

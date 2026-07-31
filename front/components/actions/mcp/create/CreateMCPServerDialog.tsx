@@ -58,7 +58,7 @@ import { useForm, useWatch } from "react-hook-form";
  * Generate a unique view name for a multi-instance MCP server by trying
  * incrementing suffixes until one is not already taken.
  */
-export function generateUniqueViewName(
+function generateUniqueViewName(
   baseName: string,
   existingViewNames: string[]
 ): string {

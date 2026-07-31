@@ -806,7 +806,7 @@ async function connectToRemoteMCPServer(
   }
 }
 
-export type DustToolMeta = {
+type DustToolMeta = {
   stake?: MCPToolStakeLevelType;
   displayLabels?: ToolDisplayLabels;
   argumentsRequiringApproval?: string[];

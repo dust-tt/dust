@@ -22,11 +22,11 @@ import { Readable, Transform } from "stream";
 
 const UPLOAD_FROM_URL_TIMEOUT_MS = 60_000;
 
-export type UploadFromUrlError = {
+type UploadFromUrlError = {
   message: string;
 };
 
-export type UploadFromUrlResult = {
+type UploadFromUrlResult = {
   contentType: string;
   sizeBytes: number;
   existed: boolean;

@@ -13,7 +13,7 @@ export const ERROR_MESSAGES = {
 } as const;
 
 // HubSpot object type mappings
-export const HUBSPOT_OBJECT_TYPE_TO_ID: Record<string, string> = {
+const HUBSPOT_OBJECT_TYPE_TO_ID: Record<string, string> = {
   appointments: "0-421",
   calls: "0-48",
   communications: "0-18",
@@ -49,11 +49,11 @@ export const HUBSPOT_ID_TO_OBJECT_TYPE = Object.entries(
   {}
 );
 
-export const getObjectTypeId = (objectType: string): string | null => {
+const getObjectTypeId = (objectType: string): string | null => {
   return HUBSPOT_OBJECT_TYPE_TO_ID[objectType] ?? null;
 };
 
-export const convertObjectTypeToId = (objectTypeId: string): string => {
+const convertObjectTypeToId = (objectTypeId: string): string => {
   if (objectTypeId.startsWith("0-") || objectTypeId.startsWith("2-")) {
     return objectTypeId;
   }
@@ -107,7 +107,7 @@ export const logAndReturnError = ({
   return new Err(new MCPError(errorMessage));
 };
 
-export interface PageRequest {
+interface PageRequest {
   pagetype: "record" | "index";
   objectTypeId: string;
   objectId?: string;

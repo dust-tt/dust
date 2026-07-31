@@ -10,7 +10,7 @@ export type ManagedPermissionsResponse = {
   resources: ContentNode[];
 };
 
-export type ManagedPermissionsError =
+type ManagedPermissionsError =
   | { type: "connector_rate_limit" }
   | { type: "connector_authorization_error" }
   | { type: "internal_error" };

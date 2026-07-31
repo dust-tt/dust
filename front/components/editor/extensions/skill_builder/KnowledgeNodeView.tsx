@@ -35,7 +35,7 @@ interface KnowledgeDisplayProps {
   updateAttributes: (attrs: Partial<KnowledgeNodeAttributes>) => void;
 }
 
-export function KnowledgeDisplayComponent({
+function KnowledgeDisplayComponent({
   item,
   owner,
   isSpacesLoading = false,

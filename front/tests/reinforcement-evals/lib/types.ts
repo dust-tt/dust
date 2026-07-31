@@ -8,7 +8,7 @@ import {
 } from "@app/tests/utils/conversation_test_factories";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 
-export interface MockMcpToolInput {
+interface MockMcpToolInput {
   name: string;
   type: string;
   description?: string;
@@ -67,7 +67,7 @@ export function mockTool(
   };
 }
 
-export interface MockFeedback {
+interface MockFeedback {
   direction: AgentMessageFeedbackDirection;
   comment?: string;
 }
@@ -80,7 +80,7 @@ export interface MockAction {
   output?: string | null;
 }
 
-export interface MockConversationMessage {
+interface MockConversationMessage {
   role: "user" | "agent";
   content: string;
   feedback?: MockFeedback;

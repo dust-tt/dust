@@ -6,7 +6,7 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useState } from "react";
 
-export type SkillBuilderContextType = {
+type SkillBuilderContextType = {
   owner: WorkspaceType;
   user: UserType;
   /** Id of the current skill being edited, or null if the skill is not yet created. */

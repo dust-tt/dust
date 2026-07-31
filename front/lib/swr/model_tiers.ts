@@ -24,16 +24,16 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 
-export const modelTiersUrl = (workspaceId: string) =>
+const modelTiersUrl = (workspaceId: string) =>
   `/api/w/${workspaceId}/model_tiers`;
 
-export const userAllowedModelTiersUrl = (workspaceId: string) =>
+const userAllowedModelTiersUrl = (workspaceId: string) =>
   `${modelTiersUrl(workspaceId)}/allowed/users`;
 
-export const groupAllowedModelTiersUrl = (workspaceId: string) =>
+const groupAllowedModelTiersUrl = (workspaceId: string) =>
   `${modelTiersUrl(workspaceId)}/allowed/groups`;
 
-export const workspaceAllowedModelTiersUrl = (workspaceId: string) =>
+const workspaceAllowedModelTiersUrl = (workspaceId: string) =>
   `${modelTiersUrl(workspaceId)}/allowed/workspace`;
 
 export function useModelTiers({

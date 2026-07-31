@@ -21,7 +21,7 @@ function regionTag(): string {
 //
 // Naming: coarse phases are snake_case (`provider_ensure`, `gcs_mount`);
 // sub-steps are `<area>.step` (`gcs.gcsfuse_mount`) so they group by prefix.
-export type SandboxStartupPhase =
+type SandboxStartupPhase =
   // Coarse phases (one per sandbox readiness step).
   | "total"
   | "provider_ensure"

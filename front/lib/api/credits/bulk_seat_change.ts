@@ -28,9 +28,9 @@ export const BulkSeatChangeTargetSeatTypeSchema = z.enum(PAID_SEAT_TYPES);
 // - `immediate`: the change (and its billing impact) applies right away.
 // - `deferred`: the change applies at the next credit refresh (downgrades and
 //   monthly→yearly switches).
-export type BulkSeatChangeMoveKind = "unchanged" | "immediate" | "deferred";
+type BulkSeatChangeMoveKind = "unchanged" | "immediate" | "deferred";
 
-export type BulkSeatChangeMove = {
+type BulkSeatChangeMove = {
   fromSeatType: MembershipSeatType;
   // Display name of the source seat from the seat plan; null for seats that
   // have no plan entry (e.g. "none").
@@ -44,7 +44,7 @@ export type BulkSeatChangeMove = {
 // deferred) has landed, against the committed pool size (`minSeats`, 0 when
 // the seat type carries no commitment). Covers every billable seat type
 // (free included); "none" is not a seat and never appears.
-export type BulkSeatChangeSeatTotal = {
+type BulkSeatChangeSeatTotal = {
   seatType: MembershipSeatType;
   seatName: string;
   committedSeats: number;
@@ -69,7 +69,7 @@ export type BulkSeatChangePreview = {
   nextBillingPeriodAt: string | null;
 };
 
-export class BulkSeatChangePreviewError extends Error {
+class BulkSeatChangePreviewError extends Error {
   constructor(
     readonly type: "seat_plan_unavailable" | "members_resolution_failed",
     readonly cause?: Error

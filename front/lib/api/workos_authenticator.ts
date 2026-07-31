@@ -31,7 +31,7 @@ export function isWorkOSWorkspaceAuthenticator(
   );
 }
 
-export type WorkOSWorkspaceAuthenticatorError =
+type WorkOSWorkspaceAuthenticatorError =
   | "organization_missing"
   | "workspace_not_found"
   | "user_not_found"

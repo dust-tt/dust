@@ -26,7 +26,7 @@ export const WebhookFormSchema = z.object({
   spaceId: z.string().nullable(),
 });
 
-export type WebhookFormValues = z.infer<typeof WebhookFormSchema>;
+type WebhookFormValues = z.infer<typeof WebhookFormSchema>;
 
 export function getWebhookFormDefaultValues({
   trigger,

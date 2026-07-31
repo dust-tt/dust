@@ -12,7 +12,7 @@ import type { estypes } from "@elastic/elasticsearch";
 // aggregations, and the backfill (20251116_backfill_context_origin_analytics)
 // writes it as a literal value too. Filtering by it must therefore match both
 // the literal string and the absent-field case.
-export const UNKNOWN_CONTEXT_ORIGIN = "unknown";
+const UNKNOWN_CONTEXT_ORIGIN = "unknown";
 
 export function contextOriginFilter(
   value: string | string[] | undefined
@@ -51,12 +51,12 @@ export function contextOriginFilter(
   ];
 }
 
-export type ContextOriginBucket = {
+type ContextOriginBucket = {
   origin: string;
   count: number;
 };
 
-export type LabeledSource = {
+type LabeledSource = {
   label: string;
   count: number;
 };
@@ -123,7 +123,7 @@ export async function fetchContextOriginBreakdown(
   return new Ok(mapped);
 }
 
-export type ContextOriginDailyPoint = {
+type ContextOriginDailyPoint = {
   date: string;
   origin: string;
   messageCount: number;

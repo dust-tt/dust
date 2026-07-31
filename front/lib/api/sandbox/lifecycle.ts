@@ -26,7 +26,7 @@ import { Ok, type Result } from "@app/types/shared/result";
 
 const SANDBOX_RUNTIME_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
-export interface EnsureSandboxReadyResult {
+interface EnsureSandboxReadyResult {
   sandbox: SandboxResource;
   freshlyCreated: boolean;
 }

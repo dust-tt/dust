@@ -168,7 +168,7 @@ export function filterReadTriggeredConversations(
  * 2. Pod conversations grouped by pod name
  * 3. Within each group, by updatedAt descending
  */
-export type UnreadConversationGroup =
+type UnreadConversationGroup =
   | {
       type: "non_pod";
       conversations: ConversationListItemType[];

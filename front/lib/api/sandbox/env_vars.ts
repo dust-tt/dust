@@ -3,12 +3,12 @@ import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const SANDBOX_ENV_VAR_PREFIX = "DST_";
-export const SANDBOX_HTTPS_SECRET_ENV_VAR_PREFIX = "DSEC_";
+const SANDBOX_HTTPS_SECRET_ENV_VAR_PREFIX = "DSEC_";
 // Suffix max length is 64 — the wire form is `<prefix><suffix>` (e.g. "DSEC_FOO"),
 // so the rendered name fits comfortably under typical 128-char env-var limits
 // even with our longest prefix.
 export const ENV_VAR_NAME_SUFFIX_REGEX = /^[A-Z][A-Z0-9_]{0,63}$/;
-export const ENV_VAR_NAME_REGEX = ENV_VAR_NAME_SUFFIX_REGEX;
+const ENV_VAR_NAME_REGEX = ENV_VAR_NAME_SUFFIX_REGEX;
 export const MAX_VALUE_BYTES = 32 * 1_024;
 // Tighter than MAX_VALUE_BYTES because https_secret values are substituted
 // into HTTP header lines on the wire — most upstreams cap header lines
@@ -32,7 +32,7 @@ export function validateEnvVarName(name: string): Result<void, string> {
   return new Ok(undefined);
 }
 
-export function validateEnvVarValue(value: string): Result<void, string> {
+function validateEnvVarValue(value: string): Result<void, string> {
   if (value.length === 0) {
     return new Err("Environment variable values cannot be empty.");
   }

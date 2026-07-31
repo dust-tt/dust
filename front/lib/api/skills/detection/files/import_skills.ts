@@ -28,8 +28,7 @@ const FILE_IMPORT_CONCURRENCY = 4;
 
 const IMPORT_CONFLICT_STRATEGIES = ["error", "skip", "override"] as const;
 
-export type ImportConflictStrategyType =
-  (typeof IMPORT_CONFLICT_STRATEGIES)[number];
+type ImportConflictStrategyType = (typeof IMPORT_CONFLICT_STRATEGIES)[number];
 
 export function isImportConflictStrategy(
   value: string
