@@ -16,6 +16,13 @@ export function SpaceChips({ spaces, onRemoveSpace }: SpaceChipsProps) {
           key={space.sId}
           label={getSpaceName(space)}
           icon={getSpaceIcon(space)}
+          color={
+            space.kind === "global"
+              ? "primary"
+              : space.isRestricted
+                ? "info"
+                : "primary"
+          }
           onRemove={
             space.kind !== "global" && onRemoveSpace
               ? () => onRemoveSpace(space)
