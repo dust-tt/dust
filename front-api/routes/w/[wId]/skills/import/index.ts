@@ -5,6 +5,7 @@ import type { ImportSkillsRequestBody } from "@app/types/api/skills/detection/gi
 import { ImportSkillsRequestBodySchema } from "@app/types/api/skills/detection/github/import_skills";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -24,6 +25,12 @@ app.route("/upload", upload);
 app.post(
   "/",
   validate("json", ImportSkillsRequestBodySchema),
+  ensureHasWorkspacePermission(
+    "create",
+    "skill",
+    "Importing skills is restricted.",
+    "app_auth_error"
+  ),
   async (ctx): HandlerResult<ImportSkillsResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();

@@ -89,7 +89,7 @@ export function AgentBuilderSpacesBlock({
     return new Set([...skillRequestedSpaceIds, ...actionRequestedSpaceIds]);
   }, [selectedSkills, allSkills, spaceIdToActions]);
 
-  const nonGlobalSpacesWithRestrictions = useMemo(() => {
+  const nonGlobalSpacesUsedByAgent = useMemo(() => {
     const nonGlobalSpaces = allSpaces.filter((s) => s.kind !== "global");
     const allRequestedSpaceIds = new Set([
       ...actionsAndSkillsRequestedSpaceIds,
@@ -98,6 +98,10 @@ export function AgentBuilderSpacesBlock({
 
     return nonGlobalSpaces.filter((s) => allRequestedSpaceIds.has(s.sId));
   }, [allSpaces, actionsAndSkillsRequestedSpaceIds, additionalSpaces]);
+
+  const nonGlobalSpacesWithRestrictions = useMemo(() => {
+    return nonGlobalSpacesUsedByAgent.filter((s) => s.isRestricted);
+  }, [nonGlobalSpacesUsedByAgent]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
     // Compute items to remove for the dialog
@@ -165,8 +169,8 @@ export function AgentBuilderSpacesBlock({
   }, [allSpaces]);
 
   const spacesToDisplay = useMemo(() => {
-    return removeNulls([globalSpace, ...nonGlobalSpacesWithRestrictions]);
-  }, [globalSpace, nonGlobalSpacesWithRestrictions]);
+    return removeNulls([globalSpace, ...nonGlobalSpacesUsedByAgent]);
+  }, [globalSpace, nonGlobalSpacesUsedByAgent]);
 
   return (
     <div className="space-y-3">

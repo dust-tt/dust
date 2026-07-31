@@ -35,7 +35,7 @@ export function SkillBuilderRequestedSpacesSection() {
     initialRequestedSpaceIds,
     knowledgeBySpaceId,
     missingSpaceIds,
-    nonGlobalSpacesWithRestrictions,
+    nonGlobalSpacesUsedBySkill,
     skillsBySpaceId,
     spaceIdsUsedBySkill,
   } = useSkillSpaceRestrictionsContext();
@@ -111,8 +111,8 @@ export function SkillBuilderRequestedSpacesSection() {
   };
 
   const spacesToDisplay = useMemo(() => {
-    return removeNulls([globalSpace, ...nonGlobalSpacesWithRestrictions]);
-  }, [globalSpace, nonGlobalSpacesWithRestrictions]);
+    return removeNulls([globalSpace, ...nonGlobalSpacesUsedBySkill]);
+  }, [globalSpace, nonGlobalSpacesUsedBySkill]);
 
   return (
     <div className="space-y-3">

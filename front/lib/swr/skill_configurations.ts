@@ -184,16 +184,19 @@ export function useSkillsWithRelations({
     queryParams.set("bypassEditorVisibility", "true");
   }
 
-  const { data, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills?${queryParams.toString()}`,
-    skillsFetcher,
-    { disabled }
-  );
+  const { data, isLoading, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      `/api/w/${owner.sId}/skills?${queryParams.toString()}`,
+      skillsFetcher,
+      { disabled }
+    );
 
   return {
     skillsWithRelations: data?.skills ?? emptyArray(),
     isSkillsWithRelationsLoading: isLoading,
     mutateSkillsWithRelations: mutate,
+    mutateSkillsWithRelationsRegardlessOfQueryParams:
+      mutateRegardlessOfQueryParams,
   };
 }
 
@@ -205,12 +208,13 @@ export function useUpdateSkillsAvailability({
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
 
-  const { mutateSkillsWithRelations: mutateActiveSkills } =
-    useSkillsWithRelations({
-      owner,
-      status: "active",
-      disabled: true,
-    });
+  const {
+    mutateSkillsWithRelationsRegardlessOfQueryParams: mutateActiveSkills,
+  } = useSkillsWithRelations({
+    owner,
+    status: "active",
+    disabled: true,
+  });
 
   const doUpdateAvailability = async (
     skillIds: string[],

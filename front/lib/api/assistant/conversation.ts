@@ -12,7 +12,10 @@ import {
   getConversationRankVersionLock,
   getNextConversationMessageRank,
 } from "@app/lib/api/assistant/conversation/lock";
-import { createUserMentions } from "@app/lib/api/assistant/conversation/mentions";
+import {
+  createUserMentions,
+  resolveUserMentions,
+} from "@app/lib/api/assistant/conversation/mentions";
 import {
   attributeUserFromWorkspaceAndEmail,
   createAgentMessages,
@@ -609,35 +612,6 @@ export async function postUserMessage(
   // visibility decisions downstream depend on user intent, not on server-injected mentions.
   const explicitAgentMentions = mentions.filter(isAgentMention);
 
-  // The "agent_sidekick" origin makes the whole message free (no LLM/tool AWU
-  // billing). It must therefore only ever route to the sidekick global agent —
-  // any other target would let a caller get a real agent's output for free.
-  // A message that reaches here with a non-sidekick mention is either a forged origin or a bug.
-  if (
-    context.origin === "agent_sidekick" &&
-    explicitAgentMentions.some(
-      (mention) => mention.configurationId !== GLOBAL_AGENTS_SID.SIDEKICK
-    )
-  ) {
-    logger.warn(
-      {
-        workspaceId: owner.sId,
-        conversationId: conversation.sId,
-        userId: user?.sId,
-        mentionedAgentIds: explicitAgentMentions.map((m) => m.configurationId),
-      },
-      "Message with agent_sidekick origin targets a non-sidekick agent; refusing to bill it as free."
-    );
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "The agent_sidekick origin can only target the sidekick agent.",
-      },
-    });
-  }
-
   // Auto-inject @dust for mention-less web/extension messages in single-user conversations.
   // Must run before the plan rate-limit check so the resulting agent message is counted.
   // Note: the per-pod default agent is applied client-side via the input bar sticky mention,
@@ -849,14 +823,18 @@ export async function postUserMessage(
     }
   }
 
-  // Resolve the message author before the transaction: the email attribution reads must not run
-  // while the conversation advisory lock is held.
   // TODO(2026-07-31 SEC): this allow spoofing as we trust blindly the user email from the metadata.
   let messageUser = doNotAssociateUser ? null : (user?.toJSON() ?? null);
   messageUser ??= await attributeUserFromWorkspaceAndEmail(
     owner,
     context.email
   );
+
+  const resolvedUserMentions = await resolveUserMentions(auth, {
+    mentions,
+    conversation,
+    message: { type: "user_message" },
+  });
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages } = await withTransaction(async (t) => {
@@ -1022,7 +1000,7 @@ export async function postUserMessage(
     });
 
     const richMentions = await createUserMentions(auth, {
-      mentions,
+      resolvedMentions: resolvedUserMentions,
       message: userMessageWithoutMentions,
       conversation,
       transaction: t,
@@ -1324,6 +1302,12 @@ export async function editUserMessage(
     }
   }
 
+  const resolvedUserMentions = await resolveUserMentions(auth, {
+    mentions,
+    conversation,
+    message: { type: "user_message" },
+  });
+
   try {
     // In one big transaction create all Message, UserMessage, AgentMessage, and Mention rows.
     const result = await withTransaction(async (t) => {
@@ -1381,7 +1365,7 @@ export async function editUserMessage(
       });
 
       const richMentions = await createUserMentions(auth, {
-        mentions,
+        resolvedMentions: resolvedUserMentions,
         message: userMessageWithoutMentions,
         conversation,
         transaction: t,
@@ -1536,10 +1520,16 @@ export async function handleAgentMessage(
 
   const richMentions: RichMentionWithStatus[] = [];
   if (userMentions.length > 0) {
+    const resolvedUserMentions = await resolveUserMentions(auth, {
+      mentions: userMentions,
+      conversation,
+      message: agentMessage,
+    });
+
     await withTransaction(async (t) => {
       richMentions.push(
         ...(await createUserMentions(auth, {
-          mentions: userMentions,
+          resolvedMentions: resolvedUserMentions,
           message: agentMessage,
           conversation,
           transaction: t,
@@ -2516,6 +2506,36 @@ async function checkMessagesLimit(
   // Skip rate limiting for system-initiated messages (e.g. reinforced agent workflows).
   if (!auth.user() && !auth.key() && auth.authMethod() === "internal") {
     return new Ok(undefined);
+  }
+
+  // The "agent_sidekick" origin makes the whole message free (no LLM/tool AWU
+  // billing, see FREE_ORIGINS). It must therefore only ever route to the
+  // sidekick global agent — any other target would let a caller run a real
+  // agent for free. This lives in checkMessagesLimit so it also covers both
+  // new messages and editUserMessage paths.
+  const sidekickAgentMentions = mentions.filter(isAgentMention);
+  if (
+    context.origin === "agent_sidekick" &&
+    sidekickAgentMentions.some(
+      (mention) => mention.configurationId !== GLOBAL_AGENTS_SID.SIDEKICK
+    )
+  ) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        userId: auth.user()?.sId,
+        mentionedAgentIds: sidekickAgentMentions.map((m) => m.configurationId),
+      },
+      "Message with agent_sidekick origin targets a non-sidekick agent; refusing to bill it as free."
+    );
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "The agent_sidekick origin can only target the sidekick agent.",
+      },
+    });
   }
 
   // Credit-state + programmatic rate-limit gate. Two systems coexist:

@@ -41,6 +41,7 @@ import type {
   ConversationWithoutContentType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 import type { WorkspaceType } from "@app/types/user";
 import moment from "moment-timezone";
 
@@ -507,4 +508,27 @@ export function constructPromptMultiActions(
   ].filter((s) => s.content.trim() !== "");
 
   return allSections;
+}
+
+// `tool_choice: "none"` is invisible to the model: it plans a tool call, can't
+// emit one, and ends the turn with only a thinking block, which surfaces as an
+// `empty_content` error. Goes in the messages, not the system prompt, to keep
+// the cached prefix.
+export function renderToolUseDisabledUserMessage(): UserMessageTypeModel {
+  return {
+    role: "user",
+    name: "system",
+    content: [
+      {
+        type: "text",
+        text:
+          "<dust_system>\n" +
+          "Tools are unavailable for this step: you cannot call one, and no further step " +
+          "will run. Write your final answer to the user now, based on what you already " +
+          "have. If you found nothing, could not complete the task, or were blocked, say " +
+          "so explicitly and explain why. Do not end this turn without a written answer.\n" +
+          "</dust_system>",
+      },
+    ],
+  };
 }

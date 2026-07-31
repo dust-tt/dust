@@ -191,12 +191,21 @@ app.get(
       withFileAttachments: false,
     });
 
+    const canCreateSkill = await auth.hasWorkspacePermission("create", "skill");
+
     // Skills with editors-only availability (unpublished) are only listed for members of
-    // their editor group.
+    // their editor group. Suggestions are the exception: they are created with an empty
+    // editor group, so nobody can write them and the rule would hide them from everyone.
+    // They are listed instead to the skill administrators allowed to create skills.
     const skills = bypassEditorVisibility
       ? allSkills
       : allSkills.filter(
-          (skill) => skill.availability !== "editors" || skill.canWrite(auth)
+          (skill) =>
+            skill.availability !== "editors" ||
+            skill.canWrite(auth) ||
+            (skill.status === "suggested" &&
+              canCreateSkill &&
+              skill.canAdministrate(auth))
         );
 
     if (withRelations === "true") {

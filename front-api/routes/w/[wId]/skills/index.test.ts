@@ -148,6 +148,82 @@ describe("GET /api/w/:wId/skills", () => {
     expect(skillNames).not.toContain("Someone Else's Unpublished Skill");
   });
 
+  // Suggestions are created with an empty editor group (SkillResource.makeSuggestion), and
+  // under skill publication governance they get editors-only availability. Without the
+  // status exemption the editor-visibility rule would hide them from everyone.
+  it("lists editors-only suggestions to admins who can create skills", async () => {
+    const { workspace, user } = await setupTest("admin");
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    await SkillFactory.create(auth, {
+      name: "Suggested Skill",
+      status: "suggested",
+      availability: "editors",
+      addCurrentUserAsEditor: false,
+    });
+
+    // A regular unpublished skill the admin does not edit stays hidden: the exemption is
+    // scoped to suggestions, not to admins at large (that is bypassEditorVisibility's job).
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "builder",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    await SkillFactory.create(skillOwnerAuth, {
+      name: "Someone Else's Unpublished Skill",
+      availability: "editors",
+    });
+
+    const response = await getSkills(workspace, { status: "suggested" });
+    expect(response.status).toBe(200);
+    const skillNames = (await response.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).toContain("Suggested Skill");
+
+    const activeResponse = await getSkills(workspace);
+    expect(activeResponse.status).toBe(200);
+    const activeSkillNames = (await activeResponse.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(activeSkillNames).not.toContain("Someone Else's Unpublished Skill");
+  });
+
+  it("does not list editors-only suggestions to members who cannot administrate skills", async () => {
+    const { workspace, user } = await setupTest("user");
+
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      admin.sId,
+      workspace.sId
+    );
+    await SkillFactory.create(adminAuth, {
+      name: "Suggested Skill",
+      status: "suggested",
+      availability: "editors",
+      addCurrentUserAsEditor: false,
+    });
+
+    // Even with the create/skill capability, a user cannot administrate the suggestion's
+    // editor group, so the suggestion stays hidden.
+    await grantCreateSkillCapability(workspace, user);
+
+    const response = await getSkills(workspace, { status: "suggested" });
+    expect(response.status).toBe(200);
+    const skillNames = (await response.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).not.toContain("Suggested Skill");
+  });
+
   it("lets admins bypass editor visibility to list unpublished skills they do not edit", async () => {
     const { workspace } = await setupTest("admin");
 

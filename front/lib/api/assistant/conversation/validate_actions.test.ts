@@ -32,10 +32,7 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { registerUserAnswer } from "@app/lib/api/assistant/conversation/answer_user_question";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import {
-  createUserMentions,
-  dismissMention,
-} from "@app/lib/api/assistant/conversation/mentions";
+import { dismissMention } from "@app/lib/api/assistant/conversation/mentions";
 import { createAgentMessages } from "@app/lib/api/assistant/conversation/messages";
 import { resolveAuthentication } from "@app/lib/api/assistant/conversation/resolve_authentication";
 import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
@@ -66,6 +63,7 @@ import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { resolveAndCreateUserMentions } from "@app/tests/utils/mentions";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -448,7 +446,7 @@ describe("dismissMention", () => {
         },
       ];
 
-      await createUserMentions(auth, {
+      await resolveAndCreateUserMentions(auth, {
         mentions,
         message: userMessage,
         conversation,
@@ -557,7 +555,7 @@ describe("dismissMention", () => {
         },
       ];
 
-      await createUserMentions(otherUserAuth, {
+      await resolveAndCreateUserMentions(otherUserAuth, {
         mentions,
         message: userMessage,
         conversation: restrictedConversation,
@@ -638,7 +636,7 @@ describe("dismissMention", () => {
         },
       ];
 
-      await createUserMentions(refreshedAuth, {
+      await resolveAndCreateUserMentions(refreshedAuth, {
         mentions,
         message: userMessage,
         conversation: restrictedConversation,

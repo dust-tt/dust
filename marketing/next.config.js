@@ -348,6 +348,12 @@ const config = {
           "/landing/skip?utm_source=podcast&utm_medium=audio&utm_campaign=skip&utm_content=listener",
         permanent: false,
       },
+      {
+        // Page removed, see https://github.com/dust-tt/dust/pull/29781.
+        source: "/home/api-pricing",
+        destination: "/home/pricing",
+        permanent: true,
+      },
     ];
   },
   poweredByHeader: false,
