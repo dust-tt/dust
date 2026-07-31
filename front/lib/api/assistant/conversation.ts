@@ -2395,7 +2395,7 @@ function getMessageLimitErrorMessage({
   }
 }
 
-async function checkMessagesLimit(
+export async function checkMessagesLimit(
   auth: Authenticator,
   {
     mentions,
