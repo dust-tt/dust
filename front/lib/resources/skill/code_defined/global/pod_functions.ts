@@ -279,6 +279,11 @@ it is queued, so a user removed from the workspace in between is refused.
 **Never take the caller's identity as an input.** An \`input\` field like \`userId\` is supplied by
 whoever calls the function and can name anyone. \`currentUser()\` is the only trustworthy source.
 
+This matters most when a Frame calls the function. A Frame can read its viewer with
+\`useUserIdentity\`, but that is for what it displays; it decides nothing. The function resolves its
+own caller, so never accept an identity the Frame sends, and put the check that actually restricts
+something here rather than in the interface that renders the button.
+
 \`\`\`ts
 // BAD: any caller can pass someone else's id.
 input: z.object({ userId: z.string() })
