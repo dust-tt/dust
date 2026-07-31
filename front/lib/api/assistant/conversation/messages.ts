@@ -269,6 +269,14 @@ export const createAgentMessages = async (
           skipToolsValidation: boolean;
           nextMessageRank: number;
           userMessage: UserMessageTypeWithoutMentions;
+        }
+      | {
+          type: "approve_existing_mention";
+          mentionRow: MentionModel;
+          configuration: LightAgentConfigurationType;
+          skipToolsValidation: boolean;
+          nextMessageRank: number;
+          userMessage: UserMessageTypeWithoutMentions;
         };
     transaction?: Transaction;
   }
@@ -396,74 +404,88 @@ export const createAgentMessages = async (
       }
       break;
 
+    case "approve_existing_mention":
+      // Fall through into the shared create path after marking the existing
+      // mention approved (do not insert a duplicate MentionModel row).
+      await metadata.mentionRow.update({ status: "approved" }, { transaction });
+    // falls through
     case "create":
       {
-        // Deduplicate agent mentions before processing
-        const uniqueAgentMentions = uniqBy(
-          metadata.mentions.filter(isAgentMention),
-          (mention) => mention.configurationId
-        );
         const featureFlags = await getFeatureFlags(auth);
+
+        const uniqueAgentMentions =
+          metadata.type === "approve_existing_mention"
+            ? [{ configurationId: metadata.configuration.sId }]
+            : uniqBy(
+                metadata.mentions.filter(isAgentMention),
+                (mention) => mention.configurationId
+              );
 
         await concurrentExecutor(
           uniqueAgentMentions,
           async (mention) => {
-            const configuration = metadata.agentConfigurations.find(
-              (ac) => ac.sId === mention.configurationId
-            );
+            const configuration =
+              metadata.type === "approve_existing_mention"
+                ? metadata.configuration
+                : metadata.agentConfigurations.find(
+                    (ac) => ac.sId === mention.configurationId
+                  );
             if (!configuration) {
               return;
             }
 
-            // In case of Project's conversation, we need to check if the agent configuration is
-            // using only the project spaces or open spaces. Otherwise we reject the mention and
-            // do not create the agent message.
-            if (isPodConversation(conversation)) {
-              const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
-                auth,
-                {
-                  configuration,
-                  conversation,
-                  transaction,
+            let mentionRow: MentionModel;
+            if (metadata.type === "approve_existing_mention") {
+              mentionRow = metadata.mentionRow;
+            } else {
+              // In case of Project's conversation, we need to check if the agent configuration is
+              // using only the project spaces or open spaces. Otherwise we reject the mention and
+              // do not create the agent message.
+              if (isPodConversation(conversation)) {
+                const canAgentBeUsed =
+                  await canAgentBeUsedInProjectConversation(auth, {
+                    configuration,
+                    conversation,
+                    transaction,
+                  });
+
+                if (!canAgentBeUsed) {
+                  // This create the mentions from the original user message. Not to be mixed with
+                  // the mentions from the agent message (which will be filled later).
+                  const restrictedMentionRow = await MentionModel.create(
+                    {
+                      messageId: metadata.userMessage.id,
+                      agentConfigurationId: configuration.sId,
+                      workspaceId: owner.id,
+                      status: "agent_restricted_by_space_usage",
+                    },
+                    { transaction }
+                  );
+
+                  results.push({
+                    mentionRow: restrictedMentionRow,
+                    agentAnswer: null,
+                    parentMessageId: metadata.userMessage.sId,
+                    parentAgentMessageId: null,
+                    configuration,
+                  });
+
+                  return;
                 }
-              );
-
-              if (!canAgentBeUsed) {
-                // This create the mentions from the original user message. Not to be mixed with
-                // the mentions from the agent message (which will be filled later).
-                const mentionRow = await MentionModel.create(
-                  {
-                    messageId: metadata.userMessage.id,
-                    agentConfigurationId: configuration.sId,
-                    workspaceId: owner.id,
-                    status: "agent_restricted_by_space_usage",
-                  },
-                  { transaction }
-                );
-
-                results.push({
-                  mentionRow,
-                  agentAnswer: null,
-                  parentMessageId: metadata.userMessage.sId,
-                  parentAgentMessageId: null,
-                  configuration,
-                });
-
-                return;
               }
-            }
 
-            // This create the mentions from the original user message. Not to be mixed with the
-            // mentions from the agent message (which will be filled later).
-            const mentionRow = await MentionModel.create(
-              {
-                messageId: metadata.userMessage.id,
-                agentConfigurationId: configuration.sId,
-                workspaceId: owner.id,
-                status: "approved",
-              },
-              { transaction }
-            );
+              // This create the mentions from the original user message. Not to be mixed with the
+              // mentions from the agent message (which will be filled later).
+              mentionRow = await MentionModel.create(
+                {
+                  messageId: metadata.userMessage.id,
+                  agentConfigurationId: configuration.sId,
+                  workspaceId: owner.id,
+                  status: "approved",
+                },
+                { transaction }
+              );
+            }
 
             const { resolvedModel, modelResolutionMethod } = await resolveModel(
               auth,
