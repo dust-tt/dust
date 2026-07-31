@@ -18,6 +18,7 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
+import { DataSourceQuotaExceededError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { DustProjectMountFileResource } from "@connectors/resources/dust_project_mount_file_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
@@ -298,24 +299,35 @@ export async function syncProjectMountFile({
       updatedAt: sourceUpdatedAt,
       content: sectionRes.value,
     });
-    await upsertDataSourceDocument({
-      dataSourceConfig,
-      documentId,
-      documentContent,
-      documentUrl: undefined,
-      timestampMs: entry.lastModifiedMs,
-      tags,
-      parents,
-      parentId: parentInternalId,
-      upsertContext: { sync_type: syncType },
-      title: entry.fileName,
-      mimeType,
-      async: true,
-      loggerArgs: {
-        projectId,
-        path: entry.path,
-      },
-    });
+    try {
+      await upsertDataSourceDocument({
+        dataSourceConfig,
+        documentId,
+        documentContent,
+        documentUrl: undefined,
+        timestampMs: entry.lastModifiedMs,
+        tags,
+        parents,
+        parentId: parentInternalId,
+        upsertContext: { sync_type: syncType },
+        title: entry.fileName,
+        mimeType,
+        async: true,
+        loggerArgs: {
+          projectId,
+          path: entry.path,
+        },
+      });
+    } catch (error) {
+      if (error instanceof DataSourceQuotaExceededError) {
+        localLogger.warn(
+          { error },
+          "Skipping mount file exceeding plan document size limit."
+        );
+        return;
+      }
+      throw error;
+    }
   } else if (mimeType.startsWith("text/")) {
     const textRes = handleTextFile(buffer, MAX_SMALL_DOCUMENT_TXT_LEN);
     if (textRes.isErr()) {
@@ -332,21 +344,32 @@ export async function syncProjectMountFile({
       updatedAt: sourceUpdatedAt,
       content: textRes.value,
     });
-    await upsertDataSourceDocument({
-      dataSourceConfig,
-      documentId,
-      documentContent,
-      documentUrl: undefined,
-      timestampMs: entry.lastModifiedMs,
-      tags,
-      parents,
-      parentId: parentInternalId,
-      upsertContext: { sync_type: syncType },
-      title: entry.fileName,
-      mimeType,
-      async: true,
-      loggerArgs: { projectId, path: entry.path },
-    });
+    try {
+      await upsertDataSourceDocument({
+        dataSourceConfig,
+        documentId,
+        documentContent,
+        documentUrl: undefined,
+        timestampMs: entry.lastModifiedMs,
+        tags,
+        parents,
+        parentId: parentInternalId,
+        upsertContext: { sync_type: syncType },
+        title: entry.fileName,
+        mimeType,
+        async: true,
+        loggerArgs: { projectId, path: entry.path },
+      });
+    } catch (error) {
+      if (error instanceof DataSourceQuotaExceededError) {
+        localLogger.warn(
+          { error },
+          "Skipping mount file exceeding plan document size limit."
+        );
+        return;
+      }
+      throw error;
+    }
   } else {
     localLogger.info(
       { mimeType },
