@@ -711,6 +711,33 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     );
   });
 
+  it("should tell agents the Computer is already active when it is a system skill", async () => {
+    const sandbox = await SkillResource.fetchById(authenticator1, "sandbox");
+    expect(sandbox).not.toBeNull();
+    if (!sandbox) {
+      return;
+    }
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: withoutModel(agentConfig1),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
+      hasAvailableActions: true,
+      systemSkills: [sandbox],
+      enabledSkills: [],
+      equippedSkills: [],
+      isNewFileExplorer: true,
+      hasSandboxTools: true,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain("The Computer skill is always active for you");
+    expect(text).toContain("Do not try to enable it first.");
+    expect(text).not.toContain("You must enable the Computer skill proactively");
+  });
+
   it("should keep system skill instructions in the system prompt", async () => {
     const discoverSkills = await SkillResource.fetchById(
       authenticator1,
