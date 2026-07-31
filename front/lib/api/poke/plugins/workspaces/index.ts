@@ -38,6 +38,7 @@ export * from "./revoke_coupon";
 export * from "./revoke_users";
 export * from "./run_reinforcement_workflow";
 export * from "./send_onboarding_conversation";
+export * from "./set_default_user_credit_limit";
 export * from "./set_web_providers";
 export * from "./soft_delete_conversation";
 export * from "./sync_api_key_cap_alerts";

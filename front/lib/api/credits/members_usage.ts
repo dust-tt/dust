@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/assistant/rate_limits";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import type { BillingCycle } from "@app/lib/client/subscription";
 import { listPerUserCreditBalanceAlertsForWorkspace } from "@app/lib/metronome/alerts/per_user_credit_balance";
 import type {
   MetronomeCapAlertIds,
@@ -45,6 +46,7 @@ import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usag
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { spendLimitCycleOverrideForAuth } from "@app/lib/spend_limits/cycle";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
 import {
   resolveEffectiveSpendLimitAwuCredits,
@@ -238,6 +240,24 @@ async function fetchCreditsResetAt(
   return periodResult.value?.cycleEnd.toISOString() ?? null;
 }
 
+// The workspace's current Metronome contract billing period, or null when it
+// cannot be resolved (no contract, or a Metronome failure).
+async function resolveMetronomeCycle(
+  workspace: LightWorkspaceType
+): Promise<BillingCycle | null> {
+  const periodResult = await getCachedMetronomeCurrentBillingPeriod(
+    workspace.sId
+  );
+  if (periodResult.isErr()) {
+    logger.warn(
+      { err: periodResult.error, workspaceId: workspace.sId },
+      "[MembersUsage] Failed to resolve billing period"
+    );
+    return null;
+  }
+  return periodResult.value;
+}
+
 // Per-user consumed AWU credits for the current billing cycle, summed from the
 // analytics index (`cost.billable_awu`, precomputed at index time) by Elasticsearch.
 // This replaces the per-user Metronome usage scan that previously dominated the
@@ -256,33 +276,30 @@ async function fetchCreditsResetAt(
 // non-error work (0 when the only/last execution errored). This matches Metronome
 // without a status filter. Returns an empty map on any failure so the table still
 // renders (the consumed column shows 0).
+//
+// `cycle` forces the window instead of resolving the Metronome contract billing
+// period — used by workspaces that have no contract to anchor one on (see
+// `spendLimitCycleOverrideForAuth`).
 async function fetchConsumedAwuCreditsByUserId({
   workspace,
   userIds,
   freeSeatUserIds,
+  cycle,
 }: {
   workspace: LightWorkspaceType;
   userIds: string[];
   freeSeatUserIds: string[];
+  cycle?: BillingCycle;
 }): Promise<Map<string, number>> {
   if (userIds.length === 0) {
     return new Map();
   }
 
-  const periodResult = await getCachedMetronomeCurrentBillingPeriod(
-    workspace.sId
-  );
-  if (periodResult.isErr()) {
-    logger.warn(
-      { err: periodResult.error, workspaceId: workspace.sId },
-      "[MembersUsage] Failed to resolve billing period for consumed credits"
-    );
+  const resolvedCycle = cycle ?? (await resolveMetronomeCycle(workspace));
+  if (!resolvedCycle) {
     return new Map();
   }
-  if (!periodResult.value) {
-    return new Map();
-  }
-  const { cycleStart, cycleEnd } = periodResult.value;
+  const { cycleStart, cycleEnd } = resolvedCycle;
 
   const freeSeatUserIdSet = new Set(freeSeatUserIds);
 
@@ -369,7 +386,7 @@ async function fetchConsumedAwuCreditsByUserId({
  */
 export async function getEsConsumedAwuCreditsForUser(
   auth: Authenticator,
-  { user }: { user: UserResource }
+  { user, cycle }: { user: UserResource; cycle?: BillingCycle }
 ): Promise<number> {
   const workspace = auth.getNonNullableWorkspace();
   const membership =
@@ -382,6 +399,7 @@ export async function getEsConsumedAwuCreditsForUser(
     workspace,
     userIds: [user.sId],
     freeSeatUserIds,
+    cycle,
   });
   return consumedByUserId.get(user.sId) ?? 0;
 }
@@ -956,31 +974,87 @@ export async function getEffectiveSpendCapAwuCreditsForUser(
 }
 
 /**
+ * Resolves a single user's effective per-user spend cap in AWU credits on a
+ * workspace that is *not* on a credit-priced plan. Same precedence as
+ * `getEffectiveSpendCapAwuCreditsForUser` (per-user override > max group cap >
+ * workspace default) but resolved entirely from Postgres — no Metronome, since
+ * these workspaces have no contract to read seat allowances from.
+ *
+ * Consequences of having no contract:
+ *   - No seat allowance is added to any of the three values.
+ *   - A workspace default of 0 means "not configured", not "no pool access":
+ *     `defaultPoolCapAwuCredits` is `NOT NULL DEFAULT 0`, so every credit-usage
+ *     configuration row created for an unrelated reason (a discount, a usage cap)
+ *     carries a 0 that would otherwise cap every member at zero credits.
+ *
+ * Returns `null` when no cap applies.
+ */
+export async function getNonCreditPricedSpendCapAwuCreditsForUser(
+  auth: Authenticator,
+  { user }: { user: UserResource }
+): Promise<number | null> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  if (!membership) {
+    return null;
+  }
+
+  const [creditUsageConfig, groupCapByUserModelId] = await Promise.all([
+    CreditUsageConfigurationResource.fetchByWorkspaceId(auth),
+    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: [user.id],
+    }),
+  ]);
+
+  // "none" seat users have no pool access, so their override is irrelevant.
+  const overrideAwuCredits =
+    membership.seatType !== "none"
+      ? membership.poolCapOverrideAwuCredits
+      : null;
+
+  const defaultPoolCapAwuCredits =
+    creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
+
+  return resolveEffectiveSpendLimitAwuCredits({
+    overrideAwuCredits,
+    groupCapAwuCredits: groupCapByUserModelId.get(user.id) ?? null,
+    defaultAwuCredits:
+      defaultPoolCapAwuCredits > 0 ? defaultPoolCapAwuCredits : null,
+  });
+}
+
+/**
  * Backfills/resyncs every active member's Redis fixed-window spend-cap counter
  * for the current billing cycle from the authoritative Elasticsearch usage,
  * overwriting the counter (SET) so it matches ES. Use after enabling the cap or
  * to repair drift (the counter otherwise only accrues from live messages and
  * starts at 0 mid-cycle). Returns the number of users whose counter was written.
+ *
+ * Resyncs whichever cycle the workspace is bucketed on — the Metronome contract
+ * billing period, or the UTC calendar month for workspaces without a contract —
+ * so it writes the same Redis keys enforcement reads.
  */
 export async function resyncSpendLimitCountersFromEsUsage(
   auth: Authenticator
 ): Promise<Result<{ updatedUserCount: number }, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const periodResult = await getCachedMetronomeCurrentBillingPeriod(
-    workspace.sId
-  );
-  if (periodResult.isErr()) {
-    return new Err(periodResult.error);
-  }
-  if (!periodResult.value) {
+  const cycleOverride = spendLimitCycleOverrideForAuth(auth);
+  const cycle = cycleOverride ?? (await resolveMetronomeCycle(workspace));
+  if (!cycle) {
     return new Err(
       new Error("No active Metronome billing period to resync against.")
     );
   }
   const bounds = makeSpendLimitCycleWindowBounds(
-    periodResult.value.cycleStart,
-    periodResult.value.cycleEnd
+    cycle.cycleStart,
+    cycle.cycleEnd
   );
 
   const { memberships } = await MembershipResource.getActiveMemberships({
@@ -1006,6 +1080,7 @@ export async function resyncSpendLimitCountersFromEsUsage(
     workspace,
     userIds: users.map((u) => u.sId),
     freeSeatUserIds,
+    cycle,
   });
 
   const results = await concurrentExecutor(

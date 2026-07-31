@@ -20,6 +20,7 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { spendLimitCycleOverrideForAuth } from "@app/lib/spend_limits/cycle";
 import {
   addRateLimiterCount,
   getTimeframeSecondsFromLiteral,
@@ -329,12 +330,16 @@ export async function computeAndStoreAgentMessageCredits(
   // limiter above. Gated behind the same feature flag as enforcement so the
   // counter only accrues where the backup is active; enforcement happens
   // pre-message in `checkMessagesLimit`.
+  // The cycle override keeps the counter on the same window
+  // enforcement reads: the contract billing period on credit-priced plans, the
+  // UTC calendar month elsewhere (no contract to anchor on).
   if (user && recordedCostDelta > 0) {
     const featureFlags = await getFeatureFlags(auth);
     if (featureFlags.includes("enforce_user_spend_limit_rate_cap")) {
       await recordUserSpendLimitUsage(auth, {
         user,
         incrementBy: recordedCostDelta,
+        cycle: spendLimitCycleOverrideForAuth(auth),
       });
     }
   }

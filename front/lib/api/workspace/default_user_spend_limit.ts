@@ -356,3 +356,90 @@ export async function setDefaultUserSpendLimit(
 
   return new Ok({ awuCredits: poolAwuCredits });
 }
+
+/**
+ * Update the workspace-wide default per-user credit limit on a workspace that is
+ * *not* on a credit-priced plan, applying to current and future members.
+ *
+ * Writes the same column as `setDefaultUserSpendLimit` and nothing else: these
+ * workspaces have no Metronome contract, so there are no per-seat-type cap alerts
+ * to derive and no contract balances to reconcile. The limit is enforced from the
+ * Redis fixed-window per-user counter (`isNonCreditPricedUserSpendLimitReached`),
+ * which reads this column directly.
+ *
+ * 0 means "no limit" here — unlike under credit pricing, where it means "no pool
+ * access on top of the seat allowance".
+ */
+export async function setNonCreditPricedDefaultUserSpendLimit(
+  auth: Authenticator,
+  {
+    awuCredits,
+    auditContext,
+  }: {
+    awuCredits: number;
+    auditContext: AuditLogContext;
+  }
+): Promise<Result<DefaultUserSpendLimit, DefaultUserSpendLimitError>> {
+  if (
+    !Number.isInteger(awuCredits) ||
+    awuCredits < MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
+    awuCredits > MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS
+  ) {
+    return new Err(
+      new DefaultUserSpendLimitError(
+        "invalid_threshold",
+        `awuCredits must be an integer between ${MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS} and ${MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS}.`
+      )
+    );
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+
+  // The config row is created lazily, so upsert it.
+  const existingConfig =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const previousAwuCredits = existingConfig?.defaultPoolCapAwuCredits ?? 0;
+
+  if (existingConfig) {
+    await existingConfig.updateConfiguration(auth, {
+      defaultPoolCapAwuCredits: awuCredits,
+    });
+  } else {
+    await CreditUsageConfigurationResource.makeNew(auth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      defaultPoolCapAwuCredits: awuCredits,
+    });
+  }
+
+  logger.info(
+    { workspaceId: workspace.sId, previousAwuCredits, awuCredits },
+    "[DefaultUserSpendLimit] set(non-credit-priced): default per-user spend limit updated"
+  );
+
+  void emitAuditLogEvent({
+    auth,
+    action: "workspace.default_user_spend_limit_updated",
+    targets: [buildAuditLogTarget("workspace", workspace)],
+    context: auditContext,
+    metadata: {
+      previous_awu_credits: String(previousAwuCredits),
+      new_awu_credits: String(awuCredits),
+    },
+  });
+
+  return new Ok({ awuCredits });
+}
+
+/**
+ * Read the workspace-wide default per-user credit limit on a workspace that is not
+ * on a credit-priced plan. Unlike `getDefaultUserSpendLimit` this does not require
+ * Metronome billing. 0 means no limit.
+ */
+export async function getNonCreditPricedDefaultUserSpendLimit(
+  auth: Authenticator
+): Promise<number> {
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  return config?.defaultPoolCapAwuCredits ?? 0;
+}
