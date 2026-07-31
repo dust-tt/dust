@@ -875,7 +875,7 @@ export async function createAgentConfiguration(
             }
           }
 
-          if (!group.canWrite(auth) && auth.user()) {
+          if (!group.canAdministrate(auth) && auth.user()) {
             logger.error(
               {
                 workspaceId: owner.sId,

@@ -4,8 +4,10 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
@@ -142,6 +144,49 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
       variant: "light",
     });
     expect(updated?.model.modelId).toBe(INITIAL_MODEL.modelId);
+  });
+
+  it("updates an agent the admin is not an editor of", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "builder");
+
+    // Authored by, and only editable by, someone else.
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { model: { ...INITIAL_MODEL } }
+    );
+    const target = await findTargetModel(auth);
+
+    const res = await postBatchUpdateModel(workspace, {
+      agentIds: [agent.sId],
+      modelId: target.modelId,
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.updatedAgentIds).toEqual([agent.sId]);
+    expect(body.skippedAgentIds).toEqual([]);
+
+    const updated = await getAgentConfiguration(agentOwnerAuth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    assert(updated, "Expected the updated agent to be found.");
+    expect(updated.model.modelId).toBe(target.modelId);
+
+    // The editors were carried over untouched: the admin did not silently join the editor group
+    // on the way.
+    const editorGroup = await GroupResource.findEditorGroupForAgent(
+      agentOwnerAuth,
+      updated
+    );
+    assert(editorGroup.isOk(), "Expected the agent to have an editor group.");
+    const editors = await editorGroup.value.getActiveMembers(agentOwnerAuth);
+    expect(editors.map((e) => e.sId)).toEqual([
+      agentOwnerAuth.getNonNullableUser().sId,
+    ]);
   });
 
   it("rejects non-admin members", async () => {
