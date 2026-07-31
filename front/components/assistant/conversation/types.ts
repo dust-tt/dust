@@ -195,6 +195,15 @@ export const isUserMessage = (
 export const isHandoverUserMessage = (msg: VirtuosoMessage): boolean =>
   isUserMessage(msg) && msg.agenticMessageData?.type === "agent_handover";
 
+/**
+ * Optimistic rows created in ConversationViewer before the backend responds.
+ * Identified by the sId prefixes from createPlaceholderUserMessage /
+ * createPlaceholderAgentMessage.
+ */
+export const isPlaceholderMessage = (msg: VirtuosoMessage): boolean =>
+  msg.sId.startsWith("placeholder-user-message-") ||
+  msg.sId.startsWith("placeholder-agent-message-");
+
 export const isAgentMessageWithStreaming = (
   msg: VirtuosoMessage
 ): msg is AgentMessageWithStreaming =>

@@ -19,6 +19,7 @@ import {
 import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import { handlePlanUpdatedEvent } from "@app/components/assistant/conversation/plan_mode/handle_plan_updated";
 import type {
+  AgentMessageWithStreaming,
   ConversationForkNotice,
   VirtuosoMessage,
   VirtuosoMessageListContext,
@@ -31,6 +32,7 @@ import {
   isAtInitialStreamState,
   isCompactionMessage,
   isConversationForkNotice,
+  isPlaceholderMessage,
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
@@ -748,6 +750,12 @@ export const ConversationViewer = ({
               const userMessage = event.message;
               const predicate = getPredicateForRankAndBranch(userMessage);
 
+              // Drop optimistic placeholders occupying this rank so they cannot
+              // swallow the update (e.g. leftover agent placeholder at user rank).
+              virtuosoMessageListRef.current.data.findAndDelete(
+                (m) => predicate(m) && isPlaceholderMessage(m)
+              );
+
               const exists =
                 virtuosoMessageListRef.current.data.find(predicate);
 
@@ -777,6 +785,21 @@ export const ConversationViewer = ({
                 if (exists.version <= event.message.version) {
                   virtuosoMessageListRef.current.data.map((m) =>
                     areSameRankAndBranch(m, userMessage) ? userMessage : m
+                  );
+                }
+              } else {
+                // Same rank occupied by a real non-user message — fall back to
+                // sId so mention status still lands on the correct user row.
+                const bySId = virtuosoMessageListRef.current.data.find(
+                  (m) => isUserMessage(m) && m.sId === userMessage.sId
+                );
+                if (
+                  bySId &&
+                  isUserMessage(bySId) &&
+                  bySId.version <= userMessage.version
+                ) {
+                  virtuosoMessageListRef.current.data.map((m) =>
+                    m.sId === userMessage.sId ? userMessage : m
                   );
                 }
               }
@@ -829,6 +852,13 @@ export const ConversationViewer = ({
 
               // Replace the message in the exist list data, or append.
               const predicate = getPredicateForRankAndBranch(agentMessage);
+
+              // Clear optimistic placeholders at this rank before insert/replace
+              // so leftover restricted-agent placeholders cannot desync ranks.
+              virtuosoMessageListRef.current.data.findAndDelete(
+                (m) => predicate(m) && isPlaceholderMessage(m)
+              );
+
               const exists =
                 virtuosoMessageListRef.current.data.find(predicate);
 
@@ -1216,7 +1246,7 @@ export const ConversationViewer = ({
           incrementPendingSteeringCount(conversationId);
         }
 
-        const placeholderAgentMessages: VirtuosoMessage[] = [];
+        const placeholderAgentMessages: AgentMessageWithStreaming[] = [];
         if (!hasRunningAgent) {
           for (const mention of mentions) {
             if (isRichAgentMention(mention)) {
@@ -1308,6 +1338,7 @@ export const ConversationViewer = ({
         const {
           message: messageFromBackend,
           contentFragments: contentFragmentsFromBackend,
+          agentMessages: agentMessagesFromBackend,
         } = result.value;
 
         // If the message was created in a branch, we remove the placeholder user message and the placeholder agent messages from the list.
@@ -1319,17 +1350,32 @@ export const ConversationViewer = ({
           virtuosoMessageListRef.current.data.findAndDelete((m) =>
             placeHolderSids.includes(m.sId)
           );
-        }
+        } else {
+          // Restricted / mention-only agents: backend returns no agent message
+          // for that mention. Remove matching optimistic agent placeholders so
+          // they cannot collide on rank with later real messages.
+          const createdAgentConfigIds = new Set(
+            agentMessagesFromBackend.map((m) => m.configuration.sId)
+          );
+          virtuosoMessageListRef.current.data.findAndDelete((m) =>
+            placeholderAgentMessages.some(
+              (p) =>
+                p.sId === m.sId &&
+                !createdAgentConfigIds.has(p.configuration.sId)
+            )
+          );
 
-        // map() is how we update the state of virtuoso messages.
-        virtuosoMessageListRef.current.data.map((m) =>
-          areSameRankAndBranch(m, placeholderUserMsg)
-            ? {
-                ...messageFromBackend,
-                contentFragments: contentFragmentsFromBackend,
-              }
-            : m
-        );
+          // Replace the optimistic user row by sId (not rank): FE lastMessageRank
+          // can disagree with the DB when stale placeholders inflated the client rank.
+          virtuosoMessageListRef.current.data.map((m) =>
+            m.sId === placeholderUserMsg.sId
+              ? {
+                  ...messageFromBackend,
+                  contentFragments: contentFragmentsFromBackend,
+                }
+              : m
+          );
+        }
 
         // When there are pending user mentions, MentionValidationRequired
         // renders below the user message — scroll to the bottom so the action
@@ -1337,7 +1383,8 @@ export const ConversationViewer = ({
         const hasPendingMentions = messageFromBackend.richMentions?.some(
           (m) =>
             m.status === "pending_conversation_access" ||
-            m.status === "pending_project_membership"
+            m.status === "pending_project_membership" ||
+            m.status === "agent_restricted_by_space_usage"
         );
         if (hasPendingMentions) {
           virtuosoMessageListRef.current.scrollToItem({
