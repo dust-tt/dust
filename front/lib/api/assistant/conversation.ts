@@ -22,7 +22,10 @@ import {
   createUserMessage,
   resolveModelsForMentionedAgents,
 } from "@app/lib/api/assistant/conversation/messages";
-import { updateConversationRequirements } from "@app/lib/api/assistant/conversation/permissions";
+import {
+  canAgentBeUsedInProjectConversation,
+  updateConversationRequirements,
+} from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
