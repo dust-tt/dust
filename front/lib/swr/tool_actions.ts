@@ -74,7 +74,6 @@ function getResolveAuthenticationRequest(
         body: {
           actionId: request.actionId,
           outcome: request.outcome,
-          resumeAncestorConversations: true,
         },
       };
     case "sandbox_function":
@@ -113,7 +112,6 @@ function getValidateActionRequest(
         body: {
           actionId: request.actionId,
           approved: request.approved,
-          resumeAncestorConversations: true,
         },
       };
     case "sandbox_function":

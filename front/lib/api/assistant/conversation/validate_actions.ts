@@ -35,12 +35,10 @@ export async function validateAction(
     actionId,
     approvalState,
     messageId,
-    resumeAncestorConversations = false,
   }: {
     actionId: string;
     approvalState: ActionApprovalStateType;
     messageId: string;
-    resumeAncestorConversations?: boolean;
   }
 ): Promise<Result<void, DustError>> {
   const owner = auth.getNonNullableWorkspace();
@@ -297,11 +295,12 @@ export async function validateAction(
     `Action ${approvalState === "approved" ? "approved" : "rejected"} by user`
   );
 
-  if (!resumeAncestorConversations) {
-    return new Ok(undefined);
-  }
-
-  return resumeAncestorConversationsHelper(auth, conversation, {
+  // A sub-agent's caller sits in `blocked_child_action_input_required` until we relaunch it, so
+  // this must run whatever the surface the approval came from (web, Slack, Teams, public API).
+  // The approval is already committed, so a failed wake-up is logged, never returned.
+  await resumeAncestorConversationsHelper(auth, conversation, {
     agentMessageId,
   });
+
+  return new Ok(undefined);
 }

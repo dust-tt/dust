@@ -38,15 +38,13 @@ export function makeResolveAuthenticationApp(
       });
     }
 
-    const { actionId, outcome, resumeAncestorConversations } =
-      ctx.req.valid("json");
+    const { actionId, outcome } = ctx.req.valid("json");
 
     const result = await resolveAuthentication(auth, conversation, {
       actionId,
       messageId: mId,
       outcome,
       kind,
-      resumeAncestorConversations,
     });
 
     if (result.isErr()) {

@@ -59,6 +59,8 @@ export type DustErrorCode =
   | "conversation_not_found"
   | "failed_to_copy_files"
   | "no_unread_messages_found"
+  | "no_blocked_actions"
+  | "agent_message_not_resumable"
   | "no_whitelisted_model_found"
   | "generation_failed"
   | "invalid_conversation"
