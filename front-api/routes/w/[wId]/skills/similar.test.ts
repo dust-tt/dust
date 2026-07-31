@@ -10,7 +10,7 @@ vi.mock("@app/lib/api/assistant/call_llm", () => ({
 }));
 
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-
+import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import { honoApp } from "@front-api/app";
 
 async function setup(role: "builder" | "user" | "admin" = "builder") {
@@ -22,11 +22,18 @@ async function setup(role: "builder" | "user" | "admin" = "builder") {
   return { workspace, auth };
 }
 
-async function createSkills(auth: Authenticator, count: number) {
+async function createSkills(
+  auth: Authenticator,
+  count: number,
+  options?: {
+    availability?: SkillAvailability;
+  }
+) {
   for (let i = 0; i < count; i++) {
     await SkillFactory.create(auth, {
       name: `Test Skill ${i}`,
       agentFacingDescription: `Test skill description ${i}`,
+      ...options,
     });
   }
 }
@@ -58,7 +65,7 @@ describe("POST /api/w/:wId/skills/similar", () => {
 
   it("returns similar skills when runMultiActionsAgent succeeds", async () => {
     const { workspace, auth } = await setup();
-    await createSkills(auth, 3);
+    await createSkills(auth, 3, { availability: "users_and_agents" });
 
     vi.mocked(runMultiActionsAgent).mockResolvedValue(
       mockSimilarSkillsResponse(["abc12", "20zer", "35xyz"])
@@ -123,7 +130,9 @@ describe("POST /api/w/:wId/skills/similar", () => {
 
   it("batches skills into multiple LLM calls and merges deduplicated results", async () => {
     const { workspace, auth } = await setup();
-    await createSkills(auth, SKILLS_PER_LLM_CALL + 1);
+    await createSkills(auth, SKILLS_PER_LLM_CALL + 1, {
+      availability: "users_and_agents",
+    });
 
     vi.mocked(runMultiActionsAgent)
       .mockResolvedValueOnce(mockSimilarSkillsResponse(["abc12", "20zer"]))
