@@ -39,9 +39,24 @@ export class SkillFactory {
     const user = auth.user();
     assert(user, "User is required");
 
+    const availability = overrides.availability ?? DEFAULT_SKILL_AVAILABILITY;
+
     if (!(await auth.hasWorkspacePermission("create", "skill"))) {
       await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
         grantType: "create",
+        resourceType: "skill",
+      });
+      await auth.refresh();
+    }
+
+    // Auto-discoverable skills additionally require the make_discoverable capability when
+    // admin governance is enabled; grant it so the factory can set up any availability.
+    if (
+      availability === "users_and_agents" &&
+      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
+    ) {
+      await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
+        grantType: "make_discoverable",
         resourceType: "skill",
       });
       await auth.refresh();
@@ -71,7 +86,7 @@ export class SkillFactory {
         requestedSpaceIds,
         status,
         icon: SKILL_ICON.name,
-        availability: overrides.availability ?? DEFAULT_SKILL_AVAILABILITY,
+        availability,
       },
       {
         mcpServerViews,
