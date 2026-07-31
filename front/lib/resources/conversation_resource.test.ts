@@ -7136,7 +7136,6 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "agent_message_feedback",
   "agent_step_content_tool_execution",
   "agent_suggestion",
-  "conversation_branch",
   "conversation_fork",
   "conversation_mcp_server_view",
   "conversation_participant",
@@ -7161,7 +7160,6 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
 
 const KNOWN_MESSAGE_RELATED_MODELS = [
   // Tables that have a foreign key to the `message` table.
-  "conversation_branch",
   "conversation_fork",
   "message",
   "message_reaction",
