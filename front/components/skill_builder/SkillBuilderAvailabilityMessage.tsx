@@ -13,12 +13,7 @@ interface SkillBuilderAvailabilityMessageProps {
 
 function getAvailabilityItems(
   availability: SkillAvailability,
-  { restricted }: { restricted: boolean }
 ): string[] {
-  const everyoneCanFind = restricted
-    ? "All members can find it via the input bar and agent builder"
-    : "All workspace members can find it via the input bar and agent builder";
-
   switch (availability) {
     case "editors":
       return [
@@ -26,10 +21,10 @@ function getAvailabilityItems(
         "The skill remains available through agents and skills that include it",
       ];
     case "workspace_users":
-      return [everyoneCanFind];
+      return ["All members can find it via the input bar and agent builder"];
     case "users_and_agents":
       return [
-        everyoneCanFind,
+        "All members can find it via the input bar and agent builder",
         "Agents with Discover Skills can use it automatically",
       ];
     default:
@@ -44,7 +39,7 @@ export function SkillBuilderAvailabilityMessage({
   restrictedSpaces,
 }: SkillBuilderAvailabilityMessageProps) {
   const restricted = restrictedSpaces.length > 0;
-  const items = getAvailabilityItems(availability, { restricted });
+  const items = getAvailabilityItems(availability);
 
   const spaceLinks = <SpaceLinks owner={owner} spaces={restrictedSpaces} />;
 

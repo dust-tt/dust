@@ -214,7 +214,7 @@ export function SkillBuilderSettingsSection({
             >
               <ul className="list-disc space-y-1 pl-5">
                 <li>
-                  All workspace members can find it via the input bar and agent
+                  All members can find it via the input bar and agent
                   builder
                 </li>
                 <li>
