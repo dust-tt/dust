@@ -12,7 +12,10 @@ import {
   getConversationRankVersionLock,
   getNextConversationMessageRank,
 } from "@app/lib/api/assistant/conversation/lock";
-import { createUserMentions } from "@app/lib/api/assistant/conversation/mentions";
+import {
+  createUserMentions,
+  resolveUserMentions,
+} from "@app/lib/api/assistant/conversation/mentions";
 import {
   attributeUserFromWorkspaceAndEmail,
   createAgentMessages,
@@ -849,14 +852,18 @@ export async function postUserMessage(
     }
   }
 
-  // Resolve the message author before the transaction: the email attribution reads must not run
-  // while the conversation advisory lock is held.
   // TODO(2026-07-31 SEC): this allow spoofing as we trust blindly the user email from the metadata.
   let messageUser = doNotAssociateUser ? null : (user?.toJSON() ?? null);
   messageUser ??= await attributeUserFromWorkspaceAndEmail(
     owner,
     context.email
   );
+
+  const resolvedUserMentions = await resolveUserMentions(auth, {
+    mentions,
+    conversation,
+    message: { type: "user_message" },
+  });
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages } = await withTransaction(async (t) => {
@@ -1022,7 +1029,7 @@ export async function postUserMessage(
     });
 
     const richMentions = await createUserMentions(auth, {
-      mentions,
+      resolvedMentions: resolvedUserMentions,
       message: userMessageWithoutMentions,
       conversation,
       transaction: t,
@@ -1324,6 +1331,12 @@ export async function editUserMessage(
     }
   }
 
+  const resolvedUserMentions = await resolveUserMentions(auth, {
+    mentions,
+    conversation,
+    message: { type: "user_message" },
+  });
+
   try {
     // In one big transaction create all Message, UserMessage, AgentMessage, and Mention rows.
     const result = await withTransaction(async (t) => {
@@ -1381,7 +1394,7 @@ export async function editUserMessage(
       });
 
       const richMentions = await createUserMentions(auth, {
-        mentions,
+        resolvedMentions: resolvedUserMentions,
         message: userMessageWithoutMentions,
         conversation,
         transaction: t,
@@ -1536,10 +1549,16 @@ export async function handleAgentMessage(
 
   const richMentions: RichMentionWithStatus[] = [];
   if (userMentions.length > 0) {
+    const resolvedUserMentions = await resolveUserMentions(auth, {
+      mentions: userMentions,
+      conversation,
+      message: agentMessage,
+    });
+
     await withTransaction(async (t) => {
       richMentions.push(
         ...(await createUserMentions(auth, {
-          mentions: userMentions,
+          resolvedMentions: resolvedUserMentions,
           message: agentMessage,
           conversation,
           transaction: t,
