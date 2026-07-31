@@ -33,7 +33,10 @@ import {
 import { registerUserAnswer } from "@app/lib/api/assistant/conversation/answer_user_question";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { dismissMention } from "@app/lib/api/assistant/conversation/mentions";
-import { createAgentMessages } from "@app/lib/api/assistant/conversation/messages";
+import {
+  createAgentMessages,
+  resolveModelsForMentionedAgents,
+} from "@app/lib/api/assistant/conversation/messages";
 import { resolveAuthentication } from "@app/lib/api/assistant/conversation/resolve_authentication";
 import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
@@ -676,6 +679,10 @@ describe("dismissMention", () => {
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
+          resolvedModels: await resolveModelsForMentionedAgents(refreshedAuth, {
+            agentConfigurations: [agentConfig],
+          }),
+          restrictedAgentIds: new Set<string>(),
         },
       });
 

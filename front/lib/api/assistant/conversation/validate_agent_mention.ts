@@ -8,7 +8,10 @@ import {
   getConversationRankVersionLock,
   getNextConversationMessageRank,
 } from "@app/lib/api/assistant/conversation/lock";
-import { createAgentMessages } from "@app/lib/api/assistant/conversation/messages";
+import {
+  createAgentMessages,
+  resolveModelsForMentionedAgents,
+} from "@app/lib/api/assistant/conversation/messages";
 import { publishMessageEventsOnMessagePostOrEdit } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
 import { MentionModel } from "@app/lib/models/agent/conversation";
@@ -207,6 +210,11 @@ export async function validateAgentMention(
     "User approved a restricted agent mention"
   );
 
+  const resolvedModels = await resolveModelsForMentionedAgents(auth, {
+    agentConfigurations: [configuration],
+    selection: message.requestedModel ?? undefined,
+  });
+
   let agentMessages: AgentMessageType[];
   let updatedRichMentions: RichMentionWithStatus[];
 
@@ -242,6 +250,7 @@ export async function validateAgentMention(
           skipToolsValidation: false,
           nextMessageRank,
           userMessage: message,
+          resolvedModels,
         },
         transaction: t,
       });

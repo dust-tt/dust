@@ -1,8 +1,5 @@
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
-import {
-  canAgentBeUsedInProjectConversation,
-  updateConversationRequirements,
-} from "@app/lib/api/assistant/conversation/permissions";
+import { updateConversationRequirements } from "@app/lib/api/assistant/conversation/permissions";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import { resolveModel } from "@app/lib/api/assistant/resolve_model";
@@ -34,10 +31,13 @@ import type {
   UserMessageType,
   UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
-import { isPodConversation } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
-import type { ModelSelectionType } from "@app/types/assistant/models/types";
+import type {
+  ModelResolutionMethodType,
+  ModelSelectionType,
+  ResolvedRequestedModel,
+} from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -242,6 +242,33 @@ export async function createUserMessage(
   return createdUserMessage;
 }
 
+export interface AgentMessageModelResolution {
+  resolvedModel: ResolvedRequestedModel;
+  modelResolutionMethod: ModelResolutionMethodType;
+}
+
+export async function resolveModelsForMentionedAgents(
+  auth: Authenticator,
+  {
+    agentConfigurations,
+    selection,
+  }: {
+    agentConfigurations: LightAgentConfigurationType[];
+    selection?: ModelSelectionType;
+  }
+): Promise<Map<string, AgentMessageModelResolution>> {
+  const featureFlags = await getFeatureFlags(auth);
+
+  const resolutions = new Map<string, AgentMessageModelResolution>();
+  for (const configuration of agentConfigurations) {
+    resolutions.set(
+      configuration.sId,
+      await resolveModel(auth, { selection, configuration, featureFlags })
+    );
+  }
+  return resolutions;
+}
+
 export const createAgentMessages = async (
   auth: Authenticator,
   {
@@ -269,6 +296,8 @@ export const createAgentMessages = async (
           skipToolsValidation: boolean;
           nextMessageRank: number;
           userMessage: UserMessageTypeWithoutMentions;
+          resolvedModels: Map<string, AgentMessageModelResolution>;
+          restrictedAgentIds: Set<string>;
         }
       | {
           type: "approve_existing_mention";
@@ -277,6 +306,7 @@ export const createAgentMessages = async (
           skipToolsValidation: boolean;
           nextMessageRank: number;
           userMessage: UserMessageTypeWithoutMentions;
+          resolvedModels: Map<string, AgentMessageModelResolution>;
         };
     transaction?: Transaction;
   }
@@ -411,8 +441,6 @@ export const createAgentMessages = async (
     // falls through
     case "create":
       {
-        const featureFlags = await getFeatureFlags(auth);
-
         const uniqueAgentMentions =
           metadata.type === "approve_existing_mention"
             ? [{ configurationId: metadata.configuration.sId }]
@@ -438,40 +466,28 @@ export const createAgentMessages = async (
             if (metadata.type === "approve_existing_mention") {
               mentionRow = metadata.mentionRow;
             } else {
-              // In case of Project's conversation, we need to check if the agent configuration is
-              // using only the project spaces or open spaces. Otherwise we reject the mention and
-              // do not create the agent message.
-              if (isPodConversation(conversation)) {
-                const canAgentBeUsed =
-                  await canAgentBeUsedInProjectConversation(auth, {
-                    configuration,
-                    conversation,
-                    transaction,
-                  });
+              if (metadata.restrictedAgentIds.has(configuration.sId)) {
+                // This create the mentions from the original user message. Not to be mixed with
+                // the mentions from the agent message (which will be filled later).
+                const restrictedMentionRow = await MentionModel.create(
+                  {
+                    messageId: metadata.userMessage.id,
+                    agentConfigurationId: configuration.sId,
+                    workspaceId: owner.id,
+                    status: "agent_restricted_by_space_usage",
+                  },
+                  { transaction }
+                );
 
-                if (!canAgentBeUsed) {
-                  // This create the mentions from the original user message. Not to be mixed with
-                  // the mentions from the agent message (which will be filled later).
-                  const restrictedMentionRow = await MentionModel.create(
-                    {
-                      messageId: metadata.userMessage.id,
-                      agentConfigurationId: configuration.sId,
-                      workspaceId: owner.id,
-                      status: "agent_restricted_by_space_usage",
-                    },
-                    { transaction }
-                  );
+                results.push({
+                  mentionRow: restrictedMentionRow,
+                  agentAnswer: null,
+                  parentMessageId: metadata.userMessage.sId,
+                  parentAgentMessageId: null,
+                  configuration,
+                });
 
-                  results.push({
-                    mentionRow: restrictedMentionRow,
-                    agentAnswer: null,
-                    parentMessageId: metadata.userMessage.sId,
-                    parentAgentMessageId: null,
-                    configuration,
-                  });
-
-                  return;
-                }
+                return;
               }
 
               // This create the mentions from the original user message. Not to be mixed with the
@@ -487,14 +503,12 @@ export const createAgentMessages = async (
               );
             }
 
-            const { resolvedModel, modelResolutionMethod } = await resolveModel(
-              auth,
-              {
-                selection: metadata.userMessage.requestedModel ?? undefined,
-                configuration,
-                featureFlags,
-              }
+            const resolution = metadata.resolvedModels.get(configuration.sId);
+            assert(
+              resolution,
+              `Missing model resolution for agent configuration ${configuration.sId}`
             );
+            const { resolvedModel, modelResolutionMethod } = resolution;
 
             const agentMessageRow = await AgentMessageModel.create(
               {
@@ -504,9 +518,9 @@ export const createAgentMessages = async (
                 conversationId: conversation.id,
                 workspaceId: owner.id,
                 skipToolsValidation: metadata.skipToolsValidation,
-                resolvedProviderId: resolvedModel?.providerId ?? null,
-                resolvedModelId: resolvedModel?.modelId ?? null,
-                resolvedReasoningEffort: resolvedModel?.reasoningEffort ?? null,
+                resolvedProviderId: resolvedModel.providerId,
+                resolvedModelId: resolvedModel.modelId,
+                resolvedReasoningEffort: resolvedModel.reasoningEffort,
                 modelResolutionMethod,
               },
               { transaction }
