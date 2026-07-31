@@ -108,6 +108,7 @@ describe("GET /api/v1/w/[wId]/skills", () => {
     await SkillFactory.create(auth, {
       name: "Active API Skill",
       instructions: "Test skill instructions",
+      availability: "users_and_agents",
     });
     await SkillFactory.create(auth, {
       name: "Archived API Skill",
@@ -141,11 +142,13 @@ describe("GET /api/v1/w/[wId]/skills", () => {
     await SkillFactory.create(auth, {
       name: "Active API Skill",
       instructions: "Test skill instructions",
+      availability: "users_and_agents",
     });
     await SkillFactory.create(auth, {
       name: "Archived API Skill",
       status: "archived",
       instructions: "Test skill instructions",
+      availability: "workspace_users",
     });
 
     const response = await getSkills(workspace, key, { status: "archived" });

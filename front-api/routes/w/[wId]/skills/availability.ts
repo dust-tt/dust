@@ -1,4 +1,3 @@
-import { hasFeatureFlag } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -33,17 +32,6 @@ app.patch(
     const body = ctx.req.valid("json");
     const { availability } = body;
     const skillIds = uniq(body.skillIds);
-
-    if (!(await hasFeatureFlag(auth, "admin_governance_skill_publication"))) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "Changing skill availability requires skill publication governance to be enabled.",
-        },
-      });
-    }
 
     if (!(await auth.hasWorkspacePermission("publish", "skill"))) {
       return apiError(ctx, {

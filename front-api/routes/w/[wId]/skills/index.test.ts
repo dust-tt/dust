@@ -9,7 +9,6 @@ import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/system
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
@@ -149,8 +148,8 @@ describe("GET /api/w/:wId/skills", () => {
   });
 
   // Suggestions are created with an empty editor group (SkillResource.makeSuggestion), and
-  // under skill publication governance they get editors-only availability. Without the
-  // status exemption the editor-visibility rule would hide them from everyone.
+  // they get editors-only availability. Without the status exemption the editor-visibility
+  // rule would hide them from everyone.
   it("lists editors-only suggestions to admins who can create skills", async () => {
     const { workspace, user } = await setupTest("admin");
 
@@ -901,28 +900,9 @@ describe("POST /api/w/:wId/skills", () => {
     expect(createdSkill).not.toBeNull();
   });
 
-  it("rejects the editors availability when skill publication governance is off", async () => {
-    const { workspace } = await setupTest("admin");
-
-    const response = await postSkill(workspace, {
-      name: "Unpublished Skill",
-      agentFacingDescription: "To use in various situations",
-      userFacingDescription: "A skill",
-      instructions: "Instructions",
-      icon: "PuzzleIcon",
-      tools: [],
-      attachedKnowledge: [],
-      instructionsHtml: null,
-      availability: "editors",
-    });
-
-    expect(response.status).toBe(400);
-  });
-
-  it("defaults new skills to unpublished, without requiring the publish permission, when governance is on", async () => {
-    const { auth, workspace, user } = await setupTest("builder");
+  it("defaults new skills to unpublished, without requiring the publish permission", async () => {
+    const { workspace, user } = await setupTest("user");
     await grantCreateSkillCapability(workspace, user);
-    await FeatureFlagFactory.basic(auth, "admin_governance_skill_publication");
 
     const response = await postSkill(workspace, {
       name: "Draft Skill",
@@ -940,10 +920,9 @@ describe("POST /api/w/:wId/skills", () => {
     expect(responseData.skill.availability).toBe("editors");
   });
 
-  it("requires the publish permission to create a published skill when governance is on", async () => {
-    const { auth, workspace, user } = await setupTest("builder");
+  it("requires the publish permission to create a published skill", async () => {
+    const { workspace, user } = await setupTest("user");
     await grantCreateSkillCapability(workspace, user);
-    await FeatureFlagFactory.basic(auth, "admin_governance_skill_publication");
 
     const response = await postSkill(workspace, {
       name: "Published Skill",
@@ -961,9 +940,8 @@ describe("POST /api/w/:wId/skills", () => {
   });
 
   it("requires the make-discoverable permission to create an auto-discoverable skill", async () => {
-    const { auth, workspace, user } = await setupTest("builder");
+    const { workspace, user } = await setupTest("user");
     await grantCreateSkillCapability(workspace, user);
-    await FeatureFlagFactory.basic(auth, "admin_governance_skill_publication");
 
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
@@ -1006,9 +984,8 @@ describe("POST /api/w/:wId/skills", () => {
     expect(responseData.skill.availability).toBe("users_and_agents");
   });
 
-  it("lets an admin create a published skill when governance is on", async () => {
-    const { auth, workspace } = await setupTest("admin");
-    await FeatureFlagFactory.basic(auth, "admin_governance_skill_publication");
+  it("lets an admin create a published skill", async () => {
+    const { workspace } = await setupTest("admin");
 
     const response = await postSkill(workspace, {
       name: "Published Skill",

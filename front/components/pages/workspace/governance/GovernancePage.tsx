@@ -18,11 +18,7 @@ import { WorkspaceAnalyticsToggle } from "@app/components/workspace/settings/Wor
 import { WorkspaceDefaultAgentPicker } from "@app/components/workspace/settings/WorkspaceDefaultAgentPicker";
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useGovernancePermissions,
@@ -101,11 +97,6 @@ function groupGovernancePermissionsBySection(
 }
 
 export const GovernancePage = () => {
-  const { hasFeature } = useFeatureFlags();
-  const hasSkillPublicationFeature = hasFeature(
-    "admin_governance_skill_publication"
-  );
-
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
   const { groups, isGroupsLoading, isGroupsError } = useGroups({
@@ -132,13 +123,6 @@ export const GovernancePage = () => {
     isFrameCapabilityEnabled(permission.grantType, sharingPolicy)
   );
 
-  const skillPermissions = skills.filter(
-    (permission) =>
-      hasSkillPublicationFeature ||
-      (permission.grantType !== "publish" &&
-        permission.grantType !== "make_discoverable")
-  );
-
   const router = useAppRouter();
   const handleNavigateToGroups = () => {
     void router.push(`/w/${owner.sId}/members?tab=groups`);
@@ -160,7 +144,7 @@ export const GovernancePage = () => {
       id: "skills",
       label: "Skills",
       icon: PuzzlePiece01,
-      governancePermissions: skillPermissions,
+      governancePermissions: skills,
     },
     ...(framePermissions.length > 0 || isAdmin
       ? [

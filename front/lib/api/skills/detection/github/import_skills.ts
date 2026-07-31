@@ -16,14 +16,13 @@ import { suggestMCPServersForDetectedSkill } from "@app/lib/api/skills/detection
 import { validateSkillsForImport } from "@app/lib/api/skills/detection/validate_skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-import { getDefaultSkillAvailability } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -117,8 +116,6 @@ export async function importSkillsFromGitHub(
       message: "No matching importable skills found.",
     });
   }
-
-  const featureFlags = await getFeatureFlags(auth);
 
   const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
 
@@ -217,7 +214,7 @@ export async function importSkillsFromGitHub(
             repoUrl,
             filePath: skill.skillMdPath,
           },
-          availability: getDefaultSkillAvailability(featureFlags),
+          availability: DEFAULT_SKILL_AVAILABILITY,
         },
         {
           mcpServerViews: detectedMCPServerViews,

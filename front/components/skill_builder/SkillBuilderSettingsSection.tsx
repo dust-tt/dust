@@ -1,14 +1,11 @@
-import { SpaceRestrictionMessage } from "@app/components/shared/SpaceRestrictionMessage";
 import { SkillBuilderAvailabilityMessage } from "@app/components/skill_builder/SkillBuilderAvailabilityMessage";
 import { SkillBuilderEnableSuggestionsSection } from "@app/components/skill_builder/SkillBuilderEnableSuggestionsSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderIconSection } from "@app/components/skill_builder/SkillBuilderIconSection";
-import { SkillBuilderIsDefaultSection } from "@app/components/skill_builder/SkillBuilderIsDefaultSection";
 import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuilderNameSection";
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
 import { SkillEditorsSheetWithButton } from "@app/components/skill_builder/SkillEditorsSheetWithButton";
 import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type {
@@ -18,9 +15,6 @@ import type {
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -78,10 +72,6 @@ export function SkillBuilderSettingsSection({
     name: "availability",
   });
 
-  const { hasFeature } = useFeatureFlags();
-  const isSkillPublicationEnabled = hasFeature(
-    "admin_governance_skill_publication"
-  );
   const { hasPermission } = useWorkspacePermissions();
 
   // Even if you have permission to make skills discoverable, if you don't have permission to manage skill availabilty
@@ -108,7 +98,7 @@ export function SkillBuilderSettingsSection({
   // effects" message instead of the generic "who can use this skill?" one, so
   // the two are mutually exclusive.
   const showWorkspaceWideEffectsMessage =
-    isSkillPublicationEnabled && isAutoDiscoverableOn && !hasSpaceRestrictions;
+    isAutoDiscoverableOn && !hasSpaceRestrictions;
 
   // Without the make-discoverable permission, an editor can neither turn a skill
   // auto-discoverable nor change an already auto-discoverable skill's availability.
@@ -161,87 +151,73 @@ export function SkillBuilderSettingsSection({
             />
           </div>
         </div>
-        {isSkillPublicationEnabled && (
-          <div>
-            <h3 className="text-base font-semibold text-foreground mb-2">
-              Availability
-            </h3>
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                <Button
-                  label={currentOption?.label}
-                  variant="outline"
-                  isSelect
-                  disabled={!canUpdateAvailability || isAvailabilityLocked}
-                  tooltip={availabilityTooltip}
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {AVAILABILITY_OPTIONS.map((option) => {
-                  const isOptionDisabled =
-                    option.value === "users_and_agents" &&
-                    !canMakeSkillAutoDiscoverable;
-                  return (
-                    <DropdownMenuItem
-                      key={option.label}
-                      label={option.label}
-                      onClick={() => {
-                        onChange(option.value);
-                      }}
-                      description={option.description}
-                      disabled={isOptionDisabled}
-                      tooltip={
-                        isOptionDisabled
-                          ? "You don’t have permission to make skills auto-discoverable"
-                          : undefined
-                      }
-                    />
-                  );
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
+        <div>
+          <h3 className="text-base font-semibold text-foreground mb-2">
+            Availability
+          </h3>
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <Button
+                label={currentOption?.label}
+                variant="outline"
+                isSelect
+                disabled={!canUpdateAvailability || isAvailabilityLocked}
+                tooltip={availabilityTooltip}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {AVAILABILITY_OPTIONS.map((option) => {
+                const isOptionDisabled =
+                  option.value === "users_and_agents" &&
+                  !canMakeSkillAutoDiscoverable;
+                return (
+                  <DropdownMenuItem
+                    key={option.label}
+                    label={option.label}
+                    onClick={() => {
+                      onChange(option.value);
+                    }}
+                    description={option.description}
+                    disabled={isOptionDisabled}
+                    tooltip={
+                      isOptionDisabled
+                        ? "You don’t have permission to make skills auto-discoverable"
+                        : undefined
+                    }
+                  />
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
-      {isSkillPublicationEnabled ? (
-        <>
-          {showWorkspaceWideEffectsMessage ? (
-            <ContentMessage
-              icon={InfoCircle}
-              title="This skill has workspace-wide effects"
-              size="lg"
-            >
-              <ul className="list-disc space-y-1 pl-5">
-                <li>
-                  All members can find it via the input bar and agent builder
-                </li>
-                <li>
-                  Any agent with Discover Skills, including Dust, can use it
-                  automatically. See other skills available to agents in{" "}
-                  <Hoverable
-                    href={`/w/${owner.sId}/builder/skills?availability=users_and_agents`}
-                    target="_blank"
-                    className="inline-flex items-center gap-1 underline"
-                  >
-                    Manage Skills
-                    <Icon visual={LinkExternal01} size="xs" />
-                  </Hoverable>
-                </li>
-              </ul>
-            </ContentMessage>
-          ) : (
-            <SkillBuilderAvailabilityMessage
-              availability={availability}
-              owner={owner}
-              restrictedSpaces={nonGlobalSpacesWithRestrictions}
-            />
-          )}
-        </>
+      {showWorkspaceWideEffectsMessage ? (
+        <ContentMessage
+          icon={InfoCircle}
+          title="This skill has workspace-wide effects"
+          size="lg"
+        >
+          <ul className="list-disc space-y-1 pl-5">
+            <li>All members can find it via the input bar and agent builder</li>
+            <li>
+              Any agent with Discover Skills, including Dust, can use it
+              automatically. See other skills available to agents in{" "}
+              <Hoverable
+                href={`/w/${owner.sId}/builder/skills?availability=users_and_agents`}
+                target="_blank"
+                className="inline-flex items-center gap-1 underline"
+              >
+                Manage Skills
+                <Icon visual={LinkExternal01} size="xs" />
+              </Hoverable>
+            </li>
+          </ul>
+        </ContentMessage>
       ) : (
-        <SpaceRestrictionMessage
-          entityName="skill"
+        <SkillBuilderAvailabilityMessage
+          availability={availability}
           owner={owner}
-          spaces={nonGlobalSpacesWithRestrictions}
+          restrictedSpaces={nonGlobalSpacesWithRestrictions}
         />
       )}
 
@@ -254,20 +230,6 @@ export function SkillBuilderSettingsSection({
             selfImprovementLock={skill?.selfImprovementLock ?? false}
           />
         </div>
-      )}
-      {skill && !isSkillPublicationEnabled && (
-        <>
-          <Collapsible defaultOpen>
-            <CollapsibleTrigger variant="secondary">
-              Advanced
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="space-y-3 pt-3">
-                <SkillBuilderIsDefaultSection />
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </>
       )}
     </div>
   );

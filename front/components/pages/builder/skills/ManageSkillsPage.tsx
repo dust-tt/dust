@@ -6,13 +6,11 @@ import {
   type AvailabilityFilter,
   filterByAvailability,
   filterBySearch,
-  GOVERNANCE_SKILL_MANAGER_TABS,
   getAvailabilityFilterLabel,
   isAvailabilityFilter,
   isValidTab,
   SKILL_MANAGER_TABS,
   type SkillManagerTabType,
-  sortDustProvidedFirst,
   sortSkillsByName,
 } from "@app/components/pages/builder/skills/utils";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
@@ -31,12 +29,8 @@ import {
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
-import { isDustProvidedSkill, SKILL_ICON } from "@app/lib/skill";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { SKILL_ICON } from "@app/lib/skill";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   useSkillsWithRelations,
@@ -74,7 +68,6 @@ export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
-  const { hasFeature } = useFeatureFlags();
   const [selectedSkill, setSelectedSkill] =
     useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
@@ -108,29 +101,22 @@ export function ManageSkillsPage() {
     setAvailabilityFilter(checked ? "editors" : "all");
   };
 
-  const hasSkillPublicationGovernance = hasFeature(
-    "admin_governance_skill_publication"
-  );
   const doUpdateAvailability = useUpdateSkillsAvailability({ owner });
 
   const isSearchActive = !isEmptyString(skillSearch);
-
-  const visibleTabs = hasSkillPublicationGovernance
-    ? GOVERNANCE_SKILL_MANAGER_TABS
-    : SKILL_MANAGER_TABS;
 
   const activeTab = useMemo<SkillManagerTabType>(() => {
     if (
       selectedTab &&
       isValidTab(selectedTab) &&
-      visibleTabs.some((t) => t.id === selectedTab)
+      SKILL_MANAGER_TABS.some((t) => t.id === selectedTab)
     ) {
       return selectedTab;
     }
     return "active";
-  }, [selectedTab, visibleTabs]);
+  }, [selectedTab]);
 
-  const canBypassEditorVisibility = isAdmin && hasSkillPublicationGovernance;
+  const canBypassEditorVisibility = isAdmin;
   const isBypassEditorVisibilityEnabled =
     canBypassEditorVisibility && bypassEditorVisibility;
 
@@ -182,10 +168,6 @@ export function ManageSkillsPage() {
     const editableByMeSkills = sortedActiveSkills.filter((s) =>
       s.relations.editors?.some((e) => e.sId === user?.sId)
     );
-    // Legacy (no governance) tab: auto-discoverable skills plus Dust-provided ones.
-    const defaultSkills = sortedActiveSkills.filter(
-      (s) => s.availability === "users_and_agents" || isDustProvidedSkill(s)
-    );
 
     return {
       active: filterBySearch(
@@ -195,11 +177,6 @@ export function ManageSkillsPage() {
       ),
       editable_by_me: filterBySearch(
         filterByAvailability(editableByMeSkills, availabilityFilter),
-        searchLower,
-        isSearchActive
-      ),
-      default: filterBySearch(
-        sortDustProvidedFirst(defaultSkills),
         searchLower,
         isSearchActive
       ),
@@ -272,16 +249,12 @@ export function ManageSkillsPage() {
   };
 
   const isBatchEditionAvailable =
-    hasSkillPublicationGovernance &&
-    hasPermission("publish", "skill") &&
-    activeTab !== "archived";
+    hasPermission("publish", "skill") && activeTab !== "archived";
 
   const canMakeSkillAutoDiscoverable = hasPermission(
     "make_discoverable",
     "skill"
   );
-
-  const isAvailabilityFilterVisible = hasSkillPublicationGovernance;
 
   const knownSkillsById = useMemo(
     () =>
@@ -430,7 +403,7 @@ export function ManageSkillsPage() {
           <div className="flex flex-col pt-3">
             <Tabs value={activeTab}>
               <TabsList>
-                {visibleTabs.map((tab) => (
+                {SKILL_MANAGER_TABS.map((tab) => (
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}
@@ -441,49 +414,47 @@ export function ManageSkillsPage() {
                     counterValue={`${skillsByTab[tab.id].length}`}
                   />
                 ))}
-                {isAvailabilityFilterVisible && (
-                  <div className="ml-auto flex flex-row items-center gap-3 self-center text-sm text-muted-foreground">
-                    {canBypassEditorVisibility && (
-                      <span className="flex gap-1">
-                        <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
-                          <Checkbox
-                            checked={bypassEditorVisibility}
-                            onCheckedChange={(checked) =>
-                              handleShowHiddenChange(checked === true)
-                            }
-                          />
-                          Show hidden skills
-                        </label>
-                        <Tooltip
-                          label="Shows skills you can access as an admin, even if you’re not an editor"
-                          trigger={
-                            <InfoCircle className="h-4 w-4 text-muted-foreground" />
+                <div className="ml-auto flex flex-row items-center gap-3 self-center text-sm text-muted-foreground">
+                  {canBypassEditorVisibility && (
+                    <span className="flex gap-1">
+                      <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
+                        <Checkbox
+                          checked={bypassEditorVisibility}
+                          onCheckedChange={(checked) =>
+                            handleShowHiddenChange(checked === true)
                           }
                         />
-                      </span>
-                    )}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          isSelect
-                          className="w-44 justify-between"
-                          label={getAvailabilityFilterLabel(availabilityFilter)}
+                        Show hidden skills
+                      </label>
+                      <Tooltip
+                        label="Shows skills you can access as an admin, even if you’re not an editor"
+                        trigger={
+                          <InfoCircle className="h-4 w-4 text-muted-foreground" />
+                        }
+                      />
+                    </span>
+                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        isSelect
+                        className="w-44 justify-between"
+                        label={getAvailabilityFilterLabel(availabilityFilter)}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48">
+                      {AVAILABILITY_FILTER_OPTIONS.map((option) => (
+                        <DropdownMenuItem
+                          key={option.value}
+                          label={option.label}
+                          onClick={() => setAvailabilityFilter(option.value)}
                         />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-48">
-                        {AVAILABILITY_FILTER_OPTIONS.map((option) => (
-                          <DropdownMenuItem
-                            key={option.value}
-                            label={option.label}
-                            onClick={() => setAvailabilityFilter(option.value)}
-                          />
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                )}
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </TabsList>
             </Tabs>
             {isLoading ? (
@@ -508,7 +479,6 @@ export function ManageSkillsPage() {
                   onSkillClick={handleSkillSelect}
                   onAgentClick={setAgentId}
                   onUsedBySkillClick={handleUsedBySkillSelect}
-                  showAvailability={hasSkillPublicationGovernance}
                   canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
                   {...(isBatchEditionAvailable && isBatchEditing
                     ? { rowSelection, setRowSelection }
