@@ -104,7 +104,7 @@ export function SkillDescriptionEditorContent({
   return (
     <EditorContent
       editor={editor}
-      className={cn(className, "leading-7 text-base")}
+      className={cn("leading-7 text-base", className)}
     />
   );
 }
@@ -119,5 +119,5 @@ export function SkillDescriptionReadOnlyEditor({
     isReadOnly: true,
   });
 
-  return <SkillDescriptionEditorContent editor={editor} />;
+  return <SkillDescriptionEditorContent editor={editor} className="text-sm" />;
 }
