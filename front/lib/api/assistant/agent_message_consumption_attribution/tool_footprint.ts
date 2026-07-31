@@ -27,17 +27,23 @@ export interface ToolFootprintMeasurement {
   resultInputTokensCount: number;
 }
 
-// The model emits a tool call as a function name plus its JSON arguments. This mirrors that shape so
-// the token count reflects what the model actually generated to invoke the tool.
-function serializeToolCallText(action: AgentMCPActionWithOutputType): string {
-  return `${action.functionCallName}\n${JSON.stringify(action.params)}`;
+/**
+ * One tool call to measure: the enriched action for the result the model ingested, and the raw
+ * arguments string the model emitted for the call. The arguments come straight from the resource
+ * rather than the serialized action, so they exclude the inputs Dust injects afterwards.
+ */
+export interface ToolCallFootprintInput {
+  action: AgentMCPActionWithOutputType;
+  functionCallArguments: string;
 }
 
-export function toolCallFootprintTexts(
-  action: AgentMCPActionWithOutputType
-): ToolFootprintTexts {
+export function toolCallFootprintTexts({
+  action,
+  functionCallArguments,
+}: ToolCallFootprintInput): ToolFootprintTexts {
   return {
-    callText: serializeToolCallText(action),
+    // The tool call as the model emitted it: its name plus the arguments it generated.
+    callText: `${action.functionCallName}\n${functionCallArguments}`,
     // The exact text the model saw for the result, shared with conversation rendering so the
     // estimate never drifts from what was actually sent. Image content is not counted here: it is
     // priced under a separate tile-based model, out of scope for text tokenization.
@@ -56,13 +62,13 @@ export async function measureToolCallFootprints(
   auth: Authenticator,
   {
     modelId,
-    actions,
+    toolCalls,
   }: {
     modelId: string;
-    actions: AgentMCPActionWithOutputType[];
+    toolCalls: ToolCallFootprintInput[];
   }
 ): Promise<Result<ToolFootprintMeasurement[], Error>> {
-  if (actions.length === 0) {
+  if (toolCalls.length === 0) {
     return new Ok([]);
   }
 
@@ -78,8 +84,8 @@ export async function measureToolCallFootprints(
   });
 
   // Tokenize the calls and the results as two homogeneous lists rather than one interleaved list, so
-  // each count maps back to its action by plain index, with no call-vs-result position juggling.
-  const footprints = actions.map(toolCallFootprintTexts);
+  // each count maps back to its call by plain index, with no call-vs-result position juggling.
+  const footprints = toolCalls.map(toolCallFootprintTexts);
   const [callCountsRes, resultCountsRes] = await Promise.all([
     tokenCountForTexts(
       footprints.map((footprint) => footprint.callText),

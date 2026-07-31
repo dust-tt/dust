@@ -1675,4 +1675,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   get functionCallName(): string {
     return this.stepContent.value.value.name;
   }
+
+  // The raw arguments string the model emitted, before Dust augments it with preconfigured values
+  // and secrets (those land in the serialized `params`). Kept off the serialized type so it stays
+  // server-side, where consumption attribution reads it.
+  get functionCallArguments(): string {
+    return this.stepContent.value.value.arguments;
+  }
 }
