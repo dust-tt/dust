@@ -1527,7 +1527,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       status = "active",
       limit,
       globalSpaceOnly,
-      podSpaceId,
+      podSpaceModelId,
       onlyCustom,
       availability,
       updatedAfter,
@@ -1539,7 +1539,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       status?: SkillStatus | SkillStatus[];
       limit?: number;
       globalSpaceOnly?: boolean;
-      podSpaceId?: ModelId | null;
+      podSpaceModelId?: ModelId | null;
       onlyCustom?: boolean;
       availability?: SkillAvailability | SkillAvailability[];
       updatedAfter?: Date;
@@ -1572,7 +1572,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    if (podSpaceId === undefined) {
+    if (podSpaceModelId === undefined) {
       return filteredSkills;
     }
 
@@ -1590,7 +1590,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       if (skillPodSpaceIds.length === 0) {
         return true;
       }
-      return podSpaceId !== null && skillPodSpaceIds.includes(podSpaceId);
+      return (
+        podSpaceModelId !== null && skillPodSpaceIds.includes(podSpaceModelId)
+      );
     });
   }
 

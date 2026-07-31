@@ -125,20 +125,18 @@ export async function getReferencedSkillSpaceModelIds(
   );
 }
 
-export async function validateAtMostOnePodSpace(
-  auth: Authenticator,
-  requestedSpaceIds: ModelId[]
-): Promise<Result<void, Error>> {
-  const podSpaceIds = await SpaceResource.fetchProjectSpaceIdsAmong(
-    auth,
-    requestedSpaceIds
-  );
+export function validateAtMostOnePodSpace(
+  requestedSpaces: SpaceResource[]
+): Result<void, Error> {
+  const podSpaceCount = requestedSpaces.filter((space) =>
+    space.isProject()
+  ).length;
 
-  if (podSpaceIds.length > 1) {
+  if (podSpaceCount > 1) {
     return new Err(
       new Error(
         "A skill can only be restricted to a single Pod, but this would restrict it to " +
-          `${podSpaceIds.length} different Pods.`
+          `${podSpaceCount} different Pods.`
       )
     );
   }
