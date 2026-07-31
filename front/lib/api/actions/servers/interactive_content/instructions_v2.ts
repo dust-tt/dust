@@ -127,9 +127,8 @@ if (!isAuthenticated) { return <SignedOutView />; }
 return <p>Welcome back, {user.firstName}</p>;
 \`\`\`
 
-- Use it to personalize: greet the viewer, preselect their rows, hide controls that would fail for them, or show a sign-in prompt instead of a dead button.
-- **It is not a security boundary.** It shapes what the interface offers, not what the viewer can do. Hiding a button is a courtesy; the pod function behind it is the gate, because it resolves its own caller with \`currentUser()\` no matter what the Frame claims. A function that must refuse anonymous callers outright declares \`schema.userIdentity: "workspace_user_required"\`, which makes the platform reject them before the function runs.
-- Never pass the identity you read here into a pod function as an argument. The function determines its own caller; a \`userId\` sent from the Frame names whoever the caller chooses.
+- Use it for presentation only: greet the viewer by name, highlight the rows that are theirs, or show a sign-in prompt instead of a control that would do nothing for a signed-out viewer.
+- It tells you who is looking, not what they are allowed to do, and a Frame on its own holds no state to protect. Do not build access control out of it: whatever a Frame renders, its viewer can read.
 
 ### Interaction Rules
 
