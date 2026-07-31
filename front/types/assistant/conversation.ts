@@ -123,16 +123,12 @@ export type UserMessageOrigin =
   // (to be created).
   | "onboarding_conversation"
   // for internal use, for reinforced agent batch LLM operations
-  | "reinforcement"
-  // Internal anchor user message inserted at the start of an empty conversation so
-  // a branch can be created before any user-visible message exists.
-  | "branch_anchor";
+  | "reinforcement";
 
 export const HIDDEN_MESSAGE_ORIGINS: UserMessageOrigin[] = [
   "onboarding_conversation",
   "project_kickoff",
   "reinforced_skill_notification",
-  "branch_anchor",
   "wakeup",
 ];
 
@@ -707,7 +703,6 @@ export const CONVERSATION_ERROR_TYPES = [
   "user_already_participant",
   "message_not_found",
   "message_deletion_not_authorized",
-  "branch_not_found",
   "conversation_context_usage_not_found",
 ] as const;
 

@@ -51,7 +51,6 @@ export async function registerUserAnswer(
     userMessageVersion,
     userMessageUserId,
     userMessageOrigin,
-    branchId,
   } = await getUserMessageIdFromMessageId(auth, {
     messageId,
   });
@@ -142,7 +141,7 @@ export async function registerUserAnswer(
       agentLoopArgs: {
         agentMessageId,
         agentMessageVersion,
-        conversationBranchId: branchId,
+        conversationBranchId: null,
         conversationId,
         conversationTitle,
         userMessageId,
@@ -175,7 +174,7 @@ export async function registerUserAnswer(
       agentMessageVersion,
       conversationId,
       conversationTitle,
-      conversationBranchId: branchId,
+      conversationBranchId: null,
       userMessageId,
       userMessageVersion,
       userMessageOrigin,

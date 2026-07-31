@@ -28,7 +28,6 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
-import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -680,27 +679,6 @@ describe("createConversationFork", () => {
       rank: 3,
       parentId: secondUserMessage.id,
       status: "created",
-    });
-
-    const branch = await ConversationBranchResource.makeNew(auth, {
-      state: "open",
-      previousMessageId: firstAgentMessage.id,
-      conversationId: parentConversation.id,
-      userId: auth.getNonNullableUser().id,
-    });
-
-    const branchUserMessage = await createUserMessage(auth, {
-      conversation: parentConversation,
-      rank: 10,
-      content: "Branch turn",
-      branchId: branch.id,
-    });
-    await createAgentMessage(auth, {
-      conversation: parentConversation,
-      rank: 11,
-      parentId: branchUserMessage.id,
-      status: "succeeded",
-      branchId: branch.id,
     });
 
     const result = await createConversationFork(auth, {

@@ -99,11 +99,6 @@ export async function canAgentBeUsedInProjectConversation(
     throw new Error("Unexpected: conversation is not a project conversation");
   }
 
-  // If we are in a branch, we can use the agent.
-  if (conversation.branchId) {
-    return true;
-  }
-
   // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or open spaces, otherwise we reject the mention and do not create the agent message.
   // Check to skip heavy work if the agent configuration is only using the project space.
   if (

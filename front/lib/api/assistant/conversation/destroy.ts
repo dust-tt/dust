@@ -12,7 +12,6 @@ import {
   MessageReactionModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import {
   AgentMessageSkillModel,
   ConversationSkillModel,
@@ -81,13 +80,6 @@ async function destroyMessageRelatedResources(
 
   await ConversationForkResource.deleteBySourceMessageModelIds(auth, {
     sourceMessageModelIds: messageIds,
-  });
-
-  await ConversationBranchModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      previousMessageId: messageIds,
-    },
   });
 
   await MessageReactionModel.destroy({
@@ -182,14 +174,6 @@ export async function destroyConversation(
     });
     await ConversationSelectedSpaceResource.deleteForConversation(auth, {
       conversation,
-    });
-
-    // Clean up all branches attached to this conversation before deleting messages.
-    await ConversationBranchModel.destroy({
-      where: {
-        workspaceId: owner.id,
-        conversationId: conversation.id,
-      },
     });
 
     // One prefix covers every content-fragment attachment for this conversation
