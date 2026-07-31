@@ -6,6 +6,7 @@ import {
   listResolvedUpgradeRequests,
   resolveUpgradeRequest,
 } from "@app/lib/api/credits/upgrade_requests";
+import { upgradeRequestsToCsv } from "@app/lib/api/credits/upgrade_requests_export";
 import { UserSpendLimitError } from "@app/lib/api/users/spend_limit";
 import type {
   GetUpgradeRequestsResponseBody,
@@ -46,6 +47,9 @@ const ResolveBodySchema = z.discriminatedUnion("status", [
 const ListUpgradeRequestsQuerySchema = z.object({
   status: z.union([z.literal("pending"), z.literal("resolved")]).optional(),
   offset: z.coerce.number().int().min(0).catch(0),
+  // Omitted/"json" preserves the existing response body; "csv" streams a
+  // downloadable file instead — used by the History tab's export button.
+  format: z.union([z.literal("json"), z.literal("csv")]).optional(),
 });
 
 const CreateUpgradeRequestBodySchema = z.object({
@@ -104,17 +108,28 @@ app.get(
   "/",
   ensureIsManager(),
   validate("query", ListUpgradeRequestsQuerySchema),
-  async (ctx): HandlerResult<GetUpgradeRequestsResponseBody> => {
+  async (ctx) => {
     const auth = ctx.get("auth");
-    const { status, offset } = ctx.req.valid("query");
-    if (status === "resolved") {
-      const { requests, total } = await listResolvedUpgradeRequests(auth, {
-        offset,
-      });
-      return ctx.json({ requests, total });
+    const { status, offset, format } = ctx.req.valid("query");
+
+    const { requests, total } =
+      status === "resolved"
+        ? await listResolvedUpgradeRequests(auth, { offset })
+        : { requests: await listPendingUpgradeRequests(auth), total: undefined };
+
+    if (format === "csv") {
+      ctx.header("Content-Type", "text/csv");
+      ctx.header(
+        "Content-Disposition",
+        `attachment; filename="dust_upgrade_requests${
+          status === "resolved" ? "_history" : ""
+        }.csv"`
+      );
+      return ctx.body(upgradeRequestsToCsv(requests));
     }
-    const requests = await listPendingUpgradeRequests(auth);
-    return ctx.json({ requests });
+
+    const body: GetUpgradeRequestsResponseBody = { requests, total };
+    return ctx.json(body);
   }
 );
 

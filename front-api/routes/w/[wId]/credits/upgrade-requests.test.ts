@@ -371,4 +371,62 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       }
     });
   });
+
+  describe("GET ?format=csv (history export)", () => {
+    it("streams a CSV of the resolved requests", async () => {
+      const workspace = await creditPricedWorkspace();
+      const { user: member } = await createMemberRequest(workspace);
+
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+        workspace,
+      });
+      const { sId: requestId } = (
+        await (await honoApp.request(upgradeRequestsUrl(workspace.sId))).json()
+      ).requests[0];
+
+      await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}/${requestId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "denied" }),
+        }
+      );
+
+      const csvResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?status=resolved&format=csv`
+      );
+
+      expect(csvResponse.status).toBe(200);
+      expect(csvResponse.headers.get("Content-Type")).toBe("text/csv");
+      expect(csvResponse.headers.get("Content-Disposition")).toBe(
+        'attachment; filename="dust_upgrade_requests_history.csv"'
+      );
+
+      const csv = await csvResponse.text();
+      const [header, row] = csv.trim().split("\n");
+      expect(header).toBe(
+        "requesterName,requesterEmail,status,reason,requestedAt,resolvedAt,resolvedBy,grantedCredits,grantedUnlimitedSpend,grantedSeatType,grantedExpiryKind"
+      );
+      expect(row).toContain(member.email);
+      expect(row).toContain("denied");
+    });
+
+    it("returns 403 when caller is a user", async () => {
+      const workspace = await creditPricedWorkspace();
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "user",
+        workspace,
+      });
+
+      const response = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?status=resolved&format=csv`
+      );
+
+      expect(response.status).toBe(403);
+    });
+  });
 });
