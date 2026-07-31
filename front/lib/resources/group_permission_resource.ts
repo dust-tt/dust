@@ -118,9 +118,6 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
   // Grant an instance-level permission (a specific resource). Idempotent: the unique index dedupes,
   // so granting twice is a no-op. Type-wide grants (resourceId = -1) go through dedicated methods.
-  // A regular_auto group is the single backing group of its tuple: granting one when a different
-  // regular_auto group already holds the tuple is rejected (under the grant-tuple lock, so
-  // concurrent inserts cannot slip through).
   // TODO(admin-governance): Decide whether system group should be rejected here (and in
   // revoke) or left to callers; align with setGroups / setForEverybody conventions.
   static async grant(
@@ -141,38 +138,18 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     assertValidGrant({ grantType, resourceType, resourceId });
 
     const workspaceId = auth.getNonNullableWorkspace().id;
-    return withTransaction(async (t) => {
-      if (group.kind === "regular_auto") {
-        await this.getGrantLock(
-          auth,
-          { grantType, resourceType, resourceId },
-          t
-        );
-        const existing = await this.findRegularAutoGroupForGrant(auth, {
-          grantType,
-          resourceType,
-          resourceId,
-          transaction: t,
-        });
-        assert(
-          !existing || existing.id === group.id,
-          "Another regular_auto group already holds this grant tuple."
-        );
-      }
+    const [row] = await GroupPermissionModel.findOrCreate({
+      where: {
+        workspaceId,
+        groupId: group.id,
+        grantType,
+        resourceType,
+        resourceId,
+      },
+      transaction,
+    });
 
-      const [row] = await GroupPermissionModel.findOrCreate({
-        where: {
-          workspaceId,
-          groupId: group.id,
-          grantType,
-          resourceType,
-          resourceId,
-        },
-        transaction: t,
-      });
-
-      return new this(GroupPermissionModel, row.get());
-    }, transaction);
+    return new this(GroupPermissionModel, row.get());
   }
 
   // Find the regular_auto group that already holds an instance-level grant for the given tuple.
@@ -526,9 +503,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   }
 
   // Batch of instance-level grants (one INSERT, unique index dedupes). Each is validated; -1 is
-  // rejected here as in `grant` — type-wide grants use the dedicated methods above. regular_auto
-  // groups are rejected: their one-group-per-tuple check is per-row (see grant), which would
-  // defeat the batch — grant them through grant()/grantToUser instead.
+  // rejected here as in `grant` — type-wide grants use the dedicated methods above.
   static async grantMany(
     auth: Authenticator,
     {
@@ -551,10 +526,6 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       assert(
         resourceId > 0,
         "grantMany is instance-level; use the dedicated type-wide methods for -1 grants."
-      );
-      assert(
-        group.kind !== "regular_auto",
-        "grantMany cannot target regular_auto groups; use grant()/grantToUser."
       );
       this.assertGroupInWorkspace(auth, group);
       assertValidGrant({ grantType, resourceType, resourceId });
