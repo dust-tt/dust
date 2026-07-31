@@ -191,7 +191,7 @@ app.delete(
       context: getAuditLogContext(auth),
       metadata: {
         frame_name: file.fileName ?? file.sId,
-        grant_id: String(grantId),
+        email: result.value.email,
       },
     });
 
