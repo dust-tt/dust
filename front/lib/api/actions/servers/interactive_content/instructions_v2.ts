@@ -115,7 +115,8 @@ The same decision rule applies regardless of where the data came from:
 - Import \`useUserIdentity\` from \`@dust/react-hooks\` to know who is viewing the Frame.
 - It returns \`{ isAuthenticated, isWorkspaceMember, user, isLoading, error }\`. When \`isAuthenticated\` is true, \`user\` is \`{ sId, firstName, lastName, fullName, image }\`; otherwise \`user\` is \`null\`.
 - \`isAuthenticated\` is only true for a signed-in member of the workspace that owns the Frame. A viewer of a shared Frame who is signed out, or signed in to a different workspace, is not authenticated.
-- Render the \`isLoading\` state, and treat \`error\` and the unauthenticated case identically: show the signed-out view rather than an error.
+- Render the \`isLoading\` state, and treat \`error\` and the unauthenticated case identically: fall back to the unauthenticated view rather than showing an error.
+- A Frame cannot sign anyone in. The viewer is already authenticated to Dust or they are not, and nothing the Frame renders can change that. When a Frame only makes sense for an authenticated member, render a plain view saying the content is unavailable to them, rather than a login prompt or a button that will not work.
 
 \`\`\`tsx
 import { useUserIdentity } from "@dust/react-hooks";
@@ -123,11 +124,11 @@ import { useUserIdentity } from "@dust/react-hooks";
 const { user, isAuthenticated, isLoading } = useUserIdentity();
 
 if (isLoading) { return <Spinner />; }
-if (!isAuthenticated) { return <SignedOutView />; }
+if (!isAuthenticated) { return <UnavailableToViewer />; }
 return <p>Welcome back, {user.firstName}</p>;
 \`\`\`
 
-- Use it for presentation only: greet the viewer by name, highlight the rows that are theirs, or show a sign-in prompt instead of a control that would do nothing for a signed-out viewer.
+- Use it for presentation only: greet the viewer by name, or highlight the rows that are theirs.
 - It tells you who is looking, not what they are allowed to do, and a Frame on its own holds no state to protect. Do not build access control out of it: whatever a Frame renders, its viewer can read.
 
 ### Interaction Rules
