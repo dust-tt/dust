@@ -976,62 +976,6 @@ export async function getEffectiveSpendCapAwuCreditsForUser(
 }
 
 /**
- * Resolves a single user's effective per-user spend cap in AWU credits on a
- * workspace that is *not* on a credit-priced plan. Same precedence as
- * `getEffectiveSpendCapAwuCreditsForUser` (per-user override > max group cap >
- * workspace default) but resolved entirely from Postgres — no Metronome, since
- * these workspaces have no contract to read seat allowances from.
- *
- * Consequences of having no contract:
- *   - No seat allowance is added to any of the three values.
- *   - A workspace default of 0 means "not configured", not "no pool access":
- *     `defaultPoolCapAwuCredits` is `NOT NULL DEFAULT 0`, so every credit-usage
- *     configuration row created for an unrelated reason (a discount, a usage cap)
- *     carries a 0 that would otherwise cap every member at zero credits.
- *
- * Returns `null` when no cap applies.
- */
-export async function getNonCreditPricedSpendCapAwuCreditsForUser(
-  auth: Authenticator,
-  { user }: { user: UserResource }
-): Promise<number | null> {
-  const workspace = auth.getNonNullableWorkspace();
-
-  const membership =
-    await MembershipResource.getActiveMembershipOfUserInWorkspace({
-      user,
-      workspace,
-    });
-  if (!membership) {
-    return null;
-  }
-
-  const [creditUsageConfig, groupCapByUserModelId] = await Promise.all([
-    CreditUsageConfigurationResource.fetchByWorkspaceId(auth),
-    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
-      workspace,
-      userModelIds: [user.id],
-    }),
-  ]);
-
-  // "none" seat users have no pool access, so their override is irrelevant.
-  const overrideAwuCredits =
-    membership.seatType !== "none"
-      ? membership.poolCapOverrideAwuCredits
-      : null;
-
-  const defaultPoolCapAwuCredits =
-    creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
-
-  return resolveEffectiveSpendLimitAwuCredits({
-    overrideAwuCredits,
-    groupCapAwuCredits: groupCapByUserModelId.get(user.id) ?? null,
-    defaultAwuCredits:
-      defaultPoolCapAwuCredits > 0 ? defaultPoolCapAwuCredits : null,
-  });
-}
-
-/**
  * Backfills/resyncs every active member's Redis fixed-window spend-cap counter
  * for the current billing cycle from the authoritative Elasticsearch usage,
  * overwriting the counter (SET) so it matches ES. Use after enabling the cap or
@@ -1047,8 +991,9 @@ export async function resyncSpendLimitCountersFromEsUsage(
 ): Promise<Result<{ updatedUserCount: number }, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const cycleOverride = spendLimitCycleOverrideForAuth(auth);
-  const cycle = cycleOverride ?? (await resolveMetronomeCycle(workspace));
+  const cycle =
+    spendLimitCycleOverrideForAuth(auth) ??
+    (await resolveMetronomeCycle(workspace));
   if (!cycle) {
     return new Err(
       new Error("No active Metronome billing period to resync against.")

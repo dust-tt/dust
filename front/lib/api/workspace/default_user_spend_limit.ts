@@ -432,9 +432,11 @@ export async function setNonCreditPricedDefaultUserSpendLimit(
 }
 
 /**
- * Read the workspace-wide default per-user credit limit on a workspace that is not
- * on a credit-priced plan. Unlike `getDefaultUserSpendLimit` this does not require
- * Metronome billing. 0 means no limit.
+ * Returns the workspace per-user credit limit for a workspace that is not
+ * on a credit-priced plan.
+ * In practice it returns the same value as `getDefaultUserSpendLimit`,
+ * but this doesn't require the workspace to be on a credit-priced plan, and the returned
+ * value should be interpreted differently: 0 means "no limit" here.
  */
 export async function getNonCreditPricedDefaultUserSpendLimit(
   auth: Authenticator
