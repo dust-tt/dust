@@ -25,6 +25,10 @@ interface MentionExtensionOptions extends MentionOptions {
   onFirstAgentMentionPasteRef?: RefObject<
     ((agentId: string) => void) | undefined
   >;
+  // When true, agent mention nodes are never allowed in the document: any that
+  // get inserted (paste, drag-drop, markdown content) are converted back to
+  // plain `@label` text. Used to lock a conversation to a single agent.
+  stripAgentMentions?: boolean;
 }
 
 export const MentionExtension = Mention.extend<MentionExtensionOptions>({
@@ -33,6 +37,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
       ...this.parent?.(),
       owner: {} as WorkspaceType,
       onFirstAgentMentionPasteRef: undefined,
+      stripAgentMentions: false,
     } as MentionExtensionOptions;
   },
 
@@ -164,11 +169,47 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
   },
 
   addProseMirrorPlugins(this) {
-    const { owner } = this.options;
+    const { owner, stripAgentMentions } = this.options;
     const editor = this.editor;
     const markdownManager = editor.markdown!; // we know it exists because we added the markdown plugin
+    const mentionNodeName = this.name;
 
     const parentPlugins = this.parent?.();
+
+    // Converts any agent mention node that made it into the document (paste,
+    // drag-drop, markdown insertion) back to plain `@label` text, so the
+    // conversation cannot be routed to another agent.
+    const stripAgentMentionsPlugin = new Plugin({
+      appendTransaction: (transactions, _oldState, newState) => {
+        if (!transactions.some((transaction) => transaction.docChanged)) {
+          return null;
+        }
+
+        const agentMentions: { pos: number; nodeSize: number; text: string }[] =
+          [];
+        newState.doc.descendants((node, pos) => {
+          if (node.type.name === mentionNodeName && node.attrs.type === "agent") {
+            const label: string = node.attrs.label ?? node.attrs.id ?? "";
+            agentMentions.push({
+              pos,
+              nodeSize: node.nodeSize,
+              text: `@${label}`,
+            });
+          }
+        });
+
+        if (agentMentions.length === 0) {
+          return null;
+        }
+
+        const tr = newState.tr;
+        // Replace from last to first so earlier positions stay valid.
+        for (const mention of agentMentions.reverse()) {
+          tr.insertText(mention.text, mention.pos, mention.pos + mention.nodeSize);
+        }
+        return tr;
+      },
+    });
     const addedPlugin = new Plugin({
       props: {
         handlePaste: (view, event, slice) => {
@@ -241,7 +282,11 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
       },
     });
 
-    return parentPlugins ? [...parentPlugins, addedPlugin] : [addedPlugin];
+    const addedPlugins = stripAgentMentions
+      ? [addedPlugin, stripAgentMentionsPlugin]
+      : [addedPlugin];
+
+    return parentPlugins ? [...parentPlugins, ...addedPlugins] : addedPlugins;
   },
 
   addKeyboardShortcuts() {

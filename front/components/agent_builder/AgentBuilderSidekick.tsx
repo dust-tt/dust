@@ -85,8 +85,8 @@ function SidekickContent({
       actionsToShow: [
         "attachment",
         ...(subscription.plan.isByok ? [] : ["voice" as const]),
-        "agents-list" as const,
       ] satisfies InputBarAction[],
+      disableAgentMentions: true,
       clientSideMCPServerIds,
       skipToolsValidation: true,
     }),
