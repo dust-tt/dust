@@ -2,7 +2,12 @@ import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/K
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";
-import { SkillToolsList } from "@app/components/skills/SkillToolsList";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSkills } from "@app/lib/swr/skill_configurations";
@@ -58,6 +63,11 @@ export function SkillInfoTab({
 
   const resolvedSpaces = spaces ?? spacesFromHook;
 
+  const sortedMCPServerViews = useMemo(
+    () => sortBy(skill.tools.map(renderMCPServerView), "title"),
+    [skill.tools]
+  );
+
   const requestedSpaces = useMemo(
     () =>
       resolvedSpaces
@@ -90,7 +100,7 @@ export function SkillInfoTab({
     !!skill.instructions ||
     knowledgeItems.length > 0 ||
     skill.fileAttachments.length > 0 ||
-    skill.tools.length > 0 ||
+    sortedMCPServerViews.length > 0 ||
     showChildSkills ||
     showDiscoverableSkills ||
     shouldLoadSpaces;
@@ -172,10 +182,24 @@ export function SkillInfoTab({
           </div>
         </div>
       )}
-      {skill.tools.length > 0 && (
+      {sortedMCPServerViews.length > 0 && (
         <div className="flex flex-col gap-4">
           <div className="heading-lg text-foreground">Tools</div>
-          <SkillToolsList tools={skill.tools} />
+          <div className="grid grid-cols-2 gap-2">
+            {sortedMCPServerViews.map((view) => (
+              <Tooltip
+                key={view.title}
+                label={view.description ?? view.title}
+                trigger={
+                  <div className="flex flex-row items-center gap-2">
+                    {view.avatar}
+                    <div className="truncate">{view.title}</div>
+                  </div>
+                }
+                tooltipTriggerAsChild
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -230,3 +254,9 @@ export function SkillInfoTab({
     </div>
   );
 }
+
+const renderMCPServerView = (view: MCPServerViewType) => ({
+  title: getMcpServerViewDisplayName(view),
+  description: getMcpServerViewDescription(view),
+  avatar: getAvatar(view.server, "xs"),
+});

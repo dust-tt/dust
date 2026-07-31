@@ -1,7 +1,6 @@
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
-import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";
-import { SkillToolsList } from "@app/components/skills/SkillToolsList";
+import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
 import {
   getOutputText,
   isResourceContentWithText,
@@ -12,13 +11,7 @@ import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/sk
 import { SKILL_ICON } from "@app/lib/skill";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
-import {
-  ContentMessage,
-  IconButton,
-  LinkExternal01,
-  Markdown,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { IconButton, LinkExternal01, Spinner } from "@dust-tt/sparkle";
 
 export function MCPSkillEnableActionDetails({
   owner,
@@ -50,19 +43,9 @@ export function MCPSkillEnableActionDetails({
     disabled: !shouldFetchSkill,
   });
 
-  const description = skill?.userFacingDescription.trim() ?? "";
-  const hasDescription = description.length > 0;
-  const tools = skill?.tools ?? [];
-  const hasTools = tools.length > 0;
-  const instructions = skill?.instructions ?? "";
-  const hasInstructions = instructions.trim().length > 0;
-  const showInstructionsSection =
-    shouldFetchSkill && (isSkillLoading || isSkillError || hasInstructions);
-  const showSkillDetails =
-    hasDescription || hasTools || showInstructionsSection;
   const showSidebarDetails =
     displayContext !== "conversation" &&
-    (showSkillDetails || outputItems.length > 0);
+    (shouldFetchSkill || outputItems.length > 0);
 
   return (
     <ActionDetailsWrapper
@@ -92,62 +75,21 @@ export function MCPSkillEnableActionDetails({
             </div>
           )}
 
-          {showSkillDetails && (
+          {shouldFetchSkill && (
             <div className="flex flex-col gap-4">
               <div className="heading-base text-foreground">Skill details</div>
-
-              <div className="flex flex-col gap-5">
-                {hasDescription && (
-                  <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium text-foreground">
-                      Description
-                    </span>
-                    <ContentMessage variant="primary" size="lg">
-                      <Markdown
-                        content={description}
-                        isStreaming={false}
-                        forcedTextSize="text-sm"
-                        textColor="text-muted-foreground"
-                        isLastMessage={false}
-                      />
-                    </ContentMessage>
-                  </div>
-                )}
-
-                {hasTools && (
-                  <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium text-foreground">
-                      Tools
-                    </span>
-                    <SkillToolsList tools={tools} />
-                  </div>
-                )}
-
-                {showInstructionsSection && (
-                  <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium text-foreground">
-                      Instructions
-                    </span>
-                    {isSkillLoading ? (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Spinner size="xs" />
-                        <span>Loading instructions...</span>
-                      </div>
-                    ) : isSkillError ? (
-                      <div className="text-sm text-muted-foreground">
-                        Could not load the skill instructions.
-                      </div>
-                    ) : hasInstructions ? (
-                      <SkillInstructionsReadOnlyEditor
-                        content={instructions}
-                        htmlContent={skill?.instructionsHtml ?? ""}
-                        owner={owner}
-                        className="min-h-0 max-h-150 overflow-y-auto"
-                      />
-                    ) : null}
-                  </div>
-                )}
-              </div>
+              {isSkillLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Spinner size="xs" />
+                  <span>Loading skill details...</span>
+                </div>
+              ) : isSkillError ? (
+                <div className="text-sm text-muted-foreground">
+                  Could not load the skill details.
+                </div>
+              ) : skill ? (
+                <SkillInfoTab skill={skill} owner={owner} />
+              ) : null}
             </div>
           )}
         </div>
