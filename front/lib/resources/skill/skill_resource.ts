@@ -421,6 +421,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<SkillResource> {
     const owner = auth.getNonNullableWorkspace();
 
+    assert(
+      auth.isKey() ||
+        (await auth.hasWorkspacePermission("create", "skill")),
+      "User is not authorized to create skills"
+    );
+
+    if (
+      blob.availability === "users_and_agents" &&
+      (await hasFeatureFlag(auth, "admin_governance_skill_publication"))
+    ) {
+      assert(
+        await auth.hasWorkspacePermission("make_discoverable", "skill"),
+        "User is not authorized to create an auto-discoverable skill"
+      );
+    }
+
     // Use a transaction to ensure all creations succeed or all are rolled back.
     return withTransaction(async (transaction) => {
       const skill = await this.model.create(
@@ -2884,16 +2900,33 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<void> {
     assert(this.canWrite(auth), "User is not authorized to update this skill");
 
+    const availabilityChanged =
+      availability !== undefined && availability !== this.availability;
+
+    // Availability transitions are only governed when skill publication governance is on.
+    const availabilityChangeNeedsGovernance =
+      availabilityChanged &&
+      (await hasFeatureFlag(auth, "admin_governance_skill_publication"));
+
     // With skill publication governance, changing the availability requires the
     // workspace-level publish permission — even for editors.
-    if (
-      availability !== undefined &&
-      availability !== this.availability &&
-      (await hasFeatureFlag(auth, "admin_governance_skill_publication"))
-    ) {
+    if (availabilityChangeNeedsGovernance) {
       assert(
         await auth.hasWorkspacePermission("publish", "skill"),
         "User is not authorized to update this skill's availability"
+      );
+    }
+
+    // Making a skill auto-discoverable, or changing an already auto-discoverable skill's
+    // availability, additionally requires the make-discoverable permission.
+    if (
+      availabilityChangeNeedsGovernance &&
+      (availability === "users_and_agents" ||
+        this.availability === "users_and_agents")
+    ) {
+      assert(
+        await auth.hasWorkspacePermission("make_discoverable", "skill"),
+        "User is not authorized to update this skill's auto-discoverable status"
       );
     }
 
@@ -2995,6 +3028,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await auth.hasWorkspacePermission("publish", "skill"),
       "User is not authorized to update skill availability"
     );
+
+    // Making skills auto-discoverable, or changing an already auto-discoverable skill's
+    // availability, additionally requires the workspace-level make-discoverable permission.
+    if (
+      availability === "users_and_agents" ||
+      skills.some((skill) => skill.availability === "users_and_agents")
+    ) {
+      assert(
+        await auth.hasWorkspacePermission("make_discoverable", "skill"),
+        "User is not authorized to update auto-discoverable skill availability"
+      );
+    }
 
     const changedSkills = skills.filter(
       (skill) => skill.availability !== availability
