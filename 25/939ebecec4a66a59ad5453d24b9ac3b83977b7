@@ -1,0 +1,27 @@
+front-api/routes/w/[wId]/files/[fileId]/share/grants.ts
+  s_22aa62b9120e4d::t_b3cfb1b4ab9e6d 194
+front/lib/resources/file_resource.ts
+  s_22aa62b9120e4d::t_b3cfb1b4ab9e6d 2085,2109
+front/admin/audit_log_schemas/frame.email_grant_revoked.json
+  s_22aa62b9120e4d::t_b3cfb1b4ab9e6d 9
+front-api/routes/w/[wId]/files/[fileId]/share/grants.test.ts
+  s_22aa62b9120e4d::t_b3cfb1b4ab9e6d 270
+front/lib/api/audit/schema_versions.json
+  s_22aa62b9120e4d::t_718836c94ae327 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "25939ebecec4a66a59ad5453d24b9ac3b83977b7",
+  "prompts": {},
+  "sessions": {
+    "s_22aa62b9120e4d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fae68-a172-7232-8af2-194b6369f570",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>"
+    }
+  }
+}
