@@ -197,16 +197,18 @@ function constructSkillsSection({
     "\n## SKILLS\n" +
     "Skills are modular capabilities that extend your abilities for specific tasks. " +
     "Each skill includes specialized instructions and may provide additional tools.\n\n" +
-    "Skills can be in two states:\n" +
+    "Skills can be in three states:\n" +
     "- **Available**: Listed but not active yet. Their instructions are not loaded. " +
     `You can enable them using the \`${toolDisplayName}\` tool when they become relevant to the conversation.\n` +
-    "- **Enabled**: Fully active with instructions loaded.\n\n" +
+    "- **Enabled**: Fully active with instructions loaded.\n" +
+    "- **Always active**: Listed under SYSTEM SKILLS below. Their instructions are already loaded and their tools are already available, with no action needed from you. " +
+    `They cannot be enabled: passing one to \`${toolDisplayName}\` fails with a "not found" error.\n\n` +
     "Enable skills proactively when a user's request matches a skill's purpose.\n" +
     `Skill references can also appear as \`<skill id=\"...\" name=\"...\" />\` tags in user messages or enabled skill instructions. ` +
     "These tags are strong hints that the referenced skill is relevant, including when a skill author nested one skill inside another. " +
     `You can enable the skill using \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value, copied verbatim.\n` +
     "Skill names are matched exactly. Always copy the name character for character from the available-skills list or the tag, and never reformat or re-case it.\n" +
-    "It is not useful to enable skills that are already enabled, this would only output the skill's content again.\n" +
+    "Do not enable a skill that is already active: for a skill enabled earlier in this conversation the call only outputs its content again, and for an always-active skill it fails outright.\n" +
     "Referenced skills may not appear in the available-skills list; a tag is enough to enable the skill by name. " +
     "Only enable skills you actually need, because enabling a skill loads its full instructions into context.\n" +
     `Enabled skill instructions can also contain \`<knowledge id=\"...\" title=\"...\" ... />\` tags, which point to specific workspace knowledge attached to the skill. ` +
@@ -223,7 +225,8 @@ function constructSkillsSection({
   if (systemSkills.length > 0) {
     skillsSection +=
       "\n### SYSTEM SKILLS\n" +
-      "The following baseline skills are always active for this agent:\n" +
+      "The following baseline skills are always active for this agent. Their instructions are inlined below and their tools are already available, so never pass them to " +
+      `\`${toolDisplayName}\`:\n` +
       systemSkills
         .map(
           (skill) => `<${skill.name}>\n${skill.instructions}\n</${skill.name}>`
@@ -235,7 +238,23 @@ function constructSkillsSection({
   return skillsSection;
 }
 
-function constructComputerEnableForFilesPrompt(): string {
+// The Computer is auto-enabled for some agents (it becomes a system skill) and merely equipped for
+// the rest. Telling an agent that already has it active to "enable" it is a contradiction, and the
+// call fails: `enable_skill` does not resolve system skills.
+function constructComputerEnableForFilesPrompt({
+  isComputerAlwaysActive,
+}: {
+  isComputerAlwaysActive: boolean;
+}): string {
+  if (isComputerAlwaysActive) {
+    return (
+      "The Computer skill is always active for you: its instructions are already loaded and its " +
+      "tools are already available, so use it directly as soon as the user uploads files, " +
+      "especially PDFs, spreadsheets, archives, or other files that require inspection, " +
+      "text extraction, code execution, or file manipulation. Do not try to enable it first."
+    );
+  }
+
   return (
     "You must enable the Computer skill proactively as soon as the user uploads files, " +
     "especially PDFs, spreadsheets, archives, or other files that require inspection, " +
@@ -246,12 +265,14 @@ function constructComputerEnableForFilesPrompt(): string {
 // TODO(20260504 FILE SYSTEM): Remove in favor of constructAttachmentsSectionNewFileExplorer.
 function constructAttachmentsSection({
   hasSandboxTools,
+  isComputerAlwaysActive,
 }: {
   hasSandboxTools: boolean;
+  isComputerAlwaysActive: boolean;
 }): string {
   const sandboxFilesPrompt = hasSandboxTools
     ? "When using the Computer, conversation files are mounted under `/files/conversation`. " +
-      `${constructComputerEnableForFilesPrompt()}\n`
+      `${constructComputerEnableForFilesPrompt({ isComputerAlwaysActive })}\n`
     : "";
 
   return (
@@ -271,11 +292,13 @@ function constructAttachmentsSection({
 
 function constructAttachmentsSectionNewFileExplorer({
   hasSandboxTools,
+  isComputerAlwaysActive,
 }: {
   hasSandboxTools: boolean;
+  isComputerAlwaysActive: boolean;
 }): string {
   const tabularFilesLine = hasSandboxTools
-    ? `- Files attached as \`<file>\` tags are mounted under \`/files/conversation\` when using the Computer. ${constructComputerEnableForFilesPrompt()} Tabular files attached as \`<attachment isQueryable="true">\` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n`
+    ? `- Files attached as \`<file>\` tags are mounted under \`/files/conversation\` when using the Computer. ${constructComputerEnableForFilesPrompt({ isComputerAlwaysActive })} Tabular files attached as \`<attachment isQueryable="true">\` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n`
     : "- Tabular files (CSV, spreadsheets) are queryable via the query tables tool;\n";
 
   return (
@@ -438,9 +461,17 @@ export function constructPromptMultiActions(
   const skillsSection = constructSkillsSection({
     systemSkills,
   });
+  // Auto-enabling promotes the Computer to a system skill, so its instructions are already in this
+  // prompt and `enable_skill` will not resolve it.
+  const isComputerAlwaysActive = systemSkills.some(
+    (skill) => skill.sId === "sandbox"
+  );
   const attachmentsSection = isNewFileExplorer
-    ? constructAttachmentsSectionNewFileExplorer({ hasSandboxTools })
-    : constructAttachmentsSection({ hasSandboxTools });
+    ? constructAttachmentsSectionNewFileExplorer({
+        hasSandboxTools,
+        isComputerAlwaysActive,
+      })
+    : constructAttachmentsSection({ hasSandboxTools, isComputerAlwaysActive });
   const pastedContentSection = constructPastedContentSection();
   const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
 
