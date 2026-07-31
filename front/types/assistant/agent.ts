@@ -5,11 +5,6 @@ import type {
 import { MCPServerConfigurationSchema } from "@app/lib/actions/mcp_schemas";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
-  AgentFunctionCallContentType,
-  AgentReasoningContentType,
-  AgentTextContentType,
-} from "@app/types/assistant/agent_message_content";
-import type {
   AgentMessageType,
   InlineActivityStep,
 } from "@app/types/assistant/conversation";
@@ -224,19 +219,6 @@ export interface TemplateAgentConfigurationType {
   tags: TagType[];
 }
 
-export function isTemplateAgentConfiguration(
-  agentConfiguration:
-    | LightAgentConfigurationType
-    | TemplateAgentConfigurationType
-    | null
-): agentConfiguration is TemplateAgentConfigurationType {
-  return !!(
-    agentConfiguration &&
-    "isTemplate" in agentConfiguration &&
-    agentConfiguration.isTemplate === true
-  );
-}
-
 export const MAX_STEPS_USE_PER_RUN_LIMIT = 64;
 const ACTIONS_PER_STEP_BY_DEPTH = [8, 8, 4, 2] as const;
 const MAX_DEPTH_WITH_ACTION_LIMIT = ACTIONS_PER_STEP_BY_DEPTH.length - 1;
@@ -277,17 +259,6 @@ export function isAgentErrorCategory(
   return AgentErrorCategories.includes(category as AgentErrorCategory);
 }
 
-// Event sent when an agent error occurred before we have an agent message in the database.
-export type AgentMessageErrorEvent = {
-  type: "agent_message_error";
-  created: number;
-  configurationId: string;
-  error: {
-    code: string;
-    message: string;
-  };
-};
-
 // Generic type for the content of an agent / tool error.
 export type GenericErrorContent = {
   code: string;
@@ -327,16 +298,6 @@ export type ToolErrorEvent = {
   // TODO(DURABLE-AGENTS 2025-08-25): Move to a deferred event base interface.
   metadata?: {
     pubsubMessageId?: string;
-  };
-};
-
-export type AgentDisabledErrorEvent = {
-  type: "agent_disabled_error";
-  created: number;
-  configurationId: string;
-  error: {
-    code: string;
-    message: string;
   };
 };
 
@@ -410,38 +371,6 @@ export type AgentActionsEvent = {
     action: MCPToolConfigurationType;
     functionCallId: string;
   }>;
-};
-
-export type AgentChainOfThoughtEvent = {
-  type: "agent_chain_of_thought";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  message: AgentMessageType;
-  chainOfThought: string;
-};
-
-// Deprecated
-// TODO(agent-step-content): Remove this event
-export type AgentContentEvent = {
-  type: "agent_message_content";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  content: string;
-  processedContent: string;
-};
-
-export type AgentStepContentEvent = {
-  type: "agent_step_content";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  index: number;
-  content:
-    | AgentTextContentType
-    | AgentFunctionCallContentType
-    | AgentReasoningContentType;
 };
 
 export type AgentContextPrunedEvent = {

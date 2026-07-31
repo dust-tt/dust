@@ -87,12 +87,6 @@ export const SkillEditSuggestionSchema = z
 
 export type SkillEditSuggestionType = z.infer<typeof SkillEditSuggestionSchema>;
 
-export function isSkillEditSuggestion(
-  data: unknown
-): data is SkillEditSuggestionType {
-  return SkillEditSuggestionSchema.safeParse(data).success;
-}
-
 export type SkillSuggestionPayload = SkillEditSuggestionType;
 
 export const SkillSuggestionDataSchema = z.object({

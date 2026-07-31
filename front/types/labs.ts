@@ -15,14 +15,6 @@ export const LABS_TRANSCRIPTS_CONFIGURATION_STATUSES = [
 export type LabsTranscriptsConfigurationStatus =
   (typeof LABS_TRANSCRIPTS_CONFIGURATION_STATUSES)[number];
 
-export function isValidLabsTranscriptsConfigurationStatus(
-  status: string
-): status is LabsTranscriptsConfigurationStatus {
-  return (
-    LABS_TRANSCRIPTS_CONFIGURATION_STATUSES as readonly string[]
-  ).includes(status);
-}
-
 export const labsFeatures = ["transcripts", "transcription"] as const;
 export type LabsFeatureType = (typeof labsFeatures)[number];
 

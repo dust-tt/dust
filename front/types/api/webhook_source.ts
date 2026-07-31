@@ -38,10 +38,6 @@ export type DeleteWebhookSourceResponseBody = {
   success: true;
 };
 
-export type PatchWebhookSourceResponseBody = {
-  success: true;
-};
-
 export type GetWebhookSourceViewsForSourceResponseBody = {
   success: true;
   views: WebhookSourceViewType[];

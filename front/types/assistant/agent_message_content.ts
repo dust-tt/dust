@@ -84,18 +84,6 @@ export function isAgentFunctionCallContent(
   return content.type === "function_call";
 }
 
-export function isAgentErrorContent(
-  content: AgentContentItemType
-): content is AgentErrorContentType {
-  return content.type === "error";
-}
-
-export function isAgentProviderPassthroughContent(
-  content: AgentContentItemType
-): content is AgentProviderPassthroughContentType {
-  return content.type === "provider_passthrough";
-}
-
 export type AgentStepContentType = {
   id: ModelId;
   sId: string;

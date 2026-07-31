@@ -17,19 +17,11 @@ export const WakeUpOneShotScheduleConfigSchema = z.object({
   type: z.literal("one_shot"),
   fireAt: z.number(),
 });
-export type WakeUpOneShotScheduleConfig = z.infer<
-  typeof WakeUpOneShotScheduleConfigSchema
->;
-
 export const WakeUpCronScheduleConfigSchema = z.object({
   type: z.literal("cron"),
   cron: z.string(),
   timezone: z.string(),
 });
-export type WakeUpCronScheduleConfig = z.infer<
-  typeof WakeUpCronScheduleConfigSchema
->;
-
 export const WakeUpScheduleConfigSchema = z.discriminatedUnion("type", [
   WakeUpOneShotScheduleConfigSchema,
   WakeUpCronScheduleConfigSchema,

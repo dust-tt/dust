@@ -7,8 +7,6 @@ export const CreateGroupBodySchema = z.object({
   memberIds: z.array(z.string()).min(1),
 });
 
-export type CreateGroupBodyType = z.infer<typeof CreateGroupBodySchema>;
-
 export type PostGroupResponseBody = {
   group: GroupType;
 };
@@ -22,8 +20,6 @@ export const PatchGroupBodySchema = z.object({
   name: z.string().min(1).optional(),
   memberIds: z.array(z.string()).optional(),
 });
-
-export type PatchGroupBodyType = z.infer<typeof PatchGroupBodySchema>;
 
 export type PatchGroupResponseBody = {
   group: GroupType;

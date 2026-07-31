@@ -2,20 +2,9 @@
 export const VERIFICATION_STATUSES = ["pending", "verified"] as const;
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
 
-// API request/response types.
-export type StartVerificationRequest = {
-  phoneNumber: string;
-  captchaToken: string;
-};
-
 export type StartVerificationResponse =
   | { status: "code_sent"; message: string }
   | { status: "already_verified" };
-
-export type VerifyCodeRequest = {
-  phoneNumber: string;
-  code: string;
-};
 
 export type VerifyCodeResponse = {
   success: true;

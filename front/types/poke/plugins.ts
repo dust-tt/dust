@@ -113,10 +113,6 @@ export type PluginArgDefinition =
   | FileArgDefinition
   | DateArgDefinition;
 
-export type StrictPluginArgs = {
-  [key: string]: PluginArgDefinition;
-};
-
 export type PluginArgs = Record<string, PluginArgDefinition>;
 
 // Utility types for async field detection.

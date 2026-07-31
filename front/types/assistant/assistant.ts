@@ -1,20 +1,9 @@
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import SUPPORTED_MODEL_CONFIGS from "@app/types/assistant/models/models";
-import { O4_MINI_MODEL_ID } from "@app/types/assistant/models/openai";
 import type {
-  ModelConfigurationType,
   ModelIdType,
-  ModelProviderIdType,
   SupportedModel,
 } from "@app/types/assistant/models/types";
-
-export interface PrefetchedWhitelistedModels {
-  small: ModelConfigurationType | null;
-  large: ModelConfigurationType | null;
-  whitelistedProviders: Set<ModelProviderIdType>;
-}
-
-export const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 export const DEFAULT_TOKEN_COUNT_ADJUSTMENT = 1.15;
 

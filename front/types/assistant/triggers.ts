@@ -64,19 +64,6 @@ export type WebhookConfig = {
 
 export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
 
-export type TriggerConfiguration =
-  | {
-      kind: "schedule";
-      configuration: ScheduleConfig;
-    }
-  | {
-      kind: "webhook";
-      configuration: WebhookConfig;
-      executionPerDayLimitOverride: number | null;
-      webhookSourceViewId: string | null;
-      executionMode: TriggerExecutionMode | null;
-    };
-
 export const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 42;
 
 export type TriggerExecutionMode = "fair_use" | "programmatic";
@@ -104,10 +91,6 @@ export type WebhookRequestTriggerStatus =
   (typeof WEBHOOK_REQUEST_TRIGGER_STATUSES)[number];
 
 export type TriggerOrigin = "user" | "agent";
-
-export function isValidTriggerOrigin(origin: string): origin is TriggerOrigin {
-  return ["user", "agent"].includes(origin);
-}
 
 const TriggerStatusSchema = z.enum(TRIGGER_STATUSES);
 
