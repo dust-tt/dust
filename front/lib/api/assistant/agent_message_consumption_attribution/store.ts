@@ -146,16 +146,26 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     }
     const footprints = footprintsRes.value;
 
+    // Pair each tool call with its enriched form and measured footprint once, here. This is the only
+    // place alignment is assumed: measureToolCallFootprints returns counts positioned by the actions
+    // it received, and enrichedRunActions is aligned with runActions (the length assert above proves
+    // removeNulls dropped nothing), so index i is the same tool call across all three. From here each
+    // call carries its own data through the builder, so nothing downstream re-derives the position.
+    const measuredToolCalls = runActions.map((action, index) => ({
+      action,
+      enrichedAction: enrichedRunActions[index],
+      footprint: footprints[index],
+    }));
+
     // A single partition of the usage: the tool calls take their share of the output budget, and the
     // model buckets take the rest (so the output row here is net of tool emission).
-    const { modelItems, toolCalls } =
-      buildRunUsageAttribution<AgentMCPActionResource>({
-        usage,
-        toolCalls: runActions.map((action, index) => ({
-          tool: action,
-          measuredOutputTokensCount: footprints[index].callOutputTokensCount,
-        })),
-      });
+    const { modelItems, toolCalls } = buildRunUsageAttribution({
+      usage,
+      toolCalls: measuredToolCalls.map((measured) => ({
+        tool: measured,
+        measuredOutputTokensCount: measured.footprint.callOutputTokensCount,
+      })),
+    });
 
     for (const item of modelItems) {
       switch (item.itemType) {
@@ -185,9 +195,8 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
       }
     }
 
-    toolCalls.forEach((toolCall, index) => {
-      const action = toolCall.tool;
-      const enrichedAction = enrichedRunActions[index];
+    toolCalls.forEach((toolCall) => {
+      const { action, enrichedAction, footprint } = toolCall.tool;
       const directCreditAmountMicro = Math.round(
         toolAwuFromAction(
           {
@@ -201,7 +210,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
       const toolAttribution = buildToolAttribution({
         usage,
         toolCall,
-        inputTokensCount: footprints[index].resultInputTokensCount,
+        inputTokensCount: footprint.resultInputTokensCount,
         directCreditAmountMicro,
       });
 
