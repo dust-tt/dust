@@ -84,8 +84,10 @@ export function MentionValidationRequired({
     return null;
   }
 
+  const { status } = mention;
+
   let title: string;
-  switch (mention.status) {
+  switch (status) {
     case "agent_restricted_by_space_usage":
       title = `Run ${mention.label} in this Pod conversation?`;
       break;
@@ -96,11 +98,11 @@ export function MentionValidationRequired({
       title = `Invite ${mention.label} to this conversation?`;
       break;
     default:
-      assertNever(mention.status);
+      assertNever(status);
   }
 
   let description: ReactNode;
-  switch (mention.status) {
+  switch (status) {
     case "agent_restricted_by_space_usage":
       description = (
         <>
@@ -134,11 +136,11 @@ export function MentionValidationRequired({
       );
       break;
     default:
-      assertNever(mention.status);
+      assertNever(status);
   }
 
   let approveLabel: string;
-  switch (mention.status) {
+  switch (status) {
     case "agent_restricted_by_space_usage":
       approveLabel = "Run agent";
       break;
@@ -149,7 +151,7 @@ export function MentionValidationRequired({
       approveLabel = "Invite";
       break;
     default:
-      assertNever(mention.status);
+      assertNever(status);
   }
 
   const visual =
