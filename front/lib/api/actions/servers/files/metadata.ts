@@ -211,7 +211,7 @@ const FILES_TOOLS_COMMON_METADATA = [
         .optional()
         .describe(
           "Line number to start reading from (1-indexed, default 1). Use for direct jumps to a line; " +
-            "continuation footers provide `byte_offset` instead. Do not combine with `byte_offset`."
+            "continuation footers provide `byte_offset` instead. Ignored when `byte_offset` is provided."
         ),
       limit: z
         .number()

@@ -32,11 +32,9 @@ export const BYTE_OFFSET_SCHEMA = z
   .describe(
     "Byte position from the immediately preceding response's continuation footer (`byte_offset=N`). " +
       "Pass it back exactly to continue reading, whether the previous response ended at a line " +
-      "boundary or inside a line. Never compute or invent this value. Do not combine with `offset`."
+      "boundary or inside a line. Never compute or invent this value. Do not combine with " +
+      "`offset`; if both are provided, `byte_offset` takes precedence."
   );
-
-export const OFFSET_EXCLUSIVITY_ERROR_MESSAGE =
-  "Provide either `offset` or `byte_offset`, not both. Use `byte_offset` to continue from a previous response's footer, and `offset` to start reading at a specific line.";
 
 export function byteOffsetBeyondEndMessage(
   path: string,

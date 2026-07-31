@@ -344,19 +344,34 @@ describe("catHandler", () => {
     }
   });
 
-  it("rejects a call combining offset and byte_offset", async () => {
+  it("lets byte_offset take precedence when offset is also supplied", async () => {
+    // Production models often retain `offset: 1` from the first call while following a
+    // footer's `byte_offset`; the continuation must behave exactly as if only
+    // `byte_offset` had been passed.
     const { auth, conversation } = await setupProjectConversation();
-    const result = await catHandler(
-      {
-        path: `conversation-${conversation.sId}/big.txt`,
-        offset: 2,
-        byte_offset: 100,
-      },
-      makeExtra(auth, conversation)
+    const line = "A".repeat(30_000);
+    mockStoredFile(line + "\n", "text/plain");
+    const path = `conversation-${conversation.sId}/big.txt`;
+    const extra = makeExtra(auth, conversation);
+
+    const byteOffset = extractByteOffset(
+      textOf(await catHandler({ path }, extra))
     );
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.message).toContain("not both");
-    }
+
+    const withBoth = textOf(
+      await catHandler({ path, offset: 1, byte_offset: byteOffset }, extra)
+    );
+    const withByteOffsetOnly = textOf(
+      await catHandler({ path, byte_offset: byteOffset }, extra)
+    );
+
+    expect(withBoth).toBe(withByteOffsetOnly);
+    expect(withBoth).toContain("1 (cont.): ");
+
+    // A non-default offset alongside byte_offset is also ignored, not an error.
+    const withConflictingOffset = textOf(
+      await catHandler({ path, offset: 2, byte_offset: byteOffset }, extra)
+    );
+    expect(withConflictingOffset).toBe(withByteOffsetOnly);
   });
 });
