@@ -1,4 +1,3 @@
-import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
@@ -11,11 +10,18 @@ import {
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
+import {
+  byteOffsetBeyondEndMessage,
+  fileChangedMessage,
+  OFFSET_EXCLUSIVITY_ERROR_MESSAGE,
+  readTextFilePage,
+  renderTextFilePage,
+  TEXT_FILE_PAGE_CONTENT_BUDGET_BYTES,
+} from "@app/lib/api/files/text_file_pagination";
 import { isLLMVisionSupportedImageContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import * as readline from "readline";
 import type { Readable } from "stream";
 
 const CAT_IMAGE_MAX_BYTES = 2 * 1024 * 1024; // 2 MB vision limit.
@@ -55,51 +61,35 @@ function catImage(
 
 async function catText(
   stream: Readable,
-  path: string,
-  startLine: number,
-  maxLines: number,
-  fileSizeBytes: number
+  {
+    path,
+    fileSizeBytes,
+    maxLines,
+    startLine,
+    byteOffset,
+  }: {
+    path: string;
+    fileSizeBytes: number;
+    maxLines: number;
+    startLine: number;
+    byteOffset: number | null;
+  }
 ): Promise<ToolHandlerResult> {
-  const lines: string[] = [];
-  let lineNumber = 0;
-  let byteCount = 0;
-  let byteCapped = false;
-  let totalLines = 0;
-
-  const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-
+  let rendered;
   try {
-    for await (const line of rl) {
-      lineNumber++;
-
-      if (lineNumber < startLine) {
-        continue;
-      }
-
-      totalLines++;
-
-      const lineWithNumber = `${lineNumber}: ${line}`;
-      const lineBytes = Buffer.byteLength(lineWithNumber + "\n", "utf8");
-
-      if (byteCount + lineBytes > FILE_OFFLOAD_TEXT_SIZE_BYTES) {
-        if (lines.length === 0) {
-          // Truncate the oversized line to the byte limit so we don't send huge payloads.
-          const truncated = Buffer.from(lineWithNumber, "utf8")
-            .slice(0, FILE_OFFLOAD_TEXT_SIZE_BYTES)
-            .toString("utf8");
-          lines.push(truncated);
-        }
-        byteCapped = true;
-        break;
-      }
-
-      lines.push(lineWithNumber);
-      byteCount += lineBytes;
-
-      if (totalLines >= maxLines) {
-        break;
-      }
-    }
+    const page = await readTextFilePage(stream, {
+      fileSizeBytes,
+      maxLines,
+      budgetBytes: TEXT_FILE_PAGE_CONTENT_BUDGET_BYTES,
+      startLine,
+      byteOffset,
+    });
+    rendered = renderTextFilePage(page, {
+      path,
+      fileSizeBytes,
+      startLine,
+      byteOffset,
+    });
   } catch (err) {
     return new Err(
       new MCPError(
@@ -108,42 +98,28 @@ async function catText(
     );
   }
 
-  rl.close();
-
-  if (lines.length === 0) {
-    if (startLine > 1) {
-      return new Ok([
-        {
-          type: "text",
-          text: `No lines found at offset ${startLine} in \`${path}\`.`,
-        },
-      ]);
-    }
-    return new Ok([{ type: "text", text: `\`${path}\` is empty.` }]);
+  if (rendered.outcome === "file_changed") {
+    return new Err(new MCPError(fileChangedMessage(path), { tracked: false }));
   }
 
-  const endLine = startLine + lines.length - 1;
-  let text = lines.join("\n");
-
-  const kb = FILE_OFFLOAD_TEXT_SIZE_BYTES / 1024;
-  const fileSizeKb = Math.ceil(fileSizeBytes / 1024);
-
-  if (byteCapped) {
-    text +=
-      `\n\n[Truncated at ${kb}KB. File is ${fileSizeKb}KB.` +
-      ` Showing lines ${startLine}-${endLine}.` +
-      ` Use offset=${endLine + 1} to read more.]`;
-  } else if (totalLines >= maxLines) {
-    text += `\n\n[Showing lines ${startLine}-${endLine}. Use offset=${endLine + 1} to read more.]`;
-  }
-
-  return new Ok([{ type: "text", text }]);
+  return new Ok([{ type: "text", text: rendered.text }]);
 }
 
 export async function catHandler(
-  { path, offset, limit }: { path: string; offset?: number; limit?: number },
+  {
+    path,
+    offset,
+    limit,
+    byte_offset: byteOffset,
+  }: { path: string; offset?: number; limit?: number; byte_offset?: number },
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
+  if (byteOffset !== undefined && offset !== undefined) {
+    return new Err(
+      new MCPError(OFFSET_EXCLUSIVITY_ERROR_MESSAGE, { tracked: false })
+    );
+  }
+
   const conversationRes = requireAgentLoopConversation({ runContext });
   if (conversationRes.isErr()) {
     return conversationRes;
@@ -186,6 +162,14 @@ export async function catHandler(
     ]);
   }
 
+  if (byteOffset !== undefined && byteOffset >= sizeBytes) {
+    return new Err(
+      new MCPError(byteOffsetBeyondEndMessage(path, byteOffset, sizeBytes), {
+        tracked: false,
+      })
+    );
+  }
+
   const readResult = await dustFs.read(path);
   if (readResult.isErr()) {
     return new Err(new MCPError(readResult.error.message, { tracked: false }));
@@ -197,11 +181,11 @@ export async function catHandler(
     );
   }
 
-  return catText(
-    readResult.value, // Readable stream. readline will stop early when limit is reached
+  return catText(readResult.value, {
     path,
-    offset ?? 1,
-    limit ?? CAT_LINES_DEFAULT,
-    sizeBytes
-  );
+    fileSizeBytes: sizeBytes,
+    maxLines: limit ?? CAT_LINES_DEFAULT,
+    startLine: offset ?? 1,
+    byteOffset: byteOffset ?? null,
+  });
 }
