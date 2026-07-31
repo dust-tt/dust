@@ -27,7 +27,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import { extractToolTags, serializeToolTag } from "@app/lib/tools/format";
 import logger from "@app/logger/logger";
-import { getDefaultSkillAvailability } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -324,7 +324,7 @@ export async function createSkill(
       icon: resolvedIcon,
       source: "agent",
       sourceMetadata: null,
-      availability: getDefaultSkillAvailability(),
+      availability: DEFAULT_SKILL_AVAILABILITY,
       reinforcement: "on",
     },
     {

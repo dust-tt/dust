@@ -16,7 +16,7 @@ import type {
 } from "@app/types/api/skills";
 import {
   availabilityFromIsDefault,
-  getDefaultSkillAvailability,
+  DEFAULT_SKILL_AVAILABILITY,
   SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
   type SkillAvailability,
@@ -341,7 +341,7 @@ app.post(
       });
     }
 
-    const availability = requestedAvailability ?? getDefaultSkillAvailability();
+    const availability = requestedAvailability ?? DEFAULT_SKILL_AVAILABILITY;
 
     const existingSkill = await SkillResource.fetchByName(auth, name);
 

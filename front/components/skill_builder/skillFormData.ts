@@ -4,7 +4,7 @@ import type {
   SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
-import { getDefaultSkillAvailability } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { UserType } from "@app/types/user";
 
 /**
@@ -55,7 +55,7 @@ export function getDefaultSkillFormData({
     tools: [],
     fileAttachments: [],
     icon: null,
-    availability: getDefaultSkillAvailability(),
+    availability: DEFAULT_SKILL_AVAILABILITY,
     reinforcement: "on",
     additionalSpaces: [],
     referencedSkills: [],

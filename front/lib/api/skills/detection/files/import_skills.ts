@@ -15,7 +15,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { SkillSourceType } from "@app/types/assistant/skill_configuration";
-import { getDefaultSkillAvailability } from "@app/types/assistant/skill_configuration";
+import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -248,7 +248,7 @@ export async function importSkillsFromFiles(
           icon,
           source,
           sourceMetadata: { filePath: skill.skillMdPath },
-          availability: getDefaultSkillAvailability(),
+          availability: DEFAULT_SKILL_AVAILABILITY,
         },
         {
           mcpServerViews: suggestedMCPServerViews,

@@ -17,13 +17,7 @@ export const SKILL_AVAILABILITIES = [
 ] as const;
 export type SkillAvailability = (typeof SKILL_AVAILABILITIES)[number];
 
-export const DEFAULT_SKILL_AVAILABILITY: SkillAvailability = "workspace_users";
-
-// New skills start unpublished (editors-only) and must be explicitly published by a holder of the
-// skill publish permission.
-export function getDefaultSkillAvailability(): SkillAvailability {
-  return "editors";
-}
+export const DEFAULT_SKILL_AVAILABILITY: SkillAvailability = "editors";
 
 // The DB column is availability; isDefault survives as a boolean alias in the API and
 // frontend. Remove these mappings once clients rely on availability directly.
