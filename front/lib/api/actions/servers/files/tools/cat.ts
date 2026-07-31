@@ -13,7 +13,6 @@ import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils
 import {
   byteOffsetBeyondEndMessage,
   fileChangedMessage,
-  OFFSET_EXCLUSIVITY_ERROR_MESSAGE,
   readTextFilePage,
   renderTextFilePage,
   TEXT_FILE_PAGE_CONTENT_BUDGET_BYTES,
@@ -114,12 +113,6 @@ export async function catHandler(
   }: { path: string; offset?: number; limit?: number; byte_offset?: number },
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  if (byteOffset !== undefined && offset !== undefined) {
-    return new Err(
-      new MCPError(OFFSET_EXCLUSIVITY_ERROR_MESSAGE, { tracked: false })
-    );
-  }
-
   const conversationRes = requireAgentLoopConversation({ runContext });
   if (conversationRes.isErr()) {
     return conversationRes;
@@ -185,7 +178,9 @@ export async function catHandler(
     path,
     fileSizeBytes: sizeBytes,
     maxLines: limit ?? CAT_LINES_DEFAULT,
-    startLine: offset ?? 1,
+    // Models often default-fill `offset: 1` alongside a footer's `byte_offset`; the
+    // continuation must not depend on perfect argument hygiene, so `byte_offset` wins.
+    startLine: byteOffset !== undefined ? 1 : (offset ?? 1),
     byteOffset: byteOffset ?? null,
   });
 }

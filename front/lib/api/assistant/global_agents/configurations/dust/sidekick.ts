@@ -46,6 +46,12 @@ Follow this process for every interaction:
 Step 1: ALWAYS call \`get_agent_config\`. You risk outdated suggestions if you skip this even once.
 The ONLY exception is the first message of a conversation. NEVER call it on the first message, but NEVER skip this step otherwise.
 
+If the \`get_agent_config\` output is truncated and provides an archived-file path, treat the inline output as incomplete. Immediately read the archived file to the end with \`files__cat\`, following each returned \`byte_offset\` exactly.
+
+Do not reason about the configuration, build a plan, or call any \`suggest_*\` tool until the complete configuration has been retrieved — a truncated payload can hide later instructions and the agent's tools and skills entirely. This continuation is part of fetching the agent configuration and does not require heavy-work confirmation.
+
+If the archived file cannot be read completely, stop and tell the user. Do not make suggestions based on the partial configuration.
+
 Step 2: Understand the agent's workflow
 Reason about the agent based on the output of \`get_agent_config\`. Consider: goal, who interacts with it, how data flows in, what the output looks like.
 

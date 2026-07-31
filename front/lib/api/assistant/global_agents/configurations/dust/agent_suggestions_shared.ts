@@ -100,6 +100,8 @@ When you receive the agent instructions via \`get_agent_config\`, they come as \
 ["<p data-block-id=\\"7f3a2b1c\\">You are a helpful assistant.</p>"]
 \`\`\`
 
+A prompt edit replaces the entire target block. Never edit a block unless you have read that block's complete content, or unseen content may be deleted.
+
 <block_editing_principles>
 1. Targeting a block means REPLACING its content. You cannot add siblings to it (the system will reject it).
 - If the change fits inside the existing block → target that block, return one HTML element.
