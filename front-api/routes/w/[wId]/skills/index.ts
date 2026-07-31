@@ -185,7 +185,7 @@ app.get(
       });
     }
 
-    let resolvedPodSpaceId: number | null | undefined;
+    let resolvedPodSpaceModelId: number | null | undefined;
     if (podSpaceId) {
       const podSpace = await SpaceResource.fetchById(auth, podSpaceId);
       if (!podSpace) {
@@ -197,15 +197,15 @@ app.get(
           },
         });
       }
-      resolvedPodSpaceId = podSpace.id;
+      resolvedPodSpaceModelId = podSpace.id;
     } else if (excludePodScopedSkills) {
-      resolvedPodSpaceId = null;
+      resolvedPodSpaceModelId = null;
     }
 
     const allSkills = await SkillResource.listByWorkspace(auth, {
       status: skillStatus,
       globalSpaceOnly: globalSpaceOnly === "true",
-      podSpaceId: resolvedPodSpaceId,
+      podSpaceModelId: resolvedPodSpaceModelId,
       onlyCustom: onlyCustom === "true",
       availability,
       withInstructions: false,
@@ -468,10 +468,11 @@ app.post(
       ...additionalRequestedSpaceIdsRes.value,
     ]);
 
-    const podSpaceValidation = await validateAtMostOnePodSpace(
+    const requestedSpaces = await SpaceResource.fetchByModelIds(
       auth,
       requestedSpaceIds
     );
+    const podSpaceValidation = validateAtMostOnePodSpace(requestedSpaces);
     if (podSpaceValidation.isErr()) {
       return apiError(ctx, {
         status_code: 400,
