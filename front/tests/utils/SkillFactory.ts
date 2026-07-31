@@ -1,7 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
-import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillId } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SystemSkillId } from "@app/lib/resources/skill/code_defined/system_registry";
@@ -9,6 +7,7 @@ import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_reso
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SKILL_ICON } from "@app/lib/skill";
 import { serializeSkillTag } from "@app/lib/skills/format";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import type {
   SkillAvailability,
   SkillStatus,
@@ -44,20 +43,7 @@ export class SkillFactory {
       !auth.isKey() &&
       !(await auth.hasWorkspacePermission("create", "skill"))
     ) {
-      const workspace = auth.getNonNullableWorkspace();
-      const adminAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
-      );
-      const group = await GroupResource.makeNew(
-        {
-          name: `skill-creator-${user.sId}`,
-          kind: "regular_auto",
-          workspaceId: workspace.id,
-        },
-        { memberIds: [user.id] }
-      );
-      await GroupPermissionResource.grantTypeWide(adminAuth, {
-        group,
+      await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
         grantType: "create",
         resourceType: "skill",
       });
