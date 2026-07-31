@@ -1,5 +1,20 @@
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import {
+  AVAILABILITY_FILTER_OPTIONS,
+  AVAILABILITY_QUERY_PARAMS,
+  type AvailabilityFilter,
+  filterByAvailability,
+  filterBySearch,
+  GOVERNANCE_SKILL_MANAGER_TABS,
+  getAvailabilityFilterLabel,
+  isAvailabilityFilter,
+  isValidTab,
+  SKILL_MANAGER_TABS,
+  type SkillManagerTabType,
+  sortDustProvidedFirst,
+  sortSkillsByName,
+} from "@app/components/pages/builder/skills/utils";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
@@ -7,10 +22,7 @@ import {
   BatchAvailabilityDialog,
   SkillsBatchEditBar,
 } from "@app/components/skills/SkillsBatchEdit";
-import {
-  SKILL_AVAILABILITY_DISPLAY,
-  SkillsTable,
-} from "@app/components/skills/SkillsTable";
+import { SkillsTable } from "@app/components/skills/SkillsTable";
 import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
 import {
   useSetContentWidth,
@@ -30,12 +42,10 @@ import {
   useSkillsWithRelations,
   useUpdateSkillsAvailability,
 } from "@app/lib/swr/skill_configurations";
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import {
-  SKILL_AVAILABILITIES,
-  type SkillAvailability,
-  type SkillWithoutInstructionsAndToolsWithRelationsType,
+import type {
+  SkillAvailability,
+  SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
@@ -60,83 +70,6 @@ import {
 import type { RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-export type SkillManagerTabType =
-  | "active"
-  | "editable_by_me"
-  | "default"
-  | "archived";
-
-interface SkillManagerTab {
-  id: SkillManagerTabType;
-  label: string;
-  description: string;
-}
-
-const SKILL_MANAGER_TABS: SkillManagerTab[] = [
-  { id: "active", label: "All", description: "All active skills" },
-  {
-    id: "editable_by_me",
-    label: "Editable by me",
-    description: "Skills you can edit",
-  },
-  {
-    id: "default",
-    label: "Default",
-    description: "Default skills provided by Dust",
-  },
-  { id: "archived", label: "Archived", description: "Archived skills" },
-];
-
-const GOVERNANCE_SKILL_MANAGER_TABS = SKILL_MANAGER_TABS.filter(
-  (t) => t.id !== "default"
-);
-
-function isValidTab(tab: string): tab is SkillManagerTabType {
-  return SKILL_MANAGER_TABS.some((t) => t.id === tab);
-}
-
-type AvailabilityFilter = SkillAvailability | "all";
-
-function isAvailabilityFilter(
-  value: string | undefined
-): value is SkillAvailability {
-  return SKILL_AVAILABILITIES.some((a) => a === value);
-}
-
-const AVAILABILITY_QUERY_PARAMS = ["availability"];
-
-const AVAILABILITY_FILTER_OPTIONS: {
-  value: AvailabilityFilter;
-  label: string;
-}[] = [
-  { value: "all", label: "All availabilities" },
-  ...SKILL_AVAILABILITIES.map((availability) => ({
-    value: availability,
-    label: SKILL_AVAILABILITY_DISPLAY[availability].label,
-  })),
-];
-
-function getAvailabilityFilterLabel(filter: AvailabilityFilter): string {
-  return (
-    AVAILABILITY_FILTER_OPTIONS.find((o) => o.value === filter)?.label ??
-    "All availabilities"
-  );
-}
-
-function getSkillSearchString(
-  skill: SkillWithoutInstructionsAndToolsWithRelationsType
-): string {
-  const skillEditorNames =
-    skill.relations.editors?.map((e) => e.fullName) ?? [];
-  return [skill.name].concat(skillEditorNames).join(" ").toLowerCase();
-}
-
-function sortSkillsByName(
-  skills: SkillWithoutInstructionsAndToolsWithRelationsType[]
-) {
-  return [...skills].sort((a, b) => a.name.localeCompare(b.name));
-}
-
 export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
@@ -157,7 +90,7 @@ export function ManageSkillsPage() {
   const { availability: availabilityParam } = useQueryParams(
     AVAILABILITY_QUERY_PARAMS
   );
-  const availabilityFilter: AvailabilityFilter = isAvailabilityFilter(
+  const availabilityFilter = isAvailabilityFilter(
     availabilityParam.value
   )
     ? availabilityParam.value
@@ -231,76 +164,56 @@ export function ManageSkillsPage() {
     disabled: activeTab !== "active",
   });
 
+  const sortedActiveSkills = useMemo(
+    () => sortSkillsByName(activeSkills),
+    [activeSkills]
+  );
+  const sortedArchivedSkills = useMemo(
+    () => sortSkillsByName(archivedSkills),
+    [archivedSkills]
+  );
+
   const skillsByTab = useMemo<
     Record<
       SkillManagerTabType,
       SkillWithoutInstructionsAndToolsWithRelationsType[]
     >
   >(() => {
-    const sortedActiveSkills = sortSkillsByName(activeSkills);
-    const sortedArchivedSkills = sortSkillsByName(archivedSkills);
-
     const searchLower = skillSearch.toLowerCase();
-    const filteredList = (
-      skills: SkillWithoutInstructionsAndToolsWithRelationsType[]
-    ) => {
-      if (!isSearchActive) {
-        return skills;
-      }
-      return skills
-        .filter((s) => subFilter(searchLower, getSkillSearchString(s)))
-        .sort((a, b) =>
-          compareForFuzzySort(
-            searchLower,
-            getSkillSearchString(a),
-            getSkillSearchString(b)
-          )
-        );
-    };
 
-    // Display Dust-managed skills first, then fall back to a name sort.
-    const sortDustProvidedFirst = (
-      skills: SkillWithoutInstructionsAndToolsWithRelationsType[]
-    ) =>
-      [...skills].sort((a, b) => {
-        const aIsDustProvided = isDustProvidedSkill(a);
-        const bIsDustProvided = isDustProvidedSkill(b);
-        if (aIsDustProvided !== bIsDustProvided) {
-          return aIsDustProvided ? -1 : 1;
-        }
-        return a.name.localeCompare(b.name);
-      });
-
-    const byAvailabilityFilter = (
-      skills: SkillWithoutInstructionsAndToolsWithRelationsType[]
-    ) =>
-      availabilityFilter === "all"
-        ? skills
-        : skills.filter((s) => s.availability === availabilityFilter);
+    const editableByMeSkills = sortedActiveSkills.filter((s) =>
+      s.relations.editors?.some((e) => e.sId === user?.sId)
+    );
+    // Legacy (no governance) tab: auto-discoverable skills plus Dust-provided ones.
+    const defaultSkills = sortedActiveSkills.filter(
+      (s) => s.availability === "users_and_agents" || isDustProvidedSkill(s)
+    );
 
     return {
-      active: filteredList(byAvailabilityFilter(sortedActiveSkills)),
-      editable_by_me: filteredList(
-        byAvailabilityFilter(
-          sortedActiveSkills.filter((s) =>
-            s.relations.editors?.some((e) => e.sId === user?.sId)
-          )
-        )
+      active: filterBySearch(
+        filterByAvailability(sortedActiveSkills, availabilityFilter),
+        searchLower,
+        isSearchActive
       ),
-      // Legacy (no governance) tab: auto-discoverable skills plus Dust-provided ones.
-      default: filteredList(
-        sortDustProvidedFirst(
-          sortedActiveSkills.filter(
-            (s) =>
-              s.availability === "users_and_agents" || isDustProvidedSkill(s)
-          )
-        )
+      editable_by_me: filterBySearch(
+        filterByAvailability(editableByMeSkills, availabilityFilter),
+        searchLower,
+        isSearchActive
       ),
-      archived: filteredList(byAvailabilityFilter(sortedArchivedSkills)),
+      default: filterBySearch(
+        sortDustProvidedFirst(defaultSkills),
+        searchLower,
+        isSearchActive
+      ),
+      archived: filterBySearch(
+        filterByAvailability(sortedArchivedSkills, availabilityFilter),
+        searchLower,
+        isSearchActive
+      ),
     };
   }, [
-    activeSkills,
-    archivedSkills,
+    sortedActiveSkills,
+    sortedArchivedSkills,
     skillSearch,
     user,
     isSearchActive,
