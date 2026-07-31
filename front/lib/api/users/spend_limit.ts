@@ -9,11 +9,13 @@ import {
 import {
   getEffectiveSpendCapAwuCreditsForUser,
   getEsConsumedAwuCreditsForUser,
+  getNonCreditPricedSpendCapAwuCreditsForUser,
 } from "@app/lib/api/credits/members_usage";
 import { reconcileUser } from "@app/lib/api/metronome/reconcile_credit_state";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
+import type { BillingCycle } from "@app/lib/client/subscription";
 import {
   clearMetronomePerUserCapAlert,
   clearMetronomePerUserWarningAlert,
@@ -25,6 +27,7 @@ import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_t
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { currentCalendarMonthCycleUtc } from "@app/lib/spend_limits/cycle";
 import {
   addFixedWindowCount,
   type FixedWindowBounds,
@@ -393,7 +396,14 @@ async function readSpendLimitCountWithLazySeed(
     user,
     key,
     bounds,
-  }: { user: UserResource; key: string; bounds: FixedWindowBounds }
+    cycle,
+  }: {
+    user: UserResource;
+    key: string;
+    bounds: FixedWindowBounds;
+    // Forces the window the ES seed sums over, so it matches `bounds`.
+    cycle?: BillingCycle;
+  }
 ): Promise<number | null> {
   const countResult = await getFixedWindowCount({ key, bounds });
   if (countResult.isErr()) {
@@ -405,12 +415,51 @@ async function readSpendLimitCountWithLazySeed(
 
   const consumed = Math.max(
     0,
-    Math.round(await getEsConsumedAwuCreditsForUser(auth, { user }))
+    Math.round(await getEsConsumedAwuCreditsForUser(auth, { user, cycle }))
   );
   if (consumed > 0) {
     await setFixedWindowCount({ key, bounds, value: consumed, logger });
   }
   return consumed;
+}
+
+/**
+ * Compares the per-user fixed-window counter against `thresholdAwuCredits` over
+ * `bounds`. Shared by the credit-priced and non-credit-priced entry points below,
+ * which differ only in how the threshold and the cycle are resolved. Fails open
+ * (returns `false`) on a Redis read error.
+ */
+async function isSpendCapCounterReached(
+  auth: Authenticator,
+  {
+    user,
+    thresholdAwuCredits,
+    bounds,
+    cycle,
+  }: {
+    user: UserResource;
+    thresholdAwuCredits: number;
+    bounds: FixedWindowBounds;
+    cycle?: BillingCycle;
+  }
+): Promise<boolean> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const count = await readSpendLimitCountWithLazySeed(auth, {
+    user,
+    key: makeSpendLimitAwuCreditsRateLimitKeyForUser(workspace, user.toJSON()),
+    bounds,
+    cycle,
+  });
+  if (count === null) {
+    logger.error(
+      { workspaceId: workspace.sId, userId: user.sId },
+      "[SpendLimitRateCap] Failed to read fixed-window count; allowing message"
+    );
+    return false;
+  }
+
+  return count >= thresholdAwuCredits;
 }
 
 /**
@@ -439,20 +488,45 @@ export async function isUserSpendLimitRateCapReached(
     return false;
   }
 
-  const count = await readSpendLimitCountWithLazySeed(auth, {
+  return isSpendCapCounterReached(auth, {
     user,
-    key: makeSpendLimitAwuCreditsRateLimitKeyForUser(workspace, user.toJSON()),
+    thresholdAwuCredits: threshold,
     bounds,
   });
-  if (count === null) {
-    logger.error(
-      { workspaceId: workspace.sId, userId: user.sId },
-      "[SpendLimitRateCap] Failed to read fixed-window count; allowing message"
-    );
+}
+
+/**
+ * Per-user spend cap for workspaces that are *not* on a credit-priced plan. Same
+ * Redis fixed-window counter as `isUserSpendLimitRateCapReached`, with the two
+ * Metronome-dependent inputs replaced:
+ *   - the threshold comes from `getNonCreditPricedSpendCapAwuCreditsForUser`
+ *     (Postgres only — no seat allowance, no Metronome alert);
+ *   - the cycle is the UTC calendar month, since there is no contract billing
+ *     period to anchor on.
+ *
+ * The workspace credit pool and the Metronome per-user cap do not apply to these
+ * workspaces, so this is their only per-user credit gate. Returns `false` (does
+ * not block) when no cap is configured, or on a Redis read error (fail-open).
+ */
+export async function isNonCreditPricedUserSpendLimitReached(
+  auth: Authenticator,
+  { user }: { user: UserResource }
+): Promise<boolean> {
+  const threshold = await getNonCreditPricedSpendCapAwuCreditsForUser(auth, {
+    user,
+  });
+  if (threshold === null) {
     return false;
   }
 
-  return count >= threshold;
+  const cycle = currentCalendarMonthCycleUtc();
+
+  return isSpendCapCounterReached(auth, {
+    user,
+    thresholdAwuCredits: threshold,
+    bounds: makeSpendLimitCycleWindowBounds(cycle.cycleStart, cycle.cycleEnd),
+    cycle,
+  });
 }
 
 /**
@@ -462,10 +536,19 @@ export async function isUserSpendLimitRateCapReached(
  * is the newly-accrued delta for a message (not its running total — the caller
  * diffs against the previously-recorded amount so repeated finalizes don't
  * over-count). No-op when the billing period can't be resolved.
+ *
+ * Bucketed on the cycle the workspace is enforced on: the contract billing period
+ * by default, or `cycle` when the caller forces one (the UTC calendar month for
+ * workspaces with no contract — see `spendLimitCycleOverrideForAuth`). Reader and
+ * writer must agree here, or the counter accrues under a key nothing reads.
  */
 export async function recordUserSpendLimitUsage(
   auth: Authenticator,
-  { user, incrementBy }: { user: UserResource; incrementBy: number }
+  {
+    user,
+    incrementBy,
+    cycle,
+  }: { user: UserResource; incrementBy: number; cycle?: BillingCycle }
 ): Promise<void> {
   // Only whole positive credits are recordable (the counter is an integer
   // INCRBY); skip anything else rather than letting it reach the counter.
@@ -475,7 +558,9 @@ export async function recordUserSpendLimitUsage(
 
   const workspace = auth.getNonNullableWorkspace();
 
-  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  const bounds = cycle
+    ? makeSpendLimitCycleWindowBounds(cycle.cycleStart, cycle.cycleEnd)
+    : await resolveSpendLimitCycleBounds(workspace);
   if (!bounds) {
     return;
   }

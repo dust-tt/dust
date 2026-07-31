@@ -64,7 +64,10 @@ import {
 } from "@app/lib/api/programmatic_usage/tracking";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { config as regionConfig } from "@app/lib/api/regions/config";
-import { isUserSpendLimitRateCapReached } from "@app/lib/api/users/spend_limit";
+import {
+  isNonCreditPricedUserSpendLimitReached,
+  isUserSpendLimitRateCapReached,
+} from "@app/lib/api/users/spend_limit";
 import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -2523,13 +2526,18 @@ async function checkMessagesLimit(
   //   For API calls (no user), only the workspace pool applies via `isApiBlocked`.
   //   Pool-balance concurrency limiting (`checkPoolCreditConcurrencyLimit`) prevents
   //   close-to-0 attacks where many requests overshoot the pool before debits settle.
-  // - Legacy plans: programmatic credits checked via `checkProgrammaticUsageLimits`,
-  //   plus a credit-balance-scaled pre-emptive rate limit (`checkProgrammaticUsageRateLimit`).
+  // - Legacy plans: a per-user credit limit checked from the Redis fixed-window
+  //   counter (`isNonCreditPricedUserSpendLimitReached`), plus programmatic credits
+  //   checked via `checkProgrammaticUsageLimits` and a credit-balance-scaled
+  //   pre-emptive rate limit (`checkProgrammaticUsageRateLimit`).
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.subscription()?.plan;
   const user = auth.user();
+  const isCreditPricedWorkspace = Boolean(
+    owner.metronomeCustomerId && plan && isCreditPricedPlan(plan)
+  );
 
-  if (owner.metronomeCustomerId && plan && isCreditPricedPlan(plan)) {
+  if (isCreditPricedWorkspace) {
     const blockedReason = user
       ? await isUserBlocked(owner, user)
       : (await isApiBlocked(owner.sId))
@@ -2669,7 +2677,33 @@ async function checkMessagesLimit(
         });
       }
     }
-  } else if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
+  } else if (user && !isFreeOrigin(context.origin)) {
+    // Non-credit-priced plans: no workspace pool and no Metronome per-user cap,
+    // so the per-user credit limit is enforced solely from the Redis fixed-window
+    // counter, bucketed on the UTC calendar month. Admin-set (poke) workspace
+    // default, overridable per member. Free origins produce no billable usage,
+    // and API keys have no per-user limit (they are gated by the programmatic
+    // caps below). Flag-gated while we validate the counter; usage is recorded
+    // regardless (in credit_cost), so the flag only controls blocking.
+    const featureFlags = await getFeatureFlags(auth);
+    if (
+      featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
+      (await isNonCreditPricedUserSpendLimitReached(auth, { user }))
+    ) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "user_cap_reached",
+          message: "You have reached your personal usage cap.",
+        },
+      });
+    }
+  }
+
+  if (
+    !isCreditPricedWorkspace &&
+    isProgrammaticUsage(auth, { userMessageOrigin: context.origin })
+  ) {
     const limitsResult = await checkProgrammaticUsageLimits(auth);
     if (limitsResult.isErr()) {
       return new Err({

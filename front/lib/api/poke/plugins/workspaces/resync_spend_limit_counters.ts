@@ -1,6 +1,5 @@
 import { resyncSpendLimitCountersFromEsUsage } from "@app/lib/api/credits/members_usage";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { isCreditPricedPlan } from "@app/types/plan";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const resyncSpendLimitCountersPlugin = createPlugin({
@@ -9,17 +8,14 @@ export const resyncSpendLimitCountersPlugin = createPlugin({
     name: "Resync Spend-Limit Counters from Usage",
     description:
       "Overwrite each member's Redis fixed-window per-user spend-cap counter " +
-      "for the current billing cycle with their Elasticsearch-derived AWU " +
-      "consumption. Use to backfill the counter after enabling the cap, or to " +
-      "repair drift (the counter otherwise only accrues from live messages).",
+      "for the current cycle with their Elasticsearch-derived AWU consumption. " +
+      "Use to backfill the counter after enabling the cap, or to repair drift " +
+      "(the counter otherwise only accrues from live messages). Resyncs the " +
+      "cycle the workspace is enforced on: the Metronome contract billing " +
+      "period on credit-priced plans, the UTC calendar month elsewhere.",
     resourceTypes: ["workspaces"],
     args: {},
     requiredRoles: ["billing"],
-  },
-
-  isApplicableTo: (auth) => {
-    const plan = auth.plan();
-    return plan !== null && isCreditPricedPlan(plan);
   },
 
   execute: async (auth, _resource, _args) => {
