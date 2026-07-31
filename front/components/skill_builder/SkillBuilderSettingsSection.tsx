@@ -45,14 +45,13 @@ const AVAILABILITY_OPTIONS: {
     value: "editors",
   },
   {
-    label: "Workspace members",
+    label: "All members",
     value: "workspace_users",
   },
   {
-    label: "Auto-discoverable",
+    label: "Members and agents",
     value: "users_and_agents",
-    description:
-      "Available to workspace members and agents with Discover Skills",
+    description: "Available to all members and agents with Discover Skills",
   },
 ];
 
@@ -84,6 +83,9 @@ export function SkillBuilderSettingsSection({
     "admin_governance_skill_publication"
   );
   const { hasPermission } = useWorkspacePermissions();
+
+  // Even if you have permission to make skills discoverable, if you don't have permission to manage skill availabilty
+  // you cannot perform the action, so we disable the dropdown.
   const canUpdateAvailability = hasPermission("publish", "skill");
   const canMakeSkillAutoDiscoverable = hasPermission(
     "make_discoverable",
@@ -146,7 +148,7 @@ export function SkillBuilderSettingsSection({
         <SkillBuilderIconSection />
       </div>
       <SkillBuilderUserFacingDescriptionSection />
-      <div className="flex gap-5">
+      <div className="flex flex-col gap-5">
         <div className="flex flex-col">
           <h3 className="text-base font-semibold text-foreground mb-2">
             Editors
@@ -209,19 +211,23 @@ export function SkillBuilderSettingsSection({
               title="This skill has workspace-wide effects"
               size="lg"
             >
-              <p>
-                Available to all workspace members. Any agent with Discover
-                Skills, including Dust, can use your skill automatically. See
-                other auto-discoverable skills in{" "}
-                <Hoverable
-                  href={`/w/${owner.sId}/builder/skills#?selectedTab=default`}
-                  target="_blank"
-                  className="inline-flex items-center gap-1 underline"
-                >
-                  Manage Skills page
-                  <Icon visual={LinkExternal01} size="xs" />
-                </Hoverable>
-              </p>
+              <ul className="list-disc space-y-1 pl-5">
+                <li>
+                  All members can find it via the input bar and agent builder
+                </li>
+                <li>
+                  Any agent with Discover Skills, including Dust, can use it
+                  automatically. See other skills available to agents in{" "}
+                  <Hoverable
+                    href={`/w/${owner.sId}/builder/skills?availability=users_and_agents`}
+                    target="_blank"
+                    className="inline-flex items-center gap-1 underline"
+                  >
+                    Manage Skills
+                    <Icon visual={LinkExternal01} size="xs" />
+                  </Hoverable>
+                </li>
+              </ul>
             </ContentMessage>
           ) : (
             <SkillBuilderAvailabilityMessage

@@ -30,12 +30,12 @@ export function SpaceRestrictionMessage({
       >
         {spaces.length === 1 ? (
           <>
-            Only users with access to {spaceLinks} can read and use this{" "}
+            Only users with access to {spaceLinks} can view and use this{" "}
             {entityName}.
           </>
         ) : (
           <>
-            Only users with access to all of the following can read and use this{" "}
+            Only users with access to all of the following can view and use this{" "}
             {entityName}: {spaceLinks}.
           </>
         )}

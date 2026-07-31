@@ -4,7 +4,6 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { ContentMessage, Users01 } from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
 
 interface SkillBuilderAvailabilityMessageProps {
   availability: SkillAvailability;
@@ -12,49 +11,30 @@ interface SkillBuilderAvailabilityMessageProps {
   restrictedSpaces: SpaceType[];
 }
 
-function getAvailabilityContent({
-  availability,
-  owner,
-  restrictedSpaces,
-}: SkillBuilderAvailabilityMessageProps): ReactNode {
-  if (restrictedSpaces.length === 0) {
-    return availability === "editors"
-      ? "Only editors can find it via the input bar and agent builder. Non-editors can still use it through any agent or skill that includes this skill."
-      : "Everyone in the workspace can find it via the input bar and agent builder.";
-  }
-
-  const spaceLinks = <SpaceLinks owner={owner} spaces={restrictedSpaces} />;
-
-  const gate =
-    restrictedSpaces.length > 1 ? (
-      <>Only members of all the following can use this skill: {spaceLinks}.</>
-    ) : (
-      <>Only members of {spaceLinks} can use this skill.</>
-    );
-
+function getAvailabilityItems(
+  availability: SkillAvailability,
+  restricted: boolean
+): string[] {
   switch (availability) {
     case "editors":
-      return (
-        <>
-          {gate} Members cannot find it via the input bar and agent builder
-          unless they are an editor.
-        </>
-      );
+      return [
+        "Only editors can find it via the input bar and agent builder",
+        "The skill remains available through agents and skills that use it",
+      ];
     case "workspace_users":
-      return (
-        <>{gate} Members can find it via the input bar and agent builder.</>
-      );
+      // When restricted, "All members" contradicts the space gate above, so we
+      // refer back to the gated members with "They can all".
+      return [
+        `${restricted ? "They can all" : "All members can"} find it via the input bar and agent builder`,
+      ];
     case "users_and_agents":
-      return (
-        <>
-          {gate} Members can find it via the input bar and agent builder, and
-          when members use agents with Discover Skills they can use it
-          automatically.
-        </>
-      );
+      return [
+        "All members can find it via the input bar and agent builder",
+        "Agents with Discover Skills can use it automatically",
+      ];
     default:
       assertNeverAndIgnore(availability);
-      return gate;
+      return [];
   }
 }
 
@@ -63,22 +43,46 @@ export function SkillBuilderAvailabilityMessage({
   owner,
   restrictedSpaces,
 }: SkillBuilderAvailabilityMessageProps) {
-  const hasSpaceRestrictions = restrictedSpaces.length > 0;
+  const restricted = restrictedSpaces.length > 0;
+  const items = getAvailabilityItems(availability, restricted);
 
-  const content = getAvailabilityContent({
-    availability,
-    owner,
-    restrictedSpaces,
-  });
+  const spaceLinks = <SpaceLinks owner={owner} spaces={restrictedSpaces} />;
+
+  const gate = !restricted ? null : restrictedSpaces.length > 1 ? (
+    <>
+      Only members of all the following can view and use this skill:{" "}
+      {spaceLinks}.
+    </>
+  ) : (
+    <>Only members of {spaceLinks} can view and use this skill.</>
+  );
+
+  // A single availability line reads better as one sentence than as a
+  // gate-plus-one-bullet list, so we inline it after the gate.
+  const isSingle = items.length === 1;
 
   return (
     <ContentMessage
-      variant={hasSpaceRestrictions ? "info" : "primary"}
       size="lg"
-      title="Who can use this skill?"
+      title="Who is this skill available for?"
       icon={Users01}
     >
-      {content}
+      {isSingle ? (
+        <p>
+          {gate && <>{gate} </>}
+          {items[0]}
+          {restricted ? "." : ""}
+        </p>
+      ) : (
+        <>
+          {gate && <p className="mb-1">{gate} Among them:</p>}
+          <ul className="list-disc space-y-1 pl-5">
+            {items.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </>
+      )}
     </ContentMessage>
   );
 }

@@ -19,6 +19,7 @@ import {
   DataTable,
   Edit04,
   Eye,
+  Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
 import type {
@@ -46,11 +47,23 @@ type RowData = {
 
 export const SKILL_AVAILABILITY_DISPLAY: Record<
   SkillAvailability,
-  { label: string; color: "primary" | "success" | "highlight" }
+  { label: string; color: "primary" | "success" | "highlight"; tooltip: string }
 > = {
-  editors: { label: "Editors only", color: "primary" },
-  workspace_users: { label: "Workspace members", color: "success" },
-  users_and_agents: { label: "Auto-discoverable", color: "highlight" },
+  editors: {
+    label: "Editors only",
+    color: "primary",
+    tooltip: "Only editors can find it via the input bar and agent builder",
+  },
+  workspace_users: {
+    label: "All members",
+    color: "success",
+    tooltip: "All members can find it via the input bar and agent builder",
+  },
+  users_and_agents: {
+    label: "Members and agents",
+    color: "highlight",
+    tooltip: "Available to all members and agents with Discover Skills",
+  },
 };
 
 const nameColumn = {
@@ -89,13 +102,17 @@ const availabilityColumn = {
     const display = SKILL_AVAILABILITY_DISPLAY[info.getValue()];
     return (
       <DataTable.CellContent>
-        <Chip size="xs" color={display.color} label={display.label} />
+        <Tooltip
+          label={display.tooltip}
+          trigger={
+            <Chip size="xs" color={display.color} label={display.label} />
+          }
+        />
       </DataTable.CellContent>
     );
   },
   meta: {
-    // Wide enough for the longest chip label ("Workspace members").
-    className: "hidden @sm:w-44 @sm:table-cell",
+    className: "hidden @sm:w-40 @sm:table-cell",
   },
 };
 

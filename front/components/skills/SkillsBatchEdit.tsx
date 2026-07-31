@@ -35,19 +35,19 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     },
   },
   {
-    label: "Workspace members",
+    label: "All members",
     availability: "workspace_users",
     getDialogTitle: (count) =>
-      `Make ${count} skill${pluralize(count)} available to workspace members`,
+      `Make ${count} skill${pluralize(count)} available to all members`,
     dialogDescription: (count) => {
       const pronoun = count === 1 ? "it" : "them";
       return `Every workspace member can add ${pronoun} to agents or other skills and use ${pronoun} directly.`;
     },
   },
   {
-    label: "Auto-discoverable",
+    label: "All members and agents",
     description:
-      "Available to workspace members and agents with Discover Skills",
+      "Available to all members and agents with Discover Skills, including @Dust",
     availability: "users_and_agents",
     getDialogTitle: () => `This affects your entire workspace`,
     dialogDescription: (count) =>
