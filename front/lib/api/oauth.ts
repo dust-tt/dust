@@ -3,6 +3,7 @@ import {
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
+import { verifyWorkspaceOAuthConnectionForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -58,7 +59,8 @@ export type OAuthError = {
     | "connection_creation_failed"
     | "connection_not_implemented"
     | "connection_finalization_failed"
-    | "credential_retrieval_failed";
+    | "credential_retrieval_failed"
+    | "mcp_server_connection_not_found";
   message: string;
   oAuthAPIError?: OAuthAPIError;
 };
@@ -129,6 +131,38 @@ export async function createConnectionAndGetSetupUrl(
   let relatedCredential: RelatedCredential | undefined = undefined;
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const userId = auth.getNonNullableUser().sId;
+
+  // Personal connections with an `mcp_server_id` inherit their config from the workspace-level
+  // admin connection. Verify it upfront: the front row can reference a connection that no longer
+  // exists in the OAuth service (e.g. after a workspace relocation), and every provider treats
+  // that as fatal deeper in the flow with a less actionable error. The provider re-fetches the
+  // same metadata right after; the redundant read is acceptable for this rare, human-initiated
+  // flow.
+  if (useCase === "personal_actions" && isString(extraConfig.mcp_server_id)) {
+    const workspaceConnectionRes =
+      await verifyWorkspaceOAuthConnectionForMCPServer(
+        auth,
+        extraConfig.mcp_server_id
+      );
+    if (workspaceConnectionRes.isErr()) {
+      // `info`, not `warn`: this is a user-recoverable condition, not a failure.
+      logger.info(
+        {
+          workspaceId,
+          userId,
+          provider,
+          useCase,
+          mcpServerId: extraConfig.mcp_server_id,
+          kind: workspaceConnectionRes.error.kind,
+        },
+        "OAuth: Workspace connection missing or invalid for personal connection setup"
+      );
+      return new Err({
+        code: "mcp_server_connection_not_found",
+        message: workspaceConnectionRes.error.message,
+      });
+    }
+  }
 
   if (providerStrategy.getRelatedCredential) {
     const credentialResult = await providerStrategy.getRelatedCredential!(

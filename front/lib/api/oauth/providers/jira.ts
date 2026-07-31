@@ -17,6 +17,8 @@ import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { ParsedUrlQuery } from "querystring";
 
 export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
+  requiresWorkspaceConnectionForPersonalAuth = true;
+
   setupUri({
     connection,
     useCase,
