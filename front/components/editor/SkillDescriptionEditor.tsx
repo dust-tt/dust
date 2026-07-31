@@ -55,16 +55,18 @@ export function useSkillDescriptionEditor({
       immediatelyRender: false,
       onUpdate,
       onBlur,
-      editorProps: isReadOnly
+      ...(isReadOnly
         ? {
-            attributes: {
-              class: cn(
-                editorVariants(),
-                "h-40 max-h-96 cursor-text resize-none"
-              ),
+            editorProps: {
+              attributes: {
+                class: cn(
+                  editorVariants(),
+                  "h-40 max-h-96 cursor-text resize-none"
+                ),
+              },
             },
           }
-        : undefined,
+        : {}),
     },
     [extensions, isReadOnly]
   );
