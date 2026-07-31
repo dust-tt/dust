@@ -164,10 +164,7 @@ export function ManageSkillsPage() {
   );
 
   const skillsByTab = useMemo<
-    Record<
-      SkillManagerTabType,
-      SkillWithoutInstructionsAndToolsWithRelationsType[]
-    >
+    Record<SkillManagerTabType, SkillListItemWithRelationsResponseType[]>
   >(() => {
     const searchLower = skillSearch.toLowerCase();
     const editableByMeSkills = sortedActiveSkills.filter((s) =>
