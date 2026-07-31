@@ -884,6 +884,52 @@ describe("POST /api/w/:wId/skills", () => {
     expect(response.status).toBe(403);
   });
 
+  it("requires the make-discoverable permission to create an auto-discoverable skill", async () => {
+    const { auth, workspace, user } = await setupTest("builder");
+    await grantCreateSkillCapability(workspace, user);
+    await FeatureFlagFactory.basic(auth, "admin_governance_skill_publication");
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const publisherGroup = await GroupFactory.regularAuto(
+      workspace,
+      `skill-publisher-${user.sId}`
+    );
+    await GroupFactory.withMembers(adminAuth, publisherGroup, [user]);
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group: publisherGroup,
+      grantType: "publish",
+      resourceType: "skill",
+    });
+
+    const body = {
+      name: "Auto-discoverable Skill",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A skill",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      availability: "users_and_agents",
+    };
+
+    let response = await postSkill(workspace, body);
+    expect(response.status).toBe(403);
+
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group: publisherGroup,
+      grantType: "make_discoverable",
+      resourceType: "skill",
+    });
+
+    response = await postSkill(workspace, body);
+    expect(response.status).toBe(200);
+    const responseData = await response.json();
+    expect(responseData.skill.availability).toBe("users_and_agents");
+  });
+
   it("lets an admin create a published skill when governance is on", async () => {
     const { auth, workspace } = await setupTest("admin");
     await FeatureFlagFactory.basic(auth, "admin_governance_skill_publication");

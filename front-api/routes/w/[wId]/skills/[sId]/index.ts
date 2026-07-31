@@ -220,34 +220,19 @@ app.patch(
 
     // With skill publication governance, changing a skill's availability requires the
     // workspace-level permission to publish skills — even for editors.
-    if (hasSkillPublicationGovernance) {
-      if (
-        availabilityChanged &&
-        !(await auth.hasWorkspacePermission("publish", "skill"))
-      ) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message:
-              "You don't have permission to change this skill's availability.",
-          },
-        });
-      }
-      if (
-        availabilityChanged &&
-        requestedAvailability === "users_and_agents" &&
-        !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
-      ) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message:
-              "You don't have permission to change this skill's availability to this setting.",
-          },
-        });
-      }
+    if (
+      hasSkillPublicationGovernance &&
+      availabilityChanged &&
+      !(await auth.hasWorkspacePermission("publish", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "You don't have permission to change this skill's availability.",
+        },
+      });
     }
 
     // without make skill discoverable permission, a user can neither make a skill

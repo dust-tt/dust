@@ -323,34 +323,34 @@ app.post(
     // With skill publication governance, explicitly creating a skill already published
     // (anything other than editors-only) requires the workspace-level permission to publish
     // skills. The default availability is exempt so plain creation keeps working.
-    if (hasSkillPublicationGovernance) {
-      if (
-        requestedAvailability !== undefined &&
-        requestedAvailability !== "editors" &&
-        !(await auth.hasWorkspacePermission("publish", "skill"))
-      ) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message:
-              "You don't have permission to change this skill's availability.",
-          },
-        });
-      }
-      if (
-        requestedAvailability === "users_and_agents" &&
-        !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
-      ) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message:
-              "You don't have permission to create a skill with that availability.",
-          },
-        });
-      }
+    if (
+      hasSkillPublicationGovernance &&
+      requestedAvailability !== undefined &&
+      requestedAvailability !== "editors" &&
+      !(await auth.hasWorkspacePermission("publish", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "You don't have permission to change this skill's availability.",
+        },
+      });
+    }
+    if (
+      hasSkillPublicationGovernance &&
+      requestedAvailability === "users_and_agents" &&
+      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "You don't have permission to create a skill with that availability.",
+        },
+      });
     }
 
     const availability =
