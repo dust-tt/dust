@@ -98,6 +98,7 @@ export async function measureToolCallFootprints(
   if (resultCountsRes.isErr()) {
     return resultCountsRes;
   }
+
   const callCounts = callCountsRes.value;
   const resultCounts = resultCountsRes.value;
 

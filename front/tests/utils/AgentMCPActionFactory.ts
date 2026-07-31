@@ -33,12 +33,14 @@ export class AgentMCPActionFactory {
       agentMessageModelId,
       status = "blocked_validation_required",
       step = 1,
+      dustRunId = null,
     }: {
       workspace: WorkspaceType;
       conversationModelId: ModelId;
       agentMessageModelId: ModelId;
       status?: ToolExecutionStatus;
       step?: number;
+      dustRunId?: string | null;
     }
   ): Promise<{
     action: AgentMCPActionResource;
@@ -52,6 +54,7 @@ export class AgentMCPActionFactory {
       step,
       index: currentIndex,
       version: 0,
+      dustRunId,
       type: "function_call",
       value: {
         type: "function_call",

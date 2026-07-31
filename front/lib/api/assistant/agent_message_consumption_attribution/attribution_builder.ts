@@ -8,7 +8,11 @@ import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constant
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import assert from "assert";
 
-export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 1;
+// Version 1 attributed the model token buckets only. Version 2 adds per-tool rows and, as a result,
+// nets the tool-call emission out of the assistant output bucket, so its rows are not comparable to
+// version 1's. Bumping keeps the two regimes as separate, self-consistent sets rather than mixing
+// them under one version when a pre-v2 message is re-finalized.
+export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 2;
 
 const CREDIT_AMOUNT_MICRO_PER_CREDIT = 1_000_000;
 
