@@ -565,7 +565,7 @@ describe("SkillResource", () => {
         { name: "Test Skill For Availability Sync" }
       );
 
-      expect(skillResource.availability).toBe("workspace_users");
+      expect(skillResource.availability).toBe("editors");
       expect(skillResource.toJSON(testContext.authenticator).isDefault).toBe(
         false
       );
@@ -1280,9 +1280,11 @@ describe("SkillResource", () => {
       // Admins hold every workspace-level capability, including publish on skills.
       const firstSkill = await SkillFactory.create(testContext.authenticator, {
         name: "First Publishable Skill",
+        availability: "workspace_users",
       });
       const secondSkill = await SkillFactory.create(testContext.authenticator, {
         name: "Second Publishable Skill",
+        availability: "workspace_users",
       });
 
       await SkillResource.updateAvailabilities(

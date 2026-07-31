@@ -105,13 +105,11 @@ export function ManageSkillsPage() {
 
   const isSearchActive = !isEmptyString(skillSearch);
 
-  const visibleTabs = SKILL_MANAGER_TABS;
-
   const activeTab = useMemo<SkillManagerTabType>(() => {
     if (
       selectedTab &&
       isValidTab(selectedTab) &&
-      visibleTabs.some((t) => t.id === selectedTab)
+      SKILL_MANAGER_TABS.some((t) => t.id === selectedTab)
     ) {
       return selectedTab;
     }
@@ -405,7 +403,7 @@ export function ManageSkillsPage() {
           <div className="flex flex-col pt-3">
             <Tabs value={activeTab}>
               <TabsList>
-                {visibleTabs.map((tab) => (
+                {SKILL_MANAGER_TABS.map((tab) => (
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}

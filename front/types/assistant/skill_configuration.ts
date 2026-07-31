@@ -17,7 +17,7 @@ export const SKILL_AVAILABILITIES = [
 ] as const;
 export type SkillAvailability = (typeof SKILL_AVAILABILITIES)[number];
 
-export const DEFAULT_SKILL_AVAILABILITY: SkillAvailability = "editors";
+export const DEFAULT_SKILL_AVAILABILITY = "editors" satisfies SkillAvailability;
 
 // The DB column is availability; isDefault survives as a boolean alias in the API and
 // frontend. Remove these mappings once clients rely on availability directly.
