@@ -19,7 +19,6 @@ import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
@@ -1333,18 +1332,13 @@ describe("SkillResource", () => {
       ).rejects.toThrow("User is not authorized to update skill availability");
     });
 
-    it("requires the publish permission to change availability through updateSkill when governance is on", async () => {
-      await FeatureFlagFactory.basic(
-        testContext.authenticator,
-        "admin_governance_skill_publication"
-      );
-
-      const builder = await UserFactory.basic();
-      await MembershipFactory.associate(testContext.workspace, builder, {
-        role: "builder",
+    it("requires the publish permission to change availability through updateSkill", async () => {
+      const manager = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, manager, {
+        role: "manager",
       });
       const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        builder.sId,
+        manager.sId,
         testContext.workspace.sId
       );
 

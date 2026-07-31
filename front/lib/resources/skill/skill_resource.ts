@@ -425,10 +425,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       "User is not authorized to create skills"
     );
 
-    if (
-      blob.availability === "users_and_agents" &&
-      (await hasFeatureFlag(auth, "admin_governance_skill_publication"))
-    ) {
+    if (blob.availability === "users_and_agents") {
       assert(
         await auth.hasWorkspacePermission("make_discoverable", "skill"),
         "User is not authorized to create an auto-discoverable skill"
