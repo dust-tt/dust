@@ -21,6 +21,7 @@ interface SkillSpaceRestrictionsContextType {
   initialRequestedSpaceIds?: string[];
   knowledgeBySpaceId: Record<string, AttachedKnowledgeFormData[]>;
   missingSpaceIds: string[];
+  nonGlobalSpacesUsedBySkill: SpaceType[];
   nonGlobalSpacesWithRestrictions: SpaceType[];
   skillsBySpaceId: Record<string, ReferencedSkillFormData[]>;
   spaceIdsUsedBySkill: Set<string>;
@@ -146,7 +147,7 @@ export function SkillSpaceRestrictionsProvider({
     return new Set(additionalSpaces ?? []);
   }, [additionalSpaces]);
 
-  const nonGlobalSpacesWithRestrictions = useMemo(() => {
+  const nonGlobalSpacesUsedBySkill = useMemo(() => {
     return allSpaces.filter(
       (space) =>
         space.kind !== "global" &&
@@ -154,6 +155,10 @@ export function SkillSpaceRestrictionsProvider({
           additionalSpaceIds.has(space.sId))
     );
   }, [additionalSpaceIds, allSpaces, spaceIdsUsedBySkill]);
+
+  const nonGlobalSpacesWithRestrictions = useMemo(() => {
+    return nonGlobalSpacesUsedBySkill.filter((space) => space.isRestricted);
+  }, [nonGlobalSpacesUsedBySkill]);
 
   const globalSpace = useMemo(() => {
     return allSpaces.find((s) => s.kind === "global");
@@ -169,6 +174,7 @@ export function SkillSpaceRestrictionsProvider({
       initialRequestedSpaceIds,
       knowledgeBySpaceId,
       missingSpaceIds,
+      nonGlobalSpacesUsedBySkill,
       nonGlobalSpacesWithRestrictions,
       skillsBySpaceId,
       spaceIdsUsedBySkill,
@@ -182,6 +188,7 @@ export function SkillSpaceRestrictionsProvider({
       initialRequestedSpaceIds,
       knowledgeBySpaceId,
       missingSpaceIds,
+      nonGlobalSpacesUsedBySkill,
       nonGlobalSpacesWithRestrictions,
       skillsBySpaceId,
       spaceIdsUsedBySkill,
