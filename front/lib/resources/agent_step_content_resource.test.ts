@@ -440,4 +440,56 @@ describe("AgentStepContentResource.createNewVersions", () => {
     const created = await AgentStepContentResource.createNewVersions([]);
     expect(created).toEqual([]);
   });
+
+  it("persists dustRunId (null when omitted) through the cache and Postgres", async () => {
+    const created = await AgentStepContentResource.createNewVersions([
+      {
+        workspaceId,
+        agentMessageId: agentMessage.id,
+        step: 0,
+        index: 0,
+        type: "text_content",
+        value: makeTextContent("emitted by a run"),
+        dustRunId: "dust_run_abc",
+      },
+      {
+        workspaceId,
+        agentMessageId: agentMessage.id,
+        step: 0,
+        index: 1,
+        type: "text_content",
+        value: makeTextContent("no run"),
+        // dustRunId omitted -> stored as null.
+      },
+    ]);
+
+    expect(
+      created.toSorted((a, b) => a.index - b.index).map((c) => c.dustRunId)
+    ).toEqual(["dust_run_abc", null]);
+
+    // Cache path: createNewVersions warms Redis, so this fetch is served from it.
+    const fromCache = await AgentStepContentResource.fetchByAgentMessages(
+      authenticator,
+      { agentMessageIds: [agentMessage.id] }
+    );
+    expect(
+      fromCache.toSorted((a, b) => a.index - b.index).map((c) => c.dustRunId)
+    ).toEqual(["dust_run_abc", null]);
+
+    // Postgres path: bust the cache so the next fetch reads the persisted rows.
+    const redis = await getRedisCacheClient({
+      origin: "agent_step_content_cache",
+    });
+    await redis.del(
+      agentStepContentCacheKey({ workspaceId, agentMessageId: agentMessage.id })
+    );
+
+    const fromPostgres = await AgentStepContentResource.fetchByAgentMessages(
+      authenticator,
+      { agentMessageIds: [agentMessage.id] }
+    );
+    expect(
+      fromPostgres.toSorted((a, b) => a.index - b.index).map((c) => c.dustRunId)
+    ).toEqual(["dust_run_abc", null]);
+  });
 });

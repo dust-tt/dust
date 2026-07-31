@@ -1001,6 +1001,9 @@ export async function runModel(
       index,
       type: content.type,
       value: content,
+      // Same run id appended to AgentMessage.runIds below. Lets consumption attribution join a
+      // RunUsage (RunModel.dustRunId) to the contents this run emitted.
+      dustRunId,
     }))
   );
 
@@ -1268,6 +1271,7 @@ export async function runModel(
         internalMCPServerId: mcpServerView.internalMCPServerId,
         inputSchema: {},
         availability: "auto_hidden_builder",
+
         permission: "never_ask",
         toolServerId: mcpServerView.internalMCPServerId,
         mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
