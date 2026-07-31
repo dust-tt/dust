@@ -5,6 +5,7 @@ import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_l
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { ToolCostCategory } from "@app/lib/api/mcp";
+import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import { recordUserSpendLimitUsage } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -15,7 +16,6 @@ import {
   intelligenceAwuFromRunUsagesGroupedByRunKey,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
-import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";

@@ -1,5 +1,4 @@
 import config from "@app/lib/api/config";
-import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -27,6 +26,7 @@ import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
+import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
