@@ -249,8 +249,9 @@ decides **what it does** for the caller it got.
 Declare the policy alongside the input and output schemas:
 
 - \`"optional"\` (the default when you omit the field) runs the function with or without a user.
-  Use it for functions that are the same for everyone: shared reference data, stateless
-  computation, Pod-wide reads.
+  It does not hide the caller: \`currentUser()\` still returns whoever called, and only returns
+  \`null\` when the invocation genuinely has no user. Use it when the function should still answer
+  a userless caller, and personalize from \`currentUser()\` when there happens to be one.
 - \`"workspace_user_required"\` refuses the call unless it comes from a current member of the Pod's
   workspace. Use it as soon as the function reads or writes anything that belongs to a person, or
   performs an action that should be attributable.
