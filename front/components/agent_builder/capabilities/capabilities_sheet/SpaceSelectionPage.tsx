@@ -124,7 +124,7 @@ export function SpaceSelectionSheet({
   );
 }
 
-export function SpaceSelectionPageContent({
+function SpaceSelectionPageContent({
   alreadyRequestedSpaceIds,
   includeProjects = true,
   selectedSpaces,

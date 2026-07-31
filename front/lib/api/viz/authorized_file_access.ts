@@ -169,9 +169,9 @@ export async function ensureAuthorizedFileAccessForShare(
   return new Ok(authorized);
 }
 
-export type VizFileAuthorizationMode = "authorized" | "denied";
+type VizFileAuthorizationMode = "authorized" | "denied";
 
-export type AllowlistedScopedVizFile = {
+type AllowlistedScopedVizFile = {
   contentType: string;
   stream: Readable;
 };

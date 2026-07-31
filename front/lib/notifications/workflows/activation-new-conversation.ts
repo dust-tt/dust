@@ -35,7 +35,7 @@ const activationNewConversationPayloadSchema = z.object({
   conversationId: z.string(),
 });
 
-export type activationNewConversationPayloadType = z.infer<
+type activationNewConversationPayloadType = z.infer<
   typeof activationNewConversationPayloadSchema
 >;
 
@@ -47,7 +47,7 @@ const activationNewConversationDetailsSchema = z.object({
   summary: z.string().nullable(),
 });
 
-export type activationNewConversationDetailsType = z.infer<
+type activationNewConversationDetailsType = z.infer<
   typeof activationNewConversationDetailsSchema
 >;
 

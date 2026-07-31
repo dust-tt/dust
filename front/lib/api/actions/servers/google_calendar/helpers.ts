@@ -453,7 +453,7 @@ export function formatEventsListAsText(
   return lines.join("\n");
 }
 
-export interface AvailabilityParticipant {
+interface AvailabilityParticipant {
   email: string;
   timezone: string;
   dailyTimeWindowStart?: string;

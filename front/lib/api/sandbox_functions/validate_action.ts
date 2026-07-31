@@ -13,7 +13,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-export class SandboxFunctionActionValidationError extends Error {
+class SandboxFunctionActionValidationError extends Error {
   constructor(
     readonly type: "action_not_found" | "action_not_blocked" | "unauthorized",
     message: string

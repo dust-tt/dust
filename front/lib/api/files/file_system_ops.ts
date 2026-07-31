@@ -33,14 +33,14 @@ import type { Readable } from "stream";
 // Thumbnail streaming
 // ---------------------------------------------------------------------------
 
-export type ThumbnailStreamResult = {
+type ThumbnailStreamResult = {
   stream: Readable;
   contentType: string;
 };
 
-export type ThumbnailErrorCode = "not_found" | "not_image" | "internal";
+type ThumbnailErrorCode = "not_found" | "not_image" | "internal";
 
-export class ThumbnailError extends Error {
+class ThumbnailError extends Error {
   constructor(
     readonly code: ThumbnailErrorCode,
     message: string
@@ -351,7 +351,7 @@ export async function moveCanonicalFile(
 
 export const WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES = 512 * 1024;
 
-export type WriteCanonicalFileContentErrorCode =
+type WriteCanonicalFileContentErrorCode =
   | "too_large"
   | "unsupported_content_type";
 
@@ -476,14 +476,14 @@ async function readableToBuffer(stream: Readable): Promise<Buffer> {
 const OFFICE_PDF_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
 const OFFICE_PDF_CONVERSION_TIMEOUT_MS = 60_000;
 
-export type OfficePdfErrorCode =
+type OfficePdfErrorCode =
   | "not_found"
   | "too_large"
   | "unsupported_type"
   | "conversion_failed"
   | "internal";
 
-export class OfficePdfError extends Error {
+class OfficePdfError extends Error {
   constructor(
     readonly code: OfficePdfErrorCode,
     message: string
@@ -493,7 +493,7 @@ export class OfficePdfError extends Error {
   }
 }
 
-export type OfficePdfResult = {
+type OfficePdfResult = {
   pdfBuffer: Buffer;
   pdfFileName: string;
 };

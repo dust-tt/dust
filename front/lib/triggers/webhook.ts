@@ -68,7 +68,7 @@ export const HEADERS_ALLOWED_LIST = [
   "webhook-timestamp",
 ];
 
-export function checkSignature({
+function checkSignature({
   headerName,
   algorithm,
   secret,
@@ -141,7 +141,7 @@ export function checkSignature({
   return new Ok(undefined);
 }
 
-export async function validateEventSubscription({
+async function validateEventSubscription({
   webhookSource,
   headers,
   body,
@@ -425,7 +425,7 @@ function matchesPayloadFilter({
   return false;
 }
 
-export async function filterTriggers({
+async function filterTriggers({
   auth,
   webhookSource,
   receivedEventValue,
@@ -538,7 +538,7 @@ export async function filterTriggers({
   return new Ok(filteredTriggers);
 }
 
-export async function storePayloadInGCS(
+async function storePayloadInGCS(
   auth: Authenticator,
   {
     webhookSource,

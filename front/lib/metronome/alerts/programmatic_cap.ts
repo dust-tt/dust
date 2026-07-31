@@ -63,7 +63,7 @@ export const PROGRAMMATIC_LOW_BALANCE_ALERT_NAME = "Programmatic low balance";
 export const PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME =
   "Programmatic critical balance";
 
-export type ProgrammaticCapAlertState = {
+type ProgrammaticCapAlertState = {
   id: string;
   threshold: number;
   // Metronome's current evaluation of the alert. We treat `in_alarm` as

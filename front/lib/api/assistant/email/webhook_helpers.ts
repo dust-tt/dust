@@ -39,13 +39,13 @@ import { readFile } from "fs/promises";
 export type EmailWebhookHeaders = Record<string, string | string[] | undefined>;
 
 export const EMAIL_WEBHOOK_RELAY_HEADER = "x-dust-email-webhook-relayed";
-export const EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER =
+const EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER =
   "x-dust-email-webhook-source-region";
 export const EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER =
   "x-dust-email-webhook-source-error";
 export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
 
-export function isRelayedWebhookRequest(headers: EmailWebhookHeaders): boolean {
+function isRelayedWebhookRequest(headers: EmailWebhookHeaders): boolean {
   return (
     headers[EMAIL_WEBHOOK_RELAY_HEADER] === EMAIL_WEBHOOK_RELAY_HEADER_VALUE
   );
@@ -228,7 +228,7 @@ export async function relayEmailToOtherRegion(
   }
 }
 
-export function parseThreadingHeaders(rawHeaders: string | null) {
+function parseThreadingHeaders(rawHeaders: string | null) {
   if (!rawHeaders) {
     return {
       messageId: null,

@@ -12,7 +12,7 @@ import { z } from "zod";
 
 const MCP_OAUTH_USE_CASES = ["platform_actions", "personal_actions"] as const;
 
-export const ToolDisplayLabelsSchema = z.object({
+const ToolDisplayLabelsSchema = z.object({
   running: z.string(),
   done: z.string(),
 });
@@ -20,7 +20,7 @@ export const ToolDisplayLabelsSchema = z.object({
 // Types are kept in lib/api/mcp.ts to avoid breaking the Temporal bundle.
 // Only schemas are exported from this file.
 
-export const MCPToolSchema = z.object({
+const MCPToolSchema = z.object({
   name: z.string(),
   description: z.string(),
   inputSchema: z.custom<JSONSchema>().optional(),
@@ -39,7 +39,7 @@ const AuthorizationInfoSchema = z.object({
     .optional(),
 });
 
-export const MCPServerSchema = z.object({
+const MCPServerSchema = z.object({
   name: z.string(),
   version: z.string(),
   description: z.string(),

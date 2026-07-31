@@ -14,7 +14,7 @@ export type PostSeedInitialPodTasksResponseBody = {
   tasks: PodTaskType[];
 };
 
-export type SeedInitialPodTasksErrorCode =
+type SeedInitialPodTasksErrorCode =
   | "not_a_project"
   | "already_seeded"
   | "internal_error";

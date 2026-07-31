@@ -18,7 +18,7 @@ interface ImgProps {
   alt: string;
   owner: LightWorkspaceType;
 }
-export function Img({ src, alt, owner }: ImgProps) {
+function Img({ src, alt, owner }: ImgProps) {
   const matches = src?.match(FILE_ID_REGEX);
   const fileId = matches?.length === 1 ? matches[0] : null;
 

@@ -12,7 +12,7 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export type ResolveAuthenticationOutcome = "completed" | "denied";
 
-export class SandboxFunctionActionAuthenticationError extends Error {
+class SandboxFunctionActionAuthenticationError extends Error {
   constructor(
     readonly type: "action_not_found" | "action_not_blocked" | "unauthorized",
     message: string

@@ -24,7 +24,7 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { SHARED_PROMPT_SECTIONS } from "./agent_suggestions_shared";
 import { getCompanyDataAction } from "./shared";
 
-export const SIDEKICK_INSTRUCTION_SECTIONS = {
+const SIDEKICK_INSTRUCTION_SECTIONS = {
   primary: `<primary_goal>
 You are the Dust Agent Sidekick, an AI assistant embedded in the Agent Builder interface.
 Your role is to guide users through agent configuration by generating actionable suggestions they can accept or reject.
@@ -259,7 +259,7 @@ You DO NOT need to call list_models, list_skills, or list_tools unless explicitl
 </context_guidance>`,
 };
 
-export function buildSidekickInstructions(): string {
+function buildSidekickInstructions(): string {
   const parts: string[] = [
     SIDEKICK_INSTRUCTION_SECTIONS.primary,
     SIDEKICK_INSTRUCTION_SECTIONS.agentWorkflow,

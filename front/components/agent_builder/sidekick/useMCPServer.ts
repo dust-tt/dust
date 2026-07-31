@@ -11,7 +11,7 @@ import { useFormContext } from "react-hook-form";
 // exclusively used by the Agent Builder Sidekick to access live form state.
 const SERVER_NAME = "agent-builder-sidekick-client";
 
-export interface UseSidekickMCPServerResult {
+interface UseSidekickMCPServerResult {
   serverId: string | undefined;
   isConnected: boolean;
   isConnecting: boolean;

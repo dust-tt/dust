@@ -225,7 +225,7 @@ export type AshbyApplicationInfoRequest = z.infer<
   typeof AshbyApplicationInfoRequestSchema
 >;
 
-export const AshbyApplicationStatusSchema = z.enum([
+const AshbyApplicationStatusSchema = z.enum([
   "Hired",
   "Archived",
   "Active",
@@ -243,7 +243,7 @@ export const AshbyApplicationInfoResponseSchema = z
 
 // Opening list
 
-export const AshbyOpeningStateSchema = z.enum([
+const AshbyOpeningStateSchema = z.enum([
   "Approved",
   "Closed",
   "Draft",
@@ -251,7 +251,7 @@ export const AshbyOpeningStateSchema = z.enum([
   "Open",
 ]);
 
-export const AshbyOpeningLatestVersionSchema = z
+const AshbyOpeningLatestVersionSchema = z
   .object({
     id: z.string(),
     identifier: z.string().optional(),
@@ -359,7 +359,7 @@ export const AshbyUserSearchResponseSchema = z.array(AshbyUserSchema);
 
 // Referral form info
 
-export const AshbyReferralFormFieldSchema = z.object({
+const AshbyReferralFormFieldSchema = z.object({
   isRequired: z.boolean(),
   descriptionHtml: z.string().optional(),
   descriptionPlain: z.string().optional(),
@@ -381,7 +381,7 @@ export const AshbyReferralFormFieldSchema = z.object({
   }),
 });
 
-export const AshbyReferralFormSectionSchema = z.object({
+const AshbyReferralFormSectionSchema = z.object({
   title: z.string().optional(),
   descriptionHtml: z.string().optional(),
   descriptionPlain: z.string().optional(),
@@ -423,9 +423,7 @@ export const AshbyCreateReferralInputSchema = z.object({
     .describe("Array of field values keyed by their human-readable title."),
 });
 
-export type AshbyCreateReferralInput = z.infer<
-  typeof AshbyCreateReferralInputSchema
->;
+type AshbyCreateReferralInput = z.infer<typeof AshbyCreateReferralInputSchema>;
 
 export function isAshbyCreateReferralInput(
   input: Record<string, unknown>
@@ -519,7 +517,7 @@ export type AshbyJobPostingInfoRequest = z.infer<
   typeof AshbyJobPostingInfoRequestSchema
 >;
 
-export const AshbyJobPostingInfoSchema = z
+const AshbyJobPostingInfoSchema = z
   .object({
     id: z.string(),
     title: z.string(),
@@ -540,12 +538,12 @@ export const AshbyJobPostingInfoResponseSchema =
 
 // Job posting update
 
-export const AshbyJobPostingWorkplaceTypeSchema = z
+const AshbyJobPostingWorkplaceTypeSchema = z
   .enum(["OnSite", "Hybrid", "Remote"])
   .nullable();
 
 // Tool input schema (as sent by the agent to the update_job_posting tool).
-export const AshbyUpdateJobPostingInputSchema = z.object({
+const AshbyUpdateJobPostingInputSchema = z.object({
   jobPostingId: z.string(),
   jobId: z.string(),
   title: z.string().optional(),
@@ -555,7 +553,7 @@ export const AshbyUpdateJobPostingInputSchema = z.object({
   suppressDescriptionClosing: z.boolean().optional(),
 });
 
-export type AshbyUpdateJobPostingInput = z.infer<
+type AshbyUpdateJobPostingInput = z.infer<
   typeof AshbyUpdateJobPostingInputSchema
 >;
 
@@ -681,14 +679,14 @@ export const AshbyCandidateInfoResponseSchema =
 
 // Offer list
 
-export const AshbyOfferFormFieldValueSchema = z
+const AshbyOfferFormFieldValueSchema = z
   .object({
     title: z.string().optional(),
     value: z.unknown().optional(),
   })
   .passthrough();
 
-export const AshbyOfferCustomFieldSchema = z
+const AshbyOfferCustomFieldSchema = z
   .object({
     id: z.string().optional(),
     isPrivate: z.boolean().optional(),
@@ -698,7 +696,7 @@ export const AshbyOfferCustomFieldSchema = z
   })
   .passthrough();
 
-export const AshbyOfferVersionSchema = z
+const AshbyOfferVersionSchema = z
   .object({
     id: z.string().optional(),
     createdAt: z.string().nullish(),

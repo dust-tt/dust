@@ -12,7 +12,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { Button, ContentMessage, Spinner } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-export interface MarkdownFileEditorProps
+interface MarkdownFileEditorProps
   extends Omit<MarkdownEditorProps, "value" | "onChange"> {
   owner: LightWorkspaceType;
   /**

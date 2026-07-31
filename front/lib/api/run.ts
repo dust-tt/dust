@@ -19,7 +19,7 @@ import peg from "pegjs";
 
 import { recomputeIndents, restoreTripleBackticks } from "../specification";
 
-export type RunTrace = [[BlockType, string], TraceType[][]];
+type RunTrace = [[BlockType, string], TraceType[][]];
 
 export type {
   GetRunBlockResponseBody,
@@ -34,7 +34,7 @@ export type {
  * Walks an app-run's `block_execution` traces and emits one `RunUsageType` per trace that carries
  * `meta.token_usage`, attaching the block's provider/model and the computed cost in micro-USD.
  */
-export function extractUsageFromExecutions(
+function extractUsageFromExecutions(
   block: { provider_id: ModelProviderIdType; model_id: ModelIdType },
   traces: TraceType[][]
 ): RunUsageType[] {

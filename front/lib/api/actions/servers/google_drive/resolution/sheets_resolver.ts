@@ -60,7 +60,7 @@ const SortSpecSchema = z.object({
   ascending: z.boolean().default(true),
 });
 
-export const SpreadsheetOperationSchema = z.discriminatedUnion("type", [
+const SpreadsheetOperationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("updateCells"),
     sheetName: z
@@ -157,7 +157,7 @@ export const SpreadsheetOperationSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-export type SpreadsheetOperation = z.infer<typeof SpreadsheetOperationSchema>;
+type SpreadsheetOperation = z.infer<typeof SpreadsheetOperationSchema>;
 
 export const SpreadsheetOperationsArraySchema = z.array(
   SpreadsheetOperationSchema
@@ -288,7 +288,7 @@ function buildFullA1(sheetName: string, range: string): string {
   return `${quoteSheetName(sheetName)}!${range}`;
 }
 
-export type ResolvedSpreadsheetOps = {
+type ResolvedSpreadsheetOps = {
   valueUpdates: Array<{
     range: string;
     values: Array<Array<string | number | boolean | null>>;

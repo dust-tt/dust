@@ -45,7 +45,7 @@ export interface TeamsChannelIdentity {
   channelId: string;
 }
 
-export interface TeamsMentionedIdentity {
+interface TeamsMentionedIdentity {
   application: unknown | null;
   device: unknown | null;
   conversation: unknown | null;
@@ -360,7 +360,7 @@ export function validateZipFile(buffer: Buffer): {
 /**
  * Extracts text from a .docx file by unzipping it and parsing document.xml
  */
-export function extractTextFromDocx(buffer: Buffer): string {
+function extractTextFromDocx(buffer: Buffer): string {
   // Validate ZIP file to prevent zip bomb attacks
   const zipValidation = validateZipFile(buffer);
   if (!zipValidation.isValid) {

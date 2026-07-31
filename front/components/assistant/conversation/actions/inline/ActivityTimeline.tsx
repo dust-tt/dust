@@ -15,7 +15,7 @@ interface RunningToolRow {
   onClick?: () => void;
 }
 
-export interface ActivityTimelineProps {
+interface ActivityTimelineProps {
   completedSteps: InlineActivityStep[];
   runningToolRows: RunningToolRow[];
   activeCotContent: string;

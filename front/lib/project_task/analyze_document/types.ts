@@ -3,8 +3,8 @@ import { z } from "zod";
 export const EXTRACT_DOCUMENT_TAKEAWAYS_FUNCTION_NAME =
   "extract_document_takeaways";
 
-export const MIN_SHORT_DESCRIPTION_LENGTH = 16;
-export const MAX_SHORT_DESCRIPTION_LENGTH = 256;
+const MIN_SHORT_DESCRIPTION_LENGTH = 16;
+const MAX_SHORT_DESCRIPTION_LENGTH = 256;
 
 // Assignee fields are optional: if the document does not name a clear project
 // member as owner, the item is still created without an assignee rather than

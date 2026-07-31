@@ -56,7 +56,7 @@ type TablesQueryContentItem =
  * This prefix is used to identify the row in the section file.
  * We currently only support Salesforce since it's the only connector for which we can generate a prefix.
  */
-export function getSectionColumnsPrefix(
+function getSectionColumnsPrefix(
   provider: ConnectorProvider | null
 ): string[] | null {
   switch (provider) {

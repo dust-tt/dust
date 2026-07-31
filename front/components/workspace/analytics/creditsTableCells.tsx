@@ -2,7 +2,7 @@ import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { Avatar, Tooltip } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
-export function EmptyCell() {
+function EmptyCell() {
   return <span className="text-xs text-muted-foreground">—</span>;
 }
 

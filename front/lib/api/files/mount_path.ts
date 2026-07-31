@@ -116,7 +116,7 @@ export const POD_SANDBOX_DATABASES_DIR = "/pod-state/databases";
  * require it and carry no fallback (see `cli/dust-sandbox/pod/db.ts`). A single source here
  * keeps the quota the workload writes against identical to the one `db_query` enforces.
  */
-export const POD_SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
+const POD_SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
 
 /**
  * The env vars every pod-database exec (`dsbx function run` and every `dsbx db` subcommand)
@@ -231,10 +231,10 @@ export function parseProcessedFilename(
   return { isProcessed: true, sourceBaseName: fileName.slice(0, idx) };
 }
 
-export const scopedFilePathPrefixSchema = z.enum(["conversation", "pod"]);
-export type ScopedFilePathPrefix = z.infer<typeof scopedFilePathPrefixSchema>;
+const scopedFilePathPrefixSchema = z.enum(["conversation", "pod"]);
+type ScopedFilePathPrefix = z.infer<typeof scopedFilePathPrefixSchema>;
 
-export type ScopedFilePath = {
+type ScopedFilePath = {
   prefix: ScopedFilePathPrefix;
   rel: string;
 };
@@ -247,7 +247,7 @@ export type ScopedFilePath = {
  * - "legacy": bare keyword ("conversation" or "pod"); the resource ID must be
  *   resolved from the frame's metadata (useCaseMetadata).
  */
-export type ParsedVizScope =
+type ParsedVizScope =
   | { kind: "canonical-conversation"; id: string }
   | { kind: "canonical-pod"; id: string }
   | { kind: "legacy"; prefix: ScopedFilePathPrefix };
@@ -271,7 +271,7 @@ export function parseRawVizScope(rawScope: string): ParsedVizScope | null {
   return r.success ? { kind: "legacy", prefix: r.data } : null;
 }
 
-export type ParsedCanonicalScopedPath = {
+type ParsedCanonicalScopedPath = {
   scope:
     | { kind: "canonical-conversation"; id: string }
     | { kind: "canonical-pod"; id: string };

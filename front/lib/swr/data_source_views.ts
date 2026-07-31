@@ -266,7 +266,7 @@ export type UseInfiniteContentNodes = (
   opts: FetchDataSourceViewContentNodesOptions
 ) => InfiniteContentNodesResult;
 
-export function processInfiniteContentNodesData({
+function processInfiniteContentNodesData({
   data,
   error,
   isLoading,
@@ -301,7 +301,7 @@ export function processInfiniteContentNodesData({
   };
 }
 
-export type ContentNodesURLBuilder = (
+type ContentNodesURLBuilder = (
   opts: Required<
     Pick<FetchDataSourceViewContentNodesOptions, "owner" | "dataSourceView">
   >,

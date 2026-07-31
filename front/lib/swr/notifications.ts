@@ -11,7 +11,7 @@ const NOVU_SESSION_ERROR_CODE = "novu_session_initialization_failed";
 const NOVU_REQUEST_ERROR_CODE = "novu_preferences_request_failed";
 const MISSING_WORKFLOW_ERROR_CODE = "missing_conversation_unread_workflow";
 
-export type ConversationNotificationPreferencesStatus =
+type ConversationNotificationPreferencesStatus =
   | "idle"
   | "loading"
   | "ready"

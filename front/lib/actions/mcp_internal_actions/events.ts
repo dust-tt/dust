@@ -18,7 +18,7 @@ export type SandboxFunctionEventScope = {
   invocationId: string;
 };
 
-export interface ToolExecutionBase<
+interface ToolExecutionBase<
   T extends MCPValidationMetadataType = MCPValidationMetadataType,
 > {
   actionId: string;

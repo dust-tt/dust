@@ -4,7 +4,7 @@ import { z } from "zod";
 export const SEARCH_ISSUES_MAX_RESULTS = 20;
 export const SEARCH_USERS_MAX_RESULTS = 200;
 
-export const SUPPORTED_OPERATORS = ["=", "<", ">", "<=", ">=", "!="] as const;
+const SUPPORTED_OPERATORS = ["=", "<", ">", "<=", ">=", "!="] as const;
 export type SupportedOperator = (typeof SUPPORTED_OPERATORS)[number];
 
 export const SORT_DIRECTIONS = ["ASC", "DESC"] as const;
@@ -128,7 +128,7 @@ export const JiraProjectVersionSchema = z.object({
   archived: z.boolean().optional(),
 });
 
-export const JiraTransitionSchema = z.object({
+const JiraTransitionSchema = z.object({
   id: z.string(),
   name: z.string(),
 });
@@ -141,7 +141,7 @@ export const JiraCreateMetaSchema = z.object({
   fields: z.array(z.unknown()), // JIRA returns an array of field definitions, not an object
 });
 
-export const JiraFieldSchema = z.object({
+const JiraFieldSchema = z.object({
   id: z.string(),
   key: z.string().optional(),
   name: z.string(),
@@ -184,27 +184,27 @@ export const JiraTransitionIssueSchema = z.void();
 
 // Atlassian Document Format (ADF) schemas
 // Based on: https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
-export const ADFMarkSchema = z.object({
+const ADFMarkSchema = z.object({
   type: z.string(),
   attrs: z.record(z.any()).optional(),
 });
 
-export const ADFTextNodeSchema = z.object({
+const ADFTextNodeSchema = z.object({
   type: z.literal("text"),
   text: z.string(),
   marks: z.array(ADFMarkSchema).optional(),
 });
 
-export const ADFHardBreakNodeSchema = z.object({
+const ADFHardBreakNodeSchema = z.object({
   type: z.literal("hardBreak"),
 });
 
-export const ADFRuleNodeSchema = z.object({
+const ADFRuleNodeSchema = z.object({
   type: z.literal("rule"),
 });
 
 // Explicit schemas for inline nodes we actively render
-export const ADFEmojiNodeSchema = z.object({
+const ADFEmojiNodeSchema = z.object({
   type: z.literal("emoji"),
   attrs: z
     .object({
@@ -216,7 +216,7 @@ export const ADFEmojiNodeSchema = z.object({
     .optional(),
 });
 
-export const ADFMentionNodeSchema = z.object({
+const ADFMentionNodeSchema = z.object({
   type: z.literal("mention"),
   attrs: z
     .object({
@@ -228,7 +228,7 @@ export const ADFMentionNodeSchema = z.object({
     .optional(),
 });
 
-export const ADFInlineCardNodeSchema = z.object({
+const ADFInlineCardNodeSchema = z.object({
   type: z.literal("inlineCard"),
   attrs: z
     .object({
@@ -238,7 +238,7 @@ export const ADFInlineCardNodeSchema = z.object({
     .optional(),
 });
 
-export const ADFBlockCardNodeSchema = z.object({
+const ADFBlockCardNodeSchema = z.object({
   type: z.literal("blockCard"),
   attrs: z
     .object({
@@ -248,7 +248,7 @@ export const ADFBlockCardNodeSchema = z.object({
     .optional(),
 });
 
-export const ADFStatusNodeSchema = z.object({
+const ADFStatusNodeSchema = z.object({
   type: z.literal("status"),
   attrs: z
     .object({
@@ -261,7 +261,7 @@ export const ADFStatusNodeSchema = z.object({
     .optional(),
 });
 
-export const ADFDateNodeSchema = z.object({
+const ADFDateNodeSchema = z.object({
   type: z.literal("date"),
   attrs: z
     .object({
@@ -443,7 +443,7 @@ export const JiraIssueTypeSchema = z.object({
   subtask: z.boolean().optional(),
 });
 
-export const JiraUserSchema = z.object({
+const JiraUserSchema = z.object({
   accountId: z.string(),
   displayName: z.string(),
   emailAddress: z.string().optional(),
@@ -475,7 +475,7 @@ export const JiraCommentsListSchema = z.object({
   total: z.number().optional(),
 });
 
-export const JiraAttachmentSchema = z.object({
+const JiraAttachmentSchema = z.object({
   id: z.string(),
   filename: z.string(),
   author: z.object({
@@ -501,7 +501,7 @@ export const JiraIssueWithAttachmentsSchema = z.object({
 });
 
 // Jira entity schemas - shared field definitions
-export const JiraIssueFieldsSchema = z
+const JiraIssueFieldsSchema = z
   .object({
     project: z.object({
       key: z.string(),

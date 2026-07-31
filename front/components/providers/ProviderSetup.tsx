@@ -16,7 +16,7 @@ import type { MouseEvent } from "react";
 import { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
-export type ProviderField = {
+type ProviderField = {
   name: string;
   label?: string;
   placeholder: string;
@@ -266,7 +266,7 @@ export const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   },
 };
 
-export interface ProviderSetupProps {
+interface ProviderSetupProps {
   owner: WorkspaceType;
   providerId: string;
   title: string;

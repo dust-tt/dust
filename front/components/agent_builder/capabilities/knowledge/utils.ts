@@ -24,7 +24,7 @@ import {
 import isEmpty from "lodash/isEmpty";
 import type { ComponentType } from "react";
 
-export interface CapabilityConfig {
+interface CapabilityConfig {
   icon: ComponentType;
   configPageTitle: string;
   configPageDescription: string;

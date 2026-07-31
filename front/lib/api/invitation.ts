@@ -66,7 +66,7 @@ export async function getInvitation(
   return invitation.toJSON();
 }
 
-export async function sendWorkspaceInvitationEmail(
+async function sendWorkspaceInvitationEmail(
   owner: WorkspaceType,
   user: UserType,
   invitation: MembershipInvitationType
@@ -113,7 +113,7 @@ export async function sendWorkspaceInvitationReminderEmail(
  * @returns MenbershipInvitation[] members of the workspace
  */
 
-export async function batchUnrevokeInvitations(
+async function batchUnrevokeInvitations(
   auth: Authenticator,
   invitationIds: string[],
   transaction?: Transaction

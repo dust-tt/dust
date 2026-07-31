@@ -15,7 +15,7 @@ export const LABS_TRANSCRIPTS_CONFIGURATION_STATUSES = [
 export type LabsTranscriptsConfigurationStatus =
   (typeof LABS_TRANSCRIPTS_CONFIGURATION_STATUSES)[number];
 
-export const labsFeatures = ["transcripts", "transcription"] as const;
+const labsFeatures = ["transcripts", "transcription"] as const;
 export type LabsFeatureType = (typeof labsFeatures)[number];
 
 // Types

@@ -57,7 +57,7 @@ import uniqBy from "lodash/uniqBy";
 
 const localLogger = logger.child({ module: "mcp_slack_personal" });
 
-export type SlackSearchMatch = {
+type SlackSearchMatch = {
   author_id?: string;
   author_name?: string;
   channel_id?: string;
@@ -364,7 +364,7 @@ function handleSlackAuthError(error: unknown) {
   return null;
 }
 
-export interface SlackPersonalToolsResult {
+interface SlackPersonalToolsResult {
   searchMessagesTool: ToolDefinition;
   semanticSearchMessagesTool: ToolDefinition;
   commonTools: ToolDefinition[];

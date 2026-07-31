@@ -6,12 +6,12 @@ import { useCallback, useMemo } from "react";
 
 // client-side counterpart of persisted_navigation_selection.ts
 
-export type NavigationSelectionType = {
+type NavigationSelectionType = {
   lastSpaceId?: string;
   lastSpaceCategory?: DataSourceViewCategory;
 };
 
-export const NAVIGATION_SELECTION_METADATA_NAME = "navigationSelection";
+const NAVIGATION_SELECTION_METADATA_NAME = "navigationSelection";
 
 export const usePersistedNavigationSelection = () => {
   const { metadata, isMetadataLoading, isMetadataError, mutateMetadata } =

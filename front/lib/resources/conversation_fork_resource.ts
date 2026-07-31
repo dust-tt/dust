@@ -27,7 +27,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-export type ConversationForkType = {
+type ConversationForkType = {
   id: ModelId;
   sId: string;
   parentConversationId: string;

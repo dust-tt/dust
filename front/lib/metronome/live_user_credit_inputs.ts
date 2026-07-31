@@ -50,7 +50,7 @@ export function awuSeatBalanceForUser(
   return { balanceAwu: awu.balance, startingBalanceAwu: awu.starting_balance };
 }
 
-export type LiveUserCreditInputs = {
+type LiveUserCreditInputs = {
   // Live Metronome per-seat AWU balance: remaining and full allocation.
   // Both null for pool-based seats with no individual allocation.
   seatBalanceAwu: number | null;

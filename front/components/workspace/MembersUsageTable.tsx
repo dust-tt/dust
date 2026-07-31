@@ -158,7 +158,7 @@ function SeatTypeIcon({ seatType }: SeatTypeIconProps) {
   );
 }
 
-export interface AwuUsageBarProps {
+interface AwuUsageBarProps {
   consumed: number;
   // Of `consumed`, the part drawn from the seat allowance vs. the workspace
   // pool (+ overage). Provided by the API so the bar doesn't re-derive the

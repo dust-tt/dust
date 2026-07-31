@@ -89,12 +89,12 @@ export type SkillEditSuggestionType = z.infer<typeof SkillEditSuggestionSchema>;
 
 export type SkillSuggestionPayload = SkillEditSuggestionType;
 
-export const SkillSuggestionDataSchema = z.object({
+const SkillSuggestionDataSchema = z.object({
   kind: z.literal("edit"),
   suggestion: SkillEditSuggestionSchema,
 });
 
-export type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
+type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
 
 export function parseSkillSuggestionData(data: unknown): SkillSuggestionData {
   return SkillSuggestionDataSchema.parse(data);

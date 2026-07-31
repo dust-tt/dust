@@ -6,7 +6,7 @@ export type EffectiveSpendLimitSource =
   | "default"
   | "none";
 
-export type SpendLimitAlertState = CustomerAlert["customer_status"];
+type SpendLimitAlertState = CustomerAlert["customer_status"];
 
 // Priority: per-user `override` > the highest of the user's `group` caps >
 // seat-type `default`. `groupCapAwuCredits` is the max cap across the groups the

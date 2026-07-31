@@ -7,7 +7,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 
 import type { AgentAsset, CreatedAgent, SeedContext } from "./types";
 
-export interface SeedAgentOptions {
+interface SeedAgentOptions {
   skills?: SkillResource[];
   additionalEditors?: UserResource[];
 }

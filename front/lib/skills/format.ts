@@ -10,8 +10,7 @@ export const UNAVAILABLE_SKILL_TAG_NAME = "unavailable_skill";
 export const UNAVAILABLE_SKILL_LABEL = "Unavailable skill";
 
 export const SKILL_TAG_REGEX = /<skill\s+([^>]*?)\s*(?:\/>|><\/skill>)/g;
-export const SKILL_TAG_REGEX_BEGINNING =
-  /^<skill\s+([^>]*?)\s*(?:\/>|><\/skill>)/;
+const SKILL_TAG_REGEX_BEGINNING = /^<skill\s+([^>]*?)\s*(?:\/>|><\/skill>)/;
 export const SKILL_REFERENCE_TAG_REGEX =
   /<(skill|unavailable_skill)\s+([^>]*?)\s*(?:\/>|><\/\1>)/g;
 export const SKILL_REFERENCE_TAG_REGEX_BEGINNING =
@@ -64,7 +63,7 @@ export function parseSkillReferenceTag(tag: string): SkillReference | null {
   });
 }
 
-export function extractSkillTags(content: string): SkillReference[] {
+function extractSkillTags(content: string): SkillReference[] {
   return [...content.matchAll(SKILL_TAG_REGEX)]
     .map((match) => parseSkillTag(match[0]))
     .filter((skill): skill is SkillReference => skill !== null);

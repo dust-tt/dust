@@ -1,4 +1,4 @@
-export const UNIQUE_SPACE_KINDS = [
+const UNIQUE_SPACE_KINDS = [
   "global", // Also known as "company data", by definition, this space is shared by all users in the workspace.
   "system", // Used for admins to configure the workspace datasources and other system-wide settings.
   "conversations", // Space to hold conversations uploaded and generated files (legacy).
@@ -12,7 +12,7 @@ export const SPACE_KINDS = [
 
 export type SpaceKind = (typeof SPACE_KINDS)[number];
 
-export type UniqueSpaceKind = (typeof UNIQUE_SPACE_KINDS)[number];
+type UniqueSpaceKind = (typeof UNIQUE_SPACE_KINDS)[number];
 /**
  * @swaggerschema Space (swagger_schemas.ts), PrivateSpace (swagger_private_schemas.ts)
  */

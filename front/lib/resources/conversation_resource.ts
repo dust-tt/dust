@@ -80,7 +80,7 @@ import type {
 } from "sequelize";
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
-export type FetchConversationOptions = {
+type FetchConversationOptions = {
   includeDeleted?: boolean;
   excludeTest?: boolean; // Explicitly exclude test conversations
   dangerouslySkipPermissionFiltering?: boolean;
@@ -112,19 +112,19 @@ export type RunningAgentMessageContext = {
   rank: number;
 };
 
-export type RunningCompactionMessageContext = {
+type RunningCompactionMessageContext = {
   sId: string;
   rank: number;
 };
 
-export type BranchCreationContext = {
+type BranchCreationContext = {
   isEmpty: boolean;
   onlyContentFragments: boolean;
   maxRank: number | null;
   lastMessage: { id: ModelId; rank: number } | null;
 };
 
-export type LatestMessageSummary = {
+type LatestMessageSummary = {
   sId: string;
   rank: number;
   compactionStatus: CompactionMessageStatus | null;

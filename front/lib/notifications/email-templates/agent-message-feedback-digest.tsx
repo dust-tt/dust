@@ -6,7 +6,7 @@ import { render } from "@react-email/render";
 import * as React from "react";
 import { z } from "zod";
 
-export const AgentMessageFeedbackDigestEmailTemplatePropsSchema = z.object({
+const AgentMessageFeedbackDigestEmailTemplatePropsSchema = z.object({
   name: z.string(),
   workspace: z.object({
     id: z.string(),

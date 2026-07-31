@@ -38,7 +38,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-export type PodTaskUpdateItem = {
+type PodTaskUpdateItem = {
   taskId: string;
   text?: string;
   assigneeUserId?: string | null;

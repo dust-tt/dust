@@ -64,12 +64,12 @@ type MigrationStepType = (typeof MigrationSteps)[number];
 
 const MAIN_ID_COLUMN = "id";
 
-export const COLUMN_TYPE = {
+const COLUMN_TYPE = {
   INT: "int",
   BIGINT: "bigint",
 } as const;
 
-export const SYNC_DIRECTION = {
+const SYNC_DIRECTION = {
   TO_BIGINT: "to_bigint",
   TO_LEGACY: "to_legacy",
 } as const;
@@ -77,7 +77,7 @@ export const SYNC_DIRECTION = {
 type ColumnType = (typeof COLUMN_TYPE)[keyof typeof COLUMN_TYPE];
 type SyncDirection = (typeof SYNC_DIRECTION)[keyof typeof SYNC_DIRECTION];
 
-export const createColumnName = {
+const createColumnName = {
   new: (baseColumn: string) => `${baseColumn}_new` as const,
   legacy: (baseColumn: string) => `${baseColumn}_legacy` as const,
 };
@@ -97,14 +97,14 @@ const shortenTableName = (tableName: string) =>
         .join("") // e.g., 'ncrce'
     : tableName;
 
-export const createIndexName = {
+const createIndexName = {
   primary: (tableName: string, column: ColumnType) =>
     `${tableName}_pkey_${column}` as const,
   foreign: (tableName: string, columnName: string, column: ColumnType) =>
     `${shortenTableName(tableName)}_${columnName}_fk_${column}` as const,
 };
 
-export const createTriggerNames = {
+const createTriggerNames = {
   // For primary key (main table)
   pk: (tableName: string, direction: SyncDirection) => ({
     trigger: `${tableName}_pk_sync_${direction}` as const,
@@ -118,7 +118,7 @@ export const createTriggerNames = {
   }),
 };
 
-export const createConstraintName = {
+const createConstraintName = {
   notNull: (tableName: string, type: ColumnType) =>
     `${shortenTableName(tableName)}_not_null_${type}` as const,
   notNullForColumn: (tableName: string, columnName: string) =>
@@ -127,7 +127,7 @@ export const createConstraintName = {
     `${shortenTableName(tableName)}_${columnName}_fkey_${type}` as const,
 };
 
-export const createSequenceName = (tableName: string) =>
+const createSequenceName = (tableName: string) =>
   `${tableName}_id_seq` as const;
 
 /**

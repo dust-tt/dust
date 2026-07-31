@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
-export interface MCPServerCardProps {
+interface MCPServerCardProps {
   view: MCPServerViewTypeWithLabel;
   isSelected: boolean;
   onClick: () => void;

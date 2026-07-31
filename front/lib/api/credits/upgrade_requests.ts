@@ -19,7 +19,7 @@ import type {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export type UpgradeRequestErrorType =
+type UpgradeRequestErrorType =
   | "workspace_not_metronome_billed"
   | "upgrade_requests_disabled"
   | "user_not_found"
@@ -177,7 +177,7 @@ export async function createUpgradeRequest(
   return new Ok(request.toJSON());
 }
 
-export type UpgradeRequestAvailability = {
+type UpgradeRequestAvailability = {
   canRequestUpgrade: boolean;
   hasPendingUpgradeRequest: boolean;
   willAutoUpgrade: boolean;

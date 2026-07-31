@@ -23,7 +23,7 @@ export interface LLMConfig {
   useStream?: boolean;
 }
 
-export interface LLMOptions {
+interface LLMOptions {
   tracingRecords?: Record<string, string>;
   context?: LLMTraceContext;
   onRunId?: (runId: string) => Promise<void> | void;

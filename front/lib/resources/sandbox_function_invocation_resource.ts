@@ -78,9 +78,7 @@ const StoredCallErrorSchema = z.object({
   status: z.number().optional(),
 });
 
-export type StoredSandboxFunctionCallError = z.infer<
-  typeof StoredCallErrorSchema
->;
+type StoredSandboxFunctionCallError = z.infer<typeof StoredCallErrorSchema>;
 
 const InvocationDataBaseSchema = z.object({
   input: z.unknown().optional(),
@@ -141,7 +139,7 @@ function migrateStoredInvocationData(
   }
 }
 
-export interface SandboxFunctionInvocationForLLM {
+interface SandboxFunctionInvocationForLLM {
   createdAt: string;
   error?: StoredSandboxFunctionCallError;
   input: unknown;

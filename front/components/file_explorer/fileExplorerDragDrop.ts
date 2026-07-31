@@ -7,7 +7,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Drop-target highlight for folder / go-up cards (owned by card wrappers, not FileExplorerItem). */
-export const fileExplorerDropActiveClasses = cn(
+const fileExplorerDropActiveClasses = cn(
   "ring-2 ring-highlight-300 ring-inset",
   "bg-highlight-50"
 );
@@ -19,7 +19,7 @@ export function getFileExplorerDropSurfaceClassName(
 }
 
 /** Drag payload MIME type for file explorer file moves. */
-export const FILE_EXPLORER_DRAG_MIME = "application/x-dust-file-explorer-file";
+const FILE_EXPLORER_DRAG_MIME = "application/x-dust-file-explorer-file";
 
 export function setFileExplorerDragData(
   dataTransfer: DataTransfer,
@@ -29,14 +29,14 @@ export function setFileExplorerDragData(
   dataTransfer.setData(FILE_EXPLORER_DRAG_MIME, scopedFilePath);
 }
 
-export function getFileExplorerDragScopedPath(
+function getFileExplorerDragScopedPath(
   dataTransfer: DataTransfer
 ): string | null {
   const path = dataTransfer.getData(FILE_EXPLORER_DRAG_MIME);
   return path.length > 0 ? path : null;
 }
 
-export function hasFileExplorerDrag(dataTransfer: DataTransfer): boolean {
+function hasFileExplorerDrag(dataTransfer: DataTransfer): boolean {
   return dataTransfer.types.includes(FILE_EXPLORER_DRAG_MIME);
 }
 

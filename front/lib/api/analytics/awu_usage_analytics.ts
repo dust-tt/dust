@@ -61,9 +61,7 @@ export const AwuUsageAnalyticsQuerySchema = z.object({
     .pipe(FilterSchema.optional()),
 });
 
-export type AwuUsageAnalyticsQuery = z.infer<
-  typeof AwuUsageAnalyticsQuerySchema
->;
+type AwuUsageAnalyticsQuery = z.infer<typeof AwuUsageAnalyticsQuerySchema>;
 
 export type AwuUsageAnalyticsGroup = { groupKey: string; name: string };
 
@@ -78,7 +76,7 @@ export type AwuUsageAnalyticsResponse = {
   points: AwuUsageAnalyticsPoint[];
 };
 
-export type AwuUsageAnalyticsError = {
+type AwuUsageAnalyticsError = {
   type: "internal_error";
   message: string;
 };
@@ -216,7 +214,7 @@ export async function getAwuUsageFromAnalytics(
   return new Ok({ granularity, groups: mappedGroups, points: mappedPoints });
 }
 
-export type AwuUsageCsvRow = {
+type AwuUsageCsvRow = {
   date: string;
   granularity: "day" | "week" | "month";
   series: string;

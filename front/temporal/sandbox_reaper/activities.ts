@@ -36,7 +36,7 @@ export type ReaperCursor = {
   timestampMs: number;
 };
 
-export interface ReapSandboxPhaseActivityInput {
+interface ReapSandboxPhaseActivityInput {
   cursor: ReaperCursor | null;
   phase: ReaperPhase;
 }

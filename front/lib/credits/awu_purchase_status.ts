@@ -7,7 +7,7 @@ const REDIS_ORIGIN = "awu_purchase_status";
 // "pending" is set when the Metronome payment-gated commit is created;
 // the matching `payment_gate.payment_status` webhook flips it to
 // "succeeded" or "failed".
-export type AwuPurchaseAttemptStatus = "pending" | "succeeded" | "failed";
+type AwuPurchaseAttemptStatus = "pending" | "succeeded" | "failed";
 
 export type AwuPurchaseAttempt = {
   status: AwuPurchaseAttemptStatus;

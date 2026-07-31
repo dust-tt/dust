@@ -17,7 +17,7 @@ const ResourceIconSchema = z.enum([
   ...INTERNAL_ALLOWED_ICONS,
 ]);
 
-export const BaseMCPServerConfigurationSchema = z.object({
+const BaseMCPServerConfigurationSchema = z.object({
   id: DbModelIdSchema,
   sId: z.string(),
   type: z.literal("mcp_server_configuration"),

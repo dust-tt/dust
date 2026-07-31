@@ -65,17 +65,15 @@ function matchesRoutePattern(
  * ones for the topNavigation (same across the whole app) and for the subNavigation which appears in
  * some section of the app in the AppLayout navigation panel.
  */
-export type TopNavigationId =
+type TopNavigationId =
   | "conversations"
   | "assistants"
   | "admin"
   | "data_sources";
 
-export type SubNavigationConversationsId =
-  | "conversation"
-  | "personal_assistants";
+type SubNavigationConversationsId = "conversation" | "personal_assistants";
 
-export type SubNavigationAssistantsId =
+type SubNavigationAssistantsId =
   | "data_sources_managed"
   | "data_sources_static"
   | "workspace_assistants"
@@ -86,7 +84,7 @@ export type SubNavigationAssistantsId =
   | "community"
   | "spaces";
 
-export type SubNavigationAdminId =
+type SubNavigationAdminId =
   | "subscription"
   | "billing"
   | "governance"
@@ -103,7 +101,7 @@ export type SubNavigationAdminId =
   | "usage"
   | "self_improving_skills";
 
-export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
+const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   members: ["/w/[wId]/members"],
   identity_and_provisioning: ["/w/[wId]/identity-and-provisioning"],
   governance: ["/w/[wId]/governance"],
@@ -148,7 +146,7 @@ export type AppLayoutNavigation = {
   disabled?: boolean;
 };
 
-export type TabAppLayoutNavigation = {
+type TabAppLayoutNavigation = {
   id:
     | TopNavigationId
     | SubNavigationConversationsId

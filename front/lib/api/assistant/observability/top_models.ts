@@ -10,7 +10,7 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
-export type TopModelRow = {
+type TopModelRow = {
   modelId: string;
   name: string;
   providerId: string | null;

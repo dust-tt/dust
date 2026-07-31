@@ -49,7 +49,7 @@ export function parseAllowedLabelsConfig(
   return { isValid: true, allowedLabels: parsed.data };
 }
 
-export async function getConnectorAccessToken(
+async function getConnectorAccessToken(
   dataSource: DataSourceResource
 ): Promise<string | null> {
   if (!dataSource.connectorId) {
@@ -74,7 +74,7 @@ export async function getConnectorAccessToken(
   return null;
 }
 
-export async function getInternalMCPServerAccessToken(
+async function getInternalMCPServerAccessToken(
   auth: Authenticator,
   internalMCPServerId: string
 ): Promise<string | null> {
@@ -104,7 +104,7 @@ export type ResolveSourceErrorType =
   | "not_microsoft_connector"
   | "unsupported_mcp_server";
 
-export type ResolvedLabelSourceError = {
+type ResolvedLabelSourceError = {
   type: ResolveSourceErrorType;
   message: string;
 };

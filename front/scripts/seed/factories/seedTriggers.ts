@@ -31,7 +31,7 @@ export interface WebhookTriggerAsset {
 
 export type TriggerAsset = ScheduleTriggerAsset | WebhookTriggerAsset;
 
-export interface SeedTriggersOptions {
+interface SeedTriggersOptions {
   webhookSources?: Map<string, CreatedWebhookSourceView>;
 }
 

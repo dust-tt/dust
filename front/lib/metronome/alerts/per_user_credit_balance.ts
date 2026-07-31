@@ -21,7 +21,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 // The two per-user credit-balance alerts for one seat (id + current evaluation
 // status), surfaced (e.g. in poke) so the UI can render each balance badge with
 // `AlertChip` — colored by status and deep-linked to Metronome.
-export type PerUserCreditAlerts = {
+type PerUserCreditAlerts = {
   low: MetronomeAlertRef | null;
   empty: MetronomeAlertRef | null;
 };

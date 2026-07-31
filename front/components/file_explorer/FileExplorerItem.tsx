@@ -41,7 +41,7 @@ import { useState } from "react";
 
 export type ViewMode = "grid" | "list";
 
-export type FileExplorerItemProps = {
+type FileExplorerItemProps = {
   /** Merged onto the interactive surface (e.g. grab cursor while dragging). */
   containerClassName?: string;
   downloadOnOpen?: boolean;
@@ -282,7 +282,7 @@ function FileExplorerDropTargetWrapper({
   );
 }
 
-export interface FileExplorerFolderCardProps {
+interface FileExplorerFolderCardProps {
   node: FileSystemTreeNode;
   viewMode: ViewMode;
   onNavigate: (node: FileSystemTreeNode) => void;
@@ -328,7 +328,7 @@ export function FileExplorerFolderCard({
   );
 }
 
-export interface FileExplorerFileCardProps {
+interface FileExplorerFileCardProps {
   draggable?: boolean;
   entry: FileEntry;
   /** When set, title shows path relative to this folder (search mode). */
@@ -445,7 +445,7 @@ export function FileExplorerFileCard({
   );
 }
 
-export interface ContentNodeCardProps {
+interface ContentNodeCardProps {
   entry: ContentNodeEntry;
   viewMode: ViewMode;
   onOpen: (entry: ContentNodeEntry) => void;

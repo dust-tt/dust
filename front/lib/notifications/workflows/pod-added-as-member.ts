@@ -173,7 +173,7 @@ export const podAddedAsMemberWorkflow = workflow(
  * Trigger notifications for users added to a pod.
  * Should be called from API endpoints after successfully adding members.
  */
-export const triggerPodAddedAsMemberNotifications = async (
+const triggerPodAddedAsMemberNotifications = async (
   auth: Authenticator,
   {
     pod,

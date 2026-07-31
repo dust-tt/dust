@@ -13,7 +13,7 @@ export const EGRESS_SECRETS_PATH = "/run/dust/egress-secrets.json";
 
 const EGRESS_SECRETS_DIR = "/run/dust";
 
-export type EgressSecretFileEntry = {
+type EgressSecretFileEntry = {
   // Bare workspace-row name (no DSEC_ prefix). dsbx pairs this with the
   // placeholder when scanning outbound HTTPS bodies.
   name: string;

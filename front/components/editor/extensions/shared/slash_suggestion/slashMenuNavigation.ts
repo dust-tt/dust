@@ -11,15 +11,15 @@ export interface SlashMenuStackFrame {
   subMenuId: SlashSubMenuId;
 }
 
-export interface SlashMenuNavigationStorage {
+interface SlashMenuNavigationStorage {
   menuStack: SlashMenuStackFrame[];
 }
 
-export interface SlashCommandEditorStorage extends SlashMenuNavigationStorage {
+interface SlashCommandEditorStorage extends SlashMenuNavigationStorage {
   hasBeenFocused: boolean;
 }
 
-export interface InputBarSlashSuggestionEditorStorage
+interface InputBarSlashSuggestionEditorStorage
   extends SlashMenuNavigationStorage {
   dismissedTriggerStart: number | null;
   hasBeenFocused: boolean;
@@ -38,9 +38,7 @@ export function createSlashMenuNavigationStorage(): SlashMenuNavigationStorage {
   };
 }
 
-export function getSlashCommandSubMenuId(
-  item: SlashCommand
-): SlashSubMenuId | null {
+function getSlashCommandSubMenuId(item: SlashCommand): SlashSubMenuId | null {
   if (isInsertKnowledgeSlashCommand(item)) {
     return ATTACH_CONTEXT_SUB_MENU_ID;
   }

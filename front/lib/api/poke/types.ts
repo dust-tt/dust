@@ -52,7 +52,7 @@ type AsyncValueTypeAtPopulate<T extends PluginArgDefinition> =
               : never;
 
 // Type for async args that maps each field to its correct async value type
-export type AsyncArgsType<T extends PluginArgs> = {
+type AsyncArgsType<T extends PluginArgs> = {
   [K in keyof T]?: T[K] extends { async: true }
     ? AsyncValueTypeAtPopulate<T[K]>
     : never;

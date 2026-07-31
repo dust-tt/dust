@@ -12,7 +12,7 @@ type ErrorWithCode = Error & { code?: string };
 
 let once = false;
 
-export function isTeenyRequestUnableToPipeError(
+function isTeenyRequestUnableToPipeError(
   reason: unknown
 ): reason is ErrorWithCode {
   if (!(reason instanceof Error)) {

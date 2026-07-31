@@ -47,7 +47,7 @@ export const AGENT_STATUSES = [
 ] as const;
 export type AgentStatus = (typeof AGENT_STATUSES)[number];
 
-export const AGENT_CONFIGURATION_STATUSES = [
+const AGENT_CONFIGURATION_STATUSES = [
   "active",
   "archived",
   "draft",

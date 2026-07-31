@@ -916,7 +916,7 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
   }
 }
 
-export const CLI_OBJECT_TYPES = [
+const CLI_OBJECT_TYPES = [
   "workspace",
   "user",
   "data-source",
@@ -927,9 +927,9 @@ export const CLI_OBJECT_TYPES = [
   "trigger",
 ] as const;
 
-export type CliObjectType = (typeof CLI_OBJECT_TYPES)[number];
+type CliObjectType = (typeof CLI_OBJECT_TYPES)[number];
 
-export function isCliObjectType(val: string): val is CliObjectType {
+function isCliObjectType(val: string): val is CliObjectType {
   return (CLI_OBJECT_TYPES as unknown as string[]).includes(val);
 }
 

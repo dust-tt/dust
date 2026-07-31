@@ -33,9 +33,7 @@ export function pruneToolResultMessage(
 }
 
 /** Total tokens across an interaction's messages. */
-export function getInteractionTokenCount(
-  interaction: InteractionWithTokens
-): number {
+function getInteractionTokenCount(interaction: InteractionWithTokens): number {
   return interaction.messages.reduce((sum, msg) => sum + msg.tokenCount, 0);
 }
 

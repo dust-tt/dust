@@ -38,7 +38,7 @@ function makeClientSideMCPRequestIdForMessageAndConversation({
  * @param requestId The request ID to parse
  * @returns An object containing the conversation ID and message ID, or null if the format is invalid
  */
-export function parseClientSideMCPRequestId(
+function parseClientSideMCPRequestId(
   requestId: string
 ): ClientSideMCPRequestId | null {
   const match = requestId.match(/^mcp_req_([^_]+)_([^_]+)_([a-f0-9-]+)_(\d+)$/);
@@ -133,7 +133,7 @@ export async function createClientSideMCPServerConfigurations(
 
 type JSONRPCMessageWithId = JSONRPCMessage & { id: string };
 
-export function isJSONRPCMessageWithId(
+function isJSONRPCMessageWithId(
   message: JSONRPCMessage
 ): message is JSONRPCMessageWithId {
   return (

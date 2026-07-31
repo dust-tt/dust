@@ -9,7 +9,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
 
-export async function retrieveRecentGoogleTranscripts(
+async function retrieveRecentGoogleTranscripts(
   {
     auth,
     userId,

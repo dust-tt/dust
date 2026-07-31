@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-export interface QueryTrackerStore {
+interface QueryTrackerStore {
   concurrent: number;
   peak: number;
 }

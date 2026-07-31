@@ -20,7 +20,7 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export type ReactionTargetMessageType =
+type ReactionTargetMessageType =
   | "user"
   | "agent"
   | "content_fragment"

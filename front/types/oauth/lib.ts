@@ -515,7 +515,7 @@ export function isOAuthProvider(obj: unknown): obj is OAuthProvider {
   return OAUTH_PROVIDERS.includes(obj as OAuthProvider);
 }
 
-export function isValidScope(obj: unknown): obj is string | undefined {
+function isValidScope(obj: unknown): obj is string | undefined {
   return !obj || typeof obj === "string";
 }
 
@@ -581,7 +581,7 @@ export function isValidClientIdOrSecret(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
 }
 
-export function isValidOptionalClientSecret(s: unknown): s is string {
+function isValidOptionalClientSecret(s: unknown): s is string {
   // Allow empty strings for optional client secrets (e.g., PKCE flows)
   return typeof s === "string";
 }
@@ -590,14 +590,14 @@ export function isValidUrl(s: unknown): s is string {
   return typeof s === "string" && validateUrl(s).valid;
 }
 
-export function isValidTokenEndpointAuthMethod(s: unknown): s is string {
+function isValidTokenEndpointAuthMethod(s: unknown): s is string {
   return (
     typeof s === "string" &&
     (s === "client_secret_post" || s === "client_secret_basic")
   );
 }
 
-export function isValidOptionalResource(s: unknown): s is string {
+function isValidOptionalResource(s: unknown): s is string {
   // Optional (RFC 8707): most OAuth servers do not require an audience/resource.
   return typeof s === "string";
 }
@@ -655,7 +655,7 @@ export function isValidSnowflakeRole(s: unknown): s is string {
   );
 }
 
-export function isValidSnowflakeWarehouse(s: unknown): s is string {
+function isValidSnowflakeWarehouse(s: unknown): s is string {
   // Snowflake warehouse names follow same rules as roles
   // Allow alphanumeric and underscores
   return (
@@ -826,7 +826,7 @@ export const ApiKeyCredentialsSchema = z.object({
 });
 export type LinearCredentials = z.infer<typeof ApiKeyCredentialsSchema>;
 
-export const HubspotCredentialsSchema = z.object({
+const HubspotCredentialsSchema = z.object({
   accessToken: z.string(),
   portalId: z.string(),
 });

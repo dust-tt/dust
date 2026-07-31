@@ -68,7 +68,7 @@ export type SandboxPreSleepCheck = (
   sandbox: SandboxResource
 ) => Promise<Result<void, Error>>;
 
-export type SandboxCreateOwner = SandboxLifecycleOwner & {
+type SandboxCreateOwner = SandboxLifecycleOwner & {
   createSandbox: (blob: SandboxCreateBlob) => Promise<SandboxResource>;
   envVars: Record<string, string>;
   logLabel: string;
@@ -79,9 +79,7 @@ export type SandboxTimestampCursor = {
   timestamp: Date;
 };
 
-export type KillRequestedSandboxesOrder =
-  | "killRequestedAtAsc"
-  | "lastActivityAtDesc";
+type KillRequestedSandboxesOrder = "killRequestedAtAsc" | "lastActivityAtDesc";
 
 export type SandboxDeleteOwner = SandboxLifecycleOwner & {
   deleteSandbox: (

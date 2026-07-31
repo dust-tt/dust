@@ -56,7 +56,7 @@ export const ProgrammaticCostQuerySchema = z.object({
   billingCycleStartDay: z.coerce.number().min(1).max(31),
 });
 
-export type ProgrammaticCostQuery = z.infer<typeof ProgrammaticCostQuerySchema>;
+type ProgrammaticCostQuery = z.infer<typeof ProgrammaticCostQuerySchema>;
 
 export type WorkspaceProgrammaticCostPoint = {
   timestamp: number;
@@ -80,7 +80,7 @@ export type GetWorkspaceProgrammaticCostResponse = {
   availableGroups: AvailableGroup[]; // All available groups (without filters applied)
 };
 
-export type ProgrammaticCostError = {
+type ProgrammaticCostError = {
   type: "internal_error";
   message: string;
 };
@@ -106,7 +106,7 @@ type GroupedAggs = {
  * - It has been started (startDate is not null and <= day start)
  * - It hasn't expired yet on that day (expirationDate is null or > day start)
  */
-export function calculateCreditTotalsPerTimestamp(
+function calculateCreditTotalsPerTimestamp(
   credits: CreditResource[],
   timestamps: number[]
 ): Map<
@@ -181,7 +181,7 @@ export function calculateCreditTotalsPerTimestamp(
   return creditTotalsMap;
 }
 
-export function getSelectedFilterClauses(
+function getSelectedFilterClauses(
   filterParams: Partial<Record<GroupByType, string[]>> | undefined,
   excluded?: GroupByType
 ): estypes.QueryDslQueryContainer[] {
@@ -229,7 +229,7 @@ export function getSelectedFilterClauses(
   });
 }
 
-export function buildAggregation(
+function buildAggregation(
   groupBy: GroupByType,
   groupByCount: number,
   includeDailyBreakdown: boolean

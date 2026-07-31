@@ -88,7 +88,7 @@ type AffectedAgent = Pick<
   "id" | "sId" | "name"
 >;
 
-export type MCPServerViewCreationResult = {
+type MCPServerViewCreationResult = {
   view: MCPServerViewResource;
   affectedAgents?: AffectedAgent[];
 };
@@ -103,7 +103,7 @@ export type PostMCPServerViewResponseBody = {
   serverView: MCPServerViewType;
 };
 
-export const PostMCPServerViewQueryParamsSchema = z.object({
+const PostMCPServerViewQueryParamsSchema = z.object({
   mcpServerId: z.string(),
 });
 

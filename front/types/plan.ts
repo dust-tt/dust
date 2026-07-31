@@ -118,7 +118,7 @@ type MetronomeBilledSubscriptionType = SubscriptionType & {
   metronomeContractId: string;
 };
 
-export function isSubscriptionStripeBilled(
+function isSubscriptionStripeBilled(
   subscription: SubscriptionType
 ): subscription is StripeBilledSubscriptionType {
   return subscription.stripeSubscriptionId !== null;

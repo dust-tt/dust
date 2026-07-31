@@ -67,7 +67,7 @@ export interface SlashCommand {
   tooltip?: SlashCommandTooltip;
 }
 
-export interface SlashCommandSubMenuNavigation {
+interface SlashCommandSubMenuNavigation {
   label: string;
   onBack: () => void;
 }

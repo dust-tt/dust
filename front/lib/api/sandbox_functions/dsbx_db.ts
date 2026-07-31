@@ -153,7 +153,7 @@ export interface ReconcileDatabaseResult {
  * apply it when strictly additive, refuse anything destructive. Runs as `agent-proxied` (the
  * schema file is model-written code that gets imported).
  */
-export async function reconcileDatabaseOnSandbox(
+async function reconcileDatabaseOnSandbox(
   auth: Authenticator,
   {
     space,

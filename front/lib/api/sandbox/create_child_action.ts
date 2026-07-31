@@ -27,7 +27,7 @@ import { isAgentMessageType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export type CreateSandboxChildActionResult = {
+type CreateSandboxChildActionResult = {
   actionId: string;
   // Present only when the child is blocked awaiting approval. Pausing the
   // sandbox freezes the in-sandbox `dsbx` client that is still awaiting THIS

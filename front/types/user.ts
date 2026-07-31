@@ -14,7 +14,7 @@ import { decodeUtf8HeaderValue } from "./shared/utils/http_headers";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 
-export const ROLES = ["admin", "manager", "builder", "user", "none"] as const;
+const ROLES = ["admin", "manager", "builder", "user", "none"] as const;
 export const ACTIVE_ROLES = ["admin", "manager", "builder", "user"] as const;
 export const ASSIGNABLE_ROLES = ["admin", "manager", "user"] as const;
 export const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
@@ -55,7 +55,7 @@ export function isAssignableRoleType(role: string): role is AssignableRoleType {
 // deprecated `builder` role is rejected here — it is granted only through the `dust-builders`
 // provisioning group — while remaining a valid role value elsewhere (existing memberships, role
 // display, and legacy/pending invitations).
-export function isAssignableRole(role: RoleType): boolean {
+function isAssignableRole(role: RoleType): boolean {
   return role !== "builder" && role !== "none";
 }
 

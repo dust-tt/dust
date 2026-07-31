@@ -80,7 +80,7 @@ export const EXA_TOOLS_METADATA = [
   },
 ] as const;
 
-export const EXA_SERVER_NAME = "exa_people_and_company" as const;
+const EXA_SERVER_NAME = "exa_people_and_company" as const;
 
 export const EXA_SERVER = {
   serverInfo: {

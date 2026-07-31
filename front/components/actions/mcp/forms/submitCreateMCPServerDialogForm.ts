@@ -18,7 +18,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { sanitizeHeadersArray } from "@app/types/shared/utils/http_headers";
 import type { WorkspaceType } from "@app/types/user";
 
-export type CreateMCPServerDialogSubmitResult =
+type CreateMCPServerDialogSubmitResult =
   | {
       type: "oauth_required";
       authorization: AuthorizationInfo;
@@ -31,7 +31,7 @@ export type CreateMCPServerDialogSubmitResult =
       remoteMCPServerOAuthDiscoveryDone: boolean;
     };
 
-export type CreateMCPServerDialogSubmitErrorKind =
+type CreateMCPServerDialogSubmitErrorKind =
   | "discover_oauth_metadata"
   | "missing_use_case"
   | "oauth_connection"

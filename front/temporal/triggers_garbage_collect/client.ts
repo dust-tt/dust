@@ -10,7 +10,7 @@ import {
   ScheduleOverlapPolicy,
 } from "@temporalio/client";
 
-export const WEBHOOK_CLEANUP_SCHEDULE_ID = "webhook-cleanup-schedule";
+const WEBHOOK_CLEANUP_SCHEDULE_ID = "webhook-cleanup-schedule";
 
 export async function createOrUpdateWebhookCleanupSchedule(): Promise<
   Result<void, Error>

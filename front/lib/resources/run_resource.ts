@@ -57,7 +57,7 @@ interface RunUsageWithRunKeyType extends RunUsageType {
   runModelId: ModelId;
 }
 
-export type FetchRunOptions<T extends boolean> = {
+type FetchRunOptions<T extends boolean> = {
   includeApp?: T;
   since?: Date;
   order?: [string, "ASC" | "DESC"][];

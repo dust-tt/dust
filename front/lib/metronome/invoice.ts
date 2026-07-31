@@ -20,7 +20,7 @@ export type GetMetronomeInvoiceResponseBody = {
  * credits, commitment): a negative line that offsets the charge lines above
  * it and explains a discounted invoice total.
  */
-export const APPLIED_COMMIT_OR_CREDIT_LINE_TYPE = "applied_commit_or_credit";
+const APPLIED_COMMIT_OR_CREDIT_LINE_TYPE = "applied_commit_or_credit";
 
 export function isAppliedCreditLineItem(
   item: MetronomeInvoiceLineItem

@@ -14,16 +14,16 @@ export const LinearAdditionalDataSchema = z.object({
 
 export type LinearAdditionalData = z.infer<typeof LinearAdditionalDataSchema>;
 
-export function isLinearTeam(data: unknown): data is LinearTeam {
+function isLinearTeam(data: unknown): data is LinearTeam {
   const result = LinearTeamSchema.safeParse(data);
   return result.success;
 }
 
-export type LinearWebhookCreateMetadata = {
+type LinearWebhookCreateMetadata = {
   teams: LinearTeam[];
 };
 
-export type LinearWebhookMetadata = {
+type LinearWebhookMetadata = {
   webhookIds: Record<string, string>;
   teams?: LinearTeam[];
 };

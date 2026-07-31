@@ -25,7 +25,7 @@ const MENTION_COUNT_UPDATE_PERIOD_SEC = 4 * 60 * 60;
 const TTL_KEY_NOT_EXIST = -2;
 const TTL_KEY_NOT_SET = -1;
 
-export type AgentUsageCount = {
+type AgentUsageCount = {
   agentId: string;
   messageCount: number;
   conversationCount: number;

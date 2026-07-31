@@ -45,7 +45,7 @@ export type CachedAgentStepContent = {
   updatedAt: string;
 };
 
-export type AgentStepContentCacheMetadata = {
+type AgentStepContentCacheMetadata = {
   id: ModelId;
   agentMessageId: ModelId;
   step: number;
@@ -58,7 +58,7 @@ export type AgentStepContentCacheMetadata = {
  * Write-through warm after create (or after a cache-miss PG fetch). Best-effort:
  * failures are logged and ignored so Redis never blocks the agent loop.
  */
-export async function warmAgentStepContentCache(
+async function warmAgentStepContentCache(
   content: CachedAgentStepContent
 ): Promise<void> {
   try {

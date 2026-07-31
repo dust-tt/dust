@@ -386,7 +386,7 @@ export function buildLlmUsageEvents({
 // Tool use events
 // ---------------------------------------------------------------------------
 
-export interface ToolAction {
+interface ToolAction {
   toolName: string;
   mcpServerId: string | null;
   internalMCPServerName: InternalMCPServerNameType | null;

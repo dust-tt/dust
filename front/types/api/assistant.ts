@@ -22,7 +22,7 @@ const UserMessageOriginSchema = z.enum([
   "reinforced_skill_notification",
 ]);
 
-export const MessageBaseSchema = z.object({
+const MessageBaseSchema = z.object({
   content: z.string(),
   mentions: z.array(z.union([AgentMentionSchema, UserMentionSchema])),
   context: z.object({
@@ -50,7 +50,7 @@ const ContentFragmentBaseSchema = z.object({
   supersededContentFragmentId: z.string().nullable().optional(),
 });
 
-export const getSupportedInlinedContentType = () => {
+const getSupportedInlinedContentType = () => {
   return z.enum(
     getSupportedNonImageMimeTypes() as [
       SupportedNonImageContentType,
@@ -77,11 +77,11 @@ export type SupportedContentNodeContentType = z.infer<
   ReturnType<typeof getSupportedContentNodeContentTypeSchema>
 >;
 
-export type SupportedInlinedContentFragmentTypeSchema = z.infer<
+type SupportedInlinedContentFragmentTypeSchema = z.infer<
   ReturnType<typeof getSupportedInlinedContentType>
 >;
 
-export const isSupportedInlinedFragmentContentType = (
+const isSupportedInlinedFragmentContentType = (
   contentType: string
 ): contentType is SupportedInlinedContentFragmentTypeSchema => {
   return (
@@ -131,7 +131,7 @@ export type ContentFragmentInputWithFileIdType = z.infer<
   typeof ContentFragmentInputWithFileIdSchema
 >;
 
-export type ContentFragmentInputType =
+type ContentFragmentInputType =
   | ContentFragmentInputWithInlinedContent
   | ContentFragmentInputWithFileIdType
   | ContentFragmentInputWithContentNode;

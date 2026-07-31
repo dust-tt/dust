@@ -33,8 +33,8 @@ import {
 } from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-export const GLOBAL_AGENT_AUDIENCES = ["everyone", "admins"] as const;
-export type GlobalAgentAudience = (typeof GLOBAL_AGENT_AUDIENCES)[number];
+const GLOBAL_AGENT_AUDIENCES = ["everyone", "admins"] as const;
+type GlobalAgentAudience = (typeof GLOBAL_AGENT_AUDIENCES)[number];
 
 type AgentMetadata = {
   sId: string;

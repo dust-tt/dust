@@ -204,7 +204,7 @@ function countTopLevelBlocks(html: string): number {
  * Shared logic for creating instruction suggestions. Used by both the
  * suggest_prompt_edits MCP handler and reinforced agent analysis.
  */
-export async function createInstructionSuggestions({
+async function createInstructionSuggestions({
   auth,
   agentConfigurationId,
   suggestions,
@@ -312,7 +312,7 @@ type ToolsSuggestionInput = z.infer<typeof ToolsSuggestionSchema> & {
  * Shared logic for creating tools suggestions. Used by both the
  * suggest_tools MCP handler and reinforced agent analysis.
  */
-export async function createToolsSuggestions({
+async function createToolsSuggestions({
   auth,
   agentConfigurationId,
   suggestions,
@@ -440,7 +440,7 @@ type SkillsSuggestionInput = z.infer<typeof SkillsSuggestionSchema> & {
  * Shared logic for creating skills suggestions. Used by both the
  * suggest_skills MCP handler and reinforced agent analysis.
  */
-export async function createSkillsSuggestions({
+async function createSkillsSuggestions({
   auth,
   agentConfigurationId,
   suggestions,

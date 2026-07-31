@@ -363,7 +363,7 @@ export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
   return { discoverOAuthMetadata };
 }
 
-export class MCPCreateServerError extends Error {
+class MCPCreateServerError extends Error {
   readonly isRemoteServerError: boolean;
   constructor(message: string, isRemoteServerError: boolean) {
     super(message);

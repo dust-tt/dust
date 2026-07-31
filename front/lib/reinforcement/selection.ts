@@ -22,7 +22,7 @@ import {
   WEIGHT_USER_ENGAGEMENT,
 } from "./constants";
 
-export interface ConversationWithSkills {
+interface ConversationWithSkills {
   conversationId: string;
   skillIds: string[];
 }

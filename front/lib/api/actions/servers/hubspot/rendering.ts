@@ -1,7 +1,7 @@
 import type { listOwners } from "@app/lib/api/actions/servers/hubspot/client";
 import type { SimplePublicObject } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObject";
 
-export interface HubSpotObjectSummary {
+interface HubSpotObjectSummary {
   id: string;
   type: string;
   title: string;
@@ -48,7 +48,7 @@ const HS_CONTENT_FIELDS = new Set([
   "hs_resolution",
 ]);
 
-export function formatHubSpotObject(
+function formatHubSpotObject(
   object: SimplePublicObject,
   objectType: string,
   portalId?: string

@@ -99,7 +99,7 @@ type SkillDetailsSheetContentProps = {
   user: UserType;
 };
 
-export function SkillDetailsSheetContent({
+function SkillDetailsSheetContent({
   skill,
   owner,
   user,

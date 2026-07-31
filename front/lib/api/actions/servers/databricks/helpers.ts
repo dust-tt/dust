@@ -8,7 +8,7 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const WarehouseSchema = z.object({
+const WarehouseSchema = z.object({
   id: z.string(),
   name: z.string(),
   cluster_size: z.string(),

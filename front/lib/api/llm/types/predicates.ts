@@ -8,7 +8,7 @@ import type {
 import assert from "assert";
 import isNil from "lodash/isNil";
 
-export type ExpectedDeltaMessage =
+type ExpectedDeltaMessage =
   | {
       role?: string | null | undefined;
       content: string | Array<ContentChunk>;

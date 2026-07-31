@@ -44,7 +44,7 @@ export const manualActionRequiredWorkflow = workflow(
   }
 );
 
-export const triggerManualActionRequiredNotification = async (
+const triggerManualActionRequiredNotification = async (
   auth: Authenticator,
   { conversationId, actionId }: { conversationId: string; actionId?: string }
 ): Promise<Result<void, DustError<"internal_error">>> => {

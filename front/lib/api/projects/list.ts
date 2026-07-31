@@ -6,14 +6,14 @@ import logger from "@app/logger/logger";
 import type { SearchProjectsResponseBody } from "@app/types/api/projects/list";
 import type { PodType, SpaceType } from "@app/types/space";
 
-export type ListPodsAccess = "member" | "open";
+type ListPodsAccess = "member" | "open";
 
-export type ListPodsPagination = {
+type ListPodsPagination = {
   limit: number;
   pageOffset: number;
 };
 
-export type ListPodsForScopeResult = {
+type ListPodsForScopeResult = {
   pods: SpaceResource[];
   total: number;
   hasMore: boolean;

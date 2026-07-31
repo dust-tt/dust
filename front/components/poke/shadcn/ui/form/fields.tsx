@@ -23,7 +23,7 @@ interface SelectFieldOption {
   display?: string;
 }
 
-export interface SelectFieldOptionGroup {
+interface SelectFieldOptionGroup {
   label: string;
   options: SelectFieldOption[];
 }

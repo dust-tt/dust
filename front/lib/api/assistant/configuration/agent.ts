@@ -401,7 +401,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
   });
 }
 
-export type AgentLabel = {
+type AgentLabel = {
   sId: string;
   name: string;
   pictureUrl: string | null;

@@ -42,7 +42,7 @@ export const TOOL_EXECUTION_BLOCKED_STATUSES = [
   "blocked_user_answer_required",
 ] as const satisfies readonly ToolExecutionStatus[];
 
-export type ToolExecutionBlockedStatus =
+type ToolExecutionBlockedStatus =
   (typeof TOOL_EXECUTION_BLOCKED_STATUSES)[number];
 
 export function isToolExecutionStatusFinal(

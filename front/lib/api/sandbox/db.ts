@@ -45,11 +45,11 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  */
 
 export const POD_STATE_DATABASES_DIR = "/pod-state/databases";
-export const POD_STATE_REPLICA_DIR = "/pod-state/replica";
+const POD_STATE_REPLICA_DIR = "/pod-state/replica";
 /** In-sandbox mount point of the state replica gcsfuse mount. */
 export const POD_STATE_REPLICA_MOUNT_POINT = POD_STATE_REPLICA_DIR;
 /** System user running the litestream daemon and owning the replica mount. */
-export const POD_STATE_USER = "dust-state";
+const POD_STATE_USER = "dust-state";
 
 const LITESTREAM_BIN = "/opt/bin/litestream";
 const LITESTREAM_UNIT_NAME = "litestream";

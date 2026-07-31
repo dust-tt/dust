@@ -176,8 +176,8 @@ function deriveWorkspaceSeatBillingFrequency(
   }
 }
 
-export const DEFAULT_MEMBERS_USAGE_PAGE_LIMIT = 50;
-export const MAX_MEMBERS_USAGE_PAGE_LIMIT = 150;
+const DEFAULT_MEMBERS_USAGE_PAGE_LIMIT = 50;
+const MAX_MEMBERS_USAGE_PAGE_LIMIT = 150;
 
 export const MembersUsagePaginationSchema = z.object({
   limit: z.coerce
@@ -202,9 +202,7 @@ export const MembersUsagePaginationSchema = z.object({
   groupId: z.string().optional().catch(undefined),
 });
 
-export type MembersUsagePaginationInput = z.infer<
-  typeof MembersUsagePaginationSchema
->;
+type MembersUsagePaginationInput = z.infer<typeof MembersUsagePaginationSchema>;
 
 type ConsumedCreditsSplit = {
   credits?: estypes.AggregationsSumAggregate;

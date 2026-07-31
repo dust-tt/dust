@@ -1784,7 +1784,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
  *   - Existence of a custom agent
  *   - A conversation occurred within the past 7 days
  */
-export async function checkWorkspaceActivity(auth: Authenticator) {
+async function checkWorkspaceActivity(auth: Authenticator) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const hasDataSource =

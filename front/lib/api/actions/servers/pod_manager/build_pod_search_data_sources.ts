@@ -18,7 +18,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ContentNodeAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
-export type PodSemanticSearchScope = "files" | "conversations" | "all";
+type PodSemanticSearchScope = "files" | "conversations" | "all";
 
 function mergeContentNodeDataSourceConfigurations(
   workspaceId: string,

@@ -7,7 +7,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Transaction } from "sequelize";
 
-export type ApiKeyCreditContext = {
+type ApiKeyCreditContext = {
   workspaceId: string;
   keyModelId: number;
 };

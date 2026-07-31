@@ -336,26 +336,22 @@ export const VantaDocumentResourcesResponseSchema = z.object({
   }),
 });
 
-export type VantaTestsResponse = z.infer<typeof VantaTestsResponseSchema>;
-export type VantaTestEntitiesResponse = z.infer<
+type VantaTestsResponse = z.infer<typeof VantaTestsResponseSchema>;
+type VantaTestEntitiesResponse = z.infer<
   typeof VantaTestEntitiesResponseSchema
 >;
-export type VantaControlsResponse = z.infer<typeof VantaControlsResponseSchema>;
-export type VantaDocumentsResponse = z.infer<
-  typeof VantaDocumentsResponseSchema
->;
-export type VantaDocumentResourcesResponse = z.infer<
+type VantaControlsResponse = z.infer<typeof VantaControlsResponseSchema>;
+type VantaDocumentsResponse = z.infer<typeof VantaDocumentsResponseSchema>;
+type VantaDocumentResourcesResponse = z.infer<
   typeof VantaDocumentResourcesResponseSchema
 >;
-export type VantaIntegrationsResponse = z.infer<
+type VantaIntegrationsResponse = z.infer<
   typeof VantaIntegrationsResponseSchema
 >;
-export type VantaFrameworksResponse = z.infer<
-  typeof VantaFrameworksResponseSchema
->;
-export type VantaPeopleResponse = z.infer<typeof VantaPeopleResponseSchema>;
-export type VantaRisksResponse = z.infer<typeof VantaRisksResponseSchema>;
-export type VantaVulnerabilitiesResponse = z.infer<
+type VantaFrameworksResponse = z.infer<typeof VantaFrameworksResponseSchema>;
+type VantaPeopleResponse = z.infer<typeof VantaPeopleResponseSchema>;
+type VantaRisksResponse = z.infer<typeof VantaRisksResponseSchema>;
+type VantaVulnerabilitiesResponse = z.infer<
   typeof VantaVulnerabilitiesResponseSchema
 >;
 

@@ -1,6 +1,6 @@
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 
-export const SLASH_COMMANDS_SECTION_LABEL = "Commands";
+const SLASH_COMMANDS_SECTION_LABEL = "Commands";
 export const SLASH_COMMAND_CAPABILITIES_SECTION_LABEL = "Capabilities";
 
 export interface SlashCommandSection {

@@ -2,12 +2,12 @@ import { Ok } from "@app/types/shared/result";
 import { PassThrough, Readable } from "stream";
 import { vi } from "vitest";
 
-export interface WriteStreamCall {
+interface WriteStreamCall {
   filePath: string;
   contentType: string | undefined;
 }
 
-export interface SaveFileCall {
+interface SaveFileCall {
   filePath: string;
   content: Buffer | string;
   contentType: string | undefined;

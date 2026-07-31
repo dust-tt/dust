@@ -43,7 +43,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 // committed-credit conversion ($1 = 100 AWU) and this bonus are applied by the
 // `contract.start` webhook at activation, so the amounts reflect the
 // workspace's state at migration time rather than at migration-scheduling time.
-export const FREE_MIGRATION_AWU_CREDITS_PER_USER = 2000;
+const FREE_MIGRATION_AWU_CREDITS_PER_USER = 2000;
 
 // Legacy Pro plan codes that always migrate to the legacy-large Business plan
 // (their seats/features exceed the standard Business plan), regardless of the
@@ -245,7 +245,7 @@ export async function loadMigrationDeps({
   });
 }
 
-export type MigrateToBusinessOutcome =
+type MigrateToBusinessOutcome =
   // Migration was staged (or would be, in dry-run): a pending Business contract
   // is scheduled for `migrationDate`. For yearly subs, `remainingProrationDays`
   // is the unused prepaid time cut off at the migration date (refund TBD).

@@ -33,7 +33,7 @@ export const PREMIUM_MODEL_LOCKED_TOOLTIP =
 // Shown when a model row is locked because the model's tier is not enabled for
 // the workspace's current model-tier ceiling (independent of the plan: this
 // applies even on usage-based plans whose tier grants stop below the model).
-export const MODEL_TIER_LOCKED_TOOLTIP =
+const MODEL_TIER_LOCKED_TOOLTIP =
   "You don't have access to this model tier. " +
   "Contact your administrator to get access.";
 
@@ -44,7 +44,7 @@ export const MODEL_TIER_LOCKED_TOOLTIP =
 //   - Complex  -> auto_complex  (curated pool of powerful models)
 export type ModelTierId = "fast" | "standard" | "complex";
 
-export interface ModelTierDefinition {
+interface ModelTierDefinition {
   id: ModelTierId;
   metaModelId: ModelStreamIdType;
   name: string;
@@ -100,7 +100,7 @@ export function isTierLocked(
 }
 
 // Per reasoning-effort blurbs surfaced in the effort slider tooltip.
-export const REASONING_EFFORT_INFO: Record<ReasoningEffort, string> = {
+const REASONING_EFFORT_INFO: Record<ReasoningEffort, string> = {
   none: "No additional reasoning, for the fastest responses.",
   light: "Light reasoning effort, faster responses.",
   medium: "Medium reasoning effort, balancing speed and quality.",
@@ -190,10 +190,7 @@ export function isTierDisplayed(
 // Display equality ignoring reasoning effort: two model displays for the same
 // model are "the same" regardless of effort. Used to highlight the selected row
 // and to mark the default, where effort is surfaced by the slider instead.
-export function isSameDisplay(
-  a: SelectionDisplay,
-  b: SelectionDisplay
-): boolean {
+function isSameDisplay(a: SelectionDisplay, b: SelectionDisplay): boolean {
   if (a.kind === "tier" && b.kind === "tier") {
     return a.tierId === b.tierId;
   }
@@ -405,7 +402,7 @@ function findAgentModel(
   );
 }
 
-export function resolveRequestedSelection(
+function resolveRequestedSelection(
   models: ModelConfigurationType[],
   selection: ModelSelectionType | null | undefined
 ): Selection | null {
@@ -430,7 +427,7 @@ export function resolveRequestedSelection(
   };
 }
 
-export function resolveAgentDefault({
+function resolveAgentDefault({
   agentModel,
   models,
 }: {

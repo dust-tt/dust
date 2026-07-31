@@ -36,7 +36,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
-export type DefaultUserSpendLimitErrorType =
+type DefaultUserSpendLimitErrorType =
   | "workspace_not_metronome_billed"
   | "metronome_error"
   | "invalid_threshold"

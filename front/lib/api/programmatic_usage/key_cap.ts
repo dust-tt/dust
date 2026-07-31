@@ -41,7 +41,7 @@ const keyCapCacheResolver = ({ keyId }: { keyId: ModelId }) =>
  * Get the monthly cap for a key, with Redis caching.
  * Returns null if the key has no cap (unlimited) or doesn't exist.
  */
-export const getKeyMonthlyCapCached = cacheWithRedis(
+const getKeyMonthlyCapCached = cacheWithRedis(
   fetchKeyMonthlyCap,
   keyCapCacheResolver,
   { ttlMs: KEY_CAP_CACHE_TTL_MS }

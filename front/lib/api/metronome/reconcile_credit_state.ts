@@ -131,7 +131,7 @@ type ApiKeyTargetReconcileReport = {
   keys: ApiKeyReconcileReport[];
 };
 
-export type ReconcileCreditStateReport =
+type ReconcileCreditStateReport =
   | PoolReconcileReport
   | ProgrammaticReconcileReport
   | UserReconcileReport
@@ -231,7 +231,7 @@ export async function reconcileCreditState({
   }
 }
 
-export async function reconcilePool({
+async function reconcilePool({
   auth,
   workspace,
   metronomeCustomerId,

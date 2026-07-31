@@ -123,7 +123,7 @@ async function fetchCachedContract({
  * (if any). It influences the classifier's output: re-selecting one's
  * current seat with a pending change pending → `cancelled`.
  */
-export type SeatChangeRequest = {
+type SeatChangeRequest = {
   userId: string;
   previousSeatType: MembershipSeatType;
   newSeatType: MembershipSeatType;
@@ -149,7 +149,7 @@ export type SeatChangeRequest = {
  * Once the DB is in the desired state, the caller invokes `syncSeatCount`
  * to reconcile Metronome with the DB.
  */
-export type SeatChangeOutcome =
+type SeatChangeOutcome =
   | { kind: "noop" }
   | { kind: "cancelled" }
   | { kind: "immediate" }
@@ -901,7 +901,7 @@ export function getSeatCreditNameForSeatType(
   }
 }
 
-export type SeatCreditTransfer = {
+type SeatCreditTransfer = {
   userSId: string;
   oldSeatType: MembershipSeatType;
   newSeatType: MembershipSeatType;

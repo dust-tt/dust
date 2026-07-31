@@ -46,7 +46,7 @@ export function getInitialConfigurationTool(
   return null;
 }
 
-export interface FooterButtonOptions {
+interface FooterButtonOptions {
   currentPageId: ConfigurationPagePageId;
   mode: SheetMode | null;
   selectedToolsInSheet: SelectedTool[];
@@ -165,7 +165,7 @@ export function getFooterButtons({
   return {};
 }
 
-export interface SaveConfigurationOptions {
+interface SaveConfigurationOptions {
   mode: SheetMode | null;
   configuredAction: BuilderAction;
   mcpServerView: MCPServerViewTypeWithLabel;

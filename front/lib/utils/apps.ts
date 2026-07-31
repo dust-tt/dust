@@ -344,7 +344,7 @@ export async function importApps(
   return apps;
 }
 
-export const extractDatasetIdsAndHashes = (specification: string) => {
+const extractDatasetIdsAndHashes = (specification: string) => {
   const dataSetsToFetch: { datasetId: string; hash: string }[] = [];
   const dataBlockMatch = specification.match(
     /data [^\n]+\s*{\s*dataset_id:\s*([^\n]+)\s*hash:\s*([^\n]+)\s*}/
@@ -447,9 +447,7 @@ export async function exportApps(
   return new Ok(enhancedApps);
 }
 
-export async function getSpecificationsHashesFromCore(
-  dustAPIProjectId: string
-) {
+async function getSpecificationsHashesFromCore(dustAPIProjectId: string) {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const coreSpec = await coreAPI.getSpecificationHashes({
@@ -463,7 +461,7 @@ export async function getSpecificationsHashesFromCore(
   return coreSpec.value.hashes;
 }
 
-export async function getSpecificationFromCore(
+async function getSpecificationFromCore(
   dustAPIProjectId: string,
   hash: string
 ) {

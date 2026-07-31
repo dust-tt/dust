@@ -21,7 +21,7 @@ const DSBX_BIN_PATH = "/opt/bin/dsbx";
 const BUILD_STAGING_ROOT = "/tmp/dust-sandbox-function-builds";
 const BUILD_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
 
-export interface SandboxFunctionBuildResult {
+interface SandboxFunctionBuildResult {
   bundleCode: string;
   userIdentity: SandboxFunctionUserIdentityPolicy;
   inputSchema: JSONSchema;

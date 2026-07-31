@@ -398,7 +398,7 @@ export type AuditLogContext = {
   userAgent?: string;
 };
 
-export type CreateAuditLogEventParams = {
+type CreateAuditLogEventParams = {
   action: string;
   occurredAt?: Date;
   actor: AuditLogActor;

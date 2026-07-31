@@ -15,7 +15,7 @@ export const MCP_DIAGNOSTIC_CHECK_NAMES = [
 export type MCPDiagnosticCheckName =
   (typeof MCP_DIAGNOSTIC_CHECK_NAMES)[number];
 
-export type MCPDiagnosticCheckStatus = "ok" | "warn" | "error" | "skipped";
+type MCPDiagnosticCheckStatus = "ok" | "warn" | "error" | "skipped";
 
 export type MCPDiagnosticSummary = {
   overall: "ok" | "warn" | "failed";
@@ -23,7 +23,7 @@ export type MCPDiagnosticSummary = {
   recommended_action: string | null;
 };
 
-export type MCPDiagnosticCheckResult = {
+type MCPDiagnosticCheckResult = {
   check: MCPDiagnosticCheckName;
   status: MCPDiagnosticCheckStatus;
   duration_ms?: number;
@@ -34,7 +34,7 @@ export type MCPDiagnosticCheckResult = {
   details?: Record<string, unknown>;
 };
 
-export type MCPDiagnosticServerView = {
+type MCPDiagnosticServerView = {
   sId: string;
   oAuthUseCase: MCPOAuthUseCase | null;
   serverType: "internal" | "remote";
@@ -42,7 +42,7 @@ export type MCPDiagnosticServerView = {
   name: string | null;
 };
 
-export type MCPDiagnosticReport = {
+type MCPDiagnosticReport = {
   workspace_id: string;
   mcp_server_id: string;
   server_view: MCPDiagnosticServerView | null;

@@ -1,7 +1,7 @@
 import { isDevelopment } from "@app/types/shared/env";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
-export const PRODUCTION_DUST_API = "https://dust.tt";
+const PRODUCTION_DUST_API = "https://dust.tt";
 
 // Pluggable base URL resolver (e.g. RegionContext in the SPA).
 let baseUrlResolver: (() => string) | null = null;

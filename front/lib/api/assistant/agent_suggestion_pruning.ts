@@ -117,7 +117,7 @@ function splitByKind(
  * Runs pruning checks in parallel for each suggestion kind, then bulk updates
  * all outdated suggestions in a single database call.
  */
-export async function pruneSuggestions(
+async function pruneSuggestions(
   auth: Authenticator,
   agentConfiguration: AgentConfigurationType,
   pendingSuggestions: AgentSuggestionResource[]

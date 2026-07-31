@@ -23,7 +23,7 @@ interface InputBarSlashSuggestionStorage {
   menuStack: ReturnType<typeof createSlashMenuNavigationStorage>["menuStack"];
 }
 
-export interface InputBarSlashSuggestionExtensionOptions {
+interface InputBarSlashSuggestionExtensionOptions {
   attachedNodesRef: RefObject<DataSourceViewContentNode[]>;
   conversationIdRef?: RefObject<string | null>;
   enabledRef: RefObject<boolean>;

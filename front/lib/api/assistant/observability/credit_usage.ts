@@ -30,20 +30,20 @@ export type CreditBreakdownBy =
   | "api_key"
   | "model";
 
-export type CreditGroupBy = CreditBreakdownBy | "none";
+type CreditGroupBy = CreditBreakdownBy | "none";
 
-export type CreditUsageRow = {
+type CreditUsageRow = {
   groupKey: string;
   name: string;
   totalCredits: number;
 };
 
-export type CreditUsageResult = {
+type CreditUsageResult = {
   totalCredits: number;
   rows: CreditUsageRow[];
 };
 
-export type CreditTimeseriesPoint = {
+type CreditTimeseriesPoint = {
   timestamp: number;
   date: string;
   totalCredits: number;
@@ -76,7 +76,7 @@ type CreditTimeseriesBreakdownAggs = {
   by_date?: estypes.AggregationsMultiBucketAggregateBase<BreakdownDateBucket>;
 };
 
-export type CreditTimeseriesBreakdownPoint = {
+type CreditTimeseriesBreakdownPoint = {
   timestamp: number;
   date: string;
   totalCredits: number;
@@ -84,12 +84,12 @@ export type CreditTimeseriesBreakdownPoint = {
   groupCredits: number[];
 };
 
-export type CreditTimeseriesBreakdown = {
+type CreditTimeseriesBreakdown = {
   groups: { groupKey: string; name: string }[];
   points: CreditTimeseriesBreakdownPoint[];
 };
 
-export type CreditUsageTypePoint = {
+type CreditUsageTypePoint = {
   timestamp: number;
   date: string;
   userCredits: number;

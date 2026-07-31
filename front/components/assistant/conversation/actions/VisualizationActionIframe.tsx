@@ -531,7 +531,7 @@ function useVisualizationDataHandler({
   ]);
 }
 
-export function CodeDrawer({
+function CodeDrawer({
   isOpened,
   onClose,
   code,

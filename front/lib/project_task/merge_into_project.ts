@@ -67,7 +67,7 @@ type TaskBlob = {
 // A candidate task that has no existing source link yet and therefore needs to
 // go through the deduplication check before being created or linked.
 // userId is null for unassigned action items.
-export type PendingCandidate = {
+type PendingCandidate = {
   itemId: string;
   userId: ModelId | null;
   blob: TaskBlob;
@@ -76,7 +76,7 @@ export type PendingCandidate = {
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-export type MergeStats = {
+type MergeStats = {
   takeawaysProcessed: number;
   candidatesCollected: number;
   deduplicated: number;

@@ -62,7 +62,7 @@ function setStoredRegionInfo({ name }: RegionInfo): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ name }));
 }
 
-export interface RegionContextValue {
+interface RegionContextValue {
   regionInfo: RegionInfo;
   setRegionInfo: (
     regionInfo: RegionInfo,

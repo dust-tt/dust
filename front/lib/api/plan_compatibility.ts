@@ -5,7 +5,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { PlanType } from "@app/types/plan";
 
-export type PlanFitResult = {
+type PlanFitResult = {
   fits: boolean;
   // Human-readable reasons the workspace exceeds the plan; empty when it fits.
   violations: string[];

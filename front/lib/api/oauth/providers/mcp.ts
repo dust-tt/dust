@@ -30,8 +30,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { ParsedUrlQuery } from "querystring";
 import { z } from "zod";
 
-export const MCP_OAUTH_RESPONSE_TYPE = "code";
-export const MCP_OAUTH_CODE_CHALLENGE_METHOD = "S256";
+const MCP_OAUTH_RESPONSE_TYPE = "code";
+const MCP_OAUTH_CODE_CHALLENGE_METHOD = "S256";
 
 const MCPMetadataSchema = BaseMCPMetadataSchema.extend({
   code_challenge: z.string(),

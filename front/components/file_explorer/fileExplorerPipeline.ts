@@ -18,7 +18,7 @@ import {
   isFileExplorerNodeHidden,
 } from "@app/components/file_explorer/utils";
 
-export interface FileExplorerPipeline {
+interface FileExplorerPipeline {
   /** Tree nodes at the current folder level, filtered + sorted. */
   sortedNodes: FileSystemTreeNode[];
   /** Count of items per filter bucket (post-search). Used by the chip row. */

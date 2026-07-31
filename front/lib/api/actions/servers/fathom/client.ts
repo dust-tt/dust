@@ -9,7 +9,7 @@ import type {
   TranscriptItem,
 } from "fathom-typescript/sdk/models/shared";
 
-export type FathomListMeetingsOptions = {
+type FathomListMeetingsOptions = {
   cursor?: string;
   startDate?: string;
   endDate?: string;
@@ -25,7 +25,7 @@ export type FathomListMeetingsOptions = {
   includeCrmMatches?: boolean;
 };
 
-export type FathomListMeetingsResult = {
+type FathomListMeetingsResult = {
   meetings: Meeting[];
   nextCursor: string | null;
 };

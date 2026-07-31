@@ -18,7 +18,7 @@ import type { CellContext } from "@tanstack/react-table";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
 
-export interface TemplatesDisplayType {
+interface TemplatesDisplayType {
   id: string;
   name: string;
   hasSidekickInstructions: boolean;
@@ -41,7 +41,7 @@ function prepareTemplatesForDisplay(
   }));
 }
 
-export function makeColumnsForTemplates() {
+function makeColumnsForTemplates() {
   return [
     {
       accessorKey: "id",

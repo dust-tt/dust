@@ -42,7 +42,7 @@ const DAU_ORIGINS: UserMessageOrigin[] = (
 // Hard cap on users per call. The composite page size is sized so that the
 // entire (user × day) grid fits in a single page for a capped user set, making
 // the pagination loop complete by construction (see below).
-export const ELASTICSEARCH_MAX_USERS_PER_CALL = 100;
+const ELASTICSEARCH_MAX_USERS_PER_CALL = 100;
 // Upper bound on distinct day-buckets a single user can produce over any
 // trailing window of up to ~one month.
 const MAX_DISTINCT_DAYS_PER_USER = 31;
@@ -74,7 +74,7 @@ interface UserDayCellsAggs {
  * Raw per-(user, day) activity facts. The day/week thresholds are applied by the
  * evaluator — this shape carries facts only.
  */
-export interface UserDayFact {
+interface UserDayFact {
   userId: string;
   // Epoch millis at the start of the UTC day.
   dayMs: number;

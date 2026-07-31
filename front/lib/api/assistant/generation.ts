@@ -287,7 +287,7 @@ function constructPastedContentSection(): string {
   );
 }
 
-export function constructGuidelinesSection({
+function constructGuidelinesSection({
   agentConfiguration,
 }: {
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"];

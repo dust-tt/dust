@@ -6,13 +6,13 @@ import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
-export const FRONT_API_BASE_URL = "https://api2.frontapp.com";
+const FRONT_API_BASE_URL = "https://api2.frontapp.com";
 
 export const MAX_RETRIES = 3;
-export const INITIAL_RETRY_DELAY_MS = 1000;
-export const MAX_RETRY_DELAY_MS = 10000;
+const INITIAL_RETRY_DELAY_MS = 1000;
+const MAX_RETRY_DELAY_MS = 10000;
 
-export interface FrontAPIOptions {
+interface FrontAPIOptions {
   method: string;
   endpoint: string;
   apiToken: string;
@@ -259,7 +259,7 @@ const FrontDraftSchema = z.object({
   attachments: z.array(z.object({ filename: z.string() })).optional(),
 });
 
-export type FrontDraft = z.infer<typeof FrontDraftSchema>;
+type FrontDraft = z.infer<typeof FrontDraftSchema>;
 
 const FrontDraftsResponseSchema = z.object({
   _results: z.array(FrontDraftSchema.passthrough()).optional(),

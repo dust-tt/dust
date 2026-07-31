@@ -6,7 +6,7 @@ import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/
 import type { SpaceType } from "@app/types/space";
 import { useMemo } from "react";
 
-export function computeSkillsAndActionsState({
+function computeSkillsAndActionsState({
   skillFields,
   actionFields,
   mcpServerViews,

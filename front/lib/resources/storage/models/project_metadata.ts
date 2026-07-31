@@ -8,7 +8,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { Op } from "sequelize";
 
-export type ProvisioningSource = "activation";
+type ProvisioningSource = "activation";
 
 export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataModel> {
   declare id: CreationOptional<number>;

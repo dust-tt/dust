@@ -112,7 +112,7 @@ export function isMauContract(contract: CachedContract): boolean {
  * (`plan.limits.users.maxFreeUsers` / `maxLifetimeFreeUsers`); the caller
  * passes them in. Use `-1` to disable a limit (matches plan convention).
  */
-export type FreeSeatLimits = {
+type FreeSeatLimits = {
   maxActiveFreeUsers: number;
   maxLifetimeFreeUsers: number;
 };
@@ -123,7 +123,7 @@ export type FreeSeatLimits = {
  * memberships ever (active + revoked + expired), since `free` is
  * one-shot per user.
  */
-export type FreeSeatCounts = {
+type FreeSeatCounts = {
   active: number;
   lifetime: number;
 };
@@ -452,7 +452,7 @@ export type SeatAwuCreditsPeriod =
   | "annual"
   | "lifetime";
 
-export type SeatAwuAllocationInfo = {
+type SeatAwuAllocationInfo = {
   credits: number;
   period: SeatAwuCreditsPeriod;
 };

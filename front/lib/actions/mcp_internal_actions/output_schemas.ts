@@ -140,7 +140,7 @@ const ModelVisionImageSchema = z
       .transform((v) => v)
   );
 
-export type ModelVisionImageType = z.infer<typeof ModelVisionImageSchema>;
+type ModelVisionImageType = z.infer<typeof ModelVisionImageSchema>;
 
 export function isModelVisionImage(
   outputBlock: CallToolResult["content"][number] | null
@@ -312,7 +312,7 @@ export const GET_DATABASE_SCHEMA_MARKER = "get_database_schema_marker" as const;
 export const EXECUTE_TABLES_QUERY_MARKER =
   "execute_tables_query_marker" as const;
 
-export const ExecuteTablesQueryErrorResourceSchema = z.object({
+const ExecuteTablesQueryErrorResourceSchema = z.object({
   mimeType: z.literal(
     INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_ERROR
   ),
@@ -568,13 +568,13 @@ export const isRunAgentResultResourceType = (
   );
 };
 
-export const RunAgentHandoverResourceSchema = z.object({
+const RunAgentHandoverResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_HANDOVER),
   text: z.string(),
   uri: z.string(),
 });
 
-export type RunAgentHandoverResourceType = z.infer<
+type RunAgentHandoverResourceType = z.infer<
   typeof RunAgentHandoverResourceSchema
 >;
 
@@ -1079,7 +1079,7 @@ const OutlookFolderItemSchema = z.object({
   totalItemCount: z.number().optional(),
 });
 
-export const OutlookMailFolderListResourceSchema = z.object({
+const OutlookMailFolderListResourceSchema = z.object({
   mimeType: z.literal(OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE),
   uri: z.literal(""),
   text: z.string(),
@@ -1087,7 +1087,7 @@ export const OutlookMailFolderListResourceSchema = z.object({
   folders: z.array(OutlookFolderItemSchema),
 });
 
-export type OutlookMailFolderListResourceType = z.infer<
+type OutlookMailFolderListResourceType = z.infer<
   typeof OutlookMailFolderListResourceSchema
 >;
 
@@ -1108,7 +1108,7 @@ export const isOutlookMailFolderListResource = (
 export const CLARI_CALL_LIST_MIME_TYPE =
   "application/vnd.dust.tool-output.clari-call-list" as const;
 
-export const ClariCallListResourceSchema = z.object({
+const ClariCallListResourceSchema = z.object({
   mimeType: z.literal(CLARI_CALL_LIST_MIME_TYPE),
   uri: z.literal(""),
   text: z.string(),
@@ -1122,9 +1122,9 @@ export const ClariCallListResourceSchema = z.object({
     .optional(),
 });
 
-export type ClariCallListResourceType = z.infer<
-  typeof ClariCallListResourceSchema
-> & { calls: ClariCall[] };
+type ClariCallListResourceType = z.infer<typeof ClariCallListResourceSchema> & {
+  calls: ClariCall[];
+};
 
 export const isClariCallListResource = (
   outputBlock: CallToolResult["content"][number]
@@ -1138,14 +1138,14 @@ export const isClariCallListResource = (
 export const CLARI_CALL_DETAILS_MIME_TYPE =
   "application/vnd.dust.tool-output.clari-call-details" as const;
 
-export const ClariCallDetailsResourceSchema = z.object({
+const ClariCallDetailsResourceSchema = z.object({
   mimeType: z.literal(CLARI_CALL_DETAILS_MIME_TYPE),
   uri: z.string(),
   text: z.string(),
   call: ClariCallDetailsSchema,
 });
 
-export type ClariCallDetailsResourceType = z.infer<
+type ClariCallDetailsResourceType = z.infer<
   typeof ClariCallDetailsResourceSchema
 > & { call: ClariCallDetails };
 

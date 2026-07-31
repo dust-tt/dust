@@ -21,7 +21,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-export interface PersistedToolOutput {
+interface PersistedToolOutput {
   contentType: AllSupportedFileContentType;
   fileName: string;
   scopedPath: string;

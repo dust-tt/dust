@@ -1,7 +1,7 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
 
-export const PLAN_MODE_SKELETON = `# <plan title>
+const PLAN_MODE_SKELETON = `# <plan title>
 
 ## Context
 _Why we're doing this, what the user asked for._

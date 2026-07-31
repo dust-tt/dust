@@ -18,9 +18,9 @@ import type {
   Transaction,
 } from "sequelize";
 
-export type OnboardingTaskStatus = "to_do" | "achieved" | "skipped";
+type OnboardingTaskStatus = "to_do" | "achieved" | "skipped";
 
-export type OnboardingTaskType = {
+type OnboardingTaskType = {
   sId: string;
   context: string;
   kind: OnboardingTaskKind;

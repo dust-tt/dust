@@ -9,7 +9,7 @@ export interface ColorToken {
   cssName?: string;
 }
 
-export interface ColorGroup {
+interface ColorGroup {
   label: string;
   tokens: Record<string, ColorToken>;
 }
@@ -273,7 +273,7 @@ export interface TypoToken {
   defaults: TypoTokenDefaults;
 }
 
-export interface TypoGroup {
+interface TypoGroup {
   label: string;
   tokens: TypoToken[];
 }
