@@ -484,12 +484,12 @@ function mockContentNodeAttachments(nodeDataSourceViewId: number) {
 
 describe("createConversationFork", () => {
   it("creates the child conversation, sole participant, and lineage row", async () => {
-    const { auth, globalSpace, user } = await createPrivateApiMockRequest();
+    const { auth, user } = await createPrivateApiMockRequest();
 
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
-      spaceId: globalSpace.id,
+      spaceId: null,
     });
 
     const userMessage = await createUserMessage(auth, {
@@ -520,7 +520,7 @@ describe("createConversationFork", () => {
     );
 
     expect(childConversation.title).toBeNull();
-    expect(childConversation.spaceId).toBe(globalSpace.sId);
+    expect(childConversation.spaceId).toBe(null);
     // Forks keep the parent's depth: depth > 0 marks run_agent sub-conversations,
     // which are hidden from space conversation lists.
     expect(childConversation.depth).toBe(parentConversation.depth);
@@ -761,7 +761,7 @@ describe("createConversationFork", () => {
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
-      spaceId: globalSpace.id,
+      spaceId: null,
     });
 
     const enabledRemoteServer = await RemoteMCPServerFactory.create(workspace);
@@ -840,12 +840,12 @@ describe("createConversationFork", () => {
   });
 
   it("copies enabled conversation skills into the child conversation", async () => {
-    const { auth, globalSpace } = await createPrivateApiMockRequest();
+    const { auth } = await createPrivateApiMockRequest();
 
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
-      spaceId: globalSpace.id,
+      spaceId: null,
     });
 
     const enabledSkill = await SkillFactory.create(auth, {
@@ -1799,7 +1799,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
-      spaceId: globalSpace.id,
+      spaceId: null,
     });
     await ConversationModel.update(
       { requestedSpaceIds: [globalSpace.id, restrictedSpace.id] },

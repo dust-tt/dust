@@ -943,10 +943,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     });
 
-    const uniqueSpaceIds = uniq([
-      // Include requestedSpaceIds from conversations.
-      ...conversations.flatMap((c) => c.requestedSpaceIds),
-    ]);
+    // Include both `spaceId` (pod ACL) and `requestedSpaceIds` (private conversation
+    // conjunctive ACL). Pod conversations must load their project space even when
+    // `requestedSpaceIds` later accumulates spaces the viewer cannot read.
+    const uniqueSpaceIds = removeNulls(
+      uniq([
+        ...conversations
+          .filter((c) => c.spaceId !== null)
+          .map((c) => c.spaceId),
+        ...conversations.flatMap((c) => c.requestedSpaceIds),
+      ])
+    );
 
     // Only fetch spaces if there are any used spaces.
     const spaces =
@@ -968,15 +975,47 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       );
     }
 
-    // Filter out conversations that reference missing/deleted spaces.
-    // There are two reasons why a space may be missing here:
+    const { podConversations, regularConversations } = conversations.reduce(
+      (acc, c) => {
+        if (c.spaceId !== null) {
+          acc.podConversations.push(
+            c as ConversationModel & { spaceId: ModelId }
+          );
+        } else {
+          acc.regularConversations.push(c);
+        }
+        return acc;
+      },
+      {
+        podConversations: [] as (ConversationModel & { spaceId: ModelId })[],
+        regularConversations: [] as ConversationModel[],
+      }
+    );
+
+    // Pod conversations (`spaceId` set): visibility is gated only on read access to
+    // the project space. Extra ids in `requestedSpaceIds` (agents, skills, …) do not
+    // further restrict who can open the conversation — they remain a runtime/scope
+    // concern, not a conjunctive ACL. Missing/deleted project spaces deny access.
+    const accessiblePodConversations: ConversationResource[] = podConversations
+      .filter(
+        (c) =>
+          spaceIdToSpaceMap.has(c.spaceId) &&
+          spaceIdToSpaceMap.get(c.spaceId)!.canRead(auth)
+      )
+      .map((c) => this.fromModel(c, spaceIdToSpaceMap.get(c.spaceId) ?? null));
+
+    // If there are no regular conversations, return the accessible pod conversations immediately.
+    if (regularConversations.length === 0) {
+      return accessiblePodConversations;
+    }
+
+    // Private conversations (`spaceId` null): viewer must be able to read every
+    // space in `requestedSpaceIds` (conjunctive ACL). Filter out conversations that
+    // reference missing/deleted spaces:
     // 1. When a space is deleted, conversations referencing it won't be deleted but should not be accessible.
     // 2. When a space belongs to another workspace (should not happen), conversations referencing it won't be accessible.
-
-    // Note from seb, for Space Conversations, we probably want to be more subtle about the conversation accessible logic.
-    // We should probably only filter out conversations where the spaceId is deleted but keep the one that referenced a deleted space.
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
-    const validConversations = conversations
+    const validConversations = regularConversations
       .filter((c) => c.requestedSpaceIds.every((id) => foundSpaceIds.has(id)))
       .map((c) =>
         this.fromModel(
@@ -998,14 +1037,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     if (spaceBasedAccessible.length === 0) {
-      return [];
+      return [...accessiblePodConversations, ...spaceBasedAccessible];
     }
 
     if (
       !this.isPrivateConversationUrlsByDefaultEnabled(auth) ||
       shouldByPassPrivateByDefaultUrlRestriction(auth)
     ) {
-      return spaceBasedAccessible;
+      return [...accessiblePodConversations, ...spaceBasedAccessible];
     }
 
     const participantRestrictedConversations = spaceBasedAccessible.filter(
@@ -1017,7 +1056,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // No participant-restricted conversations, return the space-based accessible conversations.
     if (participantRestrictedConversations.length === 0) {
-      return spaceBasedAccessible;
+      return [...accessiblePodConversations, ...spaceBasedAccessible];
     }
 
     // For all participant-restricted conversations, check if the user is a participant. A userless
@@ -1045,13 +1084,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Return the space-based accessible conversations that are not participant-restricted.
     // Or are participant-restricted and the user is a participant.
-    return spaceBasedAccessible.filter(
-      (conversation) =>
-        !this.shouldApplyPrivateByDefaultUrlRestriction(conversation) ||
-        this.getConversationUrlAccessModeForPrivateByDefault(conversation) ===
-          "workspace_members" ||
-        participantConversationIds.has(conversation.id)
-    );
+    return [
+      ...accessiblePodConversations,
+      ...spaceBasedAccessible.filter(
+        (conversation) =>
+          !this.shouldApplyPrivateByDefaultUrlRestriction(conversation) ||
+          this.getConversationUrlAccessModeForPrivateByDefault(conversation) ===
+            "workspace_members" ||
+          participantConversationIds.has(conversation.id)
+      ),
+    ];
   }
 
   private static async canUserAccessPrivateByDefaultConversation(
@@ -1127,6 +1169,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
     if (!conversation) {
       return "conversation_not_found";
+    }
+
+    // Pod conversations: same contract as `baseFetchWithAuthorization` — only the
+    // project space's readability matters, not the full `requestedSpaceIds` set.
+    if (conversation.spaceId !== null) {
+      const spaces = await SpaceResource.fetchByModelIds(auth, [
+        conversation.spaceId,
+      ]);
+      return spaces.length > 0 && spaces[0].canRead(auth)
+        ? "allowed"
+        : "conversation_access_restricted";
     }
 
     try {
@@ -2868,19 +2921,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     if (uniqueSpaceIds.length > 0) {
       const spaces = await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
-      for (const space of spaces) {
-        if (!space.isProject() || !space.isMember(auth)) {
-          continue;
-        }
-        const { conversations: spaceConvs } =
-          await this.listConversationsInSpacePaginated(auth, {
-            spaceId: space.sId,
-            // limit page size to the number of convs we are searching for to have a single page
-            pagination: { limit: modelIds.length },
-            restrictToConversationModelIds: modelIds,
-          });
-        for (const c of spaceConvs) {
-          visibleModelIds.add(c.id);
+      const spacesByModelId = new Map(spaces.map((s) => [s.id, s]));
+
+      for (const c of conversations) {
+        if (c.spaceId !== null) {
+          const space = spacesByModelId.get(c.spaceId);
+          // This almost replicates what we have in baseFetchWithAuthorization or canAccess.
+          // But with a slight difference: we do not only check if the space is readable by the auth.
+          // We check if the space is project (pod) and auth is a member.
+          // Theses are the same conversations as the ones that would be listed in the sidebar.
+          if (space && space.isProject() && space.isMember(auth)) {
+            visibleModelIds.add(c.id);
+          }
         }
       }
     }
