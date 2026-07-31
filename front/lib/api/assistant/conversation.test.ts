@@ -791,22 +791,26 @@ describe("retryAgentMessage", () => {
       vi.clearAllMocks();
     });
 
-    it("should return error when agent is restricted by space usage in project conversation with more than one manual member on that project", async () => {
+    it("should succeed when retrying an agent that is restricted by space usage in a project conversation", async () => {
+      // Agent messages already present in a Pod conversation were either usable
+      // at creation time or approved via validateAgentMention; retry must work.
+      const rateLimiterSpy = vi
+        .spyOn(rateLimiterModule, "rateLimiter")
+        .mockResolvedValue(100);
+
       const result = await retryAgentMessage(auth, {
         conversationResource: projectConversationResource,
         message: projectAgentMessage,
       });
 
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.status_code).toBe(400);
-        expect(result.error.api_error.type).toBe("invalid_request_error");
-        expect(result.error.api_error.message).toContain(
-          "restricted by space usage"
-        );
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
       }
-      expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
-      expect(publishAgentMessagesEvents).not.toHaveBeenCalled();
+      expect(launchAgentLoopWorkflow).toHaveBeenCalled();
+      expect(publishAgentMessagesEvents).toHaveBeenCalled();
+
+      rateLimiterSpy.mockRestore();
     });
 
     it("should succeed when agent uses the same project space", async () => {
