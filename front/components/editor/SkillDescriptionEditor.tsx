@@ -61,7 +61,7 @@ export function useSkillDescriptionEditor({
               attributes: {
                 class: cn(
                   editorVariants(),
-                  "h-40 max-h-96 cursor-text resize-none"
+                  "h-60 max-h-96 cursor-text resize-none"
                 ),
               },
             },
