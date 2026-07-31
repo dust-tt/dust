@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
@@ -8,6 +6,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
+import { describe, expect, it } from "vitest";
 
 const INPUT_TOKENS_COUNT = 100;
 const OUTPUT_TOKENS_COUNT = 20;
@@ -131,12 +130,15 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       agentConfigurationId: agentConfiguration.sId,
       messagesCreatedAt: [],
     });
-    const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
-      workspace,
-      conversation,
-      agentConfig: agentConfiguration,
-      runIds: null,
-    });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig: agentConfiguration,
+        runIds: null,
+      }
+    );
 
     await computeAndStoreAgentMessageConsumptionAttribution(auth, {
       agentMessageId: agentMessage.sId,
