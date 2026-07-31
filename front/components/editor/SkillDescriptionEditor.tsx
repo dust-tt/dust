@@ -1,3 +1,4 @@
+import { editorVariants } from "@app/components/editor/editorStyles";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { cn } from "@dust-tt/sparkle";
 import { Placeholder } from "@tiptap/extensions";
@@ -32,12 +33,14 @@ function buildSkillDescriptionExtensions(): Extensions {
 
 interface UseSkillDescriptionEditorProps {
   content: string;
+  isReadOnly?: boolean;
   onUpdate?: (props: { editor: Editor; transaction: Transaction }) => void;
   onBlur?: () => void;
 }
 
 export function useSkillDescriptionEditor({
   content,
+  isReadOnly = false,
   onUpdate,
   onBlur,
 }: UseSkillDescriptionEditorProps) {
@@ -48,22 +51,31 @@ export function useSkillDescriptionEditor({
   const editor = useEditor(
     {
       extensions,
-      editable: true,
+      editable: !isReadOnly,
       immediatelyRender: false,
       onUpdate,
       onBlur,
+      editorProps: isReadOnly
+        ? {
+            attributes: {
+              class: cn(
+                editorVariants(),
+                "h-40 max-h-96 cursor-text resize-none"
+              ),
+            },
+          }
+        : undefined,
     },
-    [extensions]
+    [extensions, isReadOnly]
   );
 
   // Set initial content after editor is created.
   useEffect(() => {
-    if (
-      editor &&
-      content &&
-      !initialContentSetRef.current &&
-      !editor.isDestroyed
-    ) {
+    const shouldSetContent = isReadOnly
+      ? editor?.getText().trim() !== content
+      : !!content && !initialContentSetRef.current;
+
+    if (editor && shouldSetContent && !editor.isDestroyed) {
       requestAnimationFrame(() => {
         if (editor && !editor.isDestroyed) {
           editor.commands.setContent(`<p>${content}</p>`, {
@@ -73,7 +85,7 @@ export function useSkillDescriptionEditor({
         }
       });
     }
-  }, [editor, content]);
+  }, [editor, content, isReadOnly]);
 
   return { editor };
 }
@@ -93,4 +105,17 @@ export function SkillDescriptionEditorContent({
       className={cn(className, "leading-7 text-base")}
     />
   );
+}
+
+export function SkillDescriptionReadOnlyEditor({
+  content,
+}: {
+  content: string;
+}) {
+  const { editor } = useSkillDescriptionEditor({
+    content,
+    isReadOnly: true,
+  });
+
+  return <SkillDescriptionEditorContent editor={editor} />;
 }

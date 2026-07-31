@@ -1,6 +1,7 @@
 import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
+import { SkillDescriptionReadOnlyEditor } from "@app/components/editor/SkillDescriptionEditor";
 import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";
 import {
   getMcpServerViewDescription,
@@ -122,9 +123,9 @@ export function SkillInfoTab({
           <div className="heading-lg text-foreground">
             {SKILL_INVOCATION_LABEL}
           </div>
-          <div className="whitespace-pre-wrap text-sm text-foreground">
-            {skill.agentFacingDescription}
-          </div>
+          <SkillDescriptionReadOnlyEditor
+            content={skill.agentFacingDescription}
+          />
         </div>
       )}
 
