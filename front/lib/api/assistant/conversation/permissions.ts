@@ -165,6 +165,26 @@ export async function canAgentBeUsedInProjectConversation(
   return true;
 }
 
+export async function isAgentRestrictedBySpaceUsage(
+  auth: Authenticator,
+  {
+    configuration,
+    conversation,
+  }: {
+    configuration: LightAgentConfigurationType | null;
+    conversation: ConversationWithoutContentType;
+  }
+): Promise<boolean> {
+  if (!configuration || !isPodConversation(conversation)) {
+    return false;
+  }
+
+  return !(await canAgentBeUsedInProjectConversation(auth, {
+    configuration,
+    conversation,
+  }));
+}
+
 /**
  * Update the conversation requestedSpaceIds based on the mentioned agents. This function is purely
  * additive - requirements are never removed.

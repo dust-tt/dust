@@ -35,7 +35,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { dismissMention } from "@app/lib/api/assistant/conversation/mentions";
 import {
   createAgentMessages,
-  resolveModelsForMentionedAgents,
+  resolveModelForMentionedAgent,
 } from "@app/lib/api/assistant/conversation/messages";
 import { resolveAuthentication } from "@app/lib/api/assistant/conversation/resolve_authentication";
 import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
@@ -663,26 +663,30 @@ describe("dismissMention", () => {
         }
       );
 
-      const agentMentions: MentionType[] = [
+      const _agentMentions: MentionType[] = [
         {
           configurationId: agentConfig.sId,
         } satisfies AgentMention,
       ];
+
+      const modelResolution = await resolveModelForMentionedAgent(
+        refreshedAuth,
+        {
+          configuration: agentConfig,
+        }
+      );
 
       // Create agent message properly so it appears in conversation content
       const { agentMessages } = await createAgentMessages(refreshedAuth, {
         conversation: refreshedConversation.value,
         metadata: {
           type: "create",
-          mentions: agentMentions,
-          agentConfigurations: [agentConfig],
+          agentConfiguration: agentConfig,
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
-          resolvedModels: await resolveModelsForMentionedAgents(refreshedAuth, {
-            agentConfigurations: [agentConfig],
-          }),
-          restrictedAgentIds: new Set<string>(),
+          modelResolution,
+          isRestrictedBySpaceUsage: false,
         },
       });
 

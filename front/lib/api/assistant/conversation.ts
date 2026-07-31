@@ -20,10 +20,10 @@ import {
   attributeUserFromWorkspaceAndEmail,
   createAgentMessages,
   createUserMessage,
-  resolveModelsForMentionedAgents,
+  resolveModelForMentionedAgent,
 } from "@app/lib/api/assistant/conversation/messages";
 import {
-  canAgentBeUsedInProjectConversation,
+  isAgentRestrictedBySpaceUsage,
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
@@ -730,7 +730,6 @@ export async function postUserMessage(
   ]);
 
   let agentConfigurations = removeNulls(results[0]);
-  const restrictedAgentIds = new Set<string>();
 
   // Retired global agents can't be invoked (new conversations or new messages).
   // The internal `run_agent` path is exempt: some hidden sub-agents are retired.
@@ -795,17 +794,6 @@ export async function postUserMessage(
         },
       });
     }
-
-    if (isPartOfPod) {
-      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
-        configuration: agentConfig,
-        conversation,
-      });
-
-      if (!canAgentBeUsed) {
-        restrictedAgentIds.add(agentConfig.sId);
-      }
-    }
   }
 
   // TODO(2026-07-31 SEC): this allow spoofing as we trust blindly the user email from the metadata.
@@ -821,10 +809,17 @@ export async function postUserMessage(
     message: { type: "user_message" },
   });
 
-  const resolvedModels = await resolveModelsForMentionedAgents(auth, {
-    agentConfigurations,
-    selection: modelSelection,
+  const mentionedAgentConfiguration = agentConfigurations[0] ?? null;
+  const mentionedAgentRestricted = await isAgentRestrictedBySpaceUsage(auth, {
+    configuration: mentionedAgentConfiguration,
+    conversation,
   });
+  const modelResolution = mentionedAgentConfiguration
+    ? await resolveModelForMentionedAgent(auth, {
+        configuration: mentionedAgentConfiguration,
+        selection: modelSelection,
+      })
+    : null;
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages } = await withTransaction(async (t) => {
@@ -937,13 +932,12 @@ export async function postUserMessage(
           conversation,
           metadata: {
             type: "create",
-            mentions,
-            agentConfigurations,
+            agentConfiguration: mentionedAgentConfiguration,
             skipToolsValidation,
             nextMessageRank,
             userMessage: userMessageWithoutMentions,
-            resolvedModels,
-            restrictedAgentIds,
+            modelResolution,
+            isRestrictedBySpaceUsage: mentionedAgentRestricted,
           },
           transaction: t,
         });
@@ -1202,44 +1196,25 @@ export async function editUserMessage(
     }
   }
 
-  // Multiple agent mentions are still accepted (the public API relies on them), we only track
-  // them while we move to a single mention per message.
-  const agentMentionCount = mentions.filter(isAgentMention).length;
-  if (agentMentionCount > 1) {
-    logger.warn(
-      {
-        agentMentionCount,
-        conversationId: conversation.sId,
-        messageId: message.sId,
-        workspaceId: owner.sId,
-      },
-      "Editing a user message with multiple agent mentions."
-    );
-  }
-
   const resolvedUserMentions = await resolveUserMentions(auth, {
     mentions,
     conversation,
     message: { type: "user_message" },
   });
 
-  const restrictedAgentIds = new Set<string>();
-  if (isPodConversation(conversation)) {
-    for (const agentConfig of agentConfigurations) {
-      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
-        configuration: agentConfig,
-        conversation,
-      });
-      if (!canAgentBeUsed) {
-        restrictedAgentIds.add(agentConfig.sId);
-      }
-    }
-  }
+  const mentionedAgentConfiguration = agentConfigurations[0] ?? null;
 
-  const resolvedModels = await resolveModelsForMentionedAgents(auth, {
-    agentConfigurations,
-    selection: message.requestedModel ?? undefined,
+  const mentionedAgentRestricted = await isAgentRestrictedBySpaceUsage(auth, {
+    configuration: mentionedAgentConfiguration,
+    conversation,
   });
+
+  const modelResolution = mentionedAgentConfiguration
+    ? await resolveModelForMentionedAgent(auth, {
+        configuration: mentionedAgentConfiguration,
+        selection: message.requestedModel ?? undefined,
+      })
+    : null;
 
   try {
     // In one big transaction create all Message, UserMessage, AgentMessage, and Mention rows.
@@ -1329,13 +1304,12 @@ export async function editUserMessage(
             conversation,
             metadata: {
               type: "create",
-              mentions,
-              agentConfigurations,
+              agentConfiguration: mentionedAgentConfiguration,
               skipToolsValidation,
               nextMessageRank,
               userMessage: userMessageWithoutMentions,
-              resolvedModels,
-              restrictedAgentIds,
+              modelResolution,
+              isRestrictedBySpaceUsage: mentionedAgentRestricted,
             },
             transaction: t,
           });
@@ -3127,20 +3101,17 @@ export async function updateAgentMessageWithFinalStatus(
   const completedAt = new Date();
   const owner = auth.getNonNullableWorkspace();
 
-  const restrictedAgentIds = new Set<string>();
-  if (isPodConversation(conversation) && agentMessage.configuration) {
-    const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
+  const agentRestrictedBySpaceUsage = await isAgentRestrictedBySpaceUsage(
+    auth,
+    {
       configuration: agentMessage.configuration,
       conversation,
-    });
-    if (!canAgentBeUsed) {
-      restrictedAgentIds.add(agentMessage.configuration.sId);
     }
-  }
+  );
 
-  const defaultResolvedModels = agentMessage.configuration
-    ? await resolveModelsForMentionedAgents(auth, {
-        agentConfigurations: [agentMessage.configuration],
+  const defaultModelResolution = agentMessage.configuration
+    ? await resolveModelForMentionedAgent(auth, {
+        configuration: agentMessage.configuration,
       })
     : null;
 
@@ -3304,11 +3275,11 @@ export async function updateAgentMessageWithFinalStatus(
     });
 
     // The no-selection default was resolved before the transaction.
-    const resolvedModels =
-      defaultResolvedModels && !promotedUserMessage.requestedModel
-        ? defaultResolvedModels
-        : await resolveModelsForMentionedAgents(promotedAuth, {
-            agentConfigurations: [agentMessage.configuration],
+    const modelResolution =
+      defaultModelResolution && !promotedUserMessage.requestedModel
+        ? defaultModelResolution
+        : await resolveModelForMentionedAgent(promotedAuth, {
+            configuration: agentMessage.configuration,
             selection: promotedUserMessage.requestedModel ?? undefined,
           });
 
@@ -3317,13 +3288,12 @@ export async function updateAgentMessageWithFinalStatus(
       conversation,
       metadata: {
         type: "create",
-        mentions: [{ configurationId: agentMessage.configuration.sId }],
-        agentConfigurations: [agentMessage.configuration],
+        agentConfiguration: agentMessage.configuration,
         skipToolsValidation: agentMessage.skipToolsValidation,
         nextMessageRank,
         userMessage: promotedUserMessages[promotedUserMessages.length - 1],
-        resolvedModels,
-        restrictedAgentIds,
+        modelResolution,
+        isRestrictedBySpaceUsage: agentRestrictedBySpaceUsage,
       },
       transaction: t,
     });

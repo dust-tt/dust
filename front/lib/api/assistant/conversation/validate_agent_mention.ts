@@ -10,7 +10,7 @@ import {
 } from "@app/lib/api/assistant/conversation/lock";
 import {
   createAgentMessages,
-  resolveModelsForMentionedAgents,
+  resolveModelForMentionedAgent,
 } from "@app/lib/api/assistant/conversation/messages";
 import { publishMessageEventsOnMessagePostOrEdit } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
@@ -230,8 +230,8 @@ export async function validateAgentMention(
     "User approved a restricted agent mention"
   );
 
-  const resolvedModels = await resolveModelsForMentionedAgents(auth, {
-    agentConfigurations: [configuration],
+  const modelResolution = await resolveModelForMentionedAgent(auth, {
+    configuration,
     selection: message.requestedModel ?? undefined,
   });
 
@@ -272,7 +272,7 @@ export async function validateAgentMention(
           skipToolsValidation: false,
           nextMessageRank,
           userMessage: message,
-          resolvedModels,
+          modelResolution,
         },
         transaction: t,
       });

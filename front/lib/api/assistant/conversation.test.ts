@@ -3240,7 +3240,7 @@ describe("editUserMessage", () => {
     }
   });
 
-  it("should create an agent message per mention when editing with several agents", async () => {
+  it("should create a single agent message when editing with several agents", async () => {
     const mentions: MentionType[] = [
       {
         configurationId: agentConfig1.sId,
@@ -3258,17 +3258,16 @@ describe("editUserMessage", () => {
       skipToolsValidation: false,
     });
 
-    // Several agent mentions are only logged, the public API still relies on them.
+    // The edit is still accepted, only the first mentioned agent answers.
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       const { userMessage, agentMessages } = result.value;
 
-      expect(agentMessages.length).toBe(2);
+      expect(agentMessages.length).toBe(1);
 
       const agentMentions = userMessage.richMentions.filter(isRichAgentMention);
-      expect(agentMentions.map((m) => m.id).sort()).toEqual(
-        [agentConfig1.sId, agentConfig2.sId].sort()
-      );
+      expect(agentMentions.length).toBe(1);
+      expect(agentMentions[0].id).toBe(agentMessages[0].configuration.sId);
     }
   });
 
