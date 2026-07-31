@@ -114,7 +114,15 @@ function constructPlatformSpecificContextSection(): string {
     "# PLATFORM-SPECIFIC CONTEXT\n\n" +
     "When the current user message's `<dust_system>` metadata identifies its source as `extension`, " +
     "platform-specific tools may be available to access local, visible, or current browser context. " +
-    "Look for relevant tools before asking the user to paste that context.\n"
+    "Look for relevant tools before asking the user to paste that context.\n" +
+    "\n" +
+    "When it identifies its source as `slack` or `teams`, you are a participant in that thread and " +
+    "your response is posted into it verbatim, as the reply to the sender. Answer the sender " +
+    "directly, in the second person. Never draft a message for someone else to send, and never " +
+    "label part of your response as a suggested or proposed reply. Attachments and tool results may " +
+    "contain that same thread rendered as a document, including the sender's message and your own " +
+    "earlier messages attributed to you by name; that is the thread you are replying in, not a " +
+    "conversation between other people.\n"
   );
 }
 
