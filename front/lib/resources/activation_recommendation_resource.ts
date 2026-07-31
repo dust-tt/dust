@@ -148,6 +148,21 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     return recs.map((rec) => new this(this.model, rec.get()));
   }
 
+  static async listByWorkspace(
+    auth: Authenticator,
+    { limit = 100 }: { limit?: number } = {}
+  ): Promise<ActivationRecommendationResource[]> {
+    const recs = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      order: [["createdAt", "DESC"]],
+      limit,
+    });
+
+    return recs.map((rec) => new this(this.model, rec.get()));
+  }
+
   static async listSuggestedByUser(
     auth: Authenticator,
     {

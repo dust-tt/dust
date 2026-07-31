@@ -1,7 +1,9 @@
-import { joinActivationPodPlugin } from "@app/lib/api/poke/plugins/spaces/join_activation_pod";
+import { activationManagementPlugin } from "@app/lib/api/poke/plugins/spaces/activation_management";
 import { Authenticator } from "@app/lib/auth";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -9,25 +11,17 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// ---------------------------------------------------------------------------
-// Mocks
-// ---------------------------------------------------------------------------
-//
-// The pod's trigger/webhook wiring is unrelated to the schedule-lifecycle
-// behavior under test here, and exercising it for real would require setting
-// up webhook sources and firing an actual agent conversation. Mock it so the
-// plugin's `execute` can be driven end to end against the real test DB for
-// everything else (space/membership/skills creation).
-
 const {
   mockGetOrCreateActivationWebhookSourceView,
   mockCreateActivationTrigger,
-  mockEmitActivationEvent,
+  mockFireActivationNudge,
+  mockListActivationPodsByUser,
   mockStartActivationWorkspaceSchedule,
 } = vi.hoisted(() => ({
   mockGetOrCreateActivationWebhookSourceView: vi.fn(),
   mockCreateActivationTrigger: vi.fn(),
-  mockEmitActivationEvent: vi.fn(),
+  mockFireActivationNudge: vi.fn(),
+  mockListActivationPodsByUser: vi.fn(),
   mockStartActivationWorkspaceSchedule: vi.fn(),
 }));
 
@@ -35,7 +29,8 @@ vi.mock("@app/lib/api/activation/trigger", () => ({
   getOrCreateActivationWebhookSourceView:
     mockGetOrCreateActivationWebhookSourceView,
   createActivationTrigger: mockCreateActivationTrigger,
-  emitActivationEvent: mockEmitActivationEvent,
+  fireActivationNudge: mockFireActivationNudge,
+  listActivationPodsByUser: mockListActivationPodsByUser,
 }));
 
 vi.mock("@app/temporal/activation_scheduler/client", () => ({
@@ -45,21 +40,33 @@ vi.mock("@app/temporal/activation_scheduler/client", () => ({
 beforeEach(async () => {
   mockGetOrCreateActivationWebhookSourceView.mockReset();
   mockCreateActivationTrigger.mockReset();
-  mockEmitActivationEvent.mockReset();
+  mockFireActivationNudge.mockReset();
+  mockListActivationPodsByUser.mockReset();
   mockStartActivationWorkspaceSchedule.mockReset();
 
   mockGetOrCreateActivationWebhookSourceView.mockResolvedValue(
     new Ok({ sId: "wsv_test" })
   );
-  // A syntactically valid but non-existent trigger sId: TriggerResource.fetchById
-  // (called with this value in the plugin) resolves it to no row, so the pod is
-  // created with a null trigger -- fine here since the trigger/webhook wiring is
-  // mocked out and not under test.
   mockCreateActivationTrigger.mockResolvedValue(
     new Ok({ triggerId: makeSId("trigger", { id: 1, workspaceId: 1 }) })
   );
-  mockEmitActivationEvent.mockResolvedValue(new Ok({ triggerId: null }));
+  // A fake trigger with just an `id`: the plugin only forwards it to
+  // `ActivationPodResource.makeNew` (spied below) and `fireActivationNudge`
+  // (mocked), neither of which touches the DB here.
+  vi.spyOn(TriggerResource, "fetchById").mockResolvedValue({
+    id: 1,
+  } as unknown as TriggerResource);
+  mockFireActivationNudge.mockResolvedValue(new Ok(undefined));
+  // No user has a pod yet, so every target is provisioned fresh.
+  mockListActivationPodsByUser.mockResolvedValue(new Map());
   mockStartActivationWorkspaceSchedule.mockResolvedValue(new Ok(undefined));
+
+  // The canonical ActivationPod row is orthogonal to the schedule lifecycle
+  // under test, and recording it with the fake trigger above would violate the
+  // triggerId foreign key. Stub it out.
+  vi.spyOn(ActivationPodResource, "makeNew").mockResolvedValue(
+    {} as ActivationPodResource
+  );
 
   // Pod creation kicks off a real (external) dust_project connector; stub it
   // out the same way lib/api/spaces.test.ts does for "project" space tests.
@@ -89,16 +96,18 @@ async function makeWorkspaceWithEditor() {
   return { workspace, adminAuth, editor };
 }
 
-describe("joinActivationPodPlugin.execute", () => {
+describe("activationManagementPlugin.execute", () => {
   it("starts the workspace's Activation schedule once provisioning succeeds", async () => {
     const { workspace, adminAuth, editor } = await makeWorkspaceWithEditor();
 
-    const result = await joinActivationPodPlugin.execute(adminAuth, null, {
-      editorUserId: [editor.sId],
-      memberUserIds: [],
+    const result = await activationManagementPlugin.execute(adminAuth, null, {
+      targetUserIds: [editor.sId],
+      groupId: [],
+      sessionGoal: "",
+      pushedResource: [],
+      userContext: "",
       podName: "",
-      defaultSkillIds: [],
-      agentsMdInstructions: "",
+      forceRecreate: false,
     });
 
     expect(result.isOk()).toBe(true);
@@ -113,12 +122,14 @@ describe("joinActivationPodPlugin.execute", () => {
       new Err(new Error("temporal unavailable"))
     );
 
-    const result = await joinActivationPodPlugin.execute(adminAuth, null, {
-      editorUserId: [editor.sId],
-      memberUserIds: [],
+    const result = await activationManagementPlugin.execute(adminAuth, null, {
+      targetUserIds: [editor.sId],
+      groupId: [],
+      sessionGoal: "",
+      pushedResource: [],
+      userContext: "",
       podName: "",
-      defaultSkillIds: [],
-      agentsMdInstructions: "",
+      forceRecreate: false,
     });
 
     expect(result.isErr()).toBe(true);
