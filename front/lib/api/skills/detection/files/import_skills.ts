@@ -8,7 +8,6 @@ import {
 import type { ZipDetectedSkill } from "@app/lib/api/skills/detection/zip/types";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -77,8 +76,6 @@ export async function importSkillsFromFiles(
   }
 
   const allSkills: ZipDetectedSkill[] = [];
-
-  const featureFlags = await getFeatureFlags(auth);
 
   // Readers are keyed by skill to avoid re-opening the same zip for each
   // attachment. Each zip buffer produces one reader shared across its skills.
@@ -251,7 +248,7 @@ export async function importSkillsFromFiles(
           icon,
           source,
           sourceMetadata: { filePath: skill.skillMdPath },
-          availability: getDefaultSkillAvailability(featureFlags),
+          availability: getDefaultSkillAvailability(),
         },
         {
           mcpServerViews: suggestedMCPServerViews,

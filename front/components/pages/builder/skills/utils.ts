@@ -1,5 +1,4 @@
 import { SKILL_AVAILABILITY_DISPLAY } from "@app/components/skills/SkillsTable";
-import { isDustProvidedSkill } from "@app/lib/skill";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import {
   SKILL_AVAILABILITIES,
@@ -7,11 +6,7 @@ import {
   type SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 
-export type SkillManagerTabType =
-  | "active"
-  | "editable_by_me"
-  | "default"
-  | "archived";
+export type SkillManagerTabType = "active" | "editable_by_me" | "archived";
 
 interface SkillManagerTab {
   id: SkillManagerTabType;
@@ -26,17 +21,8 @@ export const SKILL_MANAGER_TABS: SkillManagerTab[] = [
     label: "Editable by me",
     description: "Skills you can edit",
   },
-  {
-    id: "default",
-    label: "Default",
-    description: "Default skills provided by Dust",
-  },
   { id: "archived", label: "Archived", description: "Archived skills" },
 ];
-
-export const GOVERNANCE_SKILL_MANAGER_TABS = SKILL_MANAGER_TABS.filter(
-  (t) => t.id !== "default"
-);
 
 export function isValidTab(tab: string): tab is SkillManagerTabType {
   return SKILL_MANAGER_TABS.some((t) => t.id === tab);
@@ -82,20 +68,6 @@ export function sortSkillsByName(
   skills: SkillWithoutInstructionsAndToolsWithRelationsType[]
 ) {
   return [...skills].sort((a, b) => a.name.localeCompare(b.name));
-}
-
-// Display Dust-managed skills first, then fall back to a name sort.
-export function sortDustProvidedFirst(
-  skills: SkillWithoutInstructionsAndToolsWithRelationsType[]
-) {
-  return [...skills].sort((a, b) => {
-    const aIsDustProvided = isDustProvidedSkill(a);
-    const bIsDustProvided = isDustProvidedSkill(b);
-    if (aIsDustProvided !== bIsDustProvided) {
-      return aIsDustProvided ? -1 : 1;
-    }
-    return a.name.localeCompare(b.name);
-  });
 }
 
 export function filterByAvailability(

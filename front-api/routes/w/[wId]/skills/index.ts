@@ -4,7 +4,6 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -309,31 +308,12 @@ app.post(
       });
     }
 
-    const featureFlags = await getFeatureFlags(auth);
-    const hasSkillPublicationGovernance = featureFlags.includes(
-      "admin_governance_skill_publication"
-    );
-
-    // Without skill publication governance, keep the previous behavior: only the two
-    // legacy availability values are accepted.
-    if (!hasSkillPublicationGovernance && body.availability === "editors") {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            'Availability "editors" requires skill publication governance to be enabled.',
-        },
-      });
-    }
-
     const requestedAvailability = resolveRequestedAvailability(body);
 
-    // With skill publication governance, explicitly creating a skill already published
-    // (anything other than editors-only) requires the workspace-level permission to publish
-    // skills. The default availability is exempt so plain creation keeps working.
+    // Explicitly creating a skill already published (anything other than editors-only) requires
+    // the workspace-level permission to publish skills. The default availability is exempt so
+    // plain creation keeps working.
     if (
-      hasSkillPublicationGovernance &&
       requestedAvailability !== undefined &&
       requestedAvailability !== "editors" &&
       !(await auth.hasWorkspacePermission("publish", "skill"))
@@ -348,7 +328,6 @@ app.post(
       });
     }
     if (
-      hasSkillPublicationGovernance &&
       requestedAvailability === "users_and_agents" &&
       !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
     ) {
@@ -362,8 +341,7 @@ app.post(
       });
     }
 
-    const availability =
-      requestedAvailability ?? getDefaultSkillAvailability(featureFlags);
+    const availability = requestedAvailability ?? getDefaultSkillAvailability();
 
     const existingSkill = await SkillResource.fetchByName(auth, name);
 

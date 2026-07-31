@@ -1,5 +1,4 @@
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
-import { getFeatureFlags } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
   SKILL_INSTRUCTIONS_LABEL,
@@ -66,7 +65,7 @@ app.post(
         agentFacingDescription,
         instructions,
         icon: skillIcon,
-        availability: getDefaultSkillAvailability(await getFeatureFlags(auth)),
+        availability: getDefaultSkillAvailability(),
       },
       {
         mcpServerViewIds,

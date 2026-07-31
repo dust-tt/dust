@@ -16,7 +16,6 @@ import { suggestMCPServersForDetectedSkill } from "@app/lib/api/skills/detection
 import { validateSkillsForImport } from "@app/lib/api/skills/detection/validate_skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -118,8 +117,6 @@ export async function importSkillsFromGitHub(
     });
   }
 
-  const featureFlags = await getFeatureFlags(auth);
-
   const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
 
   const user = auth.getNonNullableUser();
@@ -217,7 +214,7 @@ export async function importSkillsFromGitHub(
             repoUrl,
             filePath: skill.skillMdPath,
           },
-          availability: getDefaultSkillAvailability(featureFlags),
+          availability: getDefaultSkillAvailability(),
         },
         {
           mcpServerViews: detectedMCPServerViews,

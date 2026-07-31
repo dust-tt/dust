@@ -10,7 +10,6 @@ import {
   hasSharedMembership,
 } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -2902,14 +2901,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const availabilityChanged =
       availability !== undefined && availability !== this.availability;
 
-    // Availability transitions are only governed when skill publication governance is on.
-    const availabilityChangeNeedsGovernance =
-      availabilityChanged &&
-      (await hasFeatureFlag(auth, "admin_governance_skill_publication"));
-
     // With skill publication governance, changing the availability requires the
     // workspace-level publish permission — even for editors.
-    if (availabilityChangeNeedsGovernance) {
+    if (availabilityChanged) {
       assert(
         await auth.hasWorkspacePermission("publish", "skill"),
         "User is not authorized to update this skill's availability"
@@ -2919,7 +2913,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Making a skill auto-discoverable, or changing an already auto-discoverable skill's
     // availability, additionally requires the make-discoverable permission.
     if (
-      availabilityChangeNeedsGovernance &&
+      availabilityChanged &&
       (availability === "users_and_agents" ||
         this.availability === "users_and_agents")
     ) {

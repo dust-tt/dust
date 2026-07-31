@@ -3,7 +3,6 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -196,32 +195,13 @@ app.patch(
         ? availabilityFromIsDefault(body.isDefault)
         : undefined);
 
-    const hasSkillPublicationGovernance = await hasFeatureFlag(
-      auth,
-      "admin_governance_skill_publication"
-    );
-
-    // Without skill publication governance, keep the previous behavior: only the two
-    // legacy availability values are accepted.
-    if (!hasSkillPublicationGovernance && requestedAvailability === "editors") {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            'Availability "editors" requires skill publication governance to be enabled.',
-        },
-      });
-    }
-
     const availabilityChanged =
       requestedAvailability !== undefined &&
       requestedAvailability !== skill.availability;
 
-    // With skill publication governance, changing a skill's availability requires the
-    // workspace-level permission to publish skills — even for editors.
+    // Changing a skill's availability requires the workspace-level permission to publish
+    // skills — even for editors.
     if (
-      hasSkillPublicationGovernance &&
       availabilityChanged &&
       !(await auth.hasWorkspacePermission("publish", "skill"))
     ) {
@@ -241,7 +221,6 @@ app.patch(
       requestedAvailability === "users_and_agents" ||
       skill.availability === "users_and_agents";
     if (
-      hasSkillPublicationGovernance &&
       availabilityChanged &&
       involvesAutoDiscoverable &&
       !(await auth.hasWorkspacePermission("make_discoverable", "skill"))

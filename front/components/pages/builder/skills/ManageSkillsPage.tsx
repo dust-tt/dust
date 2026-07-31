@@ -6,13 +6,11 @@ import {
   type AvailabilityFilter,
   filterByAvailability,
   filterBySearch,
-  GOVERNANCE_SKILL_MANAGER_TABS,
   getAvailabilityFilterLabel,
   isAvailabilityFilter,
   isValidTab,
   SKILL_MANAGER_TABS,
   type SkillManagerTabType,
-  sortDustProvidedFirst,
   sortSkillsByName,
 } from "@app/components/pages/builder/skills/utils";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
@@ -31,12 +29,8 @@ import {
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
-import { isDustProvidedSkill, SKILL_ICON } from "@app/lib/skill";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { SKILL_ICON } from "@app/lib/skill";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   useSkillsWithRelations,
@@ -74,7 +68,6 @@ export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
-  const { hasFeature } = useFeatureFlags();
   const [selectedSkill, setSelectedSkill] =
     useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
@@ -108,16 +101,11 @@ export function ManageSkillsPage() {
     setAvailabilityFilter(checked ? "editors" : "all");
   };
 
-  const hasSkillPublicationGovernance = hasFeature(
-    "admin_governance_skill_publication"
-  );
   const doUpdateAvailability = useUpdateSkillsAvailability({ owner });
 
   const isSearchActive = !isEmptyString(skillSearch);
 
-  const visibleTabs = hasSkillPublicationGovernance
-    ? GOVERNANCE_SKILL_MANAGER_TABS
-    : SKILL_MANAGER_TABS;
+  const visibleTabs = SKILL_MANAGER_TABS;
 
   const activeTab = useMemo<SkillManagerTabType>(() => {
     if (
@@ -130,7 +118,7 @@ export function ManageSkillsPage() {
     return "active";
   }, [selectedTab, visibleTabs]);
 
-  const canBypassEditorVisibility = isAdmin && hasSkillPublicationGovernance;
+  const canBypassEditorVisibility = isAdmin;
   const isBypassEditorVisibilityEnabled =
     canBypassEditorVisibility && bypassEditorVisibility;
 
@@ -182,10 +170,6 @@ export function ManageSkillsPage() {
     const editableByMeSkills = sortedActiveSkills.filter((s) =>
       s.relations.editors?.some((e) => e.sId === user?.sId)
     );
-    // Legacy (no governance) tab: auto-discoverable skills plus Dust-provided ones.
-    const defaultSkills = sortedActiveSkills.filter(
-      (s) => s.availability === "users_and_agents" || isDustProvidedSkill(s)
-    );
 
     return {
       active: filterBySearch(
@@ -195,11 +179,6 @@ export function ManageSkillsPage() {
       ),
       editable_by_me: filterBySearch(
         filterByAvailability(editableByMeSkills, availabilityFilter),
-        searchLower,
-        isSearchActive
-      ),
-      default: filterBySearch(
-        sortDustProvidedFirst(defaultSkills),
         searchLower,
         isSearchActive
       ),
@@ -272,16 +251,12 @@ export function ManageSkillsPage() {
   };
 
   const isBatchEditionAvailable =
-    hasSkillPublicationGovernance &&
-    hasPermission("publish", "skill") &&
-    activeTab !== "archived";
+    hasPermission("publish", "skill") && activeTab !== "archived";
 
   const canMakeSkillAutoDiscoverable = hasPermission(
     "make_discoverable",
     "skill"
   );
-
-  const isAvailabilityFilterVisible = hasSkillPublicationGovernance;
 
   const knownSkillsById = useMemo(
     () =>
@@ -441,8 +416,7 @@ export function ManageSkillsPage() {
                     counterValue={`${skillsByTab[tab.id].length}`}
                   />
                 ))}
-                {isAvailabilityFilterVisible && (
-                  <div className="ml-auto flex flex-row items-center gap-3 self-center text-sm text-muted-foreground">
+                <div className="ml-auto flex flex-row items-center gap-3 self-center text-sm text-muted-foreground">
                     {canBypassEditorVisibility && (
                       <span className="flex gap-1">
                         <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
@@ -483,7 +457,6 @@ export function ManageSkillsPage() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                )}
               </TabsList>
             </Tabs>
             {isLoading ? (
@@ -508,7 +481,7 @@ export function ManageSkillsPage() {
                   onSkillClick={handleSkillSelect}
                   onAgentClick={setAgentId}
                   onUsedBySkillClick={handleUsedBySkillSelect}
-                  showAvailability={hasSkillPublicationGovernance}
+                  showAvailability
                   canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
                   {...(isBatchEditionAvailable && isBatchEditing
                     ? { rowSelection, setRowSelection }
