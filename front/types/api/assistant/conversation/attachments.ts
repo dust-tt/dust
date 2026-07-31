@@ -27,6 +27,7 @@ export type BaseConversationAttachmentType = {
 export type FileAttachmentType = BaseConversationAttachmentType & {
   fileId: string;
   path: string | null;
+  processedPath?: string | null;
   source: "agent" | "user" | null;
   createdAt?: number;
   updatedAt?: number;
