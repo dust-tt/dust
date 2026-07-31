@@ -22,7 +22,7 @@ export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS = 60 * 60;
 // Sidekick messages are free (unbilled) usage, so they bypass the credit/plan
 // caps. Cap them per actor to bound how much free usage a single user can
 // generate through the builder assistant.
-export const SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY = 50;
+export const SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY = 100;
 export const SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_WINDOW_SECONDS =
   24 * 60 * 60;
 
