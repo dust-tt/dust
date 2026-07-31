@@ -1,4 +1,5 @@
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import type { PodType, SpaceType } from "@app/types/space";
@@ -29,12 +30,14 @@ type SpaceRowData = {
   space: SpaceType | PodType;
   isSelected: boolean;
   isAlreadyRequested: boolean;
+  isBlockedByPodLimit: boolean;
   onToggle: () => void;
   onClick?: () => void;
 };
 
 interface SpaceSelectionPageProps {
   alreadyRequestedSpaceIds: Set<string>;
+  entityName?: "agent" | "skill";
   includeProjects?: boolean;
   selectedSpaces: string[];
   setSelectedSpaces: React.Dispatch<React.SetStateAction<string[]>>;
@@ -43,7 +46,7 @@ interface SpaceSelectionPageProps {
 }
 
 interface SpaceSelectionSheetProps
-  extends Omit<SpaceSelectionPageProps, "searchQuery"> {
+  extends Omit<SpaceSelectionPageProps, "searchQuery" | "entityName"> {
   entityName: "agent" | "skill";
   onClose: () => void;
   onSave: () => void;
@@ -100,6 +103,7 @@ export function SpaceSelectionSheet({
         <SheetContainer isListSelector>
           <SpaceSelectionPageContent
             alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
+            entityName={entityName}
             includeProjects={includeProjects}
             selectedSpaces={selectedSpaces}
             setSelectedSpaces={setSelectedSpaces}
@@ -126,6 +130,7 @@ export function SpaceSelectionSheet({
 
 function SpaceSelectionPageContent({
   alreadyRequestedSpaceIds,
+  entityName,
   includeProjects = true,
   selectedSpaces,
   setSelectedSpaces,
@@ -133,6 +138,8 @@ function SpaceSelectionPageContent({
   missingSpaceIds = [],
 }: SpaceSelectionPageProps) {
   const { spaces, owner } = useSpacesContext();
+  const sendNotification = useSendNotification();
+  const isPodLimitEnforced = entityName === "skill";
   const { spaces: missingSpaces } = useSpaceProjectsLookup({
     workspaceId: owner.sId,
     spaceIds: missingSpaceIds,
@@ -190,6 +197,7 @@ function SpaceSelectionPageContent({
           space,
           isSelected: selectedSpaceIds.has(space.sId) || isAlreadyRequested,
           isAlreadyRequested,
+          isBlockedByPodLimit: false,
           onToggle: () => handleSpaceToggle(space),
         };
       });
@@ -200,24 +208,59 @@ function SpaceSelectionPageContent({
     handleSpaceToggle,
   ]);
 
+  const selectedPodSpace = useMemo(() => {
+    if (!isPodLimitEnforced) {
+      return undefined;
+    }
+    return selectableSpaces.find(
+      (s): s is PodType =>
+        isProjectType(s) &&
+        (selectedSpaceIds.has(s.sId) || alreadyRequestedSpaceIds.has(s.sId))
+    );
+  }, [
+    isPodLimitEnforced,
+    selectableSpaces,
+    selectedSpaceIds,
+    alreadyRequestedSpaceIds,
+  ]);
+
+  const handleBlockedPodClick = useCallback(() => {
+    if (!selectedPodSpace) {
+      return;
+    }
+    sendNotification({
+      type: "warning",
+      title: "Only one Pod allowed",
+      description: `A skill can only be restricted to a single Pod. Remove "${getSpaceName(selectedPodSpace)}" first to pick a different one.`,
+    });
+  }, [selectedPodSpace, sendNotification]);
+
   const projectsTableData: SpaceRowData[] = useMemo(() => {
     return selectableSpaces
       .filter((s): s is PodType => isProjectType(s))
       .map((project) => {
         const isAlreadyRequested = alreadyRequestedSpaceIds.has(project.sId);
+        const isSelected =
+          selectedSpaceIds.has(project.sId) || isAlreadyRequested;
+        const isBlockedByPodLimit =
+          !isSelected &&
+          selectedPodSpace !== undefined &&
+          selectedPodSpace.sId !== project.sId;
         return {
           sId: project.sId,
           name: getSpaceName(project),
           description: project.description ?? undefined,
           space: project,
-          isSelected: selectedSpaceIds.has(project.sId) || isAlreadyRequested,
+          isSelected,
           isAlreadyRequested,
+          isBlockedByPodLimit,
           onToggle: () => handleSpaceToggle(project),
         };
       });
   }, [
     selectableSpaces,
     alreadyRequestedSpaceIds,
+    selectedPodSpace,
     selectedSpaceIds,
     handleSpaceToggle,
   ]);
@@ -279,14 +322,22 @@ function SpaceSelectionPageContent({
             <ListGroup>
               {projectsTableData.map((row) => {
                 const ProjectIcon = getSpaceIcon(row.space);
+                const isLocked =
+                  row.isAlreadyRequested || row.isBlockedByPodLimit;
                 const rowContent = (
                   <ListItem
                     key={row.sId}
                     itemsAlignment="center"
-                    onClick={row.isAlreadyRequested ? undefined : row.onToggle}
+                    onClick={
+                      row.isAlreadyRequested
+                        ? undefined
+                        : row.isBlockedByPodLimit
+                          ? handleBlockedPodClick
+                          : row.onToggle
+                    }
                     className={cn(
                       row.isSelected ? "bg-primary-50" : "",
-                      row.isAlreadyRequested
+                      isLocked
                         ? "cursor-not-allowed opacity-60"
                         : "cursor-pointer"
                     )}
@@ -303,8 +354,13 @@ function SpaceSelectionPageContent({
                     <Checkbox
                       checked={row.isSelected}
                       onCheckedChange={row.onToggle}
-                      disabled={row.isAlreadyRequested}
-                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                      disabled={isLocked}
+                      onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        if (row.isBlockedByPodLimit) {
+                          handleBlockedPodClick();
+                        }
+                      }}
                     />
                   </ListItem>
                 );
@@ -314,6 +370,17 @@ function SpaceSelectionPageContent({
                     <Tooltip
                       key={row.sId}
                       label="Used by other resources"
+                      side="right"
+                      trigger={rowContent}
+                    />
+                  );
+                }
+
+                if (row.isBlockedByPodLimit) {
+                  return (
+                    <Tooltip
+                      key={row.sId}
+                      label="A skill can only be restricted to a single Pod"
                       side="right"
                       trigger={rowContent}
                     />
