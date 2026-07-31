@@ -95,6 +95,8 @@ describe("GET /api/v1/w/[wId]/skills", () => {
   it("returns active skills by default", async () => {
     const { workspace, key } = await createPublicApiMockRequest();
     const user = await UserFactory.basic();
+    // The skill creator must be a workspace member for the factory's create grant to apply.
+    await MembershipFactory.associate(workspace, user, { role: "user" });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
@@ -126,6 +128,8 @@ describe("GET /api/v1/w/[wId]/skills", () => {
   it("returns skills matching the requested status", async () => {
     const { workspace, key } = await createPublicApiMockRequest();
     const user = await UserFactory.basic();
+    // The skill creator must be a workspace member for the factory's create grant to apply.
+    await MembershipFactory.associate(workspace, user, { role: "user" });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
@@ -157,6 +161,8 @@ describe("GET /api/v1/w/[wId]/skills", () => {
   it("filters skills by availability", async () => {
     const { workspace, key } = await createPublicApiMockRequest();
     const user = await UserFactory.basic();
+    // The skill creator must be a workspace member for the factory's create grant to apply.
+    await MembershipFactory.associate(workspace, user, { role: "user" });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
@@ -228,6 +234,8 @@ describe("GET /api/v1/w/[wId]/skills", () => {
       role: "admin",
     });
     const user = await UserFactory.basic();
+    // The skill creator must be a workspace member for the factory's create grant to apply.
+    await MembershipFactory.associate(workspace, user, { role: "user" });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
