@@ -126,6 +126,9 @@ export type VirtuosoMessageListContext = {
     draftAgent?: LightAgentConfigurationType;
     isSubmitting: boolean;
     actionsToShow: InputBarContainerProps["actions"];
+    // Locks the conversation to its current agent: no `@` agent suggestions
+    // and no agent switch on paste (used by the sidekick).
+    disableAgentMentions?: boolean;
     resetConversation: () => void;
     clientSideMCPServerIds?: string[];
     skipToolsValidation?: boolean;

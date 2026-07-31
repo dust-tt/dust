@@ -208,6 +208,10 @@ export interface InputBarContainerProps {
   space?: SpaceType;
   disableAutoFocus: boolean;
   disableUserMentions?: boolean;
+  // When true, agents cannot be mentioned or selected from the editor (no `@`
+  // suggestions, no agent switch on paste). Used to lock a conversation to a
+  // single agent (e.g. the agent builder sidekick).
+  disableAgentMentions?: boolean;
   fileUploaderService: FileUploaderService;
   getDraft: () => {
     text: string;
@@ -277,6 +281,7 @@ const InputBarContainer = ({
   actions,
   disableAutoFocus,
   disableUserMentions,
+  disableAgentMentions,
   isSubmitting,
   fileUploaderService,
   getDraft,
@@ -629,6 +634,9 @@ const InputBarContainer = ({
   );
 
   onFirstAgentMentionPasteRef.current = (agentId: string) => {
+    if (disableAgentMentions) {
+      return;
+    }
     const agent = agentsById.get(agentId);
     if (agent) {
       setSelectedSingleAgent(toRichAgentMentionType(agent));
@@ -738,6 +746,11 @@ const InputBarContainer = ({
     onEnterKeyDown: onEnterKeyDownWithShake,
     disableAutoFocus,
     disableUserMentions,
+    disableAgentMentions,
+    // In the input bar, disabling agent mentions means locking the
+    // conversation to its current agent, so also strip any agent mention that
+    // reaches the document (e.g. pasted content).
+    stripAgentMentions: disableAgentMentions,
     onUrlDetected: handleUrlDetected,
     onAgentSelect: onSingleAgentSelect,
     owner,
