@@ -31,7 +31,7 @@
   "file.moved": 1,
   "frame.authorized_files_updated": 1,
   "frame.email_grant_added": 2,
-  "frame.email_grant_revoked": 2,
+  "frame.email_grant_revoked": 3,
   "frame.share_scope_updated": 2,
   "group.advanced_model_access_updated": 1,
   "group.member_added": 1,

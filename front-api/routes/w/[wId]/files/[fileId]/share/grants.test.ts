@@ -267,7 +267,7 @@ describe("sharing grants endpoint", () => {
         action: "frame.email_grant_revoked",
         metadata: {
           frame_name: "test-frame.tsx",
-          grant_id: String(grantId),
+          email: "alice@example.com",
         },
         targets: [
           expect.objectContaining({ type: "workspace", id: workspace.sId }),

@@ -2099,7 +2099,7 @@ export class FileResource extends BaseResource<FileModel> {
     grantId,
   }: {
     grantId: ModelId;
-  }): Promise<Result<undefined, DustError>> {
+  }): Promise<Result<{ email: string }, DustError>> {
     assert(
       this.isInteractiveContent,
       "revokeSharingGrant requires interactive content file"
@@ -2123,7 +2123,7 @@ export class FileResource extends BaseResource<FileModel> {
 
     await grant.update({ revokedAt: new Date() });
 
-    return new Ok(undefined);
+    return new Ok({ email: grant.email });
   }
 
   static async recordGrantView(
