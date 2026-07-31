@@ -6,7 +6,6 @@ import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
 import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
-import config from "@app/lib/api/config";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   getBillingCycle,
@@ -333,16 +332,7 @@ export function CreditsUsagePage() {
             <div>
               <p>
                 Monitor usage and credits for programmatic usage (API keys,
-                automated workflows, etc.). Usage cost is based on token
-                consumption, according to our{" "}
-                <Hoverable
-                  href={`${config.getStaticWebsiteUrl()}/home/api-pricing`}
-                  target="_blank"
-                  variant="primary"
-                >
-                  pricing page
-                </Hoverable>
-                . Learn more in the{" "}
+                automated workflows, etc.). Learn more in the{" "}
                 <Hoverable
                   href="https://docs.dust.tt/docs/programmatic-usage"
                   target="_blank"
