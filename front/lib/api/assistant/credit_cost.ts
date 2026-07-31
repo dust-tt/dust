@@ -5,12 +5,14 @@ import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_l
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { ToolCostCategory } from "@app/lib/api/mcp";
+import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import { recordUserSpendLimitUsage } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
   computeRunKey,
   getToolBillingInfo,
+  getUsageType,
   intelligenceAwuFromRunUsagesGroupedByRunKey,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
@@ -249,8 +251,25 @@ export async function computeAndStoreAgentMessageCredits(
     });
   }
 
+  // Fetch the message's runs once — reused to compute cost and to tag usage type.
+  const runs = await RunResource.listByDustRunIds(auth, {
+    dustRunIds: [...new Set(runIds ?? [])],
+  });
+
+  // Persist the billing usage type on the run usages so free/user/programmatic
+  // consumption can be queried directly (e.g. free-usage monitoring). Reuses the
+  // same origin-based classification as the Metronome events.
+  const messageOrigin = triggeringUserMessageOrigin ?? "web";
+  await RunResource.setUsageTypeForRuns(auth, {
+    runs,
+    usageType: getUsageType(
+      isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin }),
+      messageOrigin
+    ),
+  });
+
   const [runUsages, actions] = await Promise.all([
-    fetchRunUsagesForAgentMessage(auth, runIds),
+    RunResource.listRunUsagesForRuns(auth, { runs }),
     AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessageModelId]),
   ]);
 
@@ -321,19 +340,4 @@ export async function computeAndStoreAgentMessageCredits(
   }
 
   return costCredits;
-}
-
-async function fetchRunUsagesForAgentMessage(
-  auth: Authenticator,
-  runIds: string[] | null
-): Promise<(RunUsageType & { runKey: string | null })[]> {
-  const dustRunIds = [...new Set(runIds ?? [])];
-  if (dustRunIds.length === 0) {
-    return [];
-  }
-
-  // All runs are fetched from this message's own runIds, so every usage they
-  // produce belongs to this message.
-  const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
-  return RunResource.listRunUsagesForRuns(auth, { runs });
 }
