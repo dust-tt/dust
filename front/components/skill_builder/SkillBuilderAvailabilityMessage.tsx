@@ -13,7 +13,7 @@ interface SkillBuilderAvailabilityMessageProps {
 
 function getAvailabilityItems(
   availability: SkillAvailability,
-  restricted: boolean,
+  restricted: boolean
 ): string[] {
   switch (availability) {
     case "editors":

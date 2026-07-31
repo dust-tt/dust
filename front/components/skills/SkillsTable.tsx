@@ -57,8 +57,7 @@ export const SKILL_AVAILABILITY_DISPLAY: Record<
   workspace_users: {
     label: "All members",
     color: "success",
-    tooltip:
-      "All members can find it via the input bar and agent builder",
+    tooltip: "All members can find it via the input bar and agent builder",
   },
   users_and_agents: {
     label: "Members and agents",

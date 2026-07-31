@@ -51,8 +51,7 @@ const AVAILABILITY_OPTIONS: {
   {
     label: "Members and agents",
     value: "users_and_agents",
-    description:
-      "Available to all members and agents with Discover Skills",
+    description: "Available to all members and agents with Discover Skills",
   },
 ];
 
@@ -214,8 +213,7 @@ export function SkillBuilderSettingsSection({
             >
               <ul className="list-disc space-y-1 pl-5">
                 <li>
-                  All members can find it via the input bar and agent
-                  builder
+                  All members can find it via the input bar and agent builder
                 </li>
                 <li>
                   Any agent with Discover Skills, including Dust, can use it

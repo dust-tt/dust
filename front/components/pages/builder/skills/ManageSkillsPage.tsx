@@ -90,9 +90,7 @@ export function ManageSkillsPage() {
   const { availability: availabilityParam } = useQueryParams(
     AVAILABILITY_QUERY_PARAMS
   );
-  const availabilityFilter = isAvailabilityFilter(
-    availabilityParam.value
-  )
+  const availabilityFilter = isAvailabilityFilter(availabilityParam.value)
     ? availabilityParam.value
     : "all";
   // Clear the param on "all" so the default state keeps the URL clean.
@@ -283,8 +281,7 @@ export function ManageSkillsPage() {
     "skill"
   );
 
-  const isAvailabilityFilterVisible =
-    hasSkillPublicationGovernance;
+  const isAvailabilityFilterVisible = hasSkillPublicationGovernance;
 
   const knownSkillsById = useMemo(
     () =>
