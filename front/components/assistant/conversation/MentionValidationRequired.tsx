@@ -7,6 +7,7 @@ import type {
   ConversationWithoutContentType,
   RichMentionWithStatus,
 } from "@app/types/assistant/conversation";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   ActionCardBlock,
@@ -14,6 +15,7 @@ import {
   Button,
   MessageChatSquare,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 type ValidatableMention = Extract<
@@ -43,15 +45,12 @@ export function MentionValidationRequired({
 }: MentionValidationRequiredProps) {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isProjectMembership = mention.status === "pending_project_membership";
-  const isRestrictedAgent =
-    mention.status === "agent_restricted_by_space_usage";
 
   const { validateMention } = useMentionValidation({
     workspaceId: owner.sId,
     conversationId: conversation.sId,
     messageId: message.sId,
-    isProjectConversation: isProjectMembership,
+    isProjectConversation: mention.status === "pending_project_membership",
   });
 
   const canCurrentUserRespond = useMemo(
@@ -85,37 +84,73 @@ export function MentionValidationRequired({
     return null;
   }
 
-  const title = isRestrictedAgent
-    ? `Run ${mention.label} in this Pod conversation?`
-    : isProjectMembership
-      ? `Add ${mention.label} to this Pod?`
-      : `Invite ${mention.label} to this conversation?`;
+  let title: string;
+  switch (mention.status) {
+    case "agent_restricted_by_space_usage":
+      title = `Run ${mention.label} in this Pod conversation?`;
+      break;
+    case "pending_project_membership":
+      title = `Add ${mention.label} to this Pod?`;
+      break;
+    case "pending_conversation_access":
+      title = `Invite ${mention.label} to this conversation?`;
+      break;
+    default:
+      assertNever(mention.status);
+  }
 
-  const description = isRestrictedAgent ? (
-    <>
-      <span className="font-semibold">{mention.label}</span> uses at least one
-      private space. If you run it here, its outputs will be visible to Pod
-      members who may not have access to those spaces.
-    </>
-  ) : isAgentMessageWithStreaming(message) ? (
-    <>
-      <span className="font-semibold">@{message.configuration.name}</span>{" "}
-      mentioned <span className="font-semibold">{mention.label}</span>.
-      {isProjectMembership
-        ? " Do you want to add them to this Pod?"
-        : " Do you want to invite them? They'll see the full history and be able to reply."}
-    </>
-  ) : isProjectMembership ? (
-    "They'll have access to all Pod conversations."
-  ) : (
-    "They'll see the full history and be able to reply."
-  );
+  let description: ReactNode;
+  switch (mention.status) {
+    case "agent_restricted_by_space_usage":
+      description = (
+        <>
+          <span className="font-semibold">{mention.label}</span> uses at least
+          one private space. If you run it here, its outputs will be visible to
+          Pod members who may not have access to those spaces.
+        </>
+      );
+      break;
+    case "pending_project_membership":
+      description = isAgentMessageWithStreaming(message) ? (
+        <>
+          <span className="font-semibold">@{message.configuration.name}</span>{" "}
+          mentioned <span className="font-semibold">{mention.label}</span>. Do
+          you want to add them to this Pod?
+        </>
+      ) : (
+        "They'll have access to all Pod conversations."
+      );
+      break;
+    case "pending_conversation_access":
+      description = isAgentMessageWithStreaming(message) ? (
+        <>
+          <span className="font-semibold">@{message.configuration.name}</span>{" "}
+          mentioned <span className="font-semibold">{mention.label}</span>. Do
+          you want to invite them? They'll see the full history and be able to
+          reply.
+        </>
+      ) : (
+        "They'll see the full history and be able to reply."
+      );
+      break;
+    default:
+      assertNever(mention.status);
+  }
 
-  const approveLabel = isRestrictedAgent
-    ? "Run agent"
-    : isProjectMembership
-      ? "Add to Pod"
-      : "Invite";
+  let approveLabel: string;
+  switch (mention.status) {
+    case "agent_restricted_by_space_usage":
+      approveLabel = "Run agent";
+      break;
+    case "pending_project_membership":
+      approveLabel = "Add to Pod";
+      break;
+    case "pending_conversation_access":
+      approveLabel = "Invite";
+      break;
+    default:
+      assertNever(mention.status);
+  }
 
   const visual =
     mention.type === "agent" ? (
