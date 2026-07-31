@@ -333,4 +333,84 @@ describe("validateAgentMention", () => {
     }
     expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
   });
+
+  it("approves all duplicate restricted mention rows for the same agent", async () => {
+    const existing = await MentionModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        messageId: userMessageId,
+        agentConfigurationId: agentWithDifferentSpace.sId,
+        status: "agent_restricted_by_space_usage",
+      },
+    });
+    expect(existing).not.toBeNull();
+    if (!existing) {
+      throw new Error("Expected restricted mention row");
+    }
+
+    // Simulate a duplicate MentionModel row (same agent, same message).
+    await MentionModel.create({
+      workspaceId: workspace.id,
+      messageId: userMessageId,
+      agentConfigurationId: agentWithDifferentSpace.sId,
+      status: "agent_restricted_by_space_usage",
+      dismissed: false,
+    });
+
+    const rateLimiterSpy = vi
+      .spyOn(rateLimiterModule, "rateLimiter")
+      .mockResolvedValue(100);
+
+    const result = await validateAgentMention(auth, {
+      conversationId: projectConversation.sId,
+      agentConfigurationId: agentWithDifferentSpace.sId,
+      messageId: userMessageSId,
+      approvalState: "approved",
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const mentionRows = await MentionModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        messageId: userMessageId,
+        agentConfigurationId: agentWithDifferentSpace.sId,
+      },
+    });
+    expect(mentionRows).toHaveLength(2);
+    expect(mentionRows.every((m) => m.status === "approved")).toBe(true);
+
+    const allChildMessages = await MessageModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: projectConversation.id,
+        parentId: userMessageId,
+      },
+    });
+    expect(
+      allChildMessages.filter((m) => m.agentMessageId !== null)
+    ).toHaveLength(1);
+
+    const publishedCalls = vi.mocked(publishMessageEventsOnMessagePostOrEdit)
+      .mock.calls;
+    const lastPublish = publishedCalls[publishedCalls.length - 1];
+    const publishedMessage = lastPublish?.[1] as
+      | { richMentions?: { id: string; status: string }[] }
+      | undefined;
+    const pendingRestricted =
+      publishedMessage?.richMentions?.filter(
+        (m) =>
+          m.id === agentWithDifferentSpace.sId &&
+          m.status === "agent_restricted_by_space_usage"
+      ) ?? [];
+    expect(pendingRestricted).toHaveLength(0);
+
+    const approvedForAgent =
+      publishedMessage?.richMentions?.filter(
+        (m) => m.id === agentWithDifferentSpace.sId && m.status === "approved"
+      ) ?? [];
+    expect(approvedForAgent).toHaveLength(1);
+
+    rateLimiterSpy.mockRestore();
+  });
 });
