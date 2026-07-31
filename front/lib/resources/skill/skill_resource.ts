@@ -2925,7 +2925,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ) {
       assert(
         await auth.hasWorkspacePermission("make_discoverable", "skill"),
-        "User is not authorized to update this skill's auto-discoverable status"
+        "User is not authorized to update this skill's availability"
       );
     }
 
@@ -3036,7 +3036,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ) {
       assert(
         await auth.hasWorkspacePermission("make_discoverable", "skill"),
-        "User is not authorized to update auto-discoverable skill availability"
+        "User is not authorized to update this skill availability"
       );
     }
 

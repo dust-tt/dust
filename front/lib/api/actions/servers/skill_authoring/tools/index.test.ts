@@ -8,11 +8,10 @@ import {
 } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import { isSkillAuthoringResultOutput } from "@app/lib/api/actions/servers/skill_authoring/rendering";
 import { Authenticator } from "@app/lib/auth";
-import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { Ok } from "@app/types/shared/result";
@@ -70,16 +69,7 @@ function makeExtra(auth: Authenticator) {
 // skill via the CREATE_SKILL_TOOL_NAME tool.
 async function createBuilderTestContext() {
   const result = await createResourceTest({ role: "builder" });
-  const adminAuth = await Authenticator.internalAdminForWorkspace(
-    result.workspace.sId
-  );
-  const group = await GroupFactory.regularAuto(
-    result.workspace,
-    `skill-creator-${result.user.sId}`
-  );
-  await GroupFactory.withMembers(adminAuth, group, [result.user]);
-  await GroupPermissionResource.grantTypeWide(adminAuth, {
-    group,
+  await grantWorkspacePermission(result.workspace, result.user, {
     grantType: "create",
     resourceType: "skill",
   });
