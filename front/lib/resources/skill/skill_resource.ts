@@ -1527,6 +1527,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       status = "active",
       limit,
       globalSpaceOnly,
+      podSpaceId,
       onlyCustom,
       availability,
       updatedAfter,
@@ -1538,6 +1539,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       status?: SkillStatus | SkillStatus[];
       limit?: number;
       globalSpaceOnly?: boolean;
+      podSpaceId?: ModelId | null;
       onlyCustom?: boolean;
       availability?: SkillAvailability | SkillAvailability[];
       updatedAfter?: Date;
@@ -1561,14 +1563,35 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withFileAttachments,
     });
 
+    let filteredSkills = skills;
+
     if (globalSpaceOnly) {
       const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-      return skills.filter((skill) =>
+      filteredSkills = filteredSkills.filter((skill) =>
         skill.requestedSpaceIds.every((id) => id === globalSpace.id)
       );
     }
 
-    return skills;
+    if (podSpaceId === undefined) {
+      return filteredSkills;
+    }
+
+    const allRequestedSpaceIds = uniq(
+      filteredSkills.flatMap((skill) => skill.requestedSpaceIds)
+    );
+    const podSpaceIds = new Set<ModelId>(
+      await SpaceResource.fetchProjectSpaceIdsAmong(auth, allRequestedSpaceIds)
+    );
+
+    return filteredSkills.filter((skill) => {
+      const skillPodSpaceIds = skill.requestedSpaceIds.filter((id) =>
+        podSpaceIds.has(id)
+      );
+      if (skillPodSpaceIds.length === 0) {
+        return true;
+      }
+      return podSpaceId !== null && skillPodSpaceIds.includes(podSpaceId);
+    });
   }
 
   /**

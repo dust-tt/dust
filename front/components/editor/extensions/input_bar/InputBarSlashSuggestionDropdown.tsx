@@ -138,6 +138,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     const { capabilityItems, isLoading } = useInputBarSlashCommandCapabilities({
       owner,
       query,
+      conversationPodSpaceId: spaceIdRef.current,
       selectedMCPServerViewIdsRef,
     });
 

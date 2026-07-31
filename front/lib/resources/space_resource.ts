@@ -710,6 +710,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return spaces ?? [];
   }
 
+  static async fetchProjectSpaceIdsAmong(
+    auth: Authenticator,
+    spaceModelIds: ModelId[]
+  ): Promise<ModelId[]> {
+    if (spaceModelIds.length === 0) {
+      return [];
+    }
+    const spaces = await this.fetchByModelIds(auth, spaceModelIds);
+    return spaces.filter((s) => s.isProject()).map((s) => s.id);
+  }
+
   static async dangerouslyFetchByModelIds(
     spaceModelIds: ModelId[]
   ): Promise<SpaceResource[]> {

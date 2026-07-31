@@ -102,6 +102,7 @@ export function useSkills({
   disabled,
   status,
   globalSpaceOnly,
+  podContext,
   availability,
   bypassEditorVisibility,
   swrOptions,
@@ -110,6 +111,7 @@ export function useSkills({
   disabled?: boolean;
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
+  podContext?: string | null;
   availability?: SkillAvailability | SkillAvailability[];
   // Admin-only: bypass the editor-visibility rule and also list unpublished
   // (editors-only) skills the caller does not edit.
@@ -129,6 +131,13 @@ export function useSkills({
   }
   if (globalSpaceOnly) {
     queryParams.set("globalSpaceOnly", "true");
+  }
+  if (podContext !== undefined) {
+    if (podContext !== null) {
+      queryParams.set("podSpaceId", podContext);
+    } else {
+      queryParams.set("excludePodScopedSkills", "true");
+    }
   }
   if (availability) {
     const availabilities = Array.isArray(availability)

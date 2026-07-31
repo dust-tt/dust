@@ -3,12 +3,14 @@ import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
 import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
+  validateAtMostOnePodSpace,
 } from "@app/lib/api/skills/space_requirements";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type {
   GetSkillsResponseBody,
@@ -133,6 +135,9 @@ app.get(
     const withMessageCount = ctx.req.query("withMessageCount") === "true";
     const status = ctx.req.query("status");
     const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
+    const podSpaceId = ctx.req.query("podSpaceId");
+    const excludePodScopedSkills =
+      ctx.req.query("excludePodScopedSkills") === "true";
     const onlyCustom = ctx.req.query("onlyCustom");
     // @deprecated Use availability instead. Kept while old clients still send it.
     const isDefault = ctx.req.query("isDefault");
@@ -183,9 +188,27 @@ app.get(
       });
     }
 
+    let resolvedPodSpaceId: number | null | undefined;
+    if (podSpaceId) {
+      const podSpace = await SpaceResource.fetchById(auth, podSpaceId);
+      if (!podSpace) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "space_not_found",
+            message: `Space "${podSpaceId}" was not found.`,
+          },
+        });
+      }
+      resolvedPodSpaceId = podSpace.id;
+    } else if (excludePodScopedSkills) {
+      resolvedPodSpaceId = null;
+    }
+
     const allSkills = await SkillResource.listByWorkspace(auth, {
       status: skillStatus,
       globalSpaceOnly: globalSpaceOnly === "true",
+      podSpaceId: resolvedPodSpaceId,
       onlyCustom: onlyCustom === "true",
       availability,
       withInstructions: false,
@@ -478,6 +501,20 @@ app.post(
       ...referencedSkillSpaceIds,
       ...additionalRequestedSpaceIdsRes.value,
     ]);
+
+    const podSpaceValidation = await validateAtMostOnePodSpace(
+      auth,
+      requestedSpaceIds
+    );
+    if (podSpaceValidation.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: podSpaceValidation.error.message,
+        },
+      });
+    }
 
     // Validate file attachments if provided.
     let files: FileResource[] | undefined;

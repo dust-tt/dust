@@ -536,6 +536,67 @@ describe("GET /api/w/:wId/skills", () => {
     expect(globalNames).not.toContain("Member Restricted Skill");
   });
 
+  it("with podSpaceId, includes global and that Pod's own skills but hides a different Pod's skill", async () => {
+    const { workspace, user, auth } = await setupTest("admin");
+
+    await SpaceFactory.defaults(auth);
+
+    const podSpace = await SpaceFactory.project(workspace, user.id);
+    const otherPodSpace = await SpaceFactory.project(workspace, user.id);
+
+    await SkillFactory.create(auth, { name: "Global Skill" });
+    await SkillFactory.create(auth, {
+      name: "Pod-Scoped Skill",
+      requestedSpaceIds: [podSpace.id],
+    });
+    await SkillFactory.create(auth, {
+      name: "Other Pod Skill",
+      requestedSpaceIds: [otherPodSpace.id],
+    });
+
+    const response = await getSkills(workspace, { podSpaceId: podSpace.sId });
+
+    expect(response.status).toBe(200);
+    const skillNames = (await response.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).toContain("Global Skill");
+    expect(skillNames).toContain("Pod-Scoped Skill");
+    expect(skillNames).not.toContain("Other Pod Skill");
+  });
+
+  it("with excludePodScopedSkills=true, hides every Pod-scoped skill but keeps global and non-Pod-restricted skills", async () => {
+    const { workspace, user, auth } = await setupTest("admin");
+
+    await SpaceFactory.defaults(auth);
+
+    const podSpace = await SpaceFactory.project(workspace, user.id);
+    const regularSpace = await SpaceFactory.regular(workspace);
+    await regularSpace.addMembers(auth, { userIds: [user.sId] });
+
+    await SkillFactory.create(auth, { name: "Global Skill" });
+    await SkillFactory.create(auth, {
+      name: "Pod-Scoped Skill",
+      requestedSpaceIds: [podSpace.id],
+    });
+    await SkillFactory.create(auth, {
+      name: "Regular Space Skill",
+      requestedSpaceIds: [regularSpace.id],
+    });
+
+    const response = await getSkills(workspace, {
+      excludePodScopedSkills: "true",
+    });
+
+    expect(response.status).toBe(200);
+    const skillNames = (await response.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).toContain("Global Skill");
+    expect(skillNames).toContain("Regular Space Skill");
+    expect(skillNames).not.toContain("Pod-Scoped Skill");
+  });
+
   it("should not return instructions or tools in skill list", async () => {
     const { workspace, auth, user } = await setupTest();
 
@@ -1402,6 +1463,61 @@ describe("POST /api/w/:wId/skills", () => {
     expect(response.status).toBe(200);
     const responseData = await response.json();
     expect(responseData.skill.requestedSpaceIds).toContain(openPod.sId);
+  });
+
+  it("rejects a skill restricted to two different Pods via additionalRequestedSpaceIds", async () => {
+    const { workspace, globalGroup, user } = await setupTest("builder");
+    await grantCreateSkillCapability(workspace, user);
+
+    const podA = await SpaceFactory.project(workspace);
+    await GroupSpaceFactory.associate(podA, globalGroup);
+    const podB = await SpaceFactory.project(workspace);
+    await GroupSpaceFactory.associate(podB, globalGroup);
+
+    const response = await postSkill(workspace, {
+      name: "Skill Restricted To Two Pods",
+      agentFacingDescription: "To use with two Pods",
+      userFacingDescription: "A skill with two selected Pods",
+      instructions: "Simple instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      additionalRequestedSpaceIds: [podA.sId, podB.sId],
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+
+  it("rejects a skill restricted to a Pod that already references a skill scoped to a different Pod", async () => {
+    const { auth, workspace, globalGroup, user } = await setupTest("builder");
+    await grantCreateSkillCapability(workspace, user);
+
+    const podA = await SpaceFactory.project(workspace);
+    await GroupSpaceFactory.associate(podA, globalGroup);
+    const podB = await SpaceFactory.project(workspace);
+    await GroupSpaceFactory.associate(podB, globalGroup);
+
+    const childSkill = await SkillFactory.create(auth, {
+      name: "Pod B Skill",
+      requestedSpaceIds: [podB.id],
+    });
+
+    const response = await postSkill(workspace, {
+      name: "Parent Skill",
+      agentFacingDescription: "To use with another skill",
+      userFacingDescription: "A skill with a conflicting Pod reference",
+      instructions: `Start with ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      additionalRequestedSpaceIds: [podA.sId],
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
   });
 
   it("creates a skill configuration with 2 tools", async () => {

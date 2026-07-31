@@ -853,6 +853,63 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     expect(data.skill.requestedSpaceIds).toContain(restrictedSpace.sId);
   });
 
+  it("rejects restricting a skill to two different Pods via additionalRequestedSpaceIds", async () => {
+    const { workspace, skill, globalGroup } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    const podA = await SpaceFactory.project(workspace);
+    await GroupSpaceFactory.associate(podA, globalGroup);
+    const podB = await SpaceFactory.project(workspace);
+    await GroupSpaceFactory.associate(podB, globalGroup);
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      additionalRequestedSpaceIds: [podA.sId, podB.sId],
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+
+  it("rejects restricting a skill to a Pod that already references a skill scoped to a different Pod", async () => {
+    const { workspace, skill, requestUserAuth, globalGroup } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    const podA = await SpaceFactory.project(workspace);
+    await GroupSpaceFactory.associate(podA, globalGroup);
+    const podB = await SpaceFactory.project(workspace);
+    await GroupSpaceFactory.associate(podB, globalGroup);
+
+    const childSkill = await SkillFactory.create(requestUserAuth, {
+      name: "Pod B Skill",
+      requestedSpaceIds: [podB.id],
+    });
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      additionalRequestedSpaceIds: [podA.sId],
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+
   it("should preserve existing additional requested spaces when omitted", async () => {
     const { workspace, skill, requestUserAuth, globalGroup } = await setupTest({
       requestUserRole: "admin",
