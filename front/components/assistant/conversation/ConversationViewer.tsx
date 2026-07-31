@@ -2,7 +2,6 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { getWorkspaceLimitForSubmitError } from "@app/components/app/ReachedLimitPopup";
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
-import { ConversationBranchApprovalModal } from "@app/components/assistant/conversation/ConversationBranchApprovalModal";
 import {
   parseDataAsMessageIdAndActionId,
   useConversationSidePanelContext,
@@ -47,7 +46,6 @@ import {
   useConversations,
 } from "@app/hooks/conversations";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
-import { useOpenConversationBranch } from "@app/hooks/conversations/useOpenConversationBranch";
 import { planFileKey } from "@app/hooks/conversations/usePlanFile";
 import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
@@ -360,13 +358,6 @@ export const ConversationViewer = ({
     options: { disabled: true },
   });
 
-  const [branchIdToApprove, setBranchIdToApprove] = useState<string | null>(
-    null
-  );
-
-  const { openBranch } = useOpenConversationBranch({ owner, conversationId });
-  const hasInjectedOpenBranchRef = useRef(false);
-
   const {
     conversation,
     conversationError,
@@ -566,40 +557,6 @@ export const ConversationViewer = ({
     conversation?.unread,
     conversation?.lastReadMs,
   ]);
-
-  // Restore an open branch (and its messages) when the user reloads or
-  // navigates back to a conversation that has a pending open branch. The
-  // conversation fetch only returns the main thread, so without this the
-  // approval modal would never re-open.
-  useEffect(() => {
-    if (
-      initialListData === undefined ||
-      !openBranch ||
-      !virtuosoMessageListRef.current ||
-      hasInjectedOpenBranchRef.current
-    ) {
-      return;
-    }
-    hasInjectedOpenBranchRef.current = true;
-
-    const branchMessages = convertLightMessageTypeToVirtuosoMessages(
-      openBranch.messages
-    );
-    const existingMessageIds = new Set(
-      virtuosoMessageListRef.current.data.get().map((message) => message.sId)
-    );
-    for (const msg of branchMessages) {
-      if (existingMessageIds.has(msg.sId)) {
-        continue;
-      }
-      const insertIdx = getBranchedInsertIndex(
-        virtuosoMessageListRef.current.data.get(),
-        msg
-      );
-      virtuosoMessageListRef.current.data.insert([msg], insertIdx);
-    }
-    setBranchIdToApprove(openBranch.branchId);
-  }, [initialListData, openBranch]);
 
   // Sync the virtuoso ref with the side panel context.
   const {
@@ -927,10 +884,6 @@ export const ConversationViewer = ({
                 } else {
                   virtuosoMessageListRef.current.data.append([agentMessage]);
                 }
-              }
-
-              if (agentMessage.branchId) {
-                setBranchIdToApprove(agentMessage.branchId);
               }
 
               void mutateConversationParticipants(async (participants) =>
@@ -1543,8 +1496,6 @@ export const ConversationViewer = ({
       isProjectArchived: !!spaceInfo?.archivedAt,
       projectId: conversation?.spaceId ?? undefined,
       projectSpaceName: spaceInfo?.name,
-      branchIdToApprove: branchIdToApprove ?? undefined,
-      setBranchIdToApprove,
       isAutoScrollEnabledRef,
       isNoSeat: limitReachedCode === "no_seat",
       setLimitReachedCode,
@@ -1564,7 +1515,6 @@ export const ConversationViewer = ({
     spaceInfo?.isRestricted,
     spaceInfo?.archivedAt,
     spaceInfo?.name,
-    branchIdToApprove,
     limitReachedCode,
     setLimitReachedCode,
   ]);
@@ -1581,7 +1531,6 @@ export const ConversationViewer = ({
       >
         <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
           onRenderedDataChange={onRenderedDataChange}
-          StickyHeader={ConversationBranchApprovalModal}
           useWindowScroll={isMobile}
           data={{
             data: initialListData,
