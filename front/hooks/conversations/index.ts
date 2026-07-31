@@ -1,5 +1,3 @@
-export { useAgentMessageSkills } from "./useAgentMessageSkills";
-export { useAgentMessageTools } from "./useAgentMessageTools";
 export { useBranchConversation } from "./useBranchConversation";
 export { useCancelMessage } from "./useCancelMessage";
 export { useCompactConversation } from "./useCompactConversation";
@@ -23,10 +21,6 @@ export {
   useConversationParticipationOptions,
   useJoinConversation,
 } from "./useConversationParticipants";
-export {
-  useAddDeleteConversationSkill,
-  useConversationSkills,
-} from "./useConversationSkills";
 export { useConversations } from "./useConversations";
 export {
   useAddDeleteConversationTool,

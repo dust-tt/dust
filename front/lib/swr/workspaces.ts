@@ -32,7 +32,6 @@ import type {
   GetWorkspaceVerifiedDomainsResponseBody,
 } from "@app/lib/api/workspace";
 import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/lib/api/workspace/analytics";
-import type { GetWorkspaceAnalyticsResponse } from "@app/lib/api/workspace_analytics";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
@@ -189,32 +188,6 @@ export function useWorkspaceSubscriptions({
     subscriptions: data?.subscriptions ?? emptyArray(),
     isSubscriptionsLoading: !error && !data && !disabled,
     isSubscriptionsError: error,
-  };
-}
-
-export function useWorkspaceAnalytics({
-  owner,
-  disabled,
-}: {
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const analyticsFetcher: Fetcher<GetWorkspaceAnalyticsResponse> = fetcher;
-
-  const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/workspace-analytics`,
-    analyticsFetcher,
-    {
-      disabled,
-    }
-  );
-
-  return {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    analytics: data ? data : null,
-    isMemberCountLoading: !error && !data,
-    isMemberCountError: error,
   };
 }
 

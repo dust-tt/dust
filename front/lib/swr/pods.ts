@@ -217,52 +217,6 @@ export function useAddPodContextContentNodes({
   };
 }
 
-export function useRemovePodContextFile({
-  owner,
-  podId,
-}: {
-  owner: LightWorkspaceType;
-  podId: string;
-}) {
-  const sendNotification = useSendNotification();
-
-  return async (fileId: string): Promise<Result<void, Error>> => {
-    try {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${podId}/project_context/files/${fileId}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to remove file from Pod",
-          description: errorData.message,
-        });
-        return new Err(new Error(errorData.message));
-      }
-
-      sendNotification({
-        type: "success",
-        title: "Removed from Pod files",
-      });
-
-      return new Ok(undefined);
-    } catch (e) {
-      const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to remove file from Pod",
-        description: errorMessage,
-      });
-      return new Err(new Error(errorMessage));
-    }
-  };
-}
-
 export function useRemovePodContextContentNodes({
   owner,
   podId,
