@@ -1196,7 +1196,7 @@ export function UsagePage() {
                   {membersTab === "history" && (
                     <CsvDownloadButton
                       {...upgradeRequestsHistoryCsvDownload}
-                      label="Export to CSV"
+                      label="Download to CSV"
                     />
                   )}
                 </div>
