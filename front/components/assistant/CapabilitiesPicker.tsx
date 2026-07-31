@@ -163,6 +163,7 @@ export function CapabilitiesPickerItemsList({
 interface CapabilitiesPickerProps {
   owner: WorkspaceType;
   user: UserType | null;
+  conversationPodSpaceId?: string;
   selectedMCPServerViews: MCPServerViewLightType[];
   onSelect: (serverView: MCPServerViewLightType) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
@@ -175,6 +176,7 @@ interface CapabilitiesPickerProps {
 export function CapabilitiesPicker({
   owner,
   user,
+  conversationPodSpaceId,
   selectedMCPServerViews,
   onSelect,
   onSkillSelect,
@@ -259,6 +261,7 @@ export function CapabilitiesPicker({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
+    podContext: conversationPodSpaceId ?? null,
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
 
