@@ -79,7 +79,7 @@ export type ConversationCaching =
 async function getConversationForAgentLoop(
   auth: Authenticator,
   conversationId: string,
-  conversationBranchId: string | null,
+  _conversationBranchId: string | null,
   // These params are only used for cache key uniqueness.
   _workspaceId: string,
   _unicitySuffix: string
@@ -89,7 +89,7 @@ async function getConversationForAgentLoop(
     auth,
     conversationId,
     false,
-    conversationBranchId,
+    null,
     PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
   );
   if (res.isErr()) {
@@ -101,8 +101,13 @@ async function getConversationForAgentLoop(
 function getCachedGetConversation(ttlMs: number) {
   return cacheWithRedis(
     getConversationForAgentLoop,
-    (_auth, conversationId, conversationBranchId, workspaceId, unicitySuffix) =>
-      `${workspaceId}:${conversationId}:${conversationBranchId}:${unicitySuffix}`,
+    (
+      _auth,
+      conversationId,
+      _conversationBranchId,
+      workspaceId,
+      unicitySuffix
+    ) => `${workspaceId}:${conversationId}:${unicitySuffix}`,
     {
       ttlMs,
       useDistributedLock: true,
@@ -193,7 +198,6 @@ export async function getAgentLoopDataWithAuth(
     agentMessageVersion,
     caching,
     conversationId,
-    conversationBranchId,
     userMessageId,
     userMessageVersion,
   } = agentLoopArgs;
@@ -205,7 +209,7 @@ export async function getAgentLoopDataWithAuth(
       conversation = await cachedGetConversation(
         auth,
         conversationId,
-        conversationBranchId,
+        null,
         auth.getNonNullableWorkspace().sId,
         caching.unicitySuffix
       );
@@ -235,7 +239,7 @@ export async function getAgentLoopDataWithAuth(
       auth,
       conversationId,
       false,
-      conversationBranchId,
+      null,
       PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
     );
 

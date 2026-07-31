@@ -83,7 +83,6 @@ export async function resolveAuthentication(
     userMessageVersion,
     userMessageUserId,
     userMessageOrigin,
-    branchId,
   } = await getUserMessageIdFromMessageId(auth, {
     messageId,
   });
@@ -169,7 +168,7 @@ export async function resolveAuthentication(
       agentLoopArgs: {
         agentMessageId,
         agentMessageVersion,
-        conversationBranchId: branchId,
+        conversationBranchId: null,
         conversationId,
         conversationTitle,
         userMessageId,
@@ -201,7 +200,7 @@ export async function resolveAuthentication(
       agentMessageVersion,
       conversationId,
       conversationTitle,
-      conversationBranchId: branchId,
+      conversationBranchId: null,
       userMessageId,
       userMessageVersion,
       userMessageOrigin,

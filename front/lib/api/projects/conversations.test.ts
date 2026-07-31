@@ -1320,7 +1320,7 @@ describe("toPodConversationListItem", () => {
       workspace,
       conversation: conversationType,
       content: "Hidden anchor message",
-      origin: "branch_anchor",
+      origin: "project_kickoff",
       rank: 0,
     });
 

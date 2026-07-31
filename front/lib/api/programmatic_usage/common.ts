@@ -38,7 +38,6 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   project_kickoff: "user",
   reinforced_skill_notification: "user",
   reinforcement: "programmatic",
-  branch_anchor: "user",
 };
 
 export const USER_USAGE_ORIGINS = Object.keys(

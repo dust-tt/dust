@@ -1,6 +1,5 @@
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
-import type { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import type { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -15,7 +14,6 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
 import type {
   AgentMessageStatus,
   CompactionMessageStatus,
@@ -825,7 +823,7 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare visibility: CreationOptional<MessageVisibility>;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
-  declare branchId: ForeignKey<ConversationBranchModel["id"]> | null;
+  declare branchId: number | null;
 
   declare parentId: ForeignKey<MessageModel["id"]> | null;
   declare userMessageId: ForeignKey<UserMessageModel["id"]> | null;
@@ -840,15 +838,9 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare reactions?: NonAttribute<MessageReactionModel[]>;
 
   declare conversation?: NonAttribute<ConversationModel>;
-  declare branch?: NonAttribute<ConversationBranchModel>;
 
   getBranchId(): string | null {
-    return this.branchId
-      ? makeSId("conversation_branch", {
-          id: this.branchId,
-          workspaceId: this.workspaceId,
-        })
-      : null;
+    return null;
   }
 }
 

@@ -603,7 +603,6 @@ async function checkDiffFiles() {
   }
 
   const sseSharedModels = [
-    "front/lib/models/agent/conversation_branch.ts",
     "front/lib/models/agent/conversation_fork.ts",
     "front/lib/models/agent/conversation.ts",
     "front/lib/models/feature_flag.ts",

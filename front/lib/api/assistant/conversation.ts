@@ -103,7 +103,6 @@ import { triggerConversationUnreadNotifications } from "@app/lib/notifications/w
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
-import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import {
   ConversationResource,
   type RunningAgentMessageContext,
@@ -113,7 +112,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 
@@ -361,16 +359,6 @@ export async function getConversationMessageType(
     return null;
   }
 
-  if (message.getBranchId()) {
-    const branch = await ConversationBranchResource.fetchById(
-      auth,
-      message.getBranchId()!
-    );
-    if (!branch || !branch.canRead(auth)) {
-      return null;
-    }
-  }
-
   if (message.userMessageId) {
     return "user_message";
   }
@@ -517,7 +505,6 @@ export function isUserMessageContextValid(
     case "project_kickoff":
     case "reinforced_skill_notification":
     case "reinforcement":
-    case "branch_anchor":
     case "web":
       return false;
     default:
@@ -532,7 +519,6 @@ export async function postUserMessage(
   auth: Authenticator,
   {
     conversationResource,
-    branchId: initialBranchId = null,
     content,
     mentions,
     context,
@@ -543,7 +529,6 @@ export async function postUserMessage(
     modelSelection,
   }: {
     conversationResource: ConversationResource;
-    branchId?: string | null;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
@@ -567,10 +552,8 @@ export async function postUserMessage(
   const subscription = auth.subscription();
   const plan = subscription?.plan;
 
-  const conversation: ConversationWithoutContentType = {
-    ...conversationResource.toJSON(),
-    branchId: initialBranchId,
-  };
+  const conversation: ConversationWithoutContentType =
+    conversationResource.toJSON();
 
   if (!owner || !subscription || !plan) {
     return new Err({
@@ -628,7 +611,6 @@ export async function postUserMessage(
     const hasOtherHumans =
       await conversationResource.hasUserMessageFromOtherUser(auth, {
         excludeUserId: user?.id,
-        branchId: conversation.branchId,
       });
 
     if (!hasOtherHumans) {
@@ -668,9 +650,7 @@ export async function postUserMessage(
   // below which means an agent loop could be triggered whle a compaction is running. This is not
   // that problematic if it happens (agent message after the compaction message).
   const { runningAgentMessage: runningAgentContext, runningCompactionMessage } =
-    await conversationResource.getInFlightMessages(auth, {
-      branchId: conversation.branchId,
-    });
+    await conversationResource.getInFlightMessages(auth);
   if (runningCompactionMessage) {
     return new Err({
       status_code: 409,
@@ -1063,7 +1043,6 @@ export async function postUserMessage(
         contentFragments: await fetchPrecedingContentFragments(auth, {
           conversationResource,
           targetRank: userMessage.rank,
-          branchId: conversation.branchId,
         }),
       },
       agentMessages
@@ -1114,14 +1093,12 @@ export async function editUserMessage(
   auth: Authenticator,
   {
     conversationResource,
-    branchId: initialBranchId = null,
     message,
     content,
     mentions,
     skipToolsValidation,
   }: {
     conversationResource: ConversationResource;
-    branchId?: string | null;
     message: UserMessageType;
     content: string;
     mentions: MentionType[];
@@ -1156,10 +1133,8 @@ export async function editUserMessage(
     });
   }
 
-  const conversation: ConversationWithoutContentType = {
-    ...conversationResource.toJSON(),
-    branchId: initialBranchId,
-  };
+  const conversation: ConversationWithoutContentType =
+    conversationResource.toJSON();
 
   const canInteractRes = await WakeUpResource.canUserInteract(
     auth,
@@ -1320,7 +1295,6 @@ export async function editUserMessage(
         const hasAgentMessagesAfter =
           await conversationResource.hasAgentMessageAfterRank(auth, {
             afterRank: messageRow.rank,
-            branchId: conversation.branchId,
             transaction: t,
           });
 
@@ -1426,7 +1400,6 @@ export async function editUserMessage(
       contentFragments: await fetchPrecedingContentFragments(auth, {
         conversationResource,
         targetRank: userMessage.rank,
-        branchId: conversation.branchId,
       }),
     },
     agentMessages
@@ -1540,9 +1513,7 @@ export async function createAgentMessageFromText(
         sId: generateRandomModelSId(),
         rank,
         conversationId: conversation.id,
-        branchId: conversation.branchId
-          ? getResourceIdFromSId(conversation.branchId)
-          : null,
+        branchId: null,
         parentId,
         agentMessageId: agentMessageRow.id,
         workspaceId: owner.id,
@@ -1726,18 +1697,14 @@ export async function retryAgentMessage(
   auth: Authenticator,
   {
     conversationResource,
-    branchId: initialBranchId = null,
     message,
   }: {
     conversationResource: ConversationResource;
-    branchId?: string | null;
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithContentfulStatusCode>> {
-  const conversation: ConversationWithoutContentType = {
-    ...conversationResource.toJSON(),
-    branchId: initialBranchId,
-  };
+  const conversation: ConversationWithoutContentType =
+    conversationResource.toJSON();
 
   const parentMessageRes = await conversationResource.getMessageById(
     auth,
@@ -1756,7 +1723,6 @@ export async function retryAgentMessage(
   const latestParentMessageModel =
     await conversationResource.getLatestUserMessageModelAtRank(auth, {
       rank: parentMessageRes.value.rank,
-      branchId: message.branchId,
     });
   if (!latestParentMessageModel) {
     return new Err({
@@ -1931,7 +1897,7 @@ export async function retryAgentMessage(
       agentMessageVersion: agentMessage.version,
       conversationId: conversation.sId,
       conversationTitle: conversation.title,
-      conversationBranchId: conversation.branchId,
+      conversationBranchId: null,
       userMessageId: parentUserMessage.sId,
       userMessageVersion: parentUserMessage.version,
       userMessageOrigin: parentUserMessage.context.origin,
@@ -2020,9 +1986,7 @@ export async function postNewContentFragment(
                 sId: generateRandomModelSId(),
                 rank: nextMessageRank,
                 conversationId: conversation.id,
-                branchId: conversation.branchId
-                  ? getResourceIdFromSId(conversation.branchId)
-                  : null,
+                branchId: null,
                 contentFragmentId: r.fragment.id,
                 workspaceId: owner.id,
               },
@@ -2112,9 +2076,7 @@ export async function postNewContentFragment(
         sId: messageId,
         rank: nextMessageRank,
         conversationId: conversation.id,
-        branchId: conversation.branchId
-          ? getResourceIdFromSId(conversation.branchId)
-          : null,
+        branchId: null,
         contentFragmentId: contentFragment.id,
         workspaceId: owner.id,
       },
@@ -2162,21 +2124,17 @@ export async function softDeleteUserMessageAndReplies(
   {
     message,
     conversationResource,
-    branchId: initialBranchId = null,
   }: {
     message: UserMessageType;
     conversationResource: ConversationResource;
-    branchId?: string | null;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
   if (message.visibility === "deleted") {
     return new Ok({ success: true });
   }
 
-  const conversation: ConversationWithoutContentType = {
-    ...conversationResource.toJSON(),
-    branchId: initialBranchId,
-  };
+  const conversation: ConversationWithoutContentType =
+    conversationResource.toJSON();
 
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
@@ -2186,15 +2144,12 @@ export async function softDeleteUserMessageAndReplies(
     return new Err(new ConversationError("message_deletion_not_authorized"));
   }
 
-  const branchId = message.branchId ?? initialBranchId;
-
   // Known small race: this snapshot is taken before the rank lock below. A concurrent retry/edit
   // that takes the lock first and writes a v+1 at the same rank could cause the cascade insert to
   // hit the (rank, version) unique constraint.
   const orphanAgentMessageModels =
     await conversationResource.getConsecutiveAgentReplyModelsAfterRank(auth, {
       afterRank: message.rank,
-      branchId,
     });
 
   const orphanModelsToCascade = orphanAgentMessageModels.filter(
@@ -2222,7 +2177,6 @@ export async function softDeleteUserMessageAndReplies(
     const relatedContentFragments = await fetchPrecedingContentFragments(auth, {
       conversationResource,
       targetRank: message.rank,
-      branchId,
       transaction: t,
     });
 
@@ -3109,14 +3063,6 @@ export async function isConversationEventAllowedForAuth(
   switch (type) {
     case "user_message_new":
     case "agent_message_new":
-      if (event.message.branchId) {
-        // It's okay to fetch the branch here because theses events are only sent once per message.
-        const branch = await ConversationBranchResource.fetchById(
-          auth,
-          event.message.branchId
-        );
-        return !!branch && branch.canRead(auth);
-      }
       return true;
     case "agent_message_done":
     case "compaction_message_new":

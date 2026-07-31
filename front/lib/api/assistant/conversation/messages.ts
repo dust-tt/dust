@@ -12,7 +12,6 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isEmailValid } from "@app/lib/utils";
@@ -238,9 +237,7 @@ export async function createUserMessage(
       sId: generateRandomModelSId(),
       rank,
       conversationId: conversation.id,
-      branchId: conversation.branchId
-        ? getResourceIdFromSId(conversation.branchId)
-        : null,
+      branchId: null,
       parentId,
       version,
       userMessageId: userMessage.id,
@@ -264,7 +261,7 @@ export async function createUserMessage(
     context,
     agenticMessageData: agenticMessageData ?? undefined,
     rank: m.rank,
-    branchId: conversation.branchId,
+    branchId: null,
     reactions: [],
     requestedModel,
   };
@@ -382,9 +379,7 @@ export const createAgentMessages = async (
             sId: generateRandomModelSId(),
             rank: metadata.agentMessage.rank,
             conversationId: conversation.id,
-            branchId: conversation.branchId
-              ? getResourceIdFromSId(conversation.branchId)
-              : null,
+            branchId: null,
             parentId: metadata.parentId,
             version: metadata.agentMessage.version + 1,
             agentMessageId: agentMessageRow.id,
@@ -439,9 +434,7 @@ export const createAgentMessages = async (
             sId: generateRandomModelSId(),
             rank: metadata.agentMessage.rank,
             conversationId: conversation.id,
-            branchId: conversation.branchId
-              ? getResourceIdFromSId(conversation.branchId)
-              : null,
+            branchId: null,
             parentId: metadata.parentId,
             version: metadata.agentMessage.version + 1,
             agentMessageId: agentMessageRow.id,
@@ -562,9 +555,7 @@ export const createAgentMessages = async (
                 sId: generateRandomModelSId(),
                 rank: metadata.nextMessageRank++,
                 conversationId: conversation.id,
-                branchId: conversation.branchId
-                  ? getResourceIdFromSId(conversation.branchId)
-                  : null,
+                branchId: null,
                 parentId: metadata.userMessage.id,
                 agentMessageId: agentMessageRow.id,
                 workspaceId: owner.id,
@@ -643,7 +634,7 @@ export const createAgentMessages = async (
             error: null,
             configuration,
             rank: messageRow.rank,
-            branchId: conversation.branchId,
+            branchId: null,
             skipToolsValidation: agentMessageRow.skipToolsValidation,
             contents: [],
             parsedContents: {},
@@ -783,9 +774,7 @@ export async function createCompactionMessage(
       sId: generateRandomModelSId(),
       rank,
       conversationId: conversation.id,
-      branchId: conversation.branchId
-        ? getResourceIdFromSId(conversation.branchId)
-        : null,
+      branchId: null,
       version: 0,
       compactionMessageId: compactionMessageRow.id,
       workspaceId: workspace.id,
@@ -802,7 +791,7 @@ export async function createCompactionMessage(
     visibility: messageRow.visibility,
     version: messageRow.version,
     rank: messageRow.rank,
-    branchId: conversation.branchId,
+    branchId: null,
     status: "created",
     content: null,
     ...(sourceConversationId ? { sourceConversationId } : {}),
