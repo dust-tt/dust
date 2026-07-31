@@ -9,6 +9,7 @@ import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import {
+  attributeUserFromWorkspaceAndEmail,
   createAgentMessages,
   createCompactionMessage,
   createUserMessage,
@@ -1723,13 +1724,21 @@ describe("createUserMessage", () => {
       origin: "web",
     };
 
+    // Attribution happens at the caller (postUserMessage), before the message transaction.
+    const attributedUser = await attributeUserFromWorkspaceAndEmail(
+      workspace,
+      context.email
+    );
+    expect(attributedUser).not.toBeNull();
+    expect(attributedUser?.email).toBe(userJson.email);
+
     const userMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content,
         metadata: {
           type: "create",
-          user: null, // User should be attributed from email
+          user: attributedUser,
           rank,
           context,
           requestedModel: null,

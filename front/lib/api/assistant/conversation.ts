@@ -14,6 +14,7 @@ import {
 } from "@app/lib/api/assistant/conversation/lock";
 import { createUserMentions } from "@app/lib/api/assistant/conversation/mentions";
 import {
+  attributeUserFromWorkspaceAndEmail,
   createAgentMessages,
   createUserMessage,
 } from "@app/lib/api/assistant/conversation/messages";
@@ -848,6 +849,15 @@ export async function postUserMessage(
     }
   }
 
+  // Resolve the message author before the transaction: the email attribution reads must not run
+  // while the conversation advisory lock is held.
+  // TODO(2026-07-31 SEC): this allow spoofing as we trust blindly the user email from the metadata.
+  let messageUser = doNotAssociateUser ? null : (user?.toJSON() ?? null);
+  messageUser ??= await attributeUserFromWorkspaceAndEmail(
+    owner,
+    context.email
+  );
+
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages } = await withTransaction(async (t) => {
     // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
@@ -1001,7 +1011,7 @@ export async function postUserMessage(
       content,
       metadata: {
         type: "create",
-        user: doNotAssociateUser ? null : (user?.toJSON() ?? null),
+        user: messageUser,
         rank: nextMessageRank++,
         context: enrichedContext,
         agenticMessageData,

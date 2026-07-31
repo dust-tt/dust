@@ -47,7 +47,7 @@ import uniqBy from "lodash/uniqBy";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-async function attributeUserFromWorkspaceAndEmail(
+export async function attributeUserFromWorkspaceAndEmail(
   workspace: WorkspaceType | null,
   email: string | null
 ): Promise<UserType | null> {
@@ -137,15 +137,7 @@ export async function createUserMessage(
     case "create":
       // Otherwise, we create a new user message from the metadata.
       rank = metadata.rank;
-
-      // TODO: this allow spoofing as we trust blindly the user email from the metadata.
-      user =
-        metadata.user ??
-        (await attributeUserFromWorkspaceAndEmail(
-          workspace,
-          metadata.context.email
-        ));
-
+      user = metadata.user;
       context = metadata.context;
       agenticMessageData = metadata.agenticMessageData;
       requestedModel = metadata.requestedModel;
