@@ -1454,30 +1454,6 @@ export async function executeWriteCanvas({
   ]);
 }
 
-export async function executeDeleteCanvas({
-  canvas_id,
-  accessToken,
-}: {
-  canvas_id: string;
-  accessToken: string;
-}): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
-  const slackClient = await getSlackClient(accessToken);
-
-  const res = await slackClient.apiCall("canvases.delete", { canvas_id });
-  if (!res.ok) {
-    return new Err(
-      new MCPError(`Failed to delete canvas: ${res.error ?? "unknown error"}`)
-    );
-  }
-
-  return new Ok([
-    {
-      type: "text" as const,
-      text: `Canvas "${canvas_id}" has been permanently deleted.`,
-    },
-  ]);
-}
-
 export async function executeCreateChannel({
   name,
   is_private,

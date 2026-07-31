@@ -53,13 +53,6 @@ export interface MondayUser {
   phone?: string;
 }
 
-export interface MondayWorkspace {
-  id: string;
-  name: string;
-  kind: string;
-  description?: string;
-}
-
 const RETRIEVAL_LIMIT = 100;
 
 const makeGraphQLRequest = async (

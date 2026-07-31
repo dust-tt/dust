@@ -2230,10 +2230,6 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
   },
 ];
 
-export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {
-  return DEFAULT_REMOTE_MCP_SERVERS.some((server) => server.url === url);
-};
-
 export const getDefaultRemoteMCPServerByURL = (
   url: string | undefined
 ): DefaultRemoteMCPServerConfig | null => {

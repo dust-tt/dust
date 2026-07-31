@@ -56,10 +56,6 @@ export const MAX_COUNT_LIMIT = 10000; // This is the Hubspot API limit for total
 export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
 type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
 
-const SPECIAL_OBJECTS = ["owners"] as const;
-
-export const ALL_OBJECTS = [...SIMPLE_OBJECTS, ...SPECIAL_OBJECTS] as const;
-
 interface HubspotFilter {
   propertyName: string;
   operator: FilterOperatorEnum;
