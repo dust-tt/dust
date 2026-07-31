@@ -223,11 +223,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const branchId = message.getBranchId() ?? null;
-  const conversation = {
-    ...conversationResource.toJSON(),
-    branchId,
-  };
+  const conversation = conversationResource.toJSON();
 
   const renderRes = await batchRenderMessages(
     auth,
@@ -251,7 +247,6 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     const deleteResult = await softDeleteUserMessageAndReplies(auth, {
       message: renderedMessage,
       conversationResource,
-      branchId,
     });
     if (deleteResult.isErr()) {
       return apiError(ctx, {
