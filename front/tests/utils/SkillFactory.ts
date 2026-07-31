@@ -49,6 +49,19 @@ export class SkillFactory {
       await auth.refresh();
     }
 
+    // Any availability beyond "editors" requires the publish capability; grant it so the factory
+    // can set up any availability.
+    if (
+      availability !== "editors" &&
+      !(await auth.hasWorkspacePermission("publish", "skill"))
+    ) {
+      await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
+        grantType: "publish",
+        resourceType: "skill",
+      });
+      await auth.refresh();
+    }
+
     // Auto-discoverable skills additionally require the make_discoverable capability when
     // admin governance is enabled; grant it so the factory can set up any availability.
     if (
