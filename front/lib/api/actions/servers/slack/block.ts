@@ -7,13 +7,13 @@ import slackifyMarkdown from "slackify-markdown";
  * chat.update method. Per past incidents, the max message length is 3000
  * characters; we stay conservative to leave room for ellipses.
  */
-const MAX_SLACK_MESSAGE_LENGTH = 2500;
+export const MAX_SLACK_MESSAGE_LENGTH = 2500;
 
 // Mirrors connectors/src/connectors/slack/chat/blocks.ts::makeMarkdownBlock.
 // The newer `markdown` block renders tables, headers, lists, but is
 // not supported alongside file uploads — those fall back to a legacy mrkdwn
 // section built from slackify-markdown.
-export function makeMarkdownBlock(
+export function makeMarkdownBlocks(
   text?: string,
   isUpload?: boolean
 ): KnownBlock[] {
@@ -42,10 +42,19 @@ export function makeMarkdownBlock(
   ];
 }
 
-// "Sent via <agent> on Dust" attribution as a standalone context block (mrkdwn,
-// so the link uses `<url|label>`). Kept separate from the message block — like
-// the connector's makeFooterBlock — so it is never absorbed into a markdown
-// table.
+// "Sent via <agent> on Dust" attribution as legacy Slack mrkdwn (link uses
+// `<url|label>`). Single source of truth for the footer text, shared by the
+// context block below and the file-upload `initial_comment` path.
+export function makeSentByFooterText(
+  agentName: string,
+  agentUrl: string
+): string {
+  return `_Sent via <${agentUrl}|${agentName} Agent> on Dust_`;
+}
+
+// The footer as a standalone context block — kept separate from the message
+// block (like the connector's makeFooterBlock) so it is never absorbed into a
+// markdown table.
 export function makeSentByFooterBlock(
   agentName: string,
   agentUrl: string
@@ -55,7 +64,7 @@ export function makeSentByFooterBlock(
     elements: [
       {
         type: "mrkdwn",
-        text: `_Sent via <${agentUrl}|${agentName} Agent> on Dust_`,
+        text: makeSentByFooterText(agentName, agentUrl),
       },
     ],
   };

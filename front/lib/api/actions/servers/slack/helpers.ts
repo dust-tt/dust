@@ -5,8 +5,10 @@ import {
   type ToolContext,
 } from "@app/lib/actions/types";
 import {
-  makeMarkdownBlock,
+  MAX_SLACK_MESSAGE_LENGTH,
+  makeMarkdownBlocks,
   makeSentByFooterBlock,
+  makeSentByFooterText,
 } from "@app/lib/api/actions/servers/slack/block";
 import {
   formatSlackMessageForLLM,
@@ -21,6 +23,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { truncate } from "@app/types/shared/utils/string_utils";
 import type { KnownBlock, WebAPICallResult } from "@slack/web-api";
 import { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/types/response/ConversationsListResponse";
@@ -796,14 +799,15 @@ export async function executePostMessage(
     return new Err(new MCPError("Failed to open group DM"));
   }
 
-  const originalMessage = message;
-
   // The regular path renders the message as a `markdown` block and appends the
   // footer as a separate context block (so it is never absorbed into a markdown
   // table). The file-upload path uses legacy Slack mrkdwn via `initial_comment`
-  // (a plain string, no blocks), so the footer is concatenated inline there.
-  let mrkdwnMessage = slackifyMarkdown(originalMessage);
+  // (a plain string, no blocks), so the footer is concatenated inline there — we
+  // reserve room for it in the truncation so message + footer stays within
+  // MAX_SLACK_MESSAGE_LENGTH.
   let footerBlock: KnownBlock | undefined;
+  let bodyMaxLength = MAX_SLACK_MESSAGE_LENGTH;
+  let mrkdwnMessage = truncate(slackifyMarkdown(message), bodyMaxLength);
 
   if (
     showSentByFooter !== false &&
@@ -816,7 +820,10 @@ export async function executePostMessage(
       config.getAppUrl()
     );
     const agentName = toolContext.runContext?.agentConfiguration.name;
-    mrkdwnMessage = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentName} Agent> on Dust_`;
+    const footerText = makeSentByFooterText(agentName, agentUrl);
+    // -1 for the newline joining the message and the footer in the string path.
+    bodyMaxLength = MAX_SLACK_MESSAGE_LENGTH - footerText.length - 1;
+    mrkdwnMessage = `${truncate(slackifyMarkdown(message), bodyMaxLength)}\n${footerText}`;
     footerBlock = makeSentByFooterBlock(agentName, agentUrl);
   }
 
@@ -892,10 +899,10 @@ export async function executePostMessage(
   const response = await slackClient.chat.postMessage({
     channel: resolvedTo,
     blocks: [
-      ...makeMarkdownBlock(originalMessage),
+      ...makeMarkdownBlocks(message, false),
       ...(footerBlock ? [footerBlock] : []),
     ],
-    text: originalMessage,
+    text: truncate(message, MAX_SLACK_MESSAGE_LENGTH),
     mrkdwn: true,
     thread_ts: threadTs,
     unfurl_links: unfurlLinks,
@@ -924,13 +931,11 @@ export async function executeUpdateMessage({
   message: string;
 }) {
   const slackClient = await getSlackClient(accessToken);
-  const originalMessage = message;
-
   const response = await slackClient.chat.update({
     channel,
     ts: timestamp,
-    text: originalMessage,
-    blocks: makeMarkdownBlock(originalMessage),
+    text: truncate(message, MAX_SLACK_MESSAGE_LENGTH),
+    blocks: makeMarkdownBlocks(message),
   });
 
   if (!response.ok) {
@@ -969,8 +974,6 @@ export async function executeScheduleMessage(
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
-  const originalMessage = message;
-
   // The message is rendered as a `markdown` block; the footer is appended as a
   // separate context block so it is never absorbed into a markdown table.
   let footerBlock: KnownBlock | undefined;
@@ -1032,10 +1035,10 @@ export async function executeScheduleMessage(
   const response = await slackClient.chat.scheduleMessage({
     channel: to,
     blocks: [
-      ...makeMarkdownBlock(originalMessage),
+      ...makeMarkdownBlocks(message, false),
       ...(footerBlock ? [footerBlock] : []),
     ],
-    text: originalMessage,
+    text: truncate(message, MAX_SLACK_MESSAGE_LENGTH),
     post_at: timestampSeconds.toString(),
     thread_ts: threadTs,
     unfurl_links: unfurlLinks,
