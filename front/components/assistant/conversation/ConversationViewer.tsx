@@ -804,6 +804,27 @@ export const ConversationViewer = ({
                 }
               }
 
+              // Restricted agents never emit agent_message_new. Drop their
+              // optimistic placeholders (including deferred first-message ones)
+              // so they cannot collide on rank or look like a running agent.
+              const restrictedAgentIds = new Set(
+                userMessage.richMentions
+                  .filter(
+                    (m) =>
+                      isRichAgentMention(m) &&
+                      m.status === "agent_restricted_by_space_usage"
+                  )
+                  .map((m) => m.id)
+              );
+              if (restrictedAgentIds.size > 0) {
+                virtuosoMessageListRef.current.data.findAndDelete(
+                  (m) =>
+                    isPlaceholderMessage(m) &&
+                    isAgentMessageWithStreaming(m) &&
+                    restrictedAgentIds.has(m.configuration.sId)
+                );
+              }
+
               // Update the participants and the conversation list if the message is not from the current user.
               if (userMessage.user?.sId !== user.sId) {
                 void mutateConversationParticipants(
@@ -1237,10 +1258,16 @@ export const ConversationViewer = ({
 
         // Skip placeholder agent messages if there's already a running agent in the conversation
         // (steering: the message will be pending, no new agent message is created until the running
-        // one gracefully stops).
+        // one gracefully stops). Optimistic placeholders must not count — e.g. a leftover
+        // restricted-agent placeholder from the deferred first message.
         const hasRunningAgent = virtuosoMessageListRef.current.data
           .get()
-          .some((m) => m.type === "agent_message" && m.status === "created");
+          .some(
+            (m) =>
+              m.type === "agent_message" &&
+              m.status === "created" &&
+              !isPlaceholderMessage(m)
+          );
 
         if (hasRunningAgent && conversationId) {
           incrementPendingSteeringCount(conversationId);
