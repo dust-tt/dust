@@ -98,11 +98,7 @@ export function SkillInfoTab({
     setKnowledgeItems(items);
   }, []);
 
-  const showAgentFacingDescription =
-    !!skill.instructions && !!skill.agentFacingDescription;
-
   const showSeparator =
-    showAgentFacingDescription ||
     !!skill.instructions ||
     knowledgeItems.length > 0 ||
     skill.fileAttachments.length > 0 ||
@@ -121,7 +117,7 @@ export function SkillInfoTab({
 
       {showSeparator ? <Separator /> : null}
 
-      {showAgentFacingDescription && (
+      {skill.instructions && skill.agentFacingDescription && (
         <div className="flex flex-col gap-4">
           <div className="heading-lg text-foreground">
             {SKILL_INVOCATION_LABEL}
