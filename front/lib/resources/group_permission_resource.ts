@@ -152,9 +152,10 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     return new this(GroupPermissionModel, row.get());
   }
 
-  // Find the regular_auto group that already holds an instance-level grant for the given tuple.
-  // At most one such group exists per (grantType, resourceType, resourceId): grantToUser and
-  // revokeFromUser serialize on the grant-tuple advisory lock (getGrantLock).
+  // Find the regular_auto group backing user-level grants for the given tuple. grantToUser and
+  // revokeFromUser serialize on the grant-tuple advisory lock (getGrantLock), so they never create
+  // a second backing group. Caveat: other regular_auto groups can legitimately hold the same tuple
+  // (e.g. a space-members group carrying a model-tier override) and are not told apart here.
   private static async findRegularAutoGroupForGrant(
     auth: Authenticator,
     {

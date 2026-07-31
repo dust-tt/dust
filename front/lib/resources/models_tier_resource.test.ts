@@ -77,6 +77,32 @@ describe("ModelsTierResource permissions", () => {
     );
   });
 
+  it("keeps user and group tier overrides on the same tier independent", async () => {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    const userResult = await ModelsTierResource.setUserMaxAllowedTier(auth, {
+      userId: user.sId,
+      tierName: "balanced",
+    });
+    expect(userResult.isOk()).toBe(true);
+
+    // A group override on the same tier lands on the same grant tuple as the user's backing
+    // group, through a second group — both must coexist.
+    const groupResult = await ModelsTierResource.setGroupMaxAllowedTier(auth, {
+      groupId: group.sId,
+      tierName: "balanced",
+    });
+    expect(groupResult.isOk()).toBe(true);
+
+    expect(await ModelsTierResource.listUserAllowedTierNames(auth)).toEqual([
+      { userId: user.sId, maxTierName: "balanced" },
+    ]);
+    expect(
+      await ModelsTierResource.listGroupAllowedTierNames(auth)
+    ).toContainEqual({ groupId: group.sId, maxTierName: "balanced" });
+  });
+
   it("rejects a group tier override on a regular_auto group", async () => {
     const autoGroup = await GroupFactory.regularAuto(workspace, "auto");
 
