@@ -1,4 +1,3 @@
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { Minimize01, UploadCloud02 } from "@dust-tt/sparkle";
 import type React from "react";
 
@@ -63,5 +62,3 @@ export function getAvailableInputBarSlashCommands({
     return true;
   });
 }
-
-export type InputBarSlashCommandSkill = SkillWithoutInstructionsAndToolsType;

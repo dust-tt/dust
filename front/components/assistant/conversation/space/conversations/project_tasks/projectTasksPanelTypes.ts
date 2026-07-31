@@ -3,11 +3,6 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { PodTaskAssigneeType, PodTaskType } from "@app/types/project_task";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 
-export type GroupedTasksByAssignee = Array<{
-  user: PodTaskAssigneeType | null;
-  tasks: PodTaskType[];
-}>;
-
 export type CombinedGroupedTasksByUser = Array<{
   user: PodTaskAssigneeType | null;
   suggestedTasks: PodTaskType[];

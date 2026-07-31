@@ -29,12 +29,6 @@ export const ACTIVE_USERS_PALETTE = {
   mau: "text-golden-500",
 } as const;
 
-export const ACTIVE_USERS_LEGEND = [
-  { key: "dau", label: "DAU" },
-  { key: "wau", label: "WAU" },
-  { key: "mau", label: "MAU" },
-] as const;
-
 export const LATENCY_PALETTE = {
   average: "text-blue-500",
   median: "text-violet-500",
@@ -76,8 +70,6 @@ export const INDEXED_BASE_COLORS = [
   "pink",
   "red",
 ] as const;
-
-export type IndexedBaseColor = (typeof INDEXED_BASE_COLORS)[number];
 
 export function buildColorClass(baseColor: string, shade: number): string {
   return `text-${baseColor}-${shade}`;
