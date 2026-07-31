@@ -5,6 +5,7 @@ import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailB
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { BulkEditSpendLimitModal } from "@app/components/workspace/BulkEditSpendLimitModal";
+import { BulkManageSpendLimitModal } from "@app/components/workspace/BulkManageSpendLimitModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
 import { FreePlanUpgradeSection } from "@app/components/workspace/billing/FreePlanUpgradeSection";
 import {
@@ -612,10 +613,17 @@ export function UsagePage() {
   const { doBulkSetSpendLimit } = useBulkSetUserSpendLimit({
     workspaceId: owner.sId,
   });
-  const [isBulkSpendLimitOpen, setIsBulkSpendLimitOpen] = useState(false);
+  const [isBulkManageSpendLimitOpen, setIsBulkManageSpendLimitOpen] =
+    useState(false);
+  const [isBulkSetCreditAmountOpen, setIsBulkSetCreditAmountOpen] =
+    useState(false);
 
   const handleBatchEditSpendLimit = useCallback(() => {
-    setIsBulkSpendLimitOpen(true);
+    setIsBulkManageSpendLimitOpen(true);
+  }, []);
+
+  const handleBulkSetCreditAmount = useCallback(() => {
+    setIsBulkSetCreditAmountOpen(true);
   }, []);
 
   const { doBulkChangeSeatType } = useBulkChangeSeatType({
@@ -750,6 +758,19 @@ export function UsagePage() {
       doBulkSetSpendLimit,
     ]
   );
+
+  const handleBulkAllowUnlimitedSpend = useCallback(async () => {
+    const confirmed = await confirm({
+      title: "Allow unlimited spend",
+      message: `Allow ${selection.selectedCount.toLocaleString("en-US")} members to consume from the workspace credit pool without a spend limit?`,
+      validateLabel: "Allow unlimited spend",
+      validateVariant: "primary",
+    });
+    if (!confirmed) {
+      return;
+    }
+    await handleBulkSpendLimitValidate({ kind: "unlimited" });
+  }, [confirm, selection.selectedCount, handleBulkSpendLimitValidate]);
 
   const handleBulkSeatChangePreview = useCallback(
     (seatType: PaidSeatType) =>
@@ -1318,9 +1339,16 @@ export function UsagePage() {
         onSaved={handleApproveOnModalSaved}
       />
 
+      <BulkManageSpendLimitModal
+        isOpen={isBulkManageSpendLimitOpen}
+        onClose={() => setIsBulkManageSpendLimitOpen(false)}
+        memberCount={selection.selectedCount}
+        onAllowUnlimitedSpend={handleBulkAllowUnlimitedSpend}
+        onSetCreditAmount={handleBulkSetCreditAmount}
+      />
       <BulkEditSpendLimitModal
-        isOpen={isBulkSpendLimitOpen}
-        onClose={() => setIsBulkSpendLimitOpen(false)}
+        isOpen={isBulkSetCreditAmountOpen}
+        onClose={() => setIsBulkSetCreditAmountOpen(false)}
         memberCount={selection.selectedCount}
         onValidate={handleBulkSpendLimitValidate}
       />
