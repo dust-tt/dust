@@ -338,6 +338,20 @@ app.post(
         },
       });
     }
+    if (
+      hasSkillPublicationGovernance &&
+      requestedAvailability === "users_and_agents" &&
+      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "You don't have permission to create a skill with that availability.",
+        },
+      });
+    }
 
     const availability =
       requestedAvailability ?? getDefaultSkillAvailability(featureFlags);
