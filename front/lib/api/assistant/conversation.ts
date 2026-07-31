@@ -21,10 +21,7 @@ import {
   createAgentMessages,
   createUserMessage,
 } from "@app/lib/api/assistant/conversation/messages";
-import {
-  canAgentBeUsedInProjectConversation,
-  updateConversationRequirements,
-} from "@app/lib/api/assistant/conversation/permissions";
+import { updateConversationRequirements } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
@@ -1777,22 +1774,8 @@ export async function retryAgentMessage(
     });
   }
 
-  if (isPodConversation(conversation)) {
-    const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
-      configuration: retryAgentConfiguration,
-      conversation,
-    });
-    if (!canAgentBeUsed) {
-      return new Err({
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "Invalid agent message retry request, the agent is restricted by space usage.",
-        },
-      });
-    }
-  }
+  // Restricted-space agents may already exist in a Pod conversation after the
+  // user approved the mention. Retry must not re-apply canAgentBeUsedInProjectConversation.
 
   let agentMessageResult: {
     agentMessage: AgentMessageType;
