@@ -612,35 +612,6 @@ export async function postUserMessage(
   // visibility decisions downstream depend on user intent, not on server-injected mentions.
   const explicitAgentMentions = mentions.filter(isAgentMention);
 
-  // The "agent_sidekick" origin makes the whole message free (no LLM/tool AWU
-  // billing). It must therefore only ever route to the sidekick global agent —
-  // any other target would let a caller get a real agent's output for free.
-  // A message that reaches here with a non-sidekick mention is either a forged origin or a bug.
-  if (
-    context.origin === "agent_sidekick" &&
-    explicitAgentMentions.some(
-      (mention) => mention.configurationId !== GLOBAL_AGENTS_SID.SIDEKICK
-    )
-  ) {
-    logger.warn(
-      {
-        workspaceId: owner.sId,
-        conversationId: conversation.sId,
-        userId: user?.sId,
-        mentionedAgentIds: explicitAgentMentions.map((m) => m.configurationId),
-      },
-      "Message with agent_sidekick origin targets a non-sidekick agent; refusing to bill it as free."
-    );
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "The agent_sidekick origin can only target the sidekick agent.",
-      },
-    });
-  }
-
   // Auto-inject @dust for mention-less web/extension messages in single-user conversations.
   // Must run before the plan rate-limit check so the resulting agent message is counted.
   // Note: the per-pod default agent is applied client-side via the input bar sticky mention,
@@ -2535,6 +2506,36 @@ async function checkMessagesLimit(
   // Skip rate limiting for system-initiated messages (e.g. reinforced agent workflows).
   if (!auth.user() && !auth.key() && auth.authMethod() === "internal") {
     return new Ok(undefined);
+  }
+
+  // The "agent_sidekick" origin makes the whole message free (no LLM/tool AWU
+  // billing, see FREE_ORIGINS). It must therefore only ever route to the
+  // sidekick global agent — any other target would let a caller run a real
+  // agent for free. This lives in checkMessagesLimit so it also covers both
+  // new messages and editUserMessage paths.
+  const sidekickAgentMentions = mentions.filter(isAgentMention);
+  if (
+    context.origin === "agent_sidekick" &&
+    sidekickAgentMentions.some(
+      (mention) => mention.configurationId !== GLOBAL_AGENTS_SID.SIDEKICK
+    )
+  ) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        userId: auth.user()?.sId,
+        mentionedAgentIds: sidekickAgentMentions.map((m) => m.configurationId),
+      },
+      "Message with agent_sidekick origin targets a non-sidekick agent; refusing to bill it as free."
+    );
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "The agent_sidekick origin can only target the sidekick agent.",
+      },
+    });
   }
 
   // Credit-state + programmatic rate-limit gate. Two systems coexist:
