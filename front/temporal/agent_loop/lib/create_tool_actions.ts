@@ -19,8 +19,6 @@ import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
@@ -61,8 +59,7 @@ export async function createToolActionsActivity(
     runIds: string[];
   }
 ): Promise<CreateToolActionsResult> {
-  const { agentConfiguration, modelInfo, agentMessage, conversation } =
-    runAgentData;
+  const { agentMessage, conversation } = runAgentData;
 
   const actionBlobs: ActionBlob[] = [];
   const approvalEvents: Omit<
@@ -120,11 +117,8 @@ export async function createToolActionsActivity(
 
   for (const preparedAction of preparedActions) {
     const result = await createActionForTool(auth, {
-      ...preparedAction,
-      agentConfiguration,
-      model: modelInfo.endpoint.modelConfig,
-      agentMessage,
-      conversation,
+      preparedAction,
+      runAgentData,
       step,
       runIds,
       stepRequiresApproval,
@@ -161,23 +155,14 @@ export async function createToolActionsActivity(
 async function createActionForTool(
   auth: Authenticator,
   {
-    actionConfiguration,
-    agentConfiguration,
-    model,
-    agentMessage,
-    conversation,
-    rawInputs,
-    status,
-    stepContent,
-    stepContext,
+    preparedAction,
+    runAgentData,
     stepRequiresApproval,
     step,
     runIds,
-  }: PreparedToolAction & {
-    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
-    model: ModelConfigurationType;
-    agentMessage: AgentLoopExecutionData["agentMessage"];
-    conversation: ConversationWithoutContentType;
+  }: {
+    preparedAction: PreparedToolAction;
+    runAgentData: AgentLoopExecutionData;
     stepRequiresApproval: boolean;
     step: number;
     runIds: string[];
@@ -189,6 +174,12 @@ async function createActionForTool(
     "isLastBlockingEventForStep"
   >;
 } | void> {
+  const { actionConfiguration, rawInputs, status, stepContent, stepContext } =
+    preparedAction;
+  const { agentConfiguration, modelInfo, agentMessage, conversation } =
+    runAgentData;
+  const model = modelInfo.endpoint.modelConfig;
+
   const validateToolInputsResult = validateToolInputs(rawInputs);
   if (validateToolInputsResult.isErr()) {
     logger.error(
