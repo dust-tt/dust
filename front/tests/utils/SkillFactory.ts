@@ -39,9 +39,7 @@ export class SkillFactory {
     const user = auth.user();
     assert(user, "User is required");
 
-    if (
-      !(await auth.hasWorkspacePermission("create", "skill"))
-    ) {
+    if (!(await auth.hasWorkspacePermission("create", "skill"))) {
       await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
         grantType: "create",
         resourceType: "skill",
