@@ -188,6 +188,8 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
       type: "success",
     });
 
+    await mutateEditors({ editors: data.editors }, { revalidate: false });
+
     onSaved();
 
     if (isCreatingNew && result.value.sId) {
