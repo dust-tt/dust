@@ -48,7 +48,7 @@ export const runAgentLoopWorkflow = async ({
           agentMessageId: agentMessage.sId,
           agentMessageVersion: agentMessage.version,
           conversationId: conversation.sId,
-          conversationBranchId: conversation.branchId,
+          conversationBranchId: null,
           conversationTitle: conversation.title,
           userMessageId: userMessage.sId,
           userMessageVersion: userMessage.version,

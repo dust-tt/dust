@@ -39,7 +39,7 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
+
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
@@ -271,7 +271,6 @@ export function loadAllModels() {
     AcademyChapterVisitModel,
     SandboxModel,
     SandboxOwnerModel,
-    ConversationBranchModel,
     ConversationForkModel,
     ProjectTaskModel,
     ProjectTaskConversationModel,

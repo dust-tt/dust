@@ -136,7 +136,6 @@ export async function retryBlockedActions(
   const {
     agentMessageId,
     agentMessageVersion,
-    branchId: conversationBranchId,
     lastStep,
     userMessageId,
     userMessageVersion,
@@ -149,7 +148,7 @@ export async function retryBlockedActions(
       agentMessageVersion,
       conversationId,
       conversationTitle,
-      conversationBranchId,
+      conversationBranchId: null,
       userMessageId,
       userMessageVersion,
     },

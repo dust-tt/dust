@@ -14,7 +14,6 @@ import {
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
@@ -3153,98 +3152,47 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
-   * Resolve branch-aware message view filters for Sequelize and raw SQL callers.
+   * Resolve main-thread message view filters for Sequelize and raw SQL callers.
    * Matches the scoping used in `_getConversation` in fetch.ts.
    */
-  private async resolveMessageViewScope(
+  private resolveMessageViewScope(
     auth: Authenticator,
     {
-      branchId,
-      transaction,
+      transaction: _transaction,
     }: {
-      branchId?: string | null;
       transaction?: Transaction;
     } = {}
-  ): Promise<{
+  ): {
     scopeWhere: WhereOptions<MessageModel>;
     branchFilterSql: string;
     sqlReplacements: Record<string, unknown>;
-  }> {
+  } {
     const owner = auth.getNonNullableWorkspace();
-    const baseWhere: WhereOptions<MessageModel> = {
-      conversationId: this.id,
-      workspaceId: owner.id,
-    };
-
-    if (!branchId) {
-      return {
-        scopeWhere: {
-          ...baseWhere,
-          branchId: { [Op.is]: null },
-        },
-        branchFilterSql: `"branchId" IS NULL`,
-        sqlReplacements: {},
-      };
-    }
-
-    const branch = await ConversationBranchResource.fetchById(
-      auth,
-      branchId,
-      transaction
-    );
-    if (!branch || !branch.canRead(auth)) {
-      throw new Error("Unexpected: conversation branch not found.");
-    }
-
-    const previousMessage = await MessageModel.findOne({
-      attributes: ["rank"],
-      where: {
-        id: branch.previousMessageId,
-        workspaceId: owner.id,
-      },
-      transaction,
-    });
-    if (!previousMessage) {
-      throw new Error("Unexpected: branch previous message not found.");
-    }
-
     return {
       scopeWhere: {
-        ...baseWhere,
-        [Op.or]: [
-          {
-            branchId: branch.id,
-          },
-          {
-            branchId: null,
-            rank: { [Op.lte]: previousMessage.rank },
-          },
-        ],
+        conversationId: this.id,
+        workspaceId: owner.id,
+        branchId: { [Op.is]: null },
       },
-      branchFilterSql: `("branchId" = :branchModelId OR ("branchId" IS NULL AND rank <= :previousMessageRank))`,
-      sqlReplacements: {
-        branchModelId: branch.id,
-        previousMessageRank: previousMessage.rank,
-      },
+      branchFilterSql: `"branchId" IS NULL`,
+      sqlReplacements: {},
     };
   }
 
   /**
-   * Build Sequelize `where` for messages visible in a conversation view (main thread
-   * or branch). Matches the scoping used in `_getConversation` in fetch.ts.
+   * Build Sequelize `where` for messages visible in a conversation view (main thread only).
+   * Matches the scoping used in `_getConversation` in fetch.ts.
    */
-  async getMessageScopeWhere(
+  getMessageScopeWhere(
     auth: Authenticator,
     {
-      branchId,
       transaction,
     }: {
       branchId?: string | null;
       transaction?: Transaction;
     } = {}
-  ): Promise<WhereOptions<MessageModel>> {
-    const { scopeWhere } = await this.resolveMessageViewScope(auth, {
-      branchId,
+  ): WhereOptions<MessageModel> {
+    const { scopeWhere } = this.resolveMessageViewScope(auth, {
       transaction,
     });
     return scopeWhere;
@@ -3258,7 +3206,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     {
       excludeUserId,
-      branchId,
       transaction,
     }: {
       excludeUserId?: ModelId | null;
@@ -3267,8 +3214,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     } = {}
   ): Promise<boolean> {
     const owner = auth.getNonNullableWorkspace();
-    const { branchFilterSql, sqlReplacements } =
-      await this.resolveMessageViewScope(auth, { branchId, transaction });
+    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
+      auth,
+      { transaction }
+    );
 
     const query = `
       SELECT EXISTS (
@@ -3316,7 +3265,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     {
       afterRank,
-      branchId,
       transaction,
     }: {
       afterRank: number;
@@ -3325,8 +3273,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
   ): Promise<boolean> {
     const owner = auth.getNonNullableWorkspace();
-    const { branchFilterSql, sqlReplacements } =
-      await this.resolveMessageViewScope(auth, { branchId, transaction });
+    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
+      auth,
+      { transaction }
+    );
 
     const query = `
       SELECT EXISTS (
@@ -3364,7 +3314,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     {
       rank,
-      branchId,
       transaction,
     }: {
       rank: number;
@@ -3372,8 +3321,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction?: Transaction;
     }
   ): Promise<MessageModel | null> {
-    const scopeWhere = await this.getMessageScopeWhere(auth, {
-      branchId,
+    const scopeWhere = this.getMessageScopeWhere(auth, {
       transaction,
     });
 
@@ -3403,7 +3351,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   async getClientSideMCPServerIdsFromLatestNonWakeUpUserMessage(
     auth: Authenticator,
     {
-      branchId,
       transaction,
     }: {
       branchId?: string | null;
@@ -3411,8 +3358,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     } = {}
   ): Promise<string[]> {
     const owner = auth.getNonNullableWorkspace();
-    const { branchFilterSql, sqlReplacements } =
-      await this.resolveMessageViewScope(auth, { branchId, transaction });
+    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
+      auth,
+      { transaction }
+    );
 
     const query = `
       SELECT latest."clientSideMCPServerIds"
@@ -3463,7 +3412,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     {
       afterRank,
-      branchId,
       transaction,
     }: {
       afterRank: number;
@@ -3472,8 +3420,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
   ): Promise<MessageModel[]> {
     const owner = auth.getNonNullableWorkspace();
-    const { branchFilterSql, sqlReplacements } =
-      await this.resolveMessageViewScope(auth, { branchId, transaction });
+    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
+      auth,
+      { transaction }
+    );
 
     const query = `
       SELECT DISTINCT ON (m.rank)
@@ -3543,7 +3493,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   async getRunningAgentMessage(
     auth: Authenticator,
     {
-      branchId,
       transaction,
     }: {
       branchId?: string | null;
@@ -3551,8 +3500,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     } = {}
   ): Promise<RunningAgentMessageContext | null> {
     const owner = auth.getNonNullableWorkspace();
-    const { branchFilterSql, sqlReplacements } =
-      await this.resolveMessageViewScope(auth, { branchId, transaction });
+    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
+      auth,
+      { transaction }
+    );
 
     const query = `
       SELECT
@@ -3613,15 +3564,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   async getRunningCompactionMessage(
     auth: Authenticator,
     {
-      branchId,
       transaction,
     }: {
       branchId?: string | null;
       transaction?: Transaction;
     } = {}
   ): Promise<RunningCompactionMessageContext | null> {
-    const { scopeWhere } = await this.resolveMessageViewScope(auth, {
-      branchId,
+    const { scopeWhere } = this.resolveMessageViewScope(auth, {
       transaction,
     });
 
@@ -3665,7 +3614,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   async getInFlightMessages(
     auth: Authenticator,
     {
-      branchId,
       transaction,
     }: {
       branchId?: string | null;
@@ -3676,8 +3624,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     runningCompactionMessage: RunningCompactionMessageContext | null;
   }> {
     const [runningAgentMessage, runningCompactionMessage] = await Promise.all([
-      this.getRunningAgentMessage(auth, { branchId, transaction }),
-      this.getRunningCompactionMessage(auth, { branchId, transaction }),
+      this.getRunningAgentMessage(auth, { transaction }),
+      this.getRunningCompactionMessage(auth, { transaction }),
     ]);
 
     return { runningAgentMessage, runningCompactionMessage };
@@ -3686,7 +3634,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   async getBranchCreationContext(
     auth: Authenticator,
     {
-      branchId,
       transaction,
     }: {
       branchId?: string | null;
@@ -3694,8 +3641,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     } = {}
   ): Promise<BranchCreationContext> {
     const owner = auth.getNonNullableWorkspace();
-    const { branchFilterSql, sqlReplacements } =
-      await this.resolveMessageViewScope(auth, { branchId, transaction });
+    const { branchFilterSql, sqlReplacements } = this.resolveMessageViewScope(
+      auth,
+      { transaction }
+    );
 
     const query = `
       WITH latest AS (
@@ -3759,15 +3708,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   async getLatestMessageSummary(
     auth: Authenticator,
     {
-      branchId,
       transaction,
     }: {
       branchId?: string | null;
       transaction?: Transaction;
     } = {}
   ): Promise<LatestMessageSummary | null> {
-    const { scopeWhere } = await this.resolveMessageViewScope(auth, {
-      branchId,
+    const { scopeWhere } = this.resolveMessageViewScope(auth, {
       transaction,
     });
 
@@ -3844,11 +3791,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         conversationId: conversation.id,
         workspaceId: owner.id,
         visibility: "pending",
-        branchId: conversation.branchId
-          ? {
-              [Op.or]: [getResourceIdFromSId(conversation.branchId), null],
-            }
-          : null,
+        branchId: null,
       },
       include: [
         { model: UserMessageModel, as: "userMessage", required: false },
@@ -3875,50 +3818,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
   ): Promise<boolean> {
     const owner = auth.getNonNullableWorkspace();
-    let where: WhereOptions<MessageModel> = {
+    const where: WhereOptions<MessageModel> = {
       conversationId: conversation.id,
       workspaceId: owner.id,
+      branchId: null,
     };
-
-    if (conversation.branchId) {
-      const branch = await ConversationBranchResource.fetchById(
-        auth,
-        conversation.branchId
-      );
-      if (!branch || !branch.canRead(auth)) {
-        throw new Error("Unexpected: conversation branch not found.");
-      }
-
-      const previousMessage = await MessageModel.findOne({
-        attributes: ["rank"],
-        where: {
-          id: branch.previousMessageId,
-          workspaceId: owner.id,
-        },
-        transaction,
-      });
-      if (!previousMessage) {
-        throw new Error("Unexpected: branch previous message not found.");
-      }
-
-      where = {
-        ...where,
-        [Op.or]: [
-          {
-            branchId: branch.id,
-          },
-          {
-            branchId: null,
-            rank: { [Op.lte]: previousMessage.rank },
-          },
-        ],
-      };
-    } else {
-      where = {
-        ...where,
-        branchId: null,
-      };
-    }
 
     const message = await MessageModel.findOne({
       attributes: ["id"],
@@ -4139,17 +4043,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     if (sourceMessage.branchId !== null) {
-      const [branch] = await ConversationBranchResource.fetchByModelIds(auth, [
-        sourceMessage.branchId,
-      ]);
-
-      if (!branch || !branch.canRead(auth)) {
-        return new Err(
-          new Error(
-            "The source message is missing or cannot be used for forking."
-          )
-        );
-      }
+      return new Err(
+        new Error(
+          "The source message is missing or cannot be used for forking."
+        )
+      );
     }
 
     return new Ok(sourceMessage);
@@ -4184,16 +4082,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     if (!message) {
       return new Err(new Error("Message not found"));
-    }
-
-    if (message.getBranchId()) {
-      const branch = await ConversationBranchResource.fetchById(
-        auth,
-        message.getBranchId()!
-      );
-      if (!branch || !branch.canRead(auth)) {
-        return new Err(new Error("Message not found"));
-      }
     }
 
     return new Ok(message);

@@ -15,7 +15,6 @@ import {
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { getReinforcedSkillsMetadata } from "@app/lib/reinforcement/types";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
-import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -5022,20 +5021,14 @@ describe("Space Handling", () => {
   describe("getMessageByIdInConversation", () => {
     let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
     let ownerAuth: Authenticator;
-    let otherAuth: Authenticator;
     let conversation: ConversationWithoutContentType;
 
     beforeEach(async () => {
       workspace = await WorkspaceFactory.basic();
       const ownerUser = await UserFactory.basic();
-      const otherUser = await UserFactory.basic();
 
       ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
         ownerUser.sId,
-        workspace.sId
-      );
-      otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        otherUser.sId,
         workspace.sId
       );
 
@@ -5119,74 +5112,6 @@ describe("Space Handling", () => {
         expect(result.error.message).toBe("Message not found");
       }
     });
-
-    it("enforces branch read permissions based on auth", async () => {
-      const conversationResource = await ConversationResource.fetchById(
-        ownerAuth,
-        conversation.sId
-      );
-      assert(conversationResource, "Conversation resource not found");
-
-      const ownerUser = ownerAuth.getNonNullableUser();
-
-      const [mainMessage] = await MessageModel.findAll({
-        where: {
-          conversationId: conversationResource.id,
-          workspaceId: workspace.id,
-        },
-        limit: 1,
-      });
-      assert(mainMessage, "No main message found");
-
-      const branch = await ConversationBranchResource.makeNew(ownerAuth, {
-        state: "open",
-        previousMessageId: mainMessage.id,
-        conversationId: conversationResource.id,
-        userId: ownerUser.id,
-      });
-
-      const branchUserMessageRow = await UserMessageModel.create({
-        userId: ownerUser.id,
-        conversationId: conversationResource.id,
-        workspaceId: workspace.id,
-        content: "Branch message",
-        userContextUsername: "testuser",
-        userContextTimezone: "UTC",
-        userContextFullName: "Test User",
-        userContextEmail: "test@example.com",
-        userContextProfilePictureUrl: null,
-        userContextOrigin: "web",
-        clientSideMCPServerIds: [],
-      });
-
-      const branchMessage = await MessageModel.create({
-        sId: generateRandomModelSId(),
-        rank: 1,
-        conversationId: conversationResource.id,
-        parentId: mainMessage.id,
-        userMessageId: branchUserMessageRow.id,
-        workspaceId: workspace.id,
-        branchId: branch.id,
-      });
-
-      const okResult = await ConversationResource.getMessageByIdInConversation(
-        ownerAuth,
-        conversation,
-        branchMessage.sId
-      );
-      expect(okResult.isOk()).toBe(true);
-
-      const forbiddenResult =
-        await ConversationResource.getMessageByIdInConversation(
-          otherAuth,
-          conversation,
-          branchMessage.sId
-        );
-      expect(forbiddenResult.isOk()).toBe(false);
-      if (forbiddenResult.isErr()) {
-        expect(forbiddenResult.error.message).toBe("Message not found");
-      }
-    });
   });
 
   describe("getPendingUserMessagesInConversation", () => {
@@ -5259,141 +5184,6 @@ describe("Space Handling", () => {
 
       expect(pending).toHaveLength(2);
       expect(pending.map((m) => m.id)).toEqual([msg1.id, msg2.id]);
-    });
-
-    it("excludes pending messages that belong to a different branch", async () => {
-      const conversationResource = await ConversationResource.fetchById(
-        auth,
-        conversation.sId
-      );
-      assert(conversationResource, "Conversation resource not found");
-
-      const user = auth.getNonNullableUser();
-
-      // Create a main-thread message to anchor the branch.
-      const anchorUserMessageRow = await UserMessageModel.create({
-        userId: user.id,
-        conversationId: conversationResource.id,
-        workspaceId: workspace.id,
-        content: "Anchor message",
-        userContextUsername: "testuser",
-        userContextTimezone: "UTC",
-        userContextFullName: "Test User",
-        userContextEmail: "test@example.com",
-        userContextProfilePictureUrl: null,
-        userContextOrigin: "web",
-        clientSideMCPServerIds: [],
-      });
-      const anchorMessage = await MessageModel.create({
-        sId: generateRandomModelSId(),
-        rank: 0,
-        conversationId: conversationResource.id,
-        parentId: null,
-        userMessageId: anchorUserMessageRow.id,
-        workspaceId: workspace.id,
-      });
-
-      // Create two branches.
-      const branchA = await ConversationBranchResource.makeNew(auth, {
-        state: "open",
-        previousMessageId: anchorMessage.id,
-        conversationId: conversationResource.id,
-        userId: user.id,
-      });
-      const branchB = await ConversationBranchResource.makeNew(auth, {
-        state: "open",
-        previousMessageId: anchorMessage.id,
-        conversationId: conversationResource.id,
-        userId: user.id,
-      });
-
-      // Create a pending message on branchA.
-      const msgOnA = await createPendingUserMessage(
-        conversationResource.id,
-        10,
-        branchA.id
-      );
-      // Create a pending message on branchB.
-      await createPendingUserMessage(conversationResource.id, 11, branchB.id);
-      // Create a pending message with no branch.
-      const msgNoBranch = await createPendingUserMessage(
-        conversationResource.id,
-        12
-      );
-
-      // Query with conversation scoped to branchA.
-      const conversationOnBranchA: ConversationWithoutContentType = {
-        ...conversation,
-        branchId: branchA.sId,
-      };
-
-      const pending =
-        await ConversationResource.getPendingUserMessagesInConversation(auth, {
-          conversation: conversationOnBranchA,
-        });
-
-      // Should include the message on branchA and the one with null branchId,
-      // but NOT the message on branchB.
-      expect(pending).toHaveLength(2);
-      expect(pending.map((m) => m.id)).toEqual([msgOnA.id, msgNoBranch.id]);
-    });
-
-    it("excludes all branched pending messages when conversation has no branch", async () => {
-      const conversationResource = await ConversationResource.fetchById(
-        auth,
-        conversation.sId
-      );
-      assert(conversationResource, "Conversation resource not found");
-
-      const user = auth.getNonNullableUser();
-
-      // Create a main-thread anchor message.
-      const anchorUserMessageRow = await UserMessageModel.create({
-        userId: user.id,
-        conversationId: conversationResource.id,
-        workspaceId: workspace.id,
-        content: "Anchor",
-        userContextUsername: "testuser",
-        userContextTimezone: "UTC",
-        userContextFullName: "Test User",
-        userContextEmail: "test@example.com",
-        userContextProfilePictureUrl: null,
-        userContextOrigin: "web",
-        clientSideMCPServerIds: [],
-      });
-      const anchorMessage = await MessageModel.create({
-        sId: generateRandomModelSId(),
-        rank: 0,
-        conversationId: conversationResource.id,
-        parentId: null,
-        userMessageId: anchorUserMessageRow.id,
-        workspaceId: workspace.id,
-      });
-
-      const branch = await ConversationBranchResource.makeNew(auth, {
-        state: "open",
-        previousMessageId: anchorMessage.id,
-        conversationId: conversationResource.id,
-        userId: user.id,
-      });
-
-      // A pending message on the branch.
-      await createPendingUserMessage(conversationResource.id, 10, branch.id);
-      // A pending message with no branch.
-      const msgNoBranch = await createPendingUserMessage(
-        conversationResource.id,
-        11
-      );
-
-      // Query with the main conversation (branchId: null).
-      const pending =
-        await ConversationResource.getPendingUserMessagesInConversation(auth, {
-          conversation,
-        });
-
-      // Only the null-branch message is returned.
-      expect(pending).toHaveLength(1);
-      expect(pending[0].id).toBe(msgNoBranch.id);
     });
 
     it("returns pending messages ordered by rank", async () => {
@@ -5949,85 +5739,6 @@ describe("Space Handling", () => {
         (m) => m.contentFragmentId === null
       ).length;
       expect(nonCfCount).toBe(2);
-    });
-
-    it("should exclude branch messages from pagination and allow duplicate ranks across branches", async () => {
-      const conversationResource = await ConversationResource.fetchById(
-        auth,
-        conversation.sId
-      );
-      assert(conversationResource, "Conversation resource not found");
-
-      const workspace = auth.getNonNullableWorkspace();
-      const user = auth.getNonNullableUser();
-
-      // Create a main-thread user message at rank 0
-      const mainUserMessageRow = await UserMessageModel.create({
-        userId: user.id,
-        conversationId: conversationResource.id,
-        workspaceId: workspace.id,
-        content: "Main thread message",
-        userContextUsername: "testuser",
-        userContextTimezone: "UTC",
-        userContextFullName: "Test User",
-        userContextEmail: "test@example.com",
-        userContextProfilePictureUrl: null,
-        userContextOrigin: "web",
-        clientSideMCPServerIds: [],
-      });
-
-      const mainMessage = await MessageModel.create({
-        sId: generateRandomModelSId(),
-        rank: 0,
-        conversationId: conversationResource.id,
-        parentId: null,
-        userMessageId: mainUserMessageRow.id,
-        workspaceId: workspace.id,
-      });
-
-      // Create a branch from that message
-      const branch = await ConversationBranchResource.makeNew(auth, {
-        state: "open",
-        previousMessageId: mainMessage.id,
-        conversationId: conversationResource.id,
-        userId: user.id,
-      });
-
-      // Create a branch user message at the same rank, attached to the branch
-      const branchUserMessageRow = await UserMessageModel.create({
-        userId: user.id,
-        conversationId: conversationResource.id,
-        workspaceId: workspace.id,
-        content: "Branch message",
-        userContextUsername: "testuser",
-        userContextTimezone: "UTC",
-        userContextFullName: "Test User",
-        userContextEmail: "test@example.com",
-        userContextProfilePictureUrl: null,
-        userContextOrigin: "web",
-        clientSideMCPServerIds: [],
-      });
-
-      await MessageModel.create({
-        sId: generateRandomModelSId(),
-        rank: 0,
-        conversationId: conversationResource.id,
-        parentId: null,
-        userMessageId: branchUserMessageRow.id,
-        workspaceId: workspace.id,
-        branchId: branch.id,
-      });
-
-      const page = await conversationResource.fetchMessagesForPage(auth, {
-        limit: 10,
-      });
-
-      // Only the main-thread message should be included in pagination
-      expect(page.hasMore).toBe(false);
-      expect(page.messages).toHaveLength(1);
-      expect(page.messages[0].id).toBe(mainMessage.id);
-      expect(page.messages[0].rank).toBe(0);
-      expect(page.messages[0].branchId).toBeNull();
     });
   });
 });

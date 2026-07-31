@@ -2,7 +2,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { md5 } from "@app/types/shared/utils/encryption";
@@ -71,9 +70,7 @@ export async function getNextConversationMessageRank(
       where: {
         workspaceId: owner.id,
         conversationId: conversation.id,
-        branchId: conversation.branchId
-          ? getResourceIdFromSId(conversation.branchId)
-          : null,
+        branchId: null,
       },
       transaction,
     })) ?? -1) + 1

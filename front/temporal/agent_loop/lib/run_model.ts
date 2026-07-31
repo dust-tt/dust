@@ -127,7 +127,6 @@ const ASK_USER_QUESTION_BLOCKED_ORIGINS: readonly UserMessageOrigin[] = [
   "onboarding_conversation",
   "reinforced_skill_notification",
   "reinforcement",
-  "branch_anchor",
 ];
 
 // Builds the JSON blob whose token count estimates how many tokens the tool
