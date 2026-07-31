@@ -157,31 +157,6 @@ export const ProductboardRelationshipsListResponseSchema = z.object({
   }),
 });
 
-export const ProductboardCustomFieldValueSchema = z
-  .object({
-    id: z.string().optional(),
-    label: z.string().optional(),
-    value: z.union([z.string(), z.number(), z.boolean()]).optional(),
-  })
-  .passthrough();
-
-export const ProductboardCustomFieldSchema = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    type: z.string(),
-    values: z.array(ProductboardCustomFieldValueSchema).optional(),
-  })
-  .passthrough();
-
-export type ProductboardCustomField = z.infer<
-  typeof ProductboardCustomFieldSchema
->;
-
-export const ProductboardCustomFieldsListResponseSchema = z.object({
-  data: z.array(ProductboardCustomFieldSchema),
-});
-
 export const ProductboardFieldLifecycleOpsSchema = z.object({
   set: z.boolean().default(false),
   clear: z.boolean().default(false),

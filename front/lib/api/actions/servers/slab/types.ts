@@ -35,17 +35,6 @@ export interface SlabSearchResult {
   post: SlabPost;
 }
 
-export interface SlabPostSummary {
-  id: string;
-  title: string;
-  url: string;
-  contentPreview: string;
-  status: "published" | "draft" | "archived";
-  updatedAt: string;
-  author: string;
-  topics: string[];
-}
-
 export type RawPost = {
   id: string;
   title: string;

@@ -254,12 +254,6 @@ export const UkgReadyPTORequestObjectSchema = z.object({
   bankCategory: z.number().optional(),
 });
 
-export const UkgReadyCreatePTORequestSchema = z
-  .object({
-    pto_request: UkgReadyPTORequestObjectSchema,
-  })
-  .passthrough();
-
 export const UkgReadyExecuteResultSchema = z
   .object({
     success_code: z.number().optional(),
@@ -286,9 +280,6 @@ export type UkgReadyPTORequestNote = z.infer<
 export type UkgReadySchedule = z.infer<typeof UkgReadyScheduleSchema>;
 export type UkgReadyPTORequestObject = z.infer<
   typeof UkgReadyPTORequestObjectSchema
->;
-export type UkgReadyCreatePTORequest = z.infer<
-  typeof UkgReadyCreatePTORequestSchema
 >;
 export type UkgReadyExecuteResult = z.infer<typeof UkgReadyExecuteResultSchema>;
 export type UkgReadyErrorResult = string;
