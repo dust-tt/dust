@@ -1,7 +1,11 @@
-import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  createPendingAgentConfiguration,
+  getAgentConfiguration,
+} from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -125,6 +129,53 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - additionalRequ
     expect(agentConfigurationModel?.requestedSpaceIds).toContain(
       openSpaceModelId
     );
+  });
+});
+
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - non-editor admin", () => {
+  it("cannot edit the instructions of an agent it is not an editor of", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "PATCH",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
+      workspace,
+      "builder"
+    );
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(agentOwnerAuth);
+
+    const response = await patch(workspace, agent.sId, {
+      assistant: {
+        name: agent.name,
+        description: agent.description,
+        instructions: "Instructions rewritten by a non-editor admin",
+        pictureUrl: agent.pictureUrl,
+        status: "active",
+        scope: agent.scope,
+        model: {
+          providerId: agent.model.providerId,
+          modelId: agent.model.modelId,
+          temperature: agent.model.temperature,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: agentOwner.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+      },
+    });
+
+    expect(response.status).toBe(403);
+
+    const unchanged = await getAgentConfiguration(agentOwnerAuth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(unchanged?.instructions).toBe(agent.instructions);
   });
 });
 
