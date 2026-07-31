@@ -2,6 +2,7 @@ import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
 import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
+  validateAtMostOnePodSpace,
 } from "@app/lib/api/skills/space_requirements";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -391,6 +392,20 @@ app.patch(
       ...referencedSkillSpaceIds,
       ...additionalRequestedSpaceIds,
     ]);
+
+    const podSpaceValidation = await validateAtMostOnePodSpace(
+      auth,
+      requestedSpaceIds
+    );
+    if (podSpaceValidation.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: podSpaceValidation.error.message,
+        },
+      });
+    }
 
     // Validate file attachments if provided.
     let files: FileResource[] | undefined;

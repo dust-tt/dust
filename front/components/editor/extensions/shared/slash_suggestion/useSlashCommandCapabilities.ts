@@ -61,11 +61,13 @@ export function useInputBarSlashCommandCapabilities({
   excludeSkillId,
   owner,
   query,
+  conversationPodSpaceId,
   selectedMCPServerViewIdsRef,
 }: {
   excludeSkillId?: string | null;
   owner: LightWorkspaceType;
   query: string;
+  conversationPodSpaceId?: string | null;
   selectedMCPServerViewIdsRef?: RefObject<Set<string>>;
 }) {
   const { spaces: globalSpaces, isSpacesLoading } = useSpaces({
@@ -76,6 +78,7 @@ export function useInputBarSlashCommandCapabilities({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
+    podContext: conversationPodSpaceId ?? null,
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
   // The JIT views endpoint only returns views whose tools can be enabled directly in a
