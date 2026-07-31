@@ -1,3 +1,4 @@
+import { ACTIVATION_NUDGE_ORIGIN } from "@app/lib/api/activation/funding";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
@@ -11,6 +12,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -21,7 +23,10 @@ import { getWebhookRequestPayloadFromGCS } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationWithoutContentType,
+  UserMessageContext,
+} from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -68,18 +73,46 @@ async function createConversationForAgentConfiguration({
     spaceId: spaceModelId,
   });
 
-  const baseContext = {
+  // An Activation Pod nudge is sent by Dust, not written by the user it
+  // targets, so it is authored by the system: no author on the message row, the
+  // agent's identity in the context. `ActivationPod.triggerId` is the
+  // server-owned link that identifies the pod's nudge trigger (unique index, so
+  // this is a point lookup).
+  const activationPod = await ActivationPodResource.fetchByTriggerModelId(
+    auth,
+    trigger.id
+  );
+  const isActivationNudge = activationPod !== null;
+
+  const commonContext = {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
-    username: auth.getNonNullableUser().username,
-    fullName: auth.getNonNullableUser().fullName(),
-    email: auth.getNonNullableUser().email,
-    profilePictureUrl: null,
-    origin:
-      trigger.kind === "webhook" && trigger.executionMode === "programmatic"
-        ? ("triggered_programmatic" as const)
-        : ("triggered" as const),
     lastTriggerRunAt: lastRunAt?.getTime() ?? null,
   };
+
+  const baseContext: UserMessageContext = isActivationNudge
+    ? {
+        ...commonContext,
+        username: agentConfiguration.name,
+        fullName: agentConfiguration.name,
+        // A system-authored message must carry no email: `postUserMessage`
+        // resolves an author from the context email when the message has none,
+        // which would undo `doNotAssociateUser` and hand the nudge back to the
+        // user.
+        email: null,
+        profilePictureUrl: agentConfiguration.pictureUrl,
+        origin: ACTIVATION_NUDGE_ORIGIN,
+      }
+    : {
+        ...commonContext,
+        username: auth.getNonNullableUser().username,
+        fullName: auth.getNonNullableUser().fullName(),
+        email: auth.getNonNullableUser().email,
+        profilePictureUrl: null,
+        origin:
+          trigger.kind === "webhook" && trigger.executionMode === "programmatic"
+            ? "triggered_programmatic"
+            : "triggered",
+      };
 
   if (
     webhookRequest &&
@@ -154,6 +187,10 @@ async function createConversationForAgentConfiguration({
     mentions: [{ configurationId: agentConfiguration.sId }],
     context: baseContext,
     skipToolsValidation: false,
+    // Leaves the nudge without an author. The run still executes under the
+    // target user's authenticator, so the agent sees exactly what they can see,
+    // and they stay a participant of the conversation.
+    doNotAssociateUser: isActivationNudge,
   });
 
   if (messageRes.isErr()) {

@@ -1,4 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { isDustFundedActivationRun } from "@app/lib/api/activation/funding";
 import { reconcileApiKey } from "@app/lib/api/metronome/reconcile_credit_state";
 import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import {
@@ -8,6 +9,7 @@ import {
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ingestMetronomeEvents } from "@app/lib/metronome/client";
+import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
 import {
   buildLlmUsageEvents,
   buildToolUseEvents,
@@ -16,6 +18,7 @@ import {
 } from "@app/lib/metronome/events";
 import {
   AgentMessageModel,
+  ConversationModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -217,7 +220,8 @@ export async function emitMetronomeUsageEventsActivity(
   const { agentMessageId, conversationId, userMessageId } = agentLoopArgs;
   const userMessageOrigin = agentLoopArgs.userMessageOrigin ?? "web";
 
-  // Query agent message with its run IDs.
+  // Query agent message with its run IDs, plus the conversation (its triggerId
+  // is one of the facts the Dust-funded check reads).
   const agentMessageRow = await MessageModel.findOne({
     where: {
       sId: agentMessageId,
@@ -227,6 +231,11 @@ export async function emitMetronomeUsageEventsActivity(
       {
         model: AgentMessageModel,
         as: "agentMessage",
+        required: true,
+      },
+      {
+        model: ConversationModel,
+        as: "conversation",
         required: true,
       },
     ],
@@ -297,7 +306,26 @@ export async function emitMetronomeUsageEventsActivity(
   const isSubAgentMessage = userMessage?.agenticMessageType !== null;
 
   const programmatic = isProgrammaticUsage(auth, { userMessageOrigin });
-  const usageType = getUsageType(programmatic, userMessageOrigin);
+  // Dust-funded runs (the Activation Pod nudge) are emitted with the raw cost
+  // fields intact so they stay visible as COGS, but under the free usage type
+  // so the rate card prices them at 0. The decision comes from server-owned
+  // rows, not from the origin. See `lib/api/activation/funding.ts`.
+  const isDustFunded = await isDustFundedActivationRun(auth, {
+    origin: userMessageOrigin,
+    conversationTriggerModelId: agentMessageRow.conversation?.triggerId ?? null,
+    userMessage:
+      userMessageRow && userMessage
+        ? {
+            userModelId: userMessage.userId,
+            rank: userMessageRow.rank,
+            version: userMessageRow.version,
+          }
+        : null,
+    agentMessageVersion: agentMessageRow.version,
+  });
+  const usageType = isDustFunded
+    ? USAGE_TYPE_FREE
+    : getUsageType(programmatic, userMessageOrigin);
   // Use updatedAt — this is when the agent message finished (not when it was created).
   const timestamp = agentMessage.updatedAt.toISOString();
   const authMethod = userMessage?.userContextAuthMethod ?? null;

@@ -224,4 +224,30 @@ describe("computeAgentMessageCredits", () => {
       })
     ).toBeNull();
   });
+
+  it("costs 0 for a Dust-funded run, whatever the origin says", () => {
+    const credits = computeAgentMessageCredits({
+      runUsages: [usage({ costMicroUsd: 8500 })],
+      actions: [
+        {
+          toolName: "semantic_search",
+          internalMCPServerName: "search",
+          status: "succeeded",
+        },
+      ],
+      contextOrigin: TEST_CONTEXT_ORIGIN,
+      isDustFunded: true,
+    });
+    expect(credits).toBe(0);
+  });
+
+  it("bills a run with the nudge origin that the funding check did not authorize", () => {
+    const credits = computeAgentMessageCredits({
+      runUsages: [usage({ costMicroUsd: 8500 })],
+      actions: [],
+      contextOrigin: "system_activation",
+      isDustFunded: false,
+    });
+    expect(credits).toBe(1);
+  });
 });

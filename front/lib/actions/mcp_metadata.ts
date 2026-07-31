@@ -33,6 +33,7 @@ import {
   MCPOAuthProviderError,
 } from "@app/lib/actions/mcp_oauth_provider";
 import type { ToolContext } from "@app/lib/actions/types";
+import { isSystemAuthoredToolContext } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import type {
   MCPServerType,
@@ -221,11 +222,15 @@ async function resolveRemoteServerOAuthToken(
     oAuthUseCase,
     remoteMCPServer,
     isToolExecution,
+    allowPersonalConnection,
   }: {
     mcpServerId: string;
     oAuthUseCase: MCPOAuthUseCase | null;
     remoteMCPServer: RemoteMCPServerResource;
     isToolExecution: boolean;
+    // False when no person wrote the message being answered: the run then
+    // resolves connections as if there were no user at all.
+    allowPersonalConnection: boolean;
   }
 ): Promise<
   Result<
@@ -265,9 +270,17 @@ async function resolveRemoteServerOAuthToken(
 
   // Determine which connection type to try.
   let connectionType: "personal" | "workspace";
-  if (oAuthUseCase === "personal_actions" && isToolExecution) {
+  if (
+    oAuthUseCase === "personal_actions" &&
+    isToolExecution &&
+    allowPersonalConnection
+  ) {
     connectionType = "personal";
-  } else if (oAuthUseCase === "personal_actions" && auth.user()) {
+  } else if (
+    oAuthUseCase === "personal_actions" &&
+    allowPersonalConnection &&
+    auth.user()
+  ) {
     // Listing tools with a user session: try personal first.
     const personalConnection = await getConnectionForMCPServer(auth, {
       mcpServerId,
@@ -434,12 +447,17 @@ export async function connectToMCPServer(
                 );
               }
 
+              // A message nobody wrote never runs on a person's personal
+              // connection (see `isSystemAuthoredToolContext`).
+              const internalConnectionType =
+                params.oAuthUseCase === "personal_actions" &&
+                !isSystemAuthoredToolContext(toolContext)
+                  ? "personal"
+                  : "workspace";
+
               const c = await getConnectionForMCPServer(auth, {
                 mcpServerId: params.mcpServerId,
-                connectionType:
-                  params.oAuthUseCase === "personal_actions"
-                    ? "personal"
-                    : "workspace",
+                connectionType: internalConnectionType,
               });
               if (c.isOk()) {
                 const authInfo: AuthInfo = {
@@ -449,10 +467,7 @@ export async function connectToMCPServer(
                   scopes: [],
                   extra: {
                     ...c.value.connection.metadata,
-                    connectionType:
-                      params.oAuthUseCase === "personal_actions"
-                        ? "personal"
-                        : "workspace",
+                    connectionType: internalConnectionType,
                   },
                 };
 
@@ -578,6 +593,7 @@ export async function connectToMCPServer(
             oAuthUseCase: params.oAuthUseCase,
             remoteMCPServer,
             isToolExecution: !!toolContext?.runContext,
+            allowPersonalConnection: !isSystemAuthoredToolContext(toolContext),
           });
           if (tokenRes.isErr()) {
             return tokenRes;

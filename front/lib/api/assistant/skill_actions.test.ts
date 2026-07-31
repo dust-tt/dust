@@ -122,6 +122,14 @@ describe("resolveSkillMCPServers", () => {
         agentConfig: agentConfiguration,
       }
     );
+    const { userMessage } = await ConversationFactory.createUserMessage({
+      auth: authenticator,
+      workspace,
+      conversation,
+      content: "Hello",
+      // The agent message factory sits at rank 0.
+      rank: 1,
+    });
 
     const skills = await SkillResource.fetchByIds(authenticator, [
       "discover_knowledge",
@@ -159,6 +167,7 @@ describe("resolveSkillMCPServers", () => {
       {
         agentConfiguration,
         agentMessage,
+        userMessage,
         clientSideActionConfigurations: [],
         conversation,
       },
@@ -222,6 +231,14 @@ describe("resolveSkillMCPServers", () => {
         agentConfig: agentConfiguration,
       }
     );
+    const { userMessage } = await ConversationFactory.createUserMessage({
+      auth: authenticator,
+      workspace,
+      conversation,
+      content: "Hello",
+      // The agent message factory sits at rank 0.
+      rank: 1,
+    });
 
     const autoInternalViews =
       await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
@@ -241,6 +258,7 @@ describe("resolveSkillMCPServers", () => {
       {
         agentConfiguration,
         agentMessage,
+        userMessage,
         clientSideActionConfigurations: [],
         conversation,
       },

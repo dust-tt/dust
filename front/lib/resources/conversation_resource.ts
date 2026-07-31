@@ -722,18 +722,26 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   /**
    * Fetches everything needed to compute an agent message's credit cost: the
    * agent message model id (used to look up its runs and actions), its tracking
-   * status, its runIds, and the origin of the user message that triggered it
-   * (used to detect free-origin usage). Returns null when the agent message
-   * cannot be found.
+   * status, its runIds, the origin of the user message that triggered it (used
+   * to detect free-origin usage) and the authorship/rank/version facts the
+   * Dust-funded check reads (see `lib/api/activation/funding.ts`). Returns null
+   * when the agent message cannot be found.
    */
   static async fetchAgentMessageCreditContext(
     auth: Authenticator,
     { agentMessageId }: { agentMessageId: string }
   ): Promise<{
     agentMessageModelId: ModelId;
+    agentMessageVersion: number;
     status: AgentMessageStatus;
     runIds: string[] | null;
+    conversationTriggerModelId: ModelId | null;
     triggeringUserMessageOrigin: UserMessageOrigin | null;
+    triggeringUserMessage: {
+      userModelId: ModelId | null;
+      rank: number;
+      version: number;
+    } | null;
     // The total cost already stored (and already recorded to the usage
     // counters) by a prior finalize of this message. Used to record only the
     // newly-accrued delta on re-finalize.
@@ -745,6 +753,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: { sId: agentMessageId, workspaceId },
       include: [
         { model: AgentMessageModel, as: "agentMessage", required: true },
+        { model: ConversationModel, as: "conversation", required: true },
       ],
     });
 
@@ -754,6 +763,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     let triggeringUserMessageOrigin: UserMessageOrigin | null = null;
+    let triggeringUserMessage: {
+      userModelId: ModelId | null;
+      rank: number;
+      version: number;
+    } | null = null;
     if (messageRow.parentId !== null) {
       const parentRow = await MessageModel.findOne({
         where: { id: messageRow.parentId, workspaceId },
@@ -763,13 +777,23 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       });
       triggeringUserMessageOrigin =
         parentRow?.userMessage?.userContextOrigin ?? null;
+      if (parentRow?.userMessage) {
+        triggeringUserMessage = {
+          userModelId: parentRow.userMessage.userId,
+          rank: parentRow.rank,
+          version: parentRow.version,
+        };
+      }
     }
 
     return {
       agentMessageModelId: agentMessage.id,
+      agentMessageVersion: messageRow.version,
       status: agentMessage.status,
       runIds: agentMessage.runIds,
+      conversationTriggerModelId: messageRow.conversation?.triggerId ?? null,
       triggeringUserMessageOrigin,
+      triggeringUserMessage,
       previousCostCredits: agentMessage.costCredits,
     };
   }

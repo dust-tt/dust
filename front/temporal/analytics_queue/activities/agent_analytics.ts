@@ -9,6 +9,7 @@ import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_action
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
+import { ACTIVATION_NUDGE_ORIGIN } from "@app/lib/api/activation/funding";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import {
   AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,
@@ -144,6 +145,18 @@ export async function storeAgentAnalyticsActivity(
 
   if (!userUserMessageRow) {
     throw new Error("User message not found");
+  }
+
+  // Activation Pod nudges are sent by us, not asked for by the user: they must
+  // not show up anywhere in analytics, not even as a 0-credit row (this drops
+  // them from the credits tables, per-agent usage, and the DAU signal the
+  // activation evaluator itself reads). This is a display decision keyed on a
+  // server-only label, and NOT what makes the run non-billable: pricing is
+  // decided independently by `isDustFundedActivationRun` from server-owned
+  // rows, so a message that reached here with this origin but is not a funded
+  // nudge is still billed normally.
+  if (userUserMessageRow.userContextOrigin === ACTIVATION_NUDGE_ORIGIN) {
+    return;
   }
 
   await storeAgentAnalytics(auth, {

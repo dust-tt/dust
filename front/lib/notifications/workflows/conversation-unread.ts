@@ -66,6 +66,10 @@ export const shouldSendNotificationForAgentAnswer = (
     case "reinforcement":
       // Internal bootstrap conversations shouldn't trigger unread notifications.
       return false;
+    case "system_activation":
+      // Activation Pod nudges have their own dedicated email
+      // (activation-new-conversation), sent once the agent has replied.
+      return false;
     case "api":
     case "email":
     case "excel":

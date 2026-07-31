@@ -2,6 +2,7 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
+import { isDustFundedActivationRun } from "@app/lib/api/activation/funding";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { ToolCostCategory } from "@app/lib/api/mcp";
@@ -9,6 +10,7 @@ import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import { recordUserSpendLimitUsage } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
 import {
   computeRunKey,
   getToolBillingInfo,
@@ -169,10 +171,15 @@ export function computeAgentMessageCredits({
   runUsages,
   actions,
   contextOrigin,
+  isDustFunded = false,
 }: {
   runUsages: (RunUsageType & { runKey: string | null })[];
   actions: CreditActionMinimalInput[];
   contextOrigin: UserMessageOrigin | null;
+  // Dust picks up the tab for this run (Activation Pod nudge). Derived from
+  // server-owned rows, not from `contextOrigin`. See
+  // `lib/api/activation/funding.ts`.
+  isDustFunded?: boolean;
 }): number | null {
   const finalActions = actions.filter((a) =>
     isToolExecutionStatusFinal(a.status)
@@ -180,6 +187,10 @@ export function computeAgentMessageCredits({
 
   if (runUsages.length === 0 && finalActions.length === 0) {
     return null;
+  }
+
+  if (isDustFunded) {
+    return 0;
   }
 
   // Intelligence cost is ceiled per agent-loop execution (runKey) to match the
@@ -231,15 +242,25 @@ export async function computeAndStoreAgentMessageCredits(
 
   const {
     agentMessageModelId,
+    agentMessageVersion,
     status,
     runIds,
+    conversationTriggerModelId,
     triggeringUserMessageOrigin,
+    triggeringUserMessage,
     previousCostCredits,
   } = creditContext;
 
   if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(status)) {
     return null;
   }
+
+  const isDustFunded = await isDustFundedActivationRun(auth, {
+    origin: triggeringUserMessageOrigin,
+    conversationTriggerModelId,
+    userMessage: triggeringUserMessage,
+    agentMessageVersion,
+  });
 
   // Tag this execution's runs with their runKey before recomputing, so the
   // recompute (which reads the message's full accumulated runIds) ceils each
@@ -263,10 +284,12 @@ export async function computeAndStoreAgentMessageCredits(
   const messageOrigin = triggeringUserMessageOrigin ?? "web";
   await RunResource.setUsageTypeForRuns(auth, {
     runs,
-    usageType: getUsageType(
-      isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin }),
-      messageOrigin
-    ),
+    usageType: isDustFunded
+      ? USAGE_TYPE_FREE
+      : getUsageType(
+          isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin }),
+          messageOrigin
+        ),
   });
 
   const [runUsages, actions] = await Promise.all([
@@ -282,6 +305,7 @@ export async function computeAndStoreAgentMessageCredits(
       status: action.status,
     })),
     contextOrigin: triggeringUserMessageOrigin,
+    isDustFunded,
   });
 
   await ConversationResource.updateAgentMessageCostCredits(auth, {

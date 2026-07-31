@@ -185,6 +185,9 @@ export type AgentLoopListToolsContext = {
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;
   agentMessage: AgentMessageType;
+  // Needed at listing time to know whether a person wrote the message this run
+  // answers (see `isSystemAuthoredToolContext`).
+  userMessage: UserMessageType;
 };
 
 // Context available to tool handlers at execution time: tools only ever run on a connection
@@ -212,3 +215,27 @@ export type ToolContext =
       runContext?: never;
       listToolsContext: AgentLoopListToolsContext;
     };
+
+/**
+ * Whether the message this run answers was posted by Dust rather than written
+ * by a person: a user message with no author, which only server code can
+ * produce (`postUserMessage`'s `doNotAssociateUser`). Today that is the
+ * Activation Pod nudge and agent-posted Pod messages.
+ *
+ * Such a run must not reach for anyone's personal tool credentials: nobody
+ * asked for it, so acting as them would be a surprise. Connections resolve to
+ * the workspace connection instead, exactly as they would with no user at all,
+ * and personal-only servers drop out of the tool list.
+ */
+export function isSystemAuthoredToolContext(
+  toolContext: ToolContext | undefined
+): boolean {
+  if (toolContext?.listToolsContext) {
+    return toolContext.listToolsContext.userMessage.user === null;
+  }
+
+  const { runContext } = toolContext ?? {};
+  return (
+    isAgentLoopRunContext(runContext) && runContext.userMessage.user === null
+  );
+}

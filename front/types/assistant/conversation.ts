@@ -87,13 +87,19 @@ export type LightMessageType =
  *
  */
 
-// Origins set explicitly by front-end clients (web app, extension, etc.).
-export type ClientMessageOrigin =
-  | "web"
-  | "project_kickoff"
-  | "extension"
-  | "agent_sidekick"
-  | "reinforced_skill_notification";
+// Origins set explicitly by front-end clients (web app, extension, etc.). This
+// is the allow-list the internal message endpoints validate against (see
+// `types/api/assistant.ts`), so anything absent here cannot be claimed by a
+// client.
+export const CLIENT_MESSAGE_ORIGINS = [
+  "web",
+  "project_kickoff",
+  "extension",
+  "agent_sidekick",
+  "reinforced_skill_notification",
+] as const;
+
+export type ClientMessageOrigin = (typeof CLIENT_MESSAGE_ORIGINS)[number];
 
 export type UserMessageOrigin =
   // "api" is Custom API usage, while e.g. extension, gsheets and many other origins
@@ -123,7 +129,13 @@ export type UserMessageOrigin =
   // (to be created).
   | "onboarding_conversation"
   // for internal use, for reinforced agent batch LLM operations
-  | "reinforcement";
+  | "reinforcement"
+  // Opening message of an Activation Pod nudge, authored by the system on the
+  // user's behalf. Server-only: it is not in `CLIENT_MESSAGE_ORIGINS` and
+  // `isUserMessageContextValid` rejects it, so no client or API caller can
+  // claim it. It is a label used to keep nudges out of analytics; it is NOT
+  // what makes the run non-billable (see `lib/api/activation/funding.ts`).
+  | "system_activation";
 
 export const HIDDEN_MESSAGE_ORIGINS: UserMessageOrigin[] = [
   "onboarding_conversation",
