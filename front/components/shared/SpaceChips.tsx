@@ -17,9 +17,7 @@ export function SpaceChips({ spaces, onRemoveSpace }: SpaceChipsProps) {
           label={getSpaceName(space)}
           icon={getSpaceIcon(space)}
           color={
-            space.kind === "global"
-              ? "primary"
-              : space.isRestricted
+            space.isRestricted
                 ? "info"
                 : "primary"
           }
