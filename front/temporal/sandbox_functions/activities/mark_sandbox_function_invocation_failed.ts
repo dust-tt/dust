@@ -27,6 +27,7 @@ export async function markSandboxFunctionInvocationFailedActivity(
   const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
     sandboxFunction,
     invocationId,
+    access: "system",
   });
   if (!invocation) {
     throw new Error(`Pod function invocation not found: ${invocationId}`);

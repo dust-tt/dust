@@ -87,6 +87,31 @@ describe("markSandboxFunctionInvocationFailedActivity", () => {
     );
   });
 
+  it("marks a userless invocation as errored", async () => {
+    const { authenticator, workspace, sandboxFunction } = await setup();
+    const userlessAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const userlessInvocation =
+      await SandboxFunctionInvocationResource.makeNew(userlessAuth, {
+        sandboxFunction,
+        input: { message: "hello" },
+      });
+    expect(userlessInvocation.userId).toBeNull();
+
+    await markSandboxFunctionInvocationFailedActivity(userlessAuth.toJSON(), {
+      errorMessage: "The worker died before returning a result.",
+      sandboxFunctionId: sandboxFunction.sId,
+      invocationId: userlessInvocation.sId,
+    });
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: userlessInvocation.sId }
+    );
+    expect(refetched?.status).toBe("errored");
+  });
+
   it("does not overwrite an invocation that already succeeded", async () => {
     const { authenticator, sandboxFunction, invocation } = await setup();
     await invocation.succeed({ ok: true });

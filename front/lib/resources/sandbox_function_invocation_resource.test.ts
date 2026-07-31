@@ -211,15 +211,8 @@ describe("SandboxFunctionInvocationResource", () => {
       await setupExecutionTest();
     const reader = await UserFactory.basic();
     await MembershipFactory.associate(workspace, reader, { role: "user" });
-    const [memberGroup] = await space.fetchGroupResources(authenticator, {
-      groupReferences: space.groups.filter((group) => group.isRegularAuto()),
-    });
-    expect(memberGroup).toBeDefined();
-    if (!memberGroup) {
-      return;
-    }
-    const addResult = await memberGroup.dangerouslyAddMember(authenticator, {
-      user: reader.toJSON(),
+    const addResult = await space.addMembers(authenticator, {
+      userIds: [reader.sId],
     });
     expect(addResult.isOk()).toBe(true);
     const readerAuth = await Authenticator.fromUserIdAndWorkspaceId(

@@ -53,15 +53,8 @@ describe("POST /api/v1/w/[wId]/sandbox/sandbox-functions/result", () => {
     await MembershipFactory.associate(workspace, callbackUser, {
       role: "user",
     });
-    const [memberGroup] = await podSpace.fetchGroupResources(auth, {
-      groupReferences: podSpace.groups.filter((group) => group.isRegularAuto()),
-    });
-    expect(memberGroup).toBeDefined();
-    if (!memberGroup) {
-      return;
-    }
-    const addMemberResult = await memberGroup.dangerouslyAddMember(auth, {
-      user: callbackUser.toJSON(),
+    const addMemberResult = await podSpace.addMembers(auth, {
+      userIds: [callbackUser.sId],
     });
     expect(addMemberResult.isOk()).toBe(true);
     const callbackAuth = await Authenticator.fromUserIdAndWorkspaceId(
