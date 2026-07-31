@@ -11,6 +11,7 @@ import {
 } from "@app/lib/swr/swr";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import type { GetPendingInvitationsResponseBody } from "@app/types/api/invitation";
+import type { GetUserMemoryResponseBody } from "@app/types/api/me/memory";
 import type { GetSlackNotificationResponseBody } from "@app/types/api/me/slack_notifications";
 import type {
   GetUserMetadataResponseBody,
@@ -19,7 +20,7 @@ import type {
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 
 export function useUser(
@@ -234,6 +235,61 @@ export function usePendingInvitations({
     isPendingInvitationsLoading: !error && !data && !disabled,
     isPendingInvitationsError: error,
     mutatePendingInvitations: mutate,
+  };
+}
+
+export function useUserMemory({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const sendNotification = useSendNotification();
+  const memoryFetcher: Fetcher<GetUserMemoryResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/me/memory`,
+    memoryFetcher,
+    { disabled }
+  );
+
+  const setMemory = useCallback(
+    async (update: {
+      content?: string;
+      enabled?: boolean;
+    }): Promise<boolean> => {
+      const res = await clientFetch(`/api/w/${owner.sId}/me/memory`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(update),
+      });
+
+      if (res.ok) {
+        sendNotification({ type: "success", title: "Memory saved." });
+        await mutate();
+        return true;
+      }
+
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error saving memory",
+        description: errorData.message,
+      });
+      return false;
+    },
+    [owner.sId, sendNotification, mutate]
+  );
+
+  return {
+    content: data?.content ?? "",
+    isMemoryEnabled: data?.enabled ?? false,
+    isMemoryLoading: !error && !data && !disabled,
+    isMemoryError: error,
+    mutateMemory: mutate,
+    setMemory,
   };
 }
 

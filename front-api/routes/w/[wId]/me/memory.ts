@@ -3,7 +3,6 @@ import {
   exceedsUserMemoryLimit,
   getUserMemory,
   isUserMemoryEnabled,
-  MAX_USER_MEMORY_CHARS,
   setUserMemory,
   setUserMemoryEnabled,
 } from "@app/lib/api/user_memory";
@@ -11,6 +10,7 @@ import type {
   GetUserMemoryResponseBody,
   PatchUserMemoryResponseBody,
 } from "@app/types/api/me/memory";
+import { MAX_USER_MEMORY_CONTENT_LENGTH } from "@app/types/api/me/memory";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -79,7 +79,7 @@ app.patch(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Memory content exceeds the ${MAX_USER_MEMORY_CHARS} character limit.`,
+            message: `Memory content exceeds the ${MAX_USER_MEMORY_CONTENT_LENGTH} character limit.`,
           },
         });
       }

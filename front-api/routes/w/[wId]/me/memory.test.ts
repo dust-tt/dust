@@ -1,13 +1,10 @@
 import { DustFileSystemError } from "@app/lib/api/file_system/dust_file_system";
-import {
-  getUserMemory,
-  MAX_USER_MEMORY_CHARS,
-  setUserMemory,
-} from "@app/lib/api/user_memory";
+import { getUserMemory, setUserMemory } from "@app/lib/api/user_memory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import {
   GetUserMemoryResponseBodySchema,
+  MAX_USER_MEMORY_CONTENT_LENGTH,
   PatchUserMemoryResponseBodySchema,
 } from "@app/types/api/me/memory";
 import { Err, Ok } from "@app/types/shared/result";
@@ -123,7 +120,7 @@ describe("PATCH /api/w/:wId/me/memory", () => {
     const { workspace } = await setup();
 
     const response = await patchMemory(workspace.sId, {
-      content: "a".repeat(MAX_USER_MEMORY_CHARS + 1),
+      content: "a".repeat(MAX_USER_MEMORY_CONTENT_LENGTH + 1),
     });
 
     expect(response.status).toBe(400);
