@@ -772,7 +772,6 @@ export async function postUserMessage(
   ]);
 
   let agentConfigurations = removeNulls(results[0]);
-  let shouldCreateBranch = false;
 
   // Retired global agents can't be invoked (new conversations or new messages).
   // The internal `run_agent` path is exempt: some hidden sub-agents are retired.
@@ -837,16 +836,6 @@ export async function postUserMessage(
         },
       });
     }
-
-    // When the agent is not usable, we will create a branch.
-    if (isPartOfPod) {
-      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
-        configuration: agentConfig,
-        conversation,
-      });
-
-      shouldCreateBranch = shouldCreateBranch || !canAgentBeUsed;
-    }
   }
 
   // Resolve the message author before the transaction: the email attribution reads must not run
@@ -865,93 +854,6 @@ export async function postUserMessage(
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
 
-    let nextMessageRank: number | undefined;
-
-    // We will do best effort to create a branch, but there a several conditions that we will not create a branch.
-    // - User is null, cannot create branch without a user, should never happen, but we will log an error and continue.
-    // - Message has user mentions, we don't support multiple users in a branch yet.
-    // - Last message in conversation has no content should never happen, but we will log an error and continue.
-    // If we do not create a branch, the user will receive a notification that the agent is not usable.
-    if (shouldCreateBranch) {
-      if (user === null) {
-        // Should never happen, but we will log an error and continue.
-        logger.error("User is null, cannot create branch without a user.");
-      } else if (mentions.some(isUserMention)) {
-        logger.info(
-          "Message has user mentions, for now we do not support branching with user mentions."
-        );
-      } else {
-        const branchContext =
-          await conversationResource.getBranchCreationContext(auth, {
-            branchId: conversation.branchId,
-            transaction: t,
-          });
-        const shouldCreateAnchorMessage =
-          branchContext.isEmpty || branchContext.onlyContentFragments;
-
-        if (shouldCreateAnchorMessage) {
-          // Create an invisible anchor message so the branch has a previousMessageId
-          // to reference. If the conversation only contains content fragments, keep
-          // them before the anchor so they remain attached to the branch context.
-          const anchorMessageRank =
-            branchContext.maxRank !== null ? branchContext.maxRank + 1 : 0;
-          const anchorMessage = await createUserMessage(auth, {
-            conversation,
-            content: "",
-            metadata: {
-              type: "create",
-              user: user.toJSON(),
-              rank: anchorMessageRank,
-              context: {
-                ...context,
-                origin: "branch_anchor",
-              },
-              requestedModel: modelSelection ?? null,
-            },
-            transaction: t,
-          });
-
-          const branch = await ConversationBranchResource.makeNew(
-            auth,
-            {
-              conversationId: conversation.id,
-              previousMessageId: anchorMessage.id,
-              state: "open",
-              userId: user.id,
-            },
-            t
-          );
-
-          conversation.branchId = branch.sId;
-          nextMessageRank = anchorMessageRank + 1;
-        } else {
-          const previousMessage = branchContext.lastMessage;
-          if (!previousMessage) {
-            logger.error(
-              "Last message in conversation has no content, cannot create branch."
-            );
-          } else {
-            // Create a new branch for the conversation.
-            const branch = await ConversationBranchResource.makeNew(
-              auth,
-              {
-                conversationId: conversation.id,
-                previousMessageId: previousMessage.id,
-                state: "open",
-                userId: user.id,
-              },
-              t
-            );
-
-            // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
-            conversation.branchId = branch.sId;
-            // Set the next message rank to the rank of the previous message plus one.
-            nextMessageRank = previousMessage.rank + 1;
-          }
-        }
-      }
-    }
-
     // We clear the hasError flag of a conversation when posting a new user message.
     if (conversation.hasError) {
       await ConversationResource.clearHasError(
@@ -963,7 +865,7 @@ export async function postUserMessage(
       );
     }
 
-    nextMessageRank ??= await getNextConversationMessageRank(auth, {
+    let nextMessageRank = await getNextConversationMessageRank(auth, {
       conversation,
       transaction: t,
     });
