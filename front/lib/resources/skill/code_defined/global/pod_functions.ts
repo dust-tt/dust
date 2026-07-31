@@ -238,7 +238,83 @@ fall back to a generic message for the rest. The ones worth branching on are \`i
 function's own request failed, \`sandbox_function_not_found\`, and \`not_supported\`.
 
 Pod functions in shared Frames are available to authenticated members of the Pod's workspace;
-anonymous viewers cannot call them.`,
+anonymous viewers cannot call them.
+
+#### Knowing who called a function
+
+A function can require a caller and read who they are. These are two separate things: the
+\`schema.userIdentity\` policy decides **whether the function runs at all**, and \`currentUser()\`
+decides **what it does** for the caller it got.
+
+Declare the policy alongside the input and output schemas:
+
+- \`"optional"\` (the default when you omit the field) runs the function with or without a user.
+  Use it for functions that are the same for everyone: shared reference data, stateless
+  computation, Pod-wide reads.
+- \`"workspace_user_required"\` refuses the call unless it comes from a current member of the Pod's
+  workspace. Use it as soon as the function reads or writes anything that belongs to a person, or
+  performs an action that should be attributable.
+
+\`\`\`ts
+import { z } from "zod";
+import { currentUser } from "@dust/pod";
+
+export const schema = {
+  description: "List the notes belonging to the calling user.",
+  userIdentity: "workspace_user_required",
+  input: z.object({}),
+  output: z.object({ notes: z.array(z.object({ id: z.number(), body: z.string() })) }),
+};
+\`\`\`
+
+Inside \`fetch\`, \`currentUser()\` from \`@dust/pod\` returns the caller as
+\`{ sId, firstName, lastName, fullName, image }\`, or \`null\` when the invocation has no user.
+Under \`"workspace_user_required"\` the platform has already rejected userless calls, so a
+non-null user is guaranteed; under \`"optional"\` you must handle \`null\` yourself.
+
+The membership is re-checked against the Pod's workspace when the invocation runs, not just when
+it is queued, so a user removed from the workspace in between is refused.
+
+**Never take the caller's identity as an input.** An \`input\` field like \`userId\` is supplied by
+whoever calls the function and can name anyone. \`currentUser()\` is the only trustworthy source.
+
+\`\`\`ts
+// BAD: any caller can pass someone else's id.
+input: z.object({ userId: z.string() })
+
+// GOOD: the platform decides who the caller is.
+const user = currentUser();
+\`\`\`
+
+#### Per-user state and sessions
+
+Scope rows by \`currentUser().sId\`, which is stable for a user across calls, conversations, and
+Frames. That single column is what turns a shared Pod database into per-user state, so add it when
+you create the table rather than retrofitting it later (schema evolution is additive-only).
+
+\`\`\`ts
+// databases/notes.db.ts
+export const notes = sqliteTable("notes", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id"),        // currentUser().sId
+  body: text("body"),
+  createdAt: integer("created_at", { mode: "timestamp" }),
+}, (t) => [index("notes_user_idx").on(t.userId)]);
+
+// list-notes.ts, declared "workspace_user_required"
+const user = currentUser();
+const rows = db("notes").select().from(notes).where(eq(notes.userId, user.sId)).all();
+\`\`\`
+
+Filter by \`userId\` on **every** read and write, not only on the read that renders the screen: a
+function that fetches a row by its primary key and then updates it must still check the row belongs
+to the caller, otherwise a guessed id reaches another user's data.
+
+Split capabilities across functions rather than branching inside one. A \`list-notes\` and a
+\`delete-note\` published separately can carry different policies and are each easy to reason about;
+one \`notes\` function taking an \`action\` field is not. If a capability must be restricted to a
+subset of members, keep that list in the database and check it against \`currentUser().sId\` —
+the platform only tells you the caller is a workspace member, not what they are allowed to do.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
   version: 5,
   icon: "PuzzleIcon",

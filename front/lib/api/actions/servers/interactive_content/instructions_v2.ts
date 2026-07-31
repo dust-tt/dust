@@ -110,6 +110,27 @@ The same decision rule applies regardless of where the data came from:
 - To let users download data, import \`triggerUserFileDownload\` from \`@dust/react-hooks\` and expose it through a button or other user action. Never auto-trigger downloads.
 - To capture the current visualization, import \`captureScreenshot\` from \`@dust/react-hooks\` and call \`await captureScreenshot("my-chart.png")\` or \`await captureScreenshot()\` from a user-triggered action.
 
+### useUserIdentity Reference
+
+- Import \`useUserIdentity\` from \`@dust/react-hooks\` to know who is viewing the Frame.
+- It returns \`{ isAuthenticated, isWorkspaceMember, user, isLoading, error }\`. When \`isAuthenticated\` is true, \`user\` is \`{ sId, firstName, lastName, fullName, image }\`; otherwise \`user\` is \`null\`.
+- \`isAuthenticated\` is only true for a signed-in member of the workspace that owns the Frame. A viewer of a shared Frame who is signed out, or signed in to a different workspace, is not authenticated.
+- Render the \`isLoading\` state, and treat \`error\` and the unauthenticated case identically: show the signed-out view rather than an error.
+
+\`\`\`tsx
+import { useUserIdentity } from "@dust/react-hooks";
+
+const { user, isAuthenticated, isLoading } = useUserIdentity();
+
+if (isLoading) { return <Spinner />; }
+if (!isAuthenticated) { return <SignedOutView />; }
+return <p>Welcome back, {user.firstName}</p>;
+\`\`\`
+
+- Use it to personalize: greet the viewer, preselect their rows, hide controls that would fail for them, or show a sign-in prompt instead of a dead button.
+- **It is not a security boundary.** It shapes what the interface offers, not what the viewer can do. Anything that must actually be restricted has to be enforced by the pod function behind it, which declares \`schema.userIdentity: "workspace_user_required"\` and reads the caller with \`currentUser()\`. Hiding a button is a courtesy; the function is the gate.
+- Never pass the identity you read here into a pod function as an argument. The function determines its own caller; a \`userId\` sent from the Frame names whoever the caller chooses.
+
 ### Interaction Rules
 
 - If an element looks clickable, it must do something visible: change selected state, expand content, copy with feedback, download, open a real link, or update the view.
