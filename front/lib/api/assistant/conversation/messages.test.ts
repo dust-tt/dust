@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock signalAgentUsage before importing the module that uses it
 vi.mock("@app/lib/api/assistant/agent_usage", () => ({
-  signalAgentUsage: vi.fn(),
+  signalAgentUsage: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
