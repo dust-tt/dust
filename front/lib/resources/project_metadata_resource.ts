@@ -223,19 +223,13 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ defaultAgentId }, transaction);
   }
 
+  // Space/availability access is enforced by SkillResource.fetchByIds (baseFetch) both when the
+  // caller resolves the skills passed here and on every subsequent read
   async setDefaultSkills(
-    auth: Authenticator,
     skills: SkillResource[],
     transaction?: Transaction
   ): Promise<void> {
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    const globalSpaceSkills = skills.filter((skill) =>
-      skill.requestedSpaceIds.every((id) => id === globalSpace.id)
-    );
-
-    const defaultSkillsIds = [
-      ...new Map(globalSpaceSkills.map((s) => [s.sId, s])).keys(),
-    ];
+    const defaultSkillsIds = [...new Map(skills.map((s) => [s.sId, s])).keys()];
 
     await this.update(
       {
