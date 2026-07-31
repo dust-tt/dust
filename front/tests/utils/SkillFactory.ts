@@ -40,7 +40,6 @@ export class SkillFactory {
     assert(user, "User is required");
 
     if (
-      !auth.isKey() &&
       !(await auth.hasWorkspacePermission("create", "skill"))
     ) {
       await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
