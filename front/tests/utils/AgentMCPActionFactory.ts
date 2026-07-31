@@ -90,6 +90,10 @@ export class AgentMCPActionFactory {
       mcpServerName: "test_server",
     };
 
+    // TODO(Adrien): Drop column if not used anymore.
+    // The action's stepContentId column is left null on purpose, mirroring production: the action is
+    // tied to its step content through the tool execution row below, not through this column. Setting
+    // it here would hide code paths that resolve the step content the real way.
     const action = await AgentMCPActionModel.create({
       workspaceId: workspace.id,
       agentMessageId: agentMessageModelId,
@@ -98,7 +102,6 @@ export class AgentMCPActionFactory {
       citationsAllocated: 0,
       augmentedInputs: {},
       toolConfiguration,
-      stepContentId: stepContent.id,
       stepContext: {
         citationsCount: 0,
         citationsOffset: 0,

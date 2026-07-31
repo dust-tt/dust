@@ -9,7 +9,6 @@ import { toolAwuFromAction } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { CompletedAgentMessageConsumptionItem } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
@@ -90,9 +89,9 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
   const usages = await RunResource.listRunUsagesForRuns(auth, { runs });
 
-  // Group the message's tool calls by the run that emitted them. Actions do not carry a run id
-  // directly; they reach it through their step content's dustRunId, which is the same identifier the
-  // run usages are keyed by.
+  // Group the message's tool calls by the run that emitted them. Each action carries its emitting
+  // step content, whose dustRunId identifies that run and is the same identifier the run usages are
+  // keyed by.
   const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
     agentMessageModelId,
   ]);
@@ -105,22 +104,15 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     enrichedActions.map((action) => [action.id, action])
   );
 
-  const stepContents = await AgentStepContentResource.fetchByModelIds(
-    auth,
-    removeNulls([...new Set(actions.map((action) => action.stepContentId))])
-  );
-  const dustRunIdByStepContentId = new Map(
-    stepContents.map((stepContent) => [stepContent.id, stepContent.dustRunId])
-  );
   const dustRunIdByRunModelId = new Map(
     runs.map((run) => [run.id, run.dustRunId])
   );
 
   const actionsByDustRunId = new Map<string, AgentMCPActionResource[]>();
   for (const action of actions) {
-    const dustRunId = dustRunIdByStepContentId.get(action.stepContentId);
+    const dustRunId = action.stepContent.dustRunId;
     if (!dustRunId) {
-      // Legacy step contents predate dustRunId stamping; their actions cannot be tied to a run, so
+      // Legacy step contents predate dustRunId stamping. Their actions cannot be tied to a run, so
       // they are left out of the tool attribution rather than guessed.
       continue;
     }
