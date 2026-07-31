@@ -28,14 +28,14 @@ export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
   directCreditAmountMicro: number | null;
 };
 
-type PendingToolConsumptionCompletion = ConsumptionItemEvidenceBase & {
+export type PendingToolConsumptionCompletion = ConsumptionItemEvidenceBase & {
   action: AgentMCPActionResource;
   /** Estimated tokens in the result returned by this tool execution */
   inputTokensCount: number | null;
   directCreditAmountMicro: number | null;
 };
 
-type PendingToolConsumptionItem = ConsumptionItemEvidenceBase & {
+export type PendingToolConsumptionItem = ConsumptionItemEvidenceBase & {
   action: AgentMCPActionResource;
   runUsageModelId: ModelId | null;
   /** Estimated tokens in the model output that emitted the tool name and arguments */
@@ -246,28 +246,51 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       transaction?: Transaction;
     }
   ): Promise<void> {
+    return this.insertPendingToolItemsIdempotently(auth, {
+      conversation,
+      attributionVersion,
+      items: [item],
+      transaction,
+    });
+  }
+
+  static async insertPendingToolItemsIdempotently(
+    auth: Authenticator,
+    {
+      conversation,
+      attributionVersion,
+      items,
+      transaction,
+    }: {
+      conversation: ConversationResource;
+      attributionVersion: number;
+      items: PendingToolConsumptionItem[];
+      transaction?: Transaction;
+    }
+  ): Promise<void> {
+    if (items.length === 0) {
+      return;
+    }
+
     const now = new Date();
     await this.model.bulkCreate(
-      [
-        {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          conversationId: conversation.id,
-          agentMessageId: item.action.agentMessageId,
-          runUsageId: item.runUsageModelId,
-          agentMCPActionId: item.action.id,
-          itemKey: `tool-action:${item.action.id}`,
-          itemType: "tool",
-          attributionVersion,
-          inputTokensCount: null,
-          outputTokensCount: item.outputTokensCount,
-          grossAttributedCreditAmountMicro:
-            item.grossAttributedCreditAmountMicro,
-          directCreditAmountMicro: null,
-          completedAt: null,
-          createdAt: now,
-          updatedAt: now,
-        },
-      ],
+      items.map((item) => ({
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
+        agentMessageId: item.action.agentMessageId,
+        runUsageId: item.runUsageModelId,
+        agentMCPActionId: item.action.id,
+        itemKey: `tool-action:${item.action.id}`,
+        itemType: "tool",
+        attributionVersion,
+        inputTokensCount: null,
+        outputTokensCount: item.outputTokensCount,
+        grossAttributedCreditAmountMicro: item.grossAttributedCreditAmountMicro,
+        directCreditAmountMicro: null,
+        completedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      })),
       {
         ignoreDuplicates: true,
         returning: false,

@@ -134,6 +134,32 @@ export class AgentMCPActionFactory {
   }
 
   /**
+   * Transitions an existing action to a new status, as happens once a blocked tool is approved
+   * (or denied) and then settles. The action resource passed in is not mutated, so callers that
+   * need the new status should re-fetch.
+   */
+  static async setStatus(
+    auth: Authenticator,
+    {
+      action,
+      status,
+    }: {
+      action: AgentMCPActionResource;
+      status: ToolExecutionStatus;
+    }
+  ): Promise<void> {
+    await AgentMCPActionModel.update(
+      { status },
+      {
+        where: {
+          id: action.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
+  /**
    * Creates an agent message (with a fresh test agent configuration) holding a single MCP
    * action, blocked on tool validation by default.
    */

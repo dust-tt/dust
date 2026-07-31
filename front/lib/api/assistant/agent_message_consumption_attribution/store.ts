@@ -1,3 +1,4 @@
+import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import {
   AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
   buildRunUsageAttribution,
@@ -7,12 +8,17 @@ import { measureToolCallFootprints } from "@app/lib/api/assistant/agent_message_
 import type { Authenticator } from "@app/lib/auth";
 import { toolAwuFromAction } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import type { CompletedAgentMessageConsumptionItem } from "@app/lib/resources/agent_message_consumption_item_resource";
+import type {
+  CompletedAgentMessageConsumptionItem,
+  PendingToolConsumptionCompletion,
+  PendingToolConsumptionItem,
+} from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
@@ -37,6 +43,13 @@ const CREDIT_AMOUNT_MICRO_PER_CREDIT = 1_000_000;
  * run usages or actions that are new since the last pass. Records are computed for the whole message
  * before any write, so a tokenization failure throws and the retry recomputes from scratch rather
  * than locking in a partial breakdown.
+ *
+ * A finalize also fires while the loop is paused on a tool awaiting approval, so an action can be
+ * seen here before it is final. Such an action has no result and no charge yet, and billing does not
+ * charge it, so its tool row is written pending: only the output the model already spent emitting the
+ * call, carved out of the assistant bucket like any other tool call. When a later finalize sees the
+ * action final, that pending row is completed in place with the result footprint and direct charge,
+ * rather than replaced (the row cannot be re-inserted past its idempotency key).
  */
 export async function computeAndStoreAgentMessageConsumptionAttribution(
   auth: Authenticator,
@@ -121,7 +134,34 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     actionsByDustRunId.set(dustRunId, runActions);
   }
 
+  // Actions left pending by an earlier finalize (the message paused for approval, then resumed). A
+  // now-final one must be completed in place: an insert would be skipped by ignoreDuplicates on its
+  // frozen pending row, so the result footprint and direct charge would never land.
+  const priorItems =
+    await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+      agentMessageModelIds: [agentMessageModelId],
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+    });
+  const pendingActionModelIdsBefore = new Set(
+    removeNulls(
+      priorItems
+        .filter((item) => item.itemType === "tool" && item.completedAt === null)
+        .map((item) => item.agentMCPActionId)
+    )
+  );
+
   const records: CompletedAgentMessageConsumptionItem[] = [];
+  // Tool calls whose action is still blocked (awaiting approval or authentication). Written pending:
+  // only the emitted call output is known, the result footprint and direct charge wait for the
+  // action to settle.
+  const pendingToolItems: PendingToolConsumptionItem[] = [];
+  // Completion evidence per action, applied below to any action that was already pending from an
+  // earlier pass. Keyed by action model id.
+  const completionByActionModelId = new Map<
+    ModelId,
+    PendingToolConsumptionCompletion
+  >();
+
   for (const usage of usages) {
     const dustRunId = dustRunIdByRunModelId.get(usage.runModelId);
     const runActions = (dustRunId && actionsByDustRunId.get(dustRunId)) || [];
@@ -202,6 +242,20 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
 
     toolCalls.forEach((toolCall) => {
       const { action, enrichedAction, footprint } = toolCall.tool;
+
+      // A blocked action carries no result and no charge yet, and billing does not charge it. Record
+      // only the emitted call output as a pending row. The rest lands once the action is final.
+      if (!isToolExecutionStatusFinal(action.status)) {
+        pendingToolItems.push({
+          action,
+          runUsageModelId: usage.runUsageModelId,
+          outputTokensCount: toolCall.outputTokensCount,
+          grossAttributedCreditAmountMicro:
+            toolCall.grossAttributedCreditAmountMicro,
+        });
+        return;
+      }
+
       const directCreditAmountMicro = Math.round(
         toolAwuFromAction(
           {
@@ -229,9 +283,20 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
         grossAttributedCreditAmountMicro:
           toolAttribution.grossAttributedCreditAmountMicro,
       });
+
+      completionByActionModelId.set(action.id, {
+        action,
+        inputTokensCount: toolAttribution.inputTokensCount,
+        directCreditAmountMicro: toolAttribution.directCreditAmountMicro,
+        grossAttributedCreditAmountMicro:
+          toolAttribution.grossAttributedCreditAmountMicro,
+      });
     });
   }
 
+  // Insert the model rows and the tool rows that are already final. A final action that carries a
+  // pending row from an earlier pass conflicts here and is skipped by ignoreDuplicates. It is
+  // completed just below instead.
   await AgentMessageConsumptionItemResource.insertCompletedItemsIdempotently(
     auth,
     {
@@ -241,4 +306,28 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
       records,
     }
   );
+
+  await AgentMessageConsumptionItemResource.insertPendingToolItemsIdempotently(
+    auth,
+    {
+      conversation,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      items: pendingToolItems,
+    }
+  );
+
+  // Complete the actions that were pending on an earlier pass and have now settled. Bounded by the
+  // number of approvals resolved on this resume, which is small.
+  for (const actionModelId of pendingActionModelIdsBefore) {
+    const completion = completionByActionModelId.get(actionModelId);
+    if (completion) {
+      await AgentMessageConsumptionItemResource.completePendingToolItemIdempotently(
+        auth,
+        {
+          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          item: completion,
+        }
+      );
+    }
+  }
 }
