@@ -568,7 +568,7 @@ dhb() {
 
   base="$(_dust_hive_base_port "$query")" || return
   port=$((base + offset))
-  url="http://localhost:${port}"
+  url="http://localhost:${port}/w/DevWkSpace/"
 
   echo "Opening $url"
   open "$url"
