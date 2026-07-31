@@ -651,6 +651,10 @@
  *           type: string
  *           nullable: true
  *           description: Path of this file inside the sandbox conversation mount.
+ *         processedPath:
+ *           type: string
+ *           nullable: true
+ *           description: Path of the plain-text sibling of this file inside the sandbox conversation mount (e.g. an audio transcript), when it has one.
  *         skipDataSourceIndexing:
  *           type: boolean
  *           description: Whether data source indexing was skipped for this file.
