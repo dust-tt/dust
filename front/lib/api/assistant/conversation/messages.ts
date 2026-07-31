@@ -166,6 +166,7 @@ export async function createUserMessage(
           sId: originMessageId,
           agentMessageId: { [Op.not]: null },
         },
+        transaction,
       })
     : null;
 
