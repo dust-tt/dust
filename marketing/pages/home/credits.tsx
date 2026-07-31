@@ -113,12 +113,11 @@ function Hero() {
           "mb-5 max-w-3xl text-balance text-foreground"
         )}
       >
-        Dust credits
+        Dust token credits
       </h1>
       <p className="copy-lg mb-9 max-w-2xl text-balance text-muted-foreground">
-        These are intelligence credits only, excluding separate action credits.
-        The figures are rounded up per model and execution, matching the
-        codebase conversion logic.
+        These are token credits only, excluding action credits. The figures are
+        rounded up per model and execution.
       </p>
     </section>
   );
@@ -251,8 +250,8 @@ export default function Credits({ providerSections }: CreditsPageProps) {
     <LazyMotion features={domAnimation}>
       <MotionConfig reducedMotion="user">
         <PageMetadata
-          title="Dust Credits: Model Credit Consumption"
-          description="Intelligence credit consumption per model on Dust, in credits per million input and output tokens."
+          title="Dust Token Credits: Model Credit Consumption"
+          description="Token credit consumption per model on Dust, in credits per million input and output tokens."
           pathname={router.asPath}
         />
         <Hero />
