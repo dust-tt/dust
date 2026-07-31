@@ -49,14 +49,8 @@ async function setup() {
   });
   const member = await UserFactory.basic();
   await MembershipFactory.associate(workspace, member, { role: "user" });
-  const [memberGroup] = await space.fetchGroupResources(adminAuth, {
-    groupReferences: space.groups.filter((group) => group.isRegularAuto()),
-  });
-  if (!memberGroup) {
-    throw new Error("Expected the Pod member group to exist.");
-  }
-  const addMemberResult = await memberGroup.dangerouslyAddMember(adminAuth, {
-    user: member.toJSON(),
+  const addMemberResult = await space.addMembers(adminAuth, {
+    userIds: [member.sId],
   });
   if (addMemberResult.isErr()) {
     throw addMemberResult.error;

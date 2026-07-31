@@ -156,16 +156,7 @@ describe("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invoc
       role: "user",
       workspace,
     });
-    const [memberGroup] = await space.fetchGroupResources(auth, {
-      groupReferences: space.groups.filter((group) => group.isRegularAuto()),
-    });
-    expect(memberGroup).toBeDefined();
-    if (!memberGroup) {
-      return;
-    }
-    const addResult = await memberGroup.dangerouslyAddMember(auth, {
-      user: user.toJSON(),
-    });
+    const addResult = await space.addMembers(auth, { userIds: [user.sId] });
     expect(addResult.isOk()).toBe(true);
 
     const response = await getEvents({
