@@ -16,15 +16,20 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
+type ValidatableMention = Extract<
+  RichMentionWithStatus,
+  {
+    status:
+      | "pending_conversation_access"
+      | "pending_project_membership"
+      | "agent_restricted_by_space_usage";
+  }
+>;
+
 interface MentionValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
-  mention: Extract<
-    RichMentionWithStatus,
-    {
-      status: "pending_conversation_access" | "pending_project_membership";
-    }
-  >;
+  mention: ValidatableMention;
   conversation: ConversationWithoutContentType;
   message: VirtuosoMessage;
 }
@@ -39,6 +44,8 @@ export function MentionValidationRequired({
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isProjectMembership = mention.status === "pending_project_membership";
+  const isRestrictedAgent =
+    mention.status === "agent_restricted_by_space_usage";
 
   const { validateMention } = useMentionValidation({
     workspaceId: owner.sId,
@@ -74,15 +81,23 @@ export function MentionValidationRequired({
     }
   };
 
-  if (!canCurrentUserRespond) {
+  if (!canCurrentUserRespond || mention.dismissed) {
     return null;
   }
 
-  const title = isProjectMembership
-    ? `Add ${mention.label} to this Pod?`
-    : `Invite ${mention.label} to this conversation?`;
+  const title = isRestrictedAgent
+    ? `Run ${mention.label} in this Pod conversation?`
+    : isProjectMembership
+      ? `Add ${mention.label} to this Pod?`
+      : `Invite ${mention.label} to this conversation?`;
 
-  const description = isAgentMessageWithStreaming(message) ? (
+  const description = isRestrictedAgent ? (
+    <>
+      <span className="font-semibold">{mention.label}</span> uses at least one
+      private space. If you run it here, its outputs will be visible to Pod
+      members who may not have access to those spaces.
+    </>
+  ) : isAgentMessageWithStreaming(message) ? (
     <>
       <span className="font-semibold">@{message.configuration.name}</span>{" "}
       mentioned <span className="font-semibold">{mention.label}</span>.
@@ -96,11 +111,24 @@ export function MentionValidationRequired({
     "They'll see the full history and be able to reply."
   );
 
+  const approveLabel = isRestrictedAgent
+    ? "Run agent"
+    : isProjectMembership
+      ? "Add to Pod"
+      : "Invite";
+
+  const visual =
+    mention.type === "agent" ? (
+      <Avatar visual={mention.pictureUrl} size="sm" />
+    ) : (
+      <Avatar icon={MessageChatSquare} size="sm" />
+    );
+
   return (
     <div className="my-3">
       <ActionCardBlock
         title={title}
-        visual={<Avatar icon={MessageChatSquare} size="sm" />}
+        visual={visual}
         description={description}
         actions={
           <div className="flex flex-wrap justify-end gap-2">
@@ -114,7 +142,7 @@ export function MentionValidationRequired({
             <Button
               variant="highlight"
               size="sm"
-              label={isProjectMembership ? "Add to Pod" : "Invite"}
+              label={approveLabel}
               disabled={isSubmitting}
               isLoading={isSubmitting}
               onClick={handleApprove}
