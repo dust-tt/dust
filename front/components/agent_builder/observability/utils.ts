@@ -15,10 +15,6 @@ import moment from "moment-timezone";
 
 export type VersionMarker = { version: string; timestamp: number };
 
-export type ValuesPayload = {
-  values: Record<string, { count: number; percent: number } | undefined>;
-};
-
 export type SourceBucket = { origin: string; count: number };
 
 export function isUserMessageOrigin(

@@ -4,9 +4,7 @@ import { useUser } from "@app/lib/swr/user";
 import { timeAgoFrom } from "@app/lib/utils";
 import {
   POD_MANAGER_AGENT_SID,
-  POD_TASK_NO_ASSIGNEE_LABEL,
   type PodTaskActorType,
-  type PodTaskAssigneeType,
   type PodTaskType,
 } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -15,7 +13,6 @@ import type {
   UserTypeWithWorkspaces,
 } from "@app/types/user";
 import {
-  Avatar,
   BookOpen01,
   ConfluenceLogo,
   cn,
@@ -267,49 +264,5 @@ export function TaskSources({
         </span>
       ))}
     </span>
-  );
-}
-
-export function TaskAssigneeHeader({
-  user,
-  viewerUserId,
-  className,
-}: {
-  user: PodTaskAssigneeType | null;
-  viewerUserId: string | null;
-  className?: string;
-}) {
-  const isYou = viewerUserId !== null && user?.sId === viewerUserId;
-  const displayName =
-    user === null ? POD_TASK_NO_ASSIGNEE_LABEL : user.fullName;
-
-  return (
-    <div className={cn("mb-1 mt-2 flex items-center gap-2", className)}>
-      <Tooltip
-        label={displayName}
-        trigger={
-          <span className="inline-flex shrink-0 items-center justify-center">
-            {user !== null ? (
-              <Avatar
-                size="xxs"
-                isRounded
-                visual={user.image ?? "/static/humanavatar/anonymous.png"}
-              />
-            ) : (
-              <Avatar
-                size="xxs"
-                isRounded
-                visual={null}
-                className="bg-background"
-              />
-            )}
-          </span>
-        }
-      />
-      <span className="text-sm font-medium text-muted-foreground">
-        {displayName}
-        {user !== null && isYou ? " (you)" : ""}
-      </span>
-    </div>
   );
 }

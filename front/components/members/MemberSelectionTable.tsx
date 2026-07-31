@@ -34,12 +34,6 @@ export function isFullUserType(
   return "lastLoginAt" in user;
 }
 
-export function hasWorkspaceInfo(
-  user: SearchMemberType
-): user is LightUserTypeWithWorkspace | UserTypeWithWorkspace {
-  return "workspace" in user;
-}
-
 export interface MemberRowData {
   sId: string;
   fullName: string;

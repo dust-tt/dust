@@ -75,8 +75,6 @@ function useEditorService(editor: Editor | null) {
   );
 }
 
-export type MarkdownEditorService = ReturnType<typeof useEditorService>;
-
 interface UseMarkdownEditorProps {
   content: string;
   debounceMs?: number;

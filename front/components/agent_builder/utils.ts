@@ -3,18 +3,6 @@ import type { AssistantTemplateListType } from "@app/lib/resources/template_reso
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import { useController } from "react-hook-form";
 
-export const isInvalidJson = (value: string | null | undefined): boolean => {
-  if (!value) {
-    return false;
-  }
-  try {
-    const parsed = JSON.parse(value);
-    return !parsed || typeof parsed !== "object";
-  } catch {
-    return true;
-  }
-};
-
 export function getUniqueTemplateTags(
   templates: AssistantTemplateListType[]
 ): TemplateTagCodeType[] {

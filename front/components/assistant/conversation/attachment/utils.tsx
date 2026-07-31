@@ -43,21 +43,6 @@ import type { ReactNode } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
-export const isTextualContentType = (
-  attachmentCitation: AttachmentCitation
-) => {
-  if (attachmentCitation.type === "node") {
-    return false;
-  }
-  const ct = attachmentCitation.contentType;
-  return (
-    ct.startsWith("text/") ||
-    ct === "application/json" ||
-    ct === "application/xml" ||
-    ct === "application/vnd.dust.section.json"
-  );
-};
-
 export const isAudioContentType = (attachmentCitation: AttachmentCitation) => {
   if (attachmentCitation.type === "node") {
     return false;

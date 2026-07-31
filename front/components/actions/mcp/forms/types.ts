@@ -8,8 +8,6 @@ export const MCP_SERVER_OAUTH_USE_CASES = [
   "personal_actions",
 ] as const;
 
-export type MCPServerOAuthUseCase = (typeof MCP_SERVER_OAUTH_USE_CASES)[number];
-
 // Auth methods
 export const CREATE_MCP_SERVER_AUTH_METHODS = [
   "oauth-dynamic",

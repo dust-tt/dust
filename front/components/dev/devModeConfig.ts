@@ -233,8 +233,6 @@ for (const group of COLOR_GROUPS) {
     ALL_TOKENS[key] = token;
   }
 }
-export const ALL_TOKEN_NAMES = Object.keys(ALL_TOKENS);
-
 export type TypoProp =
   | "fontWeight"
   | "fontSize"
