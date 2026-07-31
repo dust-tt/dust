@@ -200,9 +200,12 @@ export function useMentionValidation({
           sendNotification({
             type: "success",
             title: "Success",
-            description: isProjectConversation
-              ? `${mention.label} has been added to the Pod, and added to the conversation`
-              : `${mention.label} has been invited to the conversation.`,
+            description:
+              mention.type === "agent"
+                ? `${mention.label} will run in this conversation.`
+                : isProjectConversation
+                  ? `${mention.label} has been added to the Pod, and added to the conversation`
+                  : `${mention.label} has been invited to the conversation.`,
           });
         }
 

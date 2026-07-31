@@ -384,7 +384,8 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
               if (
                 mention.status === "pending_conversation_access" ||
-                mention.status === "pending_project_membership"
+                mention.status === "pending_project_membership" ||
+                mention.status === "agent_restricted_by_space_usage"
               ) {
                 return (
                   <MentionValidationRequired
@@ -397,8 +398,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                   />
                 );
               } else if (
-                mention.status === "user_restricted_by_conversation_access" ||
-                mention.status === "agent_restricted_by_space_usage"
+                mention.status === "user_restricted_by_conversation_access"
               ) {
                 return (
                   <MentionInvalid
