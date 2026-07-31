@@ -4,8 +4,8 @@ import { fetchConversationParticipants } from "@app/lib/api/assistant/participan
 import type { Authenticator } from "@app/lib/auth";
 import {
   filterAndSortEditorSuggestionAgents,
+  interleaveMentionsPreservingAgentOrder,
   SUGGESTION_DISPLAY_LIMIT,
-  SUGGESTION_PRIORITY,
   sortEditorSuggestionUsers,
 } from "@app/lib/mentions/editor/suggestion";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -22,124 +22,6 @@ import {
   toRichAgentMentionType,
   toRichUserMentionType,
 } from "@app/types/assistant/mentions";
-
-export function interleaveMentionsPreservingAgentOrder(
-  agents: RichAgentMentionInConversation[],
-  users: RichUserMentionInConversation[],
-  lowerCaseQuery: string = "",
-  lastMentionedId: string | null = null,
-  conversationId: string | null = null
-): RichMention[] {
-  if (users.length === 0) {
-    return [...agents];
-  }
-
-  if (agents.length === 0) {
-    return [...users];
-  }
-
-  let result: RichMention[] = [];
-
-  let agentIndex = 0;
-  let userIndex = 0;
-
-  for (let position = 0; position < SUGGESTION_DISPLAY_LIMIT; position += 1) {
-    // Break if we have exhausted both lists
-    if (agentIndex >= agents.length && userIndex >= users.length) {
-      break;
-    }
-
-    const nextUser = users[userIndex];
-    const nextAgent = agents[agentIndex];
-
-    // First fill in users participants
-    if (nextUser?.isParticipant) {
-      result.push(nextUser);
-      userIndex += 1;
-      continue;
-    }
-
-    // Then fill in agents participants
-    if (nextAgent?.isParticipant) {
-      result.push(nextAgent);
-      agentIndex += 1;
-      continue;
-    }
-
-    // If no more participants, prioritize users/agents who start with the query
-    const nextUserStartsWithQuery =
-      lowerCaseQuery &&
-      nextUser?.label?.toLowerCase().startsWith(lowerCaseQuery);
-    const nextAgentStartsWithQuery =
-      lowerCaseQuery &&
-      nextAgent?.label?.toLowerCase().startsWith(lowerCaseQuery);
-
-    // Our high priority agents first
-    if (
-      nextAgentStartsWithQuery &&
-      SUGGESTION_PRIORITY[nextAgent.id] !== undefined
-    ) {
-      result.push(nextAgent);
-      agentIndex += 1;
-      continue;
-    }
-    if (conversationId) {
-      // In a conversation, prioritize users over agents.
-      if (nextUserStartsWithQuery) {
-        result.push(nextUser);
-        userIndex += 1;
-        continue;
-      }
-      if (nextAgentStartsWithQuery) {
-        result.push(nextAgent);
-        agentIndex += 1;
-        continue;
-      }
-    } else {
-      // Outside a conversation, prioritize agents over users.
-      if (nextAgentStartsWithQuery) {
-        result.push(nextAgent);
-        agentIndex += 1;
-        continue;
-      }
-      if (nextUserStartsWithQuery) {
-        result.push(nextUser);
-        userIndex += 1;
-        continue;
-      }
-    }
-
-    // Then interleave agents and users
-    if (position % 3 === 2 && userIndex < users.length) {
-      // Every 3rd position: add a user if available
-      result.push(users[userIndex]);
-      userIndex += 1;
-    } else if (agentIndex < agents.length) {
-      // Other positions: add an agent if available
-      result.push(agents[agentIndex]);
-      agentIndex += 1;
-    } else if (userIndex < users.length) {
-      // Fallback: if no agents left, add remaining users
-      result.push(users[userIndex]);
-      userIndex += 1;
-    }
-  }
-
-  // Move last mentioned agent to first position if specified
-  if (lastMentionedId) {
-    const lastMentioned =
-      agents.find((s) => s.id === lastMentionedId) ??
-      users.find((s) => s.id === lastMentionedId);
-    if (lastMentioned) {
-      result = [
-        lastMentioned,
-        ...result.filter((suggestion) => suggestion.id !== lastMentionedId),
-      ];
-    }
-  }
-
-  return result.slice(0, SUGGESTION_DISPLAY_LIMIT);
-}
 
 /**
  * Normalizes the `select` query parameter of the mention suggestions endpoint

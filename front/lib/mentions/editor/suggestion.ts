@@ -5,6 +5,7 @@ import {
 import type {
   RichAgentMention,
   RichAgentMentionInConversation,
+  RichMention,
   RichUserMentionInConversation,
 } from "@app/types/assistant/mentions";
 
@@ -23,6 +24,111 @@ export const SUGGESTION_PRIORITY: Record<string, number> = {
   [GLOBAL_AGENTS_SID.DUST]: 1,
   [GLOBAL_AGENTS_SID.DEEP_DIVE]: 2,
 };
+
+export function interleaveMentionsPreservingAgentOrder(
+  agents: RichAgentMentionInConversation[],
+  users: RichUserMentionInConversation[],
+  lowerCaseQuery: string = "",
+  lastMentionedId: string | null = null,
+  conversationId: string | null = null
+): RichMention[] {
+  if (users.length === 0) {
+    return agents.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  }
+
+  if (agents.length === 0) {
+    return users.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  }
+
+  let result: RichMention[] = [];
+  let agentIndex = 0;
+  let userIndex = 0;
+
+  for (let position = 0; position < SUGGESTION_DISPLAY_LIMIT; position += 1) {
+    if (agentIndex >= agents.length && userIndex >= users.length) {
+      break;
+    }
+
+    const nextUser = users[userIndex];
+    const nextAgent = agents[agentIndex];
+
+    if (nextUser?.isParticipant) {
+      result.push(nextUser);
+      userIndex += 1;
+      continue;
+    }
+
+    if (nextAgent?.isParticipant) {
+      result.push(nextAgent);
+      agentIndex += 1;
+      continue;
+    }
+
+    const nextUserStartsWithQuery =
+      lowerCaseQuery &&
+      nextUser?.label?.toLowerCase().startsWith(lowerCaseQuery);
+    const nextAgentStartsWithQuery =
+      lowerCaseQuery &&
+      nextAgent?.label?.toLowerCase().startsWith(lowerCaseQuery);
+
+    if (
+      nextAgentStartsWithQuery &&
+      SUGGESTION_PRIORITY[nextAgent.id] !== undefined
+    ) {
+      result.push(nextAgent);
+      agentIndex += 1;
+      continue;
+    }
+    if (conversationId) {
+      if (nextUserStartsWithQuery) {
+        result.push(nextUser);
+        userIndex += 1;
+        continue;
+      }
+      if (nextAgentStartsWithQuery) {
+        result.push(nextAgent);
+        agentIndex += 1;
+        continue;
+      }
+    } else {
+      if (nextAgentStartsWithQuery) {
+        result.push(nextAgent);
+        agentIndex += 1;
+        continue;
+      }
+      if (nextUserStartsWithQuery) {
+        result.push(nextUser);
+        userIndex += 1;
+        continue;
+      }
+    }
+
+    if (position % 3 === 2 && userIndex < users.length) {
+      result.push(users[userIndex]);
+      userIndex += 1;
+    } else if (agentIndex < agents.length) {
+      result.push(agents[agentIndex]);
+      agentIndex += 1;
+    } else if (userIndex < users.length) {
+      result.push(users[userIndex]);
+      userIndex += 1;
+    }
+  }
+
+  if (lastMentionedId) {
+    const lastMentioned =
+      agents.find((suggestion) => suggestion.id === lastMentionedId) ??
+      users.find((suggestion) => suggestion.id === lastMentionedId);
+    if (lastMentioned) {
+      result = [
+        lastMentioned,
+        ...result.filter((suggestion) => suggestion.id !== lastMentionedId),
+      ];
+    }
+  }
+
+  return result.slice(0, SUGGESTION_DISPLAY_LIMIT);
+}
 
 function compareAgentSuggestionsForSort(
   a: RichAgentMention,
@@ -90,6 +196,17 @@ export function filterAndSortEditorSuggestionAgents(
         ) || compareAgentSuggestionsForSort(a, b)
       );
     });
+}
+
+export function filterEditorSuggestionUsers(
+  lowerCaseQuery: string,
+  suggestions: RichUserMentionInConversation[]
+) {
+  return suggestions.filter(
+    (item) =>
+      subFilter(lowerCaseQuery, item.label.toLowerCase()) ||
+      subFilter(lowerCaseQuery, item.description.toLowerCase())
+  );
 }
 
 export function sortEditorSuggestionUsers(

@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   filterAndSortEditorSuggestionAgents,
+  filterEditorSuggestionUsers,
   SUGGESTION_PRIORITY,
   sortEditorSuggestionUsers,
 } from "./suggestion";
@@ -416,6 +417,27 @@ describe("filterAndSortEditorSuggestionAgents", () => {
         expect(favoriteIndex).toBeLessThan(nonFavoriteIndex);
       }
     });
+  });
+});
+
+describe("filterEditorSuggestionUsers", () => {
+  const users: RichUserMentionInConversation[] = [
+    {
+      type: "user",
+      id: "user-1",
+      label: "Alice Smith",
+      pictureUrl: "",
+      description: "asmith@example.com",
+    },
+  ];
+
+  it("filters stale user results by name", () => {
+    expect(filterEditorSuggestionUsers("bob", users)).toEqual([]);
+    expect(filterEditorSuggestionUsers("alice", users)).toEqual(users);
+  });
+
+  it("keeps users returned from an email search", () => {
+    expect(filterEditorSuggestionUsers("asmith", users)).toEqual(users);
   });
 });
 
