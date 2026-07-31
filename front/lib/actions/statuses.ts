@@ -45,29 +45,11 @@ export const TOOL_EXECUTION_BLOCKED_STATUSES = [
 export type ToolExecutionBlockedStatus =
   (typeof TOOL_EXECUTION_BLOCKED_STATUSES)[number];
 
-const TOOL_EXECUTION_TRANSIENT_STATUSES = [
-  "ready_allowed_explicitly",
-  "ready_allowed_implicitly",
-  ...TOOL_EXECUTION_BLOCKED_STATUSES,
-  "running",
-] as const satisfies readonly ToolExecutionStatus[];
-
-type ToolExecutionTransientStatus =
-  (typeof TOOL_EXECUTION_TRANSIENT_STATUSES)[number];
-
 export function isToolExecutionStatusFinal(
   state: ToolExecutionStatus
 ): state is ToolExecutionFinalStatus {
   return TOOL_EXECUTION_FINAL_STATUSES.includes(
     state as ToolExecutionFinalStatus
-  );
-}
-
-export function isToolExecutionStatusTransient(
-  state: ToolExecutionStatus
-): state is ToolExecutionTransientStatus {
-  return TOOL_EXECUTION_TRANSIENT_STATUSES.includes(
-    state as ToolExecutionTransientStatus
   );
 }
 

@@ -309,36 +309,8 @@ export function isToolMarkerResourceType(
 
 export const GET_DATABASE_SCHEMA_MARKER = "get_database_schema_marker" as const;
 
-export function isGetDatabaseSchemaMarkerResourceType(
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: ToolMarkerResourceType & {
-    text: typeof GET_DATABASE_SCHEMA_MARKER;
-  };
-} {
-  return (
-    isToolMarkerResourceType(outputBlock) &&
-    outputBlock.resource.text === GET_DATABASE_SCHEMA_MARKER
-  );
-}
-
 export const EXECUTE_TABLES_QUERY_MARKER =
   "execute_tables_query_marker" as const;
-
-export function isExecuteTablesQueryMarkerResourceType(
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: ToolMarkerResourceType & {
-    text: typeof EXECUTE_TABLES_QUERY_MARKER;
-  };
-} {
-  return (
-    isToolMarkerResourceType(outputBlock) &&
-    outputBlock.resource.text === EXECUTE_TABLES_QUERY_MARKER
-  );
-}
 
 export const ExecuteTablesQueryErrorResourceSchema = z.object({
   mimeType: z.literal(

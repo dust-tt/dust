@@ -15,14 +15,6 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 
-export type RetrievalTimeframe =
-  | "auto"
-  | "none"
-  | {
-      duration: number;
-      unit: "hour" | "day" | "week" | "month" | "year";
-    };
-
 export function renderDataSourceConfiguration(
   auth: Authenticator,
   dataSourceConfig: AgentDataSourceConfigurationModel

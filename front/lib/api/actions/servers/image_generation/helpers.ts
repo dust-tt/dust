@@ -54,7 +54,6 @@ export class ImageGenerationError extends Error {
 export const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
 export const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week.
 
-export const DEFAULT_IMAGE_OUTPUT_FORMAT = "png";
 export const DEFAULT_IMAGE_MIME_TYPE = "image/png";
 
 // Token pricing is expressed as cost per million tokens (micro-USD per token)
