@@ -644,19 +644,29 @@ export async function dismissMention(
       !isCompactionMessageType(latestMessage) &&
       latestMessage.richMentions.some(predicate)
     ) {
-      const mentionModel = await MentionModel.findOne({
+      const mentionModels = await MentionModel.findAll({
         where: {
           workspaceId: conversation.owner.id,
           messageId: latestMessage.id,
           ...(type === "user"
-            ? { userId: userIdForQuery }
-            : { agentConfigurationId: id }),
+            ? {
+                userId: userIdForQuery,
+                status: "user_restricted_by_conversation_access",
+              }
+            : {
+                agentConfigurationId: id,
+                status: "agent_restricted_by_space_usage",
+              }),
         },
       });
-      if (!mentionModel) {
+      if (mentionModels.length === 0) {
         continue;
       }
-      await mentionModel.update({ dismissed: true });
+      // Instance updates avoid Sequelize bulk-update validation that requires
+      // userId/agentConfigurationId on the partial payload.
+      await Promise.all(
+        mentionModels.map((m) => m.update({ dismissed: true }))
+      );
       const newRichMentions = latestMessage.richMentions.map((m) =>
         predicate(m)
           ? {

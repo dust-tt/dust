@@ -120,7 +120,7 @@ export async function validateAgentMention(
   }
 
   if (!isApproval) {
-    const mentionModel = await MentionModel.findOne({
+    const mentionModels = await MentionModel.findAll({
       where: {
         workspaceId: conversation.owner.id,
         messageId: message.id,
@@ -128,7 +128,7 @@ export async function validateAgentMention(
         status: "agent_restricted_by_space_usage",
       },
     });
-    if (!mentionModel) {
+    if (mentionModels.length === 0) {
       return new Err({
         status_code: 404,
         api_error: {
@@ -137,18 +137,38 @@ export async function validateAgentMention(
         },
       });
     }
-
-    await mentionModel.update({ status: "rejected" });
+    // Instance updates avoid Sequelize bulk-update validation that requires
+    // userId/agentConfigurationId on the partial payload.
+    await Promise.all(
+      mentionModels.map((m) => m.update({ status: "rejected" }))
+    );
 
     const newRichMentions = message.richMentions.map((m) =>
-      isRichAgentMention(m) && m.id === agentConfigurationId
+      isRichAgentMention(m) &&
+      m.id === agentConfigurationId &&
+      m.status === "agent_restricted_by_space_usage"
         ? { ...m, status: "rejected" as const }
         : m
     );
+    // Collapse duplicate rejected entries for this agent into one.
+    const seenRejectedAgent = new Set<string>();
+    const collapsedRichMentions = newRichMentions.filter((m) => {
+      if (
+        isRichAgentMention(m) &&
+        m.id === agentConfigurationId &&
+        m.status === "rejected"
+      ) {
+        if (seenRejectedAgent.has(m.id)) {
+          return false;
+        }
+        seenRejectedAgent.add(m.id);
+      }
+      return true;
+    });
     const updatedUserMessage: UserMessageType = {
       ...message,
-      richMentions: newRichMentions,
-      mentions: newRichMentions.map(toMentionType),
+      richMentions: collapsedRichMentions,
+      mentions: collapsedRichMentions.map(toMentionType),
     };
 
     await publishMessageEventsOnMessagePostOrEdit(
@@ -214,7 +234,7 @@ export async function validateAgentMention(
     const created = await withTransaction(async (t) => {
       await getConversationRankVersionLock(auth, conversation, t);
 
-      const mentionModel = await MentionModel.findOne({
+      const mentionModels = await MentionModel.findAll({
         where: {
           workspaceId: conversation.owner.id,
           messageId: message.id,
@@ -224,9 +244,11 @@ export async function validateAgentMention(
         transaction: t,
         lock: t.LOCK.UPDATE,
       });
-      if (!mentionModel) {
+      if (mentionModels.length === 0) {
         throw new Error("Restricted agent mention not found");
       }
+
+      const [primaryMention, ...duplicateMentions] = mentionModels;
 
       const nextMessageRank = await getNextConversationMessageRank(auth, {
         conversation,
@@ -237,7 +259,7 @@ export async function validateAgentMention(
         conversation,
         metadata: {
           type: "approve_existing_mention",
-          mentionRow: mentionModel,
+          mentionRow: primaryMention,
           configuration,
           skipToolsValidation: false,
           nextMessageRank,
@@ -246,14 +268,32 @@ export async function validateAgentMention(
         transaction: t,
       });
 
+      // Clear any duplicate restricted rows for the same agent on this message
+      // so the UI does not keep a ghost pending card after approval.
+      if (duplicateMentions.length > 0) {
+        // Instance updates avoid Sequelize bulk-update validation that requires
+        // userId/agentConfigurationId on the partial payload.
+        await Promise.all(
+          duplicateMentions.map((m) =>
+            m.update({ status: "approved" }, { transaction: t })
+          )
+        );
+      }
+
       await ConversationResource.markAsUpdated(auth, { conversation, t });
 
-      const updatedRichMentions = message.richMentions.map((m) => {
-        if (isRichAgentMention(m) && m.id === agentConfigurationId) {
-          return richMentions[0] ?? { ...m, status: "approved" as const };
-        }
-        return m;
-      });
+      const approvedRichMention =
+        richMentions[0] ??
+        ({
+          ...restrictedMention,
+          status: "approved" as const,
+        } satisfies RichMentionWithStatus);
+
+      // Collapse duplicate rich mentions for this agent into a single approved entry.
+      const otherMentions = message.richMentions.filter(
+        (m) => !(isRichAgentMention(m) && m.id === agentConfigurationId)
+      );
+      const updatedRichMentions = [...otherMentions, approvedRichMention];
 
       return { agentMessages, updatedRichMentions };
     });
