@@ -13,7 +13,9 @@ import {
   createAgentMessages,
   createCompactionMessage,
   createUserMessage,
+  resolveModelsForMentionedAgents,
 } from "@app/lib/api/assistant/conversation/messages";
+import { canAgentBeUsedInProjectConversation } from "@app/lib/api/assistant/conversation/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
@@ -104,6 +106,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -184,6 +190,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1, agentConfig2],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -256,6 +266,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -298,6 +312,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -333,6 +351,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: true,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -382,6 +404,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: true,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -427,6 +453,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -476,6 +506,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: false,
         nextMessageRank: 10,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1, agentConfig2],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -616,6 +650,10 @@ describe("createAgentMessages", () => {
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
+          resolvedModels: await resolveModelsForMentionedAgents(auth, {
+            agentConfigurations: [agentConfigWithSpaces!],
+          }),
+          restrictedAgentIds: new Set<string>(),
         },
         transaction,
       });
@@ -743,6 +781,10 @@ describe("createAgentMessages", () => {
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
+          resolvedModels: await resolveModelsForMentionedAgents(auth, {
+            agentConfigurations: [agentConfigWithSpaces!],
+          }),
+          restrictedAgentIds: new Set<string>(),
         },
         transaction,
       });
@@ -870,6 +912,10 @@ describe("createAgentMessages", () => {
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
+          resolvedModels: await resolveModelsForMentionedAgents(auth, {
+            agentConfigurations: [agentConfigWithSpaces!],
+          }),
+          restrictedAgentIds: new Set<string>(),
         },
         transaction,
       });
@@ -928,6 +974,10 @@ describe("createAgentMessages", () => {
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
+        resolvedModels: await resolveModelsForMentionedAgents(auth, {
+          agentConfigurations: [agentConfig1],
+        }),
+        restrictedAgentIds: new Set<string>(),
       },
     });
 
@@ -1038,6 +1088,11 @@ describe("createAgentMessages", () => {
         } satisfies AgentMention,
       ];
 
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
+        configuration: updatedAgentConfig!,
+        conversation: spaceConversation.toJSON(),
+      });
+
       const { agentMessages, richMentions } = await createAgentMessages(auth, {
         conversation: spaceConversation.toJSON(),
         metadata: {
@@ -1047,6 +1102,12 @@ describe("createAgentMessages", () => {
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
+          resolvedModels: await resolveModelsForMentionedAgents(auth, {
+            agentConfigurations: [updatedAgentConfig!],
+          }),
+          restrictedAgentIds: canAgentBeUsed
+            ? new Set<string>()
+            : new Set([updatedAgentConfig!.sId]),
         },
       });
 
@@ -1182,6 +1243,14 @@ describe("createAgentMessages", () => {
         } satisfies AgentMention,
       ];
 
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
+        userAuth,
+        {
+          configuration: updatedAgentConfig,
+          conversation: spaceConversation.toJSON(),
+        }
+      );
+
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
@@ -1193,6 +1262,12 @@ describe("createAgentMessages", () => {
             skipToolsValidation: false,
             nextMessageRank: 1,
             userMessage,
+            resolvedModels: await resolveModelsForMentionedAgents(userAuth, {
+              agentConfigurations: [updatedAgentConfig],
+            }),
+            restrictedAgentIds: canAgentBeUsed
+              ? new Set<string>()
+              : new Set([updatedAgentConfig.sId]),
           },
         }
       );
@@ -1314,6 +1389,14 @@ describe("createAgentMessages", () => {
         } satisfies AgentMention,
       ];
 
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
+        userAuth,
+        {
+          configuration: updatedAgentConfig,
+          conversation: spaceConversation.toJSON(),
+        }
+      );
+
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
@@ -1325,6 +1408,12 @@ describe("createAgentMessages", () => {
             skipToolsValidation: false,
             nextMessageRank: 1,
             userMessage,
+            resolvedModels: await resolveModelsForMentionedAgents(userAuth, {
+              agentConfigurations: [updatedAgentConfig],
+            }),
+            restrictedAgentIds: canAgentBeUsed
+              ? new Set<string>()
+              : new Set([updatedAgentConfig.sId]),
           },
         }
       );
@@ -1437,6 +1526,14 @@ describe("createAgentMessages", () => {
         } satisfies AgentMention,
       ];
 
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
+        userAuth,
+        {
+          configuration: updatedAgentConfig,
+          conversation: spaceConversation.toJSON(),
+        }
+      );
+
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
@@ -1448,6 +1545,12 @@ describe("createAgentMessages", () => {
             skipToolsValidation: false,
             nextMessageRank: 1,
             userMessage,
+            resolvedModels: await resolveModelsForMentionedAgents(userAuth, {
+              agentConfigurations: [updatedAgentConfig],
+            }),
+            restrictedAgentIds: canAgentBeUsed
+              ? new Set<string>()
+              : new Set([updatedAgentConfig.sId]),
           },
         }
       );
@@ -1586,6 +1689,14 @@ describe("createAgentMessages", () => {
         } satisfies AgentMention,
       ];
 
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
+        userAuth,
+        {
+          configuration: updatedAgentConfig,
+          conversation: spaceConversation.toJSON(),
+        }
+      );
+
       const { agentMessages, richMentions } = await createAgentMessages(
         userAuth,
         {
@@ -1597,6 +1708,12 @@ describe("createAgentMessages", () => {
             skipToolsValidation: false,
             nextMessageRank: 1,
             userMessage,
+            resolvedModels: await resolveModelsForMentionedAgents(userAuth, {
+              agentConfigurations: [updatedAgentConfig],
+            }),
+            restrictedAgentIds: canAgentBeUsed
+              ? new Set<string>()
+              : new Set([updatedAgentConfig.sId]),
           },
         }
       );

@@ -20,6 +20,7 @@ import {
   attributeUserFromWorkspaceAndEmail,
   createAgentMessages,
   createUserMessage,
+  resolveModelsForMentionedAgents,
 } from "@app/lib/api/assistant/conversation/messages";
 import { updateConversationRequirements } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
@@ -743,6 +744,7 @@ export async function postUserMessage(
   ]);
 
   let agentConfigurations = removeNulls(results[0]);
+  const restrictedAgentIds = new Set<string>();
 
   // Retired global agents can't be invoked (new conversations or new messages).
   // The internal `run_agent` path is exempt: some hidden sub-agents are retired.
@@ -807,6 +809,17 @@ export async function postUserMessage(
         },
       });
     }
+
+    if (isPartOfPod) {
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
+        configuration: agentConfig,
+        conversation,
+      });
+
+      if (!canAgentBeUsed) {
+        restrictedAgentIds.add(agentConfig.sId);
+      }
+    }
   }
 
   // TODO(2026-07-31 SEC): this allow spoofing as we trust blindly the user email from the metadata.
@@ -820,6 +833,11 @@ export async function postUserMessage(
     mentions,
     conversation,
     message: { type: "user_message" },
+  });
+
+  const resolvedModels = await resolveModelsForMentionedAgents(auth, {
+    agentConfigurations,
+    selection: modelSelection,
   });
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
@@ -938,6 +956,8 @@ export async function postUserMessage(
             skipToolsValidation,
             nextMessageRank,
             userMessage: userMessageWithoutMentions,
+            resolvedModels,
+            restrictedAgentIds,
           },
           transaction: t,
         });
@@ -1207,6 +1227,24 @@ export async function editUserMessage(
     message: { type: "user_message" },
   });
 
+  const restrictedAgentIds = new Set<string>();
+  if (isPodConversation(conversation)) {
+    for (const agentConfig of agentConfigurations) {
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
+        configuration: agentConfig,
+        conversation,
+      });
+      if (!canAgentBeUsed) {
+        restrictedAgentIds.add(agentConfig.sId);
+      }
+    }
+  }
+
+  const resolvedModels = await resolveModelsForMentionedAgents(auth, {
+    agentConfigurations,
+    selection: message.requestedModel ?? undefined,
+  });
+
   try {
     // In one big transaction create all Message, UserMessage, AgentMessage, and Mention rows.
     const result = await withTransaction(async (t) => {
@@ -1301,6 +1339,8 @@ export async function editUserMessage(
               skipToolsValidation,
               nextMessageRank,
               userMessage: userMessageWithoutMentions,
+              resolvedModels,
+              restrictedAgentIds,
             },
             transaction: t,
           });
@@ -3089,6 +3129,23 @@ export async function updateAgentMessageWithFinalStatus(
   const completedAt = new Date();
   const owner = auth.getNonNullableWorkspace();
 
+  const restrictedAgentIds = new Set<string>();
+  if (isPodConversation(conversation) && agentMessage.configuration) {
+    const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
+      configuration: agentMessage.configuration,
+      conversation,
+    });
+    if (!canAgentBeUsed) {
+      restrictedAgentIds.add(agentMessage.configuration.sId);
+    }
+  }
+
+  const defaultResolvedModels = agentMessage.configuration
+    ? await resolveModelsForMentionedAgents(auth, {
+        agentConfigurations: [agentMessage.configuration],
+      })
+    : null;
+
   const {
     promotedUserMessages,
     promotedAuth,
@@ -3248,6 +3305,15 @@ export async function updateAgentMessageWithFinalStatus(
       transaction: t,
     });
 
+    // The no-selection default was resolved before the transaction.
+    const resolvedModels =
+      defaultResolvedModels && !promotedUserMessage.requestedModel
+        ? defaultResolvedModels
+        : await resolveModelsForMentionedAgents(promotedAuth, {
+            agentConfigurations: [agentMessage.configuration],
+            selection: promotedUserMessage.requestedModel ?? undefined,
+          });
+
     // Create a new agent message using the last promoted user message.
     const { agentMessages } = await createAgentMessages(promotedAuth, {
       conversation,
@@ -3258,6 +3324,8 @@ export async function updateAgentMessageWithFinalStatus(
         skipToolsValidation: agentMessage.skipToolsValidation,
         nextMessageRank,
         userMessage: promotedUserMessages[promotedUserMessages.length - 1],
+        resolvedModels,
+        restrictedAgentIds,
       },
       transaction: t,
     });
