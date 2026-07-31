@@ -112,7 +112,7 @@ const availabilityColumn = {
     );
   },
   meta: {
-    className: "hidden @sm:w-44 @sm:table-cell",
+    className: "hidden @sm:w-40 @sm:table-cell",
   },
 };
 

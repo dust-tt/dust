@@ -468,7 +468,7 @@ export function ManageSkillsPage() {
                           variant="outline"
                           size="sm"
                           isSelect
-                          className="w-48 justify-between"
+                          className="w-44 justify-between"
                           label={getAvailabilityFilterLabel(availabilityFilter)}
                         />
                       </DropdownMenuTrigger>
