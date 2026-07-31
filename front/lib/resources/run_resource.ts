@@ -5,6 +5,7 @@ import {
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import type { UsageType } from "@app/lib/metronome/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import {
@@ -55,6 +56,7 @@ interface RunUsageWithRunKeyType extends RunUsageType {
   runKey: string | null;
   runUsageModelId: ModelId;
   runModelId: ModelId;
+  usageType: UsageType | null;
 }
 
 type FetchRunOptions<T extends boolean> = {
@@ -213,6 +215,26 @@ export class RunResource extends BaseResource<RunModel> {
     );
   }
 
+  // Stamp the billing usage type onto the usage rows of the given runs.
+  static async setUsageTypeForRuns(
+    auth: Authenticator,
+    { runs, usageType }: { runs: RunResource[]; usageType: UsageType }
+  ): Promise<void> {
+    const runModelIds = runs.map((run) => run.id);
+    if (runModelIds.length === 0) {
+      return;
+    }
+    await RunUsageModel.update(
+      { usageType },
+      {
+        where: {
+          runId: { [Op.in]: runModelIds },
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
   static async listRunUsagesForRuns(
     auth: Authenticator,
     {
@@ -253,6 +275,7 @@ export class RunResource extends BaseResource<RunModel> {
       cacheCreationTokens: usage.cacheCreationTokens,
       costMicroUsd: usage.costMicroUsd,
       isBatch: usage.isBatch,
+      usageType: usage.usageType,
     }));
   }
 
@@ -365,7 +388,15 @@ export class RunResource extends BaseResource<RunModel> {
    * Run usage.
    */
 
-  async recordRunUsage(auth: Authenticator, usages: RunUsageType[]) {
+  // `usageType` tags the created rows with their billing usage type. Pass it for
+  // operations whose type is known at creation (e.g. internal/utility LLM calls
+  // are free); leave it undefined for agent-conversation runs, which the usage
+  // queue classifies from the triggering message origin.
+  async recordRunUsage(
+    auth: Authenticator,
+    usages: RunUsageType[],
+    { usageType }: { usageType?: UsageType } = {}
+  ) {
     await RunUsageModel.bulkCreate(
       usages.map(
         ({
@@ -390,6 +421,7 @@ export class RunResource extends BaseResource<RunModel> {
           cacheCreationTokens: cacheCreationTokens ?? null,
           costMicroUsd,
           isBatch,
+          usageType: usageType ?? null,
         })
       )
     );
@@ -447,7 +479,12 @@ export class RunResource extends BaseResource<RunModel> {
     {
       isBatch = false,
       inferenceRegion = "global",
-    }: { isBatch?: boolean; inferenceRegion?: InferenceRegionType } = {}
+      usageType,
+    }: {
+      isBatch?: boolean;
+      inferenceRegion?: InferenceRegionType;
+      usageType?: UsageType;
+    } = {}
   ) {
     const modelConfig = getModelConfigByModelId(modelId);
 
@@ -469,19 +506,23 @@ export class RunResource extends BaseResource<RunModel> {
       inferenceRegion,
     });
 
-    return this.recordRunUsage(auth, [
-      {
-        cacheCreationTokens: usage.cacheCreationTokens,
-        cachedTokens: usage.cachedTokens ?? null,
-        completionTokens: usage.totalOutputTokens,
-        reasoningTokens: usage.reasoningTokens ?? null,
-        modelId: modelConfig.modelId,
-        promptTokens: usage.inputTokens,
-        providerId: modelConfig.providerId,
-        costMicroUsd: usageCostMicroUsd,
-        isBatch,
-      },
-    ]);
+    return this.recordRunUsage(
+      auth,
+      [
+        {
+          cacheCreationTokens: usage.cacheCreationTokens,
+          cachedTokens: usage.cachedTokens ?? null,
+          completionTokens: usage.totalOutputTokens,
+          reasoningTokens: usage.reasoningTokens ?? null,
+          modelId: modelConfig.modelId,
+          promptTokens: usage.inputTokens,
+          providerId: modelConfig.providerId,
+          costMicroUsd: usageCostMicroUsd,
+          isBatch,
+        },
+      ],
+      { usageType }
+    );
   }
 
   async listRunUsages(auth: Authenticator): Promise<RunUsageType[]> {

@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -360,19 +361,32 @@ export abstract class LLM<
           workspaceId: this.authenticator.getNonNullableWorkspace().id,
         });
 
+        // Classify usage at creation for internal/utility LLM operations
+        // (everything except the agent conversation itself): they are never
+        // billed and never processed by the usage queue, so they are free.
+        // agent_conversation runs are left untagged here and classified
+        // (free/user/programmatic) by the usage queue, which knows the
+        // triggering message origin.
+        const usageType =
+          this.context.operationType === "agent_conversation"
+            ? undefined
+            : USAGE_TYPE_FREE;
+
         // Run usage is only populated if the run is successful.
         if (buffer.runTokenUsage) {
           await run.recordTokenUsage(
             this.authenticator,
             buffer.runTokenUsage,
             this.modelId,
-            { inferenceRegion: this.metadata.inferenceRegion }
+            { inferenceRegion: this.metadata.inferenceRegion, usageType }
           );
         }
 
         const simulatedRunUsages = this.getSimulatedRunUsages();
         if (simulatedRunUsages) {
-          await run.recordRunUsage(this.authenticator, simulatedRunUsages);
+          await run.recordRunUsage(this.authenticator, simulatedRunUsages, {
+            usageType,
+          });
         }
 
         yield currentEvent;
