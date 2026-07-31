@@ -133,7 +133,7 @@ export function ManageSkillsPage() {
   }, [selectedTab, visibleTabs]);
 
   const canBypassEditorVisibility = isAdmin && hasSkillPublicationGovernance;
-  const effectiveBypassEditorVisibility =
+  const isBypassEditorVisibilityEnabled =
     canBypassEditorVisibility && bypassEditorVisibility;
 
   const {
@@ -142,7 +142,7 @@ export function ManageSkillsPage() {
   } = useSkillsWithRelations({
     owner,
     status: "active",
-    bypassEditorVisibility: effectiveBypassEditorVisibility,
+    bypassEditorVisibility: isBypassEditorVisibilityEnabled,
   });
 
   const {
@@ -152,7 +152,7 @@ export function ManageSkillsPage() {
     owner,
     status: "archived",
     disabled: selectedTab !== "archived",
-    bypassEditorVisibility: effectiveBypassEditorVisibility,
+    bypassEditorVisibility: isBypassEditorVisibilityEnabled,
   });
 
   const {
