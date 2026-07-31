@@ -422,7 +422,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const owner = auth.getNonNullableWorkspace();
 
     assert(
-      auth.isKey() ||
         (await auth.hasWorkspacePermission("create", "skill")),
       "User is not authorized to create skills"
     );
