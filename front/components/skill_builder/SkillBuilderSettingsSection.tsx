@@ -45,14 +45,14 @@ const AVAILABILITY_OPTIONS: {
     value: "editors",
   },
   {
-    label: "Workspace members",
+    label: "All members",
     value: "workspace_users",
   },
   {
     label: "Members and agents",
     value: "users_and_agents",
     description:
-      "Available to workspace members and agents with Discover Skills",
+      "Available to all members and agents with Discover Skills",
   },
 ];
 

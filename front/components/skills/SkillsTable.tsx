@@ -55,15 +55,15 @@ export const SKILL_AVAILABILITY_DISPLAY: Record<
     tooltip: "Only editors can find it via the input bar and agent builder",
   },
   workspace_users: {
-    label: "Workspace members",
+    label: "All members",
     color: "success",
     tooltip:
-      "All workspace members can find it via the input bar and agent builder",
+      "All members can find it via the input bar and agent builder",
   },
   users_and_agents: {
     label: "Members and agents",
     color: "highlight",
-    tooltip: "Available to workspace members and agents with Discover Skills",
+    tooltip: "Available to all members and agents with Discover Skills",
   },
 };
 
@@ -113,7 +113,6 @@ const availabilityColumn = {
     );
   },
   meta: {
-    // Wide enough for the longest chip label ("Workspace members").
     className: "hidden @sm:w-44 @sm:table-cell",
   },
 };

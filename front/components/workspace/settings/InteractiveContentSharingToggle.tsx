@@ -23,7 +23,7 @@ const SHARING_POLICY_OPTIONS: {
   value: WorkspaceSharingPolicy;
 }[] = [
   {
-    label: "Workspace members only",
+    label: "All members only",
     description: "Frames can only be viewed by workspace members",
     value: "workspace_only",
   },
