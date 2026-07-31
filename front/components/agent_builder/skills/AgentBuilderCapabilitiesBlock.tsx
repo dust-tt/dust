@@ -255,19 +255,19 @@ export function AgentBuilderCapabilitiesBlock({
     setSheetState({ state: "selection" });
   };
 
-  const handleCloseSheet = useCallback(() => {
-    setSheetState({ state: "closed" });
-  }, []);
-
-  const hasCapabilitiesConfigured =
-    actionFields.length > 0 || skillFields.length > 0;
-
   const lastCapabilitiesState = useRef<CapabilitiesSheetState>({
     state: "selection",
   });
-  if (isCapabilitiesSheetOpen(sheetState)) {
-    lastCapabilitiesState.current = sheetState;
-  }
+
+  const handleCloseSheet = useCallback(() => {
+    if (isCapabilitiesSheetOpen(sheetState)) {
+      lastCapabilitiesState.current = sheetState;
+    }
+    setSheetState({ state: "closed" });
+  }, [sheetState]);
+
+  const hasCapabilitiesConfigured =
+    actionFields.length > 0 || skillFields.length > 0;
 
   return (
     <AgentBuilderSectionContainer
