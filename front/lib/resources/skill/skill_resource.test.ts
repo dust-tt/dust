@@ -1930,6 +1930,32 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("listForAgentLoop — Computer skill", () => {
+    it("equips the Computer on a dust-like agent rather than enabling it", async () => {
+      const { authenticator } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Dust-like Agent" }
+      );
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      const { equippedSkills, systemSkills } =
+        await SkillResource.listForAgentLoop(authenticator, {
+          // `isDustLikeAgent` keys off the sId, which is what used to promote
+          // the Computer to a system skill and made `enable_skill` fail on it.
+          agentConfiguration: { ...agent, sId: "dust" },
+          conversation,
+        });
+
+      expect(equippedSkills.map((s) => s.sId)).toContain("sandbox");
+      expect(systemSkills.map((s) => s.sId)).not.toContain("sandbox");
+    });
+  });
+
   describe("listForAgentLoop — pod default skills", () => {
     it("exposes a pod's default skills as equipped", async () => {
       const { authenticator, workspace, user } = testContext;
