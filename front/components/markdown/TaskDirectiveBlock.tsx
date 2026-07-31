@@ -106,7 +106,6 @@ function TaskMarkdownPopoverStartChrome({
     owner,
     podDefaultAgentId: podMetadata?.defaultAgentId,
     hasWorkspaceDefaultAgentFeature: hasFeature("workspace_default_agent"),
-    hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
   });
 
   const hasConversationLink =

@@ -18,7 +18,6 @@ vi.mock("@app/temporal/project_task/client", () => ({
 }));
 
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -174,7 +173,6 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
     });
-    await FeatureFlagFactory.basic(auth, "pod_default_skills");
 
     const projectSpace = await SpaceFactory.project(workspace);
     const skillA = await SkillFactory.create(auth, { name: "Skill A" });
@@ -215,10 +213,9 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
   });
 
   it("rejects unknown default skill ids", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+    const { workspace } = await createPrivateApiMockRequest({
       role: "admin",
     });
-    await FeatureFlagFactory.basic(auth, "pod_default_skills");
 
     const projectSpace = await SpaceFactory.project(workspace);
 
@@ -228,22 +225,6 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
-  });
-
-  it("ignores default skills when the feature flag is off", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
-      role: "admin",
-    });
-
-    const projectSpace = await SpaceFactory.project(workspace);
-    const skill = await SkillFactory.create(auth, { name: "Skill A" });
-
-    const response = await patchMetadata(workspace, projectSpace.sId, {
-      defaultSkillIds: [skill.sId],
-    });
-
-    expect(response.status).toBe(200);
-    expect((await response.json()).projectMetadata.defaultSkillIds).toEqual([]);
   });
 
   it("restarts project tasks workflow when unarchiving a project", async () => {

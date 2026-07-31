@@ -119,7 +119,6 @@ export function PodConversationsTab({
     owner,
     podDefaultAgentId: podMetadata?.defaultAgentId,
     hasWorkspaceDefaultAgentFeature: hasFeature("workspace_default_agent"),
-    hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
   });
 
   const { defaultSkills, isDefaultSkillsLoading } = usePodDefaultSkills({

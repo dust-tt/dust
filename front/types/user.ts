@@ -125,21 +125,15 @@ export function resolveDefaultAgentId({
   owner,
   podDefaultAgentId,
   hasWorkspaceDefaultAgentFeature,
-  hasPodDefaultAgentFeature,
 }: {
   owner: LightWorkspaceType;
   podDefaultAgentId: string | null | undefined;
   hasWorkspaceDefaultAgentFeature: boolean;
-  hasPodDefaultAgentFeature: boolean;
 }): string | null {
   const workspaceDefaultAgentId = hasWorkspaceDefaultAgentFeature
     ? getWorkspaceDefaultAgentId(owner)
     : null;
-  const resolvedPodDefaultAgentId =
-    hasPodDefaultAgentFeature || hasWorkspaceDefaultAgentFeature
-      ? (podDefaultAgentId ?? null)
-      : null;
-  return resolvedPodDefaultAgentId ?? workspaceDefaultAgentId;
+  return podDefaultAgentId ?? workspaceDefaultAgentId;
 }
 
 export type WorkspaceType = LightWorkspaceType & {
