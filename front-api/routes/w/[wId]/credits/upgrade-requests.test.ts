@@ -8,6 +8,10 @@ function upgradeRequestsUrl(wId: string) {
   return `/api/w/${wId}/credits/upgrade-requests`;
 }
 
+function usageConfigurationUrl(wId: string) {
+  return `/api/w/${wId}/credits/usage-configuration`;
+}
+
 async function creditPricedWorkspace(): Promise<WorkspaceType> {
   return WorkspaceFactory.creditPriced({
     metronomeCustomerId: "cust_test_xxx",
@@ -130,6 +134,71 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       expect(request.reason).toBe(
         "Running a large one-off backfill this week."
       );
+    });
+
+    it("returns 400 when the workspace requires a reason and none is given", async () => {
+      const workspace = await creditPricedWorkspace();
+
+      await createPrivateApiMockRequest({
+        method: "PATCH",
+        role: "admin",
+        workspace,
+      });
+      await honoApp.request(usageConfigurationUrl(workspace.sId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requireUpgradeRequestReason: true }),
+      });
+
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+        workspace,
+      });
+      const response = await honoApp.request(
+        upgradeRequestsUrl(workspace.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        }
+      );
+
+      expect(response.status).toBe(400);
+      expect((await response.json()).error.type).toBe("invalid_request_error");
+    });
+
+    it("allows the request when the workspace requires a reason and one is given", async () => {
+      const workspace = await creditPricedWorkspace();
+
+      await createPrivateApiMockRequest({
+        method: "PATCH",
+        role: "admin",
+        workspace,
+      });
+      await honoApp.request(usageConfigurationUrl(workspace.sId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requireUpgradeRequestReason: true }),
+      });
+
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+        workspace,
+      });
+      const response = await honoApp.request(
+        upgradeRequestsUrl(workspace.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: "Need more credits for a demo." }),
+        }
+      );
+
+      expect(response.status).toBe(200);
+      const { request } = await response.json();
+      expect(request.reason).toBe("Need more credits for a demo.");
     });
 
     it("is idempotent — a second request reuses the pending one", async () => {

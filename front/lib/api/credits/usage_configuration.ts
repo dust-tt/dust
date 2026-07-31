@@ -7,6 +7,7 @@ import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usag
 import {
   DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS,
   DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+  DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
   DEFAULT_TOP_UP_ENABLED,
   DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
 } from "@app/lib/resources/storage/models/credit_usage_configurations";
@@ -39,6 +40,9 @@ export async function getUsageConfiguration(
     upgradeRequestEmailEnabled:
       config?.upgradeRequestEmailEnabled ??
       DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
+    requireUpgradeRequestReason:
+      config?.requireUpgradeRequestReason ??
+      DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
     autoSeatUpgradeEnabled:
       config?.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
     autoSeatUpgradeAvailable: subscription
@@ -60,6 +64,7 @@ async function setConfigurationToggles(
   toggles: {
     allowMemberUpgradeRequests?: boolean;
     upgradeRequestEmailEnabled?: boolean;
+    requireUpgradeRequestReason?: boolean;
     autoSeatUpgradeEnabled?: boolean;
   }
 ): Promise<Result<undefined, Error>> {
@@ -80,6 +85,9 @@ async function setConfigurationToggles(
     upgradeRequestEmailEnabled:
       toggles.upgradeRequestEmailEnabled ??
       DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
+    requireUpgradeRequestReason:
+      toggles.requireUpgradeRequestReason ??
+      DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
     autoSeatUpgradeEnabled:
       toggles.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
   });
@@ -127,11 +135,13 @@ export async function updateUsageConfiguration(
   if (
     patch.allowMemberUpgradeRequests !== undefined ||
     patch.upgradeRequestEmailEnabled !== undefined ||
+    patch.requireUpgradeRequestReason !== undefined ||
     patch.autoSeatUpgradeEnabled !== undefined
   ) {
     const toggleResult = await setConfigurationToggles(auth, {
       allowMemberUpgradeRequests: patch.allowMemberUpgradeRequests,
       upgradeRequestEmailEnabled: patch.upgradeRequestEmailEnabled,
+      requireUpgradeRequestReason: patch.requireUpgradeRequestReason,
       autoSeatUpgradeEnabled: patch.autoSeatUpgradeEnabled,
     });
     if (toggleResult.isErr()) {

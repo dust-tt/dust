@@ -316,6 +316,7 @@ export function useWorkspaceUsageStatus({
     canRequestUpgrade: data?.canRequestUpgrade ?? false,
     hasPendingUpgradeRequest: data?.hasPendingUpgradeRequest ?? false,
     willAutoUpgrade: data?.willAutoUpgrade ?? false,
+    requireReason: data?.requireReason ?? false,
     isUsageStatusLoading: !error && !data && !disabled,
   };
 }

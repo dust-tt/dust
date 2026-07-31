@@ -21,6 +21,13 @@ function usageStatusUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/usage-status`;
 }
 
+export type RequestUpgradeResult =
+  | { ok: true }
+  // "invalid_request_error" here means the reason the member supplied didn't
+  // satisfy the workspace's requirements (missing when required, too long).
+  // The caller surfaces that inline on the reason field instead of a toast.
+  | { ok: false; errorType: string; message: string };
+
 // Member-initiated: request a spend-limit upgrade for the current user. On
 // success the usage-status read is revalidated so the banner reflects the now
 // pending request.
@@ -29,7 +36,7 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
   const { mutate } = useSWRWithDefaults(usageStatusUrl(workspaceId), null);
 
   const doRequestUpgrade = useCallback(
-    async ({ reason }: { reason?: string }): Promise<boolean> => {
+    async ({ reason }: { reason?: string }): Promise<RequestUpgradeResult> => {
       const res = await clientFetch(upgradeRequestsUrl(workspaceId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -38,12 +45,18 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
 
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to request an upgrade",
-          description: errorData.message,
-        });
-        return false;
+        const errorType =
+          "type" in errorData ? errorData.type : "unknown_error";
+        // A rejected reason is shown inline on the field by the caller, not as
+        // a toast.
+        if (errorType !== "invalid_request_error") {
+          sendNotification({
+            type: "error",
+            title: "Failed to request an upgrade",
+            description: errorData.message,
+          });
+        }
+        return { ok: false, errorType, message: errorData.message };
       }
 
       await mutate();
@@ -52,7 +65,7 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
         title: "Upgrade requested",
         description: "Your workspace admins have been notified.",
       });
-      return true;
+      return { ok: true };
     },
     [workspaceId, sendNotification, mutate]
   );

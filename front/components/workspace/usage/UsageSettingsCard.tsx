@@ -40,6 +40,10 @@ export function UsageSettingsCard({
 
   const [isSavingAllowUpgradeRequest, setIsSavingAllowUpgradeRequest] =
     useState(false);
+  const [
+    isSavingRequireUpgradeRequestReason,
+    setIsSavingRequireUpgradeRequestReason,
+  ] = useState(false);
   const [isSavingAutoSeatUpgrade, setIsSavingAutoSeatUpgrade] = useState(false);
   const [isEditingDefaultLimit, setIsEditingDefaultLimit] = useState(false);
 
@@ -51,6 +55,17 @@ export function UsageSettingsCard({
       });
     } finally {
       setIsSavingAllowUpgradeRequest(false);
+    }
+  };
+
+  const handleToggleRequireUpgradeRequestReason = async () => {
+    setIsSavingRequireUpgradeRequestReason(true);
+    try {
+      await doUpdateUsageSettings({
+        requireUpgradeRequestReason: !usageSettings.requireUpgradeRequestReason,
+      });
+    } finally {
+      setIsSavingRequireUpgradeRequestReason(false);
     }
   };
 
@@ -138,6 +153,25 @@ export function UsageSettingsCard({
                 isUsageSettingsLoading
               }
               onClick={() => void handleToggleAllowUpgradeRequest()}
+            />
+          }
+        />
+        <SettingsList.Row
+          title="Require a reason for upgrade requests"
+          description="Members must explain why they need an upgrade before their request can be submitted."
+          action={
+            <SliderToggle
+              selected={
+                usageSettings.allowUpgradeRequest &&
+                usageSettings.requireUpgradeRequestReason
+              }
+              disabled={
+                readOnly ||
+                isSavingRequireUpgradeRequestReason ||
+                isUsageSettingsLoading ||
+                !usageSettings.allowUpgradeRequest
+              }
+              onClick={() => void handleToggleRequireUpgradeRequestReason()}
             />
           }
         />

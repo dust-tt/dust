@@ -22,6 +22,7 @@ import { Err, Ok } from "@app/types/shared/result";
 type UpgradeRequestErrorType =
   | "workspace_not_metronome_billed"
   | "upgrade_requests_disabled"
+  | "reason_required"
   | "user_not_found"
   | "request_not_found"
   | "request_not_pending";
@@ -49,6 +50,14 @@ async function isUpgradeRequestEmailEnabled(
   const config =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
   return config?.upgradeRequestEmailEnabled ?? true;
+}
+
+async function isUpgradeRequestReasonRequired(
+  auth: Authenticator
+): Promise<boolean> {
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  return config?.requireUpgradeRequestReason ?? false;
 }
 
 async function notifyManagersAndAdminsOfUpgradeRequest(
@@ -122,6 +131,15 @@ export async function createUpgradeRequest(
     );
   }
 
+  if (!reason?.trim() && (await isUpgradeRequestReasonRequired(auth))) {
+    return new Err(
+      new UpgradeRequestError(
+        "reason_required",
+        "A reason is required to submit an upgrade request."
+      )
+    );
+  }
+
   const user = auth.user();
   if (!user) {
     return new Err(
@@ -181,6 +199,7 @@ type UpgradeRequestAvailability = {
   canRequestUpgrade: boolean;
   hasPendingUpgradeRequest: boolean;
   willAutoUpgrade: boolean;
+  requireReason: boolean;
 };
 
 export async function getUpgradeRequestAvailabilityForUser(
@@ -191,6 +210,7 @@ export async function getUpgradeRequestAvailabilityForUser(
     canRequestUpgrade: false,
     hasPendingUpgradeRequest: false,
     willAutoUpgrade: false,
+    requireReason: false,
   };
 
   const user = auth.user();
@@ -203,6 +223,7 @@ export async function getUpgradeRequestAvailabilityForUser(
       canRequestUpgrade: false,
       hasPendingUpgradeRequest: false,
       willAutoUpgrade: true,
+      requireReason: false,
     };
   }
 
@@ -214,14 +235,15 @@ export async function getUpgradeRequestAvailabilityForUser(
     return unavailable;
   }
 
-  const pending = await MembershipUpgradeRequestResource.getPendingForUser(
-    auth,
-    { user }
-  );
+  const [pending, requireReason] = await Promise.all([
+    MembershipUpgradeRequestResource.getPendingForUser(auth, { user }),
+    isUpgradeRequestReasonRequired(auth),
+  ]);
   return {
     canRequestUpgrade: true,
     hasPendingUpgradeRequest: pending !== null,
     willAutoUpgrade: false,
+    requireReason,
   };
 }
 
