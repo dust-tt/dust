@@ -92,11 +92,13 @@ describe("markSandboxFunctionInvocationFailedActivity", () => {
     const userlessAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const userlessInvocation =
-      await SandboxFunctionInvocationResource.makeNew(userlessAuth, {
+    const userlessInvocation = await SandboxFunctionInvocationResource.makeNew(
+      userlessAuth,
+      {
         sandboxFunction,
         input: { message: "hello" },
-      });
+      }
+    );
     expect(userlessInvocation.userId).toBeNull();
 
     await markSandboxFunctionInvocationFailedActivity(userlessAuth.toJSON(), {
