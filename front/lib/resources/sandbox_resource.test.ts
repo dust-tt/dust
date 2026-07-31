@@ -59,7 +59,7 @@ import {
   SandboxModel,
   SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
-import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
+import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -863,7 +863,7 @@ describe("SandboxResource.ensureActive", () => {
     // Bypass resource validation via direct bulkCreate to verify layer
     // precedence: image and system layers must win over workspace rows after
     // the runtime prefix is composed.
-    await WorkspaceSandboxEnvVarModel.bulkCreate([
+    await SandboxEnvVarModel.bulkCreate([
       {
         workspaceId: workspace.id,
         name: "API_TOKEN",

@@ -11,8 +11,8 @@ import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
+import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
-import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -811,7 +811,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       });
 
       // Pod-scoped env var rows only — workspace rows have spaceId NULL.
-      await WorkspaceSandboxEnvVarModel.destroy({
+      await SandboxEnvVarModel.destroy({
         where: {
           spaceId: this.id,
           workspaceId,

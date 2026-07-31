@@ -19,9 +19,9 @@ import {
 import { timeAgoFrom } from "@app/lib/utils";
 import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
 import {
-  WORKSPACE_SANDBOX_ENV_VAR_KINDS,
-  type WorkspaceSandboxEnvVarKind,
-  type WorkspaceSandboxEnvVarType,
+  SANDBOX_ENV_VAR_KINDS,
+  type SandboxEnvVarKind,
+  type SandboxEnvVarType,
 } from "@app/types/sandbox/env_var";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -68,14 +68,14 @@ function parseAllowedDomainsText(value: string): string[] {
     .filter((domain) => domain.length > 0);
 }
 
-function getEnvVarSuffix(envVar: WorkspaceSandboxEnvVarType): string {
+function getEnvVarSuffix(envVar: SandboxEnvVarType): string {
   const prefix = envVarPrefixForKind(envVar.kind);
   return envVar.name.startsWith(prefix)
     ? envVar.name.slice(prefix.length)
     : envVar.name;
 }
 
-function labelForKind(kind: WorkspaceSandboxEnvVarKind): string {
+function labelForKind(kind: SandboxEnvVarKind): string {
   switch (kind) {
     case "config":
       return "Config";
@@ -97,7 +97,7 @@ const formSchema = z
         "Suffix must start with A-Z and then use only A-Z, 0-9, or underscore, up to 64 characters."
       ),
     value: z.string().min(1, "Value is required."),
-    kind: z.enum(WORKSPACE_SANDBOX_ENV_VAR_KINDS),
+    kind: z.enum(SANDBOX_ENV_VAR_KINDS),
     allowedDomainsText: z.string(),
   })
   .superRefine((data, ctx) => {
@@ -180,11 +180,11 @@ export function EnvironmentSection() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isNameLocked, setIsNameLocked] = useState(false);
   const [envVarToReplace, setEnvVarToReplace] =
-    useState<WorkspaceSandboxEnvVarType | null>(null);
+    useState<SandboxEnvVarType | null>(null);
   const [envVarToDelete, setEnvVarToDelete] =
-    useState<WorkspaceSandboxEnvVarType | null>(null);
+    useState<SandboxEnvVarType | null>(null);
   const [envVarToConfigureDomains, setEnvVarToConfigureDomains] =
-    useState<WorkspaceSandboxEnvVarType | null>(null);
+    useState<SandboxEnvVarType | null>(null);
   const [domainsText, setDomainsText] = useState("");
 
   const {
@@ -344,7 +344,7 @@ export function EnvironmentSection() {
     setIsDialogOpen(true);
   };
 
-  const openReplaceDialog = (envVar: WorkspaceSandboxEnvVarType) => {
+  const openReplaceDialog = (envVar: SandboxEnvVarType) => {
     reset({
       name: getEnvVarSuffix(envVar),
       value: "",
@@ -356,7 +356,7 @@ export function EnvironmentSection() {
     setIsDialogOpen(true);
   };
 
-  const openConfigureDomainsDialog = (envVar: WorkspaceSandboxEnvVarType) => {
+  const openConfigureDomainsDialog = (envVar: SandboxEnvVarType) => {
     setDomainsText(envVar.allowedDomains?.join(", ") ?? "");
     setEnvVarToConfigureDomains(envVar);
   };

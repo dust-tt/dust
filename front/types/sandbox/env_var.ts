@@ -1,15 +1,11 @@
-export const WORKSPACE_SANDBOX_ENV_VAR_KINDS = [
-  "config",
-  "https_secret",
-] as const;
+export const SANDBOX_ENV_VAR_KINDS = ["config", "https_secret"] as const;
 
-export type WorkspaceSandboxEnvVarKind =
-  (typeof WORKSPACE_SANDBOX_ENV_VAR_KINDS)[number];
+export type SandboxEnvVarKind = (typeof SANDBOX_ENV_VAR_KINDS)[number];
 
-export type WorkspaceSandboxEnvVarType = {
+export type SandboxEnvVarType = {
   sId: string;
   name: string;
-  kind: WorkspaceSandboxEnvVarKind;
+  kind: SandboxEnvVarKind;
   placeholderNonce: string | null;
   allowedDomains: string[] | null;
   createdAt: number;

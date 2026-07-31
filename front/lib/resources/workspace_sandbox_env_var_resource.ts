@@ -5,14 +5,14 @@ import {
 import {
   MAX_VARS_PER_WORKSPACE,
   renderEgressSecretPlaceholder,
-  renderWorkspaceSandboxEnvVarName,
+  renderSandboxEnvVarName,
   validateEnvVarName,
   validateEnvVarValueForKind,
 } from "@app/lib/api/sandbox/env_vars";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
+import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import {
@@ -22,8 +22,8 @@ import {
 } from "@app/lib/resources/string_ids";
 import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
 import type {
-  WorkspaceSandboxEnvVarKind,
-  WorkspaceSandboxEnvVarType,
+  SandboxEnvVarKind,
+  SandboxEnvVarType,
 } from "@app/types/sandbox/env_var";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -33,12 +33,12 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { randomBytes } from "crypto";
 import type { Attributes, Includeable, Transaction } from "sequelize";
 
-export type DeleteWorkspaceSandboxEnvVarResponseBody = {
+export type DeleteSandboxEnvVarResponseBody = {
   success: true;
 };
 
-export type PatchWorkspaceSandboxEnvVarResponseBody = {
-  envVar: WorkspaceSandboxEnvVarType;
+export type PatchSandboxEnvVarResponseBody = {
+  envVar: SandboxEnvVarType;
 };
 
 const USER_JOIN_INCLUDES: Includeable[] = [
@@ -86,25 +86,25 @@ function areAllowedDomainsEqual(
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceSandboxEnvVarResource
-  extends ReadonlyAttributesType<WorkspaceSandboxEnvVarModel> {}
+  extends ReadonlyAttributesType<SandboxEnvVarModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandboxEnvVarModel> {
-  static model: ModelStaticWorkspaceAware<WorkspaceSandboxEnvVarModel> =
-    WorkspaceSandboxEnvVarModel;
+export class WorkspaceSandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
+  static model: ModelStaticWorkspaceAware<SandboxEnvVarModel> =
+    SandboxEnvVarModel;
 
   private readonly createdByName: string | null;
   private readonly lastUpdatedByName: string | null;
 
   constructor(
-    _model: ModelStaticWorkspaceAware<WorkspaceSandboxEnvVarModel>,
-    blob: Attributes<WorkspaceSandboxEnvVarModel>,
+    _model: ModelStaticWorkspaceAware<SandboxEnvVarModel>,
+    blob: Attributes<SandboxEnvVarModel>,
     metadata?: {
       createdByName: string | null;
       lastUpdatedByName: string | null;
     }
   ) {
-    super(WorkspaceSandboxEnvVarModel, blob);
+    super(SandboxEnvVarModel, blob);
     this.createdByName = metadata?.createdByName ?? null;
     this.lastUpdatedByName = metadata?.lastUpdatedByName ?? null;
   }
@@ -119,13 +119,13 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
   // The wire-format name (composed prefix + suffix), e.g. `DST_FOO` or
   // `DSEC_FOO`. The DB column `name` stores the suffix only.
   get envName(): string {
-    return renderWorkspaceSandboxEnvVarName({
+    return renderSandboxEnvVarName({
       kind: this.kind,
       name: this.name,
     });
   }
 
-  private static fromRow(row: WorkspaceSandboxEnvVarModel) {
+  private static fromRow(row: SandboxEnvVarModel) {
     return new this(this.model, row.get(), {
       createdByName: row.createdByUser?.name ?? null,
       lastUpdatedByName: row.lastUpdatedByUser?.name ?? null,
@@ -134,7 +134,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
 
   private static async baseFetch(
     auth: Authenticator,
-    where?: Partial<Pick<WorkspaceSandboxEnvVarModel, "id" | "kind" | "name">>,
+    where?: Partial<Pick<SandboxEnvVarModel, "id" | "kind" | "name">>,
     { withUserJoins = true }: { withUserJoins?: boolean } = {}
   ): Promise<WorkspaceSandboxEnvVarResource[]> {
     const isPointLookup = Boolean(where?.id ?? where?.name);
@@ -196,7 +196,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     }: {
       name: string;
       value: string;
-      kind?: WorkspaceSandboxEnvVarKind;
+      kind?: SandboxEnvVarKind;
       allowedDomains?: string[] | null;
       context?: AuditLogContext;
     }
@@ -234,7 +234,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       },
     });
 
-    let row: WorkspaceSandboxEnvVarModel;
+    let row: SandboxEnvVarModel;
     let created: boolean;
     let allowedDomainsChanged = false;
     let previousAllowedDomains: string[] | null = null;
@@ -396,7 +396,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     }: {
       name: string;
       value: string;
-      kind?: WorkspaceSandboxEnvVarKind;
+      kind?: SandboxEnvVarKind;
       allowedDomains?: string[] | null;
       context?: AuditLogContext;
     }
@@ -644,7 +644,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     allowedDomains,
     requiredForSecret,
   }: {
-    kind: WorkspaceSandboxEnvVarKind;
+    kind: SandboxEnvVarKind;
     allowedDomains: string[] | null | undefined;
     requiredForSecret: boolean;
   }): Result<NormalizedAllowedDomains, Error> {
@@ -765,7 +765,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
 
     const env: Record<string, string> = {};
     for (const resource of resources) {
-      const envName = renderWorkspaceSandboxEnvVarName({
+      const envName = renderSandboxEnvVarName({
         kind: resource.kind,
         name: resource.name,
       });
@@ -809,7 +809,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     const env: Record<string, string> = {};
 
     for (const resource of resources) {
-      const envName = renderWorkspaceSandboxEnvVarName({
+      const envName = renderSandboxEnvVarName({
         kind: resource.kind,
         name: resource.name,
       });
@@ -828,7 +828,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     return new Ok(env);
   }
 
-  toJSON(): WorkspaceSandboxEnvVarType {
+  toJSON(): SandboxEnvVarType {
     return {
       sId: this.sId,
       name: this.envName,
