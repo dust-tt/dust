@@ -188,7 +188,10 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
         const agentMentions: { pos: number; nodeSize: number; text: string }[] =
           [];
         newState.doc.descendants((node, pos) => {
-          if (node.type.name === mentionNodeName && node.attrs.type === "agent") {
+          if (
+            node.type.name === mentionNodeName &&
+            node.attrs.type === "agent"
+          ) {
             const label: string = node.attrs.label ?? node.attrs.id ?? "";
             agentMentions.push({
               pos,
@@ -205,7 +208,11 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
         const tr = newState.tr;
         // Replace from last to first so earlier positions stay valid.
         for (const mention of agentMentions.reverse()) {
-          tr.insertText(mention.text, mention.pos, mention.pos + mention.nodeSize);
+          tr.insertText(
+            mention.text,
+            mention.pos,
+            mention.pos + mention.nodeSize
+          );
         }
         return tr;
       },
