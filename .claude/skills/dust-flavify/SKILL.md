@@ -119,9 +119,13 @@ Phrasing: "IIRC we have an existing helper.", "While you are at it, can we use t
   existing field when a new explicit concept or migration is clearer.
 - Within one domain boundary, pass Resources or Types instead of raw model objects or ambiguous
   identifiers.
-- Across concept boundaries, pass the smallest purpose-specific typed object. Do not leak a full
-  `ConversationResource`, `SandboxResource`, auth object, or provider object merely to read a few
-  fields.
+- Resources are the currency of server-side code. Serialize only at server boundaries, such as API
+  responses and anything crossing to the client. Do not treat passing a Resource between server-side
+  layers as a leak.
+- Across concept boundaries, pass the smallest purpose-specific typed object when the callee only
+  reads a few fields and has no use for the object's behavior. The concern is an unrelated concept
+  taking a dependency on a full `ConversationResource`, `SandboxResource`, auth object, or provider
+  object, not Resource use itself.
 - Keep Sequelize models inside Resources and out of API/business-layer interfaces.
 - Prefer class methods when a difficult return type or repeated call sequence is expressing object
   behavior.
@@ -143,6 +147,9 @@ For every added or modified DB query:
   filtering instead of adding an unindexed SQL predicate.
 - Eliminate DB N+1 with a single batched query. `ConcurrentExecutor` limits concurrency but does
   not fix DB N+1 and is not the fallback for database queries.
+- Treat N+1 as an access-pattern problem, not a SQL one. Per-item calls to Elasticsearch, Redis,
+  object storage, internal services, third-party APIs, tools, or model providers are N+1 too when a
+  batch endpoint exists. Where none exists, require an explicit bound on the fan-out.
 - Do not use `Promise.all` to fan out dynamic DB work.
 - Keep multi-statement mutations in a transaction, but never hold a transaction across an LLM or
   slow external call.
