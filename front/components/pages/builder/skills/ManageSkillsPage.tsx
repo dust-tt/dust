@@ -442,9 +442,9 @@ export function ManageSkillsPage() {
                   />
                 ))}
                 {isAvailabilityFilterVisible && (
-                  <div className="ml-auto flex flex-row items-center gap-2 self-center text-sm text-muted-foreground">
+                  <div className="ml-auto flex flex-row items-center gap-3 self-center text-sm text-muted-foreground">
                     {canBypassEditorVisibility && (
-                      <>
+                      <span className="flex gap-1">
                         <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
                           <Checkbox
                             checked={bypassEditorVisibility}
@@ -460,7 +460,7 @@ export function ManageSkillsPage() {
                             <InfoCircle className="h-4 w-4 text-muted-foreground" />
                           }
                         />
-                      </>
+                      </span>
                     )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
