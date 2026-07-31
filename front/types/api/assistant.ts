@@ -184,10 +184,6 @@ export const InternalPostContentFragmentRequestBodySchema = z.intersection(
   ])
 );
 
-export type InternalPostContentFragmentRequestBodyType = z.infer<
-  typeof InternalPostContentFragmentRequestBodySchema
->;
-
 const ConversationMetadataSchema = z.record(z.unknown());
 
 export const InternalPostConversationsRequestBodySchema = z.object({

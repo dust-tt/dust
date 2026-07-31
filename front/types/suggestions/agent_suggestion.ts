@@ -62,9 +62,6 @@ const ModelSuggestionSchema = z.object({
 });
 
 export const KNOWLEDGE_SUGGESTION_METHODS = ["search", "query_tables"] as const;
-export type KnowledgeSuggestionMethod =
-  (typeof KNOWLEDGE_SUGGESTION_METHODS)[number];
-
 const KnowledgeSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]),
   method: z
@@ -102,10 +99,6 @@ export function isSkillsSuggestion(
   data: unknown
 ): data is SkillsSuggestionType {
   return SkillsSuggestionSchema.safeParse(data).success;
-}
-
-export function isModelSuggestion(data: unknown): data is ModelSuggestionType {
-  return ModelSuggestionSchema.safeParse(data).success;
 }
 
 export function isKnowledgeSuggestion(

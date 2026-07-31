@@ -52,9 +52,6 @@ export function isDefaultFromAvailability(
   }
 }
 
-export const SKILL_VIEWS = ["full", "summary"] as const;
-export type SkillViewType = (typeof SKILL_VIEWS)[number];
-
 export const SKILL_SOURCES = [
   "web_app",
   "github",

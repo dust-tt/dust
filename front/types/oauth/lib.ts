@@ -560,15 +560,6 @@ export function normalizeAtlassianCloudUrl(raw: string): string {
   return url.replace(/\/+$/, "");
 }
 
-export function isValidAtlassianCloudUrl(
-  cloudUrl: string | undefined
-): boolean {
-  if (!cloudUrl) {
-    return false;
-  }
-  return ATLASSIAN_CLOUD_URL_REGEX.test(normalizeAtlassianCloudUrl(cloudUrl));
-}
-
 export function isValidAtlassianCloudUrlOrEmpty(
   cloudUrl: string | undefined
 ): boolean {

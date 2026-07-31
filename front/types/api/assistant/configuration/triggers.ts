@@ -30,10 +30,6 @@ export type GetTriggersResponseBody = z.infer<
 export const DeleteTriggersRequestBodySchema = z.object({
   triggerIds: z.array(z.string()),
 });
-export type DeleteTriggersRequestBody = z.infer<
-  typeof DeleteTriggersRequestBodySchema
->;
-
 export const PatchTriggersRequestBodySchema = z.object({
   triggers: z.array(z.object({ sId: z.string() }).and(TriggerSchema)),
 });

@@ -7,10 +7,6 @@ import type { RegionType } from "@app/types/region";
 import type { ConnectorsAPIError } from "@dust-tt/client";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
-export type InternalErrorWithStatusCode = {
-  status_code: number;
-};
-
 const API_ERROR_TYPES = [
   "not_authenticated",
   "sso_enforced",

@@ -1,5 +1,4 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -824,22 +823,6 @@ export type WakeUpUpdatedEvent = {
   userId: string;
 };
 
-export const ConversationMCPServerViewOrigins = [
-  "agent_enabled",
-  "conversation",
-] as const;
-
-export type ConversationMCPServerViewOrigin =
-  (typeof ConversationMCPServerViewOrigins)[number];
-
-export function isConversationMCPServerViewOrigin(
-  value: unknown
-): value is ConversationMCPServerViewOrigin {
-  return ConversationMCPServerViewOrigins.includes(
-    value as ConversationMCPServerViewOrigin
-  );
-}
-
 type BaseConversationMCPServerViewType = {
   id: ModelId;
   workspaceId: ModelId;
@@ -856,8 +839,3 @@ export type ConversationMCPServerViewType = BaseConversationMCPServerViewType &
     | { source: "agent_enabled"; agentConfigurationId: string }
     | { source: "conversation"; agentConfigurationId: null }
   );
-
-export type MCPActionValidationRequest = Omit<
-  AgentLoopMCPApproveExecutionEvent,
-  "type" | "created" | "configurationId"
->;

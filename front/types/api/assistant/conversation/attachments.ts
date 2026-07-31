@@ -49,9 +49,6 @@ export type ConversationAttachmentType =
   | FileAttachmentType
   | ContentNodeAttachmentType;
 
-/** Same item shape as GET `/assistant/conversations/[cId]/attachments` and GET project context. */
-export type ContextAttachmentItem = ConversationAttachmentType;
-
 export type GetConversationAttachmentsResponseBody = {
   attachments: ConversationAttachmentType[];
 };

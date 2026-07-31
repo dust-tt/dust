@@ -10,12 +10,6 @@ export const MEMBERSHIP_ROLE_TYPES = [
 
 export type MembershipRoleType = (typeof MEMBERSHIP_ROLE_TYPES)[number];
 
-export function isMembershipRoleType(
-  value: unknown
-): value is MembershipRoleType {
-  return MEMBERSHIP_ROLE_TYPES.includes(value as MembershipRoleType);
-}
-
 export const MEMBERSHIP_ORIGIN_TYPES = [
   "provisioned",
   "invited",
@@ -23,12 +17,6 @@ export const MEMBERSHIP_ORIGIN_TYPES = [
 ] as const;
 
 export type MembershipOriginType = (typeof MEMBERSHIP_ORIGIN_TYPES)[number];
-
-export function isMembershipOriginType(
-  value: unknown
-): value is MembershipOriginType {
-  return MEMBERSHIP_ORIGIN_TYPES.includes(value as MembershipOriginType);
-}
 
 // Paid seat types — billable seats excluding the one-shot `free` starter seat.
 // These are the seats a member can be moved to from the admin seat pickers.

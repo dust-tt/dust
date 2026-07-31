@@ -25,5 +25,3 @@ export const tagSchema = z.object({
     .min(1, "Tag name is required")
     .max(MAX_TAG_LENGTH, `Tag name cannot exceed ${MAX_TAG_LENGTH} characters`),
 });
-
-export type TagForm = z.infer<typeof tagSchema>;

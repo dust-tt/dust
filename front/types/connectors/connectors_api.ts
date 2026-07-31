@@ -145,17 +145,6 @@ export interface ContentNodeWithParent extends ContentNode {
   parentTitle: string | null;
 }
 
-export type GoogleDriveFolderType = {
-  id: string;
-  name: string;
-  parent: string | null;
-  children: string[];
-};
-
-export type GoogleDriveSelectedFolderType = GoogleDriveFolderType & {
-  selected: boolean;
-};
-
 export class ConnectorsAPI {
   _url: string;
   _secret: string;

@@ -178,43 +178,6 @@ export interface CommandResultMap {
   editText: { success: boolean; error?: string };
 }
 
-// Zod-based type guards.
-export function isGetFileRequest(
-  value: unknown
-): value is z.infer<typeof GetFileRequestSchema> {
-  return GetFileRequestSchema.safeParse(value).success;
-}
-
-export function isGetCodeToExecuteRequest(
-  value: unknown
-): value is z.infer<typeof GetCodeToExecuteRequestSchema> {
-  return GetCodeToExecuteRequestSchema.safeParse(value).success;
-}
-
-export function isSetContentHeightRequest(
-  value: unknown
-): value is z.infer<typeof SetContentHeightRequestSchema> {
-  return SetContentHeightRequestSchema.safeParse(value).success;
-}
-
-export function isSetErrorMessageRequest(
-  value: unknown
-): value is z.infer<typeof SetErrorMessageRequestSchema> {
-  return SetErrorMessageRequestSchema.safeParse(value).success;
-}
-
-export function isDownloadFileRequest(
-  value: unknown
-): value is z.infer<typeof DownloadFileRequestSchema> {
-  return DownloadFileRequestSchema.safeParse(value).success;
-}
-
-export function isDisplayCodeRequest(
-  value: unknown
-): value is z.infer<typeof DisplayCodeRequestSchema> {
-  return DisplayCodeRequestSchema.safeParse(value).success;
-}
-
 export function isVisualizationRPCRequest(
   value: unknown
 ): value is VisualizationRPCRequest {
