@@ -146,7 +146,13 @@ For every added or modified DB query:
 - Do not use `Promise.all` to fan out dynamic DB work.
 - Keep multi-statement mutations in a transaction, but never hold a transaction across an LLM or
   slow external call.
-- Exclude large TOASTed fields when they are unnecessary.
+- Keep locks scoped to the critical section. A transaction-scoped advisory lock is held until
+  commit; check its key cardinality and acquisition order.
+- Repeat scoping predicates explicitly on every joined table that carries the column, including
+  inside Sequelize `include` blocks. A predicate on one side does not constrain the other.
+- Prefer one complete insert over insert-then-update or check-then-insert.
+- Bound `TEXT`, array, and `JSONB` columns at the write path, and exclude large TOASTed fields when
+  they are unnecessary.
 
 Phrasing: "No index for this.", "IIRC the index needs `agentMessageId`?", "Can we avoid the
 `Promise.all` here? It could fan out into many DB queries."

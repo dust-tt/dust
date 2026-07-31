@@ -28,6 +28,21 @@ checks.
 - Require regional application/verification steps when migrations run in multiple regions.
 - Delete by stable identifier rather than a mutable lookup field.
 - Never call an LLM or slow external service inside a SQL transaction.
+- Bound `TEXT`, array, and `JSONB` columns at the write path. Offload large content to file storage
+  and keep it out of hot-path selects.
+- Before adding a foreign key, establish the referenced table's volume. On a high-volume parent,
+  add the constraint `NOT VALID` and validate separately, index the referencing column, and replace
+  unbounded cascades with a bounded cleanup path.
+- Keep one table per conceptual object. Split only for a genuinely independent lifecycle or access
+  pattern, not for variants that a discriminated column expresses.
+- Prefer one complete insert over insert-then-update or check-then-insert. Let a unique constraint
+  or an upsert resolve conflicts instead of a read-then-write race.
+- Avoid indexing columns rewritten on most updates, such as `updatedAt`, counters, and heartbeats,
+  on high-write tables.
+- Keep advisory and row locks scoped to the critical section. A transaction-scoped advisory lock is
+  held until commit; check its key cardinality, its acquisition order, and what runs while held.
+- Repeat scoping predicates explicitly on every joined table that carries the column, including
+  inside Sequelize `include` blocks. A predicate on one side does not constrain the other.
 
 ## Prompt caching and LLM abstractions
 
@@ -58,6 +73,15 @@ checks.
 - Verify ordering before zipping arrays from independent queries.
 - Do not rely on `beforeunload` to complete async work.
 - Follow Temporal `patched` -> `deprecatePatch` -> removal ordering.
+- Keep workflow code deterministic: no `Date.now`, `Math.random`, direct IO, module-level mutable
+  state, or unstable iteration order. Use the SDK's deterministic primitives and move the rest into
+  activities. Guard command-sequence edits with a patch or a new workflow type.
+- Reserve Temporal signals for low-rate control. Per-item or per-event work belongs in a queue;
+  signals append to history, so bound long-lived workflows with `continueAsNew`.
+- Invalidate a cached value from every mutation path that feeds it, not only the owning entity's.
+  Treat a permission- or membership-derived cache as an authorization surface.
+- Version the cache key namespace whenever a cached or queued payload shape changes, and validate
+  on read so an incompatible entry is discarded rather than misinterpreted across a rolling deploy.
 - Before changing worker queues or namespaces, protocol versions, or retry behavior, prove retries
   cannot repeat side effects, bind every accepted version to a decoder, prevent old or
   non-production workers from consuming new traffic, and order deploy, drain, and removal steps.
