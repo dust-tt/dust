@@ -77,7 +77,6 @@ function getMessageTopMargin({
 }
 
 interface MessageItemProps {
-  allowBranchMessages?: boolean;
   data: VirtuosoMessage;
   context: VirtuosoMessageListContext;
   nextData: VirtuosoMessage | null;
@@ -91,7 +90,6 @@ interface MessageItemProps {
 export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
     {
-      allowBranchMessages,
       data,
       context,
       prevData,
@@ -242,11 +240,8 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return messageUser;
     }, [isAgentMessage, parentMessageId, messageUser, methods.data]);
 
-    if (
-      !allowBranchMessages &&
-      data.branchId &&
-      !isConversationForkNotice(data)
-    ) {
+    // Hide legacy conversation-branch messages (feature removed; main thread only).
+    if (data.branchId && !isConversationForkNotice(data)) {
       return null;
     }
 
