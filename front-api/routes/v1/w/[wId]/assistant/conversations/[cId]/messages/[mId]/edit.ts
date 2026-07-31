@@ -141,8 +141,6 @@ app.post(
       });
     }
 
-    const branchId = messageModel.getBranchId() ?? null;
-
     const renderRes = await batchRenderMessages(
       auth,
       conversationResource,
@@ -174,7 +172,6 @@ app.post(
 
     const editedMessageRes = await editUserMessage(auth, {
       conversationResource,
-      branchId,
       message,
       content,
       mentions,

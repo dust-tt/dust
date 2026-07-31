@@ -84,8 +84,6 @@ app.post(
       });
     }
 
-    const branchId = messageModel.getBranchId() ?? null;
-
     const renderRes = await batchRenderMessages(
       auth,
       conversationResource,
@@ -115,7 +113,6 @@ app.post(
 
     const retriedMessageRes = await retryAgentMessage(auth, {
       conversationResource,
-      branchId,
       message,
     });
     if (retriedMessageRes.isErr()) {
