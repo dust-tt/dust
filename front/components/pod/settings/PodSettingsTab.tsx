@@ -192,7 +192,6 @@ export function PodSettingsTab({
     owner,
     status: "active",
     podContext: pod.sId,
-    disabled: !isDefaultSkillsEnabled,
   });
   const [skillSearchText, setSkillSearchText] = useState("");
   const [isSkillPickerOpen, setIsSkillPickerOpen] = useState(false);
