@@ -15,7 +15,7 @@ import {
 import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
 import type { MembershipSeatType } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/metronome/client", () => ({
   getMetronomeContractById: vi.fn(),
@@ -572,6 +572,11 @@ describe("remapMembershipSeatTypesForContract — scheduled-remap no-op", () => 
     seats: [{ seatType: "pro", awu: 8000 }],
   });
   const workspace = { sId: "ws_1", id: 1 } as unknown as LightWorkspaceType;
+  // `remapMembershipSeatTypesForContract` only schedules when `startingAt` is
+  // still in the future — a past `startingAt` applies immediately instead. The
+  // clock is pinned ahead of it so these tests don't start failing once the
+  // wall clock passes `startingAt`.
+  const now = new Date("2026-06-01T00:00:00.000Z");
   const startingAt = new Date("2026-08-01T00:00:00.000Z");
 
   function makeMembership(userId: number, seatType: MembershipSeatType) {
@@ -585,9 +590,15 @@ describe("remapMembershipSeatTypesForContract — scheduled-remap no-op", () => 
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
     mockGetProductSeatTypes.mockResolvedValue(productSeatTypes);
     mockFetchSeatLimitsByWorkspace.mockResolvedValue(new Map());
     mockFetchUsersByModelIds.mockResolvedValue([{ id: 1, sId: "user_1" }]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("schedules the change when there is no existing matching schedule", async () => {
