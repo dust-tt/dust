@@ -707,10 +707,14 @@ export const ConversationViewer = ({
               const userMessage = event.message;
               const predicate = getPredicateForRankAndBranch(userMessage);
 
-              // Drop optimistic placeholders occupying this rank so they cannot
-              // swallow the update (e.g. leftover agent placeholder at user rank).
+              // Drop a leftover agent placeholder occupying this rank so it
+              // cannot swallow the update. The user's own optimistic
+              // placeholder must NOT be deleted here: it is replaced in place
+              // below, and delete+insert breaks Virtuoso's rank-based row
+              // identity, making subsequent rows overlap.
               virtuosoMessageListRef.current.data.findAndDelete(
-                (m) => predicate(m) && isPlaceholderMessage(m)
+                (m) =>
+                  predicate(m) && isPlaceholderMessage(m) && !isUserMessage(m)
               );
 
               const exists =
@@ -830,13 +834,6 @@ export const ConversationViewer = ({
 
               // Replace the message in the exist list data, or append.
               const predicate = getPredicateForRankAndBranch(agentMessage);
-
-              // Clear optimistic placeholders at this rank before insert/replace
-              // so leftover restricted-agent placeholders cannot desync ranks.
-              virtuosoMessageListRef.current.data.findAndDelete(
-                (m) => predicate(m) && isPlaceholderMessage(m)
-              );
-
               const exists =
                 virtuosoMessageListRef.current.data.find(predicate);
 
