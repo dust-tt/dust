@@ -107,7 +107,7 @@ function makeEvent(
       toolName: "get_worksheet",
       message: "The tool get_worksheet requires personal authentication.",
     },
-  } as SandboxFunctionToolPersonalAuthRequiredEvent;
+  } satisfies SandboxFunctionToolPersonalAuthRequiredEvent;
 }
 
 describe("SandboxFunctionPersonalAuthCard", () => {
