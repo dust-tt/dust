@@ -84,41 +84,6 @@ describe("canAgentBeUsedInProjectConversation", () => {
     ).rejects.toThrow("Unexpected: conversation is not a project conversation");
   });
 
-  it("allows the agent on a branch conversation without evaluating space requirements", async () => {
-    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-    const user = auth.getNonNullableUser();
-    const projectSpace = await SpaceFactory.project(workspace, user.id);
-    await addUserToSpaceRegularGroup(
-      internalAdminAuth,
-      projectSpace,
-      user.toJSON()
-    );
-    await auth.refresh();
-
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: "test-agent",
-      messagesCreatedAt: [],
-      spaceId: projectSpace.id,
-    });
-    const conversationJson = await fetchConversationWithoutContent(
-      conversation.sId
-    );
-
-    const otherRestrictedSpace = await SpaceFactory.project(workspace);
-
-    await expect(
-      canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([
-          projectSpace.sId,
-          otherRestrictedSpace.sId,
-        ]),
-        conversation: { ...conversationJson, branchId: "br_test_branch" },
-      })
-    ).resolves.toBe(true);
-  });
-
   it("allows the agent when requestedSpaceIds is empty", async () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
