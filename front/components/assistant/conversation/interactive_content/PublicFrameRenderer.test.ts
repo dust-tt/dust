@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   iframeProps: null as {
     canInvokeFunctions: boolean;
     scopedUserIdentity?: ScopedWorkspaceUserIdentity;
+    viewer: unknown;
   } | null,
   isAuthenticatedMember: true,
   isUserLoading: true,
@@ -23,6 +24,7 @@ vi.mock(
     VisualizationActionIframe: (props: {
       canInvokeFunctions: boolean;
       scopedUserIdentity?: ScopedWorkspaceUserIdentity;
+      viewer: unknown;
     }) => {
       mocks.iframeProps = props;
       return "frame-iframe";
@@ -138,6 +140,12 @@ describe("PublicFrameRenderer", () => {
         workspaceId: "w_current",
         user: expect.objectContaining({ sId: "usr_123" }),
       },
+      // Blocked-action cards run without an AuthProvider on a shared frame, so they get the
+      // viewer's workspace and user from here.
+      viewer: {
+        owner: { sId: "w_current" },
+        user: expect.objectContaining({ sId: "usr_123" }),
+      },
     });
   });
 
@@ -158,6 +166,7 @@ describe("PublicFrameRenderer", () => {
     expect(mocks.iframeProps).toMatchObject({
       canInvokeFunctions: false,
       scopedUserIdentity: undefined,
+      viewer: null,
     });
   });
 });

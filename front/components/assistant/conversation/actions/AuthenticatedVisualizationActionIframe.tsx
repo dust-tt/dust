@@ -42,7 +42,7 @@ export function getAuthenticatedFrameUserIdentity(
 interface AuthenticatedVisualizationActionIframeProps
   extends Omit<
     VisualizationActionIframeProps,
-    "canInvokeFunctions" | "scopedUserIdentity"
+    "canInvokeFunctions" | "scopedUserIdentity" | "viewer"
   > {}
 
 export const AuthenticatedVisualizationActionIframe = forwardRef<
@@ -61,6 +61,11 @@ export const AuthenticatedVisualizationActionIframe = forwardRef<
       ref={ref}
       canInvokeFunctions={scopedUserIdentity !== undefined}
       scopedUserIdentity={scopedUserIdentity}
+      viewer={
+        authContext && scopedUserIdentity
+          ? { owner: authContext.workspace, user: authContext.user }
+          : null
+      }
     />
   );
 });

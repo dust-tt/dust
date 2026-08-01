@@ -25,7 +25,6 @@ import {
 import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { WAKEUPS_SERVER_NAME } from "@app/lib/api/actions/servers/wakeups/metadata";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
-import { useAuth } from "@app/lib/auth/AuthContext";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -191,6 +190,9 @@ type ToolValidationRequest = Pick<
 interface ToolValidationCardProps {
   validationRequest: ToolValidationRequest;
   triggeringUser: UserType | null;
+  // The viewer looking at the card. Passed in rather than read from `AuthContext` because shared
+  // frames render this card outside of any AuthProvider.
+  currentUser: UserType;
   owner: LightWorkspaceType;
   conversationId?: string | null;
   errorMessage: string | null;
@@ -203,6 +205,7 @@ interface ToolValidationCardProps {
 export function ToolValidationCard({
   validationRequest,
   triggeringUser,
+  currentUser,
   owner,
   conversationId,
   errorMessage,
@@ -210,16 +213,15 @@ export function ToolValidationCard({
   isPulsing = false,
   onValidate,
 }: ToolValidationCardProps) {
-  const { user } = useAuth();
   const [neverAskAgain, setNeverAskAgain] = useState(false);
 
   const canCurrentUserRespond = useMemo(
     () =>
       canCurrentUserRespondToParentUserMessage({
         parentUserId: validationRequest.userId,
-        currentUserId: user?.sId,
+        currentUserId: currentUser.sId,
       }),
-    [validationRequest.userId, user?.sId]
+    [validationRequest.userId, currentUser.sId]
   );
 
   const icon = validationRequest.metadata.icon
@@ -296,7 +298,7 @@ export function ToolValidationCard({
         <>
           <ToolValidationDetails
             blockedAction={validationRequest}
-            user={user}
+            user={currentUser}
             owner={owner}
             conversationId={conversationId}
             defaultExpanded={toolOverride?.detailsExpanded}
