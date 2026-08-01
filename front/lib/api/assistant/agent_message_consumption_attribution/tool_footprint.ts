@@ -9,8 +9,10 @@ import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * The two texts an MCP action contributes to the model's token budget: the tool call the model
- * emitted (output side) and the result the model then ingested (input side). Per-tool attribution
- * prices these two footprints, so V1 measures both.
+ * emitted (output side) and the result's renderable footprint (input side). The result is priced by
+ * the input it would occupy if carried into a later prompt, which it may never be (the message can
+ * end, or the tool can be denied, before any following turn). Per-tool attribution prices both
+ * footprints, so V1 measures them.
  */
 export interface ToolFootprintTexts {
   callText: string;
@@ -19,8 +21,8 @@ export interface ToolFootprintTexts {
 
 /**
  * The measured footprint of one MCP action, aligned by position with the input actions. Named after
- * the model budget each side consumes: the emitted call counts as output, the ingested result as
- * input.
+ * the model budget each side consumes: the emitted call counts as output, and the result counts as
+ * the input it would occupy if carried into a later prompt, which it may never be.
  */
 export interface ToolFootprintMeasurement {
   callOutputTokensCount: number;

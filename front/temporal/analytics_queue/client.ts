@@ -7,6 +7,7 @@ import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/analytics_queue/config";
 import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
+import { storeAgentMessageConsumptionAttributionSignal } from "@app/temporal/analytics_queue/signals";
 import {
   storeAgentAnalyticsWorkflow,
   storeAgentMessageConsumptionAttributionWorkflow,
@@ -119,12 +120,18 @@ export async function launchStoreAgentMessageConsumptionAttributionWorkflow({
     }) + "-consumption-attribution";
 
   try {
-    await client.workflow.start(
+    // signalWithStart, not start: a message settles across several finalizes (pause for approval,
+    // resume, retries) and each must recompute. start would drop every pass after the first as
+    // already-started, freezing a tool that was still blocked when the first pass ran. The signal
+    // instead reruns a workflow already in flight and starts one otherwise.
+    await client.workflow.signalWithStart(
       storeAgentMessageConsumptionAttributionWorkflow,
       {
         args: [authType, { agentLoopArgs }],
         taskQueue: QUEUE_NAME,
         workflowId,
+        signal: storeAgentMessageConsumptionAttributionSignal,
+        signalArgs: undefined,
         searchAttributes: {
           conversationId: [conversationId],
           workspaceId: [workspaceId],
@@ -137,16 +144,14 @@ export async function launchStoreAgentMessageConsumptionAttributionWorkflow({
     );
     return new Ok(undefined);
   } catch (e) {
-    if (!(e instanceof WorkflowExecutionAlreadyStartedError)) {
-      logger.error(
-        {
-          workflowId,
-          agentMessageId,
-          error: e,
-        },
-        "Failed starting agent message consumption attribution workflow"
-      );
-    }
+    logger.error(
+      {
+        workflowId,
+        agentMessageId,
+        error: e,
+      },
+      "Failed starting agent message consumption attribution workflow"
+    );
 
     return new Err(normalizeError(e));
   }

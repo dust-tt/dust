@@ -5,6 +5,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
@@ -25,13 +26,6 @@ export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
   inputTokensCount: number | null;
   /** Estimated tokens in the model output that emitted the tool name and arguments */
   outputTokensCount: number | null;
-  directCreditAmountMicro: number | null;
-};
-
-export type PendingToolConsumptionCompletion = ConsumptionItemEvidenceBase & {
-  action: AgentMCPActionResource;
-  /** Estimated tokens in the result returned by this tool execution */
-  inputTokensCount: number | null;
   directCreditAmountMicro: number | null;
 };
 
@@ -181,23 +175,72 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     };
   }
 
-  static async insertCompletedItemsIdempotently(
+  private static pendingToolCreationAttributes(
+    auth: Authenticator,
+    {
+      conversationModelId,
+      attributionVersion,
+      item,
+      now,
+    }: {
+      conversationModelId: ModelId;
+      attributionVersion: number;
+      item: PendingToolConsumptionItem;
+      now: Date;
+    }
+  ): ConsumptionItemCreationAttributes {
+    return {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      conversationId: conversationModelId,
+      agentMessageId: item.action.agentMessageId,
+      runUsageId: item.runUsageModelId,
+      agentMCPActionId: item.action.id,
+      itemKey: `tool-action:${item.action.id}`,
+      itemType: "tool",
+      attributionVersion,
+      inputTokensCount: null,
+      outputTokensCount: item.outputTokensCount,
+      grossAttributedCreditAmountMicro: item.grossAttributedCreditAmountMicro,
+      directCreditAmountMicro: null,
+      completedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  /**
+   * Writes one message's attribution breakdown for a single pass, idempotently and atomically.
+   * Callers pass the whole desired set and this reconciles it in one transaction, so the materializer
+   * never coordinates a read then separate inserts and updates.
+   *
+   * Three write shapes, one per identity class:
+   * - Model buckets and already-final tools with no prior row are inserted, first write wins, so a
+   *   re-finalize with the same identity is a no-op.
+   * - A final tool is upserted on its (message, version, itemKey) identity, so a row a previous pass
+   *   left pending, because the tool was still blocked then, is completed in place here rather than
+   *   skipped by the insert.
+   * - A still-blocked tool is inserted pending and never overwrites an existing row, so a completed
+   *   row from a concurrent pass is not regressed to pending.
+   */
+  static async recordItemsIdempotently(
     auth: Authenticator,
     {
       conversation,
       agentMessageModelId,
       attributionVersion,
       records,
+      pendingToolItems,
       transaction,
     }: {
       conversation: ConversationResource;
       agentMessageModelId: ModelId;
       attributionVersion: number;
       records: CompletedAgentMessageConsumptionItem[];
+      pendingToolItems: PendingToolConsumptionItem[];
       transaction?: Transaction;
     }
   ): Promise<void> {
-    if (records.length === 0) {
+    if (records.length === 0 && pendingToolItems.length === 0) {
       return;
     }
 
@@ -210,129 +253,100 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       ),
       "Tool consumption items must have the same agent message ID as the owning agent message"
     );
-
-    const now = new Date();
-    await this.model.bulkCreate(
-      records.map((record) =>
-        this.creationAttributes(auth, {
-          conversationModelId: conversation.id,
-          agentMessageModelId,
-          attributionVersion,
-          record,
-          now,
-        })
+    assert(
+      pendingToolItems.every(
+        (item) => item.action.agentMessageId === agentMessageModelId
       ),
-      {
-        ignoreDuplicates: true,
-        returning: false,
-        transaction,
-        // Sequelize disables validation by default for bulkCreate.
-        validate: true,
-      }
+      "Pending tool consumption items must have the same agent message ID as the owning agent message"
     );
-  }
-
-  static async insertPendingToolItemIdempotently(
-    auth: Authenticator,
-    {
-      conversation,
-      attributionVersion,
-      item,
-      transaction,
-    }: {
-      conversation: ConversationResource;
-      attributionVersion: number;
-      item: PendingToolConsumptionItem;
-      transaction?: Transaction;
-    }
-  ): Promise<void> {
-    return this.insertPendingToolItemsIdempotently(auth, {
-      conversation,
-      attributionVersion,
-      items: [item],
-      transaction,
-    });
-  }
-
-  static async insertPendingToolItemsIdempotently(
-    auth: Authenticator,
-    {
-      conversation,
-      attributionVersion,
-      items,
-      transaction,
-    }: {
-      conversation: ConversationResource;
-      attributionVersion: number;
-      items: PendingToolConsumptionItem[];
-      transaction?: Transaction;
-    }
-  ): Promise<void> {
-    if (items.length === 0) {
-      return;
-    }
 
     const now = new Date();
-    await this.model.bulkCreate(
-      items.map((item) => ({
-        workspaceId: auth.getNonNullableWorkspace().id,
-        conversationId: conversation.id,
-        agentMessageId: item.action.agentMessageId,
-        runUsageId: item.runUsageModelId,
-        agentMCPActionId: item.action.id,
-        itemKey: `tool-action:${item.action.id}`,
-        itemType: "tool",
-        attributionVersion,
-        inputTokensCount: null,
-        outputTokensCount: item.outputTokensCount,
-        grossAttributedCreditAmountMicro: item.grossAttributedCreditAmountMicro,
-        directCreditAmountMicro: null,
-        completedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      })),
-      {
-        ignoreDuplicates: true,
-        returning: false,
-        transaction,
-        // Sequelize disables validation by default for bulkCreate.
-        validate: true,
-      }
+    const modelRecords = records.filter((record) => record.itemType !== "tool");
+    const completedToolRecords = records.filter(
+      (record) => record.itemType === "tool"
     );
-  }
 
-  static async completePendingToolItemIdempotently(
-    auth: Authenticator,
-    {
-      attributionVersion,
-      item,
-      transaction,
-    }: {
-      attributionVersion: number;
-      item: PendingToolConsumptionCompletion;
-      transaction?: Transaction;
-    }
-  ): Promise<void> {
-    await this.model.update(
-      {
-        itemType: "tool",
-        agentMCPActionId: item.action.id,
-        inputTokensCount: item.inputTokensCount,
-        grossAttributedCreditAmountMicro: item.grossAttributedCreditAmountMicro,
-        directCreditAmountMicro: item.directCreditAmountMicro,
-        completedAt: new Date(),
-      },
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          agentMCPActionId: item.action.id,
-          attributionVersion,
-          itemType: "tool",
-          completedAt: { [Op.is]: null },
-        },
-        transaction,
+    await withTransaction(async (t) => {
+      if (modelRecords.length > 0) {
+        // Model buckets: first write wins, so a re-finalize does not disturb an existing breakdown.
+        await this.model.bulkCreate(
+          modelRecords.map((record) =>
+            this.creationAttributes(auth, {
+              conversationModelId: conversation.id,
+              agentMessageModelId,
+              attributionVersion,
+              record,
+              now,
+            })
+          ),
+          {
+            ignoreDuplicates: true,
+            returning: false,
+            transaction: t,
+            // Sequelize disables validation by default for bulkCreate.
+            validate: true,
+          }
+        );
       }
-    );
+
+      if (completedToolRecords.length > 0) {
+        // Final tools: insert the row, or complete one an earlier pass left pending, in a single
+        // upsert on the message-version-itemKey identity. This is what lands an approved-after-pause
+        // tool that the insert above would skip.
+        await this.model.bulkCreate(
+          completedToolRecords.map((record) =>
+            this.creationAttributes(auth, {
+              conversationModelId: conversation.id,
+              agentMessageModelId,
+              attributionVersion,
+              record,
+              now,
+            })
+          ),
+          {
+            updateOnDuplicate: [
+              "runUsageId",
+              "inputTokensCount",
+              "outputTokensCount",
+              "grossAttributedCreditAmountMicro",
+              "directCreditAmountMicro",
+              "completedAt",
+              "updatedAt",
+            ],
+            conflictAttributes: [
+              "workspaceId",
+              "agentMessageId",
+              "attributionVersion",
+              "itemKey",
+            ],
+            returning: false,
+            transaction: t,
+            validate: true,
+          }
+        );
+      }
+
+      if (pendingToolItems.length > 0) {
+        // Blocked tools: record the pending row only if none exists, never overwriting a completed
+        // one, so a racing final pass keeps precedence.
+        await this.model.bulkCreate(
+          pendingToolItems.map((item) =>
+            this.pendingToolCreationAttributes(auth, {
+              conversationModelId: conversation.id,
+              attributionVersion,
+              item,
+              now,
+            })
+          ),
+          {
+            ignoreDuplicates: true,
+            returning: false,
+            transaction: t,
+            validate: true,
+          }
+        );
+      }
+    }, transaction);
   }
 
   static async listByAgentMessageModelIds(

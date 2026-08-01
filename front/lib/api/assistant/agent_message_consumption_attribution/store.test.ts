@@ -310,7 +310,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     expect(toolItems[0].directCreditAmountMicro).toBeGreaterThanOrEqual(0);
   });
 
-  it("leaves an approved tool row untouched on a later re-finalize", async () => {
+  it("keeps a completed tool single and stable across a redundant re-finalize", async () => {
     const {
       auth,
       workspace,
@@ -341,17 +341,8 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       conversationId,
     });
 
-    const completedAtAfterApproval = (
-      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
-        auth,
-        {
-          agentMessageModelIds: [agentMessageModelId],
-          attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-        }
-      )
-    ).find((item) => item.itemType === "tool")?.completedAt;
-
-    // A redundant finalize (e.g. a Temporal retry) must not re-complete or duplicate the row.
+    // A redundant finalize (e.g. a Temporal retry) re-upserts the same values. It must not duplicate
+    // the row or change the attributed evidence, and the row stays completed.
     await computeAndStoreAgentMessageConsumptionAttribution(auth, {
       agentMessageId,
       conversationId,
@@ -368,7 +359,12 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     ).filter((item) => item.itemType === "tool");
 
     expect(toolItems).toHaveLength(1);
-    expect(toolItems[0].completedAt).toEqual(completedAtAfterApproval);
+    expect(toolItems[0]).toMatchObject({
+      agentMCPActionId: action.id,
+      outputTokensCount: TOKENS_PER_FOOTPRINT,
+      inputTokensCount: TOKENS_PER_FOOTPRINT,
+      completedAt: expect.any(Date),
+    });
   });
 
   it("writes nothing when the message has no runs", async () => {
