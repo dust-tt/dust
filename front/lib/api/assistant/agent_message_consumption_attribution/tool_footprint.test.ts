@@ -1,3 +1,4 @@
+import type { ToolCallFootprintInput } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import {
   measureToolCallFootprints,
   toolCallFootprintTexts,
@@ -44,24 +45,41 @@ function makeAction(
   };
 }
 
+// The emitted arguments are supplied separately from the resource, so tests default them to "{}".
+function footprintInput(
+  action: AgentMCPActionWithOutputType,
+  functionCallArguments = "{}"
+): ToolCallFootprintInput {
+  return { action, functionCallArguments };
+}
+
 // The auth is only forwarded to getLlmCredentials, which is mocked, so a bare stub is enough.
 const auth = {} as Authenticator;
 
 describe("toolCallFootprintTexts", () => {
-  it("serializes a call as its function name followed by JSON arguments", () => {
+  it("serializes a call from the emitted arguments, not the augmented params", () => {
     const { callText } = toolCallFootprintTexts(
-      makeAction({ functionCallName: "search", params: { query: "hello" } })
+      footprintInput(
+        makeAction({
+          functionCallName: "search",
+          // params also carries a Dust-injected input that must not be counted.
+          params: { query: "hello", injectedSecret: "x".repeat(500) },
+        }),
+        '{"query":"hello"}'
+      )
     );
 
-    expect(callText).toBe(`search\n${JSON.stringify({ query: "hello" })}`);
+    expect(callText).toBe('search\n{"query":"hello"}');
   });
 
   it("renders a denied action as the rejection notice, ignoring any output", () => {
     const { resultText } = toolCallFootprintTexts(
-      makeAction({
-        status: "denied",
-        output: [{ type: "text", text: "leaked" }],
-      })
+      footprintInput(
+        makeAction({
+          status: "denied",
+          output: [{ type: "text", text: "leaked" }],
+        })
+      )
     );
 
     expect(resultText).toBe(
@@ -71,7 +89,7 @@ describe("toolCallFootprintTexts", () => {
 
   it("renders an action awaiting validation as the validation notice", () => {
     const { resultText } = toolCallFootprintTexts(
-      makeAction({ status: "blocked_validation_required" })
+      footprintInput(makeAction({ status: "blocked_validation_required" }))
     );
 
     expect(resultText).toBe(
@@ -81,7 +99,7 @@ describe("toolCallFootprintTexts", () => {
 
   it("renders an empty output as the no-output notice", () => {
     const { resultText } = toolCallFootprintTexts(
-      makeAction({ status: "succeeded", output: [] })
+      footprintInput(makeAction({ status: "succeeded", output: [] }))
     );
 
     expect(resultText).toBe("Successfully executed action, no output.");
@@ -89,13 +107,15 @@ describe("toolCallFootprintTexts", () => {
 
   it("joins text output items with newlines", () => {
     const { resultText } = toolCallFootprintTexts(
-      makeAction({
-        status: "succeeded",
-        output: [
-          { type: "text", text: "first" },
-          { type: "text", text: "second" },
-        ],
-      })
+      footprintInput(
+        makeAction({
+          status: "succeeded",
+          output: [
+            { type: "text", text: "first" },
+            { type: "text", text: "second" },
+          ],
+        })
+      )
     );
 
     expect(resultText).toBe("first\nsecond");
@@ -103,15 +123,17 @@ describe("toolCallFootprintTexts", () => {
 
   it("serializes non-text output as JSON with the mime type stripped", () => {
     const { resultText } = toolCallFootprintTexts(
-      makeAction({
-        status: "succeeded",
-        output: [
-          {
-            type: "resource",
-            resource: { uri: "u", mimeType: "text/plain", text: "body" },
-          },
-        ],
-      })
+      footprintInput(
+        makeAction({
+          status: "succeeded",
+          output: [
+            {
+              type: "resource",
+              resource: { uri: "u", mimeType: "text/plain", text: "body" },
+            },
+          ],
+        })
+      )
     );
 
     expect(resultText).toBe(JSON.stringify([{ uri: "u", text: "body" }]));
@@ -131,7 +153,7 @@ describe("measureToolCallFootprints", () => {
   it("returns an empty result without tokenizing when there are no actions", async () => {
     const res = await measureToolCallFootprints(auth, {
       modelId: GPT_5_MODEL_ID,
-      actions: [],
+      toolCalls: [],
     });
 
     expect(res.isOk() && res.value).toEqual([]);
@@ -142,7 +164,7 @@ describe("measureToolCallFootprints", () => {
   it("fails when the run's model is not a known configuration", async () => {
     const res = await measureToolCallFootprints(auth, {
       modelId: "not-a-real-model",
-      actions: [makeAction()],
+      toolCalls: [footprintInput(makeAction())],
     });
 
     expect(res.isErr()).toBe(true);
@@ -150,19 +172,20 @@ describe("measureToolCallFootprints", () => {
   });
 
   it("measures the call and result footprint of each action, aligned by position", async () => {
-    const actions = [
-      makeAction({ functionCallName: "a", params: {} }),
-      makeAction({
-        functionCallName: "b",
-        params: {},
-        status: "succeeded",
-        output: [{ type: "text", text: "result-of-b" }],
-      }),
+    const toolCalls = [
+      footprintInput(makeAction({ functionCallName: "a" })),
+      footprintInput(
+        makeAction({
+          functionCallName: "b",
+          status: "succeeded",
+          output: [{ type: "text", text: "result-of-b" }],
+        })
+      ),
     ];
 
     const res = await measureToolCallFootprints(auth, {
       modelId: GPT_5_MODEL_ID,
-      actions,
+      toolCalls,
     });
 
     // Calls and results are tokenized as two homogeneous lists, each in input order.
@@ -194,7 +217,7 @@ describe("measureToolCallFootprints", () => {
 
     const res = await measureToolCallFootprints(auth, {
       modelId: GPT_5_MODEL_ID,
-      actions: [makeAction()],
+      toolCalls: [footprintInput(makeAction())],
     });
 
     expect(res.isErr() && res.error.message).toBe("core down");

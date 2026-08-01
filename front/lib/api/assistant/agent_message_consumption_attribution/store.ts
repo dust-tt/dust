@@ -137,7 +137,12 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     // the input its result occupied. Everything is priced against this one usage below.
     const footprintsRes = await measureToolCallFootprints(auth, {
       modelId: usage.modelId,
-      actions: enrichedRunActions,
+      // TODO(2026-07-31 FLAV) Refactor `enrichActionsWithOutputItems` so it still returns the
+      // resource.
+      toolCalls: runActions.map((action, index) => ({
+        action: enrichedRunActions[index],
+        functionCallArguments: action.functionCallArguments,
+      })),
     });
     if (footprintsRes.isErr()) {
       throw new Error(
