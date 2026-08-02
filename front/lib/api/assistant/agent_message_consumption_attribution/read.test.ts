@@ -1,0 +1,231 @@
+import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
+import { getAgentMessageConsumption } from "@app/lib/api/assistant/agent_message_consumption_attribution/read";
+import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { RunFactory } from "@app/tests/utils/RunFactory";
+import type { ModelId } from "@app/types/shared/model_id";
+import { describe, expect, it } from "vitest";
+
+const BILLED_CREDITS = 10;
+const INPUT_GROSS_CREDITS_MICRO = 2_000_000;
+const OUTPUT_GROSS_CREDITS_MICRO = 1_000_000;
+const REASONING_GROSS_CREDITS_MICRO = 1_000_000;
+
+async function setupMessage() {
+  const { authenticator: auth, workspace } = await createResourceTest({});
+  const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
+    auth,
+    { name: `Consumption ${generateRandomModelSId()}` }
+  );
+  const createdConversation = await ConversationFactory.create(auth, {
+    agentConfigurationId: agentConfiguration.sId,
+    messagesCreatedAt: [],
+  });
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    createdConversation.sId
+  );
+  if (!conversation) {
+    throw new Error("Just-created conversation not found.");
+  }
+  const { run, runUsageModelId } = await RunFactory.createWithUsage(auth, {
+    inputTokens: 100,
+    outputTokens: 20,
+    reasoningTokens: 5,
+  });
+  const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
+    workspace,
+    conversation,
+    agentConfig: agentConfiguration,
+    runIds: [run.dustRunId],
+  });
+  await ConversationResource.updateAgentMessageCostCredits(auth, {
+    agentMessageModelId: agentMessage.agentMessageId,
+    costCredits: BILLED_CREDITS,
+  });
+
+  return {
+    auth,
+    workspace,
+    conversation,
+    run,
+    runUsageModelId,
+    agentMessage,
+  };
+}
+
+function modelRecords(runUsageModelId: ModelId) {
+  return [
+    {
+      itemType: "input" as const,
+      runUsageModelId,
+      inputTokensCount: 100,
+      grossAttributedCreditAmountMicro: INPUT_GROSS_CREDITS_MICRO,
+    },
+    {
+      itemType: "output" as const,
+      runUsageModelId,
+      outputTokensCount: 15,
+      grossAttributedCreditAmountMicro: OUTPUT_GROSS_CREDITS_MICRO,
+    },
+    {
+      itemType: "reasoning" as const,
+      runUsageModelId,
+      outputTokensCount: 5,
+      grossAttributedCreditAmountMicro: REASONING_GROSS_CREDITS_MICRO,
+    },
+  ];
+}
+
+describe("getAgentMessageConsumption", () => {
+  it("groups repeated tools and keeps the exact bill separate from estimated attribution", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      runUsageModelId,
+      agentMessage,
+    } = await setupMessage();
+    const { action: firstAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "succeeded",
+      dustRunId: run.dustRunId,
+      step: 1,
+    });
+    const { action: secondAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "succeeded",
+      dustRunId: run.dustRunId,
+      step: 2,
+    });
+
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: agentMessage.agentMessageId,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      records: [
+        ...modelRecords(runUsageModelId),
+        {
+          itemType: "tool",
+          runUsageModelId,
+          action: firstAction,
+          inputTokensCount: 20,
+          outputTokensCount: 5,
+          grossAttributedCreditAmountMicro: 5_000_000,
+          directCreditAmountMicro: 3_000_000,
+        },
+        {
+          itemType: "tool",
+          runUsageModelId,
+          action: secondAction,
+          inputTokensCount: 10,
+          outputTokensCount: 4,
+          grossAttributedCreditAmountMicro: 4_000_000,
+          directCreditAmountMicro: 1_000_000,
+        },
+      ],
+      pendingToolItems: [],
+    });
+
+    const consumption = await getAgentMessageConsumption(auth, {
+      conversation,
+      agentMessageId: agentMessage.sId,
+    });
+
+    expect(consumption).toEqual({
+      billedCredits: BILLED_CREDITS,
+      details: {
+        attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        grossAttributedCredits: 13,
+        estimatedCacheSavingsCredits: 3,
+        agentWorkCredits: 4,
+        tools: [
+          expect.objectContaining({
+            callCount: 2,
+            grossAttributedCredits: 9,
+            directCredits: 4,
+            pending: false,
+            toolName: "test_tool",
+          }),
+        ],
+      },
+    });
+  });
+
+  it("exposes a blocked tool as pending without inventing a direct charge", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      runUsageModelId,
+      agentMessage,
+    } = await setupMessage();
+    const { action } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+      dustRunId: run.dustRunId,
+    });
+
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: agentMessage.agentMessageId,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      records: modelRecords(runUsageModelId),
+      pendingToolItems: [
+        {
+          action,
+          runUsageModelId,
+          outputTokensCount: 5,
+          grossAttributedCreditAmountMicro: 1_000_000,
+        },
+      ],
+    });
+
+    const consumption = await getAgentMessageConsumption(auth, {
+      conversation,
+      agentMessageId: agentMessage.sId,
+    });
+
+    expect(consumption?.details?.tools).toEqual([
+      expect.objectContaining({
+        callCount: 1,
+        directCredits: 0,
+        pending: true,
+      }),
+    ]);
+  });
+
+  it("withholds details when the active rows do not cover every current run bucket", async () => {
+    const { auth, conversation, runUsageModelId, agentMessage } =
+      await setupMessage();
+
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: agentMessage.agentMessageId,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      records: modelRecords(runUsageModelId).filter(
+        (record) => record.itemType !== "output"
+      ),
+      pendingToolItems: [],
+    });
+
+    await expect(
+      getAgentMessageConsumption(auth, {
+        conversation,
+        agentMessageId: agentMessage.sId,
+      })
+    ).resolves.toEqual({ billedCredits: BILLED_CREDITS, details: null });
+  });
+});

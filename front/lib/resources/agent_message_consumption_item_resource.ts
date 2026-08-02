@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
-import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -461,6 +461,50 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     });
 
     return items.map((item) => new this(this.model, item.get()));
+  }
+
+  /**
+   * Resolves one public message identity to the persisted facts needed by the consumption reader.
+   * Keeping that resolution here prevents Sequelize models and numeric IDs from leaking into the
+   * read module or route.
+   */
+  static async fetchMessageConsumptionFacts(
+    auth: Authenticator,
+    {
+      conversation,
+      agentMessageId,
+      attributionVersion,
+    }: {
+      conversation: ConversationResource;
+      agentMessageId: string;
+      attributionVersion: number;
+    }
+  ): Promise<{
+    billedCredits: number | null;
+    dustRunIds: string[];
+    items: AgentMessageConsumptionItemResource[];
+    actions: AgentMCPActionResource[];
+  } | null> {
+    const messageRes = await conversation.getMessageById(auth, agentMessageId);
+    if (messageRes.isErr() || !messageRes.value.agentMessage) {
+      return null;
+    }
+
+    const agentMessage = messageRes.value.agentMessage;
+    const [items, actions] = await Promise.all([
+      this.listByAgentMessageModelIds(auth, {
+        agentMessageModelIds: [agentMessage.id],
+        attributionVersion,
+      }),
+      AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessage.id]),
+    ]);
+
+    return {
+      billedCredits: agentMessage.costCredits,
+      dustRunIds: [...new Set(agentMessage.runIds ?? [])],
+      items,
+      actions,
+    };
   }
 
   static async deleteByAgentMessageModelIds(

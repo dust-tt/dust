@@ -791,6 +791,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "xai_feature"
   | "conversations_slack_notifications"
   | "collapsible_messages"
+  | "conversation_consumption_details"
   | "use_dust_keys"
   | "browser_extension_mcp_tools"
   | "sensitivity_labels"
