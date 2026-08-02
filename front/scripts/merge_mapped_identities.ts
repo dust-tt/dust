@@ -12,7 +12,10 @@ import { makeScript } from "./helpers";
 
 const MergeFileSchema = z.array(
   z.object({
-    email: z.string().email(),
+    email: z
+      .string()
+      .email()
+      .transform((email) => email.toLowerCase()),
     sIdToKeep: z.string().min(1),
   })
 );
@@ -29,10 +32,22 @@ interface MergePair extends MergeRecord {
   primaryUserId: string;
   oldUserModelId: number;
   oldEmail: string;
+  oldRole: Member["workspaces"][number]["role"];
+  primaryRole: Member["workspaces"][number]["role"];
+  oldSeatType: Member["seatType"];
+  primarySeatType: Member["seatType"];
 }
 
 interface BlockedRecord extends MergeRecord {
   reason: string;
+}
+
+function getEmailDomain(email: string) {
+  const parts = email.split("@");
+  if (parts.length !== 2 || !parts[1]) {
+    throw new Error(`Invalid user email: ${email}`);
+  }
+  return parts[1].toLowerCase();
 }
 
 async function loadRecords(filePath: string) {
@@ -51,7 +66,8 @@ async function loadRecords(filePath: string) {
     primaryEmails.add(email);
     oldUserIds.add(sIdToKeep);
 
-    // Despite its name, sIdToKeep is the old identity being merged into the primary email.
+    // The issue mapping names this field sIdToKeep, but identifies the old account whose data
+    // must move to the newly provisioned account at `email`.
     return { primaryEmail: email, oldUserId: sIdToKeep };
   });
 }
@@ -90,10 +106,13 @@ function buildPairs(
   duplicateEmails: Set<string>,
   triggerCountByEditor: Map<number, number>,
   ssoUserIds: Set<string>,
+  oldDomain: string,
+  newDomain: string,
   activeAdminCount: number
 ) {
   const pairs: MergePair[] = [];
   const blocked: BlockedRecord[] = [];
+  const selectedOldUserIds = new Set(records.map(({ oldUserId }) => oldUserId));
 
   for (const record of records) {
     const oldUser = memberById.get(record.oldUserId);
@@ -102,18 +121,37 @@ function buildPairs(
       ? triggerCountByEditor.get(oldUser.id)
       : undefined;
     const oldMembership = oldUser?.workspaces[0];
+    const primaryMembership = primaryUser?.workspaces[0];
     let reason: string | null = null;
 
-    if (!oldUser) {
+    if (getEmailDomain(record.primaryEmail) !== newDomain) {
+      reason = "Primary email is not on the expected new domain.";
+    } else if (!oldUser) {
       reason = "Old user is not a current or former workspace member.";
+    } else if (getEmailDomain(oldUser.email) !== oldDomain) {
+      reason = "Mapped old user is not on the expected old domain.";
     } else if (duplicateEmails.has(record.primaryEmail)) {
       reason = "Multiple active workspace members have the primary email.";
     } else if (!primaryUser) {
       reason = "No active workspace member has the primary email.";
     } else if (primaryUser.sId === oldUser.sId) {
       reason = "Primary and old user are the same identity.";
+    } else if (selectedOldUserIds.has(primaryUser.sId)) {
+      reason = "Primary identity is also selected as an old identity.";
     } else if (!ssoUserIds.has(primaryUser.sId)) {
       reason = "Primary user has no WorkOS identity.";
+    } else if (!oldMembership || !primaryMembership) {
+      reason = "Workspace membership is missing from an identity.";
+    } else if (
+      oldMembership.role !== "none" &&
+      oldMembership.role !== primaryMembership.role
+    ) {
+      reason = "Active old and primary users have different workspace roles.";
+    } else if (
+      oldMembership.role !== "none" &&
+      oldUser.seatType !== primaryUser.seatType
+    ) {
+      reason = "Active old and primary users have different seat types.";
     } else if (
       oldMembership?.role === "admin" &&
       activeAdminCount < MIN_ADMINS_FOR_REVOCATION
@@ -127,7 +165,7 @@ function buildPairs(
       blocked.push({ ...record, reason });
       continue;
     }
-    if (!oldUser || !primaryUser) {
+    if (!oldUser || !primaryUser || !oldMembership || !primaryMembership) {
       throw new Error("Identity pair preflight invariant failed.");
     }
 
@@ -136,13 +174,22 @@ function buildPairs(
       primaryUserId: primaryUser.sId,
       oldUserModelId: oldUser.id,
       oldEmail: oldUser.email,
+      oldRole: oldMembership.role,
+      primaryRole: primaryMembership.role,
+      oldSeatType: oldUser.seatType,
+      primarySeatType: primaryUser.seatType,
     });
   }
 
   return { pairs, blocked };
 }
 
-async function preflight(auth: Authenticator, records: MergeRecord[]) {
+async function preflight(
+  auth: Authenticator,
+  records: MergeRecord[],
+  oldDomain: string,
+  newDomain: string
+) {
   const { members } = await getMembers(auth);
   const { memberById, primaryByEmail, duplicateEmails, activeAdminCount } =
     indexMembers(members);
@@ -174,6 +221,8 @@ async function preflight(auth: Authenticator, records: MergeRecord[]) {
     duplicateEmails,
     triggerCountByEditor,
     ssoUserIds,
+    oldDomain,
+    newDomain,
     activeAdminCount
   );
   // Memberships are fetched in one query using the workspace/user/startAt index.
@@ -229,6 +278,16 @@ makeScript(
       type: "string" as const,
       demandOption: true,
     },
+    oldDomain: {
+      describe: "Expected domain of mapped old identities",
+      type: "string" as const,
+      demandOption: true,
+    },
+    newDomain: {
+      describe: "Expected domain of primary identities",
+      type: "string" as const,
+      demandOption: true,
+    },
     userId: {
       describe: "Old user sId to process as a canary",
       type: "string" as const,
@@ -239,9 +298,17 @@ makeScript(
       default: false,
     },
   },
-  async ({ workspaceId, file, userId, all, execute }, logger) => {
+  async (
+    { workspaceId, file, oldDomain, newDomain, userId, all, execute },
+    logger
+  ) => {
     if ((!userId && !all) || (userId && all)) {
       throw new Error("Pass exactly one of --userId or --all.");
+    }
+    const expectedOldDomain = oldDomain.toLowerCase();
+    const expectedNewDomain = newDomain.toLowerCase();
+    if (expectedOldDomain === expectedNewDomain) {
+      throw new Error("Old and new domains must differ.");
     }
 
     const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -258,7 +325,12 @@ makeScript(
     }
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const { readyPairs, blocked } = await preflight(auth, selectedRecords);
+    const { readyPairs, blocked } = await preflight(
+      auth,
+      selectedRecords,
+      expectedOldDomain,
+      expectedNewDomain
+    );
 
     logger.info(
       {
@@ -280,19 +352,42 @@ makeScript(
     }
 
     for (const pair of readyPairs) {
+      const currentPreflight = await preflight(
+        auth,
+        [pair],
+        expectedOldDomain,
+        expectedNewDomain
+      );
+      if (currentPreflight.blocked.length > 0) {
+        logger.error(
+          { pair, blocked: currentPreflight.blocked },
+          "Identity pair no longer passes preflight"
+        );
+        throw new Error(`Identity pair preflight failed: ${pair.oldUserId}`);
+      }
+      const [currentPair] = currentPreflight.readyPairs;
+      if (!currentPair) {
+        throw new Error(
+          `Identity pair missing after preflight: ${pair.oldUserId}`
+        );
+      }
+
       const result = await userIdentityMergePlugin.execute(auth, null, {
-        primaryUserId: pair.primaryUserId,
-        secondaryUserId: pair.oldUserId,
+        primaryUserId: currentPair.primaryUserId,
+        secondaryUserId: currentPair.oldUserId,
         ignoreEmailMatch: true,
         revokeSecondaryUser: true,
       });
       if (result.isErr()) {
         throw result.error;
       }
-      logger.info(pair, "Successfully merged old identity into primary user");
+      await verifyRevoked(auth, [currentPair]);
+      logger.info(
+        currentPair,
+        "Successfully merged old identity into primary user"
+      );
     }
 
-    await verifyRevoked(auth, readyPairs);
     logger.info({ successful: readyPairs.length }, "Identity merge complete");
   }
 );
